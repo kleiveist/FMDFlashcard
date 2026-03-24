@@ -646,8 +646,8 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
-  it("shifts inline list position for all selected blocks via Tab + ArrowLeft/ArrowRight", () => {
-    const initialMarkdown = ["- Alpha", "- Beta", "- Gamma"].join("\n");
+  it("shifts selected inline-capable blocks via Ctrl+ArrowLeft/ArrowRight", () => {
+    const initialMarkdown = ["- Alpha", "Paragraph", "- Gamma"].join("\n");
 
     const Harness = () => {
       const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -679,20 +679,17 @@ describe("MarkdownHybridEditor", () => {
     ctrlSelectBlock(blocks[0]);
     ctrlSelectBlock(blocks[1]);
 
-    dispatchKeyDown(editor, "Tab");
-    dispatchKeyDown(editor, "ArrowRight");
-    expect(readMarkdown()).toBe(["  - Alpha", "  - Beta", "- Gamma"].join("\n"));
+    dispatchKeyDown(editor, "ArrowRight", { ctrlKey: true });
+    expect(readMarkdown()).toBe(["  - Alpha", "  Paragraph", "- Gamma"].join("\n"));
 
-    // Selection remains active so repeated inline shifts work without reselecting.
-    dispatchKeyDown(editor, "Tab");
-    dispatchKeyDown(editor, "ArrowLeft");
+    dispatchKeyDown(editor, "ArrowLeft", { ctrlKey: true });
     expect(readMarkdown()).toBe(initialMarkdown);
 
     cleanup();
   });
 
-  it("does not shift selected list blocks on ArrowLeft/ArrowRight without Tab arming", () => {
-    const initialMarkdown = ["- Alpha", "- Beta"].join("\n");
+  it("supports Cmd+ArrowLeft/ArrowRight alias for selection inline shifting", () => {
+    const initialMarkdown = ["Alpha", "Beta"].join("\n");
 
     const Harness = () => {
       const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -700,7 +697,7 @@ describe("MarkdownHybridEditor", () => {
         <div>
           <div data-testid="markdown-value">{markdown}</div>
           <MarkdownHybridEditor
-            historyKey="list-inline-shift-requires-tab-arming"
+            historyKey="list-inline-shift-cmd-alias"
             markdown={markdown}
             mode="edit"
             onChange={setMarkdown}
@@ -724,10 +721,98 @@ describe("MarkdownHybridEditor", () => {
     ctrlSelectBlock(blocks[0]);
     ctrlSelectBlock(blocks[1]);
 
-    dispatchKeyDown(editor, "ArrowRight");
+    dispatchKeyDown(editor, "ArrowRight", { metaKey: true });
+    expect(readMarkdown()).toBe(["  Alpha", "  Beta"].join("\n"));
+
+    dispatchKeyDown(editor, "ArrowLeft", { metaKey: true });
     expect(readMarkdown()).toBe(initialMarkdown);
 
     cleanup();
+  });
+
+  it("keeps structural blocks unchanged while shifting selected inline-capable blocks", () => {
+    const initialMarkdown = ["Paragraph", "```", "const x = 1;", "```", "Tail"].join("\n");
+
+    const Harness = () => {
+      const [markdown, setMarkdown] = useState(initialMarkdown);
+      return (
+        <div>
+          <div data-testid="markdown-value">{markdown}</div>
+          <MarkdownHybridEditor
+            historyKey="inline-shift-skips-structural-blocks"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        </div>
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const editor = container.querySelector<HTMLElement>(".markdown-hybrid-editor");
+    const blocks = Array.from(
+      container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+    );
+    const readMarkdown = () =>
+      container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+    expect(editor).toBeTruthy();
+    expect(blocks).toHaveLength(3);
+
+    ctrlSelectBlock(blocks[0]);
+    ctrlSelectBlock(blocks[1]);
+    ctrlSelectBlock(blocks[2]);
+
+    dispatchKeyDown(editor, "ArrowRight", { ctrlKey: true });
+    expect(readMarkdown()).toBe(["  Paragraph", "```", "const x = 1;", "```", "  Tail"].join("\n"));
+
+    cleanup();
+  });
+
+  it("reindents the active block draft via Ctrl/Cmd+Arrow and keeps the editor active", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["- Alpha", "Tail"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="active-inline-shift-shortcut"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, 0, 0);
+
+      dispatchKeyDown(textarea, "ArrowRight", { ctrlKey: true });
+      textarea = container.querySelector<HTMLTextAreaElement>("textarea.markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe("  - Alpha");
+      expect(textarea?.selectionStart).toBe(2);
+      expect(textarea?.selectionEnd).toBe(2);
+      expect(readMarkdown()).toBe(initialMarkdown);
+
+      dispatchKeyDown(textarea, "ArrowLeft", { metaKey: true });
+      textarea = container.querySelector<HTMLTextAreaElement>("textarea.markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe("- Alpha");
+      expect(textarea?.selectionStart).toBe(0);
+      expect(textarea?.selectionEnd).toBe(0);
+      expect(container.querySelector("textarea.markdown-hybrid-block-editor")).toBeTruthy();
+
+      cleanup();
+    });
   });
 
   it("supports right-click drag range selection with delete and undo", () => {
@@ -3210,6 +3295,7 @@ describe("MarkdownHybridEditor", () => {
       const root = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='0']");
       const childA = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='1']");
       const childB = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='2']");
+      const rootTwo = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='3']");
       expect(root?.dataset.mdListDepth).toBe("0");
       expect(childA?.dataset.mdListDepth).toBe("1");
       expect(childA?.dataset.mdListParentStartLine).toBe("0");
@@ -3219,14 +3305,68 @@ describe("MarkdownHybridEditor", () => {
       expect(childB?.dataset.mdListParentStartLine).toBe("0");
       expect(childA?.dataset.mdListGroupId).toBe(root?.dataset.mdListGroupId);
       expect(childB?.dataset.mdListGroupId).toBe(root?.dataset.mdListGroupId);
+      expect(root?.dataset.mdListMarkerVariant).toBe("ordered-decimal");
+      expect(childA?.dataset.mdListMarkerVariant).toBe("unordered-circle");
+      expect(childB?.dataset.mdListMarkerVariant).toBe("unordered-circle");
+      expect(rootTwo?.dataset.mdListMarkerVariant).toBe("ordered-decimal");
 
       cleanup();
     });
   });
 
-  it("marks consecutive list item blocks for compact visual grouping", () => {
+  it("assigns cyclic list marker variants for unordered and ordered depths", () => {
     withImmediateRaf(() => {
-      const initialMarkdown = ["1. One", "2. Two", "", "After"].join("\n");
+      const initialMarkdown = [
+        "1. Root",
+        "   - Child",
+        "      - Grandchild",
+        "2. Root 2",
+        "   1. Child Ord",
+        "      1. Grandchild Ord",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <MarkdownHybridEditor
+            historyKey="hybrid-list-marker-variant-cycles"
+            markdown={markdown}
+            mode="edit"
+            onChange={setMarkdown}
+            renderPreview={(value) => <div>{value}</div>}
+          />
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const blocks = Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+      );
+      expect(blocks).toHaveLength(6);
+      expect(blocks[0]?.dataset.mdListDepth).toBe("0");
+      expect(blocks[1]?.dataset.mdListDepth).toBe("1");
+      expect(blocks[2]?.dataset.mdListDepth).toBe("2");
+      expect(blocks[3]?.dataset.mdListDepth).toBe("0");
+      expect(blocks[4]?.dataset.mdListDepth).toBe("1");
+      expect(blocks[5]?.dataset.mdListDepth).toBe("2");
+      expect(blocks[0]?.dataset.mdListMarkerVariant).toBe("ordered-decimal");
+      expect(blocks[1]?.dataset.mdListMarkerVariant).toBe("unordered-circle");
+      expect(blocks[2]?.dataset.mdListMarkerVariant).toBe("unordered-square");
+      expect(blocks[3]?.dataset.mdListMarkerVariant).toBe("ordered-decimal");
+      expect(blocks[4]?.dataset.mdListMarkerVariant).toBe("ordered-lower-alpha");
+      expect(blocks[5]?.dataset.mdListMarkerVariant).toBe("ordered-lower-roman");
+      cleanup();
+    });
+  });
+
+  it("marks only same-depth consecutive list item blocks for compact visual grouping", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = [
+        "1. Root",
+        "   1. Child A",
+        "   2. Child B",
+        "2. Root 2",
+      ].join("\n");
 
       const Harness = () => {
         const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -3244,9 +3384,15 @@ describe("MarkdownHybridEditor", () => {
       const { container, cleanup } = render(createElement(Harness));
       const first = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='0']");
       const second = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='1']");
+      const third = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='2']");
+      const fourth = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='3']");
       expect(first?.classList.contains("is-list-group-continuation")).toBe(false);
-      expect(second?.classList.contains("is-list-group-continuation")).toBe(true);
-      expect(second?.dataset.mdListGroupId).toBe(first?.dataset.mdListGroupId);
+      expect(second?.classList.contains("is-list-group-continuation")).toBe(false);
+      expect(third?.classList.contains("is-list-group-continuation")).toBe(true);
+      expect(fourth?.classList.contains("is-list-group-continuation")).toBe(false);
+      expect(second?.dataset.mdListDepth).toBe("1");
+      expect(third?.dataset.mdListDepth).toBe("1");
+      expect(second?.dataset.mdListGroupId).toBe(third?.dataset.mdListGroupId);
       cleanup();
     });
   });

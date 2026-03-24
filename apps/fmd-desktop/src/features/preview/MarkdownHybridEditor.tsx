@@ -1463,7 +1463,25 @@ const isDeleteRangeShortcut = (event: KeyboardEvent<HTMLElement>) =>
 
 const INLINE_FORMATTING_TOOLBAR_DELAY_MS = 320;
 const LIST_INLINE_SHIFT_WIDTH = 2;
-const LIST_INLINE_SHIFT_TAB_ARM_WINDOW_MS = 1400;
+const INLINE_SHIFTABLE_BLOCK_KIND_SET = new Set<MarkdownBlock["kind"]>([
+  "paragraph",
+  "heading",
+  "blockquote",
+  "ordered-list",
+  "unordered-list",
+]);
+
+const isInlineShiftShortcut = (event: {
+  key: string;
+  shiftKey: boolean;
+  altKey: boolean;
+  ctrlKey: boolean;
+  metaKey: boolean;
+}) =>
+  (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+  !event.shiftKey &&
+  !event.altKey &&
+  (event.ctrlKey || event.metaKey);
 
 const clampIndex = (value: number, maxExclusive: number) => {
   if (maxExclusive <= 0) {
@@ -2054,8 +2072,35 @@ type ListLineInfo = {
   isTaskList: boolean;
 };
 
+type ListMarkerVariant =
+  | "unordered-disc"
+  | "unordered-circle"
+  | "unordered-square"
+  | "ordered-decimal"
+  | "ordered-lower-alpha"
+  | "ordered-lower-roman";
+
 const resolveOrderedListDelimiter = (raw: string): "." | ")" =>
   raw === "." ? "." : ")";
+
+const UNORDERED_MARKER_VARIANTS = ["disc", "circle", "square"] as const;
+const ORDERED_MARKER_VARIANTS = ["decimal", "lower-alpha", "lower-roman"] as const;
+
+const resolveCyclicMarkerVariant = <T extends string>(variants: readonly T[], depth: number) => {
+  const safeDepth = Math.max(0, Math.floor(depth));
+  const index = safeDepth % variants.length;
+  return variants[index] ?? variants[0]!;
+};
+
+const resolveListMarkerVariant = (
+  kind: "ordered-list" | "unordered-list",
+  listDepth: number,
+): ListMarkerVariant => {
+  if (kind === "unordered-list") {
+    return `unordered-${resolveCyclicMarkerVariant(UNORDERED_MARKER_VARIANTS, listDepth)}` as ListMarkerVariant;
+  }
+  return `ordered-${resolveCyclicMarkerVariant(ORDERED_MARKER_VARIANTS, listDepth)}` as ListMarkerVariant;
+};
 
 const getIndentWidthFromWhitespace = (indent: string) =>
   Array.from(indent).reduce((width, char) => width + (char === "\t" ? 4 : 1), 0);
@@ -2186,7 +2231,10 @@ const buildOutdentedListItemRaw = (
   }`;
 };
 
-const shiftListBlockInlineIndent = (
+const isInlineShiftableBlockKind = (kind: MarkdownBlock["kind"]) =>
+  INLINE_SHIFTABLE_BLOCK_KIND_SET.has(kind);
+
+const shiftBlockRawInlineIndent = (
   blockRaw: string,
   direction: "left" | "right",
 ) => blockRaw
@@ -2198,6 +2246,109 @@ const shiftListBlockInlineIndent = (
     return stripIndentWidthFromLine(line, LIST_INLINE_SHIFT_WIDTH);
   })
   .join("\n");
+
+const buildLineStartOffsets = (lines: string[]) => {
+  const offsets: number[] = [];
+  let cursor = 0;
+  for (let index = 0; index < lines.length; index += 1) {
+    offsets.push(cursor);
+    cursor += (lines[index] ?? "").length;
+    if (index < lines.length - 1) {
+      cursor += 1;
+    }
+  }
+  return offsets;
+};
+
+const resolveShiftedSelectionOffset = (
+  source: string,
+  lineStarts: number[],
+  transformedLines: string[],
+  direction: "left" | "right",
+  offset: number,
+) => {
+  const safeOffset = Math.max(0, Math.min(offset, source.length));
+  if (direction === "right") {
+    let delta = 0;
+    const sourceLines = source.split("\n");
+    for (let index = 0; index < sourceLines.length; index += 1) {
+      const line = sourceLines[index] ?? "";
+      if (line.length === 0) {
+        continue;
+      }
+      const start = lineStarts[index] ?? 0;
+      if (safeOffset >= start) {
+        delta += LIST_INLINE_SHIFT_WIDTH;
+      }
+    }
+    return safeOffset + delta;
+  }
+
+  const sourceLines = source.split("\n");
+  let delta = 0;
+  for (let index = 0; index < sourceLines.length; index += 1) {
+    const line = sourceLines[index] ?? "";
+    const transformedLine = transformedLines[index] ?? line;
+    const removedChars = line.length - transformedLine.length;
+    if (removedChars <= 0) {
+      continue;
+    }
+    const start = lineStarts[index] ?? 0;
+    const end = start + removedChars;
+    if (safeOffset > end) {
+      delta -= removedChars;
+      continue;
+    }
+    if (safeOffset > start) {
+      delta -= (safeOffset - start);
+    }
+    break;
+  }
+  return Math.max(0, safeOffset + delta);
+};
+
+const shiftBlockRawInlineIndentWithSelection = (
+  blockRaw: string,
+  direction: "left" | "right",
+  selectionStart: number,
+  selectionEnd: number,
+) => {
+  const sourceLines = blockRaw.split("\n");
+  const transformedLines = sourceLines.map((line) => {
+    if (direction === "right") {
+      return line.length > 0 ? `${" ".repeat(LIST_INLINE_SHIFT_WIDTH)}${line}` : line;
+    }
+    return stripIndentWidthFromLine(line, LIST_INLINE_SHIFT_WIDTH);
+  });
+  const nextRaw = transformedLines.join("\n");
+  if (nextRaw === blockRaw) {
+    return {
+      raw: blockRaw,
+      selectionStart: Math.max(0, Math.min(selectionStart, blockRaw.length)),
+      selectionEnd: Math.max(0, Math.min(selectionEnd, blockRaw.length)),
+    };
+  }
+  const lineStarts = buildLineStartOffsets(sourceLines);
+  const nextSelectionStart = resolveShiftedSelectionOffset(
+    blockRaw,
+    lineStarts,
+    transformedLines,
+    direction,
+    selectionStart,
+  );
+  const nextSelectionEnd = resolveShiftedSelectionOffset(
+    blockRaw,
+    lineStarts,
+    transformedLines,
+    direction,
+    selectionEnd,
+  );
+  return {
+    raw: nextRaw,
+    selectionStart: Math.min(nextSelectionStart, nextSelectionEnd),
+    selectionEnd: Math.max(nextSelectionStart, nextSelectionEnd),
+  };
+};
 
 const isExamTaskOrderedListLine = (markdown: string, lineIndex: number) => {
   if (!markdown) {
@@ -3168,7 +3319,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   const blockReorderDragSessionRef = useRef<BlockReorderDragSessionState>(
     createInactiveBlockReorderDragSession(),
   );
-  const listInlineShiftShortcutArmedUntilRef = useRef(0);
   const activeTextareaLayoutFrameRef = useRef<number | null>(null);
   const selectionDragPointerRef = useRef<{ x: number; y: number } | null>(null);
   const inlineFormattingToolbarTimerRef = useRef<number | null>(null);
@@ -6690,10 +6840,10 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         if (!selectedIndexSet.has(index)) {
           return block;
         }
-        if (block.kind !== "ordered-list" && block.kind !== "unordered-list") {
+        if (!isInlineShiftableBlockKind(block.kind)) {
           return block;
         }
-        const nextRaw = shiftListBlockInlineIndent(block.raw, direction);
+        const nextRaw = shiftBlockRawInlineIndent(block.raw, direction);
         if (nextRaw === block.raw) {
           return block;
         }
@@ -6761,34 +6911,11 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       if (disabled || activeBlockIndex !== null) {
         return;
       }
-      const isPlainTabKey =
-        event.key === "Tab" &&
-        !event.shiftKey &&
-        !event.altKey &&
-        !event.ctrlKey &&
-        !event.metaKey;
-      if (selectedBlockSelection && isPlainTabKey) {
-        listInlineShiftShortcutArmedUntilRef.current = Date.now() + LIST_INLINE_SHIFT_TAB_ARM_WINDOW_MS;
-        event.preventDefault();
-        event.stopPropagation();
-        return;
-      }
-      const isPlainHorizontalArrow =
-        (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
-        !event.shiftKey &&
-        !event.altKey &&
-        !event.ctrlKey &&
-        !event.metaKey;
-      const isInlineShiftShortcutArmed = listInlineShiftShortcutArmedUntilRef.current >= Date.now();
-      if (selectedBlockSelection && isPlainHorizontalArrow && isInlineShiftShortcutArmed) {
-        listInlineShiftShortcutArmedUntilRef.current = 0;
+      if (selectedBlockSelection && isInlineShiftShortcut(event)) {
         shiftSelectedBlocksInlinePosition(event.key === "ArrowRight" ? "right" : "left");
         event.preventDefault();
         event.stopPropagation();
         return;
-      }
-      if (event.key !== "Tab") {
-        listInlineShiftShortcutArmedUntilRef.current = 0;
       }
       if (event.key === "Escape" && imageEmbedReplacePickerState) {
         event.preventDefault();
@@ -7063,6 +7190,28 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       }
       textarea.setSelectionRange(safe, safe);
       setEditorOverlaySelectionStart(safe);
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, []);
+
+  const scheduleTextareaSelection = useCallback((nextStart: number, nextEnd: number) => {
+    const handle = window.requestAnimationFrame(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) {
+        return;
+      }
+      const max = textarea.value.length;
+      const safeStart = Math.max(0, Math.min(nextStart, max));
+      const safeEnd = Math.max(0, Math.min(nextEnd, max));
+      const start = Math.min(safeStart, safeEnd);
+      const end = Math.max(safeStart, safeEnd);
+      try {
+        textarea.focus({ preventScroll: true });
+      } catch {
+        textarea.focus();
+      }
+      textarea.setSelectionRange(start, end);
+      setEditorOverlaySelectionStart(start);
     });
     return () => window.cancelAnimationFrame(handle);
   }, []);
@@ -7832,6 +7981,22 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         return;
       }
 
+      if (isInlineShiftShortcut(event) && isInlineShiftableBlockKind(block.kind)) {
+        event.preventDefault();
+        event.stopPropagation();
+        const shifted = shiftBlockRawInlineIndentWithSelection(
+          textarea.value,
+          event.key === "ArrowRight" ? "right" : "left",
+          textarea.selectionStart,
+          textarea.selectionEnd,
+        );
+        if (shifted.raw !== textarea.value) {
+          applyActiveBlockDraft(shifted.raw);
+        }
+        scheduleTextareaSelection(shifted.selectionStart, shifted.selectionEnd);
+        return;
+      }
+
       const inlineShortcutAction = resolveInlineFormattingShortcutAction(event);
       if (inlineShortcutAction && block.kind !== "math-block") {
         event.preventDefault();
@@ -8076,6 +8241,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       pageLinkPickerState,
       closeTypedImageLinkPicker,
       scheduleTextareaCaret,
+      scheduleTextareaSelection,
       typedImageLinkPickerState,
     ],
   );
@@ -10204,12 +10370,24 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           const listParentStartLine = block.meta?.listParentStartLine;
           const isListBlock = block.kind === "ordered-list" || block.kind === "unordered-list";
           const previousBlock = index > 0 ? blocks[index - 1] : null;
+          const previousListDepthValue = typeof previousBlock?.meta?.listDepth === "number"
+            ? Math.max(0, previousBlock.meta.listDepth)
+            : null;
+          const listMarkerVariant = isListBlock
+            ? resolveListMarkerVariant(
+              block.kind === "ordered-list" ? "ordered-list" : "unordered-list",
+              listDepthValue ?? 0,
+            )
+            : null;
           const isListGroupContinuation = Boolean(
             isListBlock &&
               listGroupId &&
+              listDepthValue !== null &&
               previousBlock &&
               (previousBlock.kind === "ordered-list" || previousBlock.kind === "unordered-list") &&
-              previousBlock.meta?.listGroupId === listGroupId,
+              previousBlock.meta?.listGroupId === listGroupId &&
+              previousListDepthValue !== null &&
+              previousListDepthValue === listDepthValue,
           );
           const listDepthStyle = listDepthValue !== null
             ? ({ "--mdh-list-depth": String(listDepthValue) } as CSSProperties)
@@ -10252,6 +10430,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                   : undefined
               }
               data-md-unordered-marker={block.meta?.unorderedMarker ?? undefined}
+              data-md-list-marker-variant={listMarkerVariant ?? undefined}
               onMouseDownCapture={handleBlockMouseDownCapture(index)}
               onMouseDown={handleBlockMouseDown(index)}
               onMouseEnter={handleBlockMouseEnter(index)}

@@ -1700,7 +1700,7 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-block.is-list-group-continuation {
-  margin-top: calc((var(--ui-space-xs) * -1) + 1px);
+  margin-top: calc(var(--ui-space-xs) * -1);
 }
 
 .md-card-group-rail {
@@ -4710,6 +4710,114 @@ textarea.preview-editor {
   padding-left: 1.4rem;
 }
 
+.md-preview ul,
+.preview-markdown-editable ul,
+.markdown-hybrid-block-preview ul,
+.exam-markdown ul,
+.flashcard-markdown ul,
+.markdown-table-cell-preview ul {
+  list-style-type: disc;
+}
+
+.md-preview ul ul,
+.preview-markdown-editable ul ul,
+.markdown-hybrid-block-preview ul ul,
+.exam-markdown ul ul,
+.flashcard-markdown ul ul,
+.markdown-table-cell-preview ul ul {
+  list-style-type: circle;
+}
+
+.md-preview ul ul ul,
+.preview-markdown-editable ul ul ul,
+.markdown-hybrid-block-preview ul ul ul,
+.exam-markdown ul ul ul,
+.flashcard-markdown ul ul ul,
+.markdown-table-cell-preview ul ul ul {
+  list-style-type: square;
+}
+
+.md-preview ul ul ul ul,
+.preview-markdown-editable ul ul ul ul,
+.markdown-hybrid-block-preview ul ul ul ul,
+.exam-markdown ul ul ul ul,
+.flashcard-markdown ul ul ul ul,
+.markdown-table-cell-preview ul ul ul ul {
+  list-style-type: disc;
+}
+
+.md-preview ul ul ul ul ul,
+.preview-markdown-editable ul ul ul ul ul,
+.markdown-hybrid-block-preview ul ul ul ul ul,
+.exam-markdown ul ul ul ul ul,
+.flashcard-markdown ul ul ul ul ul,
+.markdown-table-cell-preview ul ul ul ul ul {
+  list-style-type: circle;
+}
+
+.md-preview ul ul ul ul ul ul,
+.preview-markdown-editable ul ul ul ul ul ul,
+.markdown-hybrid-block-preview ul ul ul ul ul ul,
+.exam-markdown ul ul ul ul ul ul,
+.flashcard-markdown ul ul ul ul ul ul,
+.markdown-table-cell-preview ul ul ul ul ul ul {
+  list-style-type: square;
+}
+
+.md-preview ol,
+.preview-markdown-editable ol,
+.markdown-hybrid-block-preview ol,
+.exam-markdown ol,
+.flashcard-markdown ol,
+.markdown-table-cell-preview ol {
+  list-style-type: decimal;
+}
+
+.md-preview ol ol,
+.preview-markdown-editable ol ol,
+.markdown-hybrid-block-preview ol ol,
+.exam-markdown ol ol,
+.flashcard-markdown ol ol,
+.markdown-table-cell-preview ol ol {
+  list-style-type: lower-alpha;
+}
+
+.md-preview ol ol ol,
+.preview-markdown-editable ol ol ol,
+.markdown-hybrid-block-preview ol ol ol,
+.exam-markdown ol ol ol,
+.flashcard-markdown ol ol ol,
+.markdown-table-cell-preview ol ol ol {
+  list-style-type: lower-roman;
+}
+
+.md-preview ol ol ol ol,
+.preview-markdown-editable ol ol ol ol,
+.markdown-hybrid-block-preview ol ol ol ol,
+.exam-markdown ol ol ol ol,
+.flashcard-markdown ol ol ol ol,
+.markdown-table-cell-preview ol ol ol ol {
+  list-style-type: decimal;
+}
+
+.md-preview ol ol ol ol ol,
+.preview-markdown-editable ol ol ol ol ol,
+.markdown-hybrid-block-preview ol ol ol ol ol,
+.exam-markdown ol ol ol ol ol,
+.flashcard-markdown ol ol ol ol ol,
+.markdown-table-cell-preview ol ol ol ol ol {
+  list-style-type: lower-alpha;
+}
+
+.md-preview ol ol ol ol ol ol,
+.preview-markdown-editable ol ol ol ol ol ol,
+.markdown-hybrid-block-preview ol ol ol ol ol ol,
+.exam-markdown ol ol ol ol ol ol,
+.flashcard-markdown ol ol ol ol ol ol,
+.markdown-table-cell-preview ol ol ol ol ol ol {
+  list-style-type: lower-roman;
+}
+
 .md-preview ul.contains-task-list,
 .markdown-hybrid-block-preview ul.contains-task-list {
   padding-left: 0;
@@ -4756,7 +4864,7 @@ textarea.preview-editor {
 }
 
 .preview.markdown.md-preview:not(.preview-editor) ol[data-md-ordered-delimiter=")"] > li::before {
-  content: counter(md-ordered) ") ";
+  content: counter(md-ordered, decimal) ") ";
   position: absolute;
   left: 0;
   width: 1.85rem;
@@ -4774,7 +4882,7 @@ textarea.preview-editor {
 }
 
 .preview-markdown-editable ol[data-md-ordered-delimiter=")"] > li:not([data-md-list-active="true"])::before {
-  content: counter(md-ordered) ") ";
+  content: counter(md-ordered, decimal) ") ";
   position: absolute;
   left: 0;
   width: 1.85rem;
@@ -4792,12 +4900,108 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-block-preview ol[data-md-ordered-delimiter=")"] > li::before {
-  content: counter(md-ordered) ") ";
+  content: counter(md-ordered, decimal) ") ";
   position: absolute;
   left: 0;
   width: 1.85rem;
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.preview.markdown.md-preview:not(.preview-editor) ol ol[data-md-ordered-delimiter=")"] > li::before,
+.markdown-hybrid-block-preview ol ol[data-md-ordered-delimiter=")"] > li::before,
+.exam-markdown ol ol[data-md-ordered-delimiter=")"] > li::before,
+.flashcard-markdown ol ol[data-md-ordered-delimiter=")"] > li::before,
+.markdown-table-cell-preview ol ol[data-md-ordered-delimiter=")"] > li::before {
+  content: counter(md-ordered, lower-alpha) ") ";
+}
+
+.preview.markdown.md-preview:not(.preview-editor) ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.markdown-hybrid-block-preview ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.exam-markdown ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.flashcard-markdown ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.markdown-table-cell-preview ol ol ol[data-md-ordered-delimiter=")"] > li::before {
+  content: counter(md-ordered, lower-roman) ") ";
+}
+
+.preview.markdown.md-preview:not(.preview-editor) ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.markdown-hybrid-block-preview ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.exam-markdown ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.flashcard-markdown ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.markdown-table-cell-preview ol ol ol ol[data-md-ordered-delimiter=")"] > li::before {
+  content: counter(md-ordered, decimal) ") ";
+}
+
+.preview.markdown.md-preview:not(.preview-editor) ol ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.markdown-hybrid-block-preview ol ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.exam-markdown ol ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.flashcard-markdown ol ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.markdown-table-cell-preview ol ol ol ol ol[data-md-ordered-delimiter=")"] > li::before {
+  content: counter(md-ordered, lower-alpha) ") ";
+}
+
+.preview.markdown.md-preview:not(.preview-editor) ol ol ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.markdown-hybrid-block-preview ol ol ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.exam-markdown ol ol ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.flashcard-markdown ol ol ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.markdown-table-cell-preview ol ol ol ol ol ol[data-md-ordered-delimiter=")"] > li::before {
+  content: counter(md-ordered, lower-roman) ") ";
+}
+
+.preview-markdown-editable ol ol[data-md-ordered-delimiter=")"] > li:not([data-md-list-active="true"])::before {
+  content: counter(md-ordered, lower-alpha) ") ";
+}
+
+.preview-markdown-editable ol ol ol[data-md-ordered-delimiter=")"] > li:not([data-md-list-active="true"])::before {
+  content: counter(md-ordered, lower-roman) ") ";
+}
+
+.preview-markdown-editable ol ol ol ol[data-md-ordered-delimiter=")"] > li:not([data-md-list-active="true"])::before {
+  content: counter(md-ordered, decimal) ") ";
+}
+
+.preview-markdown-editable ol ol ol ol ol[data-md-ordered-delimiter=")"] > li:not([data-md-list-active="true"])::before {
+  content: counter(md-ordered, lower-alpha) ") ";
+}
+
+.preview-markdown-editable ol ol ol ol ol ol[data-md-ordered-delimiter=")"] > li:not([data-md-list-active="true"])::before {
+  content: counter(md-ordered, lower-roman) ") ";
+}
+
+.markdown-hybrid-block[data-md-list-marker-variant="unordered-disc"] .markdown-hybrid-block-preview ul:not(.contains-task-list) {
+  list-style-type: disc;
+}
+
+.markdown-hybrid-block[data-md-list-marker-variant="unordered-circle"] .markdown-hybrid-block-preview ul:not(.contains-task-list) {
+  list-style-type: circle;
+}
+
+.markdown-hybrid-block[data-md-list-marker-variant="unordered-square"] .markdown-hybrid-block-preview ul:not(.contains-task-list) {
+  list-style-type: square;
+}
+
+.markdown-hybrid-block[data-md-list-marker-variant="ordered-decimal"] .markdown-hybrid-block-preview ol:not([data-md-ordered-delimiter=")"]) {
+  list-style-type: decimal;
+}
+
+.markdown-hybrid-block[data-md-list-marker-variant="ordered-lower-alpha"] .markdown-hybrid-block-preview ol:not([data-md-ordered-delimiter=")"]) {
+  list-style-type: lower-alpha;
+}
+
+.markdown-hybrid-block[data-md-list-marker-variant="ordered-lower-roman"] .markdown-hybrid-block-preview ol:not([data-md-ordered-delimiter=")"]) {
+  list-style-type: lower-roman;
+}
+
+.markdown-hybrid-block[data-md-list-marker-variant="ordered-decimal"] .markdown-hybrid-block-preview ol[data-md-ordered-delimiter=")"] > li::before {
+  content: counter(md-ordered, decimal) ") ";
+}
+
+.markdown-hybrid-block[data-md-list-marker-variant="ordered-lower-alpha"] .markdown-hybrid-block-preview ol[data-md-ordered-delimiter=")"] > li::before {
+  content: counter(md-ordered, lower-alpha) ") ";
+}
+
+.markdown-hybrid-block[data-md-list-marker-variant="ordered-lower-roman"] .markdown-hybrid-block-preview ol[data-md-ordered-delimiter=")"] > li::before {
+  content: counter(md-ordered, lower-roman) ") ";
 }
 
 .md-preview a {
