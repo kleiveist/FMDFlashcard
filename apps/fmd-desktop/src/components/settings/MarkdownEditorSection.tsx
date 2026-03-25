@@ -31,7 +31,7 @@ type MarkdownEditorSectionProps = {
   editorBlueprintGrid: boolean;
   editorBlueprintGridIntensity: "light" | "medium" | "strong";
   cursorAccessoryEnabled: boolean;
-  markdownPreviewDefaultMode: "markdown" | "raw";
+  markdownPreviewDefaultMode: "markdown" | "raw" | "hybrid";
   markdownEditorOpenInNewTabByDefault: boolean;
   onMarkdownEditorAccentEnabledToggle: (value: boolean) => void;
   onMarkdownEditorAccentHexChange: (mode: AccentMode, value: string) => void;
@@ -40,7 +40,7 @@ type MarkdownEditorSectionProps = {
     value: "light" | "medium" | "strong",
   ) => void;
   onCursorAccessoryEnabledToggle: (value: boolean) => void;
-  onMarkdownPreviewDefaultModeChange: (value: "markdown" | "raw") => void;
+  onMarkdownPreviewDefaultModeChange: (value: "markdown" | "raw" | "hybrid") => void;
   onMarkdownEditorOpenInNewTabByDefaultToggle: (value: boolean) => void;
 };
 
@@ -341,7 +341,7 @@ export const MarkdownEditorSection = ({
             aria-pressed={markdownPreviewDefaultMode === "markdown"}
             onClick={() => onMarkdownPreviewDefaultModeChange("markdown")}
           >
-            Markdown
+            Markdown-View
           </button>
           <button
             type="button"
@@ -351,7 +351,17 @@ export const MarkdownEditorSection = ({
             aria-pressed={markdownPreviewDefaultMode === "raw"}
             onClick={() => onMarkdownPreviewDefaultModeChange("raw")}
           >
-            Rohtext
+            Markdown-Code
+          </button>
+          <button
+            type="button"
+            className={`pill pill-button ${
+              markdownPreviewDefaultMode === "hybrid" ? "active" : ""
+            }`}
+            aria-pressed={markdownPreviewDefaultMode === "hybrid"}
+            onClick={() => onMarkdownPreviewDefaultModeChange("hybrid")}
+          >
+            Markdown-Hybridblock
           </button>
         </div>
       </div>

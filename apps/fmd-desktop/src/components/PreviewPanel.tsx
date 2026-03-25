@@ -1083,17 +1083,25 @@ const isModifierClick = (event: Pick<MouseEvent<HTMLElement>, "metaKey" | "ctrlK
   event.metaKey || event.ctrlKey;
 
 type MarkdownInlineSyntaxKind = "hash-tag" | "cloze" | "quoted-token";
+type InlineSyntaxHighlightOptions = {
+  collapseChainedClozeVariants?: boolean;
+  hideInlineSyntaxDelimiters?: boolean;
+};
+type HybridMarkdownPreviewRenderOptions = {
+  collapseClozeVariantsInView?: boolean;
+  hideInlineSyntaxDelimiters?: boolean;
+};
 
 // Highlight inline FMD-style hash directives/tags like "#card", "#text", "#test".
 // Headings are unaffected because Markdown headings require "# " (hash + space),
 // while this pattern only matches hash tokens without a following space.
-const markdownInlineSyntaxPattern = /#[A-Za-z0-9_-]+\b|%[^%\n]+%|"[^"\n]+"/g;
+const markdownInlineSyntaxPattern = /#[A-Za-z0-9_-]+\b|%[^%\n]+%(?:%[^%\n]+%)*|"[^"\n]+"/g;
 
 const resolveInlineSyntaxKind = (token: string): MarkdownInlineSyntaxKind | null => {
   if (/^#[A-Za-z0-9_-]+\b/.test(token)) {
     return "hash-tag";
   }
-  if (/^%[^%\n]+%$/.test(token)) {
+  if (/^%[^%\n]+%(?:%[^%\n]+%)*$/.test(token)) {
     return "cloze";
   }
   if (/^"[^"\n]+"$/.test(token)) {
@@ -1113,7 +1121,37 @@ const shouldSkipInlineSyntaxHighlight = (tagName: string | null) =>
   tagName === "input" ||
   tagName === "textarea";
 
-const highlightInlineSyntaxInText = (text: string, keyPrefix: string): ReactNode => {
+const resolveInlineSyntaxDisplayToken = (
+  token: string,
+  kind: MarkdownInlineSyntaxKind,
+  options?: InlineSyntaxHighlightOptions,
+) => {
+  let displayToken = token;
+  if (kind === "cloze" && options?.collapseChainedClozeVariants) {
+    const firstTokenEnd = displayToken.indexOf("%", 1);
+    if (firstTokenEnd > 0) {
+      displayToken = displayToken.slice(0, firstTokenEnd + 1);
+    }
+  }
+  if (!options?.hideInlineSyntaxDelimiters) {
+    return displayToken;
+  }
+  if (kind === "cloze") {
+    const clozeMatch = displayToken.match(/^%([^%\n]+)%$/);
+    return clozeMatch ? clozeMatch[1] ?? displayToken : displayToken;
+  }
+  if (kind === "quoted-token") {
+    const quotedMatch = displayToken.match(/^"([^"\n]+)"$/);
+    return quotedMatch ? quotedMatch[1] ?? displayToken : displayToken;
+  }
+  return displayToken;
+};
+
+const highlightInlineSyntaxInText = (
+  text: string,
+  keyPrefix: string,
+  options?: InlineSyntaxHighlightOptions,
+): ReactNode => {
   if (!text || !markdownInlineSyntaxPattern.test(text)) {
     markdownInlineSyntaxPattern.lastIndex = 0;
     return text;
@@ -1135,13 +1173,14 @@ const highlightInlineSyntaxInText = (text: string, keyPrefix: string): ReactNode
     if (!kind) {
       parts.push(token);
     } else {
+      const displayToken = resolveInlineSyntaxDisplayToken(token, kind, options);
       parts.push(
         <span
           key={`${keyPrefix}-${tokenIndex}`}
           className={`md-inline-syntax md-inline-syntax-${kind}`}
           data-md-inline-syntax={kind}
         >
-          {token}
+          {displayToken}
         </span>,
       );
     }
@@ -1157,11 +1196,15 @@ const highlightInlineSyntaxInText = (text: string, keyPrefix: string): ReactNode
   return parts;
 };
 
-const highlightInlineSyntaxInNode = (node: ReactNode, keyPrefix = "md-inline"): ReactNode => {
+const highlightInlineSyntaxInNode = (
+  node: ReactNode,
+  keyPrefix = "md-inline",
+  options?: InlineSyntaxHighlightOptions,
+): ReactNode => {
   if (typeof node === "string") {
     const rendered = renderMarkdownMathNode(node, {
       keyPrefix: `${keyPrefix}-math`,
-      renderText: (text, textKeyPrefix) => highlightInlineSyntaxInText(text, textKeyPrefix),
+      renderText: (text, textKeyPrefix) => highlightInlineSyntaxInText(text, textKeyPrefix, options),
     });
     if (rendered.length === 1) {
       return rendered[0] ?? null;
@@ -1185,14 +1228,18 @@ const highlightInlineSyntaxInNode = (node: ReactNode, keyPrefix = "md-inline"): 
     return node;
   }
   const nextChildren = Children.map(rawChildren, (child, index) =>
-    highlightInlineSyntaxInNode(child, `${keyPrefix}-${index}`),
+    highlightInlineSyntaxInNode(child, `${keyPrefix}-${index}`, options),
   );
   return cloneElement(node, undefined, nextChildren);
 };
 
-const renderHighlightedInlineSyntaxChildren = (children: ReactNode, keyPrefix: string) =>
+const renderHighlightedInlineSyntaxChildren = (
+  children: ReactNode,
+  keyPrefix: string,
+  options?: InlineSyntaxHighlightOptions,
+) =>
   Children.map(children, (child, index) =>
-    highlightInlineSyntaxInNode(child, `${keyPrefix}-${index}`),
+    highlightInlineSyntaxInNode(child, `${keyPrefix}-${index}`, options),
   );
 
 const mergeClassNames = (base: unknown, ...tokens: string[]) => {
@@ -1250,8 +1297,14 @@ const isMarkdownTableCellBreakNode = (node: ReactNode) =>
   typeof node.type === "string" &&
   node.type.toLowerCase() === "br";
 
-const renderMarkdownTableCellChildren = (children: ReactNode, keyPrefix: string) => {
-  const nodes = Children.toArray(renderHighlightedInlineSyntaxChildren(children, keyPrefix));
+const renderMarkdownTableCellChildren = (
+  children: ReactNode,
+  keyPrefix: string,
+  options?: InlineSyntaxHighlightOptions,
+) => {
+  const nodes = Children.toArray(
+    renderHighlightedInlineSyntaxChildren(children, keyPrefix, options),
+  );
   const paragraphs: ReactNode[][] = [];
   let currentParagraph: ReactNode[] = [];
   let pendingBreakCount = 0;
@@ -1338,6 +1391,7 @@ const renderMarkdownTableCellWithMedia = ({
   node,
   children,
   keyPrefix,
+  inlineHighlightOptions,
   markdownSource,
   vaultPngAssets,
   vaultPath,
@@ -1346,6 +1400,7 @@ const renderMarkdownTableCellWithMedia = ({
   node: unknown;
   children: ReactNode;
   keyPrefix: string;
+  inlineHighlightOptions?: InlineSyntaxHighlightOptions;
   markdownSource: string;
   vaultPngAssets?: VaultPngAsset[];
   vaultPath?: string | null;
@@ -1364,7 +1419,11 @@ const renderMarkdownTableCellWithMedia = ({
       children,
       (child) => ensureTableCellImageClassesInNode(child),
     );
-    return renderMarkdownTableCellChildren(normalizedChildren, keyPrefix);
+    return renderMarkdownTableCellChildren(
+      normalizedChildren,
+      keyPrefix,
+      inlineHighlightOptions,
+    );
   }
 
   const renderedSegments = segments.map((segment, index) => {
@@ -1408,6 +1467,7 @@ const renderMarkdownTableCellWithMedia = ({
   return renderMarkdownTableCellChildren(
     renderedSegments,
     `${keyPrefix}-rich`,
+    inlineHighlightOptions,
   );
 };
 
@@ -1434,6 +1494,8 @@ type PreviewPanelProps = {
   rawPreview: boolean;
   markdownViewEditEnabled: boolean;
   markdownHybridEnabled?: boolean;
+  hybridEditModeInitialActive?: boolean;
+  hybridEditModeInitVersion?: number;
   documentMode?: MarkdownHybridEditorMode;
   selectedFile: VaultFile | null;
   vaultFiles?: VaultFile[];
@@ -6508,6 +6570,8 @@ export const PreviewPanel = ({
   rawPreview,
   markdownViewEditEnabled,
   markdownHybridEnabled = false,
+  hybridEditModeInitialActive,
+  hybridEditModeInitVersion,
   documentMode = "edit",
   selectedFile,
   vaultFiles,
@@ -6555,11 +6619,16 @@ export const PreviewPanel = ({
   const editableHighlightDebounceHandleRef = useRef(0);
   const editableHighlightCancelIdleRef = useRef<(() => void) | null>(null);
   const editableHighlightRunningRef = useRef(false);
+  const appliedHybridEditModeInitVersionRef = useRef<number | undefined>(
+    hybridEditModeInitVersion,
+  );
   const [showFrontmatterTextFallback, setShowFrontmatterTextFallback] = useState(false);
   const [userFrontmatterCollapsed, setUserFrontmatterCollapsed] = useState<boolean | null>(
     null,
   );
-  const [isHybridEditModeActive, setIsHybridEditModeActive] = useState(true);
+  const [isHybridEditModeActive, setIsHybridEditModeActive] = useState(
+    () => hybridEditModeInitialActive ?? true,
+  );
   const [pendingHybridPostCommitAction, setPendingHybridPostCommitAction] =
     useState<PendingHybridPostCommitAction | null>(null);
   const [markdownTabStripWidth, setMarkdownTabStripWidth] = useState(0);
@@ -6602,6 +6671,17 @@ export const PreviewPanel = ({
       setIsHybridEditModeActive(true);
     }
   }, [documentMode]);
+
+  useEffect(() => {
+    if (typeof hybridEditModeInitVersion === "undefined") {
+      return;
+    }
+    if (appliedHybridEditModeInitVersionRef.current === hybridEditModeInitVersion) {
+      return;
+    }
+    appliedHybridEditModeInitVersionRef.current = hybridEditModeInitVersion;
+    setIsHybridEditModeActive(hybridEditModeInitialActive ?? true);
+  }, [hybridEditModeInitVersion, hybridEditModeInitialActive]);
 
   useLayoutEffect(() => {
     if (markdownTabs.length === 0) {
@@ -7528,7 +7608,17 @@ export const PreviewPanel = ({
   );
 
   const renderHybridMarkdownPreview = useCallback(
-    (sourceMarkdown: string) => {
+    (
+      sourceMarkdown: string,
+      options?: HybridMarkdownPreviewRenderOptions,
+    ) => {
+      const inlineHighlightOptions: InlineSyntaxHighlightOptions | undefined =
+        options?.collapseClozeVariantsInView || options?.hideInlineSyntaxDelimiters
+          ? {
+            collapseChainedClozeVariants: options?.collapseClozeVariantsInView === true,
+            hideInlineSyntaxDelimiters: options?.hideInlineSyntaxDelimiters === true,
+          }
+          : undefined;
       const previewMarkdown = normalizeInlineFormattingForPreview(sourceMarkdown);
       const mediaPreview = buildMarkdownMediaPreviewSource(
         previewMarkdown,
@@ -7545,37 +7635,37 @@ export const PreviewPanel = ({
           components={{
             h1: ({ node: _node, children, ...props }) => (
               <h1 {...props}>
-                {renderHighlightedInlineSyntaxChildren(children, "h1")}
+                {renderHighlightedInlineSyntaxChildren(children, "h1", inlineHighlightOptions)}
               </h1>
             ),
             h2: ({ node: _node, children, ...props }) => (
               <h2 {...props}>
-                {renderHighlightedInlineSyntaxChildren(children, "h2")}
+                {renderHighlightedInlineSyntaxChildren(children, "h2", inlineHighlightOptions)}
               </h2>
             ),
             h3: ({ node: _node, children, ...props }) => (
               <h3 {...props}>
-                {renderHighlightedInlineSyntaxChildren(children, "h3")}
+                {renderHighlightedInlineSyntaxChildren(children, "h3", inlineHighlightOptions)}
               </h3>
             ),
             h4: ({ node: _node, children, ...props }) => (
               <h4 {...props}>
-                {renderHighlightedInlineSyntaxChildren(children, "h4")}
+                {renderHighlightedInlineSyntaxChildren(children, "h4", inlineHighlightOptions)}
               </h4>
             ),
             h5: ({ node: _node, children, ...props }) => (
               <h5 {...props}>
-                {renderHighlightedInlineSyntaxChildren(children, "h5")}
+                {renderHighlightedInlineSyntaxChildren(children, "h5", inlineHighlightOptions)}
               </h5>
             ),
             h6: ({ node: _node, children, ...props }) => (
               <h6 {...props}>
-                {renderHighlightedInlineSyntaxChildren(children, "h6")}
+                {renderHighlightedInlineSyntaxChildren(children, "h6", inlineHighlightOptions)}
               </h6>
             ),
             p: ({ node: _node, children, ...props }) => (
               <p {...props}>
-                {renderHighlightedInlineSyntaxChildren(children, "p")}
+                {renderHighlightedInlineSyntaxChildren(children, "p", inlineHighlightOptions)}
               </p>
             ),
             ol: ({ node, ...props }) => {
@@ -7617,7 +7707,7 @@ export const PreviewPanel = ({
             },
             li: ({ node: _node, children, ...props }) => (
               <li {...props}>
-                {renderHighlightedInlineSyntaxChildren(children, "li")}
+                {renderHighlightedInlineSyntaxChildren(children, "li", inlineHighlightOptions)}
               </li>
             ),
             input: ({ node: _node, ...props }) => {
@@ -7641,7 +7731,7 @@ export const PreviewPanel = ({
             },
             blockquote: ({ node: _node, children, ...props }) => (
               <blockquote {...props}>
-                {renderHighlightedInlineSyntaxChildren(children, "blockquote")}
+                {renderHighlightedInlineSyntaxChildren(children, "blockquote", inlineHighlightOptions)}
               </blockquote>
             ),
             pre: ({ node: _node, children, ...props }) =>
@@ -7657,6 +7747,7 @@ export const PreviewPanel = ({
                   node: _node,
                   children,
                   keyPrefix: "th",
+                  inlineHighlightOptions,
                   markdownSource: mediaPreview.markdown,
                   vaultPngAssets,
                   vaultPath,
@@ -7678,6 +7769,7 @@ export const PreviewPanel = ({
                   node: _node,
                   children,
                   keyPrefix: "td",
+                  inlineHighlightOptions,
                   markdownSource: mediaPreview.markdown,
                   vaultPngAssets,
                   vaultPath,
@@ -7884,7 +7976,10 @@ export const PreviewPanel = ({
           data-md-card-group-id={cardGroupId ?? undefined}
           data-md-card-group-role={cardGroupRole ?? undefined}
         >
-          {renderHybridMarkdownPreview(normalizeTableSpacingForRender(block.raw))}
+          {renderHybridMarkdownPreview(normalizeTableSpacingForRender(block.raw), {
+            collapseClozeVariantsInView: true,
+            hideInlineSyntaxDelimiters: true,
+          })}
         </div>
       );
     },

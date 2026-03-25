@@ -243,6 +243,8 @@ const buildHarness = (
   options: {
     markdownViewEditEnabled?: boolean;
     markdownHybridEnabled?: boolean;
+    hybridEditModeInitialActive?: boolean;
+    hybridEditModeInitVersion?: number;
     rawPreview?: boolean;
     onFrontmatterSave?: (nextPreview: string) => Promise<boolean>;
     onNavigateWikilink?: (wikilink: string) => void;
@@ -267,6 +269,8 @@ const buildHarness = (
   const {
     markdownViewEditEnabled = true,
     markdownHybridEnabled = false,
+    hybridEditModeInitialActive,
+    hybridEditModeInitVersion,
     rawPreview = false,
     onFrontmatterSave,
     onNavigateWikilink,
@@ -311,6 +315,8 @@ const buildHarness = (
       rawPreview,
       markdownViewEditEnabled,
       markdownHybridEnabled,
+      hybridEditModeInitialActive,
+      hybridEditModeInitVersion,
       selectedFile: baseFile,
       vaultPath,
       sourceRelativePath,
@@ -948,6 +954,140 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(editToggleAfterSwitch?.getAttribute("aria-pressed")).toBe("false");
   });
 
+  it("starts in markdown view when hybrid init trigger sets edit mode inactive", () => {
+    const { container, cleanup: localCleanup } = buildHarness("Hybrid start off", {
+      markdownHybridEnabled: true,
+      hybridEditModeInitialActive: false,
+      hybridEditModeInitVersion: 1,
+    });
+    cleanup = localCleanup;
+
+    expect(
+      container.querySelector(
+        ".preview.preview-editor.markdown.md-preview.markdown-hybrid-surface",
+      ),
+    ).toBeNull();
+    expect(container.querySelector(".preview.markdown.md-preview")).toBeTruthy();
+    expect(
+      (container.querySelector('button[aria-label="Edit mode"]') as HTMLButtonElement | null)
+        ?.getAttribute("aria-pressed"),
+    ).toBe("false");
+  });
+
+  it("starts in hybrid mode when hybrid init trigger sets edit mode active", () => {
+    const { container, cleanup: localCleanup } = buildHarness("Hybrid start on", {
+      markdownHybridEnabled: true,
+      hybridEditModeInitialActive: true,
+      hybridEditModeInitVersion: 1,
+    });
+    cleanup = localCleanup;
+
+    expect(
+      container.querySelector(
+        ".preview.preview-editor.markdown.md-preview.markdown-hybrid-surface",
+      ),
+    ).toBeTruthy();
+    expect(
+      (container.querySelector('button[aria-label="Edit mode"]') as HTMLButtonElement | null)
+        ?.getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
+  it("only reapplies hybrid init mode when the init version changes", async () => {
+    const Harness = () => {
+      const [editDraft, setEditDraft] = useState("Versioned hybrid init");
+      const [hybridInitialActive, setHybridInitialActive] = useState(false);
+      const [hybridInitVersion, setHybridInitVersion] = useState(1);
+      return createElement(
+        "div",
+        null,
+        createElement(
+          "button",
+          {
+            type: "button",
+            "data-testid": "set-hybrid-init-active",
+            onClick: () => setHybridInitialActive(true),
+          },
+          "Init active",
+        ),
+        createElement(
+          "button",
+          {
+            type: "button",
+            "data-testid": "set-hybrid-init-inactive",
+            onClick: () => setHybridInitialActive(false),
+          },
+          "Init inactive",
+        ),
+        createElement(
+          "button",
+          {
+            type: "button",
+            "data-testid": "bump-hybrid-init-version",
+            onClick: () => setHybridInitVersion((current) => current + 1),
+          },
+          "Bump init version",
+        ),
+        createElement(PreviewPanel, {
+          editDraft,
+          editError: "",
+          editCaretIndex: null,
+          isEditing: false,
+          emptyPreview: "",
+          preview: "Versioned hybrid init",
+          previewError: "",
+          previewState: "idle",
+          rawPreview: false,
+          markdownViewEditEnabled: true,
+          markdownHybridEnabled: true,
+          hybridEditModeInitialActive: hybridInitialActive,
+          hybridEditModeInitVersion: hybridInitVersion,
+          selectedFile: baseFile,
+          vaultPath: "/vault",
+          sourceRelativePath: baseFile.relative_path,
+          canEdit: true,
+          onEditChange: setEditDraft,
+          onEditCaretApplied: () => {},
+          onEditExit: async () => {},
+          onEditStart: () => {},
+          onToggleRawPreview: () => {},
+        }),
+      );
+    };
+
+    const { container, cleanup: localCleanup } = render(createElement(Harness));
+    cleanup = localCleanup;
+
+    const queryEditToggle = () =>
+      container.querySelector('button[aria-label="Edit mode"]') as HTMLButtonElement | null;
+
+    expect(queryEditToggle()?.getAttribute("aria-pressed")).toBe("false");
+
+    await act(async () => {
+      queryEditToggle()?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await flushAsyncInteraction();
+    expect(queryEditToggle()?.getAttribute("aria-pressed")).toBe("true");
+
+    const setInitInactive = container.querySelector(
+      '[data-testid="set-hybrid-init-inactive"]',
+    ) as HTMLButtonElement | null;
+    await act(async () => {
+      setInitInactive?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await flushAsyncInteraction();
+    expect(queryEditToggle()?.getAttribute("aria-pressed")).toBe("true");
+
+    const bumpVersion = container.querySelector(
+      '[data-testid="bump-hybrid-init-version"]',
+    ) as HTMLButtonElement | null;
+    await act(async () => {
+      bumpVersion?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await flushAsyncInteraction();
+    expect(queryEditToggle()?.getAttribute("aria-pressed")).toBe("false");
+  });
+
   it("commits the active hybrid draft before write-save runs", async () => {
     await withImmediateRaf(async () => {
       const saveCalls: string[] = [];
@@ -1199,6 +1339,67 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(hybridMath).toBeTruthy();
     expect(markdownMath?.querySelector(".katex")).toBeTruthy();
     expect(hybridMath?.querySelector(".katex")).toBeTruthy();
+  });
+
+  it("renders chained cloze alternatives in markdown view as the first variant only", () => {
+    const markdown = "Konzept: %Spezifikation%%Anforderungen%%Vorgaben%.";
+    const { container, cleanup: localCleanup } = buildHarness(markdown);
+    cleanup = localCleanup;
+
+    const clozeTokens = container.querySelectorAll<HTMLElement>(
+      ".preview.markdown.md-preview .md-inline-syntax-cloze",
+    );
+    expect(clozeTokens).toHaveLength(1);
+    expect(clozeTokens[0]?.textContent ?? "").toBe("Spezifikation");
+
+    const previewText = container.querySelector(".preview.markdown.md-preview")?.textContent ?? "";
+    expect(previewText).toContain("Spezifikation");
+    expect(previewText).not.toContain("%Spezifikation%");
+    expect(previewText).not.toContain("Anforderungen");
+    expect(previewText).not.toContain("Vorgaben");
+  });
+
+  it("keeps full chained cloze alternatives in hybrid preview rendering", () => {
+    const markdown = "Konzept: %Spezifikation%%Anforderungen%%Vorgaben%.";
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      markdownHybridEnabled: true,
+    });
+    cleanup = localCleanup;
+
+    const clozeToken = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block-preview .md-inline-syntax-cloze",
+    );
+    expect(clozeToken).toBeTruthy();
+    expect(clozeToken?.textContent ?? "").toBe("%Spezifikation%%Anforderungen%%Vorgaben%");
+  });
+
+  it("keeps separate cloze blanks as separate tokens in markdown view", () => {
+    const markdown = "Zwei Luecken: %A% und %B%.";
+    const { container, cleanup: localCleanup } = buildHarness(markdown);
+    cleanup = localCleanup;
+
+    const clozeTokens = container.querySelectorAll<HTMLElement>(
+      ".preview.markdown.md-preview .md-inline-syntax-cloze",
+    );
+    expect(clozeTokens).toHaveLength(2);
+    expect(clozeTokens[0]?.textContent ?? "").toBe("A");
+    expect(clozeTokens[1]?.textContent ?? "").toBe("B");
+  });
+
+  it("renders quoted tokens without quote delimiters in markdown view", () => {
+    const markdown = 'Token: "Einhaltung vorgegebener Formate fuer Attribute."';
+    const { container, cleanup: localCleanup } = buildHarness(markdown);
+    cleanup = localCleanup;
+
+    const quotedTokens = container.querySelectorAll<HTMLElement>(
+      ".preview.markdown.md-preview .md-inline-syntax-quoted-token",
+    );
+    expect(quotedTokens).toHaveLength(1);
+    expect(quotedTokens[0]?.textContent ?? "").toBe("Einhaltung vorgegebener Formate fuer Attribute.");
+
+    const previewText = container.querySelector(".preview.markdown.md-preview")?.textContent ?? "";
+    expect(previewText).toContain("Einhaltung vorgegebener Formate fuer Attribute.");
+    expect(previewText).not.toContain('"Einhaltung vorgegebener Formate fuer Attribute."');
   });
 
   it("renders svg fences as media previews", () => {
@@ -1552,6 +1753,78 @@ describe("PreviewPanel edit-safe interactions", () => {
           tableImage?.closest(".markdown-table-cell-preview"),
       ),
     ).toBe(true);
+  });
+
+  it("renders chained cloze and quoted tokens in markdown table view without delimiters", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      [
+        "| Feld | Regel |",
+        "| --- | --- |",
+        '| id | %NOT NULL%%UNIQUE% und "Index Pflicht" |',
+      ].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const tableCell = container.querySelector(".markdown-table tbody td:nth-child(2)");
+    expect(tableCell).toBeTruthy();
+
+    const clozeTokens = tableCell?.querySelectorAll<HTMLElement>(".md-inline-syntax-cloze");
+    const quotedTokens = tableCell?.querySelectorAll<HTMLElement>(".md-inline-syntax-quoted-token");
+    expect(clozeTokens).toHaveLength(1);
+    expect(clozeTokens?.[0]?.textContent ?? "").toBe("NOT NULL");
+    expect(quotedTokens).toHaveLength(1);
+    expect(quotedTokens?.[0]?.textContent ?? "").toBe("Index Pflicht");
+
+    const previewText = container.querySelector(".preview.markdown.md-preview")?.textContent ?? "";
+    expect(previewText).not.toContain("UNIQUE");
+    expect(previewText).not.toContain("%NOT NULL%");
+    expect(previewText).not.toContain('"Index Pflicht"');
+  });
+
+  it("keeps separate cloze tokens inside markdown table view as two visible blanks without delimiters", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      [
+        "| Feld | Regel |",
+        "| --- | --- |",
+        "| id | %A% und %B% |",
+      ].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const tableCell = container.querySelector(".markdown-table tbody td:nth-child(2)");
+    expect(tableCell).toBeTruthy();
+
+    const clozeTokens = tableCell?.querySelectorAll<HTMLElement>(".md-inline-syntax-cloze");
+    expect(clozeTokens).toHaveLength(2);
+    expect(clozeTokens?.[0]?.textContent ?? "").toBe("A");
+    expect(clozeTokens?.[1]?.textContent ?? "").toBe("B");
+  });
+
+  it("keeps full cloze/quoted delimiters in hybrid table preview", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      [
+        "| Feld | Regel |",
+        "| --- | --- |",
+        '| id | %NOT NULL%%UNIQUE% und "Index Pflicht" |',
+      ].join("\n"),
+      {
+        markdownHybridEnabled: true,
+      },
+    );
+    cleanup = localCleanup;
+
+    const tableBlock = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block[data-md-block-kind='table']",
+    );
+    expect(tableBlock).toBeTruthy();
+
+    const clozeToken = tableBlock?.querySelector<HTMLElement>(".md-inline-syntax-cloze");
+    const quotedToken = tableBlock?.querySelector<HTMLElement>(".md-inline-syntax-quoted-token");
+
+    expect(clozeToken).toBeTruthy();
+    expect(clozeToken?.textContent ?? "").toBe("%NOT NULL%%UNIQUE%");
+    expect(quotedToken).toBeTruthy();
+    expect(quotedToken?.textContent ?? "").toBe('"Index Pflicht"');
   });
 
   it("renders 1) markers as ordered list items", () => {

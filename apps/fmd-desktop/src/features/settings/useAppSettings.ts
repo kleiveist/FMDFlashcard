@@ -73,7 +73,7 @@ import {
 
 type AppLanguage = "de" | "en";
 type EditorGridIntensity = "light" | "medium" | "strong";
-type MarkdownPreviewDefaultMode = "markdown" | "raw";
+type MarkdownPreviewDefaultMode = "markdown" | "raw" | "hybrid";
 type SpacedRepetitionStatsView = "boxes" | "vault" | "completed";
 type ExamAiProvider = "shared-gpt";
 type ExamGradeScale = "standard-1-6";
@@ -1034,6 +1034,7 @@ export const normalizeSettings = (
       : DEFAULT_MARKDOWN_VIEW_EDIT_ENABLED;
   const storedMarkdownPreviewDefaultMode =
     stored.editor_markdown_preview_default_mode === "raw" ||
+    stored.editor_markdown_preview_default_mode === "hybrid" ||
     stored.editor_markdown_preview_default_mode === "markdown"
       ? stored.editor_markdown_preview_default_mode
       : DEFAULT_MARKDOWN_PREVIEW_DEFAULT_MODE;
@@ -1917,7 +1918,9 @@ export const useAppSettings = () => {
 
   const setMarkdownPreviewDefaultMode = useCallback(
     (value: MarkdownPreviewDefaultMode) => {
-      setMarkdownPreviewDefaultModeState(value === "raw" ? "raw" : "markdown");
+      setMarkdownPreviewDefaultModeState(
+        value === "raw" || value === "hybrid" ? value : "markdown",
+      );
     },
     [],
   );

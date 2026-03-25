@@ -49,6 +49,14 @@ describe("normalizeSettings", () => {
     expect(settings.designMode).toBe("smart");
   });
 
+  it("keeps hybrid as a valid markdown preview default mode", () => {
+    const { settings } = normalizeSettings({
+      editor_markdown_preview_default_mode: "hybrid",
+    } as AppSettings);
+
+    expect(settings.markdownPreviewDefaultMode).toBe("hybrid");
+  });
+
   it("restores stored design mode when valid", () => {
     const { settings } = normalizeSettings({
       design_mode: "modern",

@@ -121,6 +121,10 @@ const DashboardPageInner = (
   const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
   const [isHybridBlockDirty, setIsHybridBlockDirty] = useState(false);
   const [documentMode, setDocumentMode] = useState<MarkdownDocumentMode>("edit");
+  const [hybridEditModeDefaultActive, setHybridEditModeDefaultActive] = useState(
+    () => settings.markdownPreviewDefaultMode !== "markdown",
+  );
+  const [hybridEditModeInitVersion, setHybridEditModeInitVersion] = useState(0);
   const [pendingWriteFilePath, setPendingWriteFilePath] = useState<string | null>(null);
   const [markdownTabs, setMarkdownTabs] = useState<MarkdownEditorTab[]>([]);
   const [vaultView, setVaultView] = useState<DashboardView>(initialVaultView);
@@ -421,7 +425,10 @@ const DashboardPageInner = (
     ) {
       return;
     }
-    preview.setRawPreview(settings.markdownPreviewDefaultMode === "raw");
+    const defaultMode = settings.markdownPreviewDefaultMode;
+    preview.setRawPreview(defaultMode === "raw");
+    setHybridEditModeDefaultActive(defaultMode !== "markdown");
+    setHybridEditModeInitVersion((current) => current + 1);
     didApplyPreviewDefaultModeRef.current = true;
   }, [
     isEditing,
@@ -1326,6 +1333,8 @@ const DashboardPageInner = (
             markdownViewEditEnabled={settings.markdownViewEditEnabled}
             documentMode={documentMode}
             markdownHybridEnabled
+            hybridEditModeInitialActive={hybridEditModeDefaultActive}
+            hybridEditModeInitVersion={hybridEditModeInitVersion}
             selectedFile={preview.selectedFile}
             vaultFiles={vault.files}
             vaultPngAssets={vault.pngAssets}

@@ -180,6 +180,7 @@ const createMockAppState = ({
   selectedFile = { path: "/vault/source.md", relative_path: "source.md" },
   selectedFileOpenInNewTab = false,
   markdownEditorOpenInNewTabByDefault = false,
+  markdownPreviewDefaultMode = "markdown",
   previewMarkdown = "# demo",
   previewState = "idle",
   markdownViewEditEnabled = false,
@@ -188,6 +189,7 @@ const createMockAppState = ({
   selectedFile?: { path: string; relative_path: string } | null;
   selectedFileOpenInNewTab?: boolean;
   markdownEditorOpenInNewTabByDefault?: boolean;
+  markdownPreviewDefaultMode?: "markdown" | "raw" | "hybrid";
   previewMarkdown?: string;
   previewState?: "idle" | "loading" | "error";
   markdownViewEditEnabled?: boolean;
@@ -224,7 +226,7 @@ const createMockAppState = ({
       markdownEditorAccentDarkHex: "#33aa77",
       markdownEditorAccentLightHex: "#33aa77",
       settingsLoaded: true,
-      markdownPreviewDefaultMode: "markdown",
+      markdownPreviewDefaultMode,
       markdownEditorOpenInNewTabByDefault,
       examEditorShowMoveButtons: false,
     },
@@ -380,6 +382,35 @@ describe("DashboardPage exam leave guard", () => {
 
     cleanup();
   });
+
+  it.each([
+    { mode: "markdown", expectedRawPreview: false, expectedHybridStart: false },
+    { mode: "raw", expectedRawPreview: true, expectedHybridStart: true },
+    { mode: "hybrid", expectedRawPreview: false, expectedHybridStart: true },
+  ] as const)(
+    "applies markdown default mode '$mode' to preview + hybrid start",
+    ({ mode, expectedRawPreview, expectedHybridStart }) => {
+      const handleSelectFile = vi.fn();
+      const appState = createMockAppState({
+        handleSelectFile,
+        markdownPreviewDefaultMode: mode,
+      });
+      const setRawPreviewMock = appState.preview.setRawPreview as ReturnType<typeof vi.fn>;
+      const { cleanup } = renderDashboard({
+        initialVaultView: "markdown",
+        appState,
+      });
+
+      expect(setRawPreviewMock).toHaveBeenCalledWith(expectedRawPreview);
+
+      const latestProps = getLatestPreviewPanelProps();
+      expect(latestProps?.hybridEditModeInitialActive).toBe(expectedHybridStart);
+      expect(typeof latestProps?.hybridEditModeInitVersion).toBe("number");
+      expect((latestProps?.hybridEditModeInitVersion as number) > 0).toBe(true);
+
+      cleanup();
+    },
+  );
 
   it("uses inline note panel in desktop markdown view without overlay rail", () => {
     mockUseMediaQuery.mockReturnValue(true);
