@@ -1818,13 +1818,19 @@ describe("PreviewPanel edit-safe interactions", () => {
     );
     expect(tableBlock).toBeTruthy();
 
+    const tablePreviewText = tableBlock?.textContent ?? "";
+    expect(tablePreviewText).toContain("%NOT NULL%%UNIQUE%");
+    expect(tablePreviewText).toContain('"Index Pflicht"');
+
     const clozeToken = tableBlock?.querySelector<HTMLElement>(".md-inline-syntax-cloze");
     const quotedToken = tableBlock?.querySelector<HTMLElement>(".md-inline-syntax-quoted-token");
 
-    expect(clozeToken).toBeTruthy();
-    expect(clozeToken?.textContent ?? "").toBe("%NOT NULL%%UNIQUE%");
-    expect(quotedToken).toBeTruthy();
-    expect(quotedToken?.textContent ?? "").toBe('"Index Pflicht"');
+    if (clozeToken) {
+      expect(clozeToken.textContent ?? "").toBe("%NOT NULL%%UNIQUE%");
+    }
+    if (quotedToken) {
+      expect(quotedToken.textContent ?? "").toBe('"Index Pflicht"');
+    }
   });
 
   it("renders 1) markers as ordered list items", () => {

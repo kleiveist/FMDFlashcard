@@ -12,7 +12,18 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { Fragment, useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import {
+  Children,
+  Fragment,
+  cloneElement,
+  isValidElement,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
@@ -78,6 +89,140 @@ export const hasHelpContent = (
   helpText?: string[] | string | null,
   helpMarkdown?: string | null,
 ) => normalizeHelpBlocks(helpText, helpMarkdown).length > 0;
+
+const helpInlineMaskTokenPattern = /\[([^\]\n]+?)\]/g;
+
+type HelpInlineMaskRenderState = {
+  activeMaskId: string | null;
+  onActiveMaskIdChange?: (nextMaskId: string | null) => void;
+};
+
+const resolveMarkdownNodePositionKey = (node: unknown, fallback: string) => {
+  if (
+    !node ||
+    typeof node !== "object" ||
+    !("position" in node) ||
+    !node.position ||
+    typeof node.position !== "object"
+  ) {
+    return fallback;
+  }
+  const position = node.position as {
+    start?: {
+      offset?: number;
+      line?: number;
+      column?: number;
+    };
+  };
+  if (typeof position.start?.offset === "number") {
+    return `offset-${position.start.offset}`;
+  }
+  if (typeof position.start?.line === "number" && typeof position.start?.column === "number") {
+    return `line-${position.start.line}-col-${position.start.column}`;
+  }
+  return fallback;
+};
+
+const shouldSkipHelpInlineMaskInTag = (tagName: string | null) =>
+  tagName === "code" || tagName === "pre";
+
+const renderHelpInlineMaskedText = (
+  text: string,
+  keyPrefix: string,
+  state: HelpInlineMaskRenderState,
+): ReactNode => {
+  if (!text || !helpInlineMaskTokenPattern.test(text)) {
+    helpInlineMaskTokenPattern.lastIndex = 0;
+    return text;
+  }
+  helpInlineMaskTokenPattern.lastIndex = 0;
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  let tokenIndex = 0;
+  let match = helpInlineMaskTokenPattern.exec(text);
+  while (match) {
+    const tokenRaw = match[0] ?? "";
+    const tokenInnerRaw = match[1] ?? "";
+    const tokenInner = tokenInnerRaw.trim();
+    const startIndex = match.index;
+    const endIndex = startIndex + tokenRaw.length;
+
+    if (startIndex > lastIndex) {
+      parts.push(text.slice(lastIndex, startIndex));
+    }
+
+    if (!tokenInner) {
+      parts.push(tokenRaw);
+    } else {
+      const maskId = `${keyPrefix}-mask-${tokenIndex}`;
+      const isActive = state.activeMaskId === maskId;
+      parts.push(
+        <button
+          type="button"
+          key={maskId}
+          className={`help-inline-mask${isActive ? " is-active" : ""}`}
+          data-help-inline-mask="true"
+          data-help-inline-mask-id={maskId}
+          aria-pressed={isActive}
+          onClick={(event: ReactMouseEvent<HTMLButtonElement>) => {
+            event.preventDefault();
+            event.stopPropagation();
+            state.onActiveMaskIdChange?.(isActive ? null : maskId);
+          }}
+        >
+          <span className="help-inline-mask-text">{tokenInner}</span>
+        </button>,
+      );
+    }
+
+    lastIndex = endIndex;
+    tokenIndex += 1;
+    match = helpInlineMaskTokenPattern.exec(text);
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts;
+};
+
+const renderHelpInlineMaskedNode = (
+  node: ReactNode,
+  keyPrefix: string,
+  state: HelpInlineMaskRenderState,
+): ReactNode => {
+  if (typeof node === "string") {
+    return renderHelpInlineMaskedText(node, keyPrefix, state);
+  }
+  if (typeof node === "number" || typeof node === "boolean" || node == null) {
+    return node;
+  }
+  if (!isValidElement<{ children?: ReactNode }>(node)) {
+    return node;
+  }
+  const tagName = typeof node.type === "string" ? node.type.toLowerCase() : null;
+  if (shouldSkipHelpInlineMaskInTag(tagName)) {
+    return node;
+  }
+  const children = node.props.children;
+  if (children == null) {
+    return node;
+  }
+  const nextChildren = Children.map(children, (child, childIndex) =>
+    renderHelpInlineMaskedNode(child, `${keyPrefix}-child-${childIndex}`, state)
+  );
+  return cloneElement(node, undefined, nextChildren);
+};
+
+const renderHelpInlineMaskedChildren = (
+  children: ReactNode,
+  keyPrefix: string,
+  state: HelpInlineMaskRenderState,
+) =>
+  Children.map(children, (child, childIndex) =>
+    renderHelpInlineMaskedNode(child, `${keyPrefix}-${childIndex}`, state)
+  );
 
 const readMarkdownElementProperty = (node: unknown, key: string) => {
   if (
@@ -191,6 +336,7 @@ const renderHelpTableCellContent = ({
   children,
   keyPrefix,
   markdownSource,
+  inlineMaskState,
   vaultPngAssets,
   vaultPath,
 }: {
@@ -198,6 +344,7 @@ const renderHelpTableCellContent = ({
   children: ReactNode;
   keyPrefix: string;
   markdownSource: string;
+  inlineMaskState: HelpInlineMaskRenderState;
   vaultPngAssets?: VaultPngAsset[] | null;
   vaultPath?: string | null;
 }) => {
@@ -210,7 +357,11 @@ const renderHelpTableCellContent = ({
   });
   const hasMediaSegments = segments.some((segment) => segment.kind !== "text");
   if (!hasMediaSegments) {
-    return children;
+    return renderHelpInlineMaskedChildren(
+      children,
+      `${keyPrefix}-plain`,
+      inlineMaskState,
+    );
   }
 
   return segments.map((segment, index) => {
@@ -218,7 +369,11 @@ const renderHelpTableCellContent = ({
     if (segment.kind === "text") {
       return (
         <Fragment key={segmentKey}>
-          {renderTextWithLineBreaks(segment.text, `${segmentKey}-text`)}
+          {renderHelpInlineMaskedChildren(
+            renderTextWithLineBreaks(segment.text, `${segmentKey}-text`),
+            `${segmentKey}-text`,
+            inlineMaskState,
+          )}
         </Fragment>
       );
     }
@@ -259,6 +414,8 @@ type HelpPanelProps = {
   helpBlocks: string[];
   title?: string;
   onClose?: () => void;
+  activeMaskId?: string | null;
+  onActiveMaskIdChange?: (nextMaskId: string | null) => void;
   vaultPath?: string | null;
   vaultPngAssets?: VaultPngAsset[] | null;
 };
@@ -267,10 +424,33 @@ export const HelpPanel = ({
   helpBlocks,
   title = "Help / Hints",
   onClose,
+  activeMaskId = null,
+  onActiveMaskIdChange,
   vaultPath,
   vaultPngAssets,
 }: HelpPanelProps) => {
   const titleId = useId();
+  const inlineMaskState = useMemo<HelpInlineMaskRenderState>(
+    () => ({
+      activeMaskId,
+      onActiveMaskIdChange,
+    }),
+    [activeMaskId, onActiveMaskIdChange],
+  );
+
+  const handlePanelMouseDownCapture = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (!onActiveMaskIdChange || activeMaskId === null) {
+      return;
+    }
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    if (target.closest("[data-help-inline-mask='true']")) {
+      return;
+    }
+    onActiveMaskIdChange(null);
+  };
 
   return (
     <div
@@ -278,6 +458,7 @@ export const HelpPanel = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
+      onMouseDownCapture={handlePanelMouseDownCapture}
     >
       <h3 id={titleId}>{title}</h3>
       <div className="help-modal-body">
@@ -295,6 +476,7 @@ export const HelpPanel = ({
                   block,
                   `help-panel-${index}`,
                 );
+                const inlinePrefix = `help-inline-${index}`;
                 return (
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
@@ -339,6 +521,87 @@ export const HelpPanel = ({
                     }
                     return <MarkdownHighlightedPre {...props}>{children}</MarkdownHighlightedPre>;
                   },
+                  h1: ({ node, children, ...props }) => (
+                    <h1 {...props}>
+                      {renderHelpInlineMaskedChildren(
+                        children,
+                        `${inlinePrefix}-h1-${resolveMarkdownNodePositionKey(node, "h1")}`,
+                        inlineMaskState,
+                      )}
+                    </h1>
+                  ),
+                  h2: ({ node, children, ...props }) => (
+                    <h2 {...props}>
+                      {renderHelpInlineMaskedChildren(
+                        children,
+                        `${inlinePrefix}-h2-${resolveMarkdownNodePositionKey(node, "h2")}`,
+                        inlineMaskState,
+                      )}
+                    </h2>
+                  ),
+                  h3: ({ node, children, ...props }) => (
+                    <h3 {...props}>
+                      {renderHelpInlineMaskedChildren(
+                        children,
+                        `${inlinePrefix}-h3-${resolveMarkdownNodePositionKey(node, "h3")}`,
+                        inlineMaskState,
+                      )}
+                    </h3>
+                  ),
+                  h4: ({ node, children, ...props }) => (
+                    <h4 {...props}>
+                      {renderHelpInlineMaskedChildren(
+                        children,
+                        `${inlinePrefix}-h4-${resolveMarkdownNodePositionKey(node, "h4")}`,
+                        inlineMaskState,
+                      )}
+                    </h4>
+                  ),
+                  h5: ({ node, children, ...props }) => (
+                    <h5 {...props}>
+                      {renderHelpInlineMaskedChildren(
+                        children,
+                        `${inlinePrefix}-h5-${resolveMarkdownNodePositionKey(node, "h5")}`,
+                        inlineMaskState,
+                      )}
+                    </h5>
+                  ),
+                  h6: ({ node, children, ...props }) => (
+                    <h6 {...props}>
+                      {renderHelpInlineMaskedChildren(
+                        children,
+                        `${inlinePrefix}-h6-${resolveMarkdownNodePositionKey(node, "h6")}`,
+                        inlineMaskState,
+                      )}
+                    </h6>
+                  ),
+                  p: ({ node, children, ...props }) => (
+                    <p {...props}>
+                      {renderHelpInlineMaskedChildren(
+                        children,
+                        `${inlinePrefix}-p-${resolveMarkdownNodePositionKey(node, "p")}`,
+                        inlineMaskState,
+                      )}
+                    </p>
+                  ),
+                  li: ({ node, children, ...props }) => (
+                    <li {...props}>
+                      {renderHelpInlineMaskedChildren(
+                        children,
+                        `${inlinePrefix}-li-${resolveMarkdownNodePositionKey(node, "li")}`,
+                        inlineMaskState,
+                      )}
+                    </li>
+                  ),
+                  blockquote: ({ node, children, ...props }) => (
+                    <blockquote {...props}>
+                      {renderHelpInlineMaskedChildren(
+                        children,
+                        `${inlinePrefix}-blockquote-${resolveMarkdownNodePositionKey(node, "blockquote")}`,
+                        inlineMaskState,
+                      )}
+                    </blockquote>
+                  ),
                   table: ({ node: _node, ...props }) => (
                     <div className={`exam-table-wrap ${SHARED_TABLE_WRAP_CLASS}`}>
                       <table {...props} />
@@ -349,8 +612,9 @@ export const HelpPanel = ({
                       {renderHelpTableCellContent({
                         node,
                         children,
-                        keyPrefix: "help-th",
+                        keyPrefix: `${inlinePrefix}-th-${resolveMarkdownNodePositionKey(node, "th")}`,
                         markdownSource: preview.markdown,
+                        inlineMaskState,
                         vaultPngAssets,
                         vaultPath,
                       })}
@@ -361,8 +625,9 @@ export const HelpPanel = ({
                       {renderHelpTableCellContent({
                         node,
                         children,
-                        keyPrefix: "help-td",
+                        keyPrefix: `${inlinePrefix}-td-${resolveMarkdownNodePositionKey(node, "td")}`,
                         markdownSource: preview.markdown,
+                        inlineMaskState,
                         vaultPngAssets,
                         vaultPath,
                       })}
@@ -413,6 +678,7 @@ export const HelpButton = ({
     [helpMarkdown, helpText],
   );
   const [isOpen, setIsOpen] = useState(false);
+  const [activeMaskId, setActiveMaskId] = useState<string | null>(null);
   const modalId = useId();
 
   useEffect(() => {
@@ -427,17 +693,43 @@ export const HelpButton = ({
     });
   }, [isOpen, modalId]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setActiveMaskId(null);
+    }
+  }, [isOpen]);
+
   if (!enabled || helpBlocks.length === 0) {
     return null;
   }
 
+  const handleBackdropMouseDownCapture = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (activeMaskId === null) {
+      return;
+    }
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+    if (target.closest("[data-help-inline-mask='true']")) {
+      return;
+    }
+    setActiveMaskId(null);
+  };
+
   const portalTarget = typeof document === "undefined" ? null : document.body;
   const modal = (
-    <div className="modal-backdrop" role="presentation">
+    <div
+      className="modal-backdrop help-modal-backdrop"
+      role="presentation"
+      onMouseDownCapture={handleBackdropMouseDownCapture}
+    >
       <HelpPanel
         helpBlocks={helpBlocks}
         title={label}
         onClose={() => setIsOpen(false)}
+        activeMaskId={activeMaskId}
+        onActiveMaskIdChange={setActiveMaskId}
         vaultPath={vaultPath}
         vaultPngAssets={vaultPngAssets}
       />

@@ -206,15 +206,28 @@
   height: 18px;
 }
 
+.help-modal-backdrop {
+  background: color-mix(in srgb, rgba(18, 24, 32, 0.4) 82%, var(--accent-strong) 18%);
+}
+
+:root[data-theme="dark"] .help-modal-backdrop {
+  background: color-mix(in srgb, rgba(5, 8, 12, 0.74) 84%, var(--accent-strong) 16%);
+}
+
 .help-modal-panel {
-  width: min(560px, 100%);
+  width: min(645px, calc(100vw - 32px));
+  max-width: min(645px, calc(100vw - 32px));
+  max-height: min(610px, calc(100vh - 32px));
+  min-height: 0;
 }
 
 .help-modal-body {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
+  min-height: 0;
   gap: 16px;
-  max-height: 60vh;
+  max-height: none;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -298,6 +311,64 @@
   height: auto;
   max-height: none;
   object-fit: contain;
+}
+
+.help-inline-mask {
+  --help-inline-mask-accent: color-mix(in srgb, var(--accent-strong) 72%, var(--accent) 28%);
+  appearance: none;
+  border: 1px solid color-mix(in srgb, var(--help-inline-mask-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--help-inline-mask-accent) 24%, var(--panel));
+  color: transparent;
+  border-radius: 8px;
+  margin: 0 0.1em;
+  padding: 0.06em 0.45em;
+  line-height: 1.35;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: baseline;
+  position: relative;
+  min-width: 1.2em;
+  cursor: pointer;
+  font: inherit;
+  text-align: inherit;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--help-inline-mask-accent) 18%, transparent);
+  transition:
+    color 140ms ease,
+    border-color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.help-inline-mask::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--panel) 48%, var(--help-inline-mask-accent));
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 140ms ease;
+}
+
+.help-inline-mask .help-inline-mask-text {
+  pointer-events: none;
+}
+
+.help-inline-mask:hover,
+.help-inline-mask:focus-visible,
+.help-inline-mask.is-active {
+  color: color-mix(in srgb, var(--ink) 70%, var(--help-inline-mask-accent));
+}
+
+.help-inline-mask:hover::after,
+.help-inline-mask:focus-visible::after,
+.help-inline-mask.is-active::after {
+  opacity: 0;
+}
+
+.help-inline-mask:focus-visible {
+  outline: var(--ui-focus-outline);
+  outline-offset: 1px;
 }
 
 .help-detail-header {
