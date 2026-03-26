@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](de.md)
+[← Back](prombt.md)
 <!-- AUTO-GENERATED:backlink END -->
 # FMD Syntax-Referenz (Kurz-Codes)
 

@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](de.md)
+[← Back](prombt.md)
 <!-- AUTO-GENERATED:backlink END -->
 ```q
 Du bist ein Exam-Generator für ein Markdown-basiertes Lernsystem.

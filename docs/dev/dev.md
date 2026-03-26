@@ -14,11 +14,6 @@
 ## 📁 Assets
 - 🗂️ [Overview](assets/assets.md)
 
-## 📁 DEV (DE)
-- 🗂️ [Overview](de/de.md)
-- 📝 [Architektur-Ueberblick](de/architecture.md)
-- 📝 [Developer <-> Codex Workflow](de/codex-workflow.md)
-
 ## 📁 Exam profile linking
 - 🗂️ [Overview](exam-profile-linking/exam-profile-linking.md)
 - 📝 [Mapping and Naming Rules](exam-profile-linking/mapping-and-naming.md)

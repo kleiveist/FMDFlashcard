@@ -1,12 +1,14 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](../de.md)
+[← Back](prombt.md)
 <!-- AUTO-GENERATED:backlink END -->
-# SYNC
+[← Back](../prombt.md)
+
+# DE
 
 <!-- AUTO-GENERATED:docs-index START -->
 
 ## 📄 Pages
-- 📝 [Profile-System (Entwickler-Doku)](profile-system.md)
-- 📝 [User Vault (Dev Notes)](user-vault.md)
+- 📝 [Fdm exam de](fdm_exam_de.md)
+- 📝 [FMD Syntax-Referenz (Kurz-Codes)](FMD%20Syntax-Referenz.md)
 
 <!-- AUTO-GENERATED:docs-index END -->

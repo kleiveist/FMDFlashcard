@@ -12,4 +12,11 @@
 - 📝 [ADR 0002: Hybrid-Editor Performance Redesign (Big Bang)](0002-hybrid-editor-performance-redesign.md)
 - 📝 [ADR 0003: EDIT Mode](ADR%200003%3A%20EDIT-Mode.md)
 
+## 📁 DE
+- 🗂️ [Overview](de/de.md)
+
+## 📁 Prombt
+- 🗂️ [Overview](prombt/prombt.md)
+- 📝 [Fdm exam en](prombt/fdm_exam_en.md)
+
 <!-- AUTO-GENERATED:docs-index END -->

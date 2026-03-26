@@ -1,7 +1,7 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](../dev.md)
+[← Back](../de.md)
 <!-- AUTO-GENERATED:backlink END -->
-# DEV (DE)
+# DEV
 
 <!-- AUTO-GENERATED:docs-index START -->
 
@@ -29,10 +29,3 @@
 - 📝 [User Vault (Dev Notes)](sync/user-vault.md)
 
 <!-- AUTO-GENERATED:docs-index END -->
-
-Diese Datei bleibt als Einstieg erhalten.
-
-Hinweis: Die Tooling-Dokumentation wird zentral auf Englisch gepflegt.
-
-- [Tools (EN)](../../tools/tools.md)
-- [Developer docs index](../dev.md)
