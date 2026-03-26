@@ -14,9 +14,6 @@
 - 📝 [Recommendation: Extend your table by 3 meta columns](rendering_markdown_types.md)
 - 📝 [Rendering tabelcard](rendering_tabelcard.md)
 
-## 📁 DE
-- 🗂️ [Overview](de/de.md)
-
 <!-- AUTO-GENERATED:docs-index END -->
 
 ## Additional Pages

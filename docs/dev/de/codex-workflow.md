@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[<- Zurueck](dev.md)
+[← Back](de.md)
 <!-- AUTO-GENERATED:backlink END -->
 # Developer <-> Codex Workflow
 
@@ -42,8 +42,5 @@ Ein wiederholbarer Ablauf, um Ideen und Bugs in getestete Aenderungen mit klaren
 
 ## Packaging-Tasks
 
-Bei neuen Build-/Install-Kommandos immer gemeinsam aktualisieren:
-- `tools/control.py`
-- `docs/dev/control-script.md`
-- betroffene Setup-/Release-Seiten
-- deutsche Gegenstuecke unter `docs/dev/de/`
+- Command-Level-Tooling-Doku liegt zentral unter `docs/tools/`.
+- Bei geaenderten Build/Run/Test-Kommandos die passende Seite unter `docs/tools/` aktualisieren.

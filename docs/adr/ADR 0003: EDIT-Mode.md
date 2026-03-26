@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](adr.md)
+<!-- AUTO-GENERATED:backlink END -->
 | Modis | Buttons | <button type=​button class=​ghost small preview-mode-button active edit-active aria-pressed=​true aria-label=​Edit mode title=​Toggle edit mode>​…​​flexEvent | Verhalten Buttons |
 | --- | --- | --- | --- |
 | Codemode | <button type=​button class=​ghost small preview-mode-button  aria-pressed=​false aria-label=​Code view title=​Code view>​flexEvent | Ausschaltbar Wechsel Zwischen den Modis \- Viwe Edit ist Möglich  \- Standard ist Edit | Welchelbar  Aktive  nicht Aktiv |

@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](de.md)
+[← Back](sync.md)
 <!-- AUTO-GENERATED:backlink END -->
 # Profile-System (Entwickler-Doku)
 

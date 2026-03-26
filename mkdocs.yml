@@ -5,19 +5,23 @@ theme:
 nav:
   - Home: index.md
   - User Guide:
-      - User docs index: user/index.md
-      - Getting started: user/getting-started.md
-      - Flashcard syntax: user/flashcard-syntax.md
-      - Spaced repetition: user/spaced-repetition.md
-      - Settings: user/settings.md
-      - Troubleshooting: user/troubleshooting.md
+      - User docs index: usr/usr.md
+      - Getting started: usr/getting-started.md
+      - Flashcard syntax: usr/syntax/flashcard-syntax.md
+      - Spaced repetition: usr/spaced-repetition.md
+      - Settings: usr/settings.md
+      - Troubleshooting: usr/troubleshooting.md
   - Developer Guide:
-      - Developer docs index: dev/index.md
-      - Setup: dev/setup.md
-      - Control script: dev/control-script.md
+      - Developer docs index: dev/dev.md
       - Architecture: dev/architecture.md
-      - Testing: dev/testing.md
-      - Release: dev/release.md
+      - Developer workflow: dev/codex-workflow.md
+  - Tools:
+      - Tools docs index: tools/tools.md
+      - Setup and bootstrap: tools/setup-bootstrap.md
+      - Run and test: tools/run-test.md
+      - Build and packaging: tools/build-package.md
+      - Control script reference: tools/control-reference.md
   - ADRs:
-      - ADR index: adr/index.md
+      - ADR index: adr/adr.md
       - ADR 0001: adr/0001-documentation-source-of-truth.md
+      - ADR 0002: adr/0002-hybrid-editor-performance-redesign.md

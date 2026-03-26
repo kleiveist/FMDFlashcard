@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](index.md)
+[← Back](exam-profile-linking.md)
 <!-- AUTO-GENERATED:backlink END -->
 # Selection Matrix
 

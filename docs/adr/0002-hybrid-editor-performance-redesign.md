@@ -253,6 +253,6 @@ Technisch in Komplexitätsbegriffen:
 
 ## Follow-up (Recommended)
 
-1. Vollen Testlauf erneut ausführen (`python3 tools/control.py --test`).
+1. Vollen Testlauf erneut ausfuehren (siehe Tooling-Doku: `../tools/run-test.md`).
 2. React Profiler Vorher/Nachher für große Notizen dokumentieren.
 3. Optional: Debug-Metriken für `stats.mode`, `changedBlockRange`, Worker-Fallback-Rate in Dev-Builds ergänzen.

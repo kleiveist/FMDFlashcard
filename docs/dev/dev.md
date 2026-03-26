@@ -10,17 +10,21 @@
 ## 📄 Pages
 - 📝 [Architecture overview](architecture.md)
 - 📝 [Developer ↔ Codex Workflow](codex-workflow.md)
-- 📝 [Control script (`tools/control.py`)](control-script.md)
-- 📝 [Releases / Packaging](release.md)
-- 📝 [Developer setup (run from source)](setup_lin.md)
-- 📝 [Windows developer setup (PowerShell, run from source)](setup_win.md)
-- 📝 [Testing](testing.md)
-
-## 🌐 Language variants
-- 🇩🇪 [Developer docs (German index)](de/dev.md)
 
 ## 📁 Assets
 - 🗂️ [Overview](assets/assets.md)
+
+## 📁 DEV (DE)
+- 🗂️ [Overview](de/de.md)
+- 📝 [Architektur-Ueberblick](de/architecture.md)
+- 📝 [Developer <-> Codex Workflow](de/codex-workflow.md)
+
+## 📁 Exam profile linking
+- 🗂️ [Overview](exam-profile-linking/exam-profile-linking.md)
+- 📝 [Mapping and Naming Rules](exam-profile-linking/mapping-and-naming.md)
+- 📝 [QA and Regression Checklist](exam-profile-linking/qa-regression.md)
+- 📝 [Selection Matrix](exam-profile-linking/selection-matrix.md)
+- 📝 [UI Area Mapping](exam-profile-linking/ui-areas.md)
 
 ## 📁 Rendering
 - 🗂️ [Overview](rendering/rendering.md)
@@ -36,12 +40,5 @@
 - 🗂️ [Overview](sync/sync.md)
 - 📝 [Profile System (Developer Documentation)](sync/profile-system.md)
 - 📝 [User Vault (Dev Notes)](sync/user-vault.md)
-
-## 📁 Exam Profile Linking
-- 🗂️ [Overview](exam-profile-linking/index.md)
-- 📝 [Mapping and Naming Rules](exam-profile-linking/mapping-and-naming.md)
-- 📝 [Selection Matrix](exam-profile-linking/selection-matrix.md)
-- 📝 [UI Area Mapping](exam-profile-linking/ui-areas.md)
-- 📝 [QA and Regression Checklist](exam-profile-linking/qa-regression.md)
 
 <!-- AUTO-GENERATED:docs-index END -->

@@ -11,18 +11,20 @@
 ## 📁 ADR
 - 🗂️ [Overview](adr/adr.md)
 - 📝 [ADR 0001: Documentation source of truth](adr/0001-documentation-source-of-truth.md)
-- 📝 [User Vault Mode Unterschiede](user-vault-mode.md)
-- 📝 [Wallet Onboarding Gates (Custom Path, Profile, Sync Provider)](wallet-onboarding-gates.md)
+- 📝 [ADR 0002: Hybrid-Editor Performance Redesign (Big Bang)](adr/0002-hybrid-editor-performance-redesign.md)
+- 📝 [ADR 0003: EDIT Mode](adr/ADR%200003%3A%20EDIT-Mode.md)
 
 ## 📁 DEV
 - 🗂️ [Overview](dev/dev.md)
 - 📝 [Architecture overview](dev/architecture.md)
 - 📝 [Developer ↔ Codex Workflow](dev/codex-workflow.md)
-- 📝 [Control script (`tools/control.py`)](dev/control-script.md)
-- 📝 [Releases / Packaging](dev/release.md)
-- 📝 [Developer setup (run from source)](dev/setup_lin.md)
-- 📝 [Windows developer setup (PowerShell, run from source)](dev/setup_win.md)
-- 📝 [Testing](dev/testing.md)
+
+## 📁 Tools
+- 🗂️ [Overview](tools/tools.md)
+- 📝 [Build and Packaging](tools/build-package.md)
+- 📝 [Control Script Reference](tools/control-reference.md)
+- 📝 [Run and Test](tools/run-test.md)
+- 📝 [Setup and Bootstrap](tools/setup-bootstrap.md)
 
 ## 📁 USER
 - 🗂️ [Overview](usr/usr.md)

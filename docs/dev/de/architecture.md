@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[<- Zurueck](dev.md)
+[← Back](de.md)
 <!-- AUTO-GENERATED:backlink END -->
 # Architektur-Ueberblick
 
@@ -8,7 +8,7 @@ Dieses Dokument beschreibt die grobe Struktur des Projekts fuer Mitwirkende.
 ## Hauptkomponenten
 
 - **Desktop-App:** plattformuebergreifende UI (React/TypeScript, Packaging mit Tauri).
-- **Tooling:** Hilfsskripte fuer Setup, Checks, Run, Build und lokale AppImage-Installation (`tools/control.py`, `tools/inst/linux/installappimage.py`).
+- **Tooling:** Runner und Hilfsskripte unter `tools/` (dokumentiert in der Tools-Doku).
 - **Features:** Module fuer Flashcards, Fast Review, Spaced Repetition, Einstellungen und Hilfe.
 
 ## Designziele
@@ -19,7 +19,5 @@ Dieses Dokument beschreibt die grobe Struktur des Projekts fuer Mitwirkende.
 
 ## Als naechstes lesen
 
-- Setup: `setup_lin.md` / `setup_win.md`
-- Build + lokales AppImage-Install: `control-script.md`
-- Testing: `testing.md`
+- Tools-Doku (Englisch): `../../tools/tools.md`
 - User-Verhalten: `../../usr/`

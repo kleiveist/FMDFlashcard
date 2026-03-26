@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](../dev.md)
+[← Back](exam-profile-linking.md)
 <!-- AUTO-GENERATED:backlink END -->
 # Exam Task-Profile Linking
 

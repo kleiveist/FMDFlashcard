@@ -33,18 +33,20 @@ while adding a dedicated review experience and study progress tracking.
 ## 📁 ADR
 - 🗂️ [Overview](docs/adr/adr.md)
 - 📝 [ADR 0001: Documentation source of truth](docs/adr/0001-documentation-source-of-truth.md)
-- 📝 [User Vault Mode Unterschiede](user-vault-mode.md)
-- 📝 [Wallet Onboarding Gates (Custom Path, Profile, Sync Provider)](wallet-onboarding-gates.md)
+- 📝 [ADR 0002: Hybrid-Editor Performance Redesign (Big Bang)](docs/adr/0002-hybrid-editor-performance-redesign.md)
+- 📝 [ADR 0003: EDIT Mode](docs/adr/ADR%200003%3A%20EDIT-Mode.md)
 
 ## 📁 DEV
 - 🗂️ [Overview](docs/dev/dev.md)
 - 📝 [Architecture overview](docs/dev/architecture.md)
 - 📝 [Developer ↔ Codex Workflow](docs/dev/codex-workflow.md)
-- 📝 [Control script (`tools/control.py`)](docs/dev/control-script.md)
-- 📝 [Releases / Packaging](docs/dev/release.md)
-- 📝 [Developer setup (run from source)](docs/dev/setup_lin.md)
-- 📝 [Windows developer setup (PowerShell, run from source)](docs/dev/setup_win.md)
-- 📝 [Testing](docs/dev/testing.md)
+
+## 📁 Tools
+- 🗂️ [Overview](docs/tools/tools.md)
+- 📝 [Build and Packaging](docs/tools/build-package.md)
+- 📝 [Control Script Reference](docs/tools/control-reference.md)
+- 📝 [Run and Test](docs/tools/run-test.md)
+- 📝 [Setup and Bootstrap](docs/tools/setup-bootstrap.md)
 
 ## 📁 USER
 - 🗂️ [Overview](docs/usr/usr.md)
@@ -60,15 +62,12 @@ If GitHub’s repository navigation feels slow, use these direct links:
 
 ## Quickstart (run from source)
 
-If you want to run the desktop app from source, follow the full setup guide:
+If you want to run the desktop app from source, use the Tools docs lifecycle:
 
-A typical flow looks like:
+1. [Setup and bootstrap](docs/tools/setup-bootstrap.md)
+2. [Run and test](docs/tools/run-test.md)
+3. [Build and packaging](docs/tools/build-package.md)
 
-1. Clone this repo
-2. `python3 tools/control.py --doctor`
-3. `python3 tools/control.py --install`
-4. `python3 tools/control.py --tauri`
-5. `python3 tools/control.py --start`
 ## Contributing
 
 See the [Contributing guide](CONTRIBUTING.md) for development workflow and pull request guidelines.

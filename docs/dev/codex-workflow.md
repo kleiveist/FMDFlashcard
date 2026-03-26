@@ -42,10 +42,7 @@ A repeatable workflow for turning ideas/bugs into tested changes using Codex, wi
 - **Issue tracking notes (if used):** `docs/issus/`
 
 ## Packaging-related tasks
-- When adding or changing build/install commands, update:
-  - `tools/control.py`
-  - `docs/dev/control-script.md`
-  - related setup/release pages
-  - German counterparts in `docs/dev/de/`
+- Keep command-level tooling documentation in `docs/tools/`.
+- If packaging or execution commands change, update the corresponding page in `docs/tools/`.
 
 ![Workflow diagram](docs/assets/codex-workflow.svg)
