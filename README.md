@@ -33,8 +33,8 @@ while adding a dedicated review experience and study progress tracking.
 ## 📁 ADR
 - 🗂️ [Overview](docs/adr/adr.md)
 - 📝 [ADR 0001: Documentation source of truth](docs/adr/0001-documentation-source-of-truth.md)
-- 📝 [User Vault Mode Unterschiede](docs/adr/user-vault-mode.md)
-- 📝 [Wallet Onboarding Gates (Custom Path, Profile, Sync Provider)](docs/adr/wallet-onboarding-gates.md)
+- 📝 [User Vault Mode Unterschiede](user-vault-mode.md)
+- 📝 [Wallet Onboarding Gates (Custom Path, Profile, Sync Provider)](wallet-onboarding-gates.md)
 
 ## 📁 DEV
 - 🗂️ [Overview](docs/dev/dev.md)
