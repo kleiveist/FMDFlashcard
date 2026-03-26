@@ -27,13 +27,25 @@ import { asErrorMessage } from "../../lib/errors";
 import { type LoadState } from "../../lib/types";
 import { type VaultFile } from "../../lib/tree";
 
+export type PreviewEditorMode = "code" | "markdown" | "hybrid";
+
+const resolveDefaultEditEnabledForEditorMode = (
+  editorMode: PreviewEditorMode,
+) => editorMode !== "markdown";
+
+const normalizeEditEnabledForEditorMode = (
+  editorMode: PreviewEditorMode,
+  editEnabled: boolean,
+) => (editorMode === "hybrid" ? true : Boolean(editEnabled));
+
 export type PreviewSnapshot = {
   selectedFile: VaultFile | null;
   selectedFileOpenInNewTab: boolean;
   preview: string;
   previewState: LoadState;
   previewError: string;
-  rawPreview: boolean;
+  editorMode: PreviewEditorMode;
+  editEnabled: boolean;
 };
 
 export type PreviewFileOpenOptions = {
@@ -46,7 +58,10 @@ export const usePreview = () => {
   const [preview, setPreview] = useState("");
   const [previewState, setPreviewState] = useState<LoadState>("idle");
   const [previewError, setPreviewError] = useState("");
-  const [rawPreview, setRawPreview] = useState(false);
+  const [editorMode, setEditorModeState] = useState<PreviewEditorMode>("markdown");
+  const [editEnabled, setEditEnabledState] = useState(
+    resolveDefaultEditEnabledForEditorMode("markdown"),
+  );
   const selectRequestIdRef = useRef(0);
 
   const takeSnapshot = useCallback(
@@ -56,13 +71,15 @@ export const usePreview = () => {
       preview,
       previewState,
       previewError,
-      rawPreview,
+      editorMode,
+      editEnabled,
     }),
     [
+      editEnabled,
+      editorMode,
       preview,
       previewError,
       previewState,
-      rawPreview,
       selectedFile,
       selectedFileOpenInNewTab,
     ],
@@ -75,7 +92,13 @@ export const usePreview = () => {
     setPreview(snapshot.preview);
     setPreviewState(snapshot.previewState);
     setPreviewError(snapshot.previewError);
-    setRawPreview(snapshot.rawPreview);
+    setEditorModeState(snapshot.editorMode);
+    setEditEnabledState(
+      normalizeEditEnabledForEditorMode(
+        snapshot.editorMode,
+        snapshot.editEnabled,
+      ),
+    );
   }, []);
 
   const resetPreview = useCallback(() => {
@@ -114,20 +137,55 @@ export const usePreview = () => {
     }
   }, []);
 
+  const setEditorMode = useCallback(
+    (
+      value:
+        | PreviewEditorMode
+        | ((current: PreviewEditorMode) => PreviewEditorMode),
+    ) => {
+      setEditorModeState((current) => {
+        const nextMode = typeof value === "function" ? value(current) : value;
+        setEditEnabledState((currentEditEnabled) =>
+          normalizeEditEnabledForEditorMode(nextMode, currentEditEnabled)
+        );
+        return nextMode;
+      });
+    },
+    [],
+  );
+
+  const setEditorModeWithDefaults = useCallback((nextMode: PreviewEditorMode) => {
+    setEditorModeState(nextMode);
+    setEditEnabledState(resolveDefaultEditEnabledForEditorMode(nextMode));
+  }, []);
+
+  const setEditEnabled = useCallback(
+    (value: boolean | ((current: boolean) => boolean)) => {
+      setEditEnabledState((current) => {
+        const nextEditEnabled = typeof value === "function" ? value(current) : value;
+        return normalizeEditEnabledForEditorMode(editorMode, nextEditEnabled);
+      });
+    },
+    [editorMode],
+  );
+
   return {
+    editEnabled,
+    editorMode,
     preview,
     previewError,
     previewState,
-    rawPreview,
     resetPreview,
     restoreSnapshot,
     selectFile,
     selectedFile,
     selectedFileOpenInNewTab,
+    setEditEnabled,
+    setEditorMode,
+    setEditorModeWithDefaults,
     setPreview,
     setPreviewError,
     setPreviewState,
-    setRawPreview,
     takeSnapshot,
   };
 };

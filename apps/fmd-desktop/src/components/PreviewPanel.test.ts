@@ -526,20 +526,29 @@ describe("serializeMarkdownFromHtml", () => {
 });
 
 describe("canStartPreviewEdit", () => {
-  it("allows raw preview editing when markdown view editing is disabled", () => {
+  it("allows code-mode preview editing when edit is enabled", () => {
     expect(
       canStartPreviewEdit({
-        rawPreview: true,
-        markdownViewEditEnabled: false,
+        editorMode: "code",
+        editEnabled: true,
       }),
     ).toBe(true);
   });
 
-  it("blocks markdown preview editing when disabled", () => {
+  it("blocks markdown preview editing when edit is disabled", () => {
     expect(
       canStartPreviewEdit({
-        rawPreview: false,
-        markdownViewEditEnabled: false,
+        editorMode: "markdown",
+        editEnabled: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("never starts legacy click-edit in hybrid mode", () => {
+    expect(
+      canStartPreviewEdit({
+        editorMode: "hybrid",
+        editEnabled: true,
       }),
     ).toBe(false);
   });

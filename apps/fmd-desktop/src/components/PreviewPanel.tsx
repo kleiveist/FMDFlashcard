@@ -105,7 +105,7 @@ import {
 } from "./previewMarkdownListCommands";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { SMART_QUERY } from "../lib/breakpoints";
-import { ChevronDownIcon, CodeIcon, EditIcon, MarkdownIcon } from "./icons";
+import { ChevronDownIcon, CodeIcon, EditIcon, GridEventIcon, MarkdownIcon } from "./icons";
 import { FlashcardMediaGroup } from "./flashcards/FlashcardMediaGroup";
 import { SvgPreviewBlock } from "./flashcards/SvgPreviewBlock";
 import { extractSvgCodeBlockSource } from "./markdownSvg";
@@ -1482,6 +1482,8 @@ type MarkdownViewRenderItem =
       blocks: MarkdownBlock[];
     };
 
+type PreviewPanelEditorMode = "code" | "markdown" | "hybrid";
+
 type PreviewPanelProps = {
   editDraft: string;
   editError: string;
@@ -1491,11 +1493,8 @@ type PreviewPanelProps = {
   preview: string;
   previewError: string;
   previewState: LoadState;
-  rawPreview: boolean;
-  markdownViewEditEnabled: boolean;
-  markdownHybridEnabled?: boolean;
-  hybridEditModeInitialActive?: boolean;
-  hybridEditModeInitVersion?: number;
+  editorMode: PreviewPanelEditorMode;
+  editEnabled: boolean;
   documentMode?: MarkdownHybridEditorMode;
   selectedFile: VaultFile | null;
   vaultFiles?: VaultFile[];
@@ -1512,7 +1511,8 @@ type PreviewPanelProps = {
     caretIndex?: number | null;
     origin?: "raw" | "markdown";
   }) => void;
-  onToggleRawPreview: () => void;
+  onSelectEditorMode: (editorMode: PreviewPanelEditorMode) => void | Promise<void>;
+  onToggleEditEnabled: () => void | Promise<void>;
   onWriteSave?: () => void;
   onWriteCancel?: () => void;
   onFrontmatterSave?: (nextPreview: string) => Promise<boolean>;
@@ -1544,25 +1544,13 @@ type PreviewPanelProps = {
   ) => void;
 };
 
-type PendingHybridPostCommitAction =
-  | {
-    kind: "toggle-preview-mode";
-    nextRawPreview: boolean;
-  }
-  | {
-    kind: "toggle-edit-mode";
-  }
-  | {
-    kind: "write-save";
-  };
-
 export const canStartPreviewEdit = ({
-  rawPreview,
-  markdownViewEditEnabled,
+  editorMode,
+  editEnabled,
 }: {
-  rawPreview: boolean;
-  markdownViewEditEnabled: boolean;
-}) => rawPreview || markdownViewEditEnabled;
+  editorMode: PreviewPanelEditorMode;
+  editEnabled: boolean;
+}) => editorMode !== "hybrid" && editEnabled;
 
 const MARKDOWN_EDITABLE_REHIGHLIGHT_DEBOUNCE_MS = 90;
 const MARKDOWN_EDITABLE_REHIGHLIGHT_IDLE_TIMEOUT_MS = 160;
@@ -6567,11 +6555,8 @@ export const PreviewPanel = ({
   preview,
   previewError,
   previewState,
-  rawPreview,
-  markdownViewEditEnabled,
-  markdownHybridEnabled = false,
-  hybridEditModeInitialActive,
-  hybridEditModeInitVersion,
+  editorMode,
+  editEnabled,
   documentMode = "edit",
   selectedFile,
   vaultFiles,
@@ -6585,7 +6570,8 @@ export const PreviewPanel = ({
   onEditCaretApplied,
   onEditExit,
   onEditStart,
-  onToggleRawPreview,
+  onSelectEditorMode,
+  onToggleEditEnabled,
   onWriteSave,
   onWriteCancel,
   onFrontmatterSave,
@@ -6619,18 +6605,11 @@ export const PreviewPanel = ({
   const editableHighlightDebounceHandleRef = useRef(0);
   const editableHighlightCancelIdleRef = useRef<(() => void) | null>(null);
   const editableHighlightRunningRef = useRef(false);
-  const appliedHybridEditModeInitVersionRef = useRef<number | undefined>(
-    hybridEditModeInitVersion,
-  );
+  const onWriteSaveRef = useRef(onWriteSave);
   const [showFrontmatterTextFallback, setShowFrontmatterTextFallback] = useState(false);
   const [userFrontmatterCollapsed, setUserFrontmatterCollapsed] = useState<boolean | null>(
     null,
   );
-  const [isHybridEditModeActive, setIsHybridEditModeActive] = useState(
-    () => hybridEditModeInitialActive ?? true,
-  );
-  const [pendingHybridPostCommitAction, setPendingHybridPostCommitAction] =
-    useState<PendingHybridPostCommitAction | null>(null);
   const [markdownTabStripWidth, setMarkdownTabStripWidth] = useState(0);
   const [activeMarkdownTabFolderLabel, setActiveMarkdownTabFolderLabel] = useState<string | null>(
     null,
@@ -6644,6 +6623,7 @@ export const PreviewPanel = ({
   const isNarrowFrontmatterViewport = useMediaQuery(SMART_QUERY, false);
   const effectiveFrontmatterPanelCollapsed =
     userFrontmatterCollapsed ?? isNarrowFrontmatterViewport;
+  onWriteSaveRef.current = onWriteSave;
 
   const previewFrontmatter = useMemo(
     () => parseFrontmatterDocument(preview),
@@ -6661,27 +6641,16 @@ export const PreviewPanel = ({
     : 0;
   const hasFrontmatterError = previewFrontmatter.hasFrontmatter &&
     Boolean(previewFrontmatter.error);
+  const isCodeMode = editorMode === "code";
+  const isMarkdownMode = editorMode === "markdown";
+  const isHybridMode = editorMode === "hybrid";
+  const resolvedEditEnabled = documentMode === "write"
+    ? true
+    : (isHybridMode ? true : editEnabled);
 
   useEffect(() => {
     setShowFrontmatterTextFallback(false);
   }, [preview]);
-
-  useEffect(() => {
-    if (documentMode === "write") {
-      setIsHybridEditModeActive(true);
-    }
-  }, [documentMode]);
-
-  useEffect(() => {
-    if (typeof hybridEditModeInitVersion === "undefined") {
-      return;
-    }
-    if (appliedHybridEditModeInitVersionRef.current === hybridEditModeInitVersion) {
-      return;
-    }
-    appliedHybridEditModeInitVersionRef.current = hybridEditModeInitVersion;
-    setIsHybridEditModeActive(hybridEditModeInitialActive ?? true);
-  }, [hybridEditModeInitVersion, hybridEditModeInitialActive]);
 
   useLayoutEffect(() => {
     if (markdownTabs.length === 0) {
@@ -7066,7 +7035,7 @@ export const PreviewPanel = ({
   }, []);
 
   useLayoutEffect(() => {
-    if (!isEditing || rawPreview) {
+    if (!isEditing || isCodeMode) {
       markdownEditorReadyRef.current = false;
       if (!isEditing) {
         markdownEditorHtmlRef.current = null;
@@ -7079,10 +7048,10 @@ export const PreviewPanel = ({
     markdownEditorRef.current.innerHTML = markdownEditorHtmlRef.current ?? "";
     markdownEditorReadyRef.current = true;
     syncActiveMarkdownHeading();
-  }, [isEditing, rawPreview, syncActiveMarkdownHeading]);
+  }, [isCodeMode, isEditing, syncActiveMarkdownHeading]);
 
   useEffect(() => {
-    if (!isEditing || rawPreview) {
+    if (!isEditing || isCodeMode) {
       editableHighlightQueueAllRef.current = false;
       editableHighlightQueuedCodesRef.current.clear();
       clearEditableHighlightDebounce();
@@ -7094,13 +7063,13 @@ export const PreviewPanel = ({
   }, [
     cancelEditableHighlightIdle,
     clearEditableHighlightDebounce,
+    isCodeMode,
     isEditing,
     queueEditableCodeRehighlight,
-    rawPreview,
   ]);
 
   useEffect(() => {
-    if (!isEditing || rawPreview) {
+    if (!isEditing || isCodeMode) {
       return;
     }
     const handleSelectionChange = () => {
@@ -7118,11 +7087,11 @@ export const PreviewPanel = ({
     return () => {
       document.removeEventListener("selectionchange", handleSelectionChange);
     };
-  }, [isEditing, rawPreview, syncActiveMarkdownHeading]);
+  }, [isCodeMode, isEditing, syncActiveMarkdownHeading]);
 
   useLayoutEffect(() => {
     if (isEditing) {
-      if (rawPreview) {
+      if (isCodeMode) {
         restoreScroll(editorRef.current);
       } else {
         restoreScroll(markdownEditorScrollRef.current);
@@ -7130,10 +7099,10 @@ export const PreviewPanel = ({
       return;
     }
     restoreScroll(previewRef.current);
-  }, [isEditing, rawPreview, restoreScroll]);
+  }, [isCodeMode, isEditing, restoreScroll]);
 
   useEffect(() => {
-    if (!isEditing || !rawPreview || !editorRef.current) {
+    if (!isEditing || !isCodeMode || !editorRef.current) {
       return;
     }
     if (typeof editCaretIndex !== "number") {
@@ -7151,11 +7120,10 @@ export const PreviewPanel = ({
       onEditCaretApplied();
     });
     return () => window.cancelAnimationFrame(handle);
-  }, [editCaretIndex, isEditing, onEditCaretApplied, rawPreview]);
+  }, [editCaretIndex, isCodeMode, isEditing, onEditCaretApplied]);
 
   useEffect(() => {
-    const isCodeEditEnabled = documentMode === "write" || isHybridEditModeActive;
-    if (!rawPreview || !isCodeEditEnabled || !isEditing || !editorRef.current) {
+    if (!isCodeMode || !resolvedEditEnabled || !isEditing || !editorRef.current) {
       return;
     }
     if (typeof editCaretIndex === "number") {
@@ -7175,10 +7143,10 @@ export const PreviewPanel = ({
       lastCaretIndexRef.current = nextIndex;
     });
     return () => window.cancelAnimationFrame(handle);
-  }, [documentMode, editCaretIndex, isEditing, isHybridEditModeActive, rawPreview]);
+  }, [editCaretIndex, isCodeMode, isEditing, resolvedEditEnabled]);
 
   useEffect(() => {
-    if (!isEditing || rawPreview || !markdownEditorRef.current) {
+    if (!isEditing || isCodeMode || !markdownEditorRef.current) {
       return;
     }
     if (typeof editCaretIndex !== "number") {
@@ -7226,7 +7194,7 @@ export const PreviewPanel = ({
     markdownEditBody,
     markdownEditBodyStartOffset,
     onEditCaretApplied,
-    rawPreview,
+    isCodeMode,
   ]);
 
   const handleCodeCopyClick = useCallback(
@@ -7365,14 +7333,14 @@ export const PreviewPanel = ({
       if (!canEdit || isEditing) {
         return;
       }
-      if (!canStartPreviewEdit({ rawPreview, markdownViewEditEnabled })) {
+      if (!canStartPreviewEdit({ editorMode, editEnabled: resolvedEditEnabled })) {
         return;
       }
-      if (!rawPreview && hasFrontmatterError && showFrontmatterTextFallback) {
+      if (!isCodeMode && hasFrontmatterError && showFrontmatterTextFallback) {
         return;
       }
       const eventElement = resolveEventElement(event.target);
-      if (!rawPreview && eventElement?.closest(".frontmatter-panel, .frontmatter-cover-panel")) {
+      if (!isCodeMode && eventElement?.closest(".frontmatter-panel, .frontmatter-cover-panel")) {
         return;
       }
       if (event.button !== 0) {
@@ -7387,21 +7355,21 @@ export const PreviewPanel = ({
           return;
         }
       }
-      const origin = rawPreview ? "raw" : "markdown";
+      const origin = isCodeMode ? "raw" : "markdown";
       const bodyStartOffset = previewFrontmatter.hasFrontmatter
         ? previewFrontmatter.bodyStartOffset
         : 0;
       const markdownSource = previewFrontmatter.hasFrontmatter
         ? previewFrontmatter.body
         : preview;
-      let caretIndex = rawPreview
+      let caretIndex = isCodeMode
         ? preview.length === 0
           ? 0
           : null
         : markdownSource.length === 0
           ? bodyStartOffset
           : null;
-      const selectionContainer = rawPreview
+      const selectionContainer = isCodeMode
         ? previewRef.current
         : (markdownViewRef.current ?? previewRef.current);
       if (selectionContainer) {
@@ -7411,27 +7379,27 @@ export const PreviewPanel = ({
           return;
         }
         const range = getRangeFromEvent(event, selectionContainer);
-        const resolvedIndex = rawPreview
+        const resolvedIndex = isCodeMode
           ? resolveRawCaretIndex(selectionContainer, range)
           : resolveMarkdownCaretIndex(selectionContainer, markdownSource, range);
         if (typeof resolvedIndex === "number") {
-          caretIndex = rawPreview ? resolvedIndex : bodyStartOffset + resolvedIndex;
+          caretIndex = isCodeMode ? resolvedIndex : bodyStartOffset + resolvedIndex;
         }
-        if (!rawPreview) {
+        if (!isCodeMode) {
           markdownEditorHtmlRef.current = buildEditableMarkdownHtml(
             selectionContainer,
             markdownSource,
           );
         }
-      } else if (!rawPreview) {
+      } else if (!isCodeMode) {
         markdownEditorHtmlRef.current = "";
       }
       if (caretIndex === null) {
         if (typeof lastCaretIndexRef.current === "number") {
           caretIndex = lastCaretIndexRef.current;
-        } else if (rawPreview && preview.length > 0) {
+        } else if (isCodeMode && preview.length > 0) {
           caretIndex = preview.length;
-        } else if (!rawPreview && markdownSource.length > 0) {
+        } else if (!isCodeMode && markdownSource.length > 0) {
           caretIndex = bodyStartOffset + markdownSource.length;
         }
       }
@@ -7443,15 +7411,16 @@ export const PreviewPanel = ({
     [
       canEdit,
       captureScroll,
+      editorMode,
+      isCodeMode,
       isEditing,
-      markdownViewEditEnabled,
       onEditStart,
       preview,
+      resolvedEditEnabled,
       hasFrontmatterError,
       previewFrontmatter.body,
       previewFrontmatter.bodyStartOffset,
       previewFrontmatter.hasFrontmatter,
-      rawPreview,
       showFrontmatterTextFallback,
     ],
   );
@@ -7789,26 +7758,26 @@ export const PreviewPanel = ({
     [renderMarkdownCodePre, selectedFile?.relative_path, sourceRelativePath, vaultPath, vaultPngAssets],
   );
 
-  const markdownSource = rawPreview
+  const markdownSource = isCodeMode
     ? preview
     : hasFrontmatterError && showFrontmatterTextFallback
       ? preview
       : markdownPreviewBody;
-  const normalizedMarkdownSource = rawPreview
+  const normalizedMarkdownSource = isCodeMode
     ? preview
     : normalizeTableSpacingForRender(markdownSource);
-  const renderedPreview = rawPreview
+  const renderedPreview = isCodeMode
     ? preview
-    : markdownViewEditEnabled
+    : isMarkdownMode && resolvedEditEnabled
       ? normalizedMarkdownSource
       : applyInteractionSpacing(normalizedMarkdownSource);
   const markdownViewBlocks = useMemo(
     () => (
-      rawPreview
+      isCodeMode
         ? []
         : parseMarkdownBlocks(enforceStandaloneMediaBlockBoundaries(renderedPreview))
     ),
-    [rawPreview, renderedPreview],
+    [isCodeMode, renderedPreview],
   );
   const markdownViewItems = useMemo(() => {
     if (markdownViewBlocks.length === 0) {
@@ -7857,10 +7826,10 @@ export const PreviewPanel = ({
     pushActiveGroup();
     return items;
   }, [markdownViewBlocks]);
-  const hasVisiblePreviewContent = rawPreview
+  const hasVisiblePreviewContent = isCodeMode
     ? preview.length > 0
     : markdownSource.length > 0;
-  const isEditModeActive = documentMode === "write" || isHybridEditModeActive;
+  const isEditModeActive = resolvedEditEnabled;
   const frontmatterPanelSource = useMemo(() => {
     if (previewFrontmatter.hasFrontmatter && !previewFrontmatter.error) {
       return {
@@ -7900,36 +7869,33 @@ export const PreviewPanel = ({
     editFrontmatter.properties,
     editDraft,
   ]);
-  const showFrontmatterPanel = !rawPreview &&
+  const showFrontmatterPanel = !isCodeMode &&
     previewState === "idle" &&
     frontmatterPanelSource !== null;
   const canUseHybridMarkdownEditor = Boolean(
-    markdownHybridEnabled &&
+    isHybridMode &&
       canEdit &&
       previewState === "idle" &&
       !hasFrontmatterError,
   );
-  const viewMode = rawPreview ? "code" : "preview";
-  const editEnabled = isEditModeActive;
-  const showMarkdownEditor = markdownViewEditEnabled && !rawPreview;
+  const showMarkdownEditor = isMarkdownMode && resolvedEditEnabled;
   const showHybridMarkdownEditor = Boolean(
     canUseHybridMarkdownEditor &&
-      !rawPreview &&
-      editEnabled,
+      resolvedEditEnabled,
   );
   const shouldAutoManageRawCodeEditSession = Boolean(
-    rawPreview &&
+    isCodeMode &&
       canEdit &&
       selectedFile &&
       previewState === "idle",
   );
-  const disableLegacyPreviewClick = Boolean(markdownHybridEnabled);
+  const disableLegacyPreviewClick = isHybridMode;
   const canToggleEditMode = Boolean(
-    markdownHybridEnabled &&
+    !isHybridMode &&
+      canEdit &&
       selectedFile &&
       previewState === "idle" &&
-      documentMode !== "write" &&
-      !hasFrontmatterError,
+      documentMode !== "write",
   );
   const renderMarkdownViewBlock = useCallback(
     (block: MarkdownBlock, keyPrefix: string) => {
@@ -8008,75 +7974,51 @@ export const PreviewPanel = ({
     return result ?? true;
   }, [showHybridMarkdownEditor]);
 
-  const handleTogglePreviewMode = useCallback(
-    async (nextRawPreview: boolean) => {
-      if (rawPreview === nextRawPreview) {
+  const handleSelectEditorModeClick = useCallback(
+    async (nextEditorMode: PreviewPanelEditorMode) => {
+      if (editorMode === nextEditorMode) {
         return;
       }
-      if (!rawPreview && !nextRawPreview) {
-        return;
-      }
-      if (!rawPreview) {
+      if (isHybridMode) {
         if (!await commitHybridEditIfNeeded()) {
           return;
         }
-        setPendingHybridPostCommitAction({
-          kind: "toggle-preview-mode",
-          nextRawPreview,
-        });
-        return;
       }
-      onToggleRawPreview();
+      await onSelectEditorMode(nextEditorMode);
     },
-    [commitHybridEditIfNeeded, onToggleRawPreview, rawPreview],
+    [commitHybridEditIfNeeded, editorMode, isHybridMode, onSelectEditorMode],
   );
 
-  const handleHybridEditModeToggle = useCallback(async () => {
+  const handleEditModeToggle = useCallback(async () => {
     if (!canToggleEditMode) {
       return;
     }
-    if (isEditModeActive) {
-      if (!await commitHybridEditIfNeeded()) {
-        return;
-      }
-      setPendingHybridPostCommitAction({ kind: "toggle-edit-mode" });
-      return;
-    }
-    setIsHybridEditModeActive(true);
-  }, [canToggleEditMode, commitHybridEditIfNeeded, isEditModeActive]);
+    await onToggleEditEnabled();
+  }, [canToggleEditMode, onToggleEditEnabled]);
 
-  const handleHybridWriteCancel = useCallback(async () => {
-    if (!await discardHybridEditIfNeeded()) {
+  const handleWriteCancelClick = useCallback(async () => {
+    if (isHybridMode && !await discardHybridEditIfNeeded()) {
       return;
     }
     onWriteCancel?.();
-  }, [discardHybridEditIfNeeded, onWriteCancel]);
+  }, [discardHybridEditIfNeeded, isHybridMode, onWriteCancel]);
 
-  const handleHybridWriteSave = useCallback(async () => {
-    if (!await commitHybridEditIfNeeded()) {
+  const handleWriteSaveClick = useCallback(async () => {
+    if (isHybridMode && !await commitHybridEditIfNeeded()) {
       return;
     }
-    setPendingHybridPostCommitAction({ kind: "write-save" });
-  }, [commitHybridEditIfNeeded]);
-
-  useEffect(() => {
-    if (!pendingHybridPostCommitAction) {
-      return;
+    if (isHybridMode) {
+      await Promise.resolve();
+      await new Promise<void>((resolve) => {
+        if (typeof window === "undefined" || typeof window.requestAnimationFrame !== "function") {
+          setTimeout(resolve, 0);
+          return;
+        }
+        window.requestAnimationFrame(() => resolve());
+      });
     }
-    const action = pendingHybridPostCommitAction;
-    setPendingHybridPostCommitAction(null);
-    if (action.kind === "toggle-edit-mode") {
-      setIsHybridEditModeActive((current) => !current);
-      return;
-    }
-    if (action.kind === "write-save") {
-      onWriteSave?.();
-      return;
-    }
-    if (rawPreview !== action.nextRawPreview) {
-      onToggleRawPreview();
-    }
-  }, [onToggleRawPreview, onWriteSave, pendingHybridPostCommitAction, rawPreview]);
+    onWriteSaveRef.current?.();
+  }, [commitHybridEditIfNeeded, isHybridMode]);
 
   const handleToggleFrontmatterPanelCollapsed = useCallback(() => {
     setUserFrontmatterCollapsed(
@@ -8369,7 +8311,7 @@ export const PreviewPanel = ({
       return;
     }
 
-    if (editEnabled) {
+    if (resolvedEditEnabled) {
       rawCodeToggleClosePendingRef.current = false;
       if (isEditing) {
         return;
@@ -8388,7 +8330,7 @@ export const PreviewPanel = ({
     suppressRawEditorBlurExitRef.current = true;
     void onEditExit();
   }, [
-    editEnabled,
+    resolvedEditEnabled,
     isEditing,
     onEditExit,
     onEditStart,
@@ -8400,8 +8342,8 @@ export const PreviewPanel = ({
     <section
       className="panel preview-panel"
       style={markdownEditorStyle}
-      data-view-mode={viewMode}
-      data-edit-enabled={editEnabled ? "true" : "false"}
+      data-editor-mode={editorMode}
+      data-edit-enabled={resolvedEditEnabled ? "true" : "false"}
     >
       <div className="panel-header">
         <div>
@@ -8411,14 +8353,14 @@ export const PreviewPanel = ({
           </p>
         </div>
         <div className="preview-actions">
-          <div className="preview-mode-toggle" role="group" aria-label="Preview mode">
+          <div className="preview-mode-toggle" role="group" aria-label="Editor mode">
             <button
               type="button"
-              className={`ghost small preview-mode-button ${rawPreview ? "active" : ""}`}
+              className={`ghost small preview-mode-button ${isCodeMode ? "active" : ""}`}
               onClick={() => {
-                void handleTogglePreviewMode(true);
+                void handleSelectEditorModeClick("code");
               }}
-              aria-pressed={rawPreview}
+              aria-pressed={isCodeMode}
               disabled={!selectedFile}
               aria-label="Code view"
               title="Code view"
@@ -8427,11 +8369,11 @@ export const PreviewPanel = ({
             </button>
             <button
               type="button"
-              className={`ghost small preview-mode-button ${!rawPreview ? "active" : ""}`}
+              className={`ghost small preview-mode-button ${isMarkdownMode ? "active" : ""}`}
               onClick={() => {
-                void handleTogglePreviewMode(false);
+                void handleSelectEditorModeClick("markdown");
               }}
-              aria-pressed={!rawPreview}
+              aria-pressed={isMarkdownMode}
               disabled={!selectedFile}
               aria-label="Markdown view"
               title="Markdown view"
@@ -8440,31 +8382,46 @@ export const PreviewPanel = ({
             </button>
             <button
               type="button"
-              className={`ghost small preview-mode-button ${
-                isEditModeActive ? "active edit-active" : ""
-              }`}
+              className={`ghost small preview-mode-button ${isHybridMode ? "active" : ""}`}
               onClick={() => {
-                void handleHybridEditModeToggle();
+                void handleSelectEditorModeClick("hybrid");
               }}
-              aria-pressed={isEditModeActive}
-              disabled={!canToggleEditMode}
-              aria-label="Edit mode"
-              title={
-                documentMode === "write"
-                  ? "Edit mode is required while writing"
-                  : "Toggle edit mode"
-              }
+              aria-pressed={isHybridMode}
+              disabled={!selectedFile}
+              aria-label="Markdown hybrid edit mode"
+              title="Markdown hybrid edit mode"
             >
-              <EditIcon />
+              <GridEventIcon />
             </button>
           </div>
+          <button
+            type="button"
+            className={`ghost small preview-mode-button preview-mode-edit-button ${
+              resolvedEditEnabled ? "active edit-active" : ""
+            } ${isHybridMode ? "is-forced-info" : ""}`}
+            onClick={() => {
+              void handleEditModeToggle();
+            }}
+            aria-pressed={resolvedEditEnabled}
+            disabled={!canToggleEditMode}
+            aria-label={isHybridMode ? "Edit mode (always enabled)" : "Toggle edit mode"}
+            title={
+              isHybridMode
+                ? "Edit mode is always enabled in Markdown hybrid edit mode"
+                : documentMode === "write"
+                  ? "Edit mode is required while writing"
+                  : "Toggle edit mode"
+            }
+          >
+            <EditIcon />
+          </button>
           {documentMode === "write" && selectedFile ? (
             <>
               <button
                 type="button"
                 className="ghost small"
                 onClick={() => {
-                  void handleHybridWriteCancel();
+                  void handleWriteCancelClick();
                 }}
                 disabled={!selectedFile}
               >
@@ -8474,7 +8431,7 @@ export const PreviewPanel = ({
                 type="button"
                 className="primary small"
                 onClick={() => {
-                  void handleHybridWriteSave();
+                  void handleWriteSaveClick();
                 }}
                 disabled={!selectedFile}
               >
@@ -8571,7 +8528,7 @@ export const PreviewPanel = ({
         {previewState === "error" ? (
           <div className="error">{previewError}</div>
         ) : null}
-        {previewState === "idle" && !rawPreview && previewFrontmatter.hasFrontmatter &&
+        {previewState === "idle" && !isCodeMode && previewFrontmatter.hasFrontmatter &&
         previewFrontmatter.error ? (
           <section className="frontmatter-panel frontmatter-panel-error" aria-label="Eigenschaften">
             <div className="frontmatter-header">
@@ -8653,8 +8610,8 @@ export const PreviewPanel = ({
                     renderHybridMarkdownPreview(normalizeTableSpacingForRender(source))}
                 />
               </div>
-            ) : isEditing && (!rawPreview || editEnabled) ? (
-              rawPreview ? (
+            ) : isEditing && (isCodeMode || showMarkdownEditor) ? (
+              isCodeMode ? (
                 <textarea
                   key="raw-edit"
                   ref={editorRef}
@@ -8665,7 +8622,7 @@ export const PreviewPanel = ({
                   onBlur={handleRawEditorBlur}
                   onScroll={(event) => captureScroll(event.currentTarget)}
                   aria-label="Edit markdown preview"
-                  readOnly={!editEnabled}
+                  readOnly={!resolvedEditEnabled}
                 />
               ) : showMarkdownEditor ? (
                 <div
@@ -8719,14 +8676,14 @@ export const PreviewPanel = ({
               ) : null
             ) : hasVisiblePreviewContent ? (
               <div
-                key={rawPreview ? "raw-view" : "markdown-view"}
+                key={isCodeMode ? "raw-view" : "markdown-view"}
                 ref={previewRef}
-                className={`preview ${rawPreview ? "raw" : "markdown"}${
-                  rawPreview ? "" : " md-preview"
+                className={`preview ${isCodeMode ? "raw" : "markdown"}${
+                  isCodeMode ? "" : " md-preview"
                 }`}
                 onScroll={(event) => captureScroll(event.currentTarget)}
               >
-                {rawPreview ? (
+                {isCodeMode ? (
                   <pre>{preview}</pre>
                 ) : (
                   <>

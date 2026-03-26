@@ -121,10 +121,6 @@ const DashboardPageInner = (
   const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
   const [isHybridBlockDirty, setIsHybridBlockDirty] = useState(false);
   const [documentMode, setDocumentMode] = useState<MarkdownDocumentMode>("edit");
-  const [hybridEditModeDefaultActive, setHybridEditModeDefaultActive] = useState(
-    () => settings.markdownPreviewDefaultMode !== "markdown",
-  );
-  const [hybridEditModeInitVersion, setHybridEditModeInitVersion] = useState(0);
   const [pendingWriteFilePath, setPendingWriteFilePath] = useState<string | null>(null);
   const [markdownTabs, setMarkdownTabs] = useState<MarkdownEditorTab[]>([]);
   const [vaultView, setVaultView] = useState<DashboardView>(initialVaultView);
@@ -426,9 +422,11 @@ const DashboardPageInner = (
       return;
     }
     const defaultMode = settings.markdownPreviewDefaultMode;
-    preview.setRawPreview(defaultMode === "raw");
-    setHybridEditModeDefaultActive(defaultMode !== "markdown");
-    setHybridEditModeInitVersion((current) => current + 1);
+    const nextEditorMode =
+      defaultMode === "raw"
+        ? "code"
+        : defaultMode;
+    preview.setEditorModeWithDefaults(nextEditorMode);
     didApplyPreviewDefaultModeRef.current = true;
   }, [
     isEditing,
@@ -609,13 +607,10 @@ const DashboardPageInner = (
     if (documentMode !== "edit") {
       return;
     }
-    if (preview.rawPreview || isEditing) {
+    if (preview.editorMode !== "markdown" || isEditing) {
       return;
     }
     if (isHybridBlockDirty) {
-      return;
-    }
-    if (!settings.markdownViewEditEnabled) {
       return;
     }
     if (!preview.selectedFile || preview.previewState !== "idle") {
@@ -634,11 +629,10 @@ const DashboardPageInner = (
     isHybridBlockDirty,
     isEditing,
     isSaving,
+    preview.editorMode,
     preview.previewState,
-    preview.rawPreview,
     preview.selectedFile,
     saveDraftToDisk,
-    settings.markdownViewEditEnabled,
     vaultView,
   ]);
 
@@ -656,12 +650,16 @@ const DashboardPageInner = (
     setEditCaretIndex(null);
   }, [preview.preview, preview.selectedFile?.path]);
 
-  const persistMarkdownBeforeNavigation = useCallback(async () => {
+  const persistMarkdownBeforeNavigation = useCallback(async (
+    options?: {
+      skipHybridDirtyCheck?: boolean;
+    },
+  ) => {
     if (documentMode === "write") {
       setEditError("Bitte Write-Entwurf zuerst speichern oder abbrechen.");
       return false;
     }
-    if (isHybridBlockDirty) {
+    if (isHybridBlockDirty && !options?.skipHybridDirtyCheck) {
       setEditError("Bitte den aktiven Block zuerst abschliessen.");
       return false;
     }
@@ -671,7 +669,6 @@ const DashboardPageInner = (
     if (
       documentMode === "edit" &&
       vaultView === "markdown" &&
-      settings.markdownViewEditEnabled &&
       hasUnsavedMarkdownDraftChanges
     ) {
       return saveDraftToDisk();
@@ -684,7 +681,6 @@ const DashboardPageInner = (
     isHybridBlockDirty,
     isEditing,
     saveDraftToDisk,
-    settings.markdownViewEditEnabled,
     vaultView,
   ]);
 
@@ -1005,12 +1001,31 @@ const DashboardPageInner = (
     [handleVaultViewChange, runDashboardNavigationGuard],
   );
 
-  const handleToggleRawPreview = useCallback(async () => {
+  const handleSelectEditorMode = useCallback(async (
+    nextEditorMode: Parameters<typeof preview.setEditorModeWithDefaults>[0],
+  ) => {
+    if (preview.editorMode === nextEditorMode) {
+      return;
+    }
+    const saved = await persistMarkdownBeforeNavigation({
+      skipHybridDirtyCheck: preview.editorMode === "hybrid",
+    });
+    if (!saved) {
+      return;
+    }
+    preview.setEditorModeWithDefaults(nextEditorMode);
+  }, [persistMarkdownBeforeNavigation, preview]);
+
+  const handleToggleEditEnabled = useCallback(async () => {
+    if (preview.editorMode === "hybrid") {
+      preview.setEditEnabled(true);
+      return;
+    }
     const saved = await persistMarkdownBeforeNavigation();
     if (!saved) {
       return;
     }
-    preview.setRawPreview((current) => !current);
+    preview.setEditEnabled((current) => !current);
   }, [persistMarkdownBeforeNavigation, preview]);
   const handleEditCaretApplied = useCallback(() => {
     setEditCaretIndex(null);
@@ -1329,12 +1344,9 @@ const DashboardPageInner = (
             preview={preview.preview}
             previewError={preview.previewError}
             previewState={preview.previewState}
-            rawPreview={preview.rawPreview}
-            markdownViewEditEnabled={settings.markdownViewEditEnabled}
+            editorMode={preview.editorMode}
+            editEnabled={preview.editEnabled}
             documentMode={documentMode}
-            markdownHybridEnabled
-            hybridEditModeInitialActive={hybridEditModeDefaultActive}
-            hybridEditModeInitVersion={hybridEditModeInitVersion}
             selectedFile={preview.selectedFile}
             vaultFiles={vault.files}
             vaultPngAssets={vault.pngAssets}
@@ -1347,7 +1359,8 @@ const DashboardPageInner = (
             onEditCaretApplied={handleEditCaretApplied}
             onEditExit={handleEditAutosave}
             onEditStart={handleEditStart}
-            onToggleRawPreview={handleToggleRawPreview}
+            onSelectEditorMode={handleSelectEditorMode}
+            onToggleEditEnabled={handleToggleEditEnabled}
             onWriteSave={handleWriteSave}
             onWriteCancel={handleWriteCancel}
             onFrontmatterSave={handleFrontmatterSave}

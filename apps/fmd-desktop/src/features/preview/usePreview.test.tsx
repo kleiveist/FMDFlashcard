@@ -27,17 +27,7 @@ const createDeferred = <T,>(): Deferred<T> => {
   return { promise, resolve, reject };
 };
 
-type PreviewHookValue = {
-  preview: string;
-  previewError: string;
-  previewState: string;
-  selectedFile: { path: string; relative_path: string } | null;
-  selectFile: (
-    file: { path: string; relative_path: string },
-    options?: { openInNewTab?: boolean },
-  ) => Promise<void>;
-  resetPreview: () => void;
-};
+type PreviewHookValue = ReturnType<typeof usePreview>;
 
 const renderHook = (
   onValue: (value: PreviewHookValue) => void,
@@ -171,6 +161,94 @@ describe("usePreview", () => {
     expect(getLatestValue().preview).toBe("");
     expect(getLatestValue().previewState).toBe("idle");
     expect(getLatestValue().previewError).toBe("");
+
+    cleanup();
+  });
+
+  it("applies editor mode defaults on mode switches", () => {
+    vi.clearAllMocks();
+    let latestValue: PreviewHookValue | null = null;
+    const { cleanup } = renderHook((value) => {
+      latestValue = value;
+    });
+    const getLatestValue = () => {
+      expect(latestValue).toBeTruthy();
+      return latestValue as PreviewHookValue;
+    };
+
+    expect(getLatestValue().editorMode).toBe("markdown");
+    expect(getLatestValue().editEnabled).toBe(false);
+
+    act(() => {
+      getLatestValue().setEditorModeWithDefaults("code");
+    });
+    expect(getLatestValue().editorMode).toBe("code");
+    expect(getLatestValue().editEnabled).toBe(true);
+
+    act(() => {
+      getLatestValue().setEditEnabled(false);
+    });
+    expect(getLatestValue().editEnabled).toBe(false);
+
+    act(() => {
+      getLatestValue().setEditorModeWithDefaults("markdown");
+    });
+    expect(getLatestValue().editorMode).toBe("markdown");
+    expect(getLatestValue().editEnabled).toBe(false);
+
+    act(() => {
+      getLatestValue().setEditorModeWithDefaults("hybrid");
+    });
+    expect(getLatestValue().editorMode).toBe("hybrid");
+    expect(getLatestValue().editEnabled).toBe(true);
+
+    cleanup();
+  });
+
+  it("keeps edit enabled forced while hybrid mode is active", () => {
+    vi.clearAllMocks();
+    let latestValue: PreviewHookValue | null = null;
+    const { cleanup } = renderHook((value) => {
+      latestValue = value;
+    });
+    const getLatestValue = () => {
+      expect(latestValue).toBeTruthy();
+      return latestValue as PreviewHookValue;
+    };
+
+    act(() => {
+      getLatestValue().setEditorModeWithDefaults("hybrid");
+      getLatestValue().setEditEnabled(false);
+    });
+
+    expect(getLatestValue().editorMode).toBe("hybrid");
+    expect(getLatestValue().editEnabled).toBe(true);
+
+    cleanup();
+  });
+
+  it("normalizes invalid hybrid snapshots during restore", () => {
+    vi.clearAllMocks();
+    let latestValue: PreviewHookValue | null = null;
+    const { cleanup } = renderHook((value) => {
+      latestValue = value;
+    });
+    const getLatestValue = () => {
+      expect(latestValue).toBeTruthy();
+      return latestValue as PreviewHookValue;
+    };
+
+    const snapshot = getLatestValue().takeSnapshot();
+    act(() => {
+      getLatestValue().restoreSnapshot({
+        ...snapshot,
+        editorMode: "hybrid",
+        editEnabled: false,
+      });
+    });
+
+    expect(getLatestValue().editorMode).toBe("hybrid");
+    expect(getLatestValue().editEnabled).toBe(true);
 
     cleanup();
   });

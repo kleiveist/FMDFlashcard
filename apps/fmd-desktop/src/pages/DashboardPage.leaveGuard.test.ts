@@ -213,8 +213,10 @@ const createMockAppState = ({
       preview: previewMarkdown,
       previewState,
       previewError: "",
-      rawPreview: false,
-      setRawPreview: vi.fn(),
+      editorMode: "markdown",
+      editEnabled: false,
+      setEditorModeWithDefaults: vi.fn(),
+      setEditEnabled: vi.fn(),
       setPreview: vi.fn(),
       resetPreview: vi.fn(),
     },
@@ -384,29 +386,25 @@ describe("DashboardPage exam leave guard", () => {
   });
 
   it.each([
-    { mode: "markdown", expectedRawPreview: false, expectedHybridStart: false },
-    { mode: "raw", expectedRawPreview: true, expectedHybridStart: true },
-    { mode: "hybrid", expectedRawPreview: false, expectedHybridStart: true },
+    { mode: "markdown", expectedEditorMode: "markdown" },
+    { mode: "raw", expectedEditorMode: "code" },
+    { mode: "hybrid", expectedEditorMode: "hybrid" },
   ] as const)(
-    "applies markdown default mode '$mode' to preview + hybrid start",
-    ({ mode, expectedRawPreview, expectedHybridStart }) => {
+    "applies markdown default mode '$mode' to preview editor mode",
+    ({ mode, expectedEditorMode }) => {
       const handleSelectFile = vi.fn();
       const appState = createMockAppState({
         handleSelectFile,
         markdownPreviewDefaultMode: mode,
       });
-      const setRawPreviewMock = appState.preview.setRawPreview as ReturnType<typeof vi.fn>;
+      const setEditorModeWithDefaultsMock =
+        appState.preview.setEditorModeWithDefaults as ReturnType<typeof vi.fn>;
       const { cleanup } = renderDashboard({
         initialVaultView: "markdown",
         appState,
       });
 
-      expect(setRawPreviewMock).toHaveBeenCalledWith(expectedRawPreview);
-
-      const latestProps = getLatestPreviewPanelProps();
-      expect(latestProps?.hybridEditModeInitialActive).toBe(expectedHybridStart);
-      expect(typeof latestProps?.hybridEditModeInitVersion).toBe("number");
-      expect((latestProps?.hybridEditModeInitVersion as number) > 0).toBe(true);
+      expect(setEditorModeWithDefaultsMock).toHaveBeenCalledWith(expectedEditorMode);
 
       cleanup();
     },

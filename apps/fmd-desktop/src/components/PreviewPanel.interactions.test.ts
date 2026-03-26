@@ -221,8 +221,10 @@ const setElementBoundingRect = (
 };
 
 const triggerResize = (target: Element) => {
-  resizeObserverInstances.forEach((observer) => {
-    observer.notify(target);
+  act(() => {
+    resizeObserverInstances.forEach((observer) => {
+      observer.notify(target);
+    });
   });
 };
 
@@ -241,10 +243,10 @@ const resizeMarkdownTabStrip = async (container: ParentNode, width: number) => {
 const buildHarness = (
   markdown: string,
   options: {
+    editorMode?: "code" | "markdown" | "hybrid";
+    editEnabled?: boolean;
     markdownViewEditEnabled?: boolean;
     markdownHybridEnabled?: boolean;
-    hybridEditModeInitialActive?: boolean;
-    hybridEditModeInitVersion?: number;
     rawPreview?: boolean;
     onFrontmatterSave?: (nextPreview: string) => Promise<boolean>;
     onNavigateWikilink?: (wikilink: string) => void;
@@ -267,10 +269,10 @@ const buildHarness = (
 ) => {
   const onEditExit = vi.fn();
   const {
+    editorMode,
+    editEnabled,
     markdownViewEditEnabled = true,
     markdownHybridEnabled = false,
-    hybridEditModeInitialActive,
-    hybridEditModeInitVersion,
     rawPreview = false,
     onFrontmatterSave,
     onNavigateWikilink,
@@ -286,11 +288,29 @@ const buildHarness = (
     onCloseMarkdownTab,
     onReorderMarkdownTabs,
   } = options;
+  const resolvedEditorMode = editorMode ??
+    (rawPreview
+      ? "code"
+      : markdownHybridEnabled
+        ? "hybrid"
+        : "markdown");
+  const resolvedEditEnabled =
+    typeof editEnabled === "boolean"
+      ? editEnabled
+      : resolvedEditorMode === "hybrid"
+        ? true
+        : resolvedEditorMode === "code"
+          ? true
+          : Boolean(markdownViewEditEnabled);
 
   const Harness = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [editDraft, setEditDraft] = useState(markdown);
     const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
+    const [currentEditorMode, setCurrentEditorMode] = useState<
+      "code" | "markdown" | "hybrid"
+    >(resolvedEditorMode);
+    const [currentEditEnabled, setCurrentEditEnabled] = useState(resolvedEditEnabled);
 
     const handleEditStart = useCallback(
       (options?: { caretIndex?: number | null }) => {
@@ -303,6 +323,20 @@ const buildHarness = (
       [markdown],
     );
 
+    const handleSelectEditorMode = useCallback(
+      (nextMode: "code" | "markdown" | "hybrid") => {
+        setCurrentEditorMode(nextMode);
+        setCurrentEditEnabled(nextMode === "markdown" ? false : true);
+      },
+      [],
+    );
+
+    const handleToggleEditEnabled = useCallback(() => {
+      setCurrentEditEnabled((current) => (
+        currentEditorMode === "hybrid" ? true : !current
+      ));
+    }, [currentEditorMode]);
+
     return createElement(PreviewPanel, {
       editDraft,
       editError: "",
@@ -312,11 +346,8 @@ const buildHarness = (
       preview: markdown,
       previewError: "",
       previewState: "idle",
-      rawPreview,
-      markdownViewEditEnabled,
-      markdownHybridEnabled,
-      hybridEditModeInitialActive,
-      hybridEditModeInitVersion,
+      editorMode: currentEditorMode,
+      editEnabled: currentEditEnabled,
       selectedFile: baseFile,
       vaultPath,
       sourceRelativePath,
@@ -327,7 +358,8 @@ const buildHarness = (
       onEditCaretApplied: () => setEditCaretIndex(null),
       onEditExit,
       onEditStart: handleEditStart,
-      onToggleRawPreview: () => {},
+      onSelectEditorMode: handleSelectEditorMode,
+      onToggleEditEnabled: handleToggleEditEnabled,
       onFrontmatterSave,
       onNavigateWikilink,
       valueSuggestionsByKey,
@@ -866,7 +898,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(editor).toBeNull();
   });
 
-  it("keeps the hybrid edit mode toggle state when switching markdown files", async () => {
+  it("keeps hybrid edit mode enforced when switching markdown files", () => {
     const secondFile: VaultFile = {
       path: "/vault/Second.md",
       relative_path: "Second.md",
@@ -902,9 +934,8 @@ describe("PreviewPanel edit-safe interactions", () => {
           preview: previewMarkdown,
           previewError: "",
           previewState: "idle",
-          rawPreview: false,
-          markdownViewEditEnabled: true,
-          markdownHybridEnabled: true,
+          editorMode: "hybrid",
+          editEnabled: true,
           selectedFile,
           vaultPath: "/vault",
           sourceRelativePath: selectedFile.relative_path,
@@ -913,7 +944,8 @@ describe("PreviewPanel edit-safe interactions", () => {
           onEditCaretApplied: () => {},
           onEditExit: async () => {},
           onEditStart: () => {},
-          onToggleRawPreview: () => {},
+          onSelectEditorMode: () => {},
+          onToggleEditEnabled: () => {},
         }),
       );
     };
@@ -922,21 +954,11 @@ describe("PreviewPanel edit-safe interactions", () => {
     cleanup = localCleanup;
 
     const editToggleBefore = container.querySelector(
-      'button[aria-label="Edit mode"]',
+      'button[aria-label="Edit mode (always enabled)"]',
     ) as HTMLButtonElement | null;
     expect(editToggleBefore).toBeTruthy();
-    expect(editToggleBefore?.disabled).toBe(false);
+    expect(editToggleBefore?.disabled).toBe(true);
     expect(editToggleBefore?.getAttribute("aria-pressed")).toBe("true");
-
-    await act(async () => {
-      editToggleBefore?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    await flushAsyncInteraction();
-
-    const editToggleAfterDisable = container.querySelector(
-      'button[aria-label="Edit mode"]',
-    ) as HTMLButtonElement | null;
-    expect(editToggleAfterDisable?.getAttribute("aria-pressed")).toBe("false");
 
     const switchFileButton = container.querySelector(
       'button[data-testid="switch-file"]',
@@ -948,37 +970,17 @@ describe("PreviewPanel edit-safe interactions", () => {
     });
 
     const editToggleAfterSwitch = container.querySelector(
-      'button[aria-label="Edit mode"]',
+      'button[aria-label="Edit mode (always enabled)"]',
     ) as HTMLButtonElement | null;
     expect(editToggleAfterSwitch).toBeTruthy();
-    expect(editToggleAfterSwitch?.getAttribute("aria-pressed")).toBe("false");
+    expect(editToggleAfterSwitch?.disabled).toBe(true);
+    expect(editToggleAfterSwitch?.getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("starts in markdown view when hybrid init trigger sets edit mode inactive", () => {
-    const { container, cleanup: localCleanup } = buildHarness("Hybrid start off", {
-      markdownHybridEnabled: true,
-      hybridEditModeInitialActive: false,
-      hybridEditModeInitVersion: 1,
-    });
-    cleanup = localCleanup;
-
-    expect(
-      container.querySelector(
-        ".preview.preview-editor.markdown.md-preview.markdown-hybrid-surface",
-      ),
-    ).toBeNull();
-    expect(container.querySelector(".preview.markdown.md-preview")).toBeTruthy();
-    expect(
-      (container.querySelector('button[aria-label="Edit mode"]') as HTMLButtonElement | null)
-        ?.getAttribute("aria-pressed"),
-    ).toBe("false");
-  });
-
-  it("starts in hybrid mode when hybrid init trigger sets edit mode active", () => {
-    const { container, cleanup: localCleanup } = buildHarness("Hybrid start on", {
-      markdownHybridEnabled: true,
-      hybridEditModeInitialActive: true,
-      hybridEditModeInitVersion: 1,
+  it("enforces edit enabled in hybrid mode even when editEnabled prop is false", () => {
+    const { container, cleanup: localCleanup } = buildHarness("Hybrid forced", {
+      editorMode: "hybrid",
+      editEnabled: false,
     });
     cleanup = localCleanup;
 
@@ -987,105 +989,126 @@ describe("PreviewPanel edit-safe interactions", () => {
         ".preview.preview-editor.markdown.md-preview.markdown-hybrid-surface",
       ),
     ).toBeTruthy();
+    const root = container.querySelector(".preview-panel");
+    expect(root?.getAttribute("data-editor-mode")).toBe("hybrid");
+    expect(root?.getAttribute("data-edit-enabled")).toBe("true");
     expect(
-      (container.querySelector('button[aria-label="Edit mode"]') as HTMLButtonElement | null)
-        ?.getAttribute("aria-pressed"),
+      (container.querySelector(
+        'button[aria-label="Edit mode (always enabled)"]',
+      ) as HTMLButtonElement | null)?.getAttribute("aria-pressed"),
     ).toBe("true");
   });
 
-  it("only reapplies hybrid init mode when the init version changes", async () => {
-    const Harness = () => {
-      const [editDraft, setEditDraft] = useState("Versioned hybrid init");
-      const [hybridInitialActive, setHybridInitialActive] = useState(false);
-      const [hybridInitVersion, setHybridInitVersion] = useState(1);
-      return createElement(
-        "div",
-        null,
-        createElement(
-          "button",
-          {
-            type: "button",
-            "data-testid": "set-hybrid-init-active",
-            onClick: () => setHybridInitialActive(true),
-          },
-          "Init active",
-        ),
-        createElement(
-          "button",
-          {
-            type: "button",
-            "data-testid": "set-hybrid-init-inactive",
-            onClick: () => setHybridInitialActive(false),
-          },
-          "Init inactive",
-        ),
-        createElement(
-          "button",
-          {
-            type: "button",
-            "data-testid": "bump-hybrid-init-version",
-            onClick: () => setHybridInitVersion((current) => current + 1),
-          },
-          "Bump init version",
-        ),
-        createElement(PreviewPanel, {
-          editDraft,
-          editError: "",
-          editCaretIndex: null,
-          isEditing: false,
-          emptyPreview: "",
-          preview: "Versioned hybrid init",
-          previewError: "",
-          previewState: "idle",
-          rawPreview: false,
-          markdownViewEditEnabled: true,
-          markdownHybridEnabled: true,
-          hybridEditModeInitialActive: hybridInitialActive,
-          hybridEditModeInitVersion: hybridInitVersion,
-          selectedFile: baseFile,
-          vaultPath: "/vault",
-          sourceRelativePath: baseFile.relative_path,
-          canEdit: true,
-          onEditChange: setEditDraft,
-          onEditCaretApplied: () => {},
-          onEditExit: async () => {},
-          onEditStart: () => {},
-          onToggleRawPreview: () => {},
-        }),
-      );
-    };
-
-    const { container, cleanup: localCleanup } = render(createElement(Harness));
+  it("renders three mode buttons with consistent aria-pressed state", () => {
+    const { container, cleanup: localCleanup } = buildHarness("Mode buttons", {
+      editorMode: "code",
+      editEnabled: true,
+    });
     cleanup = localCleanup;
 
-    const queryEditToggle = () =>
-      container.querySelector('button[aria-label="Edit mode"]') as HTMLButtonElement | null;
+    const codeButton = container.querySelector(
+      'button[aria-label="Code view"]',
+    ) as HTMLButtonElement | null;
+    const markdownButton = container.querySelector(
+      'button[aria-label="Markdown view"]',
+    ) as HTMLButtonElement | null;
+    const hybridButton = container.querySelector(
+      'button[aria-label="Markdown hybrid edit mode"]',
+    ) as HTMLButtonElement | null;
+    expect(codeButton).toBeTruthy();
+    expect(markdownButton).toBeTruthy();
+    expect(hybridButton).toBeTruthy();
+    expect(codeButton?.getAttribute("aria-pressed")).toBe("true");
+    expect(markdownButton?.getAttribute("aria-pressed")).toBe("false");
+    expect(hybridButton?.getAttribute("aria-pressed")).toBe("false");
+  });
 
-    expect(queryEditToggle()?.getAttribute("aria-pressed")).toBe("false");
+  it("keeps root mode/edit attributes in sync for code and markdown", async () => {
+    const { container, cleanup: localCleanup } = buildHarness("Mode attributes", {
+      editorMode: "code",
+      editEnabled: true,
+    });
+    cleanup = localCleanup;
+
+    const root = container.querySelector(".preview-panel");
+    expect(root?.getAttribute("data-editor-mode")).toBe("code");
+    expect(root?.getAttribute("data-edit-enabled")).toBe("true");
+
+    const editToggle = container.querySelector(
+      'button[aria-label="Toggle edit mode"]',
+    ) as HTMLButtonElement | null;
+    expect(editToggle).toBeTruthy();
 
     await act(async () => {
-      queryEditToggle()?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      editToggle?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     await flushAsyncInteraction();
-    expect(queryEditToggle()?.getAttribute("aria-pressed")).toBe("true");
+    expect(root?.getAttribute("data-editor-mode")).toBe("code");
+    expect(root?.getAttribute("data-edit-enabled")).toBe("false");
 
-    const setInitInactive = container.querySelector(
-      '[data-testid="set-hybrid-init-inactive"]',
+    const markdownButton = container.querySelector(
+      'button[aria-label="Markdown view"]',
+    ) as HTMLButtonElement | null;
+    expect(markdownButton).toBeTruthy();
+    await act(async () => {
+      markdownButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await flushAsyncInteraction();
+    expect(root?.getAttribute("data-editor-mode")).toBe("markdown");
+    expect(root?.getAttribute("data-edit-enabled")).toBe("false");
+
+    const markdownEditToggle = container.querySelector(
+      'button[aria-label="Toggle edit mode"]',
     ) as HTMLButtonElement | null;
     await act(async () => {
-      setInitInactive?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      markdownEditToggle?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     await flushAsyncInteraction();
-    expect(queryEditToggle()?.getAttribute("aria-pressed")).toBe("true");
+    expect(root?.getAttribute("data-editor-mode")).toBe("markdown");
+    expect(root?.getAttribute("data-edit-enabled")).toBe("true");
+  });
 
-    const bumpVersion = container.querySelector(
-      '[data-testid="bump-hybrid-init-version"]',
+  it("applies mode defaults when switching between markdown and hybrid", async () => {
+    const { container, cleanup: localCleanup } = buildHarness("Mode defaults", {
+      editorMode: "markdown",
+      editEnabled: true,
+    });
+    cleanup = localCleanup;
+
+    const markdownButton = container.querySelector(
+      'button[aria-label="Markdown view"]',
     ) as HTMLButtonElement | null;
+    const hybridButton = container.querySelector(
+      'button[aria-label="Markdown hybrid edit mode"]',
+    ) as HTMLButtonElement | null;
+    expect(markdownButton).toBeTruthy();
+    expect(hybridButton).toBeTruthy();
+    expect(markdownButton?.getAttribute("aria-pressed")).toBe("true");
+    expect(
+      (container.querySelector('button[aria-label="Toggle edit mode"]') as HTMLButtonElement | null)
+        ?.getAttribute("aria-pressed"),
+    ).toBe("true");
+
     await act(async () => {
-      bumpVersion?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      hybridButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     await flushAsyncInteraction();
-    expect(queryEditToggle()?.getAttribute("aria-pressed")).toBe("false");
+
+    const hybridEditInfo = container.querySelector(
+      'button[aria-label="Edit mode (always enabled)"]',
+    ) as HTMLButtonElement | null;
+    expect(hybridEditInfo?.disabled).toBe(true);
+    expect(hybridEditInfo?.getAttribute("aria-pressed")).toBe("true");
+
+    await act(async () => {
+      markdownButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await flushAsyncInteraction();
+
+    const editToggle = container.querySelector(
+      'button[aria-label="Toggle edit mode"]',
+    ) as HTMLButtonElement | null;
+    expect(editToggle?.getAttribute("aria-pressed")).toBe("false");
   });
 
   it("commits the active hybrid draft before write-save runs", async () => {
@@ -1107,9 +1130,8 @@ describe("PreviewPanel edit-safe interactions", () => {
             preview: "Alpha",
             previewError: "",
             previewState: "idle",
-            rawPreview: false,
-            markdownViewEditEnabled: true,
-            markdownHybridEnabled: true,
+            editorMode: "hybrid",
+            editEnabled: true,
             documentMode: "write",
             selectedFile: baseFile,
             vaultPath: "/vault",
@@ -1120,7 +1142,8 @@ describe("PreviewPanel edit-safe interactions", () => {
             onEditCaretApplied: () => {},
             onEditExit: async () => true,
             onEditStart: () => {},
-            onToggleRawPreview: () => {},
+            onSelectEditorMode: () => {},
+            onToggleEditEnabled: () => {},
             onWriteSave: () => {
               saveCalls.push(editDraft);
             },
@@ -1152,10 +1175,12 @@ describe("PreviewPanel edit-safe interactions", () => {
     });
   });
 
-  it("commits the active hybrid draft before toggling hybrid edit mode off", async () => {
+  it("commits the active hybrid draft before switching from hybrid to markdown mode", async () => {
     await withImmediateRaf(async () => {
       const Harness = () => {
         const [editDraft, setEditDraft] = useState("Alpha");
+        const [editorMode, setEditorMode] = useState<"code" | "markdown" | "hybrid">("hybrid");
+        const [editEnabled, setEditEnabled] = useState(true);
         return createElement(
           "div",
           null,
@@ -1169,9 +1194,8 @@ describe("PreviewPanel edit-safe interactions", () => {
             preview: "Alpha",
             previewError: "",
             previewState: "idle",
-            rawPreview: false,
-            markdownViewEditEnabled: true,
-            markdownHybridEnabled: true,
+            editorMode,
+            editEnabled,
             selectedFile: baseFile,
             vaultPath: "/vault",
             sourceRelativePath: baseFile.relative_path,
@@ -1181,7 +1205,13 @@ describe("PreviewPanel edit-safe interactions", () => {
             onEditCaretApplied: () => {},
             onEditExit: async () => true,
             onEditStart: () => {},
-            onToggleRawPreview: () => {},
+            onSelectEditorMode: (nextMode) => {
+              setEditorMode(nextMode);
+              setEditEnabled(nextMode === "markdown" ? false : true);
+            },
+            onToggleEditEnabled: () => {
+              setEditEnabled((current) => (editorMode === "hybrid" ? true : !current));
+            },
           }),
         );
       };
@@ -1195,17 +1225,20 @@ describe("PreviewPanel edit-safe interactions", () => {
       applyTextareaInput(textarea, "Alpha\nBeta");
       expect(draftValue()).toBe("Alpha");
 
-      const editToggle = container.querySelector(
-        'button[aria-label="Edit mode"]',
+      const markdownButton = container.querySelector(
+        'button[aria-label="Markdown view"]',
       ) as HTMLButtonElement | null;
-      expect(editToggle?.getAttribute("aria-pressed")).toBe("true");
+      expect(markdownButton).toBeTruthy();
 
       await act(async () => {
-        editToggle?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+        markdownButton?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
       });
       await flushAsyncInteraction();
 
       expect(draftValue()).toBe("Alpha\nBeta");
+      const editToggle = container.querySelector(
+        'button[aria-label="Toggle edit mode"]',
+      ) as HTMLButtonElement | null;
       expect(editToggle?.getAttribute("aria-pressed")).toBe("false");
       expect(container.querySelector(".markdown-hybrid-block-editor")).toBeNull();
     });
@@ -1215,7 +1248,8 @@ describe("PreviewPanel edit-safe interactions", () => {
     await withImmediateRaf(async () => {
       const Harness = () => {
         const [editDraft, setEditDraft] = useState("Alpha");
-        const [rawPreview, setRawPreview] = useState(false);
+        const [editorMode, setEditorMode] = useState<"code" | "markdown" | "hybrid">("hybrid");
+        const [editEnabled, setEditEnabled] = useState(true);
         const [isEditing, setIsEditing] = useState(false);
         return createElement(
           "div",
@@ -1230,9 +1264,8 @@ describe("PreviewPanel edit-safe interactions", () => {
             preview: "Alpha",
             previewError: "",
             previewState: "idle",
-            rawPreview,
-            markdownViewEditEnabled: true,
-            markdownHybridEnabled: true,
+            editorMode,
+            editEnabled,
             selectedFile: baseFile,
             vaultPath: "/vault",
             sourceRelativePath: baseFile.relative_path,
@@ -1247,8 +1280,12 @@ describe("PreviewPanel edit-safe interactions", () => {
             onEditStart: () => {
               setIsEditing(true);
             },
-            onToggleRawPreview: () => {
-              setRawPreview((current) => !current);
+            onSelectEditorMode: (nextMode) => {
+              setEditorMode(nextMode);
+              setEditEnabled(nextMode === "markdown" ? false : true);
+            },
+            onToggleEditEnabled: () => {
+              setEditEnabled((current) => (editorMode === "hybrid" ? true : !current));
             },
           }),
         );
@@ -1963,9 +2000,8 @@ describe("PreviewPanel edit-safe interactions", () => {
         preview: "Body line",
         previewError: "",
         previewState: "idle",
-        rawPreview: false,
-        markdownViewEditEnabled: true,
-        markdownHybridEnabled: true,
+        editorMode: "hybrid",
+        editEnabled: true,
         selectedFile: baseFile,
         vaultPath: "/vault",
         sourceRelativePath: baseFile.relative_path,
@@ -1982,7 +2018,8 @@ describe("PreviewPanel edit-safe interactions", () => {
         onEditCaretApplied: () => {},
         onEditExit: async () => true,
         onEditStart: () => {},
-        onToggleRawPreview: () => {},
+        onSelectEditorMode: () => {},
+        onToggleEditEnabled: () => {},
       });
     };
 
