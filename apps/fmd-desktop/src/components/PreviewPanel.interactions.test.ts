@@ -170,6 +170,58 @@ const applyTextareaInput = (
   });
 };
 
+const setCollapsedSelection = (node: Text | null, offset: number) => {
+  act(() => {
+    if (!node) {
+      return;
+    }
+    const selection = window.getSelection();
+    if (!selection) {
+      return;
+    }
+    const range = document.createRange();
+    const safeOffset = Math.max(0, Math.min(offset, node.textContent?.length ?? 0));
+    range.setStart(node, safeOffset);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
+};
+
+const findTextNodeContaining = (container: ParentNode, snippet: string) => {
+  const root = container instanceof Node ? container : null;
+  if (!root) {
+    return null;
+  }
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let current = walker.nextNode() as Text | null;
+  while (current) {
+    const text = current.textContent ?? "";
+    if (text.includes(snippet)) {
+      return current;
+    }
+    current = walker.nextNode() as Text | null;
+  }
+  return null;
+};
+
+const activateMarkdownEditorFromPreviewSelection = (
+  container: ParentNode,
+  node: Text | null,
+  offset: number,
+) => {
+  setCollapsedSelection(node, offset);
+  const previewContent = container.querySelector(".preview-content");
+  act(() => {
+    previewContent?.dispatchEvent(
+      new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+    );
+  });
+  return container.querySelector<HTMLDivElement>(".preview-markdown-editable");
+};
+
+const readWindowSelectionText = () => window.getSelection()?.toString() ?? "";
+
 const flushAsyncInteraction = () =>
   act(async () => {
     await Promise.resolve();
@@ -1437,6 +1489,125 @@ describe("PreviewPanel edit-safe interactions", () => {
     const previewText = container.querySelector(".preview.markdown.md-preview")?.textContent ?? "";
     expect(previewText).toContain("Einhaltung vorgegebener Formate fuer Attribute.");
     expect(previewText).not.toContain('"Einhaltung vorgegebener Formate fuer Attribute."');
+  });
+
+  it("selects chained cloze tokens on preview click when entering markdown edit mode", () => {
+    withImmediateRaf(() => {
+      const markdown = "Konzept: %A%%B% und Rest.";
+      const { container, cleanup: localCleanup } = buildHarness(markdown);
+      cleanup = localCleanup;
+
+      const clozeToken = container.querySelector<HTMLElement>(
+        ".preview.markdown.md-preview .md-inline-syntax-cloze",
+      );
+      const tokenText = clozeToken?.firstChild as Text | null;
+      const editable = activateMarkdownEditorFromPreviewSelection(container, tokenText, 0);
+
+      expect(editable).toBeTruthy();
+      expect(readWindowSelectionText()).toBe("A");
+      expect(window.getSelection()?.isCollapsed).toBe(false);
+    });
+  });
+
+  it("supports %%...%% click-to-edit token selection without changing preview rendering", () => {
+    withImmediateRaf(() => {
+      const markdown = "Konzept: %%A%% und Rest.";
+      const { container, cleanup: localCleanup } = buildHarness(markdown);
+      cleanup = localCleanup;
+
+      const previewRoot = container.querySelector(".preview.markdown.md-preview");
+      const tokenTextNode = findTextNodeContaining(previewRoot ?? container, "%%A%%");
+      const offset = Math.max(0, (tokenTextNode?.textContent ?? "").indexOf("A"));
+      const editable = activateMarkdownEditorFromPreviewSelection(container, tokenTextNode, offset);
+
+      expect(editable).toBeTruthy();
+      expect(readWindowSelectionText()).toBe("%%A%%");
+      expect(window.getSelection()?.isCollapsed).toBe(false);
+    });
+  });
+
+  it("selects #card hash-tag tokens at line start when entering markdown edit mode", () => {
+    withImmediateRaf(() => {
+      const markdown = ["#card", "Technisch erzeugt."].join("\n");
+      const { container, cleanup: localCleanup } = buildHarness(markdown);
+      cleanup = localCleanup;
+
+      const hashToken = container.querySelector<HTMLElement>(
+        ".preview.markdown.md-preview .md-inline-syntax-hash-tag",
+      );
+      const tokenText = hashToken?.firstChild as Text | null;
+      const editable = activateMarkdownEditorFromPreviewSelection(container, tokenText, 1);
+
+      expect(editable).toBeTruthy();
+      expect(readWindowSelectionText()).toBe("#card");
+      expect(window.getSelection()?.isCollapsed).toBe(false);
+    });
+  });
+
+  it("selects quoted tokens on preview click when entering markdown edit mode", () => {
+    withImmediateRaf(() => {
+      const markdown = 'Token: "Datenbanksystem" und Rest.';
+      const { container, cleanup: localCleanup } = buildHarness(markdown);
+      cleanup = localCleanup;
+
+      const quotedToken = container.querySelector<HTMLElement>(
+        ".preview.markdown.md-preview .md-inline-syntax-quoted-token",
+      );
+      const tokenText = quotedToken?.firstChild as Text | null;
+      const editable = activateMarkdownEditorFromPreviewSelection(container, tokenText, 2);
+
+      expect(editable).toBeTruthy();
+      expect(readWindowSelectionText()).toBe("Datenbanksystem");
+      expect(window.getSelection()?.isCollapsed).toBe(false);
+    });
+  });
+
+  it("selects **bold** markdown tokens on preview click when entering markdown edit mode", () => {
+    withImmediateRaf(() => {
+      const markdown = "Die **fett** markierte Stelle.";
+      const { container, cleanup: localCleanup } = buildHarness(markdown);
+      cleanup = localCleanup;
+
+      const previewRoot = container.querySelector(".preview.markdown.md-preview");
+      const tokenTextNode = findTextNodeContaining(previewRoot ?? container, "fett");
+      const editable = activateMarkdownEditorFromPreviewSelection(container, tokenTextNode, 1);
+
+      expect(editable).toBeTruthy();
+      expect(readWindowSelectionText()).toBe("fett");
+      expect(window.getSelection()?.isCollapsed).toBe(false);
+    });
+  });
+
+  it("selects ***bold-italic*** markdown tokens on preview click when entering markdown edit mode", () => {
+    withImmediateRaf(() => {
+      const markdown = "Die ***fett-kursiv*** markierte Stelle.";
+      const { container, cleanup: localCleanup } = buildHarness(markdown);
+      cleanup = localCleanup;
+
+      const previewRoot = container.querySelector(".preview.markdown.md-preview");
+      const tokenTextNode = findTextNodeContaining(previewRoot ?? container, "fett-kursiv");
+      const editable = activateMarkdownEditorFromPreviewSelection(container, tokenTextNode, 3);
+
+      expect(editable).toBeTruthy();
+      expect(readWindowSelectionText()).toBe("fett-kursiv");
+      expect(window.getSelection()?.isCollapsed).toBe(false);
+    });
+  });
+
+  it("keeps default caret behavior when clicking outside supported tokens in markdown preview", () => {
+    withImmediateRaf(() => {
+      const markdown = "Alpha Beta Gamma";
+      const { container, cleanup: localCleanup } = buildHarness(markdown);
+      cleanup = localCleanup;
+
+      const previewRoot = container.querySelector(".preview.markdown.md-preview");
+      const textNode = findTextNodeContaining(previewRoot ?? container, "Alpha");
+      const editable = activateMarkdownEditorFromPreviewSelection(container, textNode, 2);
+
+      expect(editable).toBeTruthy();
+      expect(readWindowSelectionText()).toBe("");
+      expect(window.getSelection()?.isCollapsed).toBe(true);
+    });
   });
 
   it("renders svg fences as media previews", () => {

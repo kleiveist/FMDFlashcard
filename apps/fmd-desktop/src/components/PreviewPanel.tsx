@@ -1082,7 +1082,7 @@ const copyTextToClipboard = async (value: string) => {
 const isModifierClick = (event: Pick<MouseEvent<HTMLElement>, "metaKey" | "ctrlKey">) =>
   event.metaKey || event.ctrlKey;
 
-type MarkdownInlineSyntaxKind = "hash-tag" | "cloze" | "quoted-token";
+type MarkdownInlineSyntaxKind = "hash-tag" | "double-percent" | "cloze" | "quoted-token";
 type InlineSyntaxHighlightOptions = {
   collapseChainedClozeVariants?: boolean;
   hideInlineSyntaxDelimiters?: boolean;
@@ -1095,9 +1095,12 @@ type HybridMarkdownPreviewRenderOptions = {
 // Highlight inline FMD-style hash directives/tags like "#card", "#text", "#test".
 // Headings are unaffected because Markdown headings require "# " (hash + space),
 // while this pattern only matches hash tokens without a following space.
-const markdownInlineSyntaxPattern = /#[A-Za-z0-9_-]+\b|%[^%\n]+%(?:%[^%\n]+%)*|"[^"\n]+"/g;
+const markdownInlineSyntaxPattern = /%%[^%\n]+%%|#[A-Za-z0-9_-]+\b|%[^%\n]+%(?:%[^%\n]+%)*|"[^"\n]+"/g;
 
 const resolveInlineSyntaxKind = (token: string): MarkdownInlineSyntaxKind | null => {
+  if (/^%%[^%\n]+%%$/.test(token)) {
+    return "double-percent";
+  }
   if (/^#[A-Za-z0-9_-]+\b/.test(token)) {
     return "hash-tag";
   }
@@ -1673,10 +1676,240 @@ const getRangeFromEvent = (
 
 type MarkdownOffsetMapOptions = {
   skipStructuralMarkers?: boolean;
+  hideInlineSyntaxDelimiters?: boolean;
+  collapseChainedClozeVariants?: boolean;
+  supportDoublePercentTokens?: boolean;
 };
 
 const shouldSkipStructuralMarkers = (options?: MarkdownOffsetMapOptions) =>
   options?.skipStructuralMarkers ?? true;
+
+const shouldHideInlineSyntaxDelimiters = (options?: MarkdownOffsetMapOptions) =>
+  options?.hideInlineSyntaxDelimiters ?? false;
+
+const shouldCollapseChainedClozeVariants = (options?: MarkdownOffsetMapOptions) =>
+  options?.collapseChainedClozeVariants ?? false;
+
+const shouldSupportDoublePercentTokens = (options?: MarkdownOffsetMapOptions) =>
+  options?.supportDoublePercentTokens ?? false;
+
+type InlinePreviewTokenKind =
+  | "double-percent"
+  | "cloze"
+  | "quoted-token"
+  | "markdown-bold-italic"
+  | "markdown-bold"
+  | "markdown-italic"
+  | "markdown-underline"
+  | "markdown-strikethrough"
+  | "markdown-highlight"
+  | "markdown-inline-code"
+  | "markdown-math"
+  | "hash-tag";
+
+type InlinePreviewTokenMatch = {
+  kind: InlinePreviewTokenKind;
+  rawStart: number;
+  rawEnd: number;
+  visibleStart: number;
+  visibleEnd: number;
+  visibleLength: number;
+};
+
+const inlinePreviewDoublePercentPattern = /^%%[^%\n]+%%/;
+const inlinePreviewClozeChainPattern = /^%[^%\n]+%(?:%[^%\n]+%)*/;
+const inlinePreviewQuotedTokenPattern = /^"[^"\n]+"/;
+const inlinePreviewBoldItalicPattern = /^\*\*\*[^*\n]+?\*\*\*/;
+const inlinePreviewBoldPattern = /^\*\*[^*\n]+?\*\*/;
+const inlinePreviewItalicPattern = /^\*[^*\n]+?\*/;
+const inlinePreviewUnderlinePattern = /^__[^_\n]+?__/;
+const inlinePreviewStrikethroughPattern = /^~~[^~\n]+?~~/;
+const inlinePreviewHighlightPattern = /^==[^=\n]+?==/;
+const inlinePreviewInlineCodePattern = /^`[^`\n]+?`/;
+const inlinePreviewMathPattern = /^\$[^$\n]+?\$/;
+const inlinePreviewHashTagPattern = /^#[A-Za-z0-9_-]+\b/;
+
+const createInlinePreviewTokenMatch = ({
+  kind,
+  rawStart,
+  rawEnd,
+  visibleStart,
+  visibleEnd,
+}: {
+  kind: InlinePreviewTokenKind;
+  rawStart: number;
+  rawEnd: number;
+  visibleStart: number;
+  visibleEnd: number;
+}): InlinePreviewTokenMatch => ({
+  kind,
+  rawStart,
+  rawEnd,
+  visibleStart,
+  visibleEnd,
+  visibleLength: Math.max(0, visibleEnd - visibleStart),
+});
+
+const resolveInlinePreviewTokenAt = (
+  rawMarkdown: string,
+  startIndex: number,
+  options?: MarkdownOffsetMapOptions,
+): InlinePreviewTokenMatch | null => {
+  if (startIndex < 0 || startIndex >= rawMarkdown.length) {
+    return null;
+  }
+  const remaining = rawMarkdown.slice(startIndex);
+  const hideDelimiters = shouldHideInlineSyntaxDelimiters(options);
+  const collapseClozeVariants = shouldCollapseChainedClozeVariants(options);
+  const supportDoublePercentTokens = shouldSupportDoublePercentTokens(options);
+
+  const buildWrappedToken = (
+    kind: InlinePreviewTokenKind,
+    tokenRaw: string,
+    openLength: number,
+    closeLength: number,
+    preserveDelimiters = false,
+  ) => {
+    const rawEnd = startIndex + tokenRaw.length;
+    if (preserveDelimiters || !hideDelimiters || tokenRaw.length <= openLength + closeLength) {
+      return createInlinePreviewTokenMatch({
+        kind,
+        rawStart: startIndex,
+        rawEnd,
+        visibleStart: startIndex,
+        visibleEnd: rawEnd,
+      });
+    }
+    const visibleStart = startIndex + openLength;
+    const visibleEnd = Math.max(visibleStart, rawEnd - closeLength);
+    return createInlinePreviewTokenMatch({
+      kind,
+      rawStart: startIndex,
+      rawEnd,
+      visibleStart,
+      visibleEnd,
+    });
+  };
+
+  if (supportDoublePercentTokens) {
+    const doublePercentMatch = remaining.match(inlinePreviewDoublePercentPattern);
+    if (doublePercentMatch?.[0]) {
+      const tokenRaw = doublePercentMatch[0];
+      const rawEnd = startIndex + tokenRaw.length;
+      return createInlinePreviewTokenMatch({
+        kind: "double-percent",
+        rawStart: startIndex,
+        rawEnd,
+        visibleStart: startIndex,
+        visibleEnd: rawEnd,
+      });
+    }
+  }
+
+  const clozeMatch = remaining.match(inlinePreviewClozeChainPattern);
+  if (clozeMatch?.[0]) {
+    const tokenRaw = clozeMatch[0];
+    const rawEnd = startIndex + tokenRaw.length;
+    if (!hideDelimiters) {
+      return createInlinePreviewTokenMatch({
+        kind: "cloze",
+        rawStart: startIndex,
+        rawEnd,
+        visibleStart: startIndex,
+        visibleEnd: rawEnd,
+      });
+    }
+    const firstVariantMatch = tokenRaw.match(/^%([^%\n]+)%/);
+    if (!firstVariantMatch?.[1]) {
+      return createInlinePreviewTokenMatch({
+        kind: "cloze",
+        rawStart: startIndex,
+        rawEnd,
+        visibleStart: startIndex,
+        visibleEnd: rawEnd,
+      });
+    }
+    const firstVariantRaw = firstVariantMatch[0];
+    const firstVariantValue = firstVariantMatch[1];
+    const visibleStart = startIndex + 1;
+    const visibleEnd = visibleStart + firstVariantValue.length;
+    if (!collapseClozeVariants) {
+      return createInlinePreviewTokenMatch({
+        kind: "cloze",
+        rawStart: startIndex,
+        rawEnd,
+        visibleStart,
+        visibleEnd,
+      });
+    }
+    return createInlinePreviewTokenMatch({
+      kind: "cloze",
+      rawStart: startIndex,
+      rawEnd,
+      visibleStart,
+      visibleEnd: Math.min(startIndex + firstVariantRaw.length - 1, visibleEnd),
+    });
+  }
+
+  const quotedMatch = remaining.match(inlinePreviewQuotedTokenPattern);
+  if (quotedMatch?.[0]) {
+    return buildWrappedToken("quoted-token", quotedMatch[0], 1, 1);
+  }
+
+  const boldItalicMatch = remaining.match(inlinePreviewBoldItalicPattern);
+  if (boldItalicMatch?.[0]) {
+    return buildWrappedToken("markdown-bold-italic", boldItalicMatch[0], 3, 3);
+  }
+
+  const boldMatch = remaining.match(inlinePreviewBoldPattern);
+  if (boldMatch?.[0] && !boldMatch[0].startsWith("***")) {
+    return buildWrappedToken("markdown-bold", boldMatch[0], 2, 2);
+  }
+
+  const italicMatch = remaining.match(inlinePreviewItalicPattern);
+  if (italicMatch?.[0] && !italicMatch[0].startsWith("**")) {
+    return buildWrappedToken("markdown-italic", italicMatch[0], 1, 1);
+  }
+
+  const underlineMatch = remaining.match(inlinePreviewUnderlinePattern);
+  if (underlineMatch?.[0]) {
+    return buildWrappedToken("markdown-underline", underlineMatch[0], 2, 2);
+  }
+
+  const strikethroughMatch = remaining.match(inlinePreviewStrikethroughPattern);
+  if (strikethroughMatch?.[0]) {
+    return buildWrappedToken("markdown-strikethrough", strikethroughMatch[0], 2, 2);
+  }
+
+  const highlightMatch = remaining.match(inlinePreviewHighlightPattern);
+  if (highlightMatch?.[0]) {
+    return buildWrappedToken("markdown-highlight", highlightMatch[0], 2, 2);
+  }
+
+  const inlineCodeMatch = remaining.match(inlinePreviewInlineCodePattern);
+  if (inlineCodeMatch?.[0]) {
+    return buildWrappedToken("markdown-inline-code", inlineCodeMatch[0], 1, 1);
+  }
+
+  const mathMatch = remaining.match(inlinePreviewMathPattern);
+  if (mathMatch?.[0]) {
+    return buildWrappedToken("markdown-math", mathMatch[0], 1, 1);
+  }
+
+  const hashTagMatch = remaining.match(inlinePreviewHashTagPattern);
+  if (hashTagMatch?.[0]) {
+    const rawEnd = startIndex + hashTagMatch[0].length;
+    return createInlinePreviewTokenMatch({
+      kind: "hash-tag",
+      rawStart: startIndex,
+      rawEnd,
+      visibleStart: startIndex,
+      visibleEnd: rawEnd,
+    });
+  }
+
+  return null;
+};
 
 const resolveListLineMarkerEnd = (rawMarkdown: string, startIndex: number) => {
   const first = rawMarkdown[startIndex];
@@ -1730,6 +1963,31 @@ const resolveThematicBreakLineEnd = (rawMarkdown: string, startIndex: number) =>
     return null;
   }
   return dashCount >= 3 ? index : null;
+};
+
+const resolveHeadingLineMarkerEnd = (rawMarkdown: string, startIndex: number) => {
+  if (rawMarkdown[startIndex] !== "#") {
+    return null;
+  }
+
+  let index = startIndex;
+  while (rawMarkdown[index] === "#") {
+    index += 1;
+  }
+
+  const next = rawMarkdown[index];
+  if (next === " " || next === "\t") {
+    while (rawMarkdown[index] === " " || rawMarkdown[index] === "\t") {
+      index += 1;
+    }
+    return index;
+  }
+
+  if (next === "\n" || typeof next === "undefined") {
+    return index;
+  }
+
+  return null;
 };
 
 const mapPlainOffsetToRawIndex = (
@@ -1799,13 +2057,9 @@ const mapPlainOffsetToRawIndex = (
         rawIndex = listMarkerEnd;
         continue;
       }
-      if (char === "#") {
-        while (rawMarkdown[rawIndex] === "#") {
-          rawIndex += 1;
-        }
-        if (rawMarkdown[rawIndex] === " ") {
-          rawIndex += 1;
-        }
+      const headingMarkerEnd = resolveHeadingLineMarkerEnd(rawMarkdown, rawIndex);
+      if (headingMarkerEnd !== null) {
+        rawIndex = headingMarkerEnd;
         continue;
       }
       if (char === ">") {
@@ -1828,6 +2082,28 @@ const mapPlainOffsetToRawIndex = (
         continue;
       }
       if (!isEscaped) {
+        if (!inInlineCode && !inLinkText) {
+          const token = resolveInlinePreviewTokenAt(rawMarkdown, rawIndex, options);
+          if (token) {
+            const tokenPlainEnd = plainIndex + token.visibleLength;
+            if (plainOffset <= plainIndex) {
+              return token.visibleStart;
+            }
+            if (plainOffset <= tokenPlainEnd) {
+              const withinToken = plainOffset - plainIndex;
+              if (withinToken <= 0) {
+                return token.visibleStart;
+              }
+              if (withinToken >= token.visibleLength) {
+                return token.visibleEnd;
+              }
+              return token.visibleStart + withinToken;
+            }
+            plainIndex = tokenPlainEnd;
+            rawIndex = token.rawEnd;
+            continue;
+          }
+        }
         if (char === "`") {
           inInlineCode = !inInlineCode;
           rawIndex += 1;
@@ -1934,13 +2210,9 @@ const mapRawIndexToPlainOffset = (
         rawIndex = listMarkerEnd;
         continue;
       }
-      if (char === "#") {
-        while (rawMarkdown[rawIndex] === "#") {
-          rawIndex += 1;
-        }
-        if (rawMarkdown[rawIndex] === " ") {
-          rawIndex += 1;
-        }
+      const headingMarkerEnd = resolveHeadingLineMarkerEnd(rawMarkdown, rawIndex);
+      if (headingMarkerEnd !== null) {
+        rawIndex = headingMarkerEnd;
         continue;
       }
       if (char === ">") {
@@ -1963,6 +2235,26 @@ const mapRawIndexToPlainOffset = (
         continue;
       }
       if (!isEscaped) {
+        if (!inInlineCode && !inLinkText) {
+          const token = resolveInlinePreviewTokenAt(rawMarkdown, rawIndex, options);
+          if (token) {
+            if (target <= token.rawStart) {
+              return plainIndex;
+            }
+            if (target < token.rawEnd) {
+              if (target <= token.visibleStart) {
+                return plainIndex;
+              }
+              if (target >= token.visibleEnd) {
+                return plainIndex + token.visibleLength;
+              }
+              return plainIndex + (target - token.visibleStart);
+            }
+            plainIndex += token.visibleLength;
+            rawIndex = token.rawEnd;
+            continue;
+          }
+        }
         if (char === "`") {
           inInlineCode = !inInlineCode;
           rawIndex += 1;
@@ -1999,6 +2291,145 @@ const mapRawIndexToPlainOffset = (
   }
 
   return plainIndex;
+};
+
+const resolveInlinePreviewTokenCoveringRawIndex = (
+  rawMarkdown: string,
+  rawIndexTarget: number,
+  options?: MarkdownOffsetMapOptions,
+): InlinePreviewTokenMatch | null => {
+  if (rawIndexTarget < 0 || rawIndexTarget >= rawMarkdown.length) {
+    return null;
+  }
+
+  const skipStructuralMarkers = shouldSkipStructuralMarkers(options);
+  let rawIndex = 0;
+  let inFence = false;
+  let inInlineCode = false;
+  let inLinkText = false;
+  let inLinkUrl = false;
+  let lineStart = true;
+  let escapeNext = false;
+
+  const skipToLineEnd = () => {
+    while (rawIndex < rawMarkdown.length && rawMarkdown[rawIndex] !== "\n") {
+      rawIndex += 1;
+    }
+  };
+
+  while (rawIndex < rawMarkdown.length) {
+    const char = rawMarkdown[rawIndex];
+
+    if (lineStart && !escapeNext && rawMarkdown.startsWith("```", rawIndex)) {
+      inFence = !inFence;
+      skipToLineEnd();
+      continue;
+    }
+
+    if (char === "\n") {
+      lineStart = true;
+      escapeNext = false;
+      rawIndex += 1;
+      continue;
+    }
+
+    const isEscaped = escapeNext;
+    if (escapeNext) {
+      escapeNext = false;
+    }
+
+    if (!inFence && !isEscaped && char === "\\") {
+      lineStart = false;
+      escapeNext = true;
+      rawIndex += 1;
+      continue;
+    }
+
+    if (!isEscaped && lineStart && !inFence && skipStructuralMarkers) {
+      const thematicBreakEnd = resolveThematicBreakLineEnd(rawMarkdown, rawIndex);
+      if (thematicBreakEnd !== null) {
+        rawIndex = thematicBreakEnd;
+        continue;
+      }
+      const listMarkerEnd = resolveListLineMarkerEnd(rawMarkdown, rawIndex);
+      if (listMarkerEnd !== null) {
+        rawIndex = listMarkerEnd;
+        continue;
+      }
+      const headingMarkerEnd = resolveHeadingLineMarkerEnd(rawMarkdown, rawIndex);
+      if (headingMarkerEnd !== null) {
+        rawIndex = headingMarkerEnd;
+        continue;
+      }
+      if (char === ">") {
+        rawIndex += 1;
+        if (rawMarkdown[rawIndex] === " ") {
+          rawIndex += 1;
+        }
+        continue;
+      }
+    }
+
+    lineStart = false;
+
+    if (!inFence) {
+      if (inLinkUrl) {
+        if (char === ")") {
+          inLinkUrl = false;
+        }
+        rawIndex += 1;
+        continue;
+      }
+      if (!isEscaped) {
+        if (!inInlineCode && !inLinkText) {
+          const token = resolveInlinePreviewTokenAt(rawMarkdown, rawIndex, options);
+          if (token) {
+            if (
+              token.visibleLength > 0 &&
+              rawIndexTarget >= token.visibleStart &&
+              rawIndexTarget < token.visibleEnd
+            ) {
+              return token;
+            }
+            rawIndex = token.rawEnd;
+            continue;
+          }
+        }
+        if (char === "`") {
+          inInlineCode = !inInlineCode;
+          rawIndex += 1;
+          continue;
+        }
+        if (!inInlineCode && (char === "*" || char === "_")) {
+          rawIndex += 1;
+          continue;
+        }
+        if (char === "!" && rawMarkdown[rawIndex + 1] === "[") {
+          rawIndex += 1;
+          continue;
+        }
+        if (char === "[") {
+          inLinkText = true;
+          rawIndex += 1;
+          continue;
+        }
+        if (inLinkText && char === "]") {
+          inLinkText = false;
+          if (rawMarkdown[rawIndex + 1] === "(") {
+            inLinkUrl = true;
+            rawIndex += 2;
+            continue;
+          }
+          rawIndex += 1;
+          continue;
+        }
+      }
+    }
+
+    rawIndex += 1;
+  }
+
+  return null;
 };
 
 const findTextNodeAtOffset = (container: HTMLElement, offset: number) => {
@@ -2087,7 +2518,12 @@ const setSelectionAtPlainOffsets = (
   if (!selection) {
     return;
   }
-  const length = container.innerText.length;
+  const length = (() => {
+    if (typeof container.innerText === "string") {
+      return container.innerText.length;
+    }
+    return (container.textContent ?? "").length;
+  })();
   const clampedStart = Math.max(0, Math.min(startOffset, length));
   const clampedEnd = Math.max(0, Math.min(endOffset, length));
   const resolvedStart = findTextNodeAtOffset(container, clampedStart);
@@ -6595,6 +7031,7 @@ export const PreviewPanel = ({
   const hybridEditorRef = useRef<MarkdownHybridEditorHandle | null>(null);
   const markdownEditorHtmlRef = useRef<string | null>(null);
   const markdownEditorReadyRef = useRef(false);
+  const pendingMarkdownTokenSelectionRef = useRef<{ start: number; end: number } | null>(null);
   const applyingMarkdownCaretRef = useRef(false);
   const suppressRawEditorBlurExitRef = useRef(false);
   const rawCodeToggleClosePendingRef = useRef(false);
@@ -7039,6 +7476,7 @@ export const PreviewPanel = ({
       markdownEditorReadyRef.current = false;
       if (!isEditing) {
         markdownEditorHtmlRef.current = null;
+        pendingMarkdownTokenSelectionRef.current = null;
       }
       return;
     }
@@ -7153,14 +7591,43 @@ export const PreviewPanel = ({
       return;
     }
     const editor = markdownEditorRef.current;
+    const inlinePreviewMapOptions: MarkdownOffsetMapOptions = {
+      skipStructuralMarkers: false,
+      hideInlineSyntaxDelimiters: true,
+      collapseChainedClozeVariants: true,
+      supportDoublePercentTokens: true,
+    };
+    const pendingSelection = pendingMarkdownTokenSelectionRef.current;
+    const normalizedPendingSelection = pendingSelection
+      ? {
+        start: Math.max(
+          0,
+          Math.min(pendingSelection.start - markdownEditBodyStartOffset, markdownEditBody.length),
+        ),
+        end: Math.max(
+          0,
+          Math.min(pendingSelection.end - markdownEditBodyStartOffset, markdownEditBody.length),
+        ),
+      }
+      : null;
+    const pendingStart = normalizedPendingSelection
+      ? Math.min(normalizedPendingSelection.start, normalizedPendingSelection.end)
+      : null;
+    const pendingEnd = normalizedPendingSelection
+      ? Math.max(normalizedPendingSelection.start, normalizedPendingSelection.end)
+      : null;
     applyingMarkdownCaretRef.current = true;
     const bodyCaretIndex = Math.max(
       0,
       editCaretIndex - markdownEditBodyStartOffset,
     );
-    const plainOffset = mapRawIndexToPlainOffset(markdownEditBody, bodyCaretIndex, {
-      skipStructuralMarkers: false,
-    });
+    const plainOffset = mapRawIndexToPlainOffset(markdownEditBody, bodyCaretIndex, inlinePreviewMapOptions);
+    const plainSelectionStart = typeof pendingStart === "number"
+      ? mapRawIndexToPlainOffset(markdownEditBody, pendingStart, inlinePreviewMapOptions)
+      : null;
+    const plainSelectionEnd = typeof pendingEnd === "number"
+      ? mapRawIndexToPlainOffset(markdownEditBody, pendingEnd, inlinePreviewMapOptions)
+      : null;
     const desiredScrollTop = scrollStateRef.current.top;
     const desiredScrollLeft = scrollStateRef.current.left;
     const enforceScroll = () => {
@@ -7174,18 +7641,33 @@ export const PreviewPanel = ({
         editor.focus();
       }
       try {
-        setCaretAtPlainOffset(editor, plainOffset);
+        if (
+          typeof plainSelectionStart === "number" &&
+          typeof plainSelectionEnd === "number" &&
+          plainSelectionEnd > plainSelectionStart
+        ) {
+          setSelectionAtPlainOffsets(editor, plainSelectionStart, plainSelectionEnd);
+          if (typeof pendingEnd === "number") {
+            lastCaretIndexRef.current = markdownEditBodyStartOffset + pendingEnd;
+          } else {
+            lastCaretIndexRef.current = editCaretIndex;
+          }
+        } else {
+          setCaretAtPlainOffset(editor, plainOffset);
+          lastCaretIndexRef.current = editCaretIndex;
+        }
         enforceScroll();
-        lastCaretIndexRef.current = editCaretIndex;
         scrollStateRef.current.top = editor.scrollTop;
         scrollStateRef.current.left = editor.scrollLeft;
       } finally {
+        pendingMarkdownTokenSelectionRef.current = null;
         applyingMarkdownCaretRef.current = false;
         onEditCaretApplied();
       }
     });
     return () => {
       window.cancelAnimationFrame(handle);
+      pendingMarkdownTokenSelectionRef.current = null;
       applyingMarkdownCaretRef.current = false;
     };
   }, [
@@ -7362,10 +7844,11 @@ export const PreviewPanel = ({
       const markdownSource = previewFrontmatter.hasFrontmatter
         ? previewFrontmatter.body
         : preview;
+      let pendingMarkdownTokenSelection: { start: number; end: number } | null = null;
       let caretIndex = isCodeMode
         ? preview.length === 0
           ? 0
-          : null
+        : null
         : markdownSource.length === 0
           ? bodyStartOffset
           : null;
@@ -7381,9 +7864,30 @@ export const PreviewPanel = ({
         const range = getRangeFromEvent(event, selectionContainer);
         const resolvedIndex = isCodeMode
           ? resolveRawCaretIndex(selectionContainer, range)
-          : resolveMarkdownCaretIndex(selectionContainer, markdownSource, range);
+          : resolveMarkdownCaretIndex(selectionContainer, markdownSource, range, {
+            hideInlineSyntaxDelimiters: true,
+            collapseChainedClozeVariants: true,
+            supportDoublePercentTokens: true,
+          });
         if (typeof resolvedIndex === "number") {
-          caretIndex = isCodeMode ? resolvedIndex : bodyStartOffset + resolvedIndex;
+          if (isCodeMode) {
+            caretIndex = resolvedIndex;
+          } else {
+            const tokenMatch = resolveInlinePreviewTokenCoveringRawIndex(markdownSource, resolvedIndex, {
+              hideInlineSyntaxDelimiters: true,
+              collapseChainedClozeVariants: true,
+              supportDoublePercentTokens: true,
+            });
+            if (tokenMatch) {
+              pendingMarkdownTokenSelection = {
+                start: bodyStartOffset + tokenMatch.rawStart,
+                end: bodyStartOffset + tokenMatch.rawEnd,
+              };
+              caretIndex = bodyStartOffset + tokenMatch.rawStart;
+            } else {
+              caretIndex = bodyStartOffset + resolvedIndex;
+            }
+          }
         }
         if (!isCodeMode) {
           markdownEditorHtmlRef.current = buildEditableMarkdownHtml(
@@ -7406,6 +7910,7 @@ export const PreviewPanel = ({
       if (typeof caretIndex === "number") {
         lastCaretIndexRef.current = caretIndex;
       }
+      pendingMarkdownTokenSelectionRef.current = isCodeMode ? null : pendingMarkdownTokenSelection;
       onEditStart({ caretIndex, origin });
     },
     [
@@ -7450,7 +7955,12 @@ export const PreviewPanel = ({
         event.currentTarget,
         markdownEditBody,
         null,
-        { skipStructuralMarkers: false },
+        {
+          skipStructuralMarkers: false,
+          hideInlineSyntaxDelimiters: true,
+          collapseChainedClozeVariants: true,
+          supportDoublePercentTokens: true,
+        },
       );
       if (typeof bodyCaretIndex === "number") {
         lastCaretIndexRef.current = markdownEditBodyStartOffset + bodyCaretIndex;
