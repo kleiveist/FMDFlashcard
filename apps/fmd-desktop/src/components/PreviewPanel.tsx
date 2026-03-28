@@ -1742,6 +1742,9 @@ const FORMATTING_WRAPPER_BY_TOKEN = new Map<string, string>([
   ["****", "**"],
   ["**", "**"],
   ["*", "*"],
+  ["=", "=="],
+  ["_", "__"],
+  ["~", "~~"],
   ["__", "__"],
   ["~~", "~~"],
   ["==", "=="],
@@ -1817,6 +1820,28 @@ const shouldTreatAsFormattingActionToken = (
   // Single-char tokens are ambiguous during normal typing.
   // Restrict collapsed-caret handling to quote-prefix action.
   return trimmed === ">";
+};
+
+const resolveFormattingActionKeyToken = (
+  event: Pick<KeyboardEvent<HTMLElement>, "key" | "altKey" | "ctrlKey" | "metaKey">,
+) => {
+  if (event.altKey || event.ctrlKey || event.metaKey) {
+    return null;
+  }
+  const key = event.key;
+  if (!key || key.length !== 1) {
+    return null;
+  }
+  if (key === "=") {
+    return "==";
+  }
+  if (key === "_") {
+    return "__";
+  }
+  if (key === "~") {
+    return "~~";
+  }
+  return key;
 };
 
 type InlinePreviewTokenKind =
@@ -8930,30 +8955,12 @@ export const PreviewPanel = ({
     ],
   );
 
-  const handleRawEditorBeforeInput = useCallback(
-    (event: FormEvent<HTMLTextAreaElement>) => {
-      const editor = editorRef.current;
-      if (!editor) {
-        return;
-      }
-      const nativeEvent = event.nativeEvent as Event & {
-        inputType?: string;
-        data?: string | null;
-        isComposing?: boolean;
-      };
-      if (nativeEvent.isComposing) {
-        return;
-      }
-      if ((nativeEvent.inputType ?? "") !== "insertText") {
-        return;
-      }
-      const rawToken = typeof nativeEvent.data === "string"
-        ? nativeEvent.data
-        : "";
+  const applyRawFormattingToken = useCallback(
+    (editor: HTMLTextAreaElement, rawToken: string) => {
       const selectionStart = editor.selectionStart ?? 0;
       const selectionEnd = editor.selectionEnd ?? selectionStart;
       if (!shouldTreatAsFormattingActionToken(rawToken, selectionStart !== selectionEnd)) {
-        return;
+        return false;
       }
 
       const result = applyMarkdownFormattingInsertion(
@@ -8962,10 +8969,9 @@ export const PreviewPanel = ({
         rawToken,
       );
       if (!result.handled) {
-        return;
+        return false;
       }
 
-      event.preventDefault();
       const desiredStart = result.selection.start;
       const desiredEnd = result.selection.end;
       const desiredScrollTop = editor.scrollTop;
@@ -8987,8 +8993,59 @@ export const PreviewPanel = ({
         }
         currentEditor.setSelectionRange(desiredStart, desiredEnd);
       });
+      return true;
     },
     [onEditChange],
+  );
+
+  const handleRawEditorBeforeInput = useCallback(
+    (event: FormEvent<HTMLTextAreaElement>) => {
+      const editor = editorRef.current;
+      if (!editor) {
+        return;
+      }
+      const nativeEvent = event.nativeEvent as Event & {
+        inputType?: string;
+        data?: string | null;
+        isComposing?: boolean;
+      };
+      if (nativeEvent.isComposing) {
+        return;
+      }
+      if ((nativeEvent.inputType ?? "") !== "insertText") {
+        return;
+      }
+      const rawToken = typeof nativeEvent.data === "string"
+        ? nativeEvent.data
+        : "";
+      if (!applyRawFormattingToken(editor, rawToken)) {
+        return;
+      }
+      event.preventDefault();
+    },
+    [applyRawFormattingToken],
+  );
+
+  const handleRawEditorKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      const nativeKeyboardEvent = event.nativeEvent as Event & { isComposing?: boolean };
+      if (nativeKeyboardEvent.isComposing) {
+        return;
+      }
+      const rawToken = resolveFormattingActionKeyToken(event);
+      if (!rawToken) {
+        return;
+      }
+      const editor = editorRef.current;
+      if (!editor) {
+        return;
+      }
+      if (!applyRawFormattingToken(editor, rawToken)) {
+        return;
+      }
+      event.preventDefault();
+    },
+    [applyRawFormattingToken],
   );
 
   const handleRawEditorBlur = useCallback(
@@ -9063,6 +9120,28 @@ export const PreviewPanel = ({
     ],
   );
 
+  const applyMarkdownFormattingToken = useCallback(
+    (editor: HTMLElement, rawToken: string) => {
+      const selectionRange = resolveSelectionRangeWithinEditor(editor);
+      const hasSelection = Boolean(selectionRange && !selectionRange.collapsed);
+      if (!shouldTreatAsFormattingActionToken(rawToken, hasSelection)) {
+        return false;
+      }
+      const handled = applyMarkdownFormattingToContentEditable(editor, rawToken);
+      if (!handled) {
+        return false;
+      }
+      normalizeEditableListMarkers(editor);
+      syncMarkdownDraftFromEditor();
+      syncActiveMarkdownHeading();
+      return true;
+    },
+    [
+      syncActiveMarkdownHeading,
+      syncMarkdownDraftFromEditor,
+    ],
+  );
+
   const handleMarkdownEditorBeforeInput = useCallback(
     (event: FormEvent<HTMLDivElement>) => {
       const editor = markdownEditorRef.current;
@@ -9082,19 +9161,10 @@ export const PreviewPanel = ({
         const rawToken = typeof nativeEvent.data === "string"
           ? nativeEvent.data
           : "";
-        const selectionRange = resolveSelectionRangeWithinEditor(editor);
-        const hasSelection = Boolean(selectionRange && !selectionRange.collapsed);
-        if (!shouldTreatAsFormattingActionToken(rawToken, hasSelection)) {
-          return;
-        }
-        const handled = applyMarkdownFormattingToContentEditable(editor, rawToken);
-        if (!handled) {
+        if (!applyMarkdownFormattingToken(editor, rawToken)) {
           return;
         }
         event.preventDefault();
-        normalizeEditableListMarkers(editor);
-        syncMarkdownDraftFromEditor();
-        syncActiveMarkdownHeading();
         return;
       }
       if (inputType !== "insertParagraph" && inputType !== "insertLineBreak") {
@@ -9111,9 +9181,8 @@ export const PreviewPanel = ({
       }
     },
     [
+      applyMarkdownFormattingToken,
       applyMarkdownEditorCommand,
-      syncActiveMarkdownHeading,
-      syncMarkdownDraftFromEditor,
     ],
   );
 
@@ -9140,6 +9209,15 @@ export const PreviewPanel = ({
         return;
       }
 
+      const rawToken = resolveFormattingActionKeyToken(event);
+      if (rawToken) {
+        const editor = markdownEditorRef.current;
+        if (editor && applyMarkdownFormattingToken(editor, rawToken)) {
+          event.preventDefault();
+          return;
+        }
+      }
+
       // Fallback for environments where beforeinput is unreliable.
       if (event.key === "Enter") {
         const result = applyMarkdownEditorCommand(
@@ -9150,7 +9228,12 @@ export const PreviewPanel = ({
         }
       }
     },
-    [applyMarkdownEditorCommand, closeLegacyMarkdownLinkPicker, legacyMarkdownLinkPickerState],
+    [
+      applyMarkdownEditorCommand,
+      applyMarkdownFormattingToken,
+      closeLegacyMarkdownLinkPicker,
+      legacyMarkdownLinkPickerState,
+    ],
   );
 
   const handleMarkdownInput = useCallback((event: FormEvent<HTMLDivElement>) => {
@@ -10249,6 +10332,7 @@ export const PreviewPanel = ({
                   data-input-scope="editor"
                   value={editDraft}
                   onBeforeInput={handleRawEditorBeforeInput}
+                  onKeyDown={handleRawEditorKeyDown}
                   onChange={(event) => onEditChange(event.target.value)}
                   onBlur={handleRawEditorBlur}
                   onScroll={(event) => captureScroll(event.currentTarget)}

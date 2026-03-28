@@ -52,6 +52,9 @@ describe("applyMarkdownFormattingInsertion", () => {
 
   it("wraps selected text for code/math/cloze/quote wrappers", () => {
     const cases: Array<{ token: string; expected: string }> = [
+      { token: "=", expected: "==Text==" },
+      { token: "_", expected: "__Text__" },
+      { token: "~", expected: "~~Text~~" },
       { token: "`", expected: "`Text`" },
       { token: "``", expected: "`Text`" },
       { token: "$", expected: "$Text$" },
