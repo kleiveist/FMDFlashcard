@@ -1738,6 +1738,24 @@ const LEGACY_MARKDOWN_PICKER_BLOCKED_BLOCK_KINDS = new Set<MarkdownBlock["kind"]
   "table",
 ]);
 
+const FORMATTING_WRAPPER_BY_TOKEN = new Map<string, string>([
+  ["****", "**"],
+  ["**", "**"],
+  ["*", "*"],
+  ["__", "__"],
+  ["~~", "~~"],
+  ["==", "=="],
+  ["``", "`"],
+  ["`", "`"],
+  ["$$", "$"],
+  ["$", "$"],
+  ["%%", "%%"],
+  ["%", "%"],
+  ["\"\"", "\""],
+  ["\"", "\""],
+  ["''", "\""],
+]);
+
 const canOpenLegacyMarkdownLinkPickerAtRange = (
   markdown: string,
   range: { start: number; end: number },
@@ -1764,16 +1782,7 @@ const canOpenLegacyMarkdownLinkPickerAtRange = (
 
 const resolveFormattingWrapperToken = (rawToken: string) => {
   const trimmed = rawToken.trim();
-  if (trimmed === "****" || trimmed === "**") {
-    return "**";
-  }
-  if (trimmed === "*" || trimmed === "__" || trimmed === "~~" || trimmed === "==" || trimmed === "%%") {
-    return trimmed;
-  }
-  if (trimmed === "\"\"" || trimmed === "''") {
-    return "\"";
-  }
-  return null;
+  return FORMATTING_WRAPPER_BY_TOKEN.get(trimmed) ?? null;
 };
 
 const resolveFormattingPrefixToken = (rawToken: string) => {

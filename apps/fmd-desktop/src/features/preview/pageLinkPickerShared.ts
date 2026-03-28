@@ -110,7 +110,20 @@ export const resolveTypedLinkPickerTriggerAtCaret = (
     replaceRange: PageLinkPickerReplaceRange,
     probeOffset: number,
   ): ProbeMatchCandidate | null => {
-    const queryEnd = Math.max(replaceRange.end, clampedCaret, probeOffset);
+    let queryEnd = Math.max(replaceRange.end, clampedCaret, probeOffset);
+    // Small caret drift compensation: when caret reports exactly at trigger end,
+    // include a single safe char after the trigger (e.g. "[[a" with caret at 2).
+    if (queryEnd === replaceRange.end) {
+      const nextChar = value[replaceRange.end] ?? "";
+      if (
+        nextChar &&
+        nextChar !== "\n" &&
+        nextChar !== "\r" &&
+        nextChar !== "]"
+      ) {
+        queryEnd = replaceRange.end + 1;
+      }
+    }
     const initialQuery = queryEnd > replaceRange.end
       ? value.slice(replaceRange.end, queryEnd)
       : "";

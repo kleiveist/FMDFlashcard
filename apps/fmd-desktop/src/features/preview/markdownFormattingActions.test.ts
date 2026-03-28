@@ -49,4 +49,28 @@ describe("applyMarkdownFormattingInsertion", () => {
     expect(result.value).toBe("> Alpha\n> Beta\nGamma");
     expect(result.selection).toEqual({ start: 2, end: 14 });
   });
+
+  it("wraps selected text for code/math/cloze/quote wrappers", () => {
+    const cases: Array<{ token: string; expected: string }> = [
+      { token: "`", expected: "`Text`" },
+      { token: "``", expected: "`Text`" },
+      { token: "$", expected: "$Text$" },
+      { token: "$$", expected: "$Text$" },
+      { token: "%", expected: "%Text%" },
+      { token: "%%", expected: "%%Text%%" },
+      { token: "\"", expected: "\"Text\"" },
+      { token: "\"\"", expected: "\"Text\"" },
+      { token: "''", expected: "\"Text\"" },
+    ];
+
+    cases.forEach(({ token, expected }) => {
+      const result = applyMarkdownFormattingInsertion(
+        "Text",
+        { start: 0, end: 4 },
+        token,
+      );
+      expect(result.handled).toBe(true);
+      expect(result.value).toBe(expected);
+    });
+  });
 });
