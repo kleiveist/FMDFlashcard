@@ -188,6 +188,30 @@ const setCollapsedSelection = (node: Text | null, offset: number) => {
   });
 };
 
+const setExpandedSelection = (
+  startNode: Text | null,
+  startOffset: number,
+  endNode: Text | null,
+  endOffset: number,
+) => {
+  act(() => {
+    if (!startNode || !endNode) {
+      return;
+    }
+    const selection = window.getSelection();
+    if (!selection) {
+      return;
+    }
+    const range = document.createRange();
+    const safeStartOffset = Math.max(0, Math.min(startOffset, startNode.textContent?.length ?? 0));
+    const safeEndOffset = Math.max(0, Math.min(endOffset, endNode.textContent?.length ?? 0));
+    range.setStart(startNode, safeStartOffset);
+    range.setEnd(endNode, safeEndOffset);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
+};
+
 const findTextNodeContaining = (container: ParentNode, snippet: string) => {
   const root = container instanceof Node ? container : null;
   if (!root) {
@@ -2721,6 +2745,52 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const activeListItem = markerToActivate?.closest("li");
     expect(activeListItem?.getAttribute("data-md-list-active")).toBe("true");
+  });
+
+  it("marks inline raw-syntax lines as active for caret and multiline selection", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["Alpha **Bold**", "", "Quote: \"Token\"", "%%Cloze%%"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    const boldNode = findTextNodeContaining(editable, "Bold");
+    const quoteNode = findTextNodeContaining(editable, "Quote:");
+    expect(editable).toBeTruthy();
+    expect(boldNode).toBeTruthy();
+    expect(quoteNode).toBeTruthy();
+
+    setCollapsedSelection(boldNode, 1);
+    act(() => {
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+
+    const singleActiveLines = Array.from(
+      editable?.querySelectorAll<HTMLElement>('[data-md-inline-line="true"][data-md-inline-active="true"]') ?? [],
+    );
+    expect(singleActiveLines).toHaveLength(1);
+    expect(singleActiveLines[0]?.textContent ?? "").toContain("Bold");
+
+    setExpandedSelection(boldNode, 0, quoteNode, quoteNode?.textContent?.length ?? 0);
+    act(() => {
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+
+    const multiActiveLines = Array.from(
+      editable?.querySelectorAll<HTMLElement>('[data-md-inline-line="true"][data-md-inline-active="true"]') ?? [],
+    );
+    expect(multiActiveLines.length).toBeGreaterThanOrEqual(2);
+    expect(multiActiveLines.some((line) => (line.textContent ?? "").includes("Bold"))).toBe(true);
+    expect(multiActiveLines.some((line) => (line.textContent ?? "").includes("Quote:"))).toBe(true);
   });
 
   it("shows a copy control on code blocks without forcing edit mode", async () => {

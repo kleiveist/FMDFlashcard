@@ -198,6 +198,88 @@ describe("composeMarkdownWithBody", () => {
 
     expect(next).toBe(body);
   });
+
+  it("reuses original frontmatter prefix when bodyMayContainFrontmatter is false", () => {
+    const source = [
+      "---",
+      "title: Demo",
+      "status: '🔵'",
+      "---",
+      "Old body",
+    ].join("\n");
+    const body = [
+      "---",
+      "title: Other",
+      "---",
+      "```md",
+      "---",
+      "inner: fence",
+      "---",
+      "```",
+    ].join("\n");
+
+    const next = composeMarkdownWithBody(source, body, {
+      bodyMayContainFrontmatter: false,
+    });
+
+    expect(next).toBe(
+      [
+        "---",
+        "title: Demo",
+        "status: '🔵'",
+        "---",
+        "---",
+        "title: Other",
+        "---",
+        "```md",
+        "---",
+        "inner: fence",
+        "---",
+        "```",
+      ].join("\n"),
+    );
+  });
+
+  it("keeps original frontmatter byte-identical when body contains math blocks with --- lines", () => {
+    const source = [
+      "---",
+      "title: Demo",
+      "status: '🔵'",
+      "tags:",
+      "  - alpha",
+      "---",
+      "Old body",
+    ].join("\n");
+    const body = [
+      "$$",
+      "a---b",
+      "$$",
+      "",
+      "---",
+      "not frontmatter",
+    ].join("\n");
+
+    const next = composeMarkdownWithBody(source, body, {
+      bodyMayContainFrontmatter: false,
+    });
+
+    expect(next).toBe(
+      [
+        "---",
+        "title: Demo",
+        "status: '🔵'",
+        "tags:",
+        "  - alpha",
+        "---",
+        "$$",
+        "a---b",
+        "$$",
+        "",
+        "---",
+        "not frontmatter",
+      ].join("\n"),
+    );
+  });
 });
 
 describe("updateFrontmatterProperty", () => {

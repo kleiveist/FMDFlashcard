@@ -65,6 +65,13 @@ import {
   type InlineFormattingToolbarActiveState,
   type InlineFormattingToolbarRange,
 } from "./inlineFormatting";
+import {
+  buildPageLinkCandidates,
+  filterPageLinkCandidates,
+  resolveTypedLinkPickerTriggerAtCaret,
+  type PageLinkCandidate,
+  type PageLinkPickerReplaceRange,
+} from "./pageLinkPickerShared";
 
 export type MarkdownHybridTableCellLocation = {
   rowBand: MarkdownPipeTableRowBand;
@@ -157,19 +164,9 @@ type TableCellImageReplacePickerState = {
   highlightedIndex: number;
 };
 
-type TableCellPageLinkCandidate = {
-  id: string;
-  target: string;
-  wikilink: string;
-  label: string;
-  sublabel?: string;
-  searchText: string;
-};
+type TableCellPageLinkCandidate = PageLinkCandidate;
 
-type TableCellPickerReplaceRange = {
-  start: number;
-  end: number;
-};
+type TableCellPickerReplaceRange = PageLinkPickerReplaceRange;
 
 type TableCellPageLinkPickerState = {
   location: MarkdownHybridTableCellLocation;
@@ -260,110 +257,6 @@ const resolveStandaloneCellPngEmbed = (source: string, scope: string) => {
     mediaSegmentIndex,
     src: item.src,
     label: item.label,
-  };
-};
-
-const inlineWikilinkOpenTrigger = /\[\[$/;
-const inlineImageEmbedOpenTrigger = /!\[\[$/;
-
-const stripMarkdownExtension = (value: string) => value.replace(/\.md$/i, "");
-
-const getPathBasename = (value: string) => {
-  const normalized = value.replace(/\\/g, "/");
-  const segments = normalized.split("/").filter(Boolean);
-  return segments[segments.length - 1] ?? normalized;
-};
-
-const resolveWikilinkLabelFromTarget = (target: string) => stripMarkdownExtension(getPathBasename(target.trim()));
-
-const buildPageLinkCandidates = (vaultFiles?: VaultFile[] | null): TableCellPageLinkCandidate[] => {
-  if (!vaultFiles || vaultFiles.length === 0) {
-    return [];
-  }
-  const seenTargets = new Set<string>();
-  const candidates: TableCellPageLinkCandidate[] = [];
-
-  for (const file of vaultFiles) {
-    const relative = normalizeRelativePath(file.relative_path ?? "");
-    if (!/\.md$/i.test(relative)) {
-      continue;
-    }
-    const normalizedRelative = relative.replace(/^\/+/, "");
-    const target = stripMarkdownExtension(normalizedRelative);
-    if (!target) {
-      continue;
-    }
-    const targetKey = target.toLowerCase();
-    if (seenTargets.has(targetKey)) {
-      continue;
-    }
-    seenTargets.add(targetKey);
-    const label = resolveWikilinkLabelFromTarget(target);
-    candidates.push({
-      id: `${targetKey}:${normalizedRelative.toLowerCase()}`,
-      target,
-      wikilink: `[[${target}]]`,
-      label,
-      sublabel: normalizedRelative === `${label}.md` ? undefined : normalizedRelative,
-      searchText: `${label} ${target} ${normalizedRelative}`.toLowerCase(),
-    });
-  }
-
-  candidates.sort((left, right) => {
-    const labelCompare = left.label.localeCompare(right.label, undefined, { sensitivity: "base" });
-    if (labelCompare !== 0) {
-      return labelCompare;
-    }
-    return left.target.localeCompare(right.target, undefined, { sensitivity: "base" });
-  });
-
-  return candidates;
-};
-
-const filterPageLinkCandidates = (candidates: TableCellPageLinkCandidate[], query: string) => {
-  const normalizedQuery = query.trim().toLowerCase();
-  if (!normalizedQuery) {
-    return candidates;
-  }
-  return candidates.filter((candidate) => candidate.searchText.includes(normalizedQuery));
-};
-
-const detectTypedPageLinkTrigger = (
-  value: string,
-  selectionStart: number | null | undefined,
-): TableCellPickerReplaceRange | null => {
-  if (typeof selectionStart !== "number") {
-    return null;
-  }
-  const safeSelectionStart = Math.max(0, Math.min(selectionStart, value.length));
-  const before = value.slice(0, safeSelectionStart);
-  if (safeSelectionStart >= 3 && value[safeSelectionStart - 3] === "!") {
-    return null;
-  }
-  if (!inlineWikilinkOpenTrigger.test(before)) {
-    return null;
-  }
-  return {
-    start: safeSelectionStart - 2,
-    end: safeSelectionStart,
-  };
-};
-
-const detectTypedImageEmbedTrigger = (
-  value: string,
-  selectionStart: number | null | undefined,
-): TableCellPickerReplaceRange | null => {
-  if (typeof selectionStart !== "number") {
-    return null;
-  }
-  const safeSelectionStart = Math.max(0, Math.min(selectionStart, value.length));
-  const before = value.slice(0, safeSelectionStart);
-  if (!inlineImageEmbedOpenTrigger.test(before)) {
-    return null;
-  }
-  return {
-    start: safeSelectionStart - 3,
-    end: safeSelectionStart,
   };
 };
 
@@ -717,7 +610,7 @@ export const MarkdownHybridTableBlock = ({
     useState<InlineFormattingToolbarLinkState | null>(null);
   const isDirty = cellDirty || codeDirty;
   const pageLinkCandidates = useMemo(
-    () => buildPageLinkCandidates(vaultFiles),
+    () => buildPageLinkCandidates(vaultFiles ?? undefined),
     [vaultFiles],
   );
   const filteredCellPageLinkCandidates = useMemo(
@@ -2988,12 +2881,11 @@ export const MarkdownHybridTableBlock = ({
           onChange={(event) => {
             const nextValue = event.currentTarget.value;
             const nextSelectionStart = event.currentTarget.selectionStart ?? nextValue.length;
-            const typedPageLinkTrigger = cellPageLinkPickerState || cellImageLinkPickerState
+            const typedLinkTrigger = cellPageLinkPickerState || cellImageLinkPickerState
               ? null
-              : detectTypedPageLinkTrigger(nextValue, nextSelectionStart);
-            const typedImageLinkTrigger = cellPageLinkPickerState || cellImageLinkPickerState
-              ? null
-              : detectTypedImageEmbedTrigger(nextValue, nextSelectionStart);
+              : resolveTypedLinkPickerTriggerAtCaret(nextValue, nextSelectionStart);
+            const typedPageLinkTrigger = typedLinkTrigger?.mode === "page" ? typedLinkTrigger : null;
+            const typedImageLinkTrigger = typedLinkTrigger?.mode === "image" ? typedLinkTrigger : null;
 
             setCellDraft(nextValue);
             setCellDirty(nextValue !== fromCellStorageValue(getCellValue(parsedModel, location)));
@@ -3005,29 +2897,37 @@ export const MarkdownHybridTableBlock = ({
               return;
             }
             if (typedPageLinkTrigger) {
-              const anchor = resolveTextareaCaretAnchor(event.currentTarget, tableRoot, typedPageLinkTrigger.end);
+              const anchor = resolveTextareaCaretAnchor(
+                event.currentTarget,
+                tableRoot,
+                typedPageLinkTrigger.replaceRange.end,
+              );
               hideInlineFormattingToolbar();
               setCellImageLinkPickerState(null);
               setCellPageLinkPickerState({
                 location,
-                replaceRange: typedPageLinkTrigger,
+                replaceRange: typedPageLinkTrigger.replaceRange,
                 anchorLeft: anchor.left,
                 anchorTop: anchor.top,
-                query: "",
+                query: typedPageLinkTrigger.initialQuery,
                 highlightedIndex: 0,
               });
               return;
             }
             if (typedImageLinkTrigger) {
-              const anchor = resolveTextareaCaretAnchor(event.currentTarget, tableRoot, typedImageLinkTrigger.end);
+              const anchor = resolveTextareaCaretAnchor(
+                event.currentTarget,
+                tableRoot,
+                typedImageLinkTrigger.replaceRange.end,
+              );
               hideInlineFormattingToolbar();
               setCellPageLinkPickerState(null);
               setCellImageLinkPickerState({
                 location,
-                replaceRange: typedImageLinkTrigger,
+                replaceRange: typedImageLinkTrigger.replaceRange,
                 anchorLeft: anchor.left,
                 anchorTop: anchor.top,
-                query: "",
+                query: typedImageLinkTrigger.initialQuery,
                 highlightedIndex: 0,
               });
             }

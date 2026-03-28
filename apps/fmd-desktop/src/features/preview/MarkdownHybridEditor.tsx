@@ -115,6 +115,15 @@ import {
   type InlineFormattingToolbarActiveState,
   type InlineFormattingToolbarRange,
 } from "./inlineFormatting";
+import {
+  buildPageLinkCandidates,
+  filterPageLinkCandidates,
+  resolveTypedLinkPickerTriggerAtCaret,
+  resolveWikilinkLabelFromTarget,
+  stripMarkdownExtension,
+  type PageLinkCandidate,
+  type PageLinkPickerReplaceRange,
+} from "./pageLinkPickerShared";
 import { MathStructureDialog } from "./math-editor/MathStructureDialog";
 
 export type MarkdownHybridEditorMode = "edit" | "write";
@@ -886,13 +895,9 @@ const renderInsertMenuRowContent = ({
 
 type PageLinkPickerSource = "insert-menu" | "typed-trigger";
 
-type PageLinkPickerReplaceRange = {
-  start: number;
-  end: number;
-};
-
 type PendingTypedImageLinkPickerRequest = {
   replaceRange?: PageLinkPickerReplaceRange;
+  initialQuery?: string;
 };
 
 type TypedImageLinkPickerState = {
@@ -907,6 +912,7 @@ type TypedImageLinkPickerState = {
 type PendingPageLinkPickerRequest = {
   source: PageLinkPickerSource;
   replaceRange?: PageLinkPickerReplaceRange;
+  initialQuery?: string;
 };
 
 type PageLinkPickerState = {
@@ -926,14 +932,6 @@ type ImageEmbedReplacePickerState = {
   highlightedIndex: number;
 };
 
-type PageLinkCandidate = {
-  id: string;
-  target: string;
-  wikilink: string;
-  label: string;
-  sublabel?: string;
-  searchText: string;
-};
 
 type ResolvedInlinePageLink = {
   wikilink: string;
@@ -947,8 +945,6 @@ type AdjacentWikilinkRange = {
 };
 
 const inlineWikilinkTokenPattern = /\[\[[^\]\n]+?\]\]/g;
-const inlineWikilinkOpenTrigger = /\[\[$/;
-const inlineImageEmbedOpenTrigger = /!\[\[$/;
 const inlineWikilinkSkipTags = new Set(["a", "code", "pre", "kbd", "samp"]);
 const reactMarkdownWikilinkWrappedTagNames = [
   "p",
@@ -963,16 +959,6 @@ const reactMarkdownWikilinkWrappedTagNames = [
   "td",
   "th",
 ] as const;
-
-const stripMarkdownExtension = (value: string) => value.replace(/\.md$/i, "");
-
-const getPathBasename = (value: string) => {
-  const normalized = value.replace(/\\/g, "/");
-  const segments = normalized.split("/").filter(Boolean);
-  return segments[segments.length - 1] ?? normalized;
-};
-
-const resolveWikilinkLabelFromTarget = (target: string) => stripMarkdownExtension(getPathBasename(target.trim()));
 
 const parseInlineWikilink = (raw: string) => {
   const trimmed = raw.trim();
@@ -1002,45 +988,6 @@ const canOpenPageLinkPickerInBlockKind = (kind: MarkdownBlock["kind"]) =>
   kind !== "table" &&
   kind !== "database-block" &&
   kind !== "math-block";
-
-const detectTypedPageLinkTrigger = (
-  value: string,
-  selectionStart: number | null | undefined,
-): PageLinkPickerReplaceRange | null => {
-  if (typeof selectionStart !== "number") {
-    return null;
-  }
-  const safeSelectionStart = Math.max(0, Math.min(selectionStart, value.length));
-  const before = value.slice(0, safeSelectionStart);
-  if (safeSelectionStart >= 3 && value[safeSelectionStart - 3] === "!") {
-    return null;
-  }
-  if (!inlineWikilinkOpenTrigger.test(before)) {
-    return null;
-  }
-  return {
-    start: safeSelectionStart - 2,
-    end: safeSelectionStart,
-  };
-};
-
-const detectTypedImageEmbedTrigger = (
-  value: string,
-  selectionStart: number | null | undefined,
-): PageLinkPickerReplaceRange | null => {
-  if (typeof selectionStart !== "number") {
-    return null;
-  }
-  const safeSelectionStart = Math.max(0, Math.min(selectionStart, value.length));
-  const before = value.slice(0, safeSelectionStart);
-  if (!inlineImageEmbedOpenTrigger.test(before)) {
-    return null;
-  }
-  return {
-    start: safeSelectionStart - 3,
-    end: safeSelectionStart,
-  };
-};
 
 const findAdjacentWikilinkRange = (
   value: string,
@@ -1074,48 +1021,6 @@ const findAdjacentWikilinkRange = (
   return null;
 };
 
-const buildPageLinkCandidates = (vaultFiles?: VaultFile[]): PageLinkCandidate[] => {
-  if (!vaultFiles || vaultFiles.length === 0) {
-    return [];
-  }
-  const seenTargets = new Set<string>();
-  const candidates: PageLinkCandidate[] = [];
-
-  for (const file of vaultFiles) {
-    const relative = normalizeRelativePath(file.relative_path ?? "");
-    if (!/\.md$/i.test(relative)) {
-      continue;
-    }
-    const normalizedRelative = relative.replace(/^\/+/, "");
-    const target = stripMarkdownExtension(normalizedRelative);
-    if (!target) {
-      continue;
-    }
-    const targetKey = target.toLowerCase();
-    if (seenTargets.has(targetKey)) {
-      continue;
-    }
-    seenTargets.add(targetKey);
-    const label = resolveWikilinkLabelFromTarget(target);
-    candidates.push({
-      id: `${targetKey}:${normalizedRelative.toLowerCase()}`,
-      target,
-      wikilink: `[[${target}]]`,
-      label,
-      sublabel: normalizedRelative === `${label}.md` ? undefined : normalizedRelative,
-      searchText: `${label} ${target} ${normalizedRelative}`.toLowerCase(),
-    });
-  }
-
-  candidates.sort((left, right) => {
-    const labelCompare = left.label.localeCompare(right.label, undefined, { sensitivity: "base" });
-    if (labelCompare !== 0) {
-      return labelCompare;
-    }
-    return left.target.localeCompare(right.target, undefined, { sensitivity: "base" });
-  });
-  return candidates;
-};
 
 type PageLinkLookup = {
   byTarget: Map<string, PageLinkCandidate>;
@@ -1160,14 +1065,6 @@ const resolvePageLinkCandidate = (
     lookup.byRelativeWithExtension.get(lowerWithExtension) ??
     lookup.byBasename.get(basenameWithoutExtension) ??
     null;
-};
-
-const filterPageLinkCandidates = (candidates: PageLinkCandidate[], query: string) => {
-  const normalizedQuery = query.trim().toLowerCase();
-  if (!normalizedQuery) {
-    return candidates;
-  }
-  return candidates.filter((candidate) => candidate.searchText.includes(normalizedQuery));
 };
 
 const extractImageEmbedTokenFromRaw = (blockRaw: string) => {
@@ -4820,7 +4717,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       },
       anchorLeft: anchor.left,
       anchorTop: anchor.top,
-      query: "",
+      query: pendingPageLinkPickerRequest.initialQuery ?? "",
       highlightedIndex: 0,
     });
     setPendingPageLinkPickerRequest(null);
@@ -4851,7 +4748,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       },
       anchorLeft: anchor.left,
       anchorTop: anchor.top,
-      query: "",
+      query: pendingTypedImageLinkPickerRequest.initialQuery ?? "",
       highlightedIndex: 0,
     });
     setPendingTypedImageLinkPickerRequest(null);
@@ -7244,12 +7141,11 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       if (typeof selectionStart === "number") {
         setEditorOverlaySelectionStart(selectionStart);
       }
-      const typedPageLinkTrigger = pageLinkPickerState || typedImageLinkPickerState
+      const typedLinkTrigger = pageLinkPickerState || typedImageLinkPickerState
         ? null
-        : detectTypedPageLinkTrigger(value, selectionStart);
-      const typedImageLinkTrigger = pageLinkPickerState || typedImageLinkPickerState
-        ? null
-        : detectTypedImageEmbedTrigger(value, selectionStart);
+        : resolveTypedLinkPickerTriggerAtCaret(value, selectionStart);
+      const typedPageLinkTrigger = typedLinkTrigger?.mode === "page" ? typedLinkTrigger : null;
+      const typedImageLinkTrigger = typedLinkTrigger?.mode === "image" ? typedLinkTrigger : null;
       if (activeBlockIndex === null) {
         return;
       }
@@ -7268,13 +7164,15 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       if (typedPageLinkTrigger && block && canOpenPageLinkPickerInBlockKind(block.kind)) {
         requestPageLinkPickerOpen({
           source: "typed-trigger",
-          replaceRange: typedPageLinkTrigger,
+          replaceRange: typedPageLinkTrigger.replaceRange,
+          initialQuery: typedPageLinkTrigger.initialQuery,
         });
         return;
       }
       if (typedImageLinkTrigger && block && canOpenPageLinkPickerInBlockKind(block.kind)) {
         requestTypedImageLinkPickerOpen({
-          replaceRange: typedImageLinkTrigger,
+          replaceRange: typedImageLinkTrigger.replaceRange,
+          initialQuery: typedImageLinkTrigger.initialQuery,
         });
       }
     },

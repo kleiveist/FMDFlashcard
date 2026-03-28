@@ -809,10 +809,22 @@ const collapseLeadingIdenticalFrontmatterBlocks = (markdown: string) => {
   return `${first.rawBlock}${markdown.slice(cursor)}`;
 };
 
-export const composeMarkdownWithBody = (markdown: string, body: string) => {
+export type ComposeMarkdownWithBodyOptions = {
+  bodyMayContainFrontmatter?: boolean;
+};
+
+export const composeMarkdownWithBody = (
+  markdown: string,
+  body: string,
+  options?: ComposeMarkdownWithBodyOptions,
+) => {
   const parsed = parseFrontmatterDocumentInternal(markdown);
   if (!parsed.hasFrontmatter) {
     return body;
+  }
+  const bodyMayContainFrontmatter = options?.bodyMayContainFrontmatter ?? true;
+  if (!bodyMayContainFrontmatter) {
+    return `${parsed.frontmatterPrefix}${body}`;
   }
   if (!extractLeadingFrontmatterBlock(body)) {
     return `${parsed.frontmatterPrefix}${body}`;

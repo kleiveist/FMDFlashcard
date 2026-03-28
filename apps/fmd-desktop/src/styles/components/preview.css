@@ -1619,6 +1619,7 @@ textarea.preview-editor {
 }
 
 .preview.preview-editor.markdown {
+  position: relative;
   display: flex;
   flex-direction: column;
   font-family: inherit;
@@ -4365,6 +4366,25 @@ textarea.preview-editor {
   pointer-events: none;
   user-select: none;
   white-space: pre;
+}
+
+.preview-markdown-editable .md-inline-marker,
+.preview-markdown-editable .md-blockquote-marker,
+.preview-markdown-editable .md-table-pipe-marker {
+  display: none;
+  color: var(--muted);
+  white-space: pre;
+  opacity: 0.9;
+  pointer-events: none;
+  user-select: none;
+}
+
+.preview-markdown-editable [data-md-inline-active="true"] > .md-inline-marker,
+.preview-markdown-editable [data-md-inline-active="true"] > .md-blockquote-marker,
+.preview-markdown-editable [data-md-inline-active="true"] > .md-table-pipe-marker {
+  display: inline;
+  pointer-events: auto;
+  user-select: text;
 }
 
 .preview-markdown-editable h1[data-md-heading-active="true"] > .md-heading-marker,

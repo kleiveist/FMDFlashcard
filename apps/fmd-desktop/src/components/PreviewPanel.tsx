@@ -55,6 +55,9 @@ import {
   parseMarkdownBlocks,
   type MarkdownBlock,
 } from "../features/preview/markdownBlocks";
+import {
+  applyMarkdownFormattingInsertion,
+} from "../features/preview/markdownFormattingActions";
 import { MarkdownHybridDatabaseBlock } from "../features/preview/database/database-block";
 import {
   addFrontmatterProperty,
@@ -85,7 +88,11 @@ import {
   SHARED_TABLE_CELL_MEDIA_CLASS,
   SHARED_TABLE_WRAP_CLASS,
 } from "../lib/markdownTableCellMedia";
-import { renderMarkdownMathNode } from "../lib/markdownMath";
+import {
+  findMathTokenCoveringRange,
+  rangeIntersectsMarkdownCodeContext,
+  renderMarkdownMathNode,
+} from "../lib/markdownMath";
 import {
   normalizeInlineFormattingForPreview,
   remarkPreserveOrderedListDelimiters,
@@ -93,6 +100,13 @@ import {
   resolveOrderedListDelimiter,
 } from "../lib/markdownPreviewShared";
 import { extractVaultAssetRelativePath, resolveVaultImageSrc } from "../lib/vaultAssets";
+import {
+  buildPageLinkCandidates,
+  filterPageLinkCandidates,
+  resolveTypedLinkPickerTriggerAtCaret,
+  type PageLinkCandidate,
+  type PageLinkPickerReplaceRange,
+} from "../features/preview/pageLinkPickerShared";
 import { type LoadState } from "../lib/types";
 import { type VaultFile, type VaultPngAsset } from "../lib/tree";
 import {
@@ -108,10 +122,15 @@ import { SMART_QUERY } from "../lib/breakpoints";
 import { ChevronDownIcon, CodeIcon, EditIcon, GridEventIcon, MarkdownIcon } from "./icons";
 import { FlashcardMediaGroup } from "./flashcards/FlashcardMediaGroup";
 import { SvgPreviewBlock } from "./flashcards/SvgPreviewBlock";
+import { VaultPngPicker } from "./media/VaultPngPicker";
 import { extractSvgCodeBlockSource } from "./markdownSvg";
 import { MarkdownHighlightedPre } from "./MarkdownHighlightedPre";
 import {
+  buildVaultImageCandidates,
+  filterVaultImageCandidates,
+  serializePngEmbed,
   buildMarkdownMediaPreviewSource,
+  type VaultImageCandidate,
   type MarkdownMediaPreviewGroup,
 } from "../lib/cardMedia";
 import { applyHighlightToCodeElement, scheduleIdleTask } from "../lib/markdownCodeHighlight";
@@ -1577,6 +1596,17 @@ type MarkdownTabFolderEntry = {
   label: string;
 };
 
+type LegacyMarkdownLinkPickerMode = "page" | "image";
+
+type LegacyMarkdownLinkPickerState = {
+  mode: LegacyMarkdownLinkPickerMode;
+  replaceRange: PageLinkPickerReplaceRange;
+  query: string;
+  highlightedIndex: number;
+  anchorLeft: number;
+  anchorTop: number;
+};
+
 const clampPreviewTabWidth = (value: number) =>
   Math.max(PREVIEW_TAB_MIN_WIDTH_PX, Math.min(PREVIEW_TAB_MAX_WIDTH_PX, value));
 
@@ -1692,6 +1722,93 @@ const shouldCollapseChainedClozeVariants = (options?: MarkdownOffsetMapOptions) 
 
 const shouldSupportDoublePercentTokens = (options?: MarkdownOffsetMapOptions) =>
   options?.supportDoublePercentTokens ?? false;
+
+const MARKDOWN_EDITOR_OFFSET_MAP_OPTIONS: MarkdownOffsetMapOptions = {
+  skipStructuralMarkers: false,
+  hideInlineSyntaxDelimiters: false,
+  collapseChainedClozeVariants: true,
+  supportDoublePercentTokens: true,
+};
+
+const LEGACY_MARKDOWN_PICKER_BLOCKED_BLOCK_KINDS = new Set<MarkdownBlock["kind"]>([
+  "code-fence",
+  "math-block",
+  "database-block",
+  "hr",
+  "table",
+]);
+
+const canOpenLegacyMarkdownLinkPickerAtRange = (
+  markdown: string,
+  range: { start: number; end: number },
+) => {
+  if (rangeIntersectsMarkdownCodeContext(markdown, range)) {
+    return false;
+  }
+  if (findMathTokenCoveringRange(markdown, range)) {
+    return false;
+  }
+  const probeOffset = Math.max(
+    0,
+    Math.min(range.start, Math.max(0, markdown.length - 1)),
+  );
+  const blocks = parseMarkdownBlocks(markdown);
+  const owningBlock = blocks.find((block) =>
+    probeOffset >= block.startOffset && probeOffset < block.endOffset
+  );
+  if (!owningBlock) {
+    return true;
+  }
+  return !LEGACY_MARKDOWN_PICKER_BLOCKED_BLOCK_KINDS.has(owningBlock.kind);
+};
+
+const resolveFormattingWrapperToken = (rawToken: string) => {
+  const trimmed = rawToken.trim();
+  if (trimmed === "****" || trimmed === "**") {
+    return "**";
+  }
+  if (trimmed === "*" || trimmed === "__" || trimmed === "~~" || trimmed === "==" || trimmed === "%%") {
+    return trimmed;
+  }
+  if (trimmed === "\"\"" || trimmed === "''") {
+    return "\"";
+  }
+  return null;
+};
+
+const resolveFormattingPrefixToken = (rawToken: string) => {
+  const trimmed = rawToken.trim();
+  if (trimmed === ">") {
+    return "> ";
+  }
+  if (/^#{1,6}$/.test(trimmed)) {
+    return `${trimmed} `;
+  }
+  return null;
+};
+
+const shouldTreatAsFormattingActionToken = (
+  rawToken: string | null | undefined,
+  hasSelection: boolean,
+) => {
+  const token = rawToken ?? "";
+  const trimmed = token.trim();
+  if (!trimmed) {
+    return false;
+  }
+  if (!resolveFormattingWrapperToken(trimmed) && !resolveFormattingPrefixToken(trimmed)) {
+    return false;
+  }
+  if (trimmed.length > 1) {
+    return true;
+  }
+  if (hasSelection) {
+    return true;
+  }
+  // Single-char tokens are ambiguous during normal typing.
+  // Restrict collapsed-caret handling to quote-prefix action.
+  return trimmed === ">";
+};
 
 type InlinePreviewTokenKind =
   | "double-percent"
@@ -1999,6 +2116,7 @@ const mapPlainOffsetToRawIndex = (
     return 0;
   }
   const skipStructuralMarkers = shouldSkipStructuralMarkers(options);
+  const hideInlineSyntaxDelimiters = shouldHideInlineSyntaxDelimiters(options);
   let rawIndex = 0;
   let plainIndex = 0;
   let inFence = false;
@@ -2074,7 +2192,7 @@ const mapPlainOffsetToRawIndex = (
     lineStart = false;
 
     if (!inFence) {
-      if (inLinkUrl) {
+      if (hideInlineSyntaxDelimiters && inLinkUrl) {
         if (char === ")") {
           inLinkUrl = false;
         }
@@ -2104,25 +2222,25 @@ const mapPlainOffsetToRawIndex = (
             continue;
           }
         }
-        if (char === "`") {
+        if (hideInlineSyntaxDelimiters && char === "`") {
           inInlineCode = !inInlineCode;
           rawIndex += 1;
           continue;
         }
-        if (!inInlineCode && (char === "*" || char === "_")) {
+        if (hideInlineSyntaxDelimiters && !inInlineCode && (char === "*" || char === "_")) {
           rawIndex += 1;
           continue;
         }
-        if (char === "!" && rawMarkdown[rawIndex + 1] === "[") {
+        if (hideInlineSyntaxDelimiters && char === "!" && rawMarkdown[rawIndex + 1] === "[") {
           rawIndex += 1;
           continue;
         }
-        if (char === "[") {
+        if (hideInlineSyntaxDelimiters && char === "[") {
           inLinkText = true;
           rawIndex += 1;
           continue;
         }
-        if (inLinkText && char === "]") {
+        if (hideInlineSyntaxDelimiters && inLinkText && char === "]") {
           inLinkText = false;
           if (rawMarkdown[rawIndex + 1] === "(") {
             inLinkUrl = true;
@@ -2154,6 +2272,7 @@ const mapRawIndexToPlainOffset = (
     return 0;
   }
   const skipStructuralMarkers = shouldSkipStructuralMarkers(options);
+  const hideInlineSyntaxDelimiters = shouldHideInlineSyntaxDelimiters(options);
   const target = Math.min(rawIndexTarget, rawMarkdown.length);
   let rawIndex = 0;
   let plainIndex = 0;
@@ -2227,7 +2346,7 @@ const mapRawIndexToPlainOffset = (
     lineStart = false;
 
     if (!inFence) {
-      if (inLinkUrl) {
+      if (hideInlineSyntaxDelimiters && inLinkUrl) {
         if (char === ")") {
           inLinkUrl = false;
         }
@@ -2255,25 +2374,25 @@ const mapRawIndexToPlainOffset = (
             continue;
           }
         }
-        if (char === "`") {
+        if (hideInlineSyntaxDelimiters && char === "`") {
           inInlineCode = !inInlineCode;
           rawIndex += 1;
           continue;
         }
-        if (!inInlineCode && (char === "*" || char === "_")) {
+        if (hideInlineSyntaxDelimiters && !inInlineCode && (char === "*" || char === "_")) {
           rawIndex += 1;
           continue;
         }
-        if (char === "!" && rawMarkdown[rawIndex + 1] === "[") {
+        if (hideInlineSyntaxDelimiters && char === "!" && rawMarkdown[rawIndex + 1] === "[") {
           rawIndex += 1;
           continue;
         }
-        if (char === "[") {
+        if (hideInlineSyntaxDelimiters && char === "[") {
           inLinkText = true;
           rawIndex += 1;
           continue;
         }
-        if (inLinkText && char === "]") {
+        if (hideInlineSyntaxDelimiters && inLinkText && char === "]") {
           inLinkText = false;
           if (rawMarkdown[rawIndex + 1] === "(") {
             inLinkUrl = true;
@@ -2547,6 +2666,193 @@ const setCaretAtPlainOffset = (container: HTMLElement, offset: number) => {
   setSelectionAtPlainOffsets(container, offset, offset);
 };
 
+const resolveSelectionRangeWithinEditor = (editor: HTMLElement) => {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) {
+    return null;
+  }
+  const range = selection.getRangeAt(0);
+  if (!editor.contains(range.startContainer) || !editor.contains(range.endContainer)) {
+    return null;
+  }
+  return range;
+};
+
+const rangeIntersectsNodeSafely = (range: Range, node: Node) => {
+  try {
+    return range.intersectsNode(node);
+  } catch {
+    return false;
+  }
+};
+
+const replaceSelectionWithTextInContentEditable = (
+  editor: HTMLElement,
+  text: string,
+) => {
+  const range = resolveSelectionRangeWithinEditor(editor);
+  const selection = window.getSelection();
+  if (!range || !selection) {
+    return false;
+  }
+  range.deleteContents();
+  const textNode = document.createTextNode(text);
+  range.insertNode(textNode);
+  const caretRange = document.createRange();
+  caretRange.setStart(textNode, textNode.data.length);
+  caretRange.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(caretRange);
+  return true;
+};
+
+const resolveSelectionLineElements = (editor: HTMLElement, range: Range) => {
+  const lineElements = Array.from(
+    editor.querySelectorAll<HTMLElement>('[data-md-inline-line="true"]'),
+  );
+  if (lineElements.length === 0) {
+    return [] as HTMLElement[];
+  }
+  const resolveLineFromNode = (node: Node) => {
+    const anchorElement = node instanceof Element ? node : node.parentElement;
+    const line = anchorElement?.closest<HTMLElement>('[data-md-inline-line="true"]');
+    return line && editor.contains(line) ? line : null;
+  };
+  if (range.collapsed) {
+    const line = resolveLineFromNode(range.startContainer);
+    return line ? [line] : [];
+  }
+  const startLine = resolveLineFromNode(range.startContainer);
+  const endLine = resolveLineFromNode(range.endContainer);
+  if (startLine && endLine) {
+    const startIndex = lineElements.indexOf(startLine);
+    const endIndex = lineElements.indexOf(endLine);
+    if (startIndex !== -1 && endIndex !== -1) {
+      const minIndex = Math.min(startIndex, endIndex);
+      const maxIndex = Math.max(startIndex, endIndex);
+      const betweenLines = lineElements.slice(minIndex, maxIndex + 1);
+      return betweenLines.filter((line) =>
+        !betweenLines.some((other) => other !== line && line.contains(other))
+      );
+    }
+  }
+  const intersected = lineElements.filter((line) => rangeIntersectsNodeSafely(range, line));
+  if (intersected.length === 0) {
+    const line = resolveLineFromNode(range.startContainer);
+    return line ? [line] : [];
+  }
+  return intersected.filter((line) => !intersected.some((other) => other !== line && line.contains(other)));
+};
+
+const resolveLinePrefixInsertionPoint = (line: HTMLElement) => {
+  let node: ChildNode | null = line.firstChild;
+  while (node instanceof HTMLElement) {
+    if (
+      node.classList.contains("md-list-marker") ||
+      node.classList.contains("md-heading-marker") ||
+      node.classList.contains("md-blockquote-marker") ||
+      node.classList.contains("md-table-pipe-marker")
+    ) {
+      node = node.nextSibling;
+      continue;
+    }
+    break;
+  }
+  return node;
+};
+
+const applyFormattingWrapperInContentEditable = (
+  editor: HTMLElement,
+  marker: string,
+) => {
+  const range = resolveSelectionRangeWithinEditor(editor);
+  const selection = window.getSelection();
+  if (!range || !selection) {
+    return false;
+  }
+  const ownerDocument = editor.ownerDocument;
+  if (range.collapsed) {
+    const textNode = ownerDocument.createTextNode(`${marker}${marker}`);
+    range.insertNode(textNode);
+    const nextRange = ownerDocument.createRange();
+    nextRange.setStart(textNode, marker.length);
+    nextRange.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(nextRange);
+    return true;
+  }
+
+  const extracted = range.extractContents();
+  const fragment = ownerDocument.createDocumentFragment();
+  const openNode = ownerDocument.createTextNode(marker);
+  const closeNode = ownerDocument.createTextNode(marker);
+  fragment.append(openNode);
+  fragment.append(extracted);
+  fragment.append(closeNode);
+  range.insertNode(fragment);
+
+  const nextRange = ownerDocument.createRange();
+  nextRange.setStartAfter(openNode);
+  nextRange.setEndBefore(closeNode);
+  selection.removeAllRanges();
+  selection.addRange(nextRange);
+  return true;
+};
+
+const applyFormattingPrefixInContentEditable = (
+  editor: HTMLElement,
+  prefix: string,
+) => {
+  const range = resolveSelectionRangeWithinEditor(editor);
+  const selection = window.getSelection();
+  if (!range || !selection) {
+    return false;
+  }
+
+  const lines = resolveSelectionLineElements(editor, range);
+  if (lines.length === 0) {
+    return false;
+  }
+  const ownerDocument = editor.ownerDocument;
+  let firstInsertedNode: Text | null = null;
+  lines.forEach((line, index) => {
+    const insertionPoint = resolveLinePrefixInsertionPoint(line);
+    const textNode = ownerDocument.createTextNode(prefix);
+    if (insertionPoint) {
+      line.insertBefore(textNode, insertionPoint);
+    } else {
+      line.appendChild(textNode);
+    }
+    if (index === 0) {
+      firstInsertedNode = textNode;
+    }
+  });
+
+  if (range.collapsed && firstInsertedNode) {
+    const nextRange = ownerDocument.createRange();
+    nextRange.setStart(firstInsertedNode, firstInsertedNode.data.length);
+    nextRange.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(nextRange);
+  }
+  return true;
+};
+
+const applyMarkdownFormattingToContentEditable = (
+  editor: HTMLElement,
+  rawToken: string,
+) => {
+  const wrapper = resolveFormattingWrapperToken(rawToken);
+  if (wrapper) {
+    return applyFormattingWrapperInContentEditable(editor, wrapper);
+  }
+  const prefix = resolveFormattingPrefixToken(rawToken);
+  if (prefix) {
+    return applyFormattingPrefixInContentEditable(editor, prefix);
+  }
+  return false;
+};
+
 const replaceHeadingElementLevel = (heading: HTMLElement, level: number) => {
   const normalizedLevel = Math.max(1, Math.min(6, level));
   const targetTag = `h${normalizedLevel}`;
@@ -2764,8 +3070,15 @@ const serializeMarkdownNode = (
 
   const element = node as HTMLElement;
   const tag = element.tagName.toLowerCase();
+  const hasClassName = (name: string) => element.classList.contains(name);
+  const isInlineMarkerElement = hasClassName("md-inline-marker");
+  const isTablePipeMarkerElement = hasClassName("md-table-pipe-marker");
 
   if (tag === "button" && element.classList.contains("md-code-copy-button")) {
+    return "";
+  }
+
+  if (isInlineMarkerElement || isTablePipeMarkerElement) {
     return "";
   }
 
@@ -2802,16 +3115,40 @@ const serializeMarkdownNode = (
     }
   }
 
+  const cloneWithoutInlineMarkers = () => {
+    const clone = element.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll(".md-inline-marker").forEach((marker) => marker.remove());
+    return clone;
+  };
+
+  const resolveInlineWrapper = (defaultOpen: string, defaultClose: string) => {
+    const open = element.querySelector<HTMLElement>(
+      ':scope > .md-inline-marker.md-inline-marker-open',
+    )?.textContent ?? defaultOpen;
+    const close = element.querySelector<HTMLElement>(
+      ':scope > .md-inline-marker.md-inline-marker-close',
+    )?.textContent ?? defaultClose;
+    return { open, close };
+  };
+
   if (tag === "strong" || tag === "b") {
-    return `**${serializeMarkdownChildren(element, context)}**`;
+    const { open, close } = resolveInlineWrapper("**", "**");
+    return `${open}${serializeMarkdownChildren(cloneWithoutInlineMarkers(), context)}${close}`;
   }
 
   if (tag === "em" || tag === "i") {
-    return `*${serializeMarkdownChildren(element, context)}*`;
+    const { open, close } = resolveInlineWrapper("*", "*");
+    return `${open}${serializeMarkdownChildren(cloneWithoutInlineMarkers(), context)}${close}`;
   }
 
   if (tag === "del" || tag === "s") {
-    return `~~${serializeMarkdownChildren(element, context)}~~`;
+    const { open, close } = resolveInlineWrapper("~~", "~~");
+    return `${open}${serializeMarkdownChildren(cloneWithoutInlineMarkers(), context)}${close}`;
+  }
+
+  if (tag === "mark") {
+    const { open, close } = resolveInlineWrapper("==", "==");
+    return `${open}${serializeMarkdownChildren(cloneWithoutInlineMarkers(), context)}${close}`;
   }
 
   if (tag === "code") {
@@ -2859,6 +3196,16 @@ const serializeMarkdownNode = (
 
   if (tag === "li") {
     return serializeMarkdownChildren(element, context).trim();
+  }
+
+  if (tag === "span" && element.classList.contains("md-inline-syntax-quoted-token")) {
+    const { open, close } = resolveInlineWrapper("\"", "\"");
+    return `${open}${serializeMarkdownChildren(cloneWithoutInlineMarkers(), context)}${close}`;
+  }
+
+  if (tag === "span" && element.classList.contains("md-inline-syntax-cloze")) {
+    const { open, close } = resolveInlineWrapper("%%", "%%");
+    return `${open}${serializeMarkdownChildren(cloneWithoutInlineMarkers(), context)}${close}`;
   }
 
   if (tag === "a") {
@@ -3024,6 +3371,15 @@ export const buildEditableMarkdownHtml = (
   rawMarkdown?: string,
 ) => {
   const clone = container.cloneNode(true) as HTMLElement;
+  type InlineMarkerHintBucket = {
+    strong: string[];
+    italic: string[];
+    strikethrough: string[];
+    highlight: string[];
+    cloze: string[];
+    quoted: string[];
+  };
+
   const parseListMarkersFromMarkdown = (markdown: string) => {
     if (!markdown) {
       return [] as string[];
@@ -3108,6 +3464,98 @@ export const buildEditableMarkdownHtml = (
     return markers;
   };
 
+  const parseInlineMarkerHintsFromMarkdown = (markdown: string): InlineMarkerHintBucket => {
+    const hints: InlineMarkerHintBucket = {
+      strong: [],
+      italic: [],
+      strikethrough: [],
+      highlight: [],
+      cloze: [],
+      quoted: [],
+    };
+    if (!markdown) {
+      return hints;
+    }
+
+    const lines = markdown.split("\n");
+    let inFence = false;
+    let fenceToken: "```" | "~~~" | null = null;
+    let lineOffset = 0;
+
+    lines.forEach((line, lineIndex) => {
+      const trimmed = line.trim();
+      const fenceMatch = trimmed.match(/^(```|~~~)/);
+      if (fenceMatch) {
+        const token = (fenceMatch[1] ?? "```") as "```" | "~~~";
+        if (!inFence) {
+          inFence = true;
+          fenceToken = token;
+        } else if (token === fenceToken) {
+          inFence = false;
+          fenceToken = null;
+        }
+        lineOffset += line.length + (lineIndex < lines.length - 1 ? 1 : 0);
+        return;
+      }
+      if (inFence) {
+        lineOffset += line.length + (lineIndex < lines.length - 1 ? 1 : 0);
+        return;
+      }
+
+      let cursor = 0;
+      while (cursor < line.length) {
+        const token = resolveInlinePreviewTokenAt(markdown, lineOffset + cursor, {
+          skipStructuralMarkers: false,
+          hideInlineSyntaxDelimiters: false,
+          collapseChainedClozeVariants: false,
+          supportDoublePercentTokens: true,
+        });
+        if (!token || token.rawStart !== lineOffset + cursor || token.rawEnd > lineOffset + line.length) {
+          cursor += 1;
+          continue;
+        }
+        const tokenRaw = markdown.slice(token.rawStart, token.rawEnd);
+        switch (token.kind) {
+          case "markdown-bold":
+            hints.strong.push("**");
+            break;
+          case "markdown-underline":
+            hints.strong.push("__");
+            break;
+          case "markdown-italic":
+            hints.italic.push("*");
+            break;
+          case "markdown-strikethrough":
+            hints.strikethrough.push("~~");
+            break;
+          case "markdown-highlight":
+            hints.highlight.push("==");
+            break;
+          case "double-percent":
+            hints.cloze.push("%%");
+            break;
+          case "cloze":
+            hints.cloze.push(
+              tokenRaw.startsWith("%%") && tokenRaw.endsWith("%%")
+                ? "%%"
+                : "%",
+            );
+            break;
+          case "quoted-token":
+            hints.quoted.push("\"");
+            break;
+          default:
+            break;
+        }
+        cursor = Math.max(cursor + 1, token.rawEnd - lineOffset);
+      }
+
+      lineOffset += line.length + (lineIndex < lines.length - 1 ? 1 : 0);
+    });
+
+    return hints;
+  };
+
   const resolveOrderedMarker = (listItem: HTMLElement) => {
     const parent = listItem.parentElement;
     if (!parent || parent.tagName.toLowerCase() !== "ol") {
@@ -3171,8 +3619,47 @@ export const buildEditableMarkdownHtml = (
   };
   const listMarkerHints = parseListMarkersFromMarkdown(rawMarkdown ?? "");
   const codeFenceHints = parseCodeFenceMarkersFromMarkdown(rawMarkdown ?? "");
+  const inlineMarkerHints = parseInlineMarkerHintsFromMarkdown(rawMarkdown ?? "");
   let listMarkerHintIndex = 0;
   let codeFenceHintIndex = 0;
+  const inlineMarkerHintIndices: Record<keyof InlineMarkerHintBucket, number> = {
+    strong: 0,
+    italic: 0,
+    strikethrough: 0,
+    highlight: 0,
+    cloze: 0,
+    quoted: 0,
+  };
+
+  const consumeInlineMarkerHint = (
+    kind: keyof InlineMarkerHintBucket,
+    fallback: string,
+  ) => {
+    const list = inlineMarkerHints[kind];
+    const nextIndex = inlineMarkerHintIndices[kind] ?? 0;
+    const nextValue = list[nextIndex] ?? fallback;
+    inlineMarkerHintIndices[kind] = nextIndex + 1;
+    return nextValue;
+  };
+
+  const createInlineMarker = (doc: Document, role: "open" | "close", value: string) => {
+    const marker = doc.createElement("span");
+    marker.className = `md-inline-marker md-inline-marker-${role}`;
+    marker.setAttribute("data-md-inline-marker-role", role);
+    marker.textContent = value;
+    return marker;
+  };
+
+  const ensureInlineMarkers = (element: HTMLElement, open: string, close: string) => {
+    if (element.querySelector(':scope > .md-inline-marker.md-inline-marker-open') &&
+      element.querySelector(':scope > .md-inline-marker.md-inline-marker-close')) {
+      return;
+    }
+    const openMarker = createInlineMarker(element.ownerDocument, "open", open);
+    const closeMarker = createInlineMarker(element.ownerDocument, "close", close);
+    element.insertBefore(openMarker, element.firstChild);
+    element.appendChild(closeMarker);
+  };
 
   const createCodeCopyButton = (doc: Document) => {
     const button = doc.createElement("button");
@@ -3309,6 +3796,74 @@ export const buildEditableMarkdownHtml = (
     marker.textContent = `${"#".repeat(level)} `;
     heading.insertBefore(marker, heading.firstChild);
   });
+
+  clone.querySelectorAll<HTMLElement>("strong,b").forEach((element) => {
+    const wrapper = consumeInlineMarkerHint("strong", "**");
+    ensureInlineMarkers(element, wrapper, wrapper);
+  });
+
+  clone.querySelectorAll<HTMLElement>("em,i").forEach((element) => {
+    const wrapper = consumeInlineMarkerHint("italic", "*");
+    ensureInlineMarkers(element, wrapper, wrapper);
+  });
+
+  clone.querySelectorAll<HTMLElement>("del,s").forEach((element) => {
+    const wrapper = consumeInlineMarkerHint("strikethrough", "~~");
+    ensureInlineMarkers(element, wrapper, wrapper);
+  });
+
+  clone.querySelectorAll<HTMLElement>("mark").forEach((element) => {
+    const wrapper = consumeInlineMarkerHint("highlight", "==");
+    ensureInlineMarkers(element, wrapper, wrapper);
+  });
+
+  clone.querySelectorAll<HTMLElement>("span.md-inline-syntax-quoted-token").forEach((element) => {
+    const wrapper = consumeInlineMarkerHint("quoted", "\"");
+    ensureInlineMarkers(element, wrapper, wrapper);
+  });
+
+  clone.querySelectorAll<HTMLElement>("span.md-inline-syntax-cloze").forEach((element) => {
+    const wrapper = consumeInlineMarkerHint("cloze", "%%");
+    ensureInlineMarkers(element, wrapper, wrapper);
+  });
+
+  clone.querySelectorAll<HTMLElement>("blockquote").forEach((blockquote) => {
+    if (blockquote.querySelector(':scope > .md-blockquote-marker')) {
+      return;
+    }
+    const marker = blockquote.ownerDocument.createElement("span");
+    marker.className = "md-blockquote-marker";
+    marker.textContent = "> ";
+    blockquote.insertBefore(marker, blockquote.firstChild);
+  });
+
+  clone.querySelectorAll<HTMLElement>("tr").forEach((row) => {
+    const cells = Array.from(row.children).filter(
+      (cell) => cell instanceof HTMLElement && /^(td|th)$/i.test(cell.tagName),
+    ) as HTMLElement[];
+    cells.forEach((cell, index) => {
+      if (!cell.querySelector(':scope > .md-table-pipe-marker-open')) {
+        const openMarker = cell.ownerDocument.createElement("span");
+        openMarker.className = "md-table-pipe-marker md-table-pipe-marker-open";
+        openMarker.textContent = "| ";
+        cell.insertBefore(openMarker, cell.firstChild);
+      }
+      if (index === cells.length - 1 && !cell.querySelector(':scope > .md-table-pipe-marker-close')) {
+        const closeMarker = cell.ownerDocument.createElement("span");
+        closeMarker.className = "md-table-pipe-marker md-table-pipe-marker-close";
+        closeMarker.textContent = " |";
+        cell.appendChild(closeMarker);
+      }
+    });
+  });
+
+  clone.querySelectorAll<HTMLElement>("p,li,h1,h2,h3,h4,h5,h6,blockquote,td,th").forEach(
+    (line) => {
+      line.setAttribute("data-md-inline-line", "true");
+      line.removeAttribute("data-md-inline-active");
+    },
+  );
+
   return clone.innerHTML;
 };
 
@@ -3335,6 +3890,30 @@ const resolveMarkdownCaretIndex = (
     return 0;
   }
   return mapPlainOffsetToRawIndex(rawMarkdown, plainOffset, options);
+};
+
+const resolveContentEditableCaretAnchor = (
+  editor: HTMLElement,
+  scrollContainer: HTMLElement,
+) => {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || !selection.anchorNode) {
+    return null;
+  }
+  if (!editor.contains(selection.anchorNode)) {
+    return null;
+  }
+  const range = selection.getRangeAt(0).cloneRange();
+  range.collapse(false);
+  const rect = range.getClientRects().item(0) ?? range.getBoundingClientRect();
+  if (!rect || (rect.width <= 0 && rect.height <= 0)) {
+    return null;
+  }
+  const containerRect = scrollContainer.getBoundingClientRect();
+  return {
+    left: rect.left - containerRect.left + scrollContainer.scrollLeft,
+    top: rect.bottom - containerRect.top + scrollContainer.scrollTop + 8,
+  };
 };
 
 const isExamTaskStartLine = (line: string) => {
@@ -7027,6 +7606,8 @@ export const PreviewPanel = ({
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const markdownEditorScrollRef = useRef<HTMLDivElement | null>(null);
   const markdownEditorRef = useRef<HTMLDivElement | null>(null);
+  const legacyMarkdownLinkPickerRef = useRef<HTMLDivElement | null>(null);
+  const legacyMarkdownLinkPickerSearchInputRef = useRef<HTMLInputElement | null>(null);
   const markdownTabStripRef = useRef<HTMLDivElement | null>(null);
   const hybridEditorRef = useRef<MarkdownHybridEditorHandle | null>(null);
   const markdownEditorHtmlRef = useRef<string | null>(null);
@@ -7044,6 +7625,8 @@ export const PreviewPanel = ({
   const editableHighlightRunningRef = useRef(false);
   const onWriteSaveRef = useRef(onWriteSave);
   const [showFrontmatterTextFallback, setShowFrontmatterTextFallback] = useState(false);
+  const [legacyMarkdownLinkPickerState, setLegacyMarkdownLinkPickerState] =
+    useState<LegacyMarkdownLinkPickerState | null>(null);
   const [userFrontmatterCollapsed, setUserFrontmatterCollapsed] = useState<boolean | null>(
     null,
   );
@@ -7078,6 +7661,37 @@ export const PreviewPanel = ({
     : 0;
   const hasFrontmatterError = previewFrontmatter.hasFrontmatter &&
     Boolean(previewFrontmatter.error);
+  const pageLinkCandidates = useMemo(
+    () => buildPageLinkCandidates(vaultFiles ?? undefined),
+    [vaultFiles],
+  );
+  const imageLinkCandidates = useMemo(
+    () => buildVaultImageCandidates(vaultPngAssets),
+    [vaultPngAssets],
+  );
+  const filteredLegacyPageLinkCandidates = useMemo(
+    () =>
+      filterPageLinkCandidates(
+        pageLinkCandidates,
+        legacyMarkdownLinkPickerState?.mode === "page"
+          ? legacyMarkdownLinkPickerState.query
+          : "",
+      ),
+    [legacyMarkdownLinkPickerState?.mode, legacyMarkdownLinkPickerState?.query, pageLinkCandidates],
+  );
+  const filteredLegacyImageLinkCandidates = useMemo(
+    () =>
+      filterVaultImageCandidates(
+        imageLinkCandidates,
+        legacyMarkdownLinkPickerState?.mode === "image"
+          ? legacyMarkdownLinkPickerState.query
+          : "",
+      ),
+    [imageLinkCandidates, legacyMarkdownLinkPickerState?.mode, legacyMarkdownLinkPickerState?.query],
+  );
+  const filteredLegacyLinkCandidatesLength = legacyMarkdownLinkPickerState?.mode === "image"
+    ? filteredLegacyImageLinkCandidates.length
+    : filteredLegacyPageLinkCandidates.length;
   const isCodeMode = editorMode === "code";
   const isMarkdownMode = editorMode === "markdown";
   const isHybridMode = editorMode === "hybrid";
@@ -7343,16 +7957,19 @@ export const PreviewPanel = ({
 
   const syncMarkdownDraftFromEditor = useCallback(() => {
     if (!markdownEditorRef.current) {
-      return;
+      return "";
     }
     if (applyingMarkdownCaretRef.current) {
-      return;
+      return serializeMarkdownFromHtml(markdownEditorRef.current);
     }
     const nextBody = serializeMarkdownFromHtml(markdownEditorRef.current);
-    const nextValue = composeMarkdownWithBody(editDraft, nextBody);
+    const nextValue = composeMarkdownWithBody(editDraft, nextBody, {
+      bodyMayContainFrontmatter: false,
+    });
     if (nextValue !== editDraft) {
       onEditChange(nextValue);
     }
+    return nextBody;
   }, [editDraft, onEditChange]);
 
   const syncActiveMarkdownHeading = useCallback(() => {
@@ -7360,6 +7977,9 @@ export const PreviewPanel = ({
     if (!editor) {
       return;
     }
+    const inlineLines = Array.from(
+      editor.querySelectorAll<HTMLElement>('[data-md-inline-line="true"]'),
+    );
     const headings = Array.from(
       editor.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6"),
     );
@@ -7376,44 +7996,66 @@ export const PreviewPanel = ({
     const codeBlocks = Array.from(
       editor.querySelectorAll<HTMLElement>('pre[data-md-code-block="true"]'),
     );
-    if (
-      headings.length === 0 &&
-      hrLines.length === 0 &&
-      listItems.length === 0 &&
-      codeBlocks.length === 0
-    ) {
-      return;
-    }
-
     const selection = window.getSelection();
     const range = selection && selection.rangeCount > 0
       ? selection.getRangeAt(0)
       : null;
-    const inEditor = range ? editor.contains(range.startContainer) : false;
-    const activeHeading = inEditor
-      ? (range?.startContainer instanceof Element
-          ? range.startContainer
-          : range?.startContainer.parentElement
-        )?.closest("h1,h2,h3,h4,h5,h6")
-      : null;
-    const activeHrLine = inEditor
-      ? (range?.startContainer instanceof Element
-          ? range.startContainer
-          : range?.startContainer.parentElement
-        )?.closest('[data-md-hr-line="true"]')
-      : null;
-    const activeListItem = inEditor
-      ? (range?.startContainer instanceof Element
-          ? range.startContainer
-          : range?.startContainer.parentElement
-        )?.closest("li")
-      : null;
-    const activeCodeBlock = inEditor
-      ? (range?.startContainer instanceof Element
-          ? range.startContainer
-          : range?.startContainer.parentElement
-        )?.closest('pre[data-md-code-block="true"]')
-      : null;
+    const inEditor = Boolean(
+      range &&
+      editor.contains(range.startContainer) &&
+      editor.contains(range.endContainer),
+    );
+    const activeRange = inEditor ? range : null;
+    const activeLines = activeRange
+      ? resolveSelectionLineElements(editor, activeRange)
+      : [];
+    const activeLineSet = new Set(activeLines);
+
+    const activeBlockquotes = new Set<HTMLElement>();
+    const activeTableCells = new Set<HTMLElement>();
+    activeLines.forEach((line) => {
+      const blockquote = line.closest<HTMLElement>("blockquote");
+      if (blockquote && editor.contains(blockquote)) {
+        activeBlockquotes.add(blockquote);
+      }
+      const tableCell = line.closest<HTMLElement>("td,th");
+      if (tableCell && editor.contains(tableCell)) {
+        activeTableCells.add(tableCell);
+      }
+    });
+
+    inlineLines.forEach((line) => {
+      const isLineActive = activeLineSet.has(line) ||
+        activeBlockquotes.has(line) ||
+        activeTableCells.has(line);
+      if (isLineActive) {
+        line.setAttribute("data-md-inline-active", "true");
+      } else {
+        line.removeAttribute("data-md-inline-active");
+      }
+    });
+
+    const activeHeadingSet = new Set(
+      activeRange
+        ? headings.filter((heading) => rangeIntersectsNodeSafely(activeRange, heading))
+        : [],
+    );
+    const activeHrLineSet = new Set(
+      activeRange
+        ? hrLines.filter((line) => rangeIntersectsNodeSafely(activeRange, line))
+        : [],
+    );
+    const activeListItemSet = new Set(
+      activeRange
+        ? listItems.filter((item) => rangeIntersectsNodeSafely(activeRange, item))
+        : [],
+    );
+    const activeCodeBlockSet = new Set(
+      activeRange
+        ? codeBlocks.filter((block) => rangeIntersectsNodeSafely(activeRange, block))
+        : [],
+    );
+
     const retagQueue: Array<{
       heading: HTMLElement;
       resolvedLevel: number;
@@ -7430,7 +8072,7 @@ export const PreviewPanel = ({
         : Math.max(1, Math.min(6, Number.isFinite(fallbackLevel) ? fallbackLevel : 1));
       heading.setAttribute("data-md-heading-level", String(resolvedLevel));
 
-      if (heading === activeHeading) {
+      if (activeHeadingSet.has(heading)) {
         heading.setAttribute("data-md-heading-active", "true");
       } else {
         heading.removeAttribute("data-md-heading-active");
@@ -7447,7 +8089,7 @@ export const PreviewPanel = ({
     });
 
     hrLines.forEach((line) => {
-      if (line === activeHrLine) {
+      if (activeHrLineSet.has(line)) {
         line.setAttribute("data-md-hr-active", "true");
       } else {
         line.removeAttribute("data-md-hr-active");
@@ -7455,7 +8097,7 @@ export const PreviewPanel = ({
     });
 
     listItems.forEach((item) => {
-      if (item === activeListItem) {
+      if (activeListItemSet.has(item)) {
         item.setAttribute("data-md-list-active", "true");
       } else {
         item.removeAttribute("data-md-list-active");
@@ -7463,13 +8105,222 @@ export const PreviewPanel = ({
     });
 
     codeBlocks.forEach((block) => {
-      if (block === activeCodeBlock) {
+      if (activeCodeBlockSet.has(block)) {
         block.setAttribute("data-md-code-active", "true");
       } else {
         block.removeAttribute("data-md-code-active");
       }
     });
   }, []);
+
+  const closeLegacyMarkdownLinkPicker = useCallback(() => {
+    setLegacyMarkdownLinkPickerState(null);
+  }, []);
+
+  const focusMarkdownEditor = useCallback(() => {
+    const editor = markdownEditorRef.current;
+    if (!editor) {
+      return;
+    }
+    try {
+      editor.focus({ preventScroll: true });
+    } catch {
+      editor.focus();
+    }
+  }, []);
+
+  const openLegacyMarkdownLinkPicker = useCallback(
+    (
+      mode: LegacyMarkdownLinkPickerMode,
+      replaceRange: PageLinkPickerReplaceRange,
+      currentBody: string,
+      initialQuery = "",
+    ) => {
+      const editor = markdownEditorRef.current;
+      const scrollContainer = markdownEditorScrollRef.current;
+      if (!editor || !scrollContainer) {
+        return;
+      }
+      const safeRange = {
+        start: Math.max(0, Math.min(replaceRange.start, currentBody.length)),
+        end: Math.max(0, Math.min(replaceRange.end, currentBody.length)),
+      };
+      if (!canOpenLegacyMarkdownLinkPickerAtRange(currentBody, safeRange)) {
+        return;
+      }
+      const anchor = resolveContentEditableCaretAnchor(editor, scrollContainer);
+      setLegacyMarkdownLinkPickerState({
+        mode,
+        replaceRange: safeRange,
+        query: initialQuery,
+        highlightedIndex: 0,
+        anchorLeft: anchor?.left ?? 12,
+        anchorTop: anchor?.top ?? (scrollContainer.scrollTop + 30),
+      });
+    },
+    [],
+  );
+
+  const applyLegacyMarkdownLinkPickerSelection = useCallback(
+    (nextToken: string, replaceRange: PageLinkPickerReplaceRange) => {
+      const editor = markdownEditorRef.current;
+      if (!editor) {
+        closeLegacyMarkdownLinkPicker();
+        return;
+      }
+      const currentBody = serializeMarkdownFromHtml(editor);
+      const replaceStart = Math.max(0, Math.min(replaceRange.start, currentBody.length));
+      const replaceEnd = Math.max(replaceStart, Math.min(replaceRange.end, currentBody.length));
+      const plainStart = mapRawIndexToPlainOffset(
+        currentBody,
+        replaceStart,
+        MARKDOWN_EDITOR_OFFSET_MAP_OPTIONS,
+      );
+      const plainEnd = mapRawIndexToPlainOffset(
+        currentBody,
+        replaceEnd,
+        MARKDOWN_EDITOR_OFFSET_MAP_OPTIONS,
+      );
+      setSelectionAtPlainOffsets(editor, plainStart, plainEnd);
+      if (!replaceSelectionWithTextInContentEditable(editor, nextToken)) {
+        closeLegacyMarkdownLinkPicker();
+        focusMarkdownEditor();
+        return;
+      }
+      closeLegacyMarkdownLinkPicker();
+      syncMarkdownDraftFromEditor();
+      syncActiveMarkdownHeading();
+      focusMarkdownEditor();
+    },
+    [
+      closeLegacyMarkdownLinkPicker,
+      focusMarkdownEditor,
+      syncActiveMarkdownHeading,
+      syncMarkdownDraftFromEditor,
+    ],
+  );
+
+  const handleLegacyMarkdownPageLinkSelectCandidate = useCallback(
+    (candidate: PageLinkCandidate) => {
+      if (!legacyMarkdownLinkPickerState || legacyMarkdownLinkPickerState.mode !== "page") {
+        closeLegacyMarkdownLinkPicker();
+        return;
+      }
+      applyLegacyMarkdownLinkPickerSelection(
+        candidate.wikilink,
+        legacyMarkdownLinkPickerState.replaceRange,
+      );
+    },
+    [
+      applyLegacyMarkdownLinkPickerSelection,
+      closeLegacyMarkdownLinkPicker,
+      legacyMarkdownLinkPickerState,
+    ],
+  );
+
+  const handleLegacyMarkdownImageLinkSelectCandidate = useCallback(
+    (candidate: VaultImageCandidate) => {
+      if (!legacyMarkdownLinkPickerState || legacyMarkdownLinkPickerState.mode !== "image") {
+        closeLegacyMarkdownLinkPicker();
+        return;
+      }
+      applyLegacyMarkdownLinkPickerSelection(
+        serializePngEmbed(candidate.relPath),
+        legacyMarkdownLinkPickerState.replaceRange,
+      );
+    },
+    [
+      applyLegacyMarkdownLinkPickerSelection,
+      closeLegacyMarkdownLinkPicker,
+      legacyMarkdownLinkPickerState,
+    ],
+  );
+
+  const handleLegacyMarkdownLinkPickerQueryChange = useCallback((value: string) => {
+    setLegacyMarkdownLinkPickerState((current) => {
+      if (!current) {
+        return current;
+      }
+      return {
+        ...current,
+        query: value,
+        highlightedIndex: 0,
+      };
+    });
+  }, []);
+
+  const handleLegacyMarkdownLinkPickerSearchKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLInputElement>) => {
+      if (!legacyMarkdownLinkPickerState) {
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closeLegacyMarkdownLinkPicker();
+        focusMarkdownEditor();
+        return;
+      }
+
+      const candidates = legacyMarkdownLinkPickerState.mode === "image"
+        ? filteredLegacyImageLinkCandidates
+        : filteredLegacyPageLinkCandidates;
+
+      if (candidates.length === 0) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        return;
+      }
+
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        event.stopPropagation();
+        const delta = event.key === "ArrowDown" ? 1 : -1;
+        setLegacyMarkdownLinkPickerState((current) => {
+          if (!current) {
+            return current;
+          }
+          const nextIndex = (current.highlightedIndex + delta + candidates.length) % candidates.length;
+          return {
+            ...current,
+            highlightedIndex: nextIndex,
+          };
+        });
+        return;
+      }
+
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        if (legacyMarkdownLinkPickerState.mode === "image") {
+          const candidate = filteredLegacyImageLinkCandidates[legacyMarkdownLinkPickerState.highlightedIndex] ??
+            filteredLegacyImageLinkCandidates[0];
+          if (!candidate) {
+            return;
+          }
+          handleLegacyMarkdownImageLinkSelectCandidate(candidate);
+          return;
+        }
+        const candidate = filteredLegacyPageLinkCandidates[legacyMarkdownLinkPickerState.highlightedIndex] ??
+          filteredLegacyPageLinkCandidates[0];
+        if (!candidate) {
+          return;
+        }
+        handleLegacyMarkdownPageLinkSelectCandidate(candidate);
+      }
+    },
+    [
+      closeLegacyMarkdownLinkPicker,
+      filteredLegacyImageLinkCandidates,
+      filteredLegacyPageLinkCandidates,
+      focusMarkdownEditor,
+      handleLegacyMarkdownImageLinkSelectCandidate,
+      handleLegacyMarkdownPageLinkSelectCandidate,
+      legacyMarkdownLinkPickerState,
+    ],
+  );
 
   useLayoutEffect(() => {
     if (!isEditing || isCodeMode) {
@@ -7511,14 +8362,6 @@ export const PreviewPanel = ({
       return;
     }
     const handleSelectionChange = () => {
-      const editor = markdownEditorRef.current;
-      if (!editor) {
-        return;
-      }
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0 || !editor.contains(selection.anchorNode)) {
-        return;
-      }
       syncActiveMarkdownHeading();
     };
     document.addEventListener("selectionchange", handleSelectionChange);
@@ -7526,6 +8369,84 @@ export const PreviewPanel = ({
       document.removeEventListener("selectionchange", handleSelectionChange);
     };
   }, [isCodeMode, isEditing, syncActiveMarkdownHeading]);
+
+  useEffect(() => {
+    if (isEditing && !isCodeMode && isMarkdownMode && resolvedEditEnabled) {
+      return;
+    }
+    setLegacyMarkdownLinkPickerState(null);
+  }, [isCodeMode, isEditing, isMarkdownMode, resolvedEditEnabled]);
+
+  useEffect(() => {
+    if (!legacyMarkdownLinkPickerState) {
+      return;
+    }
+    const handle = window.requestAnimationFrame(() => {
+      const input = legacyMarkdownLinkPickerSearchInputRef.current ??
+        legacyMarkdownLinkPickerRef.current?.querySelector<HTMLInputElement>(
+          ".vault-png-picker-search input",
+        ) ??
+        null;
+      if (!input) {
+        return;
+      }
+      try {
+        input.focus({ preventScroll: true });
+      } catch {
+        input.focus();
+      }
+      input.select();
+    });
+    return () => window.cancelAnimationFrame(handle);
+  }, [legacyMarkdownLinkPickerState]);
+
+  useEffect(() => {
+    if (!legacyMarkdownLinkPickerState) {
+      return;
+    }
+    setLegacyMarkdownLinkPickerState((current) => {
+      if (!current) {
+        return current;
+      }
+      const nextMaxIndex = Math.max(0, filteredLegacyLinkCandidatesLength - 1);
+      const nextIndex = Math.max(0, Math.min(current.highlightedIndex, nextMaxIndex));
+      if (nextIndex === current.highlightedIndex) {
+        return current;
+      }
+      return {
+        ...current,
+        highlightedIndex: nextIndex,
+      };
+    });
+  }, [filteredLegacyLinkCandidatesLength, legacyMarkdownLinkPickerState]);
+
+  useEffect(() => {
+    if (!legacyMarkdownLinkPickerState) {
+      return;
+    }
+    const handleMouseDown = (event: globalThis.MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (legacyMarkdownLinkPickerRef.current?.contains(target)) {
+        return;
+      }
+      closeLegacyMarkdownLinkPicker();
+    };
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      closeLegacyMarkdownLinkPicker();
+    };
+    document.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleMouseDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeLegacyMarkdownLinkPicker, legacyMarkdownLinkPickerState]);
 
   useLayoutEffect(() => {
     if (isEditing) {
@@ -7592,7 +8513,7 @@ export const PreviewPanel = ({
     }
     const editor = markdownEditorRef.current;
     const inlinePreviewMapOptions: MarkdownOffsetMapOptions = {
-      skipStructuralMarkers: false,
+      ...MARKDOWN_EDITOR_OFFSET_MAP_OPTIONS,
       hideInlineSyntaxDelimiters: true,
       collapseChainedClozeVariants: true,
       supportDoublePercentTokens: true,
@@ -7622,11 +8543,31 @@ export const PreviewPanel = ({
       editCaretIndex - markdownEditBodyStartOffset,
     );
     const plainOffset = mapRawIndexToPlainOffset(markdownEditBody, bodyCaretIndex, inlinePreviewMapOptions);
+    const pendingSelectionToken =
+      typeof pendingStart === "number" && typeof pendingEnd === "number"
+        ? resolveInlinePreviewTokenAt(markdownEditBody, pendingStart, inlinePreviewMapOptions)
+        : null;
+    const canUsePendingTokenVisibleSelection =
+      Boolean(
+        pendingSelectionToken &&
+          pendingSelectionToken.rawStart === pendingStart &&
+          pendingSelectionToken.rawEnd === pendingEnd,
+      );
+    const pendingTokenVisibleStart = canUsePendingTokenVisibleSelection
+      ? pendingSelectionToken?.visibleStart ?? null
+      : null;
+    const pendingTokenVisibleEnd = canUsePendingTokenVisibleSelection
+      ? pendingSelectionToken?.visibleEnd ?? null
+      : null;
     const plainSelectionStart = typeof pendingStart === "number"
-      ? mapRawIndexToPlainOffset(markdownEditBody, pendingStart, inlinePreviewMapOptions)
+      ? typeof pendingTokenVisibleStart === "number"
+        ? pendingTokenVisibleStart
+        : mapRawIndexToPlainOffset(markdownEditBody, pendingStart, inlinePreviewMapOptions)
       : null;
     const plainSelectionEnd = typeof pendingEnd === "number"
-      ? mapRawIndexToPlainOffset(markdownEditBody, pendingEnd, inlinePreviewMapOptions)
+      ? typeof pendingTokenVisibleEnd === "number"
+        ? pendingTokenVisibleEnd
+        : mapRawIndexToPlainOffset(markdownEditBody, pendingEnd, inlinePreviewMapOptions)
       : null;
     const desiredScrollTop = scrollStateRef.current.top;
     const desiredScrollLeft = scrollStateRef.current.left;
@@ -7930,6 +8871,67 @@ export const PreviewPanel = ({
     ],
   );
 
+  const handleRawEditorBeforeInput = useCallback(
+    (event: FormEvent<HTMLTextAreaElement>) => {
+      const editor = editorRef.current;
+      if (!editor) {
+        return;
+      }
+      const nativeEvent = event.nativeEvent as Event & {
+        inputType?: string;
+        data?: string | null;
+        isComposing?: boolean;
+      };
+      if (nativeEvent.isComposing) {
+        return;
+      }
+      if ((nativeEvent.inputType ?? "") !== "insertText") {
+        return;
+      }
+      const rawToken = typeof nativeEvent.data === "string"
+        ? nativeEvent.data
+        : "";
+      const selectionStart = editor.selectionStart ?? 0;
+      const selectionEnd = editor.selectionEnd ?? selectionStart;
+      if (!shouldTreatAsFormattingActionToken(rawToken, selectionStart !== selectionEnd)) {
+        return;
+      }
+
+      const result = applyMarkdownFormattingInsertion(
+        editor.value,
+        { start: selectionStart, end: selectionEnd },
+        rawToken,
+      );
+      if (!result.handled) {
+        return;
+      }
+
+      event.preventDefault();
+      const desiredStart = result.selection.start;
+      const desiredEnd = result.selection.end;
+      const desiredScrollTop = editor.scrollTop;
+      const desiredScrollLeft = editor.scrollLeft;
+      onEditChange(result.value);
+      lastCaretIndexRef.current = desiredEnd;
+
+      window.requestAnimationFrame(() => {
+        const currentEditor = editorRef.current;
+        if (!currentEditor) {
+          return;
+        }
+        currentEditor.scrollTop = desiredScrollTop;
+        currentEditor.scrollLeft = desiredScrollLeft;
+        try {
+          currentEditor.focus({ preventScroll: true });
+        } catch {
+          currentEditor.focus();
+        }
+        currentEditor.setSelectionRange(desiredStart, desiredEnd);
+      });
+    },
+    [onEditChange],
+  );
+
   const handleRawEditorBlur = useCallback(
     (event: FocusEvent<HTMLTextAreaElement>) => {
       captureScroll(event.currentTarget);
@@ -7950,17 +8952,16 @@ export const PreviewPanel = ({
 
   const handleMarkdownEditorBlur = useCallback(
     (event: FocusEvent<HTMLDivElement>) => {
+      const nextFocus = event.relatedTarget;
+      if (nextFocus instanceof Node && legacyMarkdownLinkPickerRef.current?.contains(nextFocus)) {
+        return;
+      }
       captureScroll(markdownEditorScrollRef.current);
       const bodyCaretIndex = resolveMarkdownCaretIndex(
         event.currentTarget,
         markdownEditBody,
         null,
-        {
-          skipStructuralMarkers: false,
-          hideInlineSyntaxDelimiters: true,
-          collapseChainedClozeVariants: true,
-          supportDoublePercentTokens: true,
-        },
+        MARKDOWN_EDITOR_OFFSET_MAP_OPTIONS,
       );
       if (typeof bodyCaretIndex === "number") {
         lastCaretIndexRef.current = markdownEditBodyStartOffset + bodyCaretIndex;
@@ -7969,6 +8970,7 @@ export const PreviewPanel = ({
     },
     [
       captureScroll,
+      legacyMarkdownLinkPickerRef,
       markdownEditBody,
       markdownEditBodyStartOffset,
       markdownEditorScrollRef,
@@ -8010,12 +9012,32 @@ export const PreviewPanel = ({
       }
       const nativeEvent = event.nativeEvent as Event & {
         inputType?: string;
+        data?: string | null;
         isComposing?: boolean;
       };
       if (nativeEvent.isComposing) {
         return;
       }
       const inputType = nativeEvent.inputType ?? "";
+      if (inputType === "insertText") {
+        const rawToken = typeof nativeEvent.data === "string"
+          ? nativeEvent.data
+          : "";
+        const selectionRange = resolveSelectionRangeWithinEditor(editor);
+        const hasSelection = Boolean(selectionRange && !selectionRange.collapsed);
+        if (!shouldTreatAsFormattingActionToken(rawToken, hasSelection)) {
+          return;
+        }
+        const handled = applyMarkdownFormattingToContentEditable(editor, rawToken);
+        if (!handled) {
+          return;
+        }
+        event.preventDefault();
+        normalizeEditableListMarkers(editor);
+        syncMarkdownDraftFromEditor();
+        syncActiveMarkdownHeading();
+        return;
+      }
       if (inputType !== "insertParagraph" && inputType !== "insertLineBreak") {
         return;
       }
@@ -8029,13 +9051,23 @@ export const PreviewPanel = ({
         event.preventDefault();
       }
     },
-    [applyMarkdownEditorCommand],
+    [
+      applyMarkdownEditorCommand,
+      syncActiveMarkdownHeading,
+      syncMarkdownDraftFromEditor,
+    ],
   );
 
   const handleMarkdownEditorKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>) => {
       const nativeKeyboardEvent = event.nativeEvent as Event & { isComposing?: boolean };
       if (nativeKeyboardEvent.isComposing) {
+        return;
+      }
+
+      if (event.key === "Escape" && legacyMarkdownLinkPickerState) {
+        event.preventDefault();
+        closeLegacyMarkdownLinkPicker();
         return;
       }
 
@@ -8059,7 +9091,7 @@ export const PreviewPanel = ({
         }
       }
     },
-    [applyMarkdownEditorCommand],
+    [applyMarkdownEditorCommand, closeLegacyMarkdownLinkPicker, legacyMarkdownLinkPickerState],
   );
 
   const handleMarkdownInput = useCallback((event: FormEvent<HTMLDivElement>) => {
@@ -8067,9 +9099,36 @@ export const PreviewPanel = ({
     if (sourceCodeElement) {
       queueEditableCodeRehighlight({ codeElement: sourceCodeElement });
     }
-    syncMarkdownDraftFromEditor();
+    const currentBody = syncMarkdownDraftFromEditor();
     syncActiveMarkdownHeading();
+    if (legacyMarkdownLinkPickerState) {
+      return;
+    }
+    const editor = markdownEditorRef.current;
+    if (!editor) {
+      return;
+    }
+    const caretIndex = resolveMarkdownCaretIndex(
+      editor,
+      currentBody,
+      null,
+      MARKDOWN_EDITOR_OFFSET_MAP_OPTIONS,
+    );
+    if (typeof caretIndex !== "number") {
+      return;
+    }
+    const pickerTrigger = resolveTypedLinkPickerTriggerAtCaret(currentBody, caretIndex);
+    if (pickerTrigger) {
+      openLegacyMarkdownLinkPicker(
+        pickerTrigger.mode,
+        pickerTrigger.replaceRange,
+        currentBody,
+        pickerTrigger.initialQuery,
+      );
+    }
   }, [
+    legacyMarkdownLinkPickerState,
+    openLegacyMarkdownLinkPicker,
     queueEditableCodeRehighlight,
     resolveEditableCodeElementNearSelection,
     syncActiveMarkdownHeading,
@@ -8078,7 +9137,9 @@ export const PreviewPanel = ({
 
   const handleHybridBodyChange = useCallback(
     (nextBody: string) => {
-      const nextValue = composeMarkdownWithBody(editDraft, nextBody);
+      const nextValue = composeMarkdownWithBody(editDraft, nextBody, {
+        bodyMayContainFrontmatter: false,
+      });
       if (nextValue !== editDraft) {
         onEditChange(nextValue);
       }
@@ -9128,6 +10189,7 @@ export const PreviewPanel = ({
                   className="preview-editor"
                   data-input-scope="editor"
                   value={editDraft}
+                  onBeforeInput={handleRawEditorBeforeInput}
                   onChange={(event) => onEditChange(event.target.value)}
                   onBlur={handleRawEditorBlur}
                   onScroll={(event) => captureScroll(event.currentTarget)}
@@ -9182,6 +10244,154 @@ export const PreviewPanel = ({
                     aria-multiline="true"
                     aria-label="Edit markdown preview"
                   />
+                  {legacyMarkdownLinkPickerState ? (
+                    legacyMarkdownLinkPickerState.mode === "image" ? (
+                      <div
+                        ref={legacyMarkdownLinkPickerRef}
+                        className="markdown-hybrid-insert-menu markdown-hybrid-insert-menu-overlay preview-markdown-page-link-picker"
+                        data-md-block-control="true"
+                        role="menu"
+                        aria-label="Insert block"
+                        style={{
+                          left: legacyMarkdownLinkPickerState.anchorLeft,
+                          top: legacyMarkdownLinkPickerState.anchorTop,
+                        }}
+                        onMouseDown={(event) => {
+                          event.stopPropagation();
+                        }}
+                      >
+                        <div className="markdown-hybrid-insert-menu-header">
+                          <span className="markdown-hybrid-insert-menu-title">Select PNG</span>
+                        </div>
+                        <div className="markdown-hybrid-insert-menu-list">
+                          <VaultPngPicker
+                            assets={vaultPngAssets}
+                            query={legacyMarkdownLinkPickerState.query}
+                            onQueryChange={handleLegacyMarkdownLinkPickerQueryChange}
+                            onSearchKeyDown={handleLegacyMarkdownLinkPickerSearchKeyDown}
+                            onSelect={handleLegacyMarkdownImageLinkSelectCandidate}
+                            highlightedIndex={legacyMarkdownLinkPickerState.highlightedIndex}
+                            onHighlightedIndexChange={(nextIndex) => {
+                              setLegacyMarkdownLinkPickerState((current) => {
+                                if (!current || current.mode !== "image") {
+                                  return current;
+                                }
+                                if (current.highlightedIndex === nextIndex) {
+                                  return current;
+                                }
+                                return {
+                                  ...current,
+                                  highlightedIndex: nextIndex,
+                                };
+                              });
+                            }}
+                            selectedRelPath={null}
+                            emptyLabel="No PNG files found in the current vault."
+                            className="markdown-hybrid-insert-image-picker"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        ref={legacyMarkdownLinkPickerRef}
+                        className="markdown-hybrid-page-link-picker preview-markdown-page-link-picker"
+                        data-md-block-control="true"
+                        role="dialog"
+                        aria-label="Select page link"
+                        style={{
+                          left: legacyMarkdownLinkPickerState.anchorLeft,
+                          top: legacyMarkdownLinkPickerState.anchorTop,
+                        }}
+                        onMouseDown={(event) => {
+                          event.stopPropagation();
+                        }}
+                      >
+                        <div className="markdown-hybrid-page-link-picker-search-shell">
+                          <span className="markdown-hybrid-page-link-picker-search-icon" aria-hidden="true">
+                            <FrontmatterLinkIcon />
+                          </span>
+                          <input
+                            ref={legacyMarkdownLinkPickerSearchInputRef}
+                            type="search"
+                            className="markdown-hybrid-page-link-picker-search"
+                            value={legacyMarkdownLinkPickerState.query}
+                            onChange={(event) =>
+                              handleLegacyMarkdownLinkPickerQueryChange(event.currentTarget.value)}
+                            onKeyDown={handleLegacyMarkdownLinkPickerSearchKeyDown}
+                            placeholder="Search pages..."
+                            aria-label="Search pages"
+                            aria-autocomplete="list"
+                            aria-controls="preview-markdown-page-link-picker-listbox"
+                            aria-expanded="true"
+                            aria-activedescendant={
+                              filteredLegacyPageLinkCandidates[legacyMarkdownLinkPickerState.highlightedIndex]
+                                ? `preview-markdown-page-link-picker-option-${legacyMarkdownLinkPickerState.highlightedIndex}`
+                                : undefined
+                            }
+                          />
+                        </div>
+                        <div
+                          id="preview-markdown-page-link-picker-listbox"
+                          className="markdown-hybrid-page-link-picker-list"
+                          role="listbox"
+                          aria-label="Vault pages"
+                        >
+                          {filteredLegacyPageLinkCandidates.length === 0
+                            ? (
+                              <div className="markdown-hybrid-page-link-picker-empty" aria-live="polite">
+                                No pages found
+                              </div>
+                            )
+                            : filteredLegacyPageLinkCandidates.map((candidate, index) => {
+                              const isActive = index === legacyMarkdownLinkPickerState.highlightedIndex;
+                              return (
+                                <button
+                                  key={candidate.id}
+                                  id={`preview-markdown-page-link-picker-option-${index}`}
+                                  type="button"
+                                  role="option"
+                                  aria-selected={isActive}
+                                  className={`markdown-hybrid-page-link-picker-option${
+                                    isActive ? " is-active" : ""
+                                  }`}
+                                  onMouseDown={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                  }}
+                                  onMouseEnter={() => {
+                                    setLegacyMarkdownLinkPickerState((current) => {
+                                      if (!current || current.highlightedIndex === index) {
+                                        return current;
+                                      }
+                                      return {
+                                        ...current,
+                                        highlightedIndex: index,
+                                      };
+                                    });
+                                  }}
+                                  onClick={() => handleLegacyMarkdownPageLinkSelectCandidate(candidate)}
+                                  title={candidate.target}
+                                >
+                                  <span className="markdown-hybrid-page-link-picker-option-icon" aria-hidden="true">
+                                    <FrontmatterLinkIcon />
+                                  </span>
+                                  <span className="markdown-hybrid-page-link-picker-option-text">
+                                    <span className="markdown-hybrid-page-link-picker-option-label">
+                                      {candidate.label}
+                                    </span>
+                                    {candidate.sublabel ? (
+                                      <span className="markdown-hybrid-page-link-picker-option-meta">
+                                        {candidate.sublabel}
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    )
+                  ) : null}
                 </div>
               ) : null
             ) : hasVisiblePreviewContent ? (
