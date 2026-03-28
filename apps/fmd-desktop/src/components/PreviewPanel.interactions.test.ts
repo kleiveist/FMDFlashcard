@@ -212,7 +212,7 @@ const setExpandedSelection = (
   });
 };
 
-const findTextNodeContaining = (container: ParentNode, snippet: string) => {
+const findTextNodeContaining = (container: ParentNode | null, snippet: string) => {
   const root = container instanceof Node ? container : null;
   if (!root) {
     return null;

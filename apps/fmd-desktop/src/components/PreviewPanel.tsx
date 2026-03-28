@@ -2849,7 +2849,11 @@ const applyFormattingPrefixInContentEditable = (
   }
   const ownerDocument = editor.ownerDocument;
   let firstInsertedNode: Text | null = null;
-  lines.forEach((line, index) => {
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line) {
+      continue;
+    }
     const insertionPoint = resolveLinePrefixInsertionPoint(line);
     const textNode = ownerDocument.createTextNode(prefix);
     if (insertionPoint) {
@@ -2860,11 +2864,11 @@ const applyFormattingPrefixInContentEditable = (
     if (index === 0) {
       firstInsertedNode = textNode;
     }
-  });
+  }
 
   if (range.collapsed && firstInsertedNode) {
     const nextRange = ownerDocument.createRange();
-    nextRange.setStart(firstInsertedNode, firstInsertedNode.data.length);
+    nextRange.setStart(firstInsertedNode, prefix.length);
     nextRange.collapse(true);
     selection.removeAllRanges();
     selection.addRange(nextRange);

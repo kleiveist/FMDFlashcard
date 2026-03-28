@@ -242,11 +242,15 @@ export const resolveTypedLinkPickerTriggerAtCaret = (
   }
 
   if (bestCandidate) {
+    const resolvedBestCandidate = bestCandidate as {
+      mode: TypedLinkPickerMode;
+      replaceRange: PageLinkPickerReplaceRange;
+    };
     return {
-      mode: bestCandidate.mode,
-      replaceRange: bestCandidate.replaceRange,
-      initialQuery: clampedCaret > bestCandidate.replaceRange.end
-        ? value.slice(bestCandidate.replaceRange.end, clampedCaret)
+      mode: resolvedBestCandidate.mode,
+      replaceRange: resolvedBestCandidate.replaceRange,
+      initialQuery: clampedCaret > resolvedBestCandidate.replaceRange.end
+        ? value.slice(resolvedBestCandidate.replaceRange.end, clampedCaret)
         : "",
     };
   }
