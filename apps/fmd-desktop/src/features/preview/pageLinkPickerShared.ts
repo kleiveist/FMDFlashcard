@@ -113,7 +113,7 @@ export const resolveTypedLinkPickerTriggerAtCaret = (
     let queryEnd = Math.max(replaceRange.end, clampedCaret, probeOffset);
     // Small caret drift compensation: when caret reports exactly at trigger end,
     // include a single safe char after the trigger (e.g. "[[a" with caret at 2).
-    if (queryEnd === replaceRange.end) {
+    if (queryEnd === replaceRange.end && clampedCaret >= replaceRange.end) {
       const nextChar = value[replaceRange.end] ?? "";
       if (
         nextChar &&
