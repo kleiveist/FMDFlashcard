@@ -2793,6 +2793,52 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(multiActiveLines.some((line) => (line.textContent ?? "").includes("Quote:"))).toBe(true);
   });
 
+  it("keeps inline markdown source markers for all text-style tokens on active lines", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      '==Text== **Text** *Text* __Text__ ~~Text~~ `Text` $Text$ %Text% "Text"',
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    const tokenNode = findTextNodeContaining(editable, "Text");
+    expect(editable).toBeTruthy();
+    expect(tokenNode).toBeTruthy();
+
+    setCollapsedSelection(tokenNode, 1);
+    act(() => {
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+
+    const activeLine = editable?.querySelector<HTMLElement>(
+      '[data-md-inline-line="true"][data-md-inline-active="true"]',
+    );
+    expect(activeLine).toBeTruthy();
+
+    const markerTexts = Array.from(
+      activeLine?.querySelectorAll<HTMLElement>(".md-inline-marker") ?? [],
+    )
+      .map((marker) => marker.textContent ?? "")
+      .filter((value) => value.length > 0);
+
+    expect(markerTexts).toEqual(
+      expect.arrayContaining(["==", "**", "*", "__", "~~", "`", "$", "%", "\""]),
+    );
+
+    const mathSource = activeLine?.querySelector<HTMLElement>(
+      ".md-math-inline .md-inline-math-source",
+    );
+    expect(mathSource?.textContent ?? "").toContain("Text");
+  });
+
   it("shows a copy control on code blocks without forcing edit mode", async () => {
     const { container, cleanup: localCleanup } = buildHarness(
       ["```http", "GET /book/1", "200 OK", "```"].join("\n"),

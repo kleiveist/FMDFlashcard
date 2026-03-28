@@ -4379,12 +4379,25 @@ textarea.preview-editor {
   user-select: none;
 }
 
-.preview-markdown-editable [data-md-inline-active="true"] > .md-inline-marker,
+.preview-markdown-editable [data-md-inline-active="true"] .md-inline-marker,
 .preview-markdown-editable [data-md-inline-active="true"] > .md-blockquote-marker,
 .preview-markdown-editable [data-md-inline-active="true"] > .md-table-pipe-marker {
   display: inline;
   pointer-events: auto;
   user-select: text;
+}
+
+.preview-markdown-editable .md-math-inline[data-md-inline-math-source="true"] > .md-inline-math-source {
+  display: none;
+  white-space: pre;
+}
+
+.preview-markdown-editable [data-md-inline-active="true"] .md-math-inline[data-md-inline-math-source="true"] > :not(.md-inline-marker):not(.md-inline-math-source) {
+  display: none;
+}
+
+.preview-markdown-editable [data-md-inline-active="true"] .md-math-inline[data-md-inline-math-source="true"] > .md-inline-math-source {
+  display: inline;
 }
 
 .preview-markdown-editable h1[data-md-heading-active="true"] > .md-heading-marker,

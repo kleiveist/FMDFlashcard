@@ -3378,6 +3378,9 @@ export const buildEditableMarkdownHtml = (
     highlight: string[];
     cloze: string[];
     quoted: string[];
+    inlineCode: string[];
+    inlineMath: string[];
+    inlineMathSource: string[];
   };
 
   const parseListMarkersFromMarkdown = (markdown: string) => {
@@ -3472,6 +3475,9 @@ export const buildEditableMarkdownHtml = (
       highlight: [],
       cloze: [],
       quoted: [],
+      inlineCode: [],
+      inlineMath: [],
+      inlineMathSource: [],
     };
     if (!markdown) {
       return hints;
@@ -3543,6 +3549,17 @@ export const buildEditableMarkdownHtml = (
             break;
           case "quoted-token":
             hints.quoted.push("\"");
+            break;
+          case "markdown-inline-code":
+            hints.inlineCode.push(tokenRaw.match(/^`+/)?.[0] ?? "`");
+            break;
+          case "markdown-math":
+            hints.inlineMath.push("$");
+            hints.inlineMathSource.push(
+              tokenRaw.startsWith("$") && tokenRaw.endsWith("$")
+                ? tokenRaw.slice(1, -1)
+                : tokenRaw,
+            );
             break;
           default:
             break;
@@ -3629,6 +3646,9 @@ export const buildEditableMarkdownHtml = (
     highlight: 0,
     cloze: 0,
     quoted: 0,
+    inlineCode: 0,
+    inlineMath: 0,
+    inlineMathSource: 0,
   };
 
   const consumeInlineMarkerHint = (
@@ -3659,6 +3679,20 @@ export const buildEditableMarkdownHtml = (
     const closeMarker = createInlineMarker(element.ownerDocument, "close", close);
     element.insertBefore(openMarker, element.firstChild);
     element.appendChild(closeMarker);
+  };
+
+  const ensureInlineMathSource = (element: HTMLElement, source: string) => {
+    if (!source) {
+      return;
+    }
+    if (element.querySelector(":scope > .md-inline-math-source")) {
+      return;
+    }
+    const sourceNode = element.ownerDocument.createElement("span");
+    sourceNode.className = "md-inline-math-source";
+    sourceNode.textContent = source;
+    element.appendChild(sourceNode);
+    element.setAttribute("data-md-inline-math-source", "true");
   };
 
   const createCodeCopyButton = (doc: Document) => {
@@ -3824,6 +3858,21 @@ export const buildEditableMarkdownHtml = (
 
   clone.querySelectorAll<HTMLElement>("span.md-inline-syntax-cloze").forEach((element) => {
     const wrapper = consumeInlineMarkerHint("cloze", "%%");
+    ensureInlineMarkers(element, wrapper, wrapper);
+  });
+
+  clone.querySelectorAll<HTMLElement>("code").forEach((element) => {
+    if (element.parentElement?.tagName.toLowerCase() === "pre") {
+      return;
+    }
+    const wrapper = consumeInlineMarkerHint("inlineCode", "`");
+    ensureInlineMarkers(element, wrapper, wrapper);
+  });
+
+  clone.querySelectorAll<HTMLElement>("span.md-math-inline").forEach((element) => {
+    const source = consumeInlineMarkerHint("inlineMathSource", "");
+    ensureInlineMathSource(element, source);
+    const wrapper = consumeInlineMarkerHint("inlineMath", "$");
     ensureInlineMarkers(element, wrapper, wrapper);
   });
 
