@@ -135,6 +135,7 @@ const previewFencedCodeDelimiterPattern = /^\s*(```|~~~)/;
 
 const previewInlineFormattingPatterns: ReadonlyArray<readonly [RegExp, string]> = [
   [/(?<!\\)\*\*\*([^\n*]+?)(?<!\\)\*\*\*/g, "<strong><em>$1</em></strong>"],
+  [/(?<!\\)\*\*([^\n*]+?)(?<!\\)\*\*/g, "<strong>$1</strong>"],
   [/(?<!\\)__([^_\n]+?)(?<!\\)__/g, "<u>$1</u>"],
   [/(?<!\\)==([^=\n]+?)(?<!\\)==/g, "<mark class=\"md-inline-highlight\">$1</mark>"],
   [/(?<!\\)\*(?!\*)([^*\n]+?)(?<!\\)\*(?!\*)/g, "<em>$1</em>"],

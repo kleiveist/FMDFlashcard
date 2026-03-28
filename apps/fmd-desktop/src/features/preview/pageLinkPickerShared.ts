@@ -101,27 +101,78 @@ export const resolveTypedLinkPickerTriggerAtCaret = (
     }
   }
 
+  type ProbeMatchCandidate = TypedLinkPickerTrigger & {
+    probeDistance: number;
+  };
+
+  const resolveProbeCandidate = (
+    mode: TypedLinkPickerMode,
+    replaceRange: PageLinkPickerReplaceRange,
+    probeOffset: number,
+  ): ProbeMatchCandidate | null => {
+    const queryEnd = Math.max(replaceRange.end, clampedCaret, probeOffset);
+    const initialQuery = queryEnd > replaceRange.end
+      ? value.slice(replaceRange.end, queryEnd)
+      : "";
+    if (
+      initialQuery.includes("\n") ||
+      initialQuery.includes("\r") ||
+      initialQuery.includes("]]")
+    ) {
+      return null;
+    }
+    const closeProbe = value.slice(
+      replaceRange.end,
+      Math.min(value.length, queryEnd + 12),
+    );
+    if (closeProbe.includes("]]")) {
+      return null;
+    }
+    return {
+      mode,
+      replaceRange,
+      initialQuery,
+      probeDistance: Math.abs(probeOffset - clampedCaret),
+    };
+  };
+
+  let bestProbeCandidate: ProbeMatchCandidate | null = null;
+  const shouldPreferProbeCandidate = (
+    candidate: ProbeMatchCandidate,
+    current: ProbeMatchCandidate | null,
+  ) => {
+    if (!current) {
+      return true;
+    }
+    if (candidate.replaceRange.start !== current.replaceRange.start) {
+      return candidate.replaceRange.start > current.replaceRange.start;
+    }
+    if (candidate.initialQuery.length !== current.initialQuery.length) {
+      return candidate.initialQuery.length > current.initialQuery.length;
+    }
+    return candidate.probeDistance < current.probeDistance;
+  };
+
   for (const probeOffset of probeOffsets) {
     const imageTrigger = detectTypedImageEmbedTrigger(value, probeOffset);
     if (imageTrigger) {
-      return {
-        mode: "image",
-        replaceRange: imageTrigger,
-        initialQuery: clampedCaret > imageTrigger.end
-          ? value.slice(imageTrigger.end, clampedCaret)
-          : "",
-      };
+      const candidate = resolveProbeCandidate("image", imageTrigger, probeOffset);
+      if (candidate && shouldPreferProbeCandidate(candidate, bestProbeCandidate)) {
+        bestProbeCandidate = candidate;
+      }
     }
     const pageTrigger = detectTypedPageLinkTrigger(value, probeOffset);
     if (pageTrigger) {
-      return {
-        mode: "page",
-        replaceRange: pageTrigger,
-        initialQuery: clampedCaret > pageTrigger.end
-          ? value.slice(pageTrigger.end, clampedCaret)
-          : "",
-      };
+      const candidate = resolveProbeCandidate("page", pageTrigger, probeOffset);
+      if (candidate && shouldPreferProbeCandidate(candidate, bestProbeCandidate)) {
+        bestProbeCandidate = candidate;
+      }
     }
+  }
+
+  if (bestProbeCandidate) {
+    const { mode, replaceRange, initialQuery } = bestProbeCandidate;
+    return { mode, replaceRange, initialQuery };
   }
 
   // Fallback: detect the latest unclosed trigger on the current caret line

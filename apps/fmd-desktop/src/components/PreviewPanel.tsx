@@ -3831,8 +3831,9 @@ export const buildEditableMarkdownHtml = (
     heading.insertBefore(marker, heading.firstChild);
   });
 
-  clone.querySelectorAll<HTMLElement>("strong,b").forEach((element) => {
-    const wrapper = consumeInlineMarkerHint("strong", "**");
+  clone.querySelectorAll<HTMLElement>("strong,b,u").forEach((element) => {
+    const fallback = element.tagName.toLowerCase() === "u" ? "__" : "**";
+    const wrapper = consumeInlineMarkerHint("strong", fallback);
     ensureInlineMarkers(element, wrapper, wrapper);
   });
 
