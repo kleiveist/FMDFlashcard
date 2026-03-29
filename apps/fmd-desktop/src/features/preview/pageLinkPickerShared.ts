@@ -206,36 +206,47 @@ export const resolveTypedLinkPickerTriggerAtCaret = (
     }
     | null = null;
 
-  const considerCandidate = (mode: TypedLinkPickerMode, start: number, openLength: number) => {
+  const considerCandidate = (
+    mode: TypedLinkPickerMode,
+    start: number,
+    openLength: number,
+  ): {
+    mode: TypedLinkPickerMode;
+    replaceRange: PageLinkPickerReplaceRange;
+  } | null => {
     if (start > clampedCaret + 12) {
-      return;
+      return null;
     }
     if (start > 0 && value[start - 1] === "\\") {
-      return;
+      return null;
     }
     const end = start + openLength;
     if (end > value.length) {
-      return;
+      return null;
     }
     const typedSegment = value.slice(end, Math.max(end, clampedCaret));
     if (typedSegment.includes("\n") || typedSegment.includes("\r") || typedSegment.includes("]]")) {
-      return;
+      return null;
     }
     const closeProbe = value.slice(end, Math.min(value.length, clampedCaret + 12));
     if (closeProbe.includes("]]")) {
-      return;
+      return null;
     }
-    if (!bestCandidate || start > bestCandidate.replaceRange.start) {
-      bestCandidate = {
-        mode,
-        replaceRange: { start, end },
-      };
-    }
+    return {
+      mode,
+      replaceRange: { start, end },
+    };
   };
 
   for (let index = 0; index < windowValue.length; index += 1) {
     if (windowValue.startsWith("![[", index)) {
-      considerCandidate("image", windowStart + index, 3);
+      const candidate = considerCandidate("image", windowStart + index, 3);
+      if (!candidate) {
+        continue;
+      }
+      if (!bestCandidate || candidate.replaceRange.start > bestCandidate.replaceRange.start) {
+        bestCandidate = candidate;
+      }
       continue;
     }
     if (windowValue.startsWith("[[", index)) {
@@ -243,21 +254,26 @@ export const resolveTypedLinkPickerTriggerAtCaret = (
       if (globalStart > 0 && value[globalStart - 1] === "!") {
         continue;
       }
-      considerCandidate("page", globalStart, 2);
+      const candidate = considerCandidate("page", globalStart, 2);
+      if (!candidate) {
+        continue;
+      }
+      if (!bestCandidate || candidate.replaceRange.start > bestCandidate.replaceRange.start) {
+        bestCandidate = candidate;
+      }
     }
   }
 
-  const resolvedBestCandidate = bestCandidate;
-  if (resolvedBestCandidate) {
-    return {
-      mode: resolvedBestCandidate.mode,
-      replaceRange: resolvedBestCandidate.replaceRange,
-      initialQuery: clampedCaret > resolvedBestCandidate.replaceRange.end
-        ? value.slice(resolvedBestCandidate.replaceRange.end, clampedCaret)
-        : "",
-    };
+  if (!bestCandidate) {
+    return null;
   }
-  return null;
+  return {
+    mode: bestCandidate.mode,
+    replaceRange: bestCandidate.replaceRange,
+    initialQuery: clampedCaret > bestCandidate.replaceRange.end
+      ? value.slice(bestCandidate.replaceRange.end, clampedCaret)
+      : "",
+  };
 };
 
 export const buildPageLinkCandidates = (vaultFiles?: VaultFile[]): PageLinkCandidate[] => {
