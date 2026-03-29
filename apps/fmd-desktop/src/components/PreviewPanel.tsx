@@ -3273,7 +3273,24 @@ const serializeMarkdownNode = (
             closeMarkerText === closeDisplayHint,
         );
         if (shouldReuseSourceFenceLines) {
-          return wrapCodeBlockWithMarkers(code, openSourceHint ?? "```", closeSourceHint ?? "```");
+          let sourceOpenMarker = openSourceHint ?? "```";
+          const sourceCloseMarker = closeSourceHint ?? "```";
+          // Defensive fallback: if an environment strips leading whitespace from
+          // the opening fence hint while preserving the closing fence hint,
+          // recover the shared indent so source round-trips byte-exact.
+          if (
+            /^[ \t]+`{3,}/.test(sourceCloseMarker) &&
+            /^`{3,}/.test(sourceOpenMarker)
+          ) {
+            const openIndent = sourceOpenMarker.match(/^[ \t]*/)?.[0] ?? "";
+            if (openIndent.length === 0) {
+              const closeIndent = sourceCloseMarker.match(/^[ \t]+/)?.[0] ?? "";
+              if (closeIndent) {
+                sourceOpenMarker = `${closeIndent}${sourceOpenMarker}`;
+              }
+            }
+          }
+          return wrapCodeBlockWithMarkers(code, sourceOpenMarker, sourceCloseMarker);
         }
         const openMarker = normalizeOpenCodeFenceMarker(
           openMarkerText ?? openDisplayHint ?? openSourceHint,
