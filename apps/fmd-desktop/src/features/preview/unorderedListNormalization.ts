@@ -3,16 +3,20 @@ export type NormalizeLegacyUnorderedListIndentationOptions = {
   normalizedMarker?: "-" | "+" | "*";
 };
 
-const unorderedListLinePattern = /^([ \t]*)([-+*])(?:\s*(.*))$/;
-const taskListLinePattern = /^[ \t]*[-+*]\s+\[[ xX]\](?:\s|$)/;
+const unorderedListLinePattern = /^([^\S\r\n]*)([-+*])(?:\s*(.*))$/;
+const taskListLinePattern = /^[^\S\r\n]*[-+*]\s+\[[ xX]\](?:\s|$)/;
 const fencedCodeLinePattern = /^\s*`{3,}/;
 const mathBlockDelimiterLinePattern = /^\s*\$\$\s*$/;
+const editorInjectedInvisibleCharPattern = /[\u200b\u200c\u200d\u2060\ufeff]/g;
 
 const normalizeLineEndings = (value: string) => value.replace(/\r\n?/g, "\n");
 const resolveLineEnding = (value: string) => (value.includes("\r\n") ? "\r\n" : "\n");
-const normalizeIndentWhitespace = (value: string) => value.replace(/\u00a0/g, " ");
+const normalizeIndentWhitespace = (value: string) =>
+  value
+    .replace(/\u00a0/g, " ")
+    .replace(editorInjectedInvisibleCharPattern, "");
 const isEditorWhitespaceOnly = (value: string) =>
-  value.replace(/[\s\u200b\u200c\u200d\ufeff]/g, "").length === 0;
+  normalizeIndentWhitespace(value).replace(/\s/g, "").length === 0;
 
 const resolveIndentWidthFromWhitespace = (indent: string) =>
   Array.from(indent).reduce((width, char) => width + (char === "\t" ? 4 : 1), 0);
@@ -177,12 +181,12 @@ export const normalizeLegacyUnorderedListIndentation = (
     levelStack.push({ level: nextLevel, rawIndentWidth });
 
     const normalizedIndent = " ".repeat(nextLevel * indentWidth);
-    const normalizedLine = normalizedContent.length > 0
+    const rebuiltLine = normalizedContent.length > 0
       ? `${normalizedIndent}${marker} ${normalizedContent}`
       : `${normalizedIndent}${marker} `;
 
-    if (normalizedLine !== line) {
-      lines[index] = normalizedLine;
+    if (rebuiltLine !== line) {
+      lines[index] = rebuiltLine;
       changed = true;
     }
   }

@@ -94,6 +94,39 @@ describe("normalizeLegacyUnorderedListIndentation", () => {
     ].join("\n"));
   });
 
+  it("normalizes nested descendants when editor inserts invisible format chars", () => {
+    const source = [
+      "- root!",
+      "    - child",
+      "\u2060\u200b",
+      "\u2060\u200b           - grand",
+    ].join("\n");
+    const result = normalizeLegacyUnorderedListIndentation(source);
+
+    expect(result).toBe([
+      "- root!",
+      "    - child",
+      "        - grand",
+    ].join("\n"));
+  });
+
+  it("normalizes nested descendants when indentation uses unicode whitespace", () => {
+    const thin = "\u2009";
+    const source = [
+      "- root!",
+      `${thin.repeat(4)}- child`,
+      `${thin.repeat(6)}`,
+      `${thin.repeat(11)}- grand`,
+    ].join("\n");
+    const result = normalizeLegacyUnorderedListIndentation(source);
+
+    expect(result).toBe([
+      "- root!",
+      "    - child",
+      "        - grand",
+    ].join("\n"));
+  });
+
   it("keeps fenced code and math block contents untouched", () => {
     const source = [
       "```",
