@@ -10,6 +10,9 @@ const mathBlockDelimiterLinePattern = /^\s*\$\$\s*$/;
 
 const normalizeLineEndings = (value: string) => value.replace(/\r\n?/g, "\n");
 const resolveLineEnding = (value: string) => (value.includes("\r\n") ? "\r\n" : "\n");
+const normalizeIndentWhitespace = (value: string) => value.replace(/\u00a0/g, " ");
+const isEditorWhitespaceOnly = (value: string) =>
+  value.replace(/[\s\u200b\u200c\u200d\ufeff]/g, "").length === 0;
 
 const resolveIndentWidthFromWhitespace = (indent: string) =>
   Array.from(indent).reduce((width, char) => width + (char === "\t" ? 4 : 1), 0);
@@ -25,6 +28,8 @@ const isInteractionMarkerLine = (line: string) => {
 };
 
 const isHorizontalRuleLine = (line: string) => /^-{3,}\s*$/.test(line.trim());
+const isUnorderedListLine = (line: string) =>
+  unorderedListLinePattern.test(normalizeIndentWhitespace(line));
 
 export const normalizeLegacyUnorderedListIndentation = (
   markdown: string,
@@ -49,7 +54,15 @@ export const normalizeLegacyUnorderedListIndentation = (
   };
   const findNextNonBlankIndex = (startIndex: number) => {
     for (let cursor = startIndex; cursor < lines.length; cursor += 1) {
-      if ((lines[cursor] ?? "").trim().length > 0) {
+      if (!isEditorWhitespaceOnly(lines[cursor] ?? "")) {
+        return cursor;
+      }
+    }
+    return -1;
+  };
+  const findPreviousNonBlankIndex = (startIndex: number) => {
+    for (let cursor = startIndex; cursor >= 0; cursor -= 1) {
+      if (!isEditorWhitespaceOnly(lines[cursor] ?? "")) {
         return cursor;
       }
     }
@@ -58,13 +71,14 @@ export const normalizeLegacyUnorderedListIndentation = (
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index] ?? "";
+    const normalizedLine = normalizeIndentWhitespace(line);
 
-    if (!inMathBlock && fencedCodeLinePattern.test(line)) {
+    if (!inMathBlock && fencedCodeLinePattern.test(normalizedLine)) {
       inCodeFence = !inCodeFence;
       clearStack();
       continue;
     }
-    if (!inCodeFence && mathBlockDelimiterLinePattern.test(line)) {
+    if (!inCodeFence && mathBlockDelimiterLinePattern.test(normalizedLine)) {
       inMathBlock = !inMathBlock;
       clearStack();
       continue;
@@ -73,11 +87,25 @@ export const normalizeLegacyUnorderedListIndentation = (
       continue;
     }
 
-    const trimmed = line.trim();
-    if (trimmed.length === 0) {
+    if (isEditorWhitespaceOnly(normalizedLine)) {
+      const previousNonBlankIndex = findPreviousNonBlankIndex(index - 1);
       const nextNonBlankIndex = findNextNonBlankIndex(index + 1);
-      const nextNonBlankLine = nextNonBlankIndex >= 0 ? lines[nextNonBlankIndex] ?? "" : "";
-      const hasFollowingUnorderedListLine = unorderedListLinePattern.test(nextNonBlankLine);
+      const previousNonBlankLine = previousNonBlankIndex >= 0
+        ? normalizeIndentWhitespace(lines[previousNonBlankIndex] ?? "")
+        : "";
+      const nextNonBlankLine = nextNonBlankIndex >= 0
+        ? normalizeIndentWhitespace(lines[nextNonBlankIndex] ?? "")
+        : "";
+      const hasPreviousUnorderedListLine = isUnorderedListLine(previousNonBlankLine);
+      const hasFollowingUnorderedListLine = isUnorderedListLine(nextNonBlankLine);
+      if (hasPreviousUnorderedListLine && hasFollowingUnorderedListLine) {
+        // Keep nested list descendants contiguous even when contentEditable
+        // inserts spacer lines between two list lines.
+        lines.splice(index, 1);
+        changed = true;
+        index -= 1;
+        continue;
+      }
       if (levelStack.length > 0 && hasFollowingUnorderedListLine) {
         // Editor serialization can inject spacer lines between nested list items.
         // Drop them and keep the current stack so deeper descendants stay anchored.
@@ -94,12 +122,12 @@ export const normalizeLegacyUnorderedListIndentation = (
       continue;
     }
 
-    if (taskListLinePattern.test(line)) {
+    if (taskListLinePattern.test(normalizedLine)) {
       clearStack();
       continue;
     }
 
-    const listMatch = line.match(unorderedListLinePattern);
+    const listMatch = normalizedLine.match(unorderedListLinePattern);
     if (!listMatch) {
       clearStack();
       continue;

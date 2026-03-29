@@ -8300,10 +8300,11 @@ export const PreviewPanel = ({
     const activeLineSet = new Set(activeLines);
     const anchorLine = activeLines[0] ?? null;
     const previousAnchorLine = activeMarkdownInlineLineRef.current;
-    const lineSwitched = Boolean(
-      previousAnchorLine &&
-      previousAnchorLine !== anchorLine,
-    );
+    const lineSwitched = previousAnchorLine !== anchorLine &&
+      (
+        previousAnchorLine !== null ||
+        (pendingLegacyUnorderedListAutocorrectRef.current && anchorLine !== null)
+      );
     activeMarkdownInlineLineRef.current = anchorLine;
     if (lineSwitched && pendingLegacyUnorderedListAutocorrectRef.current) {
       applyLegacyUnorderedListAutocorrectionFromEditor();
@@ -9924,6 +9925,16 @@ export const PreviewPanel = ({
       if (editorMode === nextEditorMode) {
         return;
       }
+      if (
+        !isHybridMode &&
+        isEditing &&
+        showMarkdownEditor &&
+        nextEditorMode === "code"
+      ) {
+        syncMarkdownDraftFromEditor();
+        applyLegacyUnorderedListAutocorrectionFromEditor();
+        pendingLegacyUnorderedListAutocorrectRef.current = false;
+      }
       if (isHybridMode) {
         if (!await commitHybridEditIfNeeded()) {
           return;
@@ -9931,7 +9942,16 @@ export const PreviewPanel = ({
       }
       await onSelectEditorMode(nextEditorMode);
     },
-    [commitHybridEditIfNeeded, editorMode, isHybridMode, onSelectEditorMode],
+    [
+      applyLegacyUnorderedListAutocorrectionFromEditor,
+      commitHybridEditIfNeeded,
+      editorMode,
+      isEditing,
+      isHybridMode,
+      onSelectEditorMode,
+      showMarkdownEditor,
+      syncMarkdownDraftFromEditor,
+    ],
   );
 
   const handleEditModeToggle = useCallback(async () => {

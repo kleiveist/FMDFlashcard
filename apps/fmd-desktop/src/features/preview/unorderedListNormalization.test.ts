@@ -61,6 +61,39 @@ describe("normalizeLegacyUnorderedListIndentation", () => {
     ].join("\n"));
   });
 
+  it("normalizes nested descendants when editor injects NBSP indentation", () => {
+    const nbsp = "\u00a0";
+    const source = [
+      "- root!",
+      `${nbsp.repeat(4)}- child`,
+      `${nbsp.repeat(6)}`,
+      `${nbsp.repeat(11)}- grand`,
+    ].join("\n");
+    const result = normalizeLegacyUnorderedListIndentation(source);
+
+    expect(result).toBe([
+      "- root!",
+      "    - child",
+      "        - grand",
+    ].join("\n"));
+  });
+
+  it("drops unicode-only spacer lines between nested list descendants", () => {
+    const source = [
+      "- root!",
+      "    - child",
+      "\u200b\u200b",
+      "           - grand",
+    ].join("\n");
+    const result = normalizeLegacyUnorderedListIndentation(source);
+
+    expect(result).toBe([
+      "- root!",
+      "    - child",
+      "        - grand",
+    ].join("\n"));
+  });
+
   it("keeps fenced code and math block contents untouched", () => {
     const source = [
       "```",
