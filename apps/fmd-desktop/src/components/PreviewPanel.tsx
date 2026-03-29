@@ -53,6 +53,7 @@ import {
 } from "../features/preview/MarkdownHybridEditor";
 import {
   parseMarkdownBlocks,
+  normalizeHelpBlockSource,
   type MarkdownBlock,
 } from "../features/preview/markdownBlocks";
 import {
@@ -62,6 +63,9 @@ import {
   buildBacktickFenceDisplayHints,
   normalizeFenceDisplayForRender,
 } from "../features/preview/codeFenceDisplay";
+import {
+  normalizeLegacyUnorderedListIndentation,
+} from "../features/preview/unorderedListNormalization";
 import { MarkdownHybridDatabaseBlock } from "../features/preview/database/database-block";
 import {
   addFrontmatterProperty,
@@ -1113,6 +1117,7 @@ type InlineSyntaxHighlightOptions = {
 type HybridMarkdownPreviewRenderOptions = {
   collapseClozeVariantsInView?: boolean;
   hideInlineSyntaxDelimiters?: boolean;
+  normalizeLooseNestedListMarkers?: boolean;
 };
 
 // Highlight inline FMD-style hash directives/tags like "#card", "#text", "#test".
@@ -2949,6 +2954,51 @@ const isFmdDirectiveLine = (line: string) => {
   return isInteractionMarkerLine(trimmed);
 };
 
+const normalizeLooseNestedUnorderedListMarkersForRender = (markdown: string) => {
+  return normalizeLegacyUnorderedListIndentation(markdown, {
+    indentWidth: 4,
+    normalizedMarker: "-",
+  });
+};
+
+const orderedListLikeLinePattern = /^\s*\d+[.)]\s+/;
+const unorderedListLikeLinePattern = /^\s*[-+*]\s+/;
+const indentedContinuationLinePattern = /^\s{2,}\S/;
+const blockquoteLinePattern = /^\s*>/;
+
+const needsHelpEndPreviewSeparator = (line: string) =>
+  orderedListLikeLinePattern.test(line) ||
+  unorderedListLikeLinePattern.test(line) ||
+  indentedContinuationLinePattern.test(line) ||
+  blockquoteLinePattern.test(line);
+
+const normalizeHelpBlockPreviewSource = (blockRaw: string) => {
+  const normalized = normalizeHelpBlockSource(blockRaw);
+  if (!normalized) {
+    return normalized;
+  }
+
+  const lines = normalized.split("\n");
+  const previewLines: string[] = [];
+
+  for (const line of lines) {
+    if (line !== "#helpend") {
+      previewLines.push(line);
+      continue;
+    }
+
+    const previousLine = previewLines[previewLines.length - 1] ?? "";
+    // Preview-only: break out of markdown blockquote/list parsing before "#helpend"
+    // without changing the persisted source formatting.
+    if (previousLine && needsHelpEndPreviewSeparator(previousLine)) {
+      previewLines.push("");
+    }
+    previewLines.push(line);
+  }
+
+  return previewLines.join("\n");
+};
+
 const escapeMarkdownLineStart = (line: string) => {
   if (!line || isFmdDirectiveLine(line)) {
     return line;
@@ -3170,9 +3220,13 @@ const serializeMarkdownNode = (
   }
 
   if (tag === "div") {
+    const content = serializeMarkdownChildren(element, context);
+    if (element.classList.contains("md-code-block")) {
+      return content;
+    }
     // contentEditable uses div per line; keep single newline to avoid extra gaps.
-    const content = serializeMarkdownChildren(element, context).trim();
-    return content ? `${content}\n` : "\n";
+    const trimmedContent = content.trim();
+    return trimmedContent ? `${trimmedContent}\n` : "\n";
   }
 
   if (tag.startsWith("h") && tag.length === 2) {
@@ -3265,6 +3319,14 @@ const serializeMarkdownNode = (
         const closeMarkerMatchesDisplay = closeMarkerText === closeDisplayHint;
         const openMarkerMatchesSource = openMarkerText === openSourceHint;
         const closeMarkerMatchesSource = closeMarkerText === closeSourceHint;
+        const openMarkerMatchesSourceTrimmed =
+          typeof openMarkerText === "string" &&
+          typeof openSourceHint === "string" &&
+          openMarkerText.trimStart() === openSourceHint.trimStart();
+        const closeMarkerMatchesSourceTrimmed =
+          typeof closeMarkerText === "string" &&
+          typeof closeSourceHint === "string" &&
+          closeMarkerText.trimStart() === closeSourceHint.trimStart();
         const shouldReuseSourceFenceLines = Boolean(
           openSourceHint &&
             closeSourceHint &&
@@ -3274,7 +3336,10 @@ const serializeMarkdownNode = (
             ) &&
             (
               (closeDisplayHint && closeMarkerMatchesDisplay) ||
-              closeMarkerMatchesSource
+              closeMarkerMatchesSource ||
+              (openMarkerMatchesSourceTrimmed && closeMarkerMatchesSource) ||
+              (openMarkerMatchesSource && closeMarkerMatchesSourceTrimmed) ||
+              (openMarkerMatchesSourceTrimmed && closeMarkerMatchesSourceTrimmed)
             ),
         );
         if (shouldReuseSourceFenceLines) {
@@ -3319,7 +3384,35 @@ const serializeMarkdownNode = (
   }
 
   if (tag === "ul" || tag === "ol") {
-    return serializeMarkdownList(element, context);
+    const serialized = serializeMarkdownList(element, context);
+    if (
+      context.inContentEditable &&
+      element.parentElement?.tagName.toLowerCase() === "li"
+    ) {
+      let sibling = element.previousSibling;
+      let hasInlineContentBefore = false;
+      while (sibling) {
+        if (sibling.nodeType === Node.TEXT_NODE) {
+          if ((sibling.nodeValue ?? "").trim().length > 0) {
+            hasInlineContentBefore = true;
+            break;
+          }
+        } else if (sibling.nodeType === Node.ELEMENT_NODE) {
+          const siblingElement = sibling as HTMLElement;
+          if (!siblingElement.classList.contains("md-list-marker")) {
+            if ((siblingElement.textContent ?? "").trim().length > 0) {
+              hasInlineContentBefore = true;
+              break;
+            }
+          }
+        }
+        sibling = sibling.previousSibling;
+      }
+      if (hasInlineContentBefore && !serialized.startsWith("\n")) {
+        return `\n${serialized}`;
+      }
+    }
+    return serialized;
   }
 
   if (tag === "li") {
@@ -3489,9 +3582,20 @@ export const serializeMarkdownFromHtml = (container: HTMLElement) => {
     escapePipes: true,
     inContentEditable: true,
   });
-  return normalizeMarkdownPipeTables(serialized, {
+  const tableNormalized = normalizeMarkdownPipeTables(serialized, {
     unescapeEscapedBoundaryPipes: true,
   });
+  const blocks = parseMarkdownBlocks(tableNormalized);
+  if (!blocks.some((block) => block.kind === "help-block")) {
+    return tableNormalized;
+  }
+  return blocks
+    .map((block) => (
+      block.kind === "help-block"
+        ? normalizeHelpBlockSource(block.raw)
+        : block.raw
+    ))
+    .join("\n");
 };
 
 export const buildEditableMarkdownHtml = (
@@ -7780,7 +7884,6 @@ export const PreviewPanel = ({
   const markdownEditorHtmlRef = useRef<string | null>(null);
   const markdownEditorReadyRef = useRef(false);
   const pendingMarkdownTokenSelectionRef = useRef<{ start: number; end: number } | null>(null);
-  const applyingMarkdownCaretRef = useRef(false);
   const suppressRawEditorBlurExitRef = useRef(false);
   const rawCodeToggleClosePendingRef = useRef(false);
   const scrollStateRef = useRef({ top: 0, left: 0 });
@@ -7790,6 +7893,8 @@ export const PreviewPanel = ({
   const editableHighlightDebounceHandleRef = useRef(0);
   const editableHighlightCancelIdleRef = useRef<(() => void) | null>(null);
   const editableHighlightRunningRef = useRef(false);
+  const activeMarkdownInlineLineRef = useRef<HTMLElement | null>(null);
+  const pendingLegacyUnorderedListAutocorrectRef = useRef(false);
   const onWriteSaveRef = useRef(onWriteSave);
   const [showFrontmatterTextFallback, setShowFrontmatterTextFallback] = useState(false);
   const [legacyMarkdownLinkPickerState, setLegacyMarkdownLinkPickerState] =
@@ -8126,17 +8231,33 @@ export const PreviewPanel = ({
     if (!markdownEditorRef.current) {
       return "";
     }
-    if (applyingMarkdownCaretRef.current) {
-      return serializeMarkdownFromHtml(markdownEditorRef.current);
-    }
     const nextBody = serializeMarkdownFromHtml(markdownEditorRef.current);
     const nextValue = composeMarkdownWithBody(editDraft, nextBody, {
       bodyMayContainFrontmatter: false,
     });
     if (nextValue !== editDraft) {
+      pendingLegacyUnorderedListAutocorrectRef.current = true;
       onEditChange(nextValue);
     }
     return nextBody;
+  }, [editDraft, onEditChange]);
+
+  const applyLegacyUnorderedListAutocorrectionFromEditor = useCallback(() => {
+    const editor = markdownEditorRef.current;
+    if (!editor) {
+      return;
+    }
+    const currentBody = serializeMarkdownFromHtml(editor);
+    const normalizedBody = normalizeLooseNestedUnorderedListMarkersForRender(currentBody);
+    if (normalizedBody === currentBody) {
+      return;
+    }
+    const nextValue = composeMarkdownWithBody(editDraft, normalizedBody, {
+      bodyMayContainFrontmatter: false,
+    });
+    if (nextValue !== editDraft) {
+      onEditChange(nextValue);
+    }
   }, [editDraft, onEditChange]);
 
   const syncActiveMarkdownHeading = useCallback(() => {
@@ -8177,6 +8298,17 @@ export const PreviewPanel = ({
       ? resolveSelectionLineElements(editor, activeRange)
       : [];
     const activeLineSet = new Set(activeLines);
+    const anchorLine = activeLines[0] ?? null;
+    const previousAnchorLine = activeMarkdownInlineLineRef.current;
+    const lineSwitched = Boolean(
+      previousAnchorLine &&
+      previousAnchorLine !== anchorLine,
+    );
+    activeMarkdownInlineLineRef.current = anchorLine;
+    if (lineSwitched && pendingLegacyUnorderedListAutocorrectRef.current) {
+      applyLegacyUnorderedListAutocorrectionFromEditor();
+      pendingLegacyUnorderedListAutocorrectRef.current = false;
+    }
 
     const activeBlockquotes = new Set<HTMLElement>();
     const activeTableCells = new Set<HTMLElement>();
@@ -8278,7 +8410,7 @@ export const PreviewPanel = ({
         block.removeAttribute("data-md-code-active");
       }
     });
-  }, []);
+  }, [applyLegacyUnorderedListAutocorrectionFromEditor]);
 
   const closeLegacyMarkdownLinkPicker = useCallback(() => {
     setLegacyMarkdownLinkPickerState(null);
@@ -8492,6 +8624,8 @@ export const PreviewPanel = ({
   useLayoutEffect(() => {
     if (!isEditing || isCodeMode) {
       markdownEditorReadyRef.current = false;
+      activeMarkdownInlineLineRef.current = null;
+      pendingLegacyUnorderedListAutocorrectRef.current = false;
       if (!isEditing) {
         markdownEditorHtmlRef.current = null;
         pendingMarkdownTokenSelectionRef.current = null;
@@ -8704,7 +8838,6 @@ export const PreviewPanel = ({
     const pendingEnd = normalizedPendingSelection
       ? Math.max(normalizedPendingSelection.start, normalizedPendingSelection.end)
       : null;
-    applyingMarkdownCaretRef.current = true;
     const bodyCaretIndex = Math.max(
       0,
       editCaretIndex - markdownEditBodyStartOffset,
@@ -8769,14 +8902,12 @@ export const PreviewPanel = ({
         scrollStateRef.current.left = editor.scrollLeft;
       } finally {
         pendingMarkdownTokenSelectionRef.current = null;
-        applyingMarkdownCaretRef.current = false;
         onEditCaretApplied();
       }
     });
     return () => {
       window.cancelAnimationFrame(handle);
       pendingMarkdownTokenSelectionRef.current = null;
-      applyingMarkdownCaretRef.current = false;
     };
   }, [
     editCaretIndex,
@@ -9155,6 +9286,9 @@ export const PreviewPanel = ({
       if (nextFocus instanceof Node && legacyMarkdownLinkPickerRef.current?.contains(nextFocus)) {
         return;
       }
+      syncMarkdownDraftFromEditor();
+      applyLegacyUnorderedListAutocorrectionFromEditor();
+      pendingLegacyUnorderedListAutocorrectRef.current = false;
       captureScroll(markdownEditorScrollRef.current);
       const bodyCaretIndex = resolveMarkdownCaretIndex(
         event.currentTarget,
@@ -9173,6 +9307,8 @@ export const PreviewPanel = ({
       markdownEditBody,
       markdownEditBodyStartOffset,
       markdownEditorScrollRef,
+      applyLegacyUnorderedListAutocorrectionFromEditor,
+      syncMarkdownDraftFromEditor,
       onEditExit,
     ],
   );
@@ -9384,7 +9520,10 @@ export const PreviewPanel = ({
             hideInlineSyntaxDelimiters: options?.hideInlineSyntaxDelimiters === true,
           }
           : undefined;
-      const previewMarkdown = normalizeInlineFormattingForPreview(sourceMarkdown);
+      const listNormalizedMarkdown = options?.normalizeLooseNestedListMarkers
+        ? normalizeLooseNestedUnorderedListMarkersForRender(sourceMarkdown)
+        : sourceMarkdown;
+      const previewMarkdown = normalizeInlineFormattingForPreview(listNormalizedMarkdown);
       const mediaPreview = buildMarkdownMediaPreviewSource(
         previewMarkdown,
         "preview-panel-hybrid",
@@ -9565,11 +9704,14 @@ export const PreviewPanel = ({
   const fenceNormalizedMarkdownSource = isCodeMode || !isMarkdownMode
     ? normalizedMarkdownSource
     : normalizeFenceDisplayForRender(normalizedMarkdownSource);
+  const listNormalizedMarkdownSource = isCodeMode || !isMarkdownMode
+    ? fenceNormalizedMarkdownSource
+    : normalizeLooseNestedUnorderedListMarkersForRender(fenceNormalizedMarkdownSource);
   const renderedPreview = isCodeMode
     ? preview
     : isMarkdownMode && resolvedEditEnabled
-      ? fenceNormalizedMarkdownSource
-      : applyInteractionSpacing(fenceNormalizedMarkdownSource);
+      ? listNormalizedMarkdownSource
+      : applyInteractionSpacing(listNormalizedMarkdownSource);
   const markdownViewBlocks = useMemo(
     () => (
       isCodeMode
@@ -9701,6 +9843,9 @@ export const PreviewPanel = ({
       const cardGroupId = block.meta?.cardGroupId;
       const cardGroupRole = block.meta?.cardGroupRole;
       const wrapperClassName = `preview-markdown-view-block preview-markdown-view-block-${block.kind}`;
+      const blockPreviewSource = block.kind === "help-block"
+        ? normalizeHelpBlockPreviewSource(block.raw)
+        : block.raw;
       if (block.kind === "database-block") {
         return (
           <div
@@ -9741,9 +9886,10 @@ export const PreviewPanel = ({
           data-md-card-group-id={cardGroupId ?? undefined}
           data-md-card-group-role={cardGroupRole ?? undefined}
         >
-          {renderHybridMarkdownPreview(normalizeTableSpacingForRender(block.raw), {
+          {renderHybridMarkdownPreview(normalizeTableSpacingForRender(blockPreviewSource), {
             collapseClozeVariantsInView: true,
             hideInlineSyntaxDelimiters: true,
+            normalizeLooseNestedListMarkers: true,
           })}
         </div>
       );

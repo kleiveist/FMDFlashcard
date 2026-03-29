@@ -2871,7 +2871,8 @@ const resolveVirtualizationFallbackHeight = (kind: MarkdownBlock["kind"]) => {
 const needsHelpEndPreviewSeparator = (line: string) =>
   orderedListLikeLinePattern.test(line) ||
   unorderedListLikeLinePattern.test(line) ||
-  indentedContinuationLinePattern.test(line);
+  indentedContinuationLinePattern.test(line) ||
+  /^\s*>/.test(line);
 
 const normalizeHelpBlockPreviewSource = (blockRaw: string) => {
   const normalized = normalizeHelpBlockSource(blockRaw);

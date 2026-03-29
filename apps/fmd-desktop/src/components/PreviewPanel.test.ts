@@ -252,6 +252,23 @@ describe("serializeMarkdownFromHtml", () => {
     expect(result).not.toContain("\\#");
   });
 
+  it("drops preview-only blank separators directly before #helpend", () => {
+    const container = document.createElement("div");
+    ["#help", "> Hinweis", "", "#helpend"].forEach((line) => {
+      const paragraph = document.createElement("p");
+      if (line.length === 0) {
+        paragraph.appendChild(document.createElement("br"));
+      } else {
+        paragraph.textContent = line;
+      }
+      container.appendChild(paragraph);
+    });
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe(["#help", "> Hinweis", "#helpend", ""].join("\n"));
+  });
+
   it("keeps heading marker edits from markdown view", () => {
     const container = document.createElement("div");
     const heading = document.createElement("h2");
@@ -354,6 +371,35 @@ describe("serializeMarkdownFromHtml", () => {
 
     expect(result).toBe("- Alpha\n");
     expect(result).not.toContain("\\-");
+  });
+
+  it("keeps nested list items on their own lines when serializing editable html", () => {
+    const container = document.createElement("div");
+    const root = document.createElement("ul");
+    const rootItem = document.createElement("li");
+    const rootMarker = document.createElement("span");
+    rootMarker.className = "md-list-marker";
+    rootMarker.textContent = "- ";
+    rootItem.appendChild(rootMarker);
+    rootItem.appendChild(document.createTextNode("Root"));
+
+    const childList = document.createElement("ul");
+    const childItem = document.createElement("li");
+    const childMarker = document.createElement("span");
+    childMarker.className = "md-list-marker";
+    childMarker.textContent = "- ";
+    childItem.appendChild(childMarker);
+    childItem.appendChild(document.createTextNode("Child"));
+    childList.appendChild(childItem);
+
+    rootItem.appendChild(childList);
+    root.appendChild(rootItem);
+    container.appendChild(root);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe(["- Root", "    - Child", ""].join("\n"));
+    expect(result).not.toContain("- Root - Child");
   });
 
   it("keeps plain '- text' lines unescaped after leaving the edited line", () => {

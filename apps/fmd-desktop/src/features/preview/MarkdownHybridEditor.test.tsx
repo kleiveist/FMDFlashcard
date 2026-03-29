@@ -3797,6 +3797,43 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
+  it("keeps #helpend outside help-block blockquotes in preview rendering", () => {
+    const markdown = [
+      "#help",
+      "> **Wichtiger Hinweis:**",
+      "> Hinweistext",
+      "#helpend",
+    ].join("\n");
+
+    const { container, cleanup } = render(
+      <MarkdownHybridEditor
+        historyKey="help-block-helpend-quote-boundary"
+        markdown={markdown}
+        mode="edit"
+        onChange={() => undefined}
+        renderPreview={(previewValue) => <div>{previewValue}</div>}
+      />,
+    );
+
+    const helpBlock = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block[data-md-block-kind='help-block']",
+    );
+    expect(helpBlock).toBeTruthy();
+
+    const blockquote = helpBlock?.querySelector("blockquote");
+    expect(blockquote).toBeTruthy();
+    expect((blockquote?.textContent ?? "").toLowerCase()).not.toContain("helpend");
+
+    const helpEnd = Array.from(helpBlock?.querySelectorAll<HTMLElement>("p,h1,h2,h3,h4,h5,h6,span") ?? [])
+      .find((node) => (node.textContent ?? "").toLowerCase().includes("helpend"));
+    expect(helpEnd).toBeTruthy();
+    if (blockquote && helpEnd) {
+      expect(blockquote.contains(helpEnd)).toBe(false);
+    }
+
+    cleanup();
+  });
+
   it("renders png embeds and svg fences inside #card previews as resolved media", () => {
     const markdown = [
       "#card",

@@ -1515,6 +1515,49 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(previewText).not.toContain('"Einhaltung vorgegebener Formate fuer Attribute."');
   });
 
+  it("keeps #helpend outside the help-block hint quote in markdown view and edit mode", () => {
+    withImmediateRaf(() => {
+      const markdown = [
+        "#help",
+        "> **Wichtiger Hinweis:**  ",
+        "> Aendere Tabellen nur mit Sorgfalt.",
+        "#helpend",
+      ].join("\n");
+      const { container, cleanup: localCleanup } = buildHarness(markdown);
+      cleanup = localCleanup;
+
+      const helpBlock = container.querySelector<HTMLElement>(
+        ".preview-markdown-view-block[data-md-block-kind='help-block']",
+      );
+      expect(helpBlock).toBeTruthy();
+
+      const viewQuote = helpBlock?.querySelector("blockquote");
+      expect(viewQuote).toBeTruthy();
+      expect((viewQuote?.textContent ?? "").toLowerCase()).not.toContain("helpend");
+
+      const viewHelpEndText = findTextNodeContaining(helpBlock ?? container, "#helpend") ??
+        findTextNodeContaining(helpBlock ?? container, "helpend");
+      expect(viewHelpEndText).toBeTruthy();
+      if (viewQuote && viewHelpEndText?.parentElement) {
+        expect(viewQuote.contains(viewHelpEndText.parentElement)).toBe(false);
+      }
+
+      const quoteTextNode = findTextNodeContaining(helpBlock ?? container, "Wichtiger Hinweis");
+      const editable = activateMarkdownEditorFromPreviewSelection(container, quoteTextNode, 1);
+      expect(editable).toBeTruthy();
+
+      const editQuote = editable?.querySelector("blockquote");
+      expect((editQuote?.textContent ?? "").toLowerCase()).not.toContain("helpend");
+
+      const editHelpEndText = findTextNodeContaining(editable ?? container, "#helpend") ??
+        findTextNodeContaining(editable ?? container, "helpend");
+      expect(editHelpEndText).toBeTruthy();
+      if (editQuote && editHelpEndText?.parentElement) {
+        expect(editQuote.contains(editHelpEndText.parentElement)).toBe(false);
+      }
+    });
+  });
+
   it("selects chained cloze tokens on preview click when entering markdown edit mode", () => {
     withImmediateRaf(() => {
       const markdown = "Konzept: %A%%B% und Rest.";
@@ -2792,6 +2835,149 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const activeListItem = markerToActivate?.closest("li");
     expect(activeListItem?.getAttribute("data-md-list-active")).toBe("true");
+  });
+
+  it("renders loose nested unordered markers as three list levels in markdown edit mode", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["- test", "    - test", "        -test"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    expect(editable).toBeTruthy();
+
+    const levelOneList = editable?.querySelector("ul") as HTMLUListElement | null;
+    expect(levelOneList).toBeTruthy();
+    const levelOneItems = Array.from(levelOneList?.children ?? []).filter(
+      (node): node is HTMLLIElement => node instanceof HTMLLIElement,
+    );
+    expect(levelOneItems).toHaveLength(1);
+
+    const levelTwoList = Array.from(levelOneItems[0]?.children ?? []).find(
+      (node): node is HTMLUListElement => node instanceof HTMLUListElement,
+    );
+    expect(levelTwoList).toBeTruthy();
+    const levelTwoItems = Array.from(levelTwoList?.children ?? []).filter(
+      (node): node is HTMLLIElement => node instanceof HTMLLIElement,
+    );
+    expect(levelTwoItems).toHaveLength(1);
+
+    const levelThreeList = Array.from(levelTwoItems[0]?.children ?? []).find(
+      (node): node is HTMLUListElement => node instanceof HTMLUListElement,
+    );
+    expect(levelThreeList).toBeTruthy();
+    const levelThreeItems = Array.from(levelThreeList?.children ?? []).filter(
+      (node): node is HTMLLIElement => node instanceof HTMLLIElement,
+    );
+    expect(levelThreeItems).toHaveLength(1);
+    expect(levelThreeItems[0]?.textContent ?? "").toContain("test");
+    expect(editable?.textContent ?? "").not.toContain("-test");
+  });
+
+  it("normalizes unordered list indentation to 4-space levels on line switch and keeps it in code view", async () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["- root", "             - child", "                    - grand"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    expect(editable).toBeTruthy();
+
+    const rootNode = findTextNodeContaining(editable, "root");
+    const childNode = findTextNodeContaining(editable, "child");
+    expect(rootNode).toBeTruthy();
+    expect(childNode).toBeTruthy();
+
+    act(() => {
+      if (!rootNode || !editable) {
+        return;
+      }
+      rootNode.textContent = "root!";
+      editable.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    setCollapsedSelection(childNode, 0);
+    act(() => {
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+    await flushAsyncInteraction();
+
+    const codeViewButton = container.querySelector(
+      'button[aria-label="Code view"]',
+    ) as HTMLButtonElement | null;
+    expect(codeViewButton).toBeTruthy();
+
+    await act(async () => {
+      codeViewButton?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
+    await flushAsyncInteraction();
+
+    const rawEditor = container.querySelector<HTMLTextAreaElement>("textarea.preview-editor");
+    expect(rawEditor).toBeTruthy();
+    expect(rawEditor?.value).toContain(["- root!", "    - child", "        - grand"].join("\n"));
+  });
+
+  it("applies unordered-list normalization on markdown editor blur when line switch was skipped", async () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["- root", "             - child", "                    - grand"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    expect(editable).toBeTruthy();
+
+    const rootNode = findTextNodeContaining(editable, "root");
+    expect(rootNode).toBeTruthy();
+
+    act(() => {
+      if (!rootNode || !editable) {
+        return;
+      }
+      rootNode.textContent = "root!";
+      editable.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await flushAsyncInteraction();
+
+    const codeViewButton = container.querySelector(
+      'button[aria-label="Code view"]',
+    ) as HTMLButtonElement | null;
+    expect(codeViewButton).toBeTruthy();
+
+    await act(async () => {
+      codeViewButton?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
+    await flushAsyncInteraction();
+
+    const rawEditor = container.querySelector<HTMLTextAreaElement>("textarea.preview-editor");
+    expect(rawEditor).toBeTruthy();
+    expect(rawEditor?.value).toContain(["- root!", "    - child", "        - grand"].join("\n"));
   });
 
   it("marks inline raw-syntax lines as active for caret and multiline selection", () => {
