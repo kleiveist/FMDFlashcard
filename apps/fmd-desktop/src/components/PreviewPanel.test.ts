@@ -418,6 +418,33 @@ describe("serializeMarkdownFromHtml", () => {
     expect(result).toBe(["     ```http", "GET /book/1", "     ```", ""].join("\n"));
   });
 
+  it("reuses source fence lines with mixed display/source marker visibility", () => {
+    const container = document.createElement("div");
+    container.innerHTML = [
+      "<div class=\"md-code-block\">",
+      "<pre><code>GET /book/1</code></pre>",
+      "</div>",
+    ].join("");
+
+    const html = buildEditableMarkdownHtml(
+      container,
+      ["     ```http", "GET /book/1", "     ```"].join("\n"),
+    );
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = html;
+    const closeMarker = wrapper.querySelector<HTMLElement>(
+      ".md-code-fence-close > .md-code-fence-marker",
+    );
+    if (!closeMarker) {
+      throw new Error("Expected editable close fence marker");
+    }
+    // Simulate environments where one marker flips back to source-style text.
+    closeMarker.textContent = "     ```";
+
+    const result = serializeMarkdownFromHtml(wrapper);
+    expect(result).toBe(["     ```http", "GET /book/1", "     ```", ""].join("\n"));
+  });
+
   it("writes edited fence markers instead of source hints when marker text changed", () => {
     const container = document.createElement("div");
     container.innerHTML = [

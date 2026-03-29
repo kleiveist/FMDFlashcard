@@ -3261,13 +3261,21 @@ const serializeMarkdownNode = (
         openMarkerText !== null ||
         closeMarkerText !== null
       ) {
+        const openMarkerMatchesDisplay = openMarkerText === openDisplayHint;
+        const closeMarkerMatchesDisplay = closeMarkerText === closeDisplayHint;
+        const openMarkerMatchesSource = openMarkerText === openSourceHint;
+        const closeMarkerMatchesSource = closeMarkerText === closeSourceHint;
         const shouldReuseSourceFenceLines = Boolean(
           openSourceHint &&
             closeSourceHint &&
-            openDisplayHint &&
-            closeDisplayHint &&
-            openMarkerText === openDisplayHint &&
-            closeMarkerText === closeDisplayHint,
+            (
+              (openDisplayHint && openMarkerMatchesDisplay) ||
+              openMarkerMatchesSource
+            ) &&
+            (
+              (closeDisplayHint && closeMarkerMatchesDisplay) ||
+              closeMarkerMatchesSource
+            ),
         );
         if (shouldReuseSourceFenceLines) {
           let sourceOpenMarker = openSourceHint ?? "```";
