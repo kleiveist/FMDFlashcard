@@ -3081,6 +3081,9 @@ const decodeCodeFenceLineHint = (value: string | null | undefined) => {
   }
 };
 
+const sanitizeCodeFenceHintLine = (value: string | null | undefined) =>
+  (value ?? "").replace(/\r?\n/g, "");
+
 const wrapCodeBlockWithMarkers = (
   text: string,
   openMarker: string,
@@ -3536,11 +3539,9 @@ export const buildEditableMarkdownHtml = (
       }>;
     }
     return buildBacktickFenceDisplayHints(markdown).map((hint) => {
-      const openSource = normalizeOpenCodeFenceMarker(hint.openSourceLine);
-      const closeSource = normalizeCloseCodeFenceMarker(
-        hint.closeSourceLine,
-        openSource,
-      );
+      // Source hints must stay byte-identical to the original markdown lines.
+      const openSource = sanitizeCodeFenceHintLine(hint.openSourceLine);
+      const closeSource = sanitizeCodeFenceHintLine(hint.closeSourceLine);
       const openDisplay = normalizeOpenCodeFenceMarker(hint.openDisplayLine);
       const closeDisplay = normalizeCloseCodeFenceMarker(
         hint.closeDisplayLine,
@@ -3549,8 +3550,8 @@ export const buildEditableMarkdownHtml = (
       return {
         openDisplay,
         closeDisplay,
-        openSource,
-        closeSource,
+        openSource: openSource || openDisplay,
+        closeSource: closeSource || closeDisplay,
       };
     });
   };
