@@ -356,6 +356,18 @@ describe("serializeMarkdownFromHtml", () => {
     expect(result).not.toContain("\\-");
   });
 
+  it("keeps plain '- text' lines unescaped after leaving the edited line", () => {
+    const container = document.createElement("div");
+    const line = document.createElement("p");
+    line.appendChild(document.createTextNode("- Alpha"));
+    container.appendChild(line);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe("- Alpha\n");
+    expect(result).not.toContain("\\-");
+  });
+
   it("keeps edited code fence markers in markdown edit mode", () => {
     const container = document.createElement("div");
     const pre = document.createElement("pre");
@@ -749,6 +761,25 @@ describe("buildEditableMarkdownHtml", () => {
     expect(pre?.getAttribute("data-md-code-fence-close-source")).toBeTruthy();
     expect(pre?.getAttribute("data-md-code-fence-open-display")).toBeTruthy();
     expect(pre?.getAttribute("data-md-code-fence-close-display")).toBeTruthy();
+  });
+
+  it("does not inject table pipe markers into markdown edit overlay cells", () => {
+    const container = document.createElement("div");
+    container.innerHTML = [
+      "<table>",
+      "<thead><tr><th>A</th><th>B</th></tr></thead>",
+      "<tbody><tr><td>One</td><td>Two</td></tr></tbody>",
+      "</table>",
+    ].join("");
+
+    const html = buildEditableMarkdownHtml(
+      container,
+      ["| A | B |", "| --- | --- |", "| One | Two |"].join("\n"),
+    );
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = html;
+
+    expect(wrapper.querySelector(".md-table-pipe-marker")).toBeNull();
   });
 
   it("normalizes highlighted code spans back to plain editable code", () => {

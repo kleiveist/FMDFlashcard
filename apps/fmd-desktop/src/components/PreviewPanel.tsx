@@ -2965,9 +2965,6 @@ const escapeMarkdownLineStart = (line: string) => {
   if (/^#+(?=\s|$)/.test(content)) {
     return `${indent}\\${content}`;
   }
-  if (content.startsWith("-") && (content.length === 1 || content[1] === " ")) {
-    return `${indent}\\${content}`;
-  }
   return line;
 };
 
@@ -4017,26 +4014,6 @@ export const buildEditableMarkdownHtml = (
     marker.className = "md-blockquote-marker";
     marker.textContent = "> ";
     blockquote.insertBefore(marker, blockquote.firstChild);
-  });
-
-  clone.querySelectorAll<HTMLElement>("tr").forEach((row) => {
-    const cells = Array.from(row.children).filter(
-      (cell) => cell instanceof HTMLElement && /^(td|th)$/i.test(cell.tagName),
-    ) as HTMLElement[];
-    cells.forEach((cell, index) => {
-      if (!cell.querySelector(':scope > .md-table-pipe-marker-open')) {
-        const openMarker = cell.ownerDocument.createElement("span");
-        openMarker.className = "md-table-pipe-marker md-table-pipe-marker-open";
-        openMarker.textContent = "| ";
-        cell.insertBefore(openMarker, cell.firstChild);
-      }
-      if (index === cells.length - 1 && !cell.querySelector(':scope > .md-table-pipe-marker-close')) {
-        const closeMarker = cell.ownerDocument.createElement("span");
-        closeMarker.className = "md-table-pipe-marker md-table-pipe-marker-close";
-        closeMarker.textContent = " |";
-        cell.appendChild(closeMarker);
-      }
-    });
   });
 
   clone.querySelectorAll<HTMLElement>("p,li,h1,h2,h3,h4,h5,h6,blockquote,td,th").forEach(
