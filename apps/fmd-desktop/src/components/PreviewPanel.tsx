@@ -58,6 +58,10 @@ import {
 import {
   applyMarkdownFormattingInsertion,
 } from "../features/preview/markdownFormattingActions";
+import {
+  buildBacktickFenceDisplayHints,
+  normalizeFenceDisplayForRender,
+} from "../features/preview/codeFenceDisplay";
 import { MarkdownHybridDatabaseBlock } from "../features/preview/database/database-block";
 import {
   addFrontmatterProperty,
@@ -3022,26 +3026,59 @@ const wrapCodeBlock = (text: string) => {
   return `${fence}\n${trimmed}\n${fence}\n`;
 };
 
+const codeFenceOpenLinePattern = /^[ \t]*`{3,}[^\n]*$/;
+const codeFenceCloseLinePattern = /^[ \t]*`{3,}[ \t]*$/;
+
 const resolveCodeFenceFromOpenMarker = (openMarker: string) =>
-  openMarker.match(/^`{3,}/)?.[0] ?? "```";
+  openMarker.match(/`{3,}/)?.[0] ?? "```";
 
 const normalizeOpenCodeFenceMarker = (value: string | null) => {
-  const trimmed = (value ?? "").trim();
-  if (!trimmed || !/^`{3,}/.test(trimmed)) {
+  const normalized = (value ?? "").replace(/\r?\n/g, "");
+  if (normalized && codeFenceOpenLinePattern.test(normalized)) {
+    return normalized;
+  }
+  const trimmedStart = normalized.trimStart();
+  if (trimmedStart && codeFenceOpenLinePattern.test(trimmedStart)) {
+    return trimmedStart;
+  }
+  if (!trimmedStart || !/^`{3,}/.test(trimmedStart)) {
     return "```";
   }
-  return trimmed;
+  return trimmedStart;
 };
 
 const normalizeCloseCodeFenceMarker = (
   value: string | null,
   openMarker: string,
 ) => {
-  const trimmed = (value ?? "").trim();
-  if (!trimmed || !/^`{3,}$/.test(trimmed)) {
-    return resolveCodeFenceFromOpenMarker(openMarker);
+  const normalized = (value ?? "").replace(/\r?\n/g, "");
+  if (normalized && codeFenceCloseLinePattern.test(normalized)) {
+    return normalized;
   }
-  return trimmed;
+  const openIndent = openMarker.match(/^[ \t]*/)?.[0] ?? "";
+  const openFenceToken = resolveCodeFenceFromOpenMarker(openMarker);
+  if (!normalized || !/^`{3,}$/.test(normalized.trim())) {
+    return `${openIndent}${openFenceToken}`;
+  }
+  return normalized.trim();
+};
+
+const encodeCodeFenceLineHint = (value: string | null | undefined) => {
+  if (typeof value !== "string" || value.length === 0) {
+    return "";
+  }
+  return encodeURIComponent(value);
+};
+
+const decodeCodeFenceLineHint = (value: string | null | undefined) => {
+  if (typeof value !== "string" || value.length === 0) {
+    return null;
+  }
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 };
 
 const wrapCodeBlockWithMarkers = (
@@ -3207,13 +3244,41 @@ const serializeMarkdownNode = (
       const closeMarkerText = element.querySelector(
         ".md-code-fence-close > .md-code-fence-marker",
       )?.textContent ?? null;
+      const openSourceHint = decodeCodeFenceLineHint(
+        element.getAttribute("data-md-code-fence-open-source"),
+      );
+      const closeSourceHint = decodeCodeFenceLineHint(
+        element.getAttribute("data-md-code-fence-close-source"),
+      );
+      const openDisplayHint = decodeCodeFenceLineHint(
+        element.getAttribute("data-md-code-fence-open-display"),
+      );
+      const closeDisplayHint = decodeCodeFenceLineHint(
+        element.getAttribute("data-md-code-fence-close-display"),
+      );
       if (
         element.hasAttribute("data-md-code-block") ||
         openMarkerText !== null ||
         closeMarkerText !== null
       ) {
-        const openMarker = normalizeOpenCodeFenceMarker(openMarkerText);
-        const closeMarker = normalizeCloseCodeFenceMarker(closeMarkerText, openMarker);
+        const shouldReuseSourceFenceLines = Boolean(
+          openSourceHint &&
+            closeSourceHint &&
+            openDisplayHint &&
+            closeDisplayHint &&
+            openMarkerText === openDisplayHint &&
+            closeMarkerText === closeDisplayHint,
+        );
+        if (shouldReuseSourceFenceLines) {
+          return wrapCodeBlockWithMarkers(code, openSourceHint ?? "```", closeSourceHint ?? "```");
+        }
+        const openMarker = normalizeOpenCodeFenceMarker(
+          openMarkerText ?? openDisplayHint ?? openSourceHint,
+        );
+        const closeMarker = normalizeCloseCodeFenceMarker(
+          closeMarkerText ?? closeDisplayHint ?? closeSourceHint,
+          openMarker,
+        );
         return wrapCodeBlockWithMarkers(code, openMarker, closeMarker);
       }
     }
@@ -3463,46 +3528,31 @@ export const buildEditableMarkdownHtml = (
 
   const parseCodeFenceMarkersFromMarkdown = (markdown: string) => {
     if (!markdown) {
-      return [] as Array<{ open: string; close: string }>;
+      return [] as Array<{
+        openDisplay: string;
+        closeDisplay: string;
+        openSource: string;
+        closeSource: string;
+      }>;
     }
-    const lines = markdown.split("\n");
-    const markers: Array<{ open: string; close: string }> = [];
-    let inFence = false;
-    let openMarker = "";
-
-    for (const line of lines) {
-      if (!inFence) {
-        const openMatch = line.match(/^\s*(`{3,}.*)$/);
-        if (!openMatch) {
-          continue;
-        }
-        openMarker = (openMatch[1] ?? "").trim();
-        inFence = true;
-        continue;
-      }
-
-      const closeMatch = line.match(/^\s*(`{3,})\s*$/);
-      if (!closeMatch) {
-        continue;
-      }
-      const normalizedOpen = normalizeOpenCodeFenceMarker(openMarker);
-      markers.push({
-        open: normalizedOpen,
-        close: normalizeCloseCodeFenceMarker(closeMatch[1] ?? null, normalizedOpen),
-      });
-      openMarker = "";
-      inFence = false;
-    }
-
-    if (inFence) {
-      const normalizedOpen = normalizeOpenCodeFenceMarker(openMarker);
-      markers.push({
-        open: normalizedOpen,
-        close: resolveCodeFenceFromOpenMarker(normalizedOpen),
-      });
-    }
-
-    return markers;
+    return buildBacktickFenceDisplayHints(markdown).map((hint) => {
+      const openSource = normalizeOpenCodeFenceMarker(hint.openSourceLine);
+      const closeSource = normalizeCloseCodeFenceMarker(
+        hint.closeSourceLine,
+        openSource,
+      );
+      const openDisplay = normalizeOpenCodeFenceMarker(hint.openDisplayLine);
+      const closeDisplay = normalizeCloseCodeFenceMarker(
+        hint.closeDisplayLine,
+        openDisplay,
+      );
+      return {
+        openDisplay,
+        closeDisplay,
+        openSource,
+        closeSource,
+      };
+    });
   };
 
   const parseInlineMarkerHintsFromMarkdown = (markdown: string): InlineMarkerHintBucket => {
@@ -3808,8 +3858,34 @@ export const buildEditableMarkdownHtml = (
     }
     const markerHint = codeFenceHints[codeFenceHintIndex] ?? null;
     codeFenceHintIndex += 1;
-    const openMarkerText = markerHint?.open ?? "```";
-    const closeMarkerText = markerHint?.close ?? "```";
+    const openMarkerText = markerHint?.openDisplay ?? "```";
+    const closeMarkerText = markerHint?.closeDisplay ??
+      normalizeCloseCodeFenceMarker(null, openMarkerText);
+
+    if (markerHint) {
+      codeBlock.setAttribute(
+        "data-md-code-fence-open-source",
+        encodeCodeFenceLineHint(markerHint.openSource),
+      );
+      codeBlock.setAttribute(
+        "data-md-code-fence-close-source",
+        encodeCodeFenceLineHint(markerHint.closeSource),
+      );
+      codeBlock.setAttribute(
+        "data-md-code-fence-open-display",
+        encodeCodeFenceLineHint(markerHint.openDisplay),
+      );
+      codeBlock.setAttribute(
+        "data-md-code-fence-close-display",
+        encodeCodeFenceLineHint(markerHint.closeDisplay),
+      );
+    } else {
+      codeBlock.removeAttribute("data-md-code-fence-open-source");
+      codeBlock.removeAttribute("data-md-code-fence-close-source");
+      codeBlock.removeAttribute("data-md-code-fence-open-display");
+      codeBlock.removeAttribute("data-md-code-fence-close-display");
+    }
+
     const openLine = codeBlock.ownerDocument.createElement("span");
     openLine.className = "md-code-fence-line md-code-fence-open";
     const openMarker = codeBlock.ownerDocument.createElement("span");
@@ -9483,11 +9559,14 @@ export const PreviewPanel = ({
   const normalizedMarkdownSource = isCodeMode
     ? preview
     : normalizeTableSpacingForRender(markdownSource);
+  const fenceNormalizedMarkdownSource = isCodeMode || !isMarkdownMode
+    ? normalizedMarkdownSource
+    : normalizeFenceDisplayForRender(normalizedMarkdownSource);
   const renderedPreview = isCodeMode
     ? preview
     : isMarkdownMode && resolvedEditEnabled
-      ? normalizedMarkdownSource
-      : applyInteractionSpacing(normalizedMarkdownSource);
+      ? fenceNormalizedMarkdownSource
+      : applyInteractionSpacing(fenceNormalizedMarkdownSource);
   const markdownViewBlocks = useMemo(
     () => (
       isCodeMode

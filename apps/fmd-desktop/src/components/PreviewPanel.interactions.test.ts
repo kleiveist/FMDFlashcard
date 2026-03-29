@@ -2565,6 +2565,53 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(codeBlock?.hasAttribute("data-md-code-active")).toBe(false);
   });
 
+  it("keeps normalized fence markers in markdown overlay for indented source fences", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["Alpha", "    ```http", "GET /book/1", "200 OK", "    ```", "Tail"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    const codeBlock = editable?.querySelector(
+      'pre[data-md-code-block="true"]',
+    ) as HTMLElement | null;
+    const openMarker = codeBlock?.querySelector(
+      ".md-code-fence-open > .md-code-fence-marker",
+    ) as HTMLElement | null;
+    const closeMarker = codeBlock?.querySelector(
+      ".md-code-fence-close > .md-code-fence-marker",
+    ) as HTMLElement | null;
+
+    expect(codeBlock).toBeTruthy();
+    expect(openMarker?.textContent).toBe("```http");
+    expect(closeMarker?.textContent).toBe("```");
+  });
+
+  it("keeps list flow stable around list-scoped fenced code blocks in markdown view", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["- Item", "    ```txt", "    LIST-CODE", "    ```", "- Next"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const listItems = Array.from(
+      container.querySelectorAll(".preview.markdown.md-preview li"),
+    );
+    const previewText = container.querySelector(".preview.markdown.md-preview")?.textContent ?? "";
+
+    expect(listItems.length).toBeGreaterThanOrEqual(2);
+    expect(previewText).toContain("Item");
+    expect(previewText).toContain("Next");
+  });
+
   it("moves Enter inside a list item to a root paragraph in markdown edit mode", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       ["1) Alpha", "2) Beta"].join("\n"),

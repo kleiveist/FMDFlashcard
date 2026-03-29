@@ -110,7 +110,10 @@ export const resolveTypedLinkPickerTriggerAtCaret = (
     replaceRange: PageLinkPickerReplaceRange,
     probeOffset: number,
   ): ProbeMatchCandidate | null => {
-    let queryEnd = Math.max(replaceRange.end, clampedCaret, probeOffset);
+    // Keep query extraction anchored to the reported caret and only use probe
+    // offsets for trigger detection. This avoids over-consuming query text when
+    // the selection API reports a larger drift.
+    let queryEnd = Math.max(replaceRange.end, clampedCaret);
     // Small caret drift compensation: when caret reports exactly at trigger end,
     // include a single safe char after the trigger (e.g. "[[a" with caret at 2).
     if (queryEnd === replaceRange.end && clampedCaret >= replaceRange.end) {
@@ -160,10 +163,13 @@ export const resolveTypedLinkPickerTriggerAtCaret = (
     if (candidate.replaceRange.start !== current.replaceRange.start) {
       return candidate.replaceRange.start > current.replaceRange.start;
     }
+    if (candidate.probeDistance !== current.probeDistance) {
+      return candidate.probeDistance < current.probeDistance;
+    }
     if (candidate.initialQuery.length !== current.initialQuery.length) {
       return candidate.initialQuery.length > current.initialQuery.length;
     }
-    return candidate.probeDistance < current.probeDistance;
+    return false;
   };
 
   for (const probeOffset of probeOffsets) {
@@ -241,11 +247,8 @@ export const resolveTypedLinkPickerTriggerAtCaret = (
     }
   }
 
-  if (bestCandidate) {
-    const resolvedBestCandidate = bestCandidate as {
-      mode: TypedLinkPickerMode;
-      replaceRange: PageLinkPickerReplaceRange;
-    };
+  const resolvedBestCandidate = bestCandidate;
+  if (resolvedBestCandidate) {
     return {
       mode: resolvedBestCandidate.mode,
       replaceRange: resolvedBestCandidate.replaceRange,

@@ -387,6 +387,51 @@ describe("serializeMarkdownFromHtml", () => {
     expect(result).toBe("```http\nGET /book/1\n200 OK\n```\n");
   });
 
+  it("reuses source fence lines byte-exact when normalized display markers are unchanged", () => {
+    const container = document.createElement("div");
+    container.innerHTML = [
+      "<div class=\"md-code-block\">",
+      "<pre><code>GET /book/1</code></pre>",
+      "</div>",
+    ].join("");
+
+    const html = buildEditableMarkdownHtml(
+      container,
+      ["     ```http", "GET /book/1", "     ```"].join("\n"),
+    );
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = html;
+
+    const result = serializeMarkdownFromHtml(wrapper);
+    expect(result).toBe(["     ```http", "GET /book/1", "     ```", ""].join("\n"));
+  });
+
+  it("writes edited fence markers instead of source hints when marker text changed", () => {
+    const container = document.createElement("div");
+    container.innerHTML = [
+      "<div class=\"md-code-block\">",
+      "<pre><code>GET /book/1</code></pre>",
+      "</div>",
+    ].join("");
+
+    const html = buildEditableMarkdownHtml(
+      container,
+      ["   ```http", "GET /book/1", "   ```"].join("\n"),
+    );
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = html;
+    const openMarker = wrapper.querySelector<HTMLElement>(
+      ".md-code-fence-open > .md-code-fence-marker",
+    );
+    if (!openMarker) {
+      throw new Error("Expected editable open fence marker");
+    }
+    openMarker.textContent = "```api";
+
+    const result = serializeMarkdownFromHtml(wrapper);
+    expect(result).toBe(["```api", "GET /book/1", "```", ""].join("\n"));
+  });
+
   it("serializes highlighted editable code blocks from plain textContent", () => {
     const container = document.createElement("div");
     const pre = document.createElement("pre");
@@ -673,6 +718,37 @@ describe("buildEditableMarkdownHtml", () => {
     expect(pre).toBeTruthy();
     expect(openMarker?.textContent).toBe("```http");
     expect(closeMarker?.textContent).toBe("```");
+  });
+
+  it("keeps source fence hints while showing normalized markers for indented fences", () => {
+    const container = document.createElement("div");
+    container.innerHTML = [
+      "<div class=\"md-code-block\">",
+      "<pre><code>GET /book/1</code></pre>",
+      "</div>",
+    ].join("");
+
+    const html = buildEditableMarkdownHtml(
+      container,
+      ["    ```http", "GET /book/1", "    ```"].join("\n"),
+    );
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = html;
+
+    const pre = wrapper.querySelector("pre[data-md-code-block=\"true\"]");
+    const openMarker = wrapper.querySelector<HTMLElement>(
+      "pre > .md-code-fence-open > .md-code-fence-marker",
+    );
+    const closeMarker = wrapper.querySelector<HTMLElement>(
+      "pre > .md-code-fence-close > .md-code-fence-marker",
+    );
+
+    expect(openMarker?.textContent).toBe("```http");
+    expect(closeMarker?.textContent).toBe("```");
+    expect(pre?.getAttribute("data-md-code-fence-open-source")).toBeTruthy();
+    expect(pre?.getAttribute("data-md-code-fence-close-source")).toBeTruthy();
+    expect(pre?.getAttribute("data-md-code-fence-open-display")).toBeTruthy();
+    expect(pre?.getAttribute("data-md-code-fence-close-display")).toBeTruthy();
   });
 
   it("normalizes highlighted code spans back to plain editable code", () => {
