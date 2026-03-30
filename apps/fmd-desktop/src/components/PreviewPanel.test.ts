@@ -269,6 +269,94 @@ describe("serializeMarkdownFromHtml", () => {
     expect(result).toBe(["#help", "> Hinweis", "#helpend", ""].join("\n"));
   });
 
+  it("ignores editable blockquote marker spans during markdown serialization", () => {
+    const container = document.createElement("div");
+    const quote = document.createElement("blockquote");
+    const marker = document.createElement("span");
+    marker.className = "md-blockquote-marker";
+    marker.textContent = "> ";
+    const paragraph = document.createElement("p");
+    paragraph.textContent = "Hinweis";
+    quote.appendChild(marker);
+    quote.appendChild(paragraph);
+    container.appendChild(quote);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe("> Hinweis\n");
+  });
+
+  it("keeps nested blockquote depth stable when editable markers are present", () => {
+    const buildEditableNestedQuote = () => {
+      const container = document.createElement("div");
+      const outer = document.createElement("blockquote");
+      const outerMarker = document.createElement("span");
+      outerMarker.className = "md-blockquote-marker";
+      outerMarker.textContent = "> ";
+      outer.appendChild(outerMarker);
+
+      const inner = document.createElement("blockquote");
+      const innerMarker = document.createElement("span");
+      innerMarker.className = "md-blockquote-marker";
+      innerMarker.textContent = "> ";
+      const paragraph = document.createElement("p");
+      paragraph.textContent = "Deep";
+      inner.appendChild(innerMarker);
+      inner.appendChild(paragraph);
+      outer.appendChild(inner);
+      container.appendChild(outer);
+      return container;
+    };
+
+    const first = serializeMarkdownFromHtml(buildEditableNestedQuote());
+    const second = serializeMarkdownFromHtml(buildEditableNestedQuote());
+
+    expect(first).toBe("> > Deep\n");
+    expect(second).toBe(first);
+  });
+
+  it("resolves edited blockquote marker depth from the marker field", () => {
+    const container = document.createElement("div");
+    const quote = document.createElement("blockquote");
+    const marker = document.createElement("span");
+    marker.className = "md-blockquote-marker";
+    marker.textContent = ">> ";
+    const paragraph = document.createElement("p");
+    paragraph.textContent = "Hinweis";
+    quote.appendChild(marker);
+    quote.appendChild(paragraph);
+    container.appendChild(quote);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe("> > Hinweis\n");
+  });
+
+  it("keeps help blocks with blockquotes stable without marker escalation", () => {
+    const container = document.createElement("div");
+    const helpStart = document.createElement("p");
+    helpStart.textContent = "#help";
+    container.appendChild(helpStart);
+
+    const quote = document.createElement("blockquote");
+    const marker = document.createElement("span");
+    marker.className = "md-blockquote-marker";
+    marker.textContent = "> ";
+    const quoteLine = document.createElement("p");
+    quoteLine.textContent = "Wichtiger Hinweis";
+    quote.appendChild(marker);
+    quote.appendChild(quoteLine);
+    container.appendChild(quote);
+
+    const helpEnd = document.createElement("p");
+    helpEnd.textContent = "#helpend";
+    container.appendChild(helpEnd);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe(["#help", "> Wichtiger Hinweis", "#helpend", ""].join("\n"));
+  });
+
   it("keeps heading marker edits from markdown view", () => {
     const container = document.createElement("div");
     const heading = document.createElement("h2");

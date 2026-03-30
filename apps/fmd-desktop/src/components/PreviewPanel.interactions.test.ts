@@ -2706,6 +2706,183 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(rootParagraph?.textContent ?? "").toContain("pha");
   });
 
+  it("keeps blockquote depth stable across markdown blur/reopen cycles", async () => {
+    const initialMarkdown = ["> > Wichtig", "> > Hinweis"].join("\n");
+
+    const Harness = () => {
+      const [isEditing, setIsEditing] = useState(false);
+      const [editDraft, setEditDraft] = useState(initialMarkdown);
+      const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
+
+      return createElement(
+        "div",
+        null,
+        createElement("div", { "data-testid": "draft" }, editDraft),
+        createElement(PreviewPanel, {
+          editDraft,
+          editError: "",
+          editCaretIndex,
+          isEditing,
+          emptyPreview: "",
+          preview: editDraft,
+          previewError: "",
+          previewState: "idle",
+          editorMode: "markdown",
+          editEnabled: true,
+          selectedFile: baseFile,
+          vaultPath: "/vault",
+          sourceRelativePath: baseFile.relative_path,
+          canEdit: true,
+          onEditChange: setEditDraft,
+          onEditCaretApplied: () => setEditCaretIndex(null),
+          onEditExit: async () => {
+            setIsEditing(false);
+            return true;
+          },
+          onEditStart: (options) => {
+            setEditCaretIndex(
+              typeof options?.caretIndex === "number" ? options.caretIndex : null,
+            );
+            setIsEditing(true);
+          },
+          onSelectEditorMode: () => {},
+          onToggleEditEnabled: () => {},
+        }),
+      );
+    };
+
+    const { container, cleanup: localCleanup } = render(createElement(Harness));
+    cleanup = localCleanup;
+
+    const readDraft = () => container.querySelector("[data-testid='draft']")?.textContent ?? "";
+    const normalizeDraft = (value: string) => value.replace(/\n+$/, "");
+
+    const openEditor = async () => {
+      const previewContent = container.querySelector(".preview-content");
+      act(() => {
+        previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
+      });
+      await flushAsyncInteraction();
+      return container.querySelector<HTMLDivElement>(".preview-markdown-editable");
+    };
+
+    const closeEditor = async (editable: HTMLDivElement | null) => {
+      act(() => {
+        editable?.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+      });
+      await flushAsyncInteraction();
+      await flushAsyncInteraction();
+    };
+
+    const firstOpen = await openEditor();
+    expect(firstOpen).toBeTruthy();
+    expect(firstOpen?.querySelectorAll("blockquote").length).toBeGreaterThanOrEqual(2);
+    await closeEditor(firstOpen);
+
+    expect(normalizeDraft(readDraft())).toBe(initialMarkdown);
+    expect(normalizeDraft(readDraft())).not.toContain("> > >");
+
+    const secondOpen = await openEditor();
+    expect(secondOpen).toBeTruthy();
+    expect(secondOpen?.querySelectorAll("blockquote").length).toBeGreaterThanOrEqual(2);
+    await closeEditor(secondOpen);
+
+    expect(normalizeDraft(readDraft())).toBe(initialMarkdown);
+    expect(normalizeDraft(readDraft())).not.toContain("> > >");
+  });
+
+  it("does not auto-insert quote prefixes when typing > at a collapsed caret", () => {
+    const { container, cleanup: localCleanup } = buildHarness("Alpha");
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    const textNode = findTextNodeContaining(editable, "Alpha");
+    expect(editable).toBeTruthy();
+    expect(textNode).toBeTruthy();
+
+    setCollapsedSelection(textNode, 0);
+    act(() => {
+      editable?.dispatchEvent(new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        key: ">",
+      }));
+    });
+
+    const firstLine = editable?.querySelector<HTMLElement>('[data-md-inline-line="true"]');
+    expect(firstLine?.textContent?.trim()).toBe("Alpha");
+  });
+
+  it("shows all nested blockquote marker levels when caret is inside a deep quote", () => {
+    const { container, cleanup: localCleanup } = buildHarness("> > Wichtiger Hinweis");
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    const textNode = findTextNodeContaining(editable, "Wichtiger Hinweis");
+    expect(editable).toBeTruthy();
+    expect(textNode).toBeTruthy();
+
+    setCollapsedSelection(textNode, 1);
+    act(() => {
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+
+    const activeMarkers = Array.from(
+      editable?.querySelectorAll<HTMLElement>(
+        '[data-md-inline-active="true"] > .md-blockquote-marker',
+      ) ?? [],
+    );
+
+    expect(activeMarkers.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("shows nested quote markers inside help blocks when focusing the marker field", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["#help", "> > Wichtiger Hinweis", "#helpend"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    expect(editable).toBeTruthy();
+
+    const markerTextNode = editable?.querySelector(".md-blockquote-marker")?.firstChild as Text | null;
+    expect(markerTextNode).toBeTruthy();
+
+    setCollapsedSelection(markerTextNode, 1);
+    act(() => {
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+
+    const activeMarkers = Array.from(
+      editable?.querySelectorAll<HTMLElement>(
+        '[data-md-inline-active="true"] > .md-blockquote-marker',
+      ) ?? [],
+    );
+
+    expect(activeMarkers.length).toBeGreaterThanOrEqual(2);
+  });
+
   it("indents selected list items with Tab in markdown edit mode", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       ["1) Alpha", "2) Beta", "3) Gamma"].join("\n"),

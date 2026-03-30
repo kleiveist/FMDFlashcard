@@ -1799,9 +1799,6 @@ const resolveFormattingWrapperToken = (rawToken: string) => {
 
 const resolveFormattingPrefixToken = (rawToken: string) => {
   const trimmed = rawToken.trim();
-  if (trimmed === ">") {
-    return "> ";
-  }
   if (/^#{1,6}$/.test(trimmed)) {
     return `${trimmed} `;
   }
@@ -1826,9 +1823,9 @@ const shouldTreatAsFormattingActionToken = (
   if (hasSelection) {
     return true;
   }
-  // Single-char tokens are ambiguous during normal typing.
-  // Restrict collapsed-caret handling to quote-prefix action.
-  return trimmed === ">";
+  // Single-char tokens are ambiguous during normal typing and should not
+  // trigger auto-formatting at a collapsed caret.
+  return false;
 };
 
 const resolveFormattingActionKeyToken = (
@@ -3144,6 +3141,15 @@ const wrapCodeBlockWithMarkers = (
   return `${openMarker}\n${trimmed}\n${closeMarker}\n`;
 };
 
+const resolveEditableBlockquoteMarkerDepth = (rawMarker: string | null | undefined) => {
+  if (!rawMarker) {
+    return 1;
+  }
+  const marker = rawMarker.replace(/\u00a0/g, " ");
+  const depth = (marker.match(/>/g) ?? []).length;
+  return Math.max(1, depth);
+};
+
 type MarkdownSerializeContext = {
   listDepth: number;
   escapePipes: boolean;
@@ -3197,13 +3203,14 @@ const serializeMarkdownNode = (
   const tag = element.tagName.toLowerCase();
   const hasClassName = (name: string) => element.classList.contains(name);
   const isInlineMarkerElement = hasClassName("md-inline-marker");
+  const isBlockquoteMarkerElement = hasClassName("md-blockquote-marker");
   const isTablePipeMarkerElement = hasClassName("md-table-pipe-marker");
 
   if (tag === "button" && element.classList.contains("md-code-copy-button")) {
     return "";
   }
 
-  if (isInlineMarkerElement || isTablePipeMarkerElement) {
+  if (isInlineMarkerElement || isBlockquoteMarkerElement || isTablePipeMarkerElement) {
     return "";
   }
 
@@ -3377,9 +3384,18 @@ const serializeMarkdownNode = (
   }
 
   if (tag === "blockquote") {
+    const markerText = context.inContentEditable
+      ? element.querySelector<HTMLElement>(":scope > .md-blockquote-marker")?.textContent
+      : null;
+    const markerDepth = context.inContentEditable
+      ? resolveEditableBlockquoteMarkerDepth(markerText)
+      : 1;
+    const linePrefix = "> ".repeat(markerDepth);
     const content = serializeMarkdownChildren(element, context).trim();
     const lines = content.split("\n");
-    const block = lines.map((line) => (line ? `> ${line}` : ">")).join("\n");
+    const block = lines
+      .map((line) => (line ? `${linePrefix}${line}` : linePrefix.trimEnd()))
+      .join("\n");
     return context.inContentEditable ? `${block}\n` : `${block}\n\n`;
   }
 
@@ -8342,9 +8358,15 @@ export const PreviewPanel = ({
     const activeBlockquotes = new Set<HTMLElement>();
     const activeTableCells = new Set<HTMLElement>();
     activeLines.forEach((line) => {
-      const blockquote = line.closest<HTMLElement>("blockquote");
-      if (blockquote && editor.contains(blockquote)) {
+      let blockquote = line.closest<HTMLElement>("blockquote");
+      while (blockquote && editor.contains(blockquote)) {
         activeBlockquotes.add(blockquote);
+        blockquote.querySelectorAll<HTMLElement>("blockquote").forEach((nested) => {
+          if (editor.contains(nested)) {
+            activeBlockquotes.add(nested);
+          }
+        });
+        blockquote = blockquote.parentElement?.closest<HTMLElement>("blockquote") ?? null;
       }
       const tableCell = line.closest<HTMLElement>("td,th");
       if (tableCell && editor.contains(tableCell)) {
