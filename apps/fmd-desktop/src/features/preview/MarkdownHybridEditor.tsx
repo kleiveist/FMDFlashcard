@@ -2096,7 +2096,10 @@ const isListItemRawEffectivelyEmpty = (blockRaw: string, lineInfo: ListLineInfo 
 
 const buildSiblingListItemRaw = (lineInfo: ListLineInfo) => {
   if (lineInfo.kind === "ordered-list") {
-    const nextNumber = Math.max(1, (lineInfo.orderedNumber ?? 0) + 1);
+    const baseNumber = Math.max(1, lineInfo.orderedNumber ?? 1);
+    const nextNumber = lineInfo.orderedDelimiter === ")"
+      ? baseNumber
+      : Math.max(1, baseNumber + 1);
     return `${lineInfo.indent}${nextNumber}${lineInfo.orderedDelimiter ?? "."}${lineInfo.spacing}${
       lineInfo.isTaskList ? "[ ] " : ""
     }`;

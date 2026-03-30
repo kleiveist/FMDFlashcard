@@ -5463,6 +5463,45 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
+  it("keeps task-style 1) markers stable on plain Enter without auto increment", () => {
+    withImmediateRaf(() => {
+      const initialMarkdown = ["1) Aufgabe", "1) Nächste"].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(initialMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="list-enter-task-style-stable"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      let textarea = activateBlockEditor(container, 0);
+      expect(textarea).toBeTruthy();
+      setTextareaSelection(textarea, textarea?.value.length ?? 0);
+      dispatchKeyDown(textarea, "Enter");
+
+      expect(readMarkdown()).toBe(["1) Aufgabe", "1) ", "1) Nächste"].join("\n"));
+      textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      expect(textarea?.value).toBe("1) ");
+      expect(textarea?.selectionStart).toBe(3);
+      expect(textarea?.selectionEnd).toBe(3);
+
+      cleanup();
+    });
+  });
+
   it("outdents an empty nested list item on plain Enter", () => {
     withImmediateRaf(() => {
       const initialMarkdown = ["1. Parent", "   - ", "2. After"].join("\n");

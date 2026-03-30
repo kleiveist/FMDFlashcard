@@ -3793,6 +3793,7 @@ export const buildEditableMarkdownHtml = (
     if (!parent || parent.tagName.toLowerCase() !== "ol") {
       return "1. ";
     }
+    const delimiter = parent.getAttribute("data-md-ordered-delimiter") === ")" ? ")" : ".";
     const start = Number.parseInt(parent.getAttribute("start") ?? "1", 10);
     const base = Number.isNaN(start) ? 1 : start;
     const siblings = Array.from(parent.children).filter(
@@ -3800,7 +3801,10 @@ export const buildEditableMarkdownHtml = (
     );
     const itemIndex = siblings.indexOf(listItem);
     const resolvedIndex = itemIndex < 0 ? base : base + itemIndex;
-    return `${resolvedIndex}. `;
+    // Keep task-style "1)" markers stable in overlay/edit fallback paths.
+    // Dot-delimited ordered lists keep sequential numbering.
+    const markerNumber = delimiter === ")" ? base : resolvedIndex;
+    return `${markerNumber}${delimiter} `;
   };
 
   const resolveTaskMarker = (listItem: HTMLElement) => {
