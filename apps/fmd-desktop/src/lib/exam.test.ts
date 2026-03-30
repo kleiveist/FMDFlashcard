@@ -178,7 +178,7 @@ Answer: Real
     expect(task?.card.parts[0]?.media).toBeUndefined();
   });
 
-  it("attaches help blocks inside #card to the card only", () => {
+  it("exposes help blocks inside #card on exam task help metadata", () => {
     const markdown = `#exam
 1) Task with help in card.
 #card
@@ -193,10 +193,42 @@ Answer: Real
 
     expect(tasks).toHaveLength(1);
     const task = tasks[0];
-    expect(task?.helpText).toBeUndefined();
+    expect(task?.helpText?.length).toBe(1);
+    expect(task?.helpText?.[0]).toContain("Answer: Decoy");
     expect(task?.card.helpText?.length).toBe(1);
     expect(task?.card.helpText?.[0]).toContain("Answer: Decoy");
+    expect(task?.prompt).not.toContain("Decoy");
     expect(task?.officialAnswer).toBe("Real");
+  });
+
+  it("keeps qa detection stable when help is inside a #card block", () => {
+    const markdown = `#exam
+1) Beispielaufgabe
+#card
+Was ist 2+2?
+Answer: 4
+
+#help
+Tipp: Denke an einfache Addition.
+#helpend
+#endcard
+#endexam`;
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    const task = tasks[0];
+    expect(task?.helpText?.length).toBe(1);
+    expect(task?.helpText?.[0]).toContain("Tipp: Denke an einfache Addition.");
+    expect(task?.prompt).not.toContain("Tipp:");
+    expect(task?.officialAnswer).toBe("4");
+    const firstPart = task?.card.parts[0];
+    expect(firstPart?.kind).toBe("free-text");
+    if (firstPart && firstPart.kind === "free-text") {
+      expect(firstPart.front).toContain("Was ist 2+2?");
+      expect(firstPart.front).not.toContain("Tipp:");
+      expect(firstPart.back).toBe("4");
+    }
   });
 
   it("keeps table separators inside a task prompt", () => {

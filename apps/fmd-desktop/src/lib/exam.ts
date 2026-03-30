@@ -330,11 +330,11 @@ const parseTaskChunk = (
   const taskAuxiliary = extractAuxiliaryBlocksFromLines(taskLines);
   const taskMediaExtraction = extractMediaFromLines(taskAuxiliary.contentLines, "exam-task-media");
   const taskMedia = taskMediaExtraction.items;
-  const taskHelpText = taskAuxiliary.helpText;
   const taskContentLines = taskMediaExtraction.contentLines;
   const combinedAuxiliary = extractAuxiliaryBlocksFromLines(
     combinedLines.length > 0 ? combinedLines : normalizedLines,
   );
+  const taskHelpText = combinedAuxiliary.helpText;
   const { contentLines: combinedContentLines } = extractMediaFromLines(
     combinedAuxiliary.contentLines,
     "exam-combined-media",
