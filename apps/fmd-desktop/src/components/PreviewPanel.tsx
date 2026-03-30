@@ -4935,6 +4935,7 @@ const FrontmatterPropertiesPanel = ({
   const addTypeButtonRef = useRef<HTMLButtonElement | null>(null);
   const addKeyInputRef = useRef<HTMLInputElement | null>(null);
   const addValueInputRef = useRef<HTMLInputElement | null>(null);
+  const openSuggestionsKeyRef = useRef<string | null>(null);
   const pendingFrameHandlesRef = useRef<Set<number>>(new Set());
   const frontmatterCoverPanelRef = useRef<HTMLDivElement | null>(null);
   const frontmatterGridRef = useRef<HTMLDivElement | null>(null);
@@ -5014,6 +5015,10 @@ const FrontmatterPropertiesPanel = ({
   useEffect(() => {
     setSuggestionKeys(initialKeySuggestions);
   }, [initialKeySuggestions]);
+
+  useEffect(() => {
+    openSuggestionsKeyRef.current = openSuggestionsKey;
+  }, [openSuggestionsKey]);
 
   useEffect(() => {
     if (addTypeOptions.some((option) => option.kind === addTypeDraft)) {
@@ -5478,6 +5483,9 @@ const FrontmatterPropertiesPanel = ({
         setAddError("");
       }
       scheduleAnimationFrame(() => {
+        if (openSuggestionsKeyRef.current !== null) {
+          return;
+        }
         if (autoKey) {
           addValueInputRef.current?.focus();
           return;
@@ -7354,6 +7362,9 @@ const FrontmatterPropertiesPanel = ({
                       current === addKeySuggestionScope ? null : current
                     );
                     scheduleAnimationFrame(() => {
+                      if (openSuggestionsKeyRef.current !== null) {
+                        return;
+                      }
                       addValueInputRef.current?.focus();
                     });
                     return;
@@ -7369,7 +7380,7 @@ const FrontmatterPropertiesPanel = ({
                   setOpenSuggestionsKey(addKeySuggestionScope);
                 }}
                 onBlur={(event) => {
-                  if (!isAddKeyAutoManaged) {
+                  if (!isAddKeyAutoManaged && isAddKeyEditing) {
                     setAddKeyDraft(event.currentTarget.value);
                   }
                   setOpenSuggestionsKey((current) =>
@@ -7385,6 +7396,9 @@ const FrontmatterPropertiesPanel = ({
                     if (event.key === "Enter") {
                       event.preventDefault();
                       scheduleAnimationFrame(() => {
+                        if (openSuggestionsKeyRef.current !== null) {
+                          return;
+                        }
                         addValueInputRef.current?.focus();
                       });
                       return;
@@ -7454,11 +7468,17 @@ const FrontmatterPropertiesPanel = ({
                         setAddError("");
                       }
                       scheduleAnimationFrame(() => {
+                        if (openSuggestionsKeyRef.current !== null) {
+                          return;
+                        }
                         addValueInputRef.current?.focus();
                       });
                       return;
                     }
                     scheduleAnimationFrame(() => {
+                      if (openSuggestionsKeyRef.current !== null) {
+                        return;
+                      }
                       addValueInputRef.current?.focus();
                     });
                     return;
@@ -7541,6 +7561,9 @@ const FrontmatterPropertiesPanel = ({
                             setAddError("");
                           }
                           scheduleAnimationFrame(() => {
+                            if (openSuggestionsKeyRef.current !== null) {
+                              return;
+                            }
                             addValueInputRef.current?.focus();
                           });
                         }}
@@ -7899,6 +7922,7 @@ export const PreviewPanel = ({
   const editableHighlightRunningRef = useRef(false);
   const activeMarkdownInlineLineRef = useRef<HTMLElement | null>(null);
   const pendingLegacyUnorderedListAutocorrectRef = useRef(false);
+  const previousEditorModeRef = useRef<PreviewPanelEditorMode>(editorMode);
   const onWriteSaveRef = useRef(onWriteSave);
   const [showFrontmatterTextFallback, setShowFrontmatterTextFallback] = useState(false);
   const [legacyMarkdownLinkPickerState, setLegacyMarkdownLinkPickerState] =
@@ -9829,6 +9853,23 @@ export const PreviewPanel = ({
     canUseHybridMarkdownEditor &&
       resolvedEditEnabled,
   );
+  useEffect(() => {
+    const previousEditorMode = previousEditorModeRef.current;
+    if (
+      isEditing &&
+      previousEditorMode === "markdown" &&
+      editorMode === "code"
+    ) {
+      const normalizedBody = normalizeLooseNestedUnorderedListMarkersForRender(markdownEditBody);
+      const nextValue = composeMarkdownWithBody(editDraft, normalizedBody, {
+        bodyMayContainFrontmatter: false,
+      });
+      if (nextValue !== editDraft) {
+        onEditChange(nextValue);
+      }
+    }
+    previousEditorModeRef.current = editorMode;
+  }, [editDraft, editorMode, isEditing, markdownEditBody, onEditChange]);
   const shouldAutoManageRawCodeEditSession = Boolean(
     isCodeMode &&
       canEdit &&
