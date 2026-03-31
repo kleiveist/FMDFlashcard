@@ -298,7 +298,7 @@ describe("serializeMarkdownFromHtml", () => {
       const inner = document.createElement("blockquote");
       const innerMarker = document.createElement("span");
       innerMarker.className = "md-blockquote-marker";
-      innerMarker.textContent = "> ";
+      innerMarker.textContent = ">> ";
       const paragraph = document.createElement("p");
       paragraph.textContent = "Deep";
       inner.appendChild(innerMarker);
@@ -837,6 +837,20 @@ describe("buildEditableMarkdownHtml", () => {
     expect(markers).toContain("- ");
     expect(markers).toContain("3. ");
     expect(markers).toContain("- [x] ");
+  });
+
+  it("injects nested blockquote markers with the resolved depth prefix", () => {
+    const container = document.createElement("div");
+    container.innerHTML = "<blockquote><blockquote><p>Deep</p></blockquote></blockquote>";
+
+    const html = buildEditableMarkdownHtml(container);
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = html;
+    const markers = Array.from(
+      wrapper.querySelectorAll<HTMLElement>("blockquote > .md-blockquote-marker"),
+    ).map((marker) => marker.textContent);
+
+    expect(markers).toEqual(["> ", ">> "]);
   });
 
   it("keeps ordered list marker delimiter from markdown source as 1)", () => {

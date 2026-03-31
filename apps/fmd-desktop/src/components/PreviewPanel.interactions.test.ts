@@ -2848,9 +2848,10 @@ describe("PreviewPanel edit-safe interactions", () => {
     );
 
     expect(activeMarkers.length).toBeGreaterThanOrEqual(2);
+    expect(activeMarkers.map((marker) => marker.textContent?.trim())).toContain(">>");
   });
 
-  it("shows nested quote markers inside help blocks when focusing the marker field", () => {
+  it("keeps help-block quote marker activation scoped to the focused line", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       ["#help", "> > Wichtiger Hinweis", "#helpend"].join("\n"),
     );
@@ -2880,7 +2881,45 @@ describe("PreviewPanel edit-safe interactions", () => {
       ) ?? [],
     );
 
-    expect(activeMarkers.length).toBeGreaterThanOrEqual(2);
+    expect(activeMarkers).toHaveLength(1);
+    expect(activeMarkers[0]?.textContent).toBe("> ");
+  });
+
+  it("keeps active quote markers bounded to the source nesting depth", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["> root", "> > child", "> after"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    const textNode = findTextNodeContaining(editable, "after");
+    expect(editable).toBeTruthy();
+    expect(textNode).toBeTruthy();
+
+    setCollapsedSelection(textNode, 1);
+    act(() => {
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+
+    const activeMarkers = Array.from(
+      editable?.querySelectorAll<HTMLElement>(
+        '[data-md-inline-active="true"] > .md-blockquote-marker',
+      ) ?? [],
+    );
+
+    const markerDepths = activeMarkers.map((marker) => (marker.textContent?.match(/>/g) ?? []).length);
+
+    expect(activeMarkers.length).toBeGreaterThanOrEqual(1);
+    expect(activeMarkers.length).toBeLessThanOrEqual(2);
+    expect(activeMarkers.map((marker) => marker.textContent?.trim())).toContain(">");
+    expect(markerDepths.some((depth) => depth >= 3)).toBe(false);
   });
 
   it("indents selected list items with Tab in markdown edit mode", () => {

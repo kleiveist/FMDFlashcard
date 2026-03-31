@@ -4387,6 +4387,13 @@ textarea.preview-editor {
   user-select: text;
 }
 
+.preview-markdown-editable blockquote[data-md-inline-active="true"] {
+  padding-left: 0;
+  border-left: none;
+  color: inherit;
+  opacity: 1;
+}
+
 .preview-markdown-editable .md-math-inline[data-md-inline-math-source="true"] > .md-inline-math-source {
   display: none;
   white-space: pre;

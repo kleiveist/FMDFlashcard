@@ -3154,6 +3154,7 @@ type MarkdownSerializeContext = {
   listDepth: number;
   escapePipes: boolean;
   inContentEditable: boolean;
+  blockquoteDepth: number;
 };
 
 const serializeMarkdownChildren = (
@@ -3387,14 +3388,27 @@ const serializeMarkdownNode = (
     const markerText = context.inContentEditable
       ? element.querySelector<HTMLElement>(":scope > .md-blockquote-marker")?.textContent
       : null;
-    const markerDepth = context.inContentEditable
+    const markerDepthAbsolute = context.inContentEditable
       ? resolveEditableBlockquoteMarkerDepth(markerText)
+      : Math.max(1, context.blockquoteDepth + 1);
+    const markerDepthRelative = context.inContentEditable
+      ? Math.max(0, markerDepthAbsolute - context.blockquoteDepth)
       : 1;
-    const linePrefix = "> ".repeat(markerDepth);
-    const content = serializeMarkdownChildren(element, context).trim();
+    const linePrefix = markerDepthRelative > 0
+      ? "> ".repeat(markerDepthRelative)
+      : "";
+    const content = serializeMarkdownChildren(element, {
+      ...context,
+      blockquoteDepth: markerDepthAbsolute,
+    }).trim();
     const lines = content.split("\n");
     const block = lines
-      .map((line) => (line ? `${linePrefix}${line}` : linePrefix.trimEnd()))
+      .map((line) => {
+        if (!linePrefix) {
+          return line;
+        }
+        return line ? `${linePrefix}${line}` : linePrefix.trimEnd();
+      })
       .join("\n");
     return context.inContentEditable ? `${block}\n` : `${block}\n\n`;
   }
@@ -3597,6 +3611,7 @@ export const serializeMarkdownFromHtml = (container: HTMLElement) => {
     listDepth: 0,
     escapePipes: true,
     inContentEditable: true,
+    blockquoteDepth: 0,
   });
   const tableNormalized = normalizeMarkdownPipeTables(serialized, {
     unescapeEscapedBoundaryPipes: true,
@@ -4138,14 +4153,26 @@ export const buildEditableMarkdownHtml = (
     ensureInlineMarkers(element, wrapper, wrapper);
   });
 
-  clone.querySelectorAll<HTMLElement>("blockquote").forEach((blockquote) => {
-    if (blockquote.querySelector(':scope > .md-blockquote-marker')) {
-      return;
+  const resolveEditableBlockquoteDepth = (blockquote: HTMLElement) => {
+    let depth = 1;
+    let parent = blockquote.parentElement?.closest<HTMLElement>("blockquote") ?? null;
+    while (parent) {
+      depth += 1;
+      parent = parent.parentElement?.closest<HTMLElement>("blockquote") ?? null;
     }
-    const marker = blockquote.ownerDocument.createElement("span");
+    return depth;
+  };
+
+  clone.querySelectorAll<HTMLElement>("blockquote").forEach((blockquote) => {
+    const markerDepth = resolveEditableBlockquoteDepth(blockquote);
+    const markerText = `${">".repeat(markerDepth)} `;
+    const existingMarker = blockquote.querySelector<HTMLElement>(":scope > .md-blockquote-marker");
+    const marker = existingMarker ?? blockquote.ownerDocument.createElement("span");
     marker.className = "md-blockquote-marker";
-    marker.textContent = "> ";
-    blockquote.insertBefore(marker, blockquote.firstChild);
+    marker.textContent = markerText;
+    if (!existingMarker) {
+      blockquote.insertBefore(marker, blockquote.firstChild);
+    }
   });
 
   clone.querySelectorAll<HTMLElement>("p,li,h1,h2,h3,h4,h5,h6,blockquote,td,th").forEach(
@@ -8361,11 +8388,6 @@ export const PreviewPanel = ({
       let blockquote = line.closest<HTMLElement>("blockquote");
       while (blockquote && editor.contains(blockquote)) {
         activeBlockquotes.add(blockquote);
-        blockquote.querySelectorAll<HTMLElement>("blockquote").forEach((nested) => {
-          if (editor.contains(nested)) {
-            activeBlockquotes.add(nested);
-          }
-        });
         blockquote = blockquote.parentElement?.closest<HTMLElement>("blockquote") ?? null;
       }
       const tableCell = line.closest<HTMLElement>("td,th");
