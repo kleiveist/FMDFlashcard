@@ -4440,6 +4440,10 @@ textarea.preview-editor {
   margin: 0;
 }
 
+.preview-markdown-editable blockquote > p {
+  margin: 0;
+}
+
 .preview-markdown-editable li[data-md-list-active="true"] > .md-list-marker + p:last-child {
   display: inline;
 }

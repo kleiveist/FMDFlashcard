@@ -839,7 +839,7 @@ describe("buildEditableMarkdownHtml", () => {
     expect(markers).toContain("- [x] ");
   });
 
-  it("injects nested blockquote markers with the resolved depth prefix", () => {
+  it("injects only the active-line blockquote marker with resolved depth prefix", () => {
     const container = document.createElement("div");
     container.innerHTML = "<blockquote><blockquote><p>Deep</p></blockquote></blockquote>";
 
@@ -847,10 +847,10 @@ describe("buildEditableMarkdownHtml", () => {
     const wrapper = document.createElement("div");
     wrapper.innerHTML = html;
     const markers = Array.from(
-      wrapper.querySelectorAll<HTMLElement>("blockquote > .md-blockquote-marker"),
+      wrapper.querySelectorAll<HTMLElement>("blockquote .md-blockquote-marker"),
     ).map((marker) => marker.textContent);
 
-    expect(markers).toEqual(["> ", ">> "]);
+    expect(markers).toEqual([">> "]);
   });
 
   it("keeps ordered list marker delimiter from markdown source as 1)", () => {

@@ -16,7 +16,7 @@ import {
 } from "react";
 import { createRoot } from "react-dom/client";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { PreviewPanel } from "./PreviewPanel";
+import { PreviewPanel, serializeMarkdownFromHtml } from "./PreviewPanel";
 import { type VaultFile, type VaultPngAsset } from "../lib/tree";
 
 const testEnv = globalThis as typeof globalThis & {
@@ -2493,6 +2493,71 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(editable?.querySelector("h2")).toBeNull();
   });
 
+  it("promotes typed # headings after line switch and persists them without escaped hashes", async () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["Titelzeile", "Body line"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    const firstParagraph = editable?.querySelector("p") as HTMLParagraphElement | null;
+    expect(editable).toBeTruthy();
+    expect(firstParagraph).toBeTruthy();
+
+    act(() => {
+      if (!firstParagraph) {
+        return;
+      }
+      firstParagraph.textContent = "# Überschrift";
+      editable?.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const bodyParagraph = Array.from(editable?.querySelectorAll("p") ?? []).find((line) =>
+      (line.textContent ?? "").includes("Body line")
+    ) ?? null;
+    const bodyTextNode = bodyParagraph?.firstChild ?? null;
+
+    act(() => {
+      if (!bodyTextNode) {
+        return;
+      }
+      const selection = window.getSelection();
+      if (!selection) {
+        return;
+      }
+      const range = document.createRange();
+      range.setStart(bodyTextNode, 0);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const promotedHeading = editable?.querySelector("h1") as HTMLHeadingElement | null;
+    expect(promotedHeading).toBeTruthy();
+    expect(promotedHeading?.querySelector(".md-heading-marker")?.textContent).toBe("# ");
+    expect(promotedHeading?.childNodes.item(1)?.textContent).toBe("Überschrift");
+
+    const serialized = editable ? serializeMarkdownFromHtml(editable) : "";
+    expect(serialized.split("\n")[0]).toBe("# Überschrift");
+    expect(serialized).not.toContain("\\# Überschrift");
+  });
+
   it("shows editable --- marker when a separator line is focused", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       ["A", "", "---", "", "B"].join("\n"),
@@ -2820,7 +2885,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(firstLine?.textContent?.trim()).toBe("Alpha");
   });
 
-  it("shows all nested blockquote marker levels when caret is inside a deep quote", () => {
+  it("shows a single inline blockquote marker with full depth on deep quote lines", () => {
     const { container, cleanup: localCleanup } = buildHarness("> > Wichtiger Hinweis");
     cleanup = localCleanup;
 
@@ -2847,8 +2912,8 @@ describe("PreviewPanel edit-safe interactions", () => {
       ) ?? [],
     );
 
-    expect(activeMarkers.length).toBeGreaterThanOrEqual(2);
-    expect(activeMarkers.map((marker) => marker.textContent?.trim())).toContain(">>");
+    expect(activeMarkers).toHaveLength(1);
+    expect(activeMarkers[0]?.textContent).toBe(">> ");
   });
 
   it("keeps help-block quote marker activation scoped to the focused line", () => {
@@ -2882,7 +2947,73 @@ describe("PreviewPanel edit-safe interactions", () => {
     );
 
     expect(activeMarkers).toHaveLength(1);
+    expect(activeMarkers[0]?.textContent).toBe(">> ");
+  });
+
+  it("does not activate nested quote markers when editing an outer quote line", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["> Oberlinie", "> > Unterlinie"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    const textNode = findTextNodeContaining(editable, "Oberlinie");
+    expect(editable).toBeTruthy();
+    expect(textNode).toBeTruthy();
+
+    setCollapsedSelection(textNode, 1);
+    act(() => {
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+
+    const activeMarkers = Array.from(
+      editable?.querySelectorAll<HTMLElement>(
+        '[data-md-inline-active="true"] > .md-blockquote-marker',
+      ) ?? [],
+    );
+
+    expect(activeMarkers).toHaveLength(1);
     expect(activeMarkers[0]?.textContent).toBe("> ");
+  });
+
+  it("anchors quote markers inline to the focused quote line", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["> Hinweis", "Nachher"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    const quoteTextNode = findTextNodeContaining(editable, "Hinweis");
+    expect(editable).toBeTruthy();
+    expect(quoteTextNode).toBeTruthy();
+
+    setCollapsedSelection(quoteTextNode, 1);
+    act(() => {
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+
+    const quoteLine = Array.from(
+      editable?.querySelectorAll<HTMLElement>('[data-md-inline-line="true"][data-md-inline-active="true"]') ?? [],
+    ).find((line) => (line.textContent ?? "").includes("Hinweis"));
+    const inlineMarker = quoteLine?.querySelector<HTMLElement>(":scope > .md-blockquote-marker");
+
+    expect(quoteLine).toBeTruthy();
+    expect(quoteLine?.tagName.toLowerCase()).not.toBe("blockquote");
+    expect(inlineMarker?.textContent).toBe("> ");
   });
 
   it("keeps active quote markers bounded to the source nesting depth", () => {

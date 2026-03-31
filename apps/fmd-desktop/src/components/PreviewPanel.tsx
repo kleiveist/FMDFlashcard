@@ -2898,25 +2898,48 @@ const applyMarkdownFormattingToContentEditable = (
   return false;
 };
 
-const replaceHeadingElementLevel = (heading: HTMLElement, level: number) => {
-  const normalizedLevel = Math.max(1, Math.min(6, level));
-  const targetTag = `h${normalizedLevel}`;
-  if (heading.tagName.toLowerCase() === targetTag) {
-    return heading;
+const replaceElementTagName = (element: HTMLElement, targetTag: string) => {
+  if (element.tagName.toLowerCase() === targetTag.toLowerCase()) {
+    return element;
   }
-
-  const replacement = heading.ownerDocument.createElement(targetTag);
-  Array.from(heading.attributes).forEach((attribute) => {
+  const replacement = element.ownerDocument.createElement(targetTag);
+  Array.from(element.attributes).forEach((attribute) => {
     if (attribute.name === "data-md-heading-active") {
       return;
     }
     replacement.setAttribute(attribute.name, attribute.value);
   });
 
-  while (heading.firstChild) {
-    replacement.appendChild(heading.firstChild);
+  while (element.firstChild) {
+    replacement.appendChild(element.firstChild);
   }
-  heading.replaceWith(replacement);
+  element.replaceWith(replacement);
+  return replacement;
+};
+
+const ensureEditableHeadingMarker = (heading: HTMLElement, level: number) => {
+  const normalizedLevel = Math.max(1, Math.min(6, level));
+  heading.setAttribute("data-md-heading-level", String(normalizedLevel));
+  const existingMarker = heading.querySelector<HTMLElement>(":scope > .md-heading-marker");
+  const marker = existingMarker ?? heading.ownerDocument.createElement("span");
+  marker.className = "md-heading-marker";
+  marker.setAttribute("aria-hidden", "true");
+  marker.textContent = `${"#".repeat(normalizedLevel)} `;
+  if (!existingMarker) {
+    heading.insertBefore(marker, heading.firstChild);
+  }
+};
+
+const replaceHeadingElementLevel = (heading: HTMLElement, level: number) => {
+  const normalizedLevel = Math.max(1, Math.min(6, level));
+  const targetTag = `h${normalizedLevel}`;
+  if (heading.tagName.toLowerCase() === targetTag) {
+    ensureEditableHeadingMarker(heading, normalizedLevel);
+    return heading;
+  }
+
+  const replacement = replaceElementTagName(heading, targetTag);
+  ensureEditableHeadingMarker(replacement, normalizedLevel);
   return replacement;
 };
 
@@ -2963,6 +2986,20 @@ const orderedListLikeLinePattern = /^\s*\d+[.)]\s+/;
 const unorderedListLikeLinePattern = /^\s*[-+*]\s+/;
 const indentedContinuationLinePattern = /^\s{2,}\S/;
 const blockquoteLinePattern = /^\s*>/;
+const markdownHeadingLinePattern = /^\s*(#{1,6})(?:\s+|$)([\s\S]*)$/;
+const escapedMarkdownHeadingLinePattern = /^\s*\\#{1,6}(?:\s+|$)/;
+const blockquoteMarkerAnchorTagNames = new Set([
+  "P",
+  "LI",
+  "H1",
+  "H2",
+  "H3",
+  "H4",
+  "H5",
+  "H6",
+  "TD",
+  "TH",
+]);
 
 const needsHelpEndPreviewSeparator = (line: string) =>
   orderedListLikeLinePattern.test(line) ||
@@ -3151,6 +3188,23 @@ const resolveEditableBlockquoteMarkerDepth = (rawMarker: string | null | undefin
   return Math.max(1, depth);
 };
 
+const resolveEditableBlockquoteMarkerText = (blockquote: HTMLElement) => {
+  const directMarker = blockquote.querySelector<HTMLElement>(":scope > .md-blockquote-marker")?.textContent;
+  if (directMarker) {
+    return directMarker;
+  }
+  for (const child of Array.from(blockquote.children)) {
+    if (!(child instanceof HTMLElement) || !blockquoteMarkerAnchorTagNames.has(child.tagName)) {
+      continue;
+    }
+    const childMarker = child.querySelector<HTMLElement>(":scope > .md-blockquote-marker")?.textContent;
+    if (childMarker) {
+      return childMarker;
+    }
+  }
+  return null;
+};
+
 type MarkdownSerializeContext = {
   listDepth: number;
   escapePipes: boolean;
@@ -3242,7 +3296,7 @@ const serializeMarkdownNode = (
     const levelFromTag = Number(tag[1]);
     if (!Number.isNaN(levelFromTag)) {
       const content = serializeMarkdownChildren(element, context).trim();
-      const markerMatch = content.match(/^\\?(#{1,6})(?:\s+|$)([\s\S]*)$/);
+      const markerMatch = content.match(/^(#{1,6})(?:\s+|$)([\s\S]*)$/);
       const manualLevel = markerMatch ? markerMatch[1].length : null;
       const manualContent = markerMatch ? markerMatch[2].trimStart() : content;
       const resolvedLevel = Math.max(1, Math.min(6, manualLevel ?? levelFromTag));
@@ -3387,7 +3441,7 @@ const serializeMarkdownNode = (
 
   if (tag === "blockquote") {
     const markerText = context.inContentEditable
-      ? element.querySelector<HTMLElement>(":scope > .md-blockquote-marker")?.textContent
+      ? resolveEditableBlockquoteMarkerText(element)
       : null;
     const markerDepthAbsolute = context.inContentEditable
       ? resolveEditableBlockquoteMarkerDepth(markerText)
@@ -4105,16 +4159,11 @@ export const buildEditableMarkdownHtml = (
       return;
     }
     const level = Math.max(1, Math.min(6, levelRaw));
-    heading.setAttribute("data-md-heading-level", String(level));
     const text = heading.textContent ?? "";
-    if (/^\s*\\?#{1,6}(?:\s|$)/.test(text)) {
+    if (/^\s*#{1,6}(?:\s|$)/.test(text)) {
       return;
     }
-    const marker = heading.ownerDocument.createElement("span");
-    marker.className = "md-heading-marker";
-    marker.setAttribute("aria-hidden", "true");
-    marker.textContent = `${"#".repeat(level)} `;
-    heading.insertBefore(marker, heading.firstChild);
+    ensureEditableHeadingMarker(heading, level);
   });
 
   clone.querySelectorAll<HTMLElement>("strong,b,u").forEach((element) => {
@@ -4173,19 +4222,44 @@ export const buildEditableMarkdownHtml = (
     return depth;
   };
 
+  const resolveEditableBlockquoteMarkerAnchor = (blockquote: HTMLElement) => {
+    const directLineChild = Array.from(blockquote.children).find((child) =>
+      child instanceof HTMLElement && blockquoteMarkerAnchorTagNames.has(child.tagName)
+    );
+    return directLineChild instanceof HTMLElement ? directLineChild : null;
+  };
+
   clone.querySelectorAll<HTMLElement>("blockquote").forEach((blockquote) => {
     const markerDepth = resolveEditableBlockquoteDepth(blockquote);
     const markerText = `${">".repeat(markerDepth)} `;
-    const existingMarker = blockquote.querySelector<HTMLElement>(":scope > .md-blockquote-marker");
-    const marker = existingMarker ?? blockquote.ownerDocument.createElement("span");
+    const markerAnchor = resolveEditableBlockquoteMarkerAnchor(blockquote);
+    const existingRootMarkers = Array.from(
+      blockquote.querySelectorAll<HTMLElement>(":scope > .md-blockquote-marker"),
+    );
+    if (!markerAnchor) {
+      existingRootMarkers.forEach((marker) => {
+        marker.remove();
+      });
+      return;
+    }
+    existingRootMarkers.forEach((marker) => {
+      marker.remove();
+    });
+    const existingAnchorMarkers = Array.from(
+      markerAnchor.querySelectorAll<HTMLElement>(":scope > .md-blockquote-marker"),
+    );
+    const marker = existingAnchorMarkers[0] ?? blockquote.ownerDocument.createElement("span");
     marker.className = "md-blockquote-marker";
     marker.textContent = markerText;
-    if (!existingMarker) {
-      blockquote.insertBefore(marker, blockquote.firstChild);
+    if (!existingAnchorMarkers[0]) {
+      markerAnchor.insertBefore(marker, markerAnchor.firstChild);
     }
+    existingAnchorMarkers.slice(1).forEach((extraMarker) => {
+      extraMarker.remove();
+    });
   });
 
-  clone.querySelectorAll<HTMLElement>("p,li,h1,h2,h3,h4,h5,h6,blockquote,td,th").forEach(
+  clone.querySelectorAll<HTMLElement>("p,li,h1,h2,h3,h4,h5,h6,td,th").forEach(
     (line) => {
       line.setAttribute("data-md-inline-line", "true");
       line.removeAttribute("data-md-inline-active");
@@ -8349,7 +8423,7 @@ export const PreviewPanel = ({
     const inlineLines = Array.from(
       editor.querySelectorAll<HTMLElement>('[data-md-inline-line="true"]'),
     );
-    const headings = Array.from(
+    let headings = Array.from(
       editor.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6"),
     );
     const hrLines = Array.from(
@@ -8391,6 +8465,9 @@ export const PreviewPanel = ({
       applyLegacyUnorderedListAutocorrectionFromEditor();
       pendingLegacyUnorderedListAutocorrectRef.current = false;
     }
+    if (lineSwitched) {
+      syncMarkdownDraftFromEditor();
+    }
 
     const activeBlockquotes = new Set<HTMLElement>();
     const activeTableCells = new Set<HTMLElement>();
@@ -8410,6 +8487,7 @@ export const PreviewPanel = ({
       }
     });
 
+    let lineKindRetagged = false;
     inlineLines.forEach((line) => {
       const isLineActive = activeLineSet.has(line) ||
         activeBlockquotes.has(line) ||
@@ -8418,8 +8496,42 @@ export const PreviewPanel = ({
         line.setAttribute("data-md-inline-active", "true");
       } else {
         line.removeAttribute("data-md-inline-active");
+        if (line.tagName === "P") {
+          const lineText = line.textContent ?? "";
+          const headingMatch = lineText.match(markdownHeadingLinePattern);
+          if (headingMatch && !escapedMarkdownHeadingLinePattern.test(lineText)) {
+            const nextLevel = Math.max(1, Math.min(6, (headingMatch[1] ?? "#").length));
+            const nextHeadingContent = (headingMatch[2] ?? "").trimStart();
+            const headingLine = replaceElementTagName(line, `h${nextLevel}`);
+            while (headingLine.firstChild) {
+              headingLine.removeChild(headingLine.firstChild);
+            }
+            ensureEditableHeadingMarker(headingLine, nextLevel);
+            if (nextHeadingContent.length > 0) {
+              headingLine.appendChild(headingLine.ownerDocument.createTextNode(nextHeadingContent));
+            }
+            lineKindRetagged = true;
+          }
+        } else if (/^H[1-6]$/.test(line.tagName)) {
+          const lineText = line.textContent ?? "";
+          const headingMatch = lineText.match(markdownHeadingLinePattern);
+          if (!headingMatch || escapedMarkdownHeadingLinePattern.test(lineText)) {
+            const paragraphLine = replaceElementTagName(line, "p");
+            paragraphLine.removeAttribute("data-md-heading-level");
+            paragraphLine.removeAttribute("data-md-heading-active");
+            paragraphLine.querySelector<HTMLElement>(":scope > .md-heading-marker")?.remove();
+            lineKindRetagged = true;
+          }
+        }
       }
     });
+
+    if (lineKindRetagged) {
+      headings = Array.from(
+        editor.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6"),
+      );
+      syncMarkdownDraftFromEditor();
+    }
 
     const activeHeadingSet = new Set(
       activeRange
@@ -8452,7 +8564,7 @@ export const PreviewPanel = ({
       const fallbackLevel = Number.isNaN(levelRaw)
         ? Number.parseInt(heading.getAttribute("data-md-heading-level") ?? "1", 10)
         : levelRaw;
-      const levelMatch = (heading.textContent ?? "").match(/^\s*\\?(#{1,6})(?:\s+|$)/);
+      const levelMatch = (heading.textContent ?? "").match(/^\s*(#{1,6})(?:\s+|$)/);
       const resolvedLevel = levelMatch
         ? Math.max(1, Math.min(6, levelMatch[1].length))
         : Math.max(1, Math.min(6, Number.isFinite(fallbackLevel) ? fallbackLevel : 1));
@@ -8497,7 +8609,7 @@ export const PreviewPanel = ({
         block.removeAttribute("data-md-code-active");
       }
     });
-  }, [applyLegacyUnorderedListAutocorrectionFromEditor]);
+  }, [applyLegacyUnorderedListAutocorrectionFromEditor, syncMarkdownDraftFromEditor]);
 
   const closeLegacyMarkdownLinkPicker = useCallback(() => {
     setLegacyMarkdownLinkPickerState(null);
@@ -9413,8 +9525,12 @@ export const PreviewPanel = ({
           queueEditableCodeRehighlight({ codeElement: activeCodeElement });
         }
         normalizeEditableListMarkers(editor);
-        syncMarkdownDraftFromEditor();
         syncActiveMarkdownHeading();
+        syncMarkdownDraftFromEditor();
+        window.requestAnimationFrame(() => {
+          syncActiveMarkdownHeading();
+          syncMarkdownDraftFromEditor();
+        });
       }
       return result;
     },
@@ -9547,12 +9663,13 @@ export const PreviewPanel = ({
     if (sourceCodeElement) {
       queueEditableCodeRehighlight({ codeElement: sourceCodeElement });
     }
-    const currentBody = syncMarkdownDraftFromEditor();
     syncActiveMarkdownHeading();
+    const currentBody = syncMarkdownDraftFromEditor();
     // Browsers can finalize caret relocation for Enter/newline one frame later.
     // Re-sync active-line state to avoid stale raw-marker activation on the previous line.
     window.requestAnimationFrame(() => {
       syncActiveMarkdownHeading();
+      syncMarkdownDraftFromEditor();
     });
     if (legacyMarkdownLinkPickerState) {
       return;

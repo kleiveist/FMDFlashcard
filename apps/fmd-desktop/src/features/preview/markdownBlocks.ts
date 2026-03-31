@@ -409,6 +409,7 @@ export const parseMarkdownBlocks = (
   while (i < lines.length) {
     const line = lines[i] ?? "";
     const nextLine = lines[i + 1] ?? "";
+    const structuralDirective = resolveStructuralDirectiveToken(line);
     const listLineMatch = resolveListLineMatch(line);
     if (!listLineMatch) {
       resetListContext();
@@ -483,25 +484,25 @@ export const parseMarkdownBlocks = (
       continue;
     }
 
-    if (isCardBlockStartLine(line)) {
+    if (structuralDirective === "#card") {
       blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "card-start", i, i));
       blockIndex += 1;
       i += 1;
       continue;
     }
 
-    if (isCardBlockEndLine(line)) {
+    if (structuralDirective === "#endcard") {
       blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "card-end", i, i));
       blockIndex += 1;
       i += 1;
       continue;
     }
 
-    if (isHelpBlockStartLine(line)) {
+    if (structuralDirective === "#help") {
       let end = i;
       for (let j = i + 1; j < lines.length; j += 1) {
         end = j;
-        if (isHelpBlockEndLine(lines[j] ?? "")) {
+        if (resolveStructuralDirectiveToken(lines[j] ?? "") === "#helpend") {
           break;
         }
       }
@@ -551,12 +552,7 @@ export const parseMarkdownBlocks = (
         if (!isBlockquoteLine(nextBlockquoteLine)) {
           break;
         }
-        if (
-          isCardBlockStartLine(nextBlockquoteLine) ||
-          isCardBlockEndLine(nextBlockquoteLine) ||
-          isHelpBlockStartLine(nextBlockquoteLine) ||
-          isHelpBlockEndLine(nextBlockquoteLine)
-        ) {
+        if (resolveStructuralDirectiveToken(nextBlockquoteLine) !== null) {
           break;
         }
         end += 1;
