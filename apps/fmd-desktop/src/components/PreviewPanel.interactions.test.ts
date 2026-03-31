@@ -2887,7 +2887,7 @@ describe("PreviewPanel edit-safe interactions", () => {
 
   it("does not activate nested quote markers when editing an outer quote line", () => {
     const { container, cleanup: localCleanup } = buildHarness(
-      ["> root", "> > child", "> after"].join("\n"),
+      ["> root", "> > child", ">", "> after"].join("\n"),
     );
     cleanup = localCleanup;
 

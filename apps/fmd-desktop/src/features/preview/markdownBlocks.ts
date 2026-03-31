@@ -546,7 +546,19 @@ export const parseMarkdownBlocks = (
 
     if (isBlockquoteLine(line)) {
       let end = i;
-      while (end + 1 < lines.length && isBlockquoteLine(lines[end + 1] ?? "")) {
+      while (end + 1 < lines.length) {
+        const nextBlockquoteLine = lines[end + 1] ?? "";
+        if (!isBlockquoteLine(nextBlockquoteLine)) {
+          break;
+        }
+        if (
+          isCardBlockStartLine(nextBlockquoteLine) ||
+          isCardBlockEndLine(nextBlockquoteLine) ||
+          isHelpBlockStartLine(nextBlockquoteLine) ||
+          isHelpBlockEndLine(nextBlockquoteLine)
+        ) {
+          break;
+        }
         end += 1;
       }
       blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "blockquote", i, end));
