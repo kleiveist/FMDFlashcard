@@ -70,12 +70,43 @@ const isHorizontalRuleLine = (line: string) =>
   /^\s*(?:(?:-\s*){3,}|(?:\*\s*){3,})$/.test(line);
 const isHorizontalRuleLineForNormalization = (line: string) =>
   /^\s*(?:(?:-\s*){3,}|(?:\*\s*){3,}|(?:_\s*){3,})$/.test(line);
-const isHelpBlockStartLine = (line: string) => line.trim().toLowerCase() === "#help";
-const isHelpBlockEndLine = (line: string) => line.trim().toLowerCase() === "#helpend";
+const leadingBlockquoteMarkersPattern = /^\s*(?:>\s*)+/;
+const quotedStructuralDirectivePattern = /^\s*(?:>\s*)+(#(?:card|endcard|help|helpend))\s*$/i;
+
+const stripLeadingBlockquoteMarkers = (line: string) =>
+  line.replace(leadingBlockquoteMarkersPattern, "");
+
+const resolveStructuralDirectiveToken = (line: string) => {
+  const quotedMatch = line.match(quotedStructuralDirectivePattern);
+  const candidate = (quotedMatch?.[1] ?? line.trim()).toLowerCase();
+  if (
+    candidate === "#card" ||
+    candidate === "#endcard" ||
+    candidate === "#help" ||
+    candidate === "#helpend"
+  ) {
+    return candidate;
+  }
+  return null;
+};
+
+const isQuotedStructuralDirectiveLine = (
+  line: string,
+  directive: "#card" | "#endcard" | "#help" | "#helpend",
+) => {
+  const quotedMatch = line.match(quotedStructuralDirectivePattern);
+  if (!quotedMatch?.[1]) {
+    return false;
+  }
+  return quotedMatch[1].toLowerCase() === directive;
+};
+
+const isHelpBlockStartLine = (line: string) => resolveStructuralDirectiveToken(line) === "#help";
+const isHelpBlockEndLine = (line: string) => resolveStructuralDirectiveToken(line) === "#helpend";
 const isStandaloneImageEmbedLine = (line: string) => parseStandalonePngEmbedLine(line) !== null;
 const isDatabaseBlockMarker = (line: string) => isDatabaseBlockMarkerLine(line);
-const isCardBlockStartLine = (line: string) => line.trim().toLowerCase() === "#card";
-const isCardBlockEndLine = (line: string) => line.trim().toLowerCase() === "#endcard";
+const isCardBlockStartLine = (line: string) => resolveStructuralDirectiveToken(line) === "#card";
+const isCardBlockEndLine = (line: string) => resolveStructuralDirectiveToken(line) === "#endcard";
 
 const resolveOrderedDelimiter = (raw: string): "." | ")" =>
   raw === "." ? "." : ")";
@@ -648,9 +679,20 @@ export const normalizeHelpBlockSource = (blockRaw: string) => {
   if (!blockRaw) {
     return blockRaw;
   }
+  const sourceLines = blockRaw.split("\n");
+  const firstNonBlankLine = sourceLines.find((line) => line.trim().length > 0) ?? "";
+  const shouldStripQuoteMarkers = isQuotedStructuralDirectiveLine(firstNonBlankLine, "#help");
   const normalizedLines: string[] = [];
-  for (const line of blockRaw.split("\n")) {
-    if (line.trim().toLowerCase() !== "#helpend") {
+  for (const sourceLine of sourceLines) {
+    const line = shouldStripQuoteMarkers
+      ? stripLeadingBlockquoteMarkers(sourceLine)
+      : sourceLine;
+    const directive = resolveStructuralDirectiveToken(line);
+    if (directive === "#help") {
+      normalizedLines.push("#help");
+      continue;
+    }
+    if (directive !== "#helpend") {
       normalizedLines.push(line);
       continue;
     }
@@ -670,7 +712,23 @@ export const normalizeCardBlockSource = (blockRaw: string) => {
     return blockRaw;
   }
 
-  const lines = blockRaw.split("\n");
+  const sourceLines = blockRaw.split("\n");
+  const firstNonBlankLine = sourceLines.find((line) => line.trim().length > 0) ?? "";
+  const shouldStripQuoteMarkers = isQuotedStructuralDirectiveLine(firstNonBlankLine, "#card");
+  const lines = sourceLines.map((sourceLine) => {
+    const line = shouldStripQuoteMarkers
+      ? stripLeadingBlockquoteMarkers(sourceLine)
+      : sourceLine;
+    const directive = resolveStructuralDirectiveToken(line);
+    if (directive === "#card") {
+      return "#card";
+    }
+    if (directive === "#endcard") {
+      return "#endcard";
+    }
+    return line;
+  });
+  const normalizedCardLines = lines.join("\n");
   let closingIndex = -1;
   let closingLineSuffix = "";
 
@@ -686,11 +744,11 @@ export const normalizeCardBlockSource = (blockRaw: string) => {
   }
 
   if (closingIndex < 0) {
-    return blockRaw;
+    return normalizedCardLines;
   }
 
   if (closingLineSuffix.trim().length === 0) {
-    return blockRaw;
+    return normalizedCardLines;
   }
 
   const normalizedLines = lines.slice(0, closingIndex);

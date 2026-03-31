@@ -53,6 +53,7 @@ import {
 } from "../features/preview/MarkdownHybridEditor";
 import {
   parseMarkdownBlocks,
+  normalizeCardBlockSource,
   normalizeHelpBlockSource,
   type MarkdownBlock,
 } from "../features/preview/markdownBlocks";
@@ -3617,13 +3618,22 @@ export const serializeMarkdownFromHtml = (container: HTMLElement) => {
     unescapeEscapedBoundaryPipes: true,
   });
   const blocks = parseMarkdownBlocks(tableNormalized);
-  if (!blocks.some((block) => block.kind === "help-block")) {
+  if (!blocks.some((block) =>
+    block.kind === "help-block" ||
+    block.kind === "card-start" ||
+    block.kind === "card-end"
+  )) {
     return tableNormalized;
   }
   return blocks
     .map((block) => (
       block.kind === "help-block"
         ? normalizeHelpBlockSource(block.raw)
+        : (
+          block.kind === "card-start" ||
+            block.kind === "card-end"
+        )
+          ? normalizeCardBlockSource(block.raw)
         : block.raw
     ))
     .join("\n");
@@ -8384,12 +8394,16 @@ export const PreviewPanel = ({
 
     const activeBlockquotes = new Set<HTMLElement>();
     const activeTableCells = new Set<HTMLElement>();
-    activeLines.forEach((line) => {
+    const blockquoteAnchorLine = anchorLine ?? null;
+    const blockquoteSourceLines = blockquoteAnchorLine ? [blockquoteAnchorLine] : activeLines;
+    blockquoteSourceLines.forEach((line) => {
       let blockquote = line.closest<HTMLElement>("blockquote");
       while (blockquote && editor.contains(blockquote)) {
         activeBlockquotes.add(blockquote);
         blockquote = blockquote.parentElement?.closest<HTMLElement>("blockquote") ?? null;
       }
+    });
+    activeLines.forEach((line) => {
       const tableCell = line.closest<HTMLElement>("td,th");
       if (tableCell && editor.contains(tableCell)) {
         activeTableCells.add(tableCell);
@@ -9935,6 +9949,11 @@ export const PreviewPanel = ({
       const wrapperClassName = `preview-markdown-view-block preview-markdown-view-block-${block.kind}`;
       const blockPreviewSource = block.kind === "help-block"
         ? normalizeHelpBlockPreviewSource(block.raw)
+        : (
+          block.kind === "card-start" ||
+            block.kind === "card-end"
+        )
+          ? normalizeCardBlockSource(block.raw)
         : block.raw;
       if (block.kind === "database-block") {
         return (

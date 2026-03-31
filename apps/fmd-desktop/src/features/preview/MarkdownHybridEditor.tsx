@@ -5307,6 +5307,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         let nextBlockRaw = toPersistedBlockRawForDraft({ kind: snapshot.kind }, normalizedDraftForPersist);
         if (snapshot.kind === "help-block") {
           nextBlockRaw = normalizeHelpBlockSource(nextBlockRaw);
+        } else if (snapshot.kind === "card-start" || snapshot.kind === "card-end") {
+          nextBlockRaw = normalizeCardBlockSource(nextBlockRaw);
         } else if (snapshot.kind === "hr") {
           nextBlockRaw = normalizeHorizontalRuleBlockSource(nextBlockRaw);
         }
@@ -9893,6 +9895,11 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         : "";
       let previewBlockSource = block.kind === "help-block"
         ? normalizeHelpBlockPreviewSource(block.raw)
+        : (
+          block.kind === "card-start" ||
+            block.kind === "card-end"
+        )
+          ? normalizeCardBlockSource(block.raw)
         : block.kind === "hr"
         ? normalizeHorizontalRuleBlockSource(block.raw)
         : block.raw;

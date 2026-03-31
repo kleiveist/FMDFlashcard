@@ -162,6 +162,42 @@ describe("markdownBlocks", () => {
     );
   });
 
+  it("treats quote-prefixed #help/#helpend markers as one top-level help block", () => {
+    const markdown = [
+      "> #help",
+      "> Hinweis",
+      "> #helpend",
+    ].join("\n");
+
+    const blocks = parseMarkdownBlocks(markdown);
+    expect(blocks.map((block) => block.kind)).toEqual(["help-block"]);
+    expect(
+      normalizeHelpBlockSource(blocks[0]?.raw ?? ""),
+    ).toBe(["#help", "Hinweis", "#helpend"].join("\n"));
+  });
+
+  it("treats quote-prefixed #card/#endcard markers as top-level card blocks", () => {
+    const markdown = [
+      "> #card",
+      "> Frage",
+      "> #endcard",
+    ].join("\n");
+
+    const blocks = parseMarkdownBlocks(markdown);
+    expect(blocks.map((block) => block.kind)).toEqual([
+      "card-start",
+      "blockquote",
+      "card-end",
+    ]);
+    expect(normalizeCardBlockSource(blocks[0]?.raw ?? "")).toBe("#card");
+    expect(normalizeCardBlockSource(blocks[2]?.raw ?? "")).toBe("#endcard");
+
+    const cardGroupId = blocks[0]?.meta?.cardGroupId;
+    expect(cardGroupId).toBeTruthy();
+    expect(blocks[1]?.meta?.cardGroupId).toBe(cardGroupId);
+    expect(blocks[2]?.meta?.cardGroupId).toBe(cardGroupId);
+  });
+
   it("parses standalone png embeds as isolated blocks", () => {
     const markdown = ["Intro", "", "![[images/example.png]]", "", "Outro"].join("\n");
     const blocks = parseMarkdownBlocks(markdown);
@@ -590,6 +626,30 @@ describe("normalizeHelpBlockSource", () => {
         "#helpend",
       ].join("\n"),
     );
+  });
+
+  it("strips leading quote markers when #help/#helpend were quote-prefixed", () => {
+    const input = [
+      "> #help",
+      "> Hinweis",
+      "> #helpend",
+    ].join("\n");
+
+    const normalized = normalizeHelpBlockSource(input);
+    expect(normalized).toBe(
+      [
+        "#help",
+        "Hinweis",
+        "#helpend",
+      ].join("\n"),
+    );
+  });
+});
+
+describe("normalizeCardBlockSource", () => {
+  it("normalizes quote-prefixed card markers to root-level markers", () => {
+    expect(normalizeCardBlockSource("> #card")).toBe("#card");
+    expect(normalizeCardBlockSource("> #endcard")).toBe("#endcard");
   });
 });
 
