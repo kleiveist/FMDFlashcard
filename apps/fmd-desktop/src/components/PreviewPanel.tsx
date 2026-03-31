@@ -9549,6 +9549,11 @@ export const PreviewPanel = ({
     }
     const currentBody = syncMarkdownDraftFromEditor();
     syncActiveMarkdownHeading();
+    // Browsers can finalize caret relocation for Enter/newline one frame later.
+    // Re-sync active-line state to avoid stale raw-marker activation on the previous line.
+    window.requestAnimationFrame(() => {
+      syncActiveMarkdownHeading();
+    });
     if (legacyMarkdownLinkPickerState) {
       return;
     }

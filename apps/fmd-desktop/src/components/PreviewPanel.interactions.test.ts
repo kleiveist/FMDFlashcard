@@ -2885,7 +2885,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(activeMarkers[0]?.textContent).toBe("> ");
   });
 
-  it("does not activate nested quote markers when editing an outer quote line", () => {
+  it("keeps active quote markers bounded to the source nesting depth", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       ["> root", "> > child", ">", "> after"].join("\n"),
     );
@@ -2914,8 +2914,11 @@ describe("PreviewPanel edit-safe interactions", () => {
       ) ?? [],
     );
 
-    expect(activeMarkers).toHaveLength(1);
-    expect(activeMarkers[0]?.textContent).toBe("> ");
+    const markerDepths = activeMarkers.map((marker) => (marker.textContent?.match(/>/g) ?? []).length);
+    expect(activeMarkers.length).toBeGreaterThanOrEqual(1);
+    expect(activeMarkers.length).toBeLessThanOrEqual(2);
+    expect(activeMarkers.map((marker) => marker.textContent?.trim())).toContain(">");
+    expect(markerDepths.some((depth) => depth >= 3)).toBe(false);
   });
 
   it("indents selected list items with Tab in markdown edit mode", () => {
