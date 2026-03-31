@@ -5,6 +5,7 @@ import {
   normalizeHorizontalRuleBlockSource,
   normalizeHorizontalRuleSpacingInMarkdown,
   normalizeOrderedListBlockSource,
+  normalizeQuotePrefixedHashLines,
   parseMarkdownBlocks,
 } from "./markdownBlocks";
 
@@ -684,5 +685,45 @@ describe("normalizeHorizontalRuleSpacingInMarkdown", () => {
     const input = ["```txt", "---", "```"].join("\n");
     const normalized = normalizeHorizontalRuleSpacingInMarkdown(input);
     expect(normalized).toBe(input);
+  });
+});
+
+describe("normalizeQuotePrefixedHashLines", () => {
+  it("removes leading blockquote markers from lines starting with #", () => {
+    const input = [
+      "> # Überschrift",
+      "> #helpHinweis",
+      ">> #text",
+      "> normal quote",
+    ].join("\n");
+
+    const normalized = normalizeQuotePrefixedHashLines(input);
+    expect(normalized).toBe(
+      [
+        "# Überschrift",
+        "#helpHinweis",
+        "#text",
+        "> normal quote",
+      ].join("\n"),
+    );
+  });
+
+  it("keeps quote-prefixed # lines unchanged inside fenced code blocks", () => {
+    const input = [
+      "```md",
+      "> # heading in code",
+      "```",
+      "> # outside",
+    ].join("\n");
+
+    const normalized = normalizeQuotePrefixedHashLines(input);
+    expect(normalized).toBe(
+      [
+        "```md",
+        "> # heading in code",
+        "```",
+        "# outside",
+      ].join("\n"),
+    );
   });
 });

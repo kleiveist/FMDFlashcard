@@ -71,6 +71,7 @@ const isHorizontalRuleLine = (line: string) =>
 const isHorizontalRuleLineForNormalization = (line: string) =>
   /^\s*(?:(?:-\s*){3,}|(?:\*\s*){3,}|(?:_\s*){3,})$/.test(line);
 const leadingBlockquoteMarkersPattern = /^\s*(?:>\s*)+/;
+const quotePrefixedHashLinePattern = /^(\s*)(?:>\s*)+(#.*)$/;
 const quotedStructuralDirectivePattern = /^\s*(?:>\s*)+(#(?:card|endcard|help|helpend))\s*$/i;
 
 const stripLeadingBlockquoteMarkers = (line: string) =>
@@ -681,6 +682,37 @@ export const normalizeOrderedListBlockSource = (blockRaw: string) => {
   return lines
     .map((line) => normalizeOrderedListLine(line, counters, delimiters))
     .join("\n");
+};
+
+export const normalizeQuotePrefixedHashLines = (markdown: string) => {
+  if (!markdown) {
+    return markdown;
+  }
+
+  const sourceLines = markdown.split("\n");
+  const normalizedLines: string[] = [];
+  let inCodeFence = false;
+
+  for (const sourceLine of sourceLines) {
+    const trimmed = sourceLine.trim();
+    if (trimmed.startsWith("```")) {
+      inCodeFence = !inCodeFence;
+      normalizedLines.push(sourceLine);
+      continue;
+    }
+    if (inCodeFence) {
+      normalizedLines.push(sourceLine);
+      continue;
+    }
+    const match = sourceLine.match(quotePrefixedHashLinePattern);
+    if (!match) {
+      normalizedLines.push(sourceLine);
+      continue;
+    }
+    normalizedLines.push(`${match[1] ?? ""}${match[2] ?? ""}`);
+  }
+
+  return normalizedLines.join("\n");
 };
 
 export const normalizeHelpBlockSource = (blockRaw: string) => {

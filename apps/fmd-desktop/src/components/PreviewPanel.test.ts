@@ -332,6 +332,24 @@ describe("serializeMarkdownFromHtml", () => {
     expect(result).toBe("> > Hinweis\n");
   });
 
+  it("normalizes quote-prefixed hash lines to root-level output during serialization", () => {
+    const container = document.createElement("div");
+    const quote = document.createElement("blockquote");
+    const line = document.createElement("p");
+    const marker = document.createElement("span");
+    marker.className = "md-blockquote-marker";
+    marker.textContent = "> ";
+    line.appendChild(marker);
+    line.appendChild(document.createTextNode("# Überschrift"));
+    quote.appendChild(line);
+    container.appendChild(quote);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe("# Überschrift\n");
+    expect(result).not.toContain("> #");
+  });
+
   it("serializes editable blockquote marker depths per line without propagation", () => {
     const container = document.createElement("div");
     const quote = document.createElement("blockquote");

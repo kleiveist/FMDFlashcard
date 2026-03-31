@@ -55,6 +55,7 @@ import {
   parseMarkdownBlocks,
   normalizeCardBlockSource,
   normalizeHelpBlockSource,
+  normalizeQuotePrefixedHashLines,
   type MarkdownBlock,
 } from "../features/preview/markdownBlocks";
 import {
@@ -2988,6 +2989,7 @@ const indentedContinuationLinePattern = /^\s{2,}\S/;
 const blockquoteLinePattern = /^\s*>/;
 const markdownHeadingLinePattern = /^\s*(#{1,6})(?:\s+|$)([\s\S]*)$/;
 const escapedMarkdownHeadingNormalizationPattern = /^(\s*)\\(#{1,6})(?:\s+|$)([\s\S]*)$/;
+const markdownCodeFenceDelimiterPattern = /^\s*`{3,}/;
 const blockquoteMarkerAnchorTagNames = new Set([
   "P",
   "LI",
@@ -3024,6 +3026,39 @@ const resolveEditableHeadingLine = (line: string) => {
     content: (headingMatch[2] ?? "").trimStart(),
   };
 };
+
+const normalizeEscapedHeadingLines = (markdown: string) => {
+  if (!markdown) {
+    return markdown;
+  }
+  const sourceLines = markdown.split("\n");
+  const normalizedLines: string[] = [];
+  let inCodeFence = false;
+  for (const sourceLine of sourceLines) {
+    if (markdownCodeFenceDelimiterPattern.test(sourceLine)) {
+      inCodeFence = !inCodeFence;
+      normalizedLines.push(sourceLine);
+      continue;
+    }
+    if (inCodeFence) {
+      normalizedLines.push(sourceLine);
+      continue;
+    }
+    const escapedMatch = sourceLine.match(escapedMarkdownHeadingNormalizationPattern);
+    if (!escapedMatch) {
+      normalizedLines.push(sourceLine);
+      continue;
+    }
+    const indent = escapedMatch[1] ?? "";
+    const hashes = escapedMatch[2] ?? "#";
+    const content = (escapedMatch[3] ?? "").trimStart();
+    normalizedLines.push(content ? `${indent}${hashes} ${content}` : `${indent}${hashes}`);
+  }
+  return normalizedLines.join("\n");
+};
+
+const normalizeMarkdownViewEditBodyForPersist = (markdown: string) =>
+  normalizeEscapedHeadingLines(normalizeQuotePrefixedHashLines(markdown));
 
 const normalizeHelpBlockPreviewSource = (blockRaw: string) => {
   const normalized = normalizeHelpBlockSource(blockRaw);
@@ -3796,13 +3831,14 @@ export const serializeMarkdownFromHtml = (container: HTMLElement) => {
   const tableNormalized = normalizeMarkdownPipeTables(serialized, {
     unescapeEscapedBoundaryPipes: true,
   });
-  const blocks = parseMarkdownBlocks(tableNormalized);
+  const ruleNormalized = normalizeMarkdownViewEditBodyForPersist(tableNormalized);
+  const blocks = parseMarkdownBlocks(ruleNormalized);
   if (!blocks.some((block) =>
     block.kind === "help-block" ||
     block.kind === "card-start" ||
     block.kind === "card-end"
   )) {
-    return tableNormalized;
+    return ruleNormalized;
   }
   return blocks
     .map((block) => (
@@ -4392,7 +4428,7 @@ export const buildEditableMarkdownHtml = (
     });
   });
 
-  clone.querySelectorAll<HTMLElement>("p,li,h1,h2,h3,h4,h5,h6,td,th").forEach(
+  clone.querySelectorAll<HTMLElement>("p,li,h1,h2,h3,h4,h5,h6,td,th,div.preview-markdown-view-block-blank").forEach(
     (line) => {
       line.setAttribute("data-md-inline-line", "true");
       line.removeAttribute("data-md-inline-active");
@@ -8519,7 +8555,8 @@ export const PreviewPanel = ({
     if (!markdownEditorRef.current) {
       return "";
     }
-    const nextBody = serializeMarkdownFromHtml(markdownEditorRef.current);
+    const serializedBody = serializeMarkdownFromHtml(markdownEditorRef.current);
+    const nextBody = normalizeMarkdownViewEditBodyForPersist(serializedBody);
     const nextValue = composeMarkdownWithBody(editDraft, nextBody, {
       bodyMayContainFrontmatter: false,
     });
@@ -8535,8 +8572,12 @@ export const PreviewPanel = ({
     if (!editor) {
       return;
     }
-    const currentBody = serializeMarkdownFromHtml(editor);
-    const normalizedBody = normalizeLooseNestedUnorderedListMarkersForRender(currentBody);
+    const currentBody = normalizeMarkdownViewEditBodyForPersist(
+      serializeMarkdownFromHtml(editor),
+    );
+    const normalizedBody = normalizeMarkdownViewEditBodyForPersist(
+      normalizeLooseNestedUnorderedListMarkersForRender(currentBody),
+    );
     if (normalizedBody === currentBody) {
       return;
     }
@@ -8640,6 +8681,18 @@ export const PreviewPanel = ({
       }
     });
 
+    const isEditableBlankLineContainer = (line: HTMLElement) =>
+      line.tagName === "DIV" && line.classList.contains("preview-markdown-view-block-blank");
+    const normalizeEditableBlankLineContainer = (line: HTMLElement) => {
+      const paragraphLine = replaceElementTagName(line, "p");
+      paragraphLine.classList.remove("preview-markdown-view-block");
+      paragraphLine.classList.remove("preview-markdown-view-block-blank");
+      paragraphLine.removeAttribute("data-md-block-kind");
+      paragraphLine.removeAttribute("aria-hidden");
+      paragraphLine.setAttribute("data-md-inline-line", "true");
+      return paragraphLine;
+    };
+
     let lineKindRetagged = false;
     inlineLines.forEach((line) => {
       const isLineActive = activeLineSet.has(line) ||
@@ -8649,13 +8702,20 @@ export const PreviewPanel = ({
         line.setAttribute("data-md-inline-active", "true");
       } else {
         line.removeAttribute("data-md-inline-active");
-        if (line.tagName === "P") {
-          const lineText = line.textContent ?? "";
-          const resolvedHeading = resolveEditableHeadingLine(lineText);
+        let lineElement = line;
+        const lineText = lineElement.textContent ?? "";
+        if (isEditableBlankLineContainer(lineElement) && lineText.trim().length > 0) {
+          lineElement = normalizeEditableBlankLineContainer(lineElement);
+          lineKindRetagged = true;
+        }
+
+        if (lineElement.tagName === "P") {
+          const paragraphText = lineElement.textContent ?? "";
+          const resolvedHeading = resolveEditableHeadingLine(paragraphText);
           if (resolvedHeading) {
             const nextLevel = resolvedHeading.level;
             const nextHeadingContent = resolvedHeading.content;
-            const headingLine = replaceElementTagName(line, `h${nextLevel}`);
+            const headingLine = replaceElementTagName(lineElement, `h${nextLevel}`);
             while (headingLine.firstChild) {
               headingLine.removeChild(headingLine.firstChild);
             }
@@ -8665,17 +8725,17 @@ export const PreviewPanel = ({
             }
             lineKindRetagged = true;
           }
-        } else if (/^H[1-6]$/.test(line.tagName)) {
-          const lineText = line.textContent ?? "";
-          const resolvedHeading = resolveEditableHeadingLine(lineText);
+        } else if (/^H[1-6]$/.test(lineElement.tagName)) {
+          const headingText = lineElement.textContent ?? "";
+          const resolvedHeading = resolveEditableHeadingLine(headingText);
           if (!resolvedHeading) {
-            const paragraphLine = replaceElementTagName(line, "p");
+            const paragraphLine = replaceElementTagName(lineElement, "p");
             paragraphLine.removeAttribute("data-md-heading-level");
             paragraphLine.removeAttribute("data-md-heading-active");
             paragraphLine.querySelector<HTMLElement>(":scope > .md-heading-marker")?.remove();
             lineKindRetagged = true;
           } else {
-            const normalizedHeading = replaceElementTagName(line, `h${resolvedHeading.level}`);
+            const normalizedHeading = replaceElementTagName(lineElement, `h${resolvedHeading.level}`);
             while (normalizedHeading.firstChild) {
               normalizedHeading.removeChild(normalizedHeading.firstChild);
             }
@@ -9872,7 +9932,8 @@ export const PreviewPanel = ({
 
   const handleHybridBodyChange = useCallback(
     (nextBody: string) => {
-      const nextValue = composeMarkdownWithBody(editDraft, nextBody, {
+      const normalizedBody = normalizeMarkdownViewEditBodyForPersist(nextBody);
+      const nextValue = composeMarkdownWithBody(editDraft, normalizedBody, {
         bodyMayContainFrontmatter: false,
       });
       if (nextValue !== editDraft) {
@@ -10081,11 +10142,14 @@ export const PreviewPanel = ({
   const listNormalizedMarkdownSource = isCodeMode || !isMarkdownMode
     ? fenceNormalizedMarkdownSource
     : normalizeLooseNestedUnorderedListMarkersForRender(fenceNormalizedMarkdownSource);
+  const quoteHashNormalizedMarkdownSource = isCodeMode || !isMarkdownMode
+    ? listNormalizedMarkdownSource
+    : normalizeQuotePrefixedHashLines(listNormalizedMarkdownSource);
   const renderedPreview = isCodeMode
     ? preview
     : isMarkdownMode && resolvedEditEnabled
-      ? listNormalizedMarkdownSource
-      : applyInteractionSpacing(listNormalizedMarkdownSource);
+      ? quoteHashNormalizedMarkdownSource
+      : applyInteractionSpacing(quoteHashNormalizedMarkdownSource);
   const markdownViewBlocks = useMemo(
     () => (
       isCodeMode
@@ -10206,9 +10270,13 @@ export const PreviewPanel = ({
       editorMode === "code"
     ) {
       const normalizedBody = normalizeLooseNestedUnorderedListMarkersForRender(markdownEditBody);
-      const nextValue = composeMarkdownWithBody(editDraft, normalizedBody, {
+      const nextValue = composeMarkdownWithBody(
+        editDraft,
+        normalizeMarkdownViewEditBodyForPersist(normalizedBody),
+        {
         bodyMayContainFrontmatter: false,
-      });
+        },
+      );
       if (nextValue !== editDraft) {
         onEditChange(nextValue);
       }

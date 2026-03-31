@@ -2623,6 +2623,81 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(serialized).not.toContain("\\# Überschrift");
   });
 
+  it("promotes heading syntax typed into a blank block after leaving the line", async () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["", "Body line"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(
+        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
+      );
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    const blankLine = editable?.querySelector(
+      "div.preview-markdown-view-block-blank[data-md-inline-line='true']",
+    ) as HTMLDivElement | null;
+    expect(editable).toBeTruthy();
+    expect(blankLine).toBeTruthy();
+
+    act(() => {
+      if (!blankLine) {
+        return;
+      }
+      blankLine.textContent = "# Überschrift";
+      editable?.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      editable?.dispatchEvent(new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        key: "Enter",
+      }));
+    });
+
+    const bodyParagraph = Array.from(editable?.querySelectorAll("p") ?? []).find((line) =>
+      (line.textContent ?? "").includes("Body line")
+    ) ?? null;
+    const bodyTextNode = bodyParagraph?.firstChild ?? null;
+
+    act(() => {
+      if (!bodyTextNode) {
+        return;
+      }
+      const selection = window.getSelection();
+      if (!selection) {
+        return;
+      }
+      const range = document.createRange();
+      range.setStart(bodyTextNode, 0);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const promotedHeading = editable?.querySelector("h1") as HTMLHeadingElement | null;
+    expect(promotedHeading).toBeTruthy();
+    expect(promotedHeading?.querySelector(".md-heading-marker")?.textContent).toBe("# ");
+    expect(promotedHeading?.childNodes.item(1)?.textContent).toBe("Überschrift");
+
+    const serialized = editable ? serializeMarkdownFromHtml(editable) : "";
+    expect(serialized.split("\n")[0]).toBe("# Überschrift");
+    expect(serialized).not.toContain("\\# Überschrift");
+  });
+
   it("shows editable --- marker when a separator line is focused", () => {
     const { container, cleanup: localCleanup } = buildHarness(
       ["A", "", "---", "", "B"].join("\n"),
@@ -3080,6 +3155,29 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     expect(activeMarkers).toHaveLength(3);
     expect(activeMarkers.map((marker) => marker.textContent)).toEqual(["> ", "> ", "> "]);
+  });
+
+  it("removes quote markers from hash-prefixed lines in markdown view edit flow", () => {
+    const { container, cleanup: localCleanup } = buildHarness(
+      ["> #helpHinweis", "> # Überschrift"].join("\n"),
+    );
+    cleanup = localCleanup;
+
+    const previewContent = container.querySelector(".preview-content");
+    act(() => {
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
+    });
+
+    const editable = container.querySelector(
+      ".preview-markdown-editable",
+    ) as HTMLDivElement | null;
+    expect(editable).toBeTruthy();
+    expect(editable?.querySelector("blockquote")).toBeNull();
+
+    const serialized = editable ? serializeMarkdownFromHtml(editable) : "";
+    expect(serialized).not.toContain("> #");
+    expect(serialized.split("\n")[0]).toBe("#helpHinweis");
+    expect(serialized.split("\n")[1]).toBe("# Überschrift");
   });
 
   it("anchors quote markers inline to the focused quote line", () => {
