@@ -332,6 +332,33 @@ describe("serializeMarkdownFromHtml", () => {
     expect(result).toBe("> > Hinweis\n");
   });
 
+  it("serializes editable blockquote marker depths per line without propagation", () => {
+    const container = document.createElement("div");
+    const quote = document.createElement("blockquote");
+
+    const firstLine = document.createElement("p");
+    const firstMarker = document.createElement("span");
+    firstMarker.className = "md-blockquote-marker";
+    firstMarker.textContent = "> ";
+    firstLine.appendChild(firstMarker);
+    firstLine.appendChild(document.createTextNode("Erste"));
+
+    const secondLine = document.createElement("p");
+    const secondMarker = document.createElement("span");
+    secondMarker.className = "md-blockquote-marker";
+    secondMarker.textContent = ">> ";
+    secondLine.appendChild(secondMarker);
+    secondLine.appendChild(document.createTextNode("Zweite"));
+
+    quote.appendChild(firstLine);
+    quote.appendChild(secondLine);
+    container.appendChild(quote);
+
+    const result = serializeMarkdownFromHtml(container);
+
+    expect(result).toBe(["> Erste", "> > Zweite", ""].join("\n"));
+  });
+
   it("keeps help blocks with blockquotes stable without marker escalation", () => {
     const container = document.createElement("div");
     const helpStart = document.createElement("p");
@@ -851,6 +878,35 @@ describe("buildEditableMarkdownHtml", () => {
     ).map((marker) => marker.textContent);
 
     expect(markers).toEqual([">> "]);
+  });
+
+  it("injects blockquote markers on each direct quote line anchor", () => {
+    const container = document.createElement("div");
+    container.innerHTML = "<blockquote><p>One</p><p>Two</p><p>Three</p></blockquote>";
+
+    const html = buildEditableMarkdownHtml(container);
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = html;
+    const lineMarkers = Array.from(
+      wrapper.querySelectorAll<HTMLElement>("blockquote > p > .md-blockquote-marker"),
+    ).map((marker) => marker.textContent);
+    const rootMarkers = wrapper.querySelectorAll<HTMLElement>("blockquote > .md-blockquote-marker");
+
+    expect(lineMarkers).toEqual(["> ", "> ", "> "]);
+    expect(rootMarkers).toHaveLength(0);
+  });
+
+  it("injects one blockquote marker per visual line when quote paragraphs contain br breaks", () => {
+    const container = document.createElement("div");
+    container.innerHTML = "<blockquote><p>One<br>Two<br>Three</p></blockquote>";
+
+    const html = buildEditableMarkdownHtml(container);
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = html;
+    const lineMarkers = wrapper.querySelectorAll<HTMLElement>("blockquote > p > .md-blockquote-marker");
+
+    expect(lineMarkers).toHaveLength(3);
+    expect(Array.from(lineMarkers).map((marker) => marker.textContent)).toEqual(["> ", "> ", "> "]);
   });
 
   it("keeps ordered list marker delimiter from markdown source as 1)", () => {

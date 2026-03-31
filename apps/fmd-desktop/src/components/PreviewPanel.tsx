@@ -2987,7 +2987,7 @@ const unorderedListLikeLinePattern = /^\s*[-+*]\s+/;
 const indentedContinuationLinePattern = /^\s{2,}\S/;
 const blockquoteLinePattern = /^\s*>/;
 const markdownHeadingLinePattern = /^\s*(#{1,6})(?:\s+|$)([\s\S]*)$/;
-const escapedMarkdownHeadingLinePattern = /^\s*\\#{1,6}(?:\s+|$)/;
+const escapedMarkdownHeadingNormalizationPattern = /^(\s*)\\(#{1,6})(?:\s+|$)([\s\S]*)$/;
 const blockquoteMarkerAnchorTagNames = new Set([
   "P",
   "LI",
@@ -3006,6 +3006,24 @@ const needsHelpEndPreviewSeparator = (line: string) =>
   unorderedListLikeLinePattern.test(line) ||
   indentedContinuationLinePattern.test(line) ||
   blockquoteLinePattern.test(line);
+
+const resolveEditableHeadingLine = (line: string) => {
+  const escapedMatch = line.match(escapedMarkdownHeadingNormalizationPattern);
+  if (escapedMatch) {
+    return {
+      level: Math.max(1, Math.min(6, (escapedMatch[2] ?? "#").length)),
+      content: (escapedMatch[3] ?? "").trimStart(),
+    };
+  }
+  const headingMatch = line.match(markdownHeadingLinePattern);
+  if (!headingMatch) {
+    return null;
+  }
+  return {
+    level: Math.max(1, Math.min(6, (headingMatch[1] ?? "#").length)),
+    content: (headingMatch[2] ?? "").trimStart(),
+  };
+};
 
 const normalizeHelpBlockPreviewSource = (blockRaw: string) => {
   const normalized = normalizeHelpBlockSource(blockRaw);
@@ -3233,20 +3251,38 @@ const serializeMarkdownNode = (
         return "";
       }
 
-      const previousTag = node.previousSibling instanceof HTMLElement
-        ? node.previousSibling.tagName.toLowerCase()
-        : null;
-      const nextTag = node.nextSibling instanceof HTMLElement
-        ? node.nextSibling.tagName.toLowerCase()
-        : null;
+      const isInlineSyntaxMarkerElement = (candidate: Node | null): candidate is HTMLElement =>
+        candidate instanceof HTMLElement &&
+        (
+          candidate.classList.contains("md-inline-marker") ||
+          candidate.classList.contains("md-heading-marker") ||
+          candidate.classList.contains("md-blockquote-marker") ||
+          candidate.classList.contains("md-table-pipe-marker")
+        );
+      const resolveElementSiblingTag = (
+        start: Node | null,
+        direction: "previousSibling" | "nextSibling",
+      ) => {
+        let current: Node | null = start;
+        while (current) {
+          if (isInlineSyntaxMarkerElement(current)) {
+            current = current[direction];
+            continue;
+          }
+          return current instanceof HTMLElement ? current.tagName.toLowerCase() : null;
+        }
+        return null;
+      };
+      const previousTag = resolveElementSiblingTag(node.previousSibling, "previousSibling");
+      const nextTag = resolveElementSiblingTag(node.nextSibling, "nextSibling");
 
       // Browsers can inject newline text nodes around <br> in contentEditable.
       // Keep line breaks owned by <br> and strip duplicate newline chars from text.
       if (previousTag === "br") {
-        value = value.replace(/^[\r\n]+[ \t]*/g, "");
+        value = value.replace(/^[ \t]*[\r\n]+[ \t]*/g, "");
       }
       if (nextTag === "br") {
-        value = value.replace(/[ \t]*[\r\n]+$/g, "");
+        value = value.replace(/[ \t]*[\r\n]+[ \t]*$/g, "");
       }
     }
     return escapeMarkdownText(value, context.escapePipes);
@@ -3259,6 +3295,7 @@ const serializeMarkdownNode = (
   const tag = element.tagName.toLowerCase();
   const hasClassName = (name: string) => element.classList.contains(name);
   const isInlineMarkerElement = hasClassName("md-inline-marker");
+  const isHeadingMarkerElement = hasClassName("md-heading-marker");
   const isBlockquoteMarkerElement = hasClassName("md-blockquote-marker");
   const isTablePipeMarkerElement = hasClassName("md-table-pipe-marker");
 
@@ -3266,7 +3303,7 @@ const serializeMarkdownNode = (
     return "";
   }
 
-  if (isInlineMarkerElement || isBlockquoteMarkerElement || isTablePipeMarkerElement) {
+  if (isInlineMarkerElement || isHeadingMarkerElement || isBlockquoteMarkerElement || isTablePipeMarkerElement) {
     return "";
   }
 
@@ -3296,9 +3333,14 @@ const serializeMarkdownNode = (
     const levelFromTag = Number(tag[1]);
     if (!Number.isNaN(levelFromTag)) {
       const content = serializeMarkdownChildren(element, context).trim();
-      const markerMatch = content.match(/^(#{1,6})(?:\s+|$)([\s\S]*)$/);
-      const manualLevel = markerMatch ? markerMatch[1].length : null;
-      const manualContent = markerMatch ? markerMatch[2].trimStart() : content;
+      const markerMatch = content.match(/^(?:\\)?(#{1,6})(?:\s+|$)([\s\S]*)$/);
+      let manualLevel = markerMatch ? markerMatch[1].length : null;
+      let manualContent = markerMatch ? markerMatch[2].trimStart() : content;
+      const escapedManualMatch = manualContent.match(/^\\+(#{1,6})(?:\s+|$)([\s\S]*)$/);
+      if (escapedManualMatch) {
+        manualLevel = escapedManualMatch[1].length;
+        manualContent = escapedManualMatch[2].trimStart();
+      }
       const resolvedLevel = Math.max(1, Math.min(6, manualLevel ?? levelFromTag));
       const newlineSuffix = context.inContentEditable ? "\n" : "\n\n";
       return manualContent
@@ -3440,6 +3482,89 @@ const serializeMarkdownNode = (
   }
 
   if (tag === "blockquote") {
+    if (context.inContentEditable) {
+      const serializedLines: string[] = [];
+      const blockMarkerText = resolveEditableBlockquoteMarkerText(element);
+      const blockMarkerDepthAbsolute = resolveEditableBlockquoteMarkerDepth(blockMarkerText);
+      const blockMarkerDepthRelative = Math.max(1, blockMarkerDepthAbsolute - context.blockquoteDepth);
+      const blockLinePrefix = "> ".repeat(blockMarkerDepthRelative);
+      const childNodes = Array.from(element.childNodes);
+      for (const childNode of childNodes) {
+        if (childNode instanceof HTMLElement && childNode.classList.contains("md-blockquote-marker")) {
+          continue;
+        }
+        if (childNode instanceof HTMLElement && blockquoteMarkerAnchorTagNames.has(childNode.tagName)) {
+          const markerTexts = Array.from(
+            childNode.querySelectorAll<HTMLElement>(":scope > .md-blockquote-marker"),
+          ).map((marker) => marker.textContent);
+          const fallbackMarkerDepthAbsolute = markerTexts[0]
+            ? resolveEditableBlockquoteMarkerDepth(markerTexts[0])
+            : Math.max(blockMarkerDepthAbsolute, context.blockquoteDepth + 1);
+          const content = serializeMarkdownNode(childNode, {
+            ...context,
+            blockquoteDepth: fallbackMarkerDepthAbsolute,
+          }).trim();
+          const lines = content.length > 0 ? content.split("\n") : [""];
+          const normalizedLines = [...lines];
+          if (markerTexts.length > 0 && normalizedLines.length > markerTexts.length) {
+            let removableCount = normalizedLines.length - markerTexts.length;
+            for (let index = normalizedLines.length - 2; index > 0 && removableCount > 0; index -= 1) {
+              if (normalizedLines[index]?.trim().length === 0) {
+                normalizedLines.splice(index, 1);
+                removableCount -= 1;
+              }
+            }
+            while (
+              removableCount > 0 &&
+              normalizedLines.length > 0 &&
+              normalizedLines[0]?.trim().length === 0
+            ) {
+              normalizedLines.shift();
+              removableCount -= 1;
+            }
+            while (
+              removableCount > 0 &&
+              normalizedLines.length > 0 &&
+              normalizedLines[normalizedLines.length - 1]?.trim().length === 0
+            ) {
+              normalizedLines.pop();
+              removableCount -= 1;
+            }
+          }
+          serializedLines.push(
+            normalizedLines
+              .map((line, index) => {
+                const markerText = markerTexts[Math.min(index, Math.max(0, markerTexts.length - 1))] ?? null;
+                const markerDepthAbsolute = markerText
+                  ? resolveEditableBlockquoteMarkerDepth(markerText)
+                  : fallbackMarkerDepthAbsolute;
+                const markerDepthRelative = Math.max(1, markerDepthAbsolute - context.blockquoteDepth);
+                const linePrefix = "> ".repeat(markerDepthRelative);
+                return line ? `${linePrefix}${line}` : linePrefix.trimEnd();
+              })
+              .join("\n"),
+          );
+          continue;
+        }
+        const serializedChild = serializeMarkdownNode(childNode, {
+          ...context,
+          blockquoteDepth: Math.max(blockMarkerDepthAbsolute, context.blockquoteDepth + 1),
+        }).trim();
+        if (serializedChild.length > 0) {
+          const serializedChildLines = serializedChild.split("\n");
+          serializedLines.push(
+            serializedChildLines
+              .map((line) => line ? `${blockLinePrefix}${line}` : blockLinePrefix.trimEnd())
+              .join("\n"),
+          );
+        }
+      }
+      if (serializedLines.length > 0) {
+        const serializedContent = serializedLines.join("\n");
+        return `${serializedContent}\n`;
+      }
+    }
+
     const markerText = context.inContentEditable
       ? resolveEditableBlockquoteMarkerText(element)
       : null;
@@ -4222,21 +4347,20 @@ export const buildEditableMarkdownHtml = (
     return depth;
   };
 
-  const resolveEditableBlockquoteMarkerAnchor = (blockquote: HTMLElement) => {
-    const directLineChild = Array.from(blockquote.children).find((child) =>
+  const resolveEditableBlockquoteMarkerAnchors = (blockquote: HTMLElement) => {
+    return Array.from(blockquote.children).filter((child): child is HTMLElement =>
       child instanceof HTMLElement && blockquoteMarkerAnchorTagNames.has(child.tagName)
     );
-    return directLineChild instanceof HTMLElement ? directLineChild : null;
   };
 
   clone.querySelectorAll<HTMLElement>("blockquote").forEach((blockquote) => {
     const markerDepth = resolveEditableBlockquoteDepth(blockquote);
     const markerText = `${">".repeat(markerDepth)} `;
-    const markerAnchor = resolveEditableBlockquoteMarkerAnchor(blockquote);
+    const markerAnchors = resolveEditableBlockquoteMarkerAnchors(blockquote);
     const existingRootMarkers = Array.from(
       blockquote.querySelectorAll<HTMLElement>(":scope > .md-blockquote-marker"),
     );
-    if (!markerAnchor) {
+    if (markerAnchors.length === 0) {
       existingRootMarkers.forEach((marker) => {
         marker.remove();
       });
@@ -4245,17 +4369,26 @@ export const buildEditableMarkdownHtml = (
     existingRootMarkers.forEach((marker) => {
       marker.remove();
     });
-    const existingAnchorMarkers = Array.from(
-      markerAnchor.querySelectorAll<HTMLElement>(":scope > .md-blockquote-marker"),
-    );
-    const marker = existingAnchorMarkers[0] ?? blockquote.ownerDocument.createElement("span");
-    marker.className = "md-blockquote-marker";
-    marker.textContent = markerText;
-    if (!existingAnchorMarkers[0]) {
-      markerAnchor.insertBefore(marker, markerAnchor.firstChild);
-    }
-    existingAnchorMarkers.slice(1).forEach((extraMarker) => {
-      extraMarker.remove();
+    markerAnchors.forEach((markerAnchor) => {
+      const existingAnchorMarkers = Array.from(
+        markerAnchor.querySelectorAll<HTMLElement>(":scope > .md-blockquote-marker"),
+      );
+      existingAnchorMarkers.forEach((existingMarker) => {
+        existingMarker.remove();
+      });
+      const createMarker = () => {
+        const marker = blockquote.ownerDocument.createElement("span");
+        marker.className = "md-blockquote-marker";
+        marker.textContent = markerText;
+        return marker;
+      };
+      markerAnchor.insertBefore(createMarker(), markerAnchor.firstChild);
+      const lineBreaks = Array.from(
+        markerAnchor.querySelectorAll<HTMLElement>(":scope > br"),
+      );
+      lineBreaks.forEach((lineBreak) => {
+        lineBreak.insertAdjacentElement("afterend", createMarker());
+      });
     });
   });
 
@@ -8469,15 +8602,35 @@ export const PreviewPanel = ({
       syncMarkdownDraftFromEditor();
     }
 
-    const activeBlockquotes = new Set<HTMLElement>();
+    const blockquoteElements = Array.from(
+      editor.querySelectorAll<HTMLElement>("blockquote"),
+    );
+    const activeBlockquoteLines = new Set<HTMLElement>();
     const activeTableCells = new Set<HTMLElement>();
-    const blockquoteAnchorLine = anchorLine ?? null;
-    const blockquoteSourceLines = blockquoteAnchorLine ? [blockquoteAnchorLine] : activeLines;
-    blockquoteSourceLines.forEach((line) => {
-      let blockquote = line.closest<HTMLElement>("blockquote");
-      while (blockquote && editor.contains(blockquote)) {
-        activeBlockquotes.add(blockquote);
-        blockquote = blockquote.parentElement?.closest<HTMLElement>("blockquote") ?? null;
+    const resolveOutermostBlockquote = (line: HTMLElement | null) => {
+      let outermost = line?.closest<HTMLElement>("blockquote") ?? null;
+      while (outermost) {
+        const parent = outermost.parentElement?.closest<HTMLElement>("blockquote") ?? null;
+        if (!parent || !editor.contains(parent)) {
+          break;
+        }
+        outermost = parent;
+      }
+      return outermost;
+    };
+    const activeBlockquoteRoot = resolveOutermostBlockquote(anchorLine);
+    if (activeBlockquoteRoot) {
+      Array.from(
+        activeBlockquoteRoot.querySelectorAll<HTMLElement>('[data-md-inline-line="true"]'),
+      ).forEach((line) => {
+        activeBlockquoteLines.add(line);
+      });
+    }
+    blockquoteElements.forEach((blockquote) => {
+      if (activeBlockquoteRoot && activeBlockquoteRoot.contains(blockquote)) {
+        blockquote.setAttribute("data-md-inline-active", "true");
+      } else {
+        blockquote.removeAttribute("data-md-inline-active");
       }
     });
     activeLines.forEach((line) => {
@@ -8490,7 +8643,7 @@ export const PreviewPanel = ({
     let lineKindRetagged = false;
     inlineLines.forEach((line) => {
       const isLineActive = activeLineSet.has(line) ||
-        activeBlockquotes.has(line) ||
+        activeBlockquoteLines.has(line) ||
         activeTableCells.has(line);
       if (isLineActive) {
         line.setAttribute("data-md-inline-active", "true");
@@ -8498,10 +8651,10 @@ export const PreviewPanel = ({
         line.removeAttribute("data-md-inline-active");
         if (line.tagName === "P") {
           const lineText = line.textContent ?? "";
-          const headingMatch = lineText.match(markdownHeadingLinePattern);
-          if (headingMatch && !escapedMarkdownHeadingLinePattern.test(lineText)) {
-            const nextLevel = Math.max(1, Math.min(6, (headingMatch[1] ?? "#").length));
-            const nextHeadingContent = (headingMatch[2] ?? "").trimStart();
+          const resolvedHeading = resolveEditableHeadingLine(lineText);
+          if (resolvedHeading) {
+            const nextLevel = resolvedHeading.level;
+            const nextHeadingContent = resolvedHeading.content;
             const headingLine = replaceElementTagName(line, `h${nextLevel}`);
             while (headingLine.firstChild) {
               headingLine.removeChild(headingLine.firstChild);
@@ -8514,12 +8667,24 @@ export const PreviewPanel = ({
           }
         } else if (/^H[1-6]$/.test(line.tagName)) {
           const lineText = line.textContent ?? "";
-          const headingMatch = lineText.match(markdownHeadingLinePattern);
-          if (!headingMatch || escapedMarkdownHeadingLinePattern.test(lineText)) {
+          const resolvedHeading = resolveEditableHeadingLine(lineText);
+          if (!resolvedHeading) {
             const paragraphLine = replaceElementTagName(line, "p");
             paragraphLine.removeAttribute("data-md-heading-level");
             paragraphLine.removeAttribute("data-md-heading-active");
             paragraphLine.querySelector<HTMLElement>(":scope > .md-heading-marker")?.remove();
+            lineKindRetagged = true;
+          } else {
+            const normalizedHeading = replaceElementTagName(line, `h${resolvedHeading.level}`);
+            while (normalizedHeading.firstChild) {
+              normalizedHeading.removeChild(normalizedHeading.firstChild);
+            }
+            ensureEditableHeadingMarker(normalizedHeading, resolvedHeading.level);
+            if (resolvedHeading.content.length > 0) {
+              normalizedHeading.appendChild(
+                normalizedHeading.ownerDocument.createTextNode(resolvedHeading.content),
+              );
+            }
             lineKindRetagged = true;
           }
         }
