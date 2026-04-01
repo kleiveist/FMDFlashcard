@@ -16,6 +16,7 @@ import {
 } from "react";
 import { createRoot } from "react-dom/client";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { invoke } from "@tauri-apps/api/core";
 import { PreviewPanel, serializeMarkdownFromHtml } from "./PreviewPanel";
 import { type VaultFile, type VaultPngAsset } from "../lib/tree";
 
@@ -29,6 +30,7 @@ vi.mock("@tauri-apps/plugin-opener", () => ({
 }));
 
 const openUrlMock = vi.mocked(openUrl);
+const invokeMock = vi.mocked(invoke);
 const originalMatchMedia = window.matchMedia;
 const originalResizeObserver = window.ResizeObserver;
 
@@ -471,6 +473,7 @@ afterEach(() => {
   });
   resizeObserverInstances.length = 0;
   openUrlMock.mockClear();
+  invokeMock.mockReset();
 });
 
 describe("PreviewPanel edit-safe interactions", () => {
@@ -1452,6 +1455,75 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(hybridMath).toBeTruthy();
     expect(markdownMath?.querySelector(".katex")).toBeTruthy();
     expect(hybridMath?.querySelector(".katex")).toBeTruthy();
+  });
+
+  it("keeps database block yaml lists intact in markdown view normalization", async () => {
+    const markdown = [
+      "Einleitung",
+      "",
+      "::::",
+      "title: Database",
+      "source:",
+      "  type: current-folder",
+      "view:",
+      "  type: table",
+      "fields: []",
+      "columns:",
+      "  - Dateiname",
+      "  - Score",
+      "  - status",
+      "  - percent",
+      "filters:",
+      "  op: and",
+      "  rules: []",
+      "sort: []",
+      "options:",
+      "  editable: false",
+      "  showSearch: true",
+      "  showToolbar: false",
+      "::::",
+    ].join("\n");
+
+    invokeMock.mockImplementation(async (command, args) => {
+      if (command !== "read_text_file") {
+        throw new Error(`Unexpected command: ${command}`);
+      }
+      const path = (args as { path?: string } | undefined)?.path;
+      if (path !== "/vault/Note.md") {
+        throw new Error(`Unexpected path: ${path ?? "missing"}`);
+      }
+      return [
+        "---",
+        "Score: 5/10",
+        "status: 3 🟡",
+        "percent: 50%",
+        "---",
+        "Body",
+      ].join("\n");
+    });
+
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      vaultFiles: [baseFile],
+    });
+    cleanup = localCleanup;
+
+    await flushAsyncInteraction();
+    await flushAsyncInteraction();
+
+    const databaseBlock = container.querySelector(
+      ".preview-markdown-view-block-database-block .database-block",
+    );
+    expect(databaseBlock).toBeTruthy();
+    expect(databaseBlock?.querySelector(".database-block-toolbar")).toBeNull();
+
+    const headerLabels = Array.from(
+      databaseBlock?.querySelectorAll<HTMLElement>(".database-table-header-label") ?? [],
+    ).map((node) => (node.textContent ?? "").trim());
+    expect(headerLabels).toContain("Dateiname");
+    expect(headerLabels).toContain("Score");
+    expect(headerLabels).toContain("status");
+    expect(headerLabels).toContain("percent");
+    expect(headerLabels).not.toContain("Dateipfad");
   });
 
   it("renders chained cloze alternatives in markdown view as the first variant only", () => {

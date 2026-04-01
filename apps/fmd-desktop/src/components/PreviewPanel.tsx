@@ -2983,6 +2983,35 @@ const normalizeLooseNestedUnorderedListMarkersForRender = (markdown: string) => 
   });
 };
 
+const normalizeLooseNestedUnorderedListMarkersForMarkdownView = (markdown: string) => {
+  if (!markdown) {
+    return markdown;
+  }
+
+  const blocks = parseMarkdownBlocks(markdown);
+  if (blocks.length === 0 || !blocks.some((block) => block.kind === "database-block")) {
+    return normalizeLooseNestedUnorderedListMarkersForRender(markdown);
+  }
+
+  let cursor = 0;
+  const segments: string[] = [];
+  blocks.forEach((block) => {
+    if (block.startOffset > cursor) {
+      segments.push(markdown.slice(cursor, block.startOffset));
+    }
+    segments.push(
+      block.kind === "database-block"
+        ? block.raw
+        : normalizeLooseNestedUnorderedListMarkersForRender(block.raw),
+    );
+    cursor = block.endOffset;
+  });
+  if (cursor < markdown.length) {
+    segments.push(markdown.slice(cursor));
+  }
+  return segments.join("");
+};
+
 const orderedListLikeLinePattern = /^\s*\d+[.)]\s+/;
 const unorderedListLikeLinePattern = /^\s*[-+*]\s+/;
 const indentedContinuationLinePattern = /^\s{2,}\S/;
@@ -10141,7 +10170,7 @@ export const PreviewPanel = ({
     : normalizeFenceDisplayForRender(normalizedMarkdownSource);
   const listNormalizedMarkdownSource = isCodeMode || !isMarkdownMode
     ? fenceNormalizedMarkdownSource
-    : normalizeLooseNestedUnorderedListMarkersForRender(fenceNormalizedMarkdownSource);
+    : normalizeLooseNestedUnorderedListMarkersForMarkdownView(fenceNormalizedMarkdownSource);
   const quoteHashNormalizedMarkdownSource = isCodeMode || !isMarkdownMode
     ? listNormalizedMarkdownSource
     : normalizeQuotePrefixedHashLines(listNormalizedMarkdownSource);
