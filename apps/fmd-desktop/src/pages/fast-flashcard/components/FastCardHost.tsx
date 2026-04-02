@@ -21,7 +21,7 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import type { DragEvent } from "react";
+import type { DragEvent, ReactNode } from "react";
 import { ClozeCard } from "../../../components/flashcards/ClozeCard";
 import { CompositeCard } from "../../../components/flashcards/CompositeCard";
 import { FreeTextCard } from "../../../components/flashcards/FreeTextCard";
@@ -38,6 +38,7 @@ type FastCardHostProps = {
   currentEntry: { card: any; cardIndex: number } | null;
   isCurrentSubmitted: boolean;
   submissionLocked: boolean;
+  resultHeaderAction?: ReactNode;
   helpEnabled: boolean;
   vaultPath?: string | null;
   vaultPngAssets?: VaultPngAsset[] | null;
@@ -127,6 +128,7 @@ export const FastCardHost = ({
   currentEntry,
   isCurrentSubmitted,
   submissionLocked,
+  resultHeaderAction,
   helpEnabled,
   vaultPath,
   vaultPngAssets,
@@ -173,6 +175,7 @@ export const FastCardHost = ({
             vaultPngAssets={vaultPngAssets}
             helpText={currentEntry.card.helpText}
             helpEnabled={helpEnabled}
+            resultHeaderAction={resultHeaderAction}
             partStates={
               fastFlashcards.flashcardCompositeStates[currentEntry.cardIndex] ?? []
             }
@@ -199,6 +202,7 @@ export const FastCardHost = ({
             vaultPngAssets={vaultPngAssets}
             helpText={currentEntry.card.helpText}
             helpEnabled={helpEnabled}
+            resultHeaderAction={resultHeaderAction}
             responses={
               fastFlashcards.flashcardClozeResponses[currentEntry.cardIndex] ??
               EMPTY_CLOZE_RESPONSES
@@ -221,6 +225,7 @@ export const FastCardHost = ({
             vaultPngAssets={vaultPngAssets}
             helpText={currentEntry.card.helpText}
             helpEnabled={helpEnabled}
+            resultHeaderAction={resultHeaderAction}
             selections={
               fastFlashcards.flashcardTrueFalseSelections[currentEntry.cardIndex] ?? {}
             }
@@ -238,6 +243,7 @@ export const FastCardHost = ({
             vaultPngAssets={vaultPngAssets}
             helpText={currentEntry.card.helpText}
             helpEnabled={helpEnabled}
+            resultHeaderAction={resultHeaderAction}
             response={fastFlashcards.flashcardTextResponses[currentEntry.cardIndex] ?? ""}
             revealed={
               fastFlashcards.flashcardTextRevealed[currentEntry.cardIndex] ?? false
@@ -258,6 +264,7 @@ export const FastCardHost = ({
             vaultPngAssets={vaultPngAssets}
             helpText={currentEntry.card.helpText}
             helpEnabled={helpEnabled}
+            resultHeaderAction={resultHeaderAction}
             selectedKeys={
               fastFlashcards.flashcardSelections[currentEntry.cardIndex] ?? []
             }

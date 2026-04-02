@@ -20,7 +20,7 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { useId, useMemo } from "react";
+import { useId, useMemo, type ReactNode } from "react";
 import { type MultipleChoiceCard as MultipleChoiceCardType } from "../../lib/flashcards";
 import { renderMarkdownMathNode } from "../../lib/markdownMath";
 import { MarkdownBlocks } from "./MarkdownBlocks";
@@ -69,6 +69,7 @@ type MultipleChoiceCardProps = {
   showSubmit?: boolean;
   showResult?: boolean;
   revealCorrectness?: boolean;
+  resultHeaderAction?: ReactNode;
   helpText?: string[] | string;
   helpEnabled?: boolean;
   vaultPath?: string | null;
@@ -86,6 +87,7 @@ export const MultipleChoiceCard = ({
   showSubmit = true,
   showResult = true,
   revealCorrectness,
+  resultHeaderAction,
   helpText,
   helpEnabled,
   vaultPath,
@@ -223,6 +225,7 @@ export const MultipleChoiceCard = ({
               {resultLabel}
             </span>
           ) : null}
+          {submitted && showResult ? resultHeaderAction : null}
           <HelpButton
             helpText={helpText}
             enabled={helpEnabled}

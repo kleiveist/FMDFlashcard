@@ -20,8 +20,16 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { AnchoredPopup } from "../../components/AnchoredPopup";
+import { FlashcardAreaMenuTrigger } from "../../components/flashcards/FlashcardAreaMenu";
 import { SrCardHost } from "./components/SrCardHost";
 import { SrHeader } from "./components/SrHeader";
 import { SrStatsAndChart } from "./components/SrStatsAndChart";
@@ -33,6 +41,7 @@ import { useTableView } from "../../lib/useTableView";
 import { useAppState } from "../../components/AppStateProvider";
 import type { StudySectionKey } from "../../lib/studySections";
 import { requestSettingsFocus } from "../../features/settings/settingsDeepLink";
+import { useFlashcardAreaToggle } from "../../features/flashcards/useFlashcardAreaToggle";
 
 type SpacedRepetitionPageProps = {
   onSectionSelect?: (section: StudySectionKey) => void;
@@ -164,6 +173,39 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
         </button>
       </div>
     ) : null;
+  const srAreaSourceByIndex = useMemo(
+    () =>
+      Object.fromEntries(
+        filteredFlashcardEntries.map((entry) => [entry.cardIndex, entry.sourceMeta ?? null]),
+      ),
+    [filteredFlashcardEntries],
+  );
+  const srAreaToggle = useFlashcardAreaToggle({
+    sourceByIndex: srAreaSourceByIndex,
+    previewPath: preview.selectedFile?.path ?? null,
+    setPreview: preview.setPreview,
+    onRescanVault: actions.handleRescanVault,
+    rescanSource: "spaced-repetition-area-toggle",
+  });
+  const renderSrResultHeaderAction = useCallback(
+    (cardIndex: number, submitted: boolean) => {
+      if (!submitted) {
+        return null;
+      }
+      const toggleState = srAreaToggle.getToggleState(cardIndex);
+      return (
+        <FlashcardAreaMenuTrigger
+          enabled={toggleState.enabled}
+          pending={toggleState.pending}
+          disabledReason={toggleState.disabledReason}
+          error={toggleState.error}
+          notice={toggleState.notice}
+          onToggle={(nextEnabled) => srAreaToggle.toggleCardArea(cardIndex, nextEnabled)}
+        />
+      );
+    },
+    [srAreaToggle],
+  );
 
   useEffect(() => {
     if (isDesktopView && !isFocusMode) {
@@ -256,6 +298,7 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
           {isFlashcardsPanelEmpty ? null : (
             <SrCardHost
               filteredFlashcardEntries={filteredFlashcardEntries}
+              renderResultHeaderAction={renderSrResultHeaderAction}
               spacedRepetitionSubmissions={spacedRepetition.spacedRepetitionSubmissions}
               helpEnabled={spacedRepetitionHelpEnabled}
               vaultPath={vault.vaultPath}

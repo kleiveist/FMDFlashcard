@@ -151,8 +151,18 @@ export const useSrSessionViewModel = () => {
       spacedRepetition.spacedRepetitionFlashcards.map((card, cardIndex) => ({
         card,
         cardIndex,
+        sourceMeta:
+          spacedRepetition.spacedRepetitionCardSourceById[
+            spacedRepetition.spacedRepetitionCardIds[cardIndex] ??
+              getFlashcardId(card, cardIdContext)
+          ] ?? null,
       })),
-    [spacedRepetition.spacedRepetitionFlashcards],
+    [
+      cardIdContext,
+      spacedRepetition.spacedRepetitionCardIds,
+      spacedRepetition.spacedRepetitionCardSourceById,
+      spacedRepetition.spacedRepetitionFlashcards,
+    ],
   );
   const filteredFlashcardEntries = useMemo(() => {
     let entries = flashcardEntries;

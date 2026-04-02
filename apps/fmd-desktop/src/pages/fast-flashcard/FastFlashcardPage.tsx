@@ -22,6 +22,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnchoredPopup } from "../../components/AnchoredPopup";
+import { FlashcardAreaMenuTrigger } from "../../components/flashcards/FlashcardAreaMenu";
 import { FastCardHost } from "./components/FastCardHost";
 import { FastHeader } from "./components/FastHeader";
 import { FastStatsPanel } from "./components/FastStatsPanel";
@@ -30,6 +31,7 @@ import { StudyTimeBar } from "../../components/StudyTimeBar";
 import { NoteFilesPanel } from "../../components/NoteFilesPanel";
 import { FileIcon, SettingsIcon } from "../../components/icons";
 import { useFastSession } from "./hooks/useFastSession";
+import { useFlashcardAreaToggle } from "../../features/flashcards/useFlashcardAreaToggle";
 import {
   areClozeBlanksComplete,
   areTrueFalseItemsComplete,
@@ -121,6 +123,13 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
     topSessions,
     lastSessions,
   } = useFastSession();
+  const fastAreaToggle = useFlashcardAreaToggle({
+    sourceByIndex: fastFlashcards.flashcardSourceByIndex,
+    previewPath: preview.selectedFile?.path ?? null,
+    setPreview: preview.setPreview,
+    onRescanVault: actions.handleRescanVault,
+    rescanSource: "fast-flashcard-area-toggle",
+  });
   const [isViewMode, setIsViewMode] = useState(false);
   const isTableView = useTableView();
   const isDesktopView = !isTableView;
@@ -162,6 +171,23 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
         : null,
     };
   }, [platform, settings.keyboardShortcuts.bindings]);
+  const fastResultHeaderAction = useMemo(() => {
+    if (!currentEntry || !isCurrentSubmitted) {
+      return null;
+    }
+    const cardIndex = currentEntry.cardIndex;
+    const toggleState = fastAreaToggle.getToggleState(cardIndex);
+    return (
+      <FlashcardAreaMenuTrigger
+        enabled={toggleState.enabled}
+        pending={toggleState.pending}
+        disabledReason={toggleState.disabledReason}
+        error={toggleState.error}
+        notice={toggleState.notice}
+        onToggle={(nextEnabled) => fastAreaToggle.toggleCardArea(cardIndex, nextEnabled)}
+      />
+    );
+  }, [currentEntry, fastAreaToggle, isCurrentSubmitted]);
 
   useEffect(() => {
     document.body.classList.toggle("focus-mode", isViewMode);
@@ -423,6 +449,7 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
         currentEntry={currentEntry}
         isCurrentSubmitted={isCurrentSubmitted}
         submissionLocked={submissionLocked}
+        resultHeaderAction={fastResultHeaderAction}
         helpEnabled={settings.fastFlashcardHelpEnabled}
         vaultPath={vault.vaultPath}
         vaultPngAssets={vault.pngAssets}

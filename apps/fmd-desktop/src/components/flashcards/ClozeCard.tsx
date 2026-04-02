@@ -26,6 +26,7 @@ import {
   type FocusEvent as ReactFocusEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -68,6 +69,7 @@ type ClozeCardProps = {
   showResult?: boolean;
   revealCorrectness?: boolean;
   showSolution?: boolean;
+  resultHeaderAction?: ReactNode;
   helpText?: string[] | string;
   helpEnabled?: boolean;
   vaultPath?: string | null;
@@ -213,6 +215,7 @@ const areClozeCardPropsEqual = (previous: ClozeCardProps, next: ClozeCardProps) 
   previous.showResult === next.showResult &&
   previous.revealCorrectness === next.revealCorrectness &&
   previous.showSolution === next.showSolution &&
+  previous.resultHeaderAction === next.resultHeaderAction &&
   areHelpTextPropsEqual(previous.helpText, next.helpText) &&
   previous.helpEnabled === next.helpEnabled &&
   previous.vaultPath === next.vaultPath &&
@@ -235,6 +238,7 @@ const ClozeCardComponent = ({
   showResult = true,
   revealCorrectness,
   showSolution,
+  resultHeaderAction,
   helpText,
   helpEnabled,
   vaultPath,
@@ -1057,6 +1061,7 @@ const ClozeCardComponent = ({
               {resultLabel}
             </span>
           ) : null}
+          {submitted && showResult ? resultHeaderAction : null}
           <HelpButton
             helpText={helpText}
             enabled={helpEnabled}

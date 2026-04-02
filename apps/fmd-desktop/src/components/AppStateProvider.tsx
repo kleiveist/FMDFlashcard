@@ -393,7 +393,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   });
   const spacedRepetition = useSpacedRepetition({
     isFlashcardScanning: flashcards.isFlashcardScanning,
-    scanFlashcards: flashcards.scanFlashcards,
+    scanFlashcardEntries: flashcards.scanFlashcardEntries,
     setIsFlashcardScanning: flashcards.setIsFlashcardScanning,
     beforeUserAction: handleBeforeUserAction,
     userVaultProfilePath: userVault.activeProfilePath,

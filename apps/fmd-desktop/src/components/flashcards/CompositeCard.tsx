@@ -21,7 +21,7 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { useMemo, type DragEvent } from "react";
+import { useMemo, type DragEvent, type ReactNode } from "react";
 import { ClozeCard } from "./ClozeCard";
 import { FreeTextCard } from "./FreeTextCard";
 import { MultipleChoiceCard } from "./MultipleChoiceCard";
@@ -51,6 +51,7 @@ type CompositeCardProps = {
   revealCorrectness?: boolean;
   showSolution?: boolean;
   forceRevealText?: boolean;
+  resultHeaderAction?: ReactNode;
   helpText?: string[] | string;
   helpEnabled?: boolean;
   vaultPath?: string | null;
@@ -103,6 +104,7 @@ export const CompositeCard = ({
   revealCorrectness,
   showSolution,
   forceRevealText = false,
+  resultHeaderAction,
   helpText,
   helpEnabled,
   vaultPath,
@@ -337,6 +339,7 @@ export const CompositeCard = ({
           {showResultLabel ? (
             <span className={resultClass}>{resultLabel}</span>
           ) : null}
+          {showResultLabel ? resultHeaderAction : null}
           <HelpButton
             helpText={helpText}
             enabled={helpEnabled}

@@ -25,10 +25,11 @@
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
-  parseFlashcards,
+  parseFlashcardEntries,
   type Flashcard,
   type FlashcardDetectedType,
   type FlashcardPart,
+  type FlashcardSourceRange,
 } from "../../lib/flashcards";
 import {
   evaluateFlashcardResult,
@@ -56,6 +57,15 @@ export type FlashcardScope = "current" | "vault";
 export type FlashcardPageSize = 1 | 2 | 3 | 5;
 export type StatsResetMode = "scan" | "session";
 export type FlashcardFileEntry = VaultFile & { flashcardCount: number };
+export type FlashcardSourceMeta = {
+  sourcePath: string | null;
+  sourceRange: FlashcardSourceRange | null;
+  cardWrapper: boolean;
+};
+export type FlashcardScanEntry = {
+  card: Flashcard;
+  sourceMeta: FlashcardSourceMeta;
+};
 
 export const filterFlashcardFiles = <T extends { flashcardCount?: number | null }>(
   files: T[],
@@ -228,6 +238,9 @@ export const useFlashcards = ({
   settings,
 }: UseFlashcardsOptions) => {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
+  const [flashcardSourceByIndex, setFlashcardSourceByIndex] = useState<
+    Record<number, FlashcardSourceMeta>
+  >({});
   const {
     flashcardMode,
     flashcardOrder,
@@ -287,6 +300,7 @@ export const useFlashcards = ({
       flashcardTrueFalseSelections,
       flashcardClozeResponses,
       flashcardCompositeStates,
+      flashcardSourceByIndex,
       flashcardPage,
     }),
     [
@@ -300,6 +314,7 @@ export const useFlashcards = ({
       flashcardTextRevealed,
       flashcardTrueFalseSelections,
       flashcards,
+      flashcardSourceByIndex,
     ],
   );
 
@@ -314,6 +329,7 @@ export const useFlashcards = ({
       flashcardTrueFalseSelections: Record<number, Record<string, TrueFalseSelection>>;
       flashcardClozeResponses: Record<number, Record<string, string>>;
       flashcardCompositeStates: Record<number, CompositePartState[]>;
+      flashcardSourceByIndex: Record<number, FlashcardSourceMeta>;
       flashcardPage: number;
     }) => {
       setFlashcards(snapshot.flashcards);
@@ -325,6 +341,7 @@ export const useFlashcards = ({
       setFlashcardTrueFalseSelections(snapshot.flashcardTrueFalseSelections);
       setFlashcardClozeResponses(snapshot.flashcardClozeResponses);
       setFlashcardCompositeStates(snapshot.flashcardCompositeStates);
+      setFlashcardSourceByIndex(snapshot.flashcardSourceByIndex);
       setFlashcardPage(snapshot.flashcardPage);
     },
     [],
@@ -356,8 +373,9 @@ export const useFlashcards = ({
       orderedFlashcardIndices.map((cardIndex) => ({
         cardIndex,
         card: flashcards[cardIndex]!,
+        sourceMeta: flashcardSourceByIndex[cardIndex] ?? null,
       })),
-    [flashcards, orderedFlashcardIndices],
+    [flashcardSourceByIndex, flashcards, orderedFlashcardIndices],
   );
 
   const flashcardPageCount = useMemo(
@@ -378,9 +396,11 @@ export const useFlashcards = ({
       .map((cardIndex) => ({
         cardIndex,
         card: flashcards[cardIndex]!,
+        sourceMeta: flashcardSourceByIndex[cardIndex] ?? null,
       }));
   }, [
     flashcardPageStart,
+    flashcardSourceByIndex,
     flashcards,
     orderedFlashcardIndices,
     resolvedFlashcardPageSize,
@@ -454,6 +474,7 @@ export const useFlashcards = ({
 
   const resetFlashcards = useCallback((options?: { keepScanning?: boolean }) => {
     setFlashcards([]);
+    setFlashcardSourceByIndex({});
     setFlashcardSelections({});
     setFlashcardTextResponses({});
     setFlashcardTextRevealed({});
@@ -468,7 +489,7 @@ export const useFlashcards = ({
     }
   }, []);
 
-  const scanFlashcards = useCallback(
+  const scanFlashcardEntries = useCallback(
     async (options?: ScanOptions) => {
       const scope = options?.scopeOverride ?? flashcardScope;
       const shouldFallbackToVault =
@@ -493,21 +514,29 @@ export const useFlashcards = ({
             const contents = await invoke<string>("read_text_file", {
               path: file.path,
             });
-            const cards = parseFlashcards(contents);
-            return { file, cards };
+            const parsedEntries = parseFlashcardEntries(contents);
+            const entries: FlashcardScanEntry[] = parsedEntries.map((entry) => ({
+              card: entry.card,
+              sourceMeta: {
+                sourcePath: file.path,
+                sourceRange: entry.sourceRange,
+                cardWrapper: true,
+              },
+            }));
+            return { file, entries };
           }),
         );
 
-        const merged: Flashcard[] = [];
+        const merged: FlashcardScanEntry[] = [];
         const nextFiles: FlashcardFileEntry[] = [];
         let failures = 0;
         results.forEach((result, index) => {
           if (result.status === "fulfilled") {
-            merged.push(...result.value.cards);
-            if (shouldUpdateIndex && result.value.cards.length > 0) {
+            merged.push(...result.value.entries);
+            if (shouldUpdateIndex && result.value.entries.length > 0) {
               nextFiles.push({
                 ...result.value.file,
-                flashcardCount: result.value.cards.length,
+                flashcardCount: result.value.entries.length,
               });
             }
           } else {
@@ -534,13 +563,21 @@ export const useFlashcards = ({
         return merged;
       }
 
-      const cards = parseFlashcards(preview);
-      return cards;
+      const previewEntries = parseFlashcardEntries(preview);
+      return previewEntries.map((entry) => ({
+        card: entry.card,
+        sourceMeta: {
+          sourcePath: selectedFile?.path ?? null,
+          sourceRange: entry.sourceRange,
+          cardWrapper: true,
+        },
+      }));
     },
     [
       files,
       flashcardScope,
       preview,
+      parseFlashcardEntries,
       selectedFile,
       setFlashcardFiles,
       setFlashcardFilesError,
@@ -548,17 +585,26 @@ export const useFlashcards = ({
     ],
   );
 
+  const scanFlashcards = useCallback(
+    async (options?: ScanOptions) =>
+      (await scanFlashcardEntries(options)).map((entry) => entry.card),
+    [scanFlashcardEntries],
+  );
+
   const handleFlashcardScan = useCallback(async () => {
     setIsFlashcardScanning(true);
     resetFlashcards({ keepScanning: true });
 
     try {
-      const cards = await scanFlashcards({ updateIndex: true });
-      setFlashcards(cards);
+      const entries = await scanFlashcardEntries({ updateIndex: true });
+      setFlashcards(entries.map((entry) => entry.card));
+      setFlashcardSourceByIndex(
+        Object.fromEntries(entries.map((entry, index) => [index, entry.sourceMeta])),
+      );
     } finally {
       setIsFlashcardScanning(false);
     }
-  }, [resetFlashcards, scanFlashcards]);
+  }, [resetFlashcards, scanFlashcardEntries]);
 
   const handleFlashcardOptionSelect = useCallback(
     (cardIndex: number, keys: string[]) => {
@@ -881,6 +927,7 @@ export const useFlashcards = ({
     flashcardPageIndex,
     flashcardPageSize,
     flashcardPageStart,
+    flashcardSourceByIndex,
     flashcardScope,
     flashcardSelections,
     flashcardSelfGrades,
@@ -916,6 +963,7 @@ export const useFlashcards = ({
     isFlashcardScanning,
     resetFlashcards,
     restoreSnapshot,
+    scanFlashcardEntries,
     scanFlashcards,
     setFlashcardMode,
     setFlashcardOrder,

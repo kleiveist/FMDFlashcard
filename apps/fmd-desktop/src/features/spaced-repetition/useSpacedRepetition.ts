@@ -37,7 +37,12 @@ import {
   type FlashcardSelfGrade,
   type TrueFalseSelection,
 } from "../flashcards/logic";
-import type { FlashcardOrder, FlashcardScope } from "../flashcards/useFlashcards";
+import type {
+  FlashcardOrder,
+  FlashcardScope,
+  FlashcardScanEntry,
+  FlashcardSourceMeta,
+} from "../flashcards/useFlashcards";
 import type { Flashcard } from "../../lib/flashcards";
 import {
   buildSpacedRepetitionSession,
@@ -170,12 +175,12 @@ const resolveLegacySpacedRepetitionStorage = (
 
 type UseSpacedRepetitionOptions = {
   isFlashcardScanning: boolean;
-  scanFlashcards: (options?: {
+  scanFlashcardEntries: (options?: {
     scopeOverride?: FlashcardScope;
     allowVaultFallback?: boolean;
     orderOverride?: FlashcardOrder;
     updateIndex?: boolean;
-  }) => Promise<Flashcard[]>;
+  }) => Promise<FlashcardScanEntry[]>;
   setIsFlashcardScanning: (value: boolean) => void;
   beforeUserAction?: (reason: string) => Promise<boolean>;
   userVaultProfilePath: string | null;
@@ -200,7 +205,7 @@ type UseSpacedRepetitionOptions = {
 
 export const useSpacedRepetition = ({
   isFlashcardScanning,
-  scanFlashcards,
+  scanFlashcardEntries,
   setIsFlashcardScanning,
   beforeUserAction,
   userVaultProfilePath,
@@ -258,6 +263,9 @@ export const useSpacedRepetition = ({
     ? spacedRepetitionSessions[spacedRepetitionActiveUserId]
     : undefined;
   const spacedRepetitionFlashcards = spacedRepetitionSession?.flashcards ?? [];
+  const spacedRepetitionCardIds = spacedRepetitionSession?.cardIds ?? [];
+  const spacedRepetitionCardSourceById =
+    spacedRepetitionSession?.cardSourceById ?? {};
   const spacedRepetitionSelections = spacedRepetitionSession?.selections ?? {};
   const spacedRepetitionTextResponses =
     spacedRepetitionSession?.textResponses ?? {};
@@ -935,12 +943,18 @@ export const useSpacedRepetition = ({
       typeof options?.boxFilter === "number" ? options.boxFilter : null;
     setIsFlashcardScanning(true);
     try {
-      const cards = await scanFlashcards({
+      const scanEntries = await scanFlashcardEntries({
         scopeOverride: "vault",
         orderOverride: "in-order",
         updateIndex: true,
       });
+      const cards = scanEntries.map((entry) => entry.card);
       const cardIdContext = vaultId ? { vaultId } : undefined;
+      const sourceByCardId: Record<string, FlashcardSourceMeta> = {};
+      scanEntries.forEach((entry) => {
+        const cardId = getFlashcardId(entry.card, cardIdContext);
+        sourceByCardId[cardId] = entry.sourceMeta;
+      });
       const activeCardIds = buildActiveSpacedRepetitionCardIdSet(
         cards,
         cardIdContext,
@@ -994,13 +1008,37 @@ export const useSpacedRepetition = ({
                 ...nextSession,
                 flashcards: filteredEntries.map((entry) => entry.card),
                 cardIds: filteredEntries.map((entry) => entry.cardId),
+                cardSourceById: Object.fromEntries(
+                  filteredEntries.map((entry) => [
+                    entry.cardId,
+                    sourceByCardId[entry.cardId] ?? {
+                      sourcePath: null,
+                      sourceRange: null,
+                      cardWrapper: false,
+                    },
+                  ]),
+                ),
                 page: 0,
               };
             })();
+      const resolvedCardSourceById =
+        boxFilter === null
+          ? Object.fromEntries(
+              nextSession.cardIds.map((cardId) => [
+                cardId,
+                sourceByCardId[cardId] ?? {
+                  sourcePath: null,
+                  sourceRange: null,
+                  cardWrapper: false,
+                },
+              ]),
+            )
+          : filteredSession.cardSourceById;
       setSpacedRepetitionSessions((prev) => ({
         ...prev,
         [activeUserId]: {
           ...filteredSession,
+          cardSourceById: resolvedCardSourceById,
           completedPerDay: storedCompletedPerDay,
         },
       }));
@@ -1018,7 +1056,7 @@ export const useSpacedRepetition = ({
     }
   }, [
     isFlashcardScanning,
-    scanFlashcards,
+    scanFlashcardEntries,
     setIsFlashcardScanning,
     spacedRepetitionActiveUserId,
     spacedRepetitionBoxes,
@@ -1510,6 +1548,8 @@ export const useSpacedRepetition = ({
     spacedRepetitionPageSize,
     spacedRepetitionPageStart,
     spacedRepetitionCardStates,
+    spacedRepetitionCardIds,
+    spacedRepetitionCardSourceById,
     spacedRepetitionProgressStats,
     spacedRepetitionRepetitionStrength,
     spacedRepetitionSelectedUserId,

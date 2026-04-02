@@ -38,6 +38,10 @@ import { resolveExamTaskFrontmatterValue } from "../../../features/exam-points/f
 import type { MissingExamSetting } from "../../../features/settings/validateExamSettings";
 import { asErrorMessage } from "../../../lib/errors";
 import {
+  applyTaskAreaToggle,
+  resolveTaskMutationScope,
+} from "../../../lib/taskAreaToggle";
+import {
   buildExamRunId,
   calculateExamPercent,
   isExamPassed,
@@ -1860,15 +1864,12 @@ export const useExamSimulationViewModel = () => {
       if (matchingSourceFiles.length !== 1) {
         return "Task source file is not uniquely available in this exam session.";
       }
-      const range = task.sourceRange;
-      if (
-        !range ||
-        !Number.isFinite(range.startLine) ||
-        !Number.isFinite(range.endLine) ||
-        range.startLine < 0 ||
-        range.endLine < range.startLine
-      ) {
-        return "Task source range is unavailable.";
+      const scopeResolution = resolveTaskMutationScope({
+        sourcePath: task.sourceExamPath,
+        sourceRange: task.sourceRange,
+      });
+      if (!scopeResolution.scope) {
+        return scopeResolution.reason;
       }
       return "";
     },
@@ -1901,8 +1902,19 @@ export const useExamSimulationViewModel = () => {
         return;
       }
 
-      const sourcePath = targetTask.sourceExamPath;
-      const sourceRange = targetTask.sourceRange;
+      const scopeResolution = resolveTaskMutationScope({
+        sourcePath: targetTask.sourceExamPath,
+        sourceRange: targetTask.sourceRange,
+      });
+      if (!scopeResolution.scope) {
+        setResultTaskCardWrapErrorById((prev) => ({
+          ...prev,
+          [sessionTaskId]: scopeResolution.reason,
+        }));
+        return;
+      }
+      const mutationScope = scopeResolution.scope;
+      const sourcePath = mutationScope.sourcePath;
 
       setResultTaskCardWrapPendingById((prev) => ({ ...prev, [sessionTaskId]: true }));
       setResultTaskCardWrapErrorById((prev) => ({ ...prev, [sessionTaskId]: "" }));
@@ -1910,83 +1922,79 @@ export const useExamSimulationViewModel = () => {
 
       const applyToggle = async () => {
         try {
-          const contents = await invoke<string>("read_text_file", {
-            path: sourcePath,
-          });
-          let lines = contents.replace(/\r\n?/g, "\n").split("\n");
-
-          if (!nextWrapped && !findExamTaskWrapper(lines, sourceRange)) {
-            throw new Error(
-              "Could not identify an exact #card/#endcard wrapper for this task.",
-            );
-          }
-
-          const mutation = nextWrapped
-            ? wrapExamTask(lines, sourceRange)
-            : unwrapExamTask(lines, sourceRange);
-          lines = mutation.lines;
-          const nextContents = lines.join("\n");
-          const wroteFile = mutation.changed;
-
-          if (wroteFile) {
-            await invoke("write_text_file_atomic", {
-              path: sourcePath,
-              contents: nextContents,
-            });
-            if (preview.selectedFile?.path === sourcePath) {
-              preview.setPreview(nextContents);
-            }
-          }
-
-          const reparsed = parseExamTasks(nextContents);
-          setSelectedExamParses((prev) => {
-            const current = prev[sourcePath];
-            if (!current) {
-              return prev;
-            }
-            return {
-              ...prev,
-              [sourcePath]: {
-                ...current,
-                tasks: reparsed.tasks,
-                hasExamBlock: reparsed.hasExamBlock,
-              },
-            };
-          });
-
-          setActiveExamTasks((prev) => {
-            const parsedByIndex = new Map(
-              reparsed.tasks.map((task) => [task.index, task] as const),
-            );
-            let changed = false;
-            const next = prev.map((task) => {
-              if (task.sourceExamPath !== sourcePath) {
-                return task;
+          const toggleResult = await applyTaskAreaToggle({
+            scope: mutationScope,
+            nextEnabled: nextWrapped,
+            mutators: {
+              findWrapper: findExamTaskWrapper,
+              addWrapper: wrapExamTask,
+              removeWrapper: unwrapExamTask,
+            },
+            readSource: (path) =>
+              invoke<string>("read_text_file", {
+                path,
+              }),
+            writeSource: (path, contents) =>
+              invoke("write_text_file_atomic", {
+                path,
+                contents,
+              }),
+            onSourceUpdated: ({ contents, wroteFile }) => {
+              if (wroteFile && preview.selectedFile?.path === sourcePath) {
+                preview.setPreview(contents);
               }
-              const parsedTask = parsedByIndex.get(task.index);
-              if (!parsedTask) {
-                return task;
-              }
-              changed = true;
-              return {
-                ...parsedTask,
-                sessionTaskId: task.sessionTaskId,
-                sourceExamPath: task.sourceExamPath,
-                sourceTitle: task.sourceTitle,
-                originalTaskNumber: task.originalTaskNumber,
-                sourceTaskIndex: task.sourceTaskIndex,
-                sessionIndex: task.sessionIndex,
-              };
-            });
-            return changed ? next : prev;
-          });
 
-          const rescanOk = await actions.handleRescanVault("exam-results-card-toggle");
+              const reparsed = parseExamTasks(contents);
+              setSelectedExamParses((prev) => {
+                const current = prev[sourcePath];
+                if (!current) {
+                  return prev;
+                }
+                return {
+                  ...prev,
+                  [sourcePath]: {
+                    ...current,
+                    tasks: reparsed.tasks,
+                    hasExamBlock: reparsed.hasExamBlock,
+                  },
+                };
+              });
+
+              setActiveExamTasks((prev) => {
+                const parsedByIndex = new Map(
+                  reparsed.tasks.map((task) => [task.index, task] as const),
+                );
+                let changed = false;
+                const next = prev.map((task) => {
+                  if (task.sourceExamPath !== sourcePath) {
+                    return task;
+                  }
+                  const parsedTask = parsedByIndex.get(task.index);
+                  if (!parsedTask) {
+                    return task;
+                  }
+                  changed = true;
+                  return {
+                    ...parsedTask,
+                    sessionTaskId: task.sessionTaskId,
+                    sourceExamPath: task.sourceExamPath,
+                    sourceTitle: task.sourceTitle,
+                    originalTaskNumber: task.originalTaskNumber,
+                    sourceTaskIndex: task.sourceTaskIndex,
+                    sessionIndex: task.sessionIndex,
+                  };
+                });
+                return changed ? next : prev;
+              });
+            },
+            onRescanVault: () => actions.handleRescanVault("exam-results-card-toggle"),
+          });
+          const rescanOk = toggleResult.rescanOk;
           if (!rescanOk) {
             setResultTaskCardWrapNoticeById((prev) => ({
               ...prev,
               [sessionTaskId]:
-                wroteFile
+                toggleResult.wroteFile
                   ? "File saved, but vault refresh failed. Some views may update after a manual refresh."
                   : "Vault refresh failed. Some views may update after a manual refresh.",
             }));

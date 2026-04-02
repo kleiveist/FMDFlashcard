@@ -20,6 +20,7 @@ import { describe, expect, it } from "vitest";
 import {
   isDragAnswerMatch,
   isInputAnswerMatch,
+  parseFlashcardEntries,
   parseFlashcards,
   splitAnswerCard,
   type ClozeSegment,
@@ -211,6 +212,27 @@ b) Beta
     if (secondPart.kind === "multiple-choice") {
       expect(secondPart.question).toBe("Second question?");
     }
+  });
+
+  it("returns source ranges including wrapper lines", () => {
+    const markdown = [
+      "Intro",
+      "#card",
+      "First question?",
+      "Answer: one",
+      "#endcard",
+      "",
+      "#card",
+      "Second question?",
+      "Answer: two",
+      "#endcard",
+    ].join("\n");
+
+    const entries = parseFlashcardEntries(markdown);
+
+    expect(entries).toHaveLength(2);
+    expect(entries[0]?.sourceRange).toEqual({ startLine: 1, endLine: 4 });
+    expect(entries[1]?.sourceRange).toEqual({ startLine: 6, endLine: 9 });
   });
 
   it("parses multiple parts inside a single block", () => {

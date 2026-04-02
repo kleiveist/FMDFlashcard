@@ -20,6 +20,7 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
+import type { ReactNode } from "react";
 import type { FreeTextCard as FreeTextCardType } from "../../lib/flashcards";
 import { MarkdownBlocks } from "./MarkdownBlocks";
 import type { FlashcardSelfGrade } from "../../features/flashcards/logic";
@@ -36,6 +37,7 @@ type FreeTextCardProps = {
   selfGrade?: FlashcardSelfGrade;
   submissionLocked?: boolean;
   showActions?: boolean;
+  resultHeaderAction?: ReactNode;
   helpText?: string[] | string;
   helpEnabled?: boolean;
   vaultPath?: string | null;
@@ -54,6 +56,7 @@ export const FreeTextCard = ({
   selfGrade,
   submissionLocked = false,
   showActions = true,
+  resultHeaderAction,
   helpText,
   helpEnabled,
   vaultPath,
@@ -143,6 +146,7 @@ export const FreeTextCard = ({
               {resultLabel}
             </span>
           ) : null}
+          {submitted ? resultHeaderAction : null}
           <HelpButton
             helpText={helpText}
             enabled={helpEnabled}

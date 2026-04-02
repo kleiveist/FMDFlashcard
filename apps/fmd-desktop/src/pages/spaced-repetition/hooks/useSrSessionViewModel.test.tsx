@@ -68,8 +68,20 @@ const createMockAppState = ({
   autoTimeEnabled: boolean;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
   onSelfGrade: (cardIndex: number, grade: "correct" | "incorrect") => void;
-}) =>
-  ({
+}) => {
+  const cardIds = cards.map((_, index) => `card-${index}`);
+  const cardSourceById = Object.fromEntries(
+    cardIds.map((cardId) => [
+      cardId,
+      {
+        sourcePath: `/vault/card-${cardId}.md`,
+        sourceRange: null,
+        cardWrapper: true,
+      },
+    ]),
+  );
+
+  return ({
     flashcards: {
       handleClozeTokenDragStart: vi.fn(),
       handleClozeBlankDragOver: vi.fn(),
@@ -92,6 +104,8 @@ const createMockAppState = ({
       spacedRepetitionCorrectPercent: 0,
       spacedRepetitionBoxCounts: [0, 0, 0, 0, 0],
       spacedRepetitionFlashcards: cards,
+      spacedRepetitionCardIds: cardIds,
+      spacedRepetitionCardSourceById: cardSourceById,
       spacedRepetitionCardStates: {},
       spacedRepetitionBoxes: 5,
       spacedRepetitionPageSize: 5,
@@ -137,6 +151,7 @@ const createMockAppState = ({
       vaultPath: null,
     },
   }) as unknown as ReturnType<typeof useAppState>;
+};
 
 describe("useSrSessionViewModel auto time", () => {
   beforeEach(() => {

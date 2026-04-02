@@ -20,6 +20,7 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
+import type { ReactNode } from "react";
 import { type TrueFalseCard as TrueFalseCardType } from "../../lib/flashcards";
 import { renderMarkdownMathNode } from "../../lib/markdownMath";
 import { MarkdownBlocks } from "./MarkdownBlocks";
@@ -42,6 +43,7 @@ type TrueFalseCardProps = {
   showResult?: boolean;
   revealCorrectness?: boolean;
   showSolution?: boolean;
+  resultHeaderAction?: ReactNode;
   helpText?: string[] | string;
   helpEnabled?: boolean;
   vaultPath?: string | null;
@@ -60,6 +62,7 @@ export const TrueFalseCard = ({
   showResult = true,
   revealCorrectness,
   showSolution,
+  resultHeaderAction,
   helpText,
   helpEnabled,
   vaultPath,
@@ -170,6 +173,7 @@ export const TrueFalseCard = ({
               {resultLabel}
             </span>
           ) : null}
+          {submitted && showResult ? resultHeaderAction : null}
           <HelpButton
             helpText={helpText}
             enabled={helpEnabled}

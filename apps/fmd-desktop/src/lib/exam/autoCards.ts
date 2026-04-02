@@ -213,12 +213,25 @@ const analyzeTaskChunk = (chunkLines: string[]): TaskChunkAnalysis => {
     headerIndex !== null
       ? findPreviousNonEmptyIndex(chunkLines, headerIndex)
       : null;
-  const canonicalOpenerIndex =
+  const firstNonEmptyIndex =
+    chunkLines.length > 0
+      ? findNextNonEmptyInRange(chunkLines, 0, chunkLines.length - 1)
+      : null;
+  let canonicalOpenerIndex =
     directOpenerBeforeHeader !== null &&
     isWrapperStart(chunkLines[directOpenerBeforeHeader] ?? "") &&
     findPreviousNonEmptyIndex(chunkLines, directOpenerBeforeHeader) === null
       ? directOpenerBeforeHeader
       : null;
+  if (
+    canonicalOpenerIndex === null &&
+    headerIndex === null &&
+    firstNonEmptyIndex !== null &&
+    isWrapperStart(chunkLines[firstNonEmptyIndex] ?? "") &&
+    findPreviousNonEmptyIndex(chunkLines, firstNonEmptyIndex) === null
+  ) {
+    canonicalOpenerIndex = firstNonEmptyIndex;
+  }
 
   let permissiveOpenerIndex = canonicalOpenerIndex;
   if (
@@ -286,14 +299,14 @@ const dedupeWrapperStartMarkers = (
 const ensureCanonicalWrapperOpen = (chunkLines: string[]) => {
   const withoutStarts = removeAllWrapperStartMarkers(chunkLines);
   if (withoutStarts.length === 0) {
-    return withoutStarts;
+    return ["#card"];
   }
   const headerIndex = findTaskHeaderInRange(withoutStarts, 0, withoutStarts.length - 1);
-  if (headerIndex === null) {
-    return withoutStarts;
-  }
+  const fallbackInsertIndex =
+    findNextNonEmptyInRange(withoutStarts, 0, withoutStarts.length - 1) ?? 0;
+  const insertIndex = headerIndex ?? fallbackInsertIndex;
   const next = [...withoutStarts];
-  next.splice(headerIndex, 0, "#card");
+  next.splice(insertIndex, 0, "#card");
   return next;
 };
 
@@ -523,6 +536,12 @@ export const isExamTaskWrapped = findExamTaskWrapper;
 export const wrapExamTask = addExamTaskWrapper;
 
 export const unwrapExamTask = removeExamTaskWrapper;
+
+export const findTaskWrapper = findExamTaskWrapper;
+
+export const addTaskWrapper = addExamTaskWrapper;
+
+export const removeTaskWrapper = removeExamTaskWrapper;
 
 export const applyExamCardWrapperActions = (
   content: string,

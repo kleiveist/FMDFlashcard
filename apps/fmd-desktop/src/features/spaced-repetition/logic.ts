@@ -17,6 +17,7 @@
  */
 
 import type { Flashcard, FlashcardPart } from "../../lib/flashcards";
+import type { FlashcardSourceRange } from "../../lib/flashcards";
 import type {
   CompositePartState,
   FlashcardResult,
@@ -49,6 +50,7 @@ type SpacedRepetitionCardProgressInput = Partial<SpacedRepetitionCardProgress> &
 export type SpacedRepetitionSession = {
   flashcards: Flashcard[];
   cardIds: string[];
+  cardSourceById: Record<string, SpacedRepetitionCardSourceMeta>;
   selections: Record<number, string[]>;
   textResponses: Record<number, string>;
   textRevealed: Record<number, boolean>;
@@ -60,6 +62,12 @@ export type SpacedRepetitionSession = {
   page: number;
   cardProgressById: Record<string, SpacedRepetitionCardProgress>;
   completedPerDay: Record<string, number>;
+};
+
+export type SpacedRepetitionCardSourceMeta = {
+  sourcePath: string | null;
+  sourceRange: FlashcardSourceRange | null;
+  cardWrapper: boolean;
 };
 
 export type SpacedRepetitionUser = {
@@ -221,6 +229,7 @@ const getFlashcardLegacyId = (card: Flashcard) =>
 export const createEmptySpacedRepetitionSession = (): SpacedRepetitionSession => ({
   flashcards: [],
   cardIds: [],
+  cardSourceById: {},
   selections: {},
   textResponses: {},
   textRevealed: {},

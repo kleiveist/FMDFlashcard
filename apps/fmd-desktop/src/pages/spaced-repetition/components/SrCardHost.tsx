@@ -21,7 +21,7 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import type { DragEvent } from "react";
+import type { DragEvent, ReactNode } from "react";
 import { ClozeCard } from "../../../components/flashcards/ClozeCard";
 import { CompositeCard } from "../../../components/flashcards/CompositeCard";
 import { FreeTextCard } from "../../../components/flashcards/FreeTextCard";
@@ -34,7 +34,8 @@ import type { VaultPngAsset } from "../../../lib/tree";
 const EMPTY_CLOZE_RESPONSES: Record<string, string> = {};
 
 type SrCardHostProps = {
-  filteredFlashcardEntries: { card: any; cardIndex: number }[];
+  filteredFlashcardEntries: { card: any; cardIndex: number; sourceMeta?: unknown }[];
+  renderResultHeaderAction?: (cardIndex: number, submitted: boolean) => ReactNode;
   spacedRepetitionSubmissions: Record<number, boolean>;
   helpEnabled: boolean;
   vaultPath?: string | null;
@@ -121,6 +122,7 @@ type SrCardHostProps = {
 
 export const SrCardHost = ({
   filteredFlashcardEntries,
+  renderResultHeaderAction,
   spacedRepetitionSubmissions,
   helpEnabled,
   vaultPath,
@@ -162,6 +164,7 @@ export const SrCardHost = ({
     <div className="flashcard-list">
       {filteredFlashcardEntries.map(({ card, cardIndex }) => {
         const submitted = !!spacedRepetitionSubmissions[cardIndex];
+        const resultHeaderAction = renderResultHeaderAction?.(cardIndex, submitted) ?? null;
 
         if (card.kind === "composite") {
           return (
@@ -174,6 +177,7 @@ export const SrCardHost = ({
               vaultPngAssets={vaultPngAssets}
               helpText={card.helpText}
               helpEnabled={helpEnabled}
+              resultHeaderAction={resultHeaderAction}
               partStates={spacedRepetitionCompositeStates?.[cardIndex] ?? []}
               onOptionSelect={handleCompositeOptionSelect}
               onTrueFalseSelect={handleCompositeTrueFalseSelect}
@@ -201,6 +205,7 @@ export const SrCardHost = ({
               vaultPngAssets={vaultPngAssets}
               helpText={card.helpText}
               helpEnabled={helpEnabled}
+              resultHeaderAction={resultHeaderAction}
               responses={
                 spacedRepetitionClozeResponses[cardIndex] ?? EMPTY_CLOZE_RESPONSES
               }
@@ -225,6 +230,7 @@ export const SrCardHost = ({
               vaultPngAssets={vaultPngAssets}
               helpText={card.helpText}
               helpEnabled={helpEnabled}
+              resultHeaderAction={resultHeaderAction}
               selections={spacedRepetitionTrueFalseSelections[cardIndex] ?? {}}
               onSelect={handleTrueFalseSelect}
               onSubmit={handleSpacedRepetitionSubmit}
@@ -243,6 +249,7 @@ export const SrCardHost = ({
               vaultPngAssets={vaultPngAssets}
               helpText={card.helpText}
               helpEnabled={helpEnabled}
+              resultHeaderAction={resultHeaderAction}
               response={spacedRepetitionTextResponses[cardIndex] ?? ""}
               revealed={spacedRepetitionTextRevealed[cardIndex] ?? false}
               selfGrade={spacedRepetitionSelfGrades[cardIndex]}
@@ -263,6 +270,7 @@ export const SrCardHost = ({
             vaultPngAssets={vaultPngAssets}
             helpText={card.helpText}
             helpEnabled={helpEnabled}
+            resultHeaderAction={resultHeaderAction}
             selectedKeys={spacedRepetitionSelections[cardIndex] ?? []}
             onSelect={handleOptionSelect}
             onSubmit={handleSpacedRepetitionSubmit}

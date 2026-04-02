@@ -33,6 +33,7 @@ import { AnchoredPopup } from "../components/AnchoredPopup";
 import { CollapsiblePanelHeader } from "../components/CollapsiblePanelHeader";
 import { ClozeCard } from "../components/flashcards/ClozeCard";
 import { CompositeCard } from "../components/flashcards/CompositeCard";
+import { FlashcardAreaMenuTrigger } from "../components/flashcards/FlashcardAreaMenu";
 import { FreeTextCard } from "../components/flashcards/FreeTextCard";
 import { MultipleChoiceCard } from "../components/flashcards/MultipleChoiceCard";
 import { TrueFalseCard } from "../components/flashcards/TrueFalseCard";
@@ -45,6 +46,7 @@ import {
   areTrueFalseItemsComplete,
   isFlashcardPartComplete,
 } from "../features/flashcards/logic";
+import { useFlashcardAreaToggle } from "../features/flashcards/useFlashcardAreaToggle";
 import { FLASHCARD_PAGE_SIZES } from "../features/flashcards/useFlashcards";
 import { requestSettingsFocus } from "../features/settings/settingsDeepLink";
 import {
@@ -93,6 +95,13 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
   const hasScannedCards = flashcards.flashcards.length > 0;
   const hasFilteredCards = flashcards.filteredFlashcardCount > 0;
   const helpEnabled = settings.flashcardHelpEnabled;
+  const flashcardAreaToggle = useFlashcardAreaToggle({
+    sourceByIndex: flashcards.flashcardSourceByIndex,
+    previewPath: preview.selectedFile?.path ?? null,
+    setPreview: preview.setPreview,
+    onRescanVault: actions.handleRescanVault,
+    rescanSource: "flashcard-area-toggle",
+  });
   const platform = getShortcutPlatform();
   const shortcutBindings = useMemo(() => {
     const bindings = settings.keyboardShortcuts.bindings;
@@ -704,6 +713,19 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
               const cardIndex = entry.cardIndex;
               const card = entry.card;
               const submitted = !!flashcards.flashcardSubmissions[cardIndex];
+              const areaToggleState = flashcardAreaToggle.getToggleState(cardIndex);
+              const resultHeaderAction = submitted ? (
+                <FlashcardAreaMenuTrigger
+                  enabled={areaToggleState.enabled}
+                  pending={areaToggleState.pending}
+                  disabledReason={areaToggleState.disabledReason}
+                  error={areaToggleState.error}
+                  notice={areaToggleState.notice}
+                  onToggle={(nextEnabled) =>
+                    flashcardAreaToggle.toggleCardArea(cardIndex, nextEnabled)
+                  }
+                />
+              ) : null;
 
               if (card.kind === "composite") {
                 return (
@@ -716,6 +738,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
                     vaultPngAssets={vault.pngAssets}
                     helpText={card.helpText}
                     helpEnabled={helpEnabled}
+                    resultHeaderAction={resultHeaderAction}
                     partStates={flashcards.flashcardCompositeStates[cardIndex] ?? []}
                     onOptionSelect={handleCompositeOptionSelect}
                     onTrueFalseSelect={handleCompositeTrueFalseSelect}
@@ -743,6 +766,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
                     vaultPngAssets={vault.pngAssets}
                     helpText={card.helpText}
                     helpEnabled={helpEnabled}
+                    resultHeaderAction={resultHeaderAction}
                     responses={
                       flashcards.flashcardClozeResponses[cardIndex] ??
                       EMPTY_CLOZE_RESPONSES
@@ -768,6 +792,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
                     vaultPngAssets={vault.pngAssets}
                     helpText={card.helpText}
                     helpEnabled={helpEnabled}
+                    resultHeaderAction={resultHeaderAction}
                     selections={flashcards.flashcardTrueFalseSelections[cardIndex] ?? {}}
                     onSelect={handleTrueFalseSelect}
                     onSubmit={flashcards.handleFlashcardSubmit}
@@ -786,6 +811,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
                     vaultPngAssets={vault.pngAssets}
                     helpText={card.helpText}
                     helpEnabled={helpEnabled}
+                    resultHeaderAction={resultHeaderAction}
                     response={flashcards.flashcardTextResponses[cardIndex] ?? ""}
                     revealed={flashcards.flashcardTextRevealed[cardIndex] ?? false}
                     selfGrade={flashcards.flashcardSelfGrades[cardIndex]}
@@ -806,6 +832,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
                   vaultPngAssets={vault.pngAssets}
                   helpText={card.helpText}
                   helpEnabled={helpEnabled}
+                  resultHeaderAction={resultHeaderAction}
                   selectedKeys={flashcards.flashcardSelections[cardIndex] ?? []}
                   onSelect={handleOptionSelect}
                   onSubmit={flashcards.handleFlashcardSubmit}

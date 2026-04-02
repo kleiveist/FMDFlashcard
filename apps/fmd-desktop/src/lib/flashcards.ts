@@ -136,6 +136,16 @@ export type FlashcardMetadata = {
 
 export type Flashcard = (FlashcardPart | CompositeFlashcard) & FlashcardMetadata;
 
+export type FlashcardSourceRange = {
+  startLine: number;
+  endLine: number;
+};
+
+export type ParsedFlashcardEntry = {
+  card: Flashcard;
+  sourceRange: FlashcardSourceRange;
+};
+
 export type AnswerMatchMode = "anywhere" | "line-start";
 
 export type SplitAnswerCardOptions = {
@@ -1233,13 +1243,13 @@ const parseCardLines = (
   return null;
 };
 
-export const parseFlashcards = (
+export const parseFlashcardEntries = (
   markdown: string,
   options?: ParseFlashcardsOptions,
-): Flashcard[] => {
+): ParsedFlashcardEntry[] => {
   const answerMatch = resolveAnswerMatch(options);
   const lines = maskDatabaseBlockLines(normalizeLines(markdown));
-  const cards: Flashcard[] = [];
+  const entries: ParsedFlashcardEntry[] = [];
   let index = 0;
 
   while (index < lines.length) {
@@ -1248,6 +1258,7 @@ export const parseFlashcards = (
       index += 1;
       continue;
     }
+    const cardStartLine = index;
 
     const cardLines: string[] = [];
     let foundEnd = false;
@@ -1268,6 +1279,7 @@ export const parseFlashcards = (
     if (!foundEnd) {
       continue;
     }
+    const cardEndLine = Math.max(cardStartLine, index - 1);
 
     const { helpText, contentLines } = extractAuxiliaryBlocksFromLines(cardLines);
     const blocks = splitCardLines(contentLines, answerMatch);
@@ -1294,15 +1306,27 @@ export const parseFlashcards = (
     const isMixed = detectedTypes.length >= 2;
     const primaryType = detectedTypes.length === 1 ? detectedTypes[0] : undefined;
 
-    cards.push({
-      kind: "composite",
-      parts,
-      primaryType,
-      detectedTypes,
-      isMixed,
-      helpText: helpText.length > 0 ? helpText : undefined,
+    entries.push({
+      card: {
+        kind: "composite",
+        parts,
+        primaryType,
+        detectedTypes,
+        isMixed,
+        helpText: helpText.length > 0 ? helpText : undefined,
+      },
+      sourceRange: {
+        startLine: cardStartLine,
+        endLine: cardEndLine,
+      },
     });
   }
 
-  return cards;
+  return entries;
 };
+
+export const parseFlashcards = (
+  markdown: string,
+  options?: ParseFlashcardsOptions,
+): Flashcard[] =>
+  parseFlashcardEntries(markdown, options).map((entry) => entry.card);
