@@ -107,13 +107,26 @@ vi.mock("./components/StudySectionNav", () => ({
     onSectionSelect: (tab: string) => void;
   }) =>
     React.createElement(
-      "button",
-      {
-        type: "button",
-        "data-testid": "study-nav-switch-exam",
-        onClick: () => onSectionSelect("exam"),
-      },
-      "StudyNav: exam",
+      React.Fragment,
+      null,
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          "data-testid": "study-nav-switch-exam",
+          onClick: () => onSectionSelect("exam"),
+        },
+        "StudyNav: exam",
+      ),
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          "data-testid": "study-nav-switch-flashcard",
+          onClick: () => onSectionSelect("flashcard"),
+        },
+        "StudyNav: flashcard",
+      ),
     ),
 }));
 
@@ -187,15 +200,18 @@ vi.mock("./pages/ExamSimulationPage", () => ({
 }));
 
 vi.mock("./pages/FlashcardPage", () => ({
-  FlashcardPage: () => React.createElement("div", null, "Flashcard"),
+  FlashcardPage: () =>
+    React.createElement("div", { "data-testid": "mock-flashcard-page" }, "Flashcard"),
 }));
 
 vi.mock("./pages/FastFlashcardPage", () => ({
-  FastFlashcardPage: () => React.createElement("div", null, "Fast"),
+  FastFlashcardPage: () =>
+    React.createElement("div", { "data-testid": "mock-fast-flashcard-page" }, "Fast"),
 }));
 
 vi.mock("./pages/SpacedRepetitionPage", () => ({
-  SpacedRepetitionPage: () => React.createElement("div", null, "SR"),
+  SpacedRepetitionPage: () =>
+    React.createElement("div", { "data-testid": "mock-sr-page" }, "SR"),
 }));
 
 vi.mock("./pages/HelpPage", () => ({
@@ -281,6 +297,10 @@ const createMockAppState = () => ({
     handlePickVault: vi.fn(async () => false),
     handleSwitchVault: vi.fn(async () => false),
     handleRescanVault: vi.fn(async () => false),
+    stageTaskAreaToggle: vi.fn(),
+    getStagedTaskAreaToggle: vi.fn(() => null),
+    getTaskAreaToggleNotice: vi.fn(() => ""),
+    flushPendingTaskAreaToggles: vi.fn(async () => true),
     handleSelectFile: vi.fn(),
   },
   flashcardNoteFiles: [],
@@ -389,6 +409,28 @@ describe("App dashboard leave guard integration", () => {
     expect(dashboardGuard.requests).toBe(1);
     expect(container.querySelector('[data-testid="mock-exam-simulation-page"]')).toBeTruthy();
 
+    cleanup();
+  });
+
+  it("flushes pending task-area toggles before leaving flashcard tab", async () => {
+    dashboardGuard.canLeave = true;
+    const { container, cleanup } = renderApp();
+    const flushSpy = (
+      appStateHolder.value as {
+        actions: {
+          flushPendingTaskAreaToggles: ReturnType<typeof vi.fn>;
+        };
+      }
+    ).actions.flushPendingTaskAreaToggles;
+
+    await clickTestId(container, "study-nav-switch-flashcard");
+    expect(container.querySelector('[data-testid="mock-flashcard-page"]')).toBeTruthy();
+
+    await clickTestId(container, "study-nav-switch-exam");
+
+    expect(flushSpy).toHaveBeenCalledTimes(1);
+    expect(flushSpy).toHaveBeenCalledWith("tab-change:flashcard->exam");
+    expect(container.querySelector('[data-testid="mock-exam-simulation-page"]')).toBeTruthy();
     cleanup();
   });
 

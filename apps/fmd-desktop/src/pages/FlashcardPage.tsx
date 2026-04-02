@@ -97,10 +97,9 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
   const helpEnabled = settings.flashcardHelpEnabled;
   const flashcardAreaToggle = useFlashcardAreaToggle({
     sourceByIndex: flashcards.flashcardSourceByIndex,
-    previewPath: preview.selectedFile?.path ?? null,
-    setPreview: preview.setPreview,
-    onRescanVault: actions.handleRescanVault,
-    rescanSource: "flashcard-area-toggle",
+    stageTaskAreaToggle: actions.stageTaskAreaToggle,
+    getStagedTaskAreaToggle: actions.getStagedTaskAreaToggle,
+    getTaskAreaToggleNotice: actions.getTaskAreaToggleNotice,
   });
   const platform = getShortcutPlatform();
   const shortcutBindings = useMemo(() => {

@@ -35,6 +35,11 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { isValidHex, normalizeHex } from "../lib/color";
 import { asErrorMessage } from "../lib/errors";
+import {
+  applyTaskAreaToggle,
+  buildTaskMutationScopeKey,
+  type TaskMutationScope,
+} from "../lib/taskAreaToggle";
 import { isHiddenPath, normalizeRelativePath, normalizeVaultPath } from "../lib/path";
 import { type DesignMode, type ThemeMode } from "../lib/theme";
 import { type VaultFile } from "../lib/tree";
@@ -69,6 +74,11 @@ import {
   type ExamSelectionPlacementTarget,
   type ExamSelectionRows,
 } from "../lib/examSelectionRows";
+import {
+  addTaskWrapper,
+  findTaskWrapper,
+  removeTaskWrapper,
+} from "../lib/exam/autoCards";
 import { LargeVaultWarningModal } from "./LargeVaultWarningModal";
 import { VaultManagerModal } from "./VaultManagerModal";
 import { DEFAULT_HELP_TOPIC_ID } from "../pages/help/helpContent";
@@ -95,6 +105,10 @@ type AppActions = {
   handleAccentInputChange: (value: string) => void;
   handleCopyAccent: () => Promise<void>;
   handleCopyVaultPath: () => Promise<void>;
+  stageTaskAreaToggle: (scope: TaskMutationScope, nextEnabled: boolean) => void;
+  getStagedTaskAreaToggle: (scope: TaskMutationScope) => boolean | null;
+  getTaskAreaToggleNotice: (scope: TaskMutationScope) => string;
+  flushPendingTaskAreaToggles: (trigger?: string) => Promise<boolean>;
   handleRescanVault: (source?: string) => Promise<boolean>;
   handleResetIndex: () => void;
   handleMaxFilesPerScanChange: (value: string) => void;
@@ -156,6 +170,12 @@ const parseVaultWarningThreshold = (value: string) => {
 
 const MAX_RECENT_VAULTS = 10;
 
+type StagedTaskAreaToggle = {
+  scope: TaskMutationScope;
+  nextEnabled: boolean;
+  stagedAt: number;
+};
+
 type VaultPathInfo = {
   exists: boolean;
   isDir: boolean;
@@ -172,6 +192,21 @@ type VaultRecheckResult = {
 
 const describeMissingVaultPath = (info: VaultPathInfo) =>
   info.exists ? "Pfad ist kein Ordner." : "Pfad existiert nicht.";
+
+const removeRecordKeys = <T,>(map: Record<string, T>, keys: string[]) => {
+  if (keys.length === 0) {
+    return map;
+  }
+  let changed = false;
+  const next = { ...map };
+  keys.forEach((key) => {
+    if (key in next) {
+      delete next[key];
+      changed = true;
+    }
+  });
+  return changed ? next : map;
+};
 
 export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const settings = useAppSettings();
@@ -190,6 +225,12 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const [selectedExamFileRows, setSelectedExamFileRows] = useState<ExamSelectionRows>(
     [],
   );
+  const [stagedTaskAreaTogglesByKey, setStagedTaskAreaTogglesByKey] = useState<
+    Record<string, StagedTaskAreaToggle>
+  >({});
+  const [taskAreaToggleNoticeByKey, setTaskAreaToggleNoticeByKey] = useState<
+    Record<string, string>
+  >({});
   const {
     activeNotePath,
     accentColor,
@@ -1189,7 +1230,126 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [vaultPath]);
 
+  const stageTaskAreaToggle = useCallback(
+    (scope: TaskMutationScope, nextEnabled: boolean) => {
+      const key = buildTaskMutationScopeKey(scope);
+      setStagedTaskAreaTogglesByKey((prev) => ({
+        ...prev,
+        [key]: {
+          scope,
+          nextEnabled,
+          stagedAt: Date.now(),
+        },
+      }));
+      setTaskAreaToggleNoticeByKey((prev) => removeRecordKeys(prev, [key]));
+    },
+    [],
+  );
+
+  const getStagedTaskAreaToggle = useCallback(
+    (scope: TaskMutationScope) => {
+      const key = buildTaskMutationScopeKey(scope);
+      return stagedTaskAreaTogglesByKey[key]?.nextEnabled ?? null;
+    },
+    [stagedTaskAreaTogglesByKey],
+  );
+
+  const getTaskAreaToggleNotice = useCallback(
+    (scope: TaskMutationScope) => {
+      const key = buildTaskMutationScopeKey(scope);
+      return taskAreaToggleNoticeByKey[key] ?? "";
+    },
+    [taskAreaToggleNoticeByKey],
+  );
+
+  const flushPendingTaskAreaToggles = useCallback(
+    async (trigger = "unknown") => {
+      const pendingEntries = Object.entries(stagedTaskAreaTogglesByKey).sort(
+        (left, right) => left[1].stagedAt - right[1].stagedAt,
+      );
+      if (pendingEntries.length === 0) {
+        return true;
+      }
+      if (import.meta.env.DEV) {
+        console.info("[task-area-toggle] Flushing staged task-area toggles", {
+          trigger,
+          count: pendingEntries.length,
+        });
+      }
+
+      const processedKeys: string[] = [];
+      const failedNoticeByKey: Record<string, string> = {};
+      let flushOk = true;
+
+      for (const [key, entry] of pendingEntries) {
+        try {
+          await applyTaskAreaToggle({
+            scope: entry.scope,
+            nextEnabled: entry.nextEnabled,
+            removeMissingWrapperPolicy: "noop",
+            mutators: {
+              findWrapper: findTaskWrapper,
+              addWrapper: addTaskWrapper,
+              removeWrapper: removeTaskWrapper,
+            },
+            readSource: (path) => invoke<string>("read_text_file", { path }),
+            writeSource: (path, contents) =>
+              invoke("write_text_file_atomic", {
+                path,
+                contents,
+              }),
+            onSourceUpdated: ({ scope, contents, wroteFile }) => {
+              if (wroteFile && preview.selectedFile?.path === scope.sourcePath) {
+                preview.setPreview(contents);
+              }
+            },
+          });
+        } catch (error) {
+          flushOk = false;
+          failedNoticeByKey[key] =
+            "Card-area update could not be saved. Local switch state was reverted.";
+          if (import.meta.env.DEV) {
+            console.warn(
+              "[task-area-toggle] Failed to flush staged task-area toggle",
+              {
+                trigger,
+                key,
+                error: asErrorMessage(error, "Unknown error"),
+              },
+            );
+          }
+        } finally {
+          processedKeys.push(key);
+        }
+      }
+
+      if (processedKeys.length > 0) {
+        setStagedTaskAreaTogglesByKey((prev) => removeRecordKeys(prev, processedKeys));
+        setTaskAreaToggleNoticeByKey((prev) => {
+          const cleared = removeRecordKeys(prev, processedKeys);
+          return Object.keys(failedNoticeByKey).length > 0
+            ? { ...cleared, ...failedNoticeByKey }
+            : cleared;
+        });
+      }
+
+      return flushOk;
+    },
+    [preview, stagedTaskAreaTogglesByKey],
+  );
+
+  const handleFlashcardScanWithPendingFlush = useCallback(async () => {
+    await flushPendingTaskAreaToggles("flashcard-scan");
+    await flashcards.handleFlashcardScan();
+  }, [flashcards, flushPendingTaskAreaToggles]);
+
+  const handleFastFlashcardScanWithPendingFlush = useCallback(async () => {
+    await flushPendingTaskAreaToggles("fast-flashcard-scan");
+    await fastFlashcards.handleFlashcardScan();
+  }, [fastFlashcards, flushPendingTaskAreaToggles]);
+
   const handleRescanVault = useCallback(async (source = "unknown") => {
+    await flushPendingTaskAreaToggles(`vault-rescan:${source}`);
     if (!vaultPath) {
       setListError("Kein aktiver Vault zum Aktualisieren.");
       return false;
@@ -1249,6 +1409,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setListError,
     updateRecentVaultEntry,
     vaultPath,
+    flushPendingTaskAreaToggles,
   ]);
 
   const handleResetIndex = useCallback(() => {
@@ -1267,6 +1428,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setListState("idle");
     setLastRefreshAt(null);
     setVaultPath(null);
+    setStagedTaskAreaTogglesByKey({});
+    setTaskAreaToggleNoticeByKey({});
     void persistSettings({ vaultPath: null, activeNotePath: null });
   }, [
     persistSettings,
@@ -1279,6 +1442,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setSelectedExamFileRows,
     setListError,
     setListState,
+    setStagedTaskAreaTogglesByKey,
+    setTaskAreaToggleNoticeByKey,
     setPngAssets,
     setVaultPath,
     vaultPath,
@@ -1322,12 +1487,22 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       handleAccentInputChange,
       handleCopyAccent,
       handleCopyVaultPath,
+      stageTaskAreaToggle,
+      getStagedTaskAreaToggle,
+      getTaskAreaToggleNotice,
+      flushPendingTaskAreaToggles,
       handleRescanVault,
       handleResetIndex,
       handleMaxFilesPerScanChange,
     },
-    flashcards,
-    fastFlashcards,
+    flashcards: {
+      ...flashcards,
+      handleFlashcardScan: handleFlashcardScanWithPendingFlush,
+    },
+    fastFlashcards: {
+      ...fastFlashcards,
+      handleFlashcardScan: handleFastFlashcardScanWithPendingFlush,
+    },
     examFiles,
     examFilesState,
     examFilesError,

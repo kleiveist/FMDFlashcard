@@ -65,6 +65,8 @@ import type { StudySectionKey } from "./lib/studySections";
 import { SMART_QUERY } from "./lib/breakpoints";
 
 type WalletGateId = "custom-path" | "profile" | "sync-provider";
+const isTaskAreaTab = (tab: StudySectionKey) =>
+  tab === "flashcard" || tab === "fast-flashcard" || tab === "spaced-repetition";
 
 const AppContent = () => {
   const {
@@ -221,11 +223,16 @@ const AppContent = () => {
           return false;
         }
       }
+      if (tab !== activeTab && isTaskAreaTab(activeTab)) {
+        await actions.flushPendingTaskAreaToggles(
+          `tab-change:${activeTab}->${tab}`,
+        );
+      }
       setActiveTab(tab);
       setIsMobileNavOpen(false);
       return true;
     },
-    [activeTab, setActiveTab, setIsMobileNavOpen],
+    [actions, activeTab, setActiveTab, setIsMobileNavOpen],
   );
   const handleStudySectionSelect = useCallback(
     (tab: StudySectionKey) => {

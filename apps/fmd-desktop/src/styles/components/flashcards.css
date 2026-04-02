@@ -292,8 +292,8 @@
 
 .flashcard-area-dropdown-popup {
   z-index: 86;
-  min-width: min(240px, calc(100vw - 24px));
-  max-width: min(280px, calc(100vw - 24px));
+  min-width: min(196px, calc(100vw - 24px));
+  max-width: min(236px, calc(100vw - 24px));
 }
 
 .flashcard-area-dropdown-popup .anchored-popup-close {

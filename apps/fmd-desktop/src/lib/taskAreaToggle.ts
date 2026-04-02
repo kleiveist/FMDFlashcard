@@ -33,6 +33,7 @@ export type TaskAreaToggleParams = {
   scope: TaskMutationScope;
   nextEnabled: boolean;
   mutators: TaskAreaMutators;
+  removeMissingWrapperPolicy?: "error" | "noop";
   readSource: (path: string) => Promise<string>;
   writeSource: (path: string, contents: string) => Promise<void>;
   onSourceUpdated?: (params: {
@@ -48,6 +49,9 @@ export type TaskAreaToggleResult = {
   wroteFile: boolean;
   rescanOk: boolean;
 };
+
+export const buildTaskMutationScopeKey = (scope: TaskMutationScope) =>
+  `${scope.sourcePath}::${scope.sourceRange.startLine}:${scope.sourceRange.endLine}`;
 
 const hasFiniteLine = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value);
@@ -94,6 +98,7 @@ export const applyTaskAreaToggle = async ({
   scope,
   nextEnabled,
   mutators,
+  removeMissingWrapperPolicy = "error",
   readSource,
   writeSource,
   onSourceUpdated,
@@ -102,13 +107,25 @@ export const applyTaskAreaToggle = async ({
   const contents = await readSource(scope.sourcePath);
   let lines = contents.replace(/\r\n?/g, "\n").split("\n");
 
-  if (!nextEnabled && mutators.findWrapper && !mutators.findWrapper(lines, scope.sourceRange)) {
+  const removeWrapperMissing =
+    !nextEnabled &&
+    mutators.findWrapper &&
+    !mutators.findWrapper(lines, scope.sourceRange);
+
+  if (removeWrapperMissing && removeMissingWrapperPolicy === "error") {
     throw new Error("Could not identify an exact #card/#endcard wrapper for this task.");
   }
 
-  const mutation = nextEnabled
-    ? mutators.addWrapper(lines, scope.sourceRange)
-    : mutators.removeWrapper(lines, scope.sourceRange);
+  const mutation =
+    removeWrapperMissing && removeMissingWrapperPolicy === "noop"
+      ? {
+          lines,
+          delta: 0,
+          changed: false,
+        }
+      : nextEnabled
+        ? mutators.addWrapper(lines, scope.sourceRange)
+        : mutators.removeWrapper(lines, scope.sourceRange);
   lines = mutation.lines;
 
   const nextContents = lines.join("\n");

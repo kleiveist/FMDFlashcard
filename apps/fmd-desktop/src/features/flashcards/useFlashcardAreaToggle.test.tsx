@@ -3,22 +3,16 @@
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { invoke } from "@tauri-apps/api/core";
+import type { TaskMutationScope } from "../../lib/taskAreaToggle";
 import { useFlashcardAreaToggle } from "./useFlashcardAreaToggle";
-
-vi.mock("@tauri-apps/api/core", () => ({
-  invoke: vi.fn(),
-}));
 
 const testEnv = globalThis as typeof globalThis & {
   IS_REACT_ACT_ENVIRONMENT?: boolean;
 };
 testEnv.IS_REACT_ACT_ENVIRONMENT = true;
 
-const invokeMock = vi.mocked(invoke);
-
 type HookOptions = Parameters<typeof useFlashcardAreaToggle>[0];
-type HookState = ReturnType<typeof useFlashcardAreaToggle> | null;
+type HookValue = ReturnType<typeof useFlashcardAreaToggle> | null;
 
 const Probe = ({
   options,
@@ -32,18 +26,27 @@ const Probe = ({
 };
 
 const renderHook = (
-  options: HookOptions,
+  initialOptions: HookOptions,
   onValue: (value: ReturnType<typeof useFlashcardAreaToggle>) => void,
 ) => {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
+  let options = initialOptions;
 
-  act(() => {
-    root.render(createElement(Probe, { options, onValue }));
-  });
+  const render = () => {
+    act(() => {
+      root.render(createElement(Probe, { options, onValue }));
+    });
+  };
+
+  render();
 
   return {
+    rerender: (nextOptions: HookOptions) => {
+      options = nextOptions;
+      render();
+    },
     cleanup: () => {
       act(() => {
         root.unmount();
@@ -53,151 +56,138 @@ const renderHook = (
   };
 };
 
-const flush = async (times = 1) => {
-  for (let index = 0; index < times; index += 1) {
-    await act(async () => {
-      await Promise.resolve();
-    });
-  }
-};
-
 describe("useFlashcardAreaToggle", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("persists full task-scope wrapper toggle and refreshes preview/rescan", async () => {
-    const sourceContent = [
-      "Intro",
-      "1) First question?",
-      "Answer: One",
-      "",
-      "2) Second question?",
-      "Answer: Two",
-    ].join("\n");
-    let writtenContents = "";
-
-    invokeMock.mockImplementation((command, args) => {
-      if (command === "read_text_file") {
-        expect(args).toEqual({ path: "/vault/note.md" });
-        return Promise.resolve(sourceContent);
-      }
-      if (command === "write_text_file_atomic") {
-        const payload = args as { path: string; contents: string };
-        writtenContents = payload.contents;
-        expect(payload.path).toBe("/vault/note.md");
-        return Promise.resolve(undefined);
-      }
-      return Promise.reject(new Error(`Unexpected command: ${command}`));
+  it("stages toggle intent and keeps staged state across rerender", () => {
+    const stagedByKey = new Map<string, boolean>();
+    const noticeByKey = new Map<string, string>();
+    const stageTaskAreaToggle = vi.fn((scope: TaskMutationScope, nextEnabled: boolean) => {
+      stagedByKey.set(
+        `${scope.sourcePath}:${scope.sourceRange.startLine}-${scope.sourceRange.endLine}`,
+        nextEnabled,
+      );
     });
+    const getStagedTaskAreaToggle = vi.fn((scope: TaskMutationScope) =>
+      stagedByKey.get(
+        `${scope.sourcePath}:${scope.sourceRange.startLine}-${scope.sourceRange.endLine}`,
+      ) ?? null,
+    );
+    const getTaskAreaToggleNotice = vi.fn((scope: TaskMutationScope) =>
+      noticeByKey.get(
+        `${scope.sourcePath}:${scope.sourceRange.startLine}-${scope.sourceRange.endLine}`,
+      ) ?? "",
+    );
 
-    const setPreview = vi.fn();
-    const onRescanVault = vi.fn().mockResolvedValue(true);
+    const sourceMeta = {
+      sourcePath: "/vault/note.md",
+      sourceRange: {
+        startLine: 10,
+        endLine: 14,
+      },
+      cardWrapper: false,
+    };
     const options: HookOptions = {
       sourceByIndex: {
-        0: {
-          sourcePath: "/vault/note.md",
-          sourceRange: {
-            startLine: 1,
-            endLine: 3,
-          },
-          cardWrapper: false,
-        },
+        0: sourceMeta,
       },
-      previewPath: "/vault/note.md",
-      setPreview,
-      onRescanVault,
-      rescanSource: "flashcard-area-toggle-test",
+      stageTaskAreaToggle,
+      getStagedTaskAreaToggle,
+      getTaskAreaToggleNotice,
     };
 
-    let latest: HookState = null;
-    const { cleanup } = renderHook(options, (value) => {
+    let latest: HookValue = null;
+    const { rerender, cleanup } = renderHook(options, (value) => {
       latest = value;
     });
+
+    expect(latest?.getToggleState(0).enabled).toBe(false);
+    expect(latest?.getToggleState(0).pending).toBe(false);
 
     act(() => {
       latest?.toggleCardArea(0, true);
     });
-    await flush(4);
 
-    expect(invokeMock).toHaveBeenCalledWith("read_text_file", { path: "/vault/note.md" });
-    expect(invokeMock).toHaveBeenCalledWith(
-      "write_text_file_atomic",
-      expect.objectContaining({ path: "/vault/note.md" }),
+    expect(stageTaskAreaToggle).toHaveBeenCalledWith(
+      {
+        sourcePath: "/vault/note.md",
+        sourceRange: { startLine: 10, endLine: 14 },
+      },
+      true,
     );
-    expect(writtenContents).toContain("#card\n1) First question?\nAnswer: One\n#endcard");
-    expect(writtenContents).toContain("2) Second question?\nAnswer: Two");
-    expect(setPreview).toHaveBeenCalledWith(writtenContents);
-    expect(onRescanVault).toHaveBeenCalledWith("flashcard-area-toggle-test");
+    expect(latest?.getToggleState(0).enabled).toBe(true);
 
-    const toggleState = latest?.getToggleState(0);
-    expect(toggleState?.enabled).toBe(true);
-    expect(toggleState?.pending).toBe(false);
-    expect(toggleState?.error).toBe("");
+    rerender({
+      ...options,
+      sourceByIndex: {
+        0: {
+          ...sourceMeta,
+          cardWrapper: false,
+        },
+      },
+    });
+    expect(latest?.getToggleState(0).enabled).toBe(true);
     cleanup();
   });
 
-  it("rolls back optimistic state and keeps menu-usable error state on write failure", async () => {
-    const sourceContent = [
-      "Intro",
-      "#card",
-      "1) First question?",
-      "Answer: One",
-      "#endcard",
-      "Outro",
-    ].join("\n");
-
-    invokeMock.mockImplementation((command, args) => {
-      if (command === "read_text_file") {
-        expect(args).toEqual({ path: "/vault/note.md" });
-        return Promise.resolve(sourceContent);
-      }
-      if (command === "write_text_file_atomic") {
-        return Promise.reject(new Error("Disk full"));
-      }
-      return Promise.reject(new Error(`Unexpected command: ${command}`));
-    });
-
-    const setPreview = vi.fn();
-    const onRescanVault = vi.fn().mockResolvedValue(true);
+  it("returns disable reason for invalid source scope and does not stage", () => {
+    const stageTaskAreaToggle = vi.fn();
     const options: HookOptions = {
       sourceByIndex: {
-        0: {
+        2: {
           sourcePath: "/vault/note.md",
-          sourceRange: {
-            startLine: 1,
-            endLine: 4,
-          },
+          sourceRange: null,
           cardWrapper: true,
         },
       },
-      previewPath: "/vault/note.md",
-      setPreview,
-      onRescanVault,
-      rescanSource: "flashcard-area-toggle-test",
+      stageTaskAreaToggle,
+      getStagedTaskAreaToggle: () => null,
+      getTaskAreaToggleNotice: () => "",
     };
 
-    let latest: HookState = null;
+    let latest: HookValue = null;
     const { cleanup } = renderHook(options, (value) => {
       latest = value;
     });
 
+    const state = latest?.getToggleState(2);
+    expect(state?.disabledReason).toContain("range");
+
     act(() => {
-      latest?.toggleCardArea(0, false);
+      latest?.toggleCardArea(2, false);
     });
 
-    const optimisticState = latest?.getToggleState(0);
-    expect(optimisticState?.enabled).toBe(false);
-    expect(optimisticState?.pending).toBe(true);
+    expect(stageTaskAreaToggle).not.toHaveBeenCalled();
+    cleanup();
+  });
 
-    await flush(4);
+  it("shows notice from central pending-store", () => {
+    const options: HookOptions = {
+      sourceByIndex: {
+        4: {
+          sourcePath: "/vault/lesson.md",
+          sourceRange: {
+            startLine: 1,
+            endLine: 5,
+          },
+          cardWrapper: true,
+        },
+      },
+      stageTaskAreaToggle: vi.fn(),
+      getStagedTaskAreaToggle: () => null,
+      getTaskAreaToggleNotice: () => "Saved at tab switch.",
+    };
 
-    const settledState = latest?.getToggleState(0);
-    expect(settledState?.enabled).toBe(true);
-    expect(settledState?.pending).toBe(false);
-    expect(settledState?.error.toLowerCase()).toContain("disk full");
-    expect(onRescanVault).not.toHaveBeenCalled();
-    expect(setPreview).not.toHaveBeenCalled();
+    let latest: HookValue = null;
+    const { cleanup } = renderHook(options, (value) => {
+      latest = value;
+    });
+
+    const state = latest?.getToggleState(4);
+    expect(state?.notice).toBe("Saved at tab switch.");
+    expect(state?.error).toBe("");
     cleanup();
   });
 });

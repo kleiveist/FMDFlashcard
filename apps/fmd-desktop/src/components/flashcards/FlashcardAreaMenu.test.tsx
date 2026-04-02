@@ -119,6 +119,7 @@ describe("FlashcardAreaMenuTrigger", () => {
     const flashcardRow = Array.from(
       document.querySelectorAll<HTMLLabelElement>(".flashcard-area-toggle-row"),
     ).find((row) => row.textContent?.includes("Flashcard"));
+    expect(document.querySelectorAll(".flashcard-area-toggle-row")).toHaveLength(1);
     expect(flashcardRow).toBeTruthy();
 
     act(() => {

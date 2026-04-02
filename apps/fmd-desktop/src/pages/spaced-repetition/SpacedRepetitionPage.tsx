@@ -182,10 +182,9 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
   );
   const srAreaToggle = useFlashcardAreaToggle({
     sourceByIndex: srAreaSourceByIndex,
-    previewPath: preview.selectedFile?.path ?? null,
-    setPreview: preview.setPreview,
-    onRescanVault: actions.handleRescanVault,
-    rescanSource: "spaced-repetition-area-toggle",
+    stageTaskAreaToggle: actions.stageTaskAreaToggle,
+    getStagedTaskAreaToggle: actions.getStagedTaskAreaToggle,
+    getTaskAreaToggleNotice: actions.getTaskAreaToggleNotice,
   });
   const renderSrResultHeaderAction = useCallback(
     (cardIndex: number, submitted: boolean) => {
