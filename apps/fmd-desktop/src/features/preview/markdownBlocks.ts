@@ -70,6 +70,8 @@ const isHorizontalRuleLine = (line: string) =>
   /^\s*(?:(?:-\s*){3,}|(?:\*\s*){3,})$/.test(line);
 const isHorizontalRuleLineForNormalization = (line: string) =>
   /^\s*(?:(?:-\s*){3,}|(?:\*\s*){3,}|(?:_\s*){3,})$/.test(line);
+const frontmatterPrefixPattern =
+  /^(?:\uFEFF)?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/;
 const leadingBlockquoteMarkersPattern = /^\s*(?:>\s*)+/;
 const quotePrefixedHashLinePattern = /^(\s*)(?:>\s*)+(#.*)$/;
 const quotedStructuralDirectivePattern = /^\s*(?:>\s*)+(#(?:card|endcard|help|helpend))\s*$/i;
@@ -809,7 +811,19 @@ export const normalizeHorizontalRuleBlockSource = (blockRaw: string) => {
   return ["", hrLine, ""].join("\n");
 };
 
-export const normalizeHorizontalRuleSpacingInMarkdown = (markdown: string) => {
+const splitLeadingFrontmatterPrefix = (markdown: string) => {
+  const match = markdown.match(frontmatterPrefixPattern);
+  if (!match) {
+    return null;
+  }
+  const frontmatterPrefix = match[0] ?? "";
+  return {
+    frontmatterPrefix,
+    body: markdown.slice(frontmatterPrefix.length),
+  };
+};
+
+const normalizeHorizontalRuleSpacingInBody = (markdown: string) => {
   if (!markdown) {
     return markdown;
   }
@@ -842,6 +856,23 @@ export const normalizeHorizontalRuleSpacingInMarkdown = (markdown: string) => {
   }
 
   return normalizedRawBlocks.join("\n");
+};
+
+export const normalizeHorizontalRuleSpacingInMarkdown = (markdown: string) => {
+  if (!markdown) {
+    return markdown;
+  }
+
+  const frontmatterSlice = splitLeadingFrontmatterPrefix(markdown);
+  if (!frontmatterSlice) {
+    return normalizeHorizontalRuleSpacingInBody(markdown);
+  }
+
+  const normalizedBody = normalizeHorizontalRuleSpacingInBody(frontmatterSlice.body);
+  if (normalizedBody === frontmatterSlice.body) {
+    return markdown;
+  }
+  return `${frontmatterSlice.frontmatterPrefix}${normalizedBody}`;
 };
 
 export const isSingleLineCommitBlock = (block: MarkdownBlock) => {

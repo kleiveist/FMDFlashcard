@@ -7,6 +7,7 @@ import {
   ADVANCED_INSERT_TEMPLATE_CATALOG,
   buildAdvancedInsertTemplateVariant,
 } from "./insertTemplates";
+import { parseFrontmatterDocument } from "./frontmatter";
 import { ExamMarkdown } from "../../pages/exam-simulation/components/ExamMarkdown";
 
 const INTERNAL_BLOCK_CLIPBOARD_MIME = "application/x-fmd-markdown-hybrid-blocks+json";
@@ -2478,6 +2479,12 @@ describe("MarkdownHybridEditor", () => {
       const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue.startsWith("---\nSection: IUFS\nRank: SE1\nProjekt: IDBS01\nTask: Exam\nText: text\n---\n")).toBe(true);
       expect(markdownValue).toContain("\nalpha\nbeta");
+      expect(markdownValue.startsWith("\n---")).toBe(false);
+      expect(markdownValue.includes("---\n\nSection: IUFS")).toBe(false);
+      const parsed = parseFrontmatterDocument(markdownValue);
+      expect(parsed.hasFrontmatter).toBe(true);
+      expect(parsed.error).toBeNull();
+      expect(parsed.body).toBe("alpha\nbeta");
 
       cleanup();
     });

@@ -669,6 +669,33 @@ describe("normalizeHorizontalRuleBlockSource", () => {
 });
 
 describe("normalizeHorizontalRuleSpacingInMarkdown", () => {
+  it("preserves leading frontmatter while normalizing body horizontal rules", () => {
+    const input = [
+      "---",
+      "Section: IUFS",
+      "Rank: SE1",
+      "---",
+      "A",
+      "---",
+      "B",
+    ].join("\n");
+    const normalized = normalizeHorizontalRuleSpacingInMarkdown(input);
+    expect(normalized).toBe(
+      [
+        "---",
+        "Section: IUFS",
+        "Rank: SE1",
+        "---",
+        "A",
+        "",
+        "---",
+        "",
+        "B",
+      ].join("\n"),
+    );
+    expect(normalized.startsWith("\n---")).toBe(false);
+  });
+
   it("inserts missing blank lines around a horizontal rule", () => {
     const input = ["A", "---", "B"].join("\n");
     const normalized = normalizeHorizontalRuleSpacingInMarkdown(input);
