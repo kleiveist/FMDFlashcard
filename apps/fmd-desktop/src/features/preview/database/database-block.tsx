@@ -41,6 +41,7 @@ import {
   type DatabaseFilterGroup,
   type DatabaseGanttZoom,
   type DatabaseNormalizedFieldValue,
+  type DatabasePropertiesByView,
   type DatabaseProjectMissingPlacement,
   type DatabaseRecord,
   type DatabaseSourceSpec,
@@ -156,6 +157,53 @@ const appendVisibleColumnIfMissing = (columns: string[], key: string) =>
   columns.some((entry) => toLower(entry) === toLower(key))
     ? columns
     : [...columns, key];
+
+const DATABASE_VIEW_TYPES: DatabaseViewType[] = ["table", "kanban", "gantt", "project", "pie"];
+
+const dedupeCaseInsensitive = (keys: string[]) => {
+  const seen = new Set<string>();
+  const next: string[] = [];
+  keys.forEach((key) => {
+    const trimmed = key.trim();
+    const normalized = toLower(trimmed);
+    if (!normalized || seen.has(normalized)) {
+      return;
+    }
+    seen.add(normalized);
+    next.push(trimmed);
+  });
+  return next;
+};
+
+const createDefaultPropertiesByView = (tableColumns: string[]): DatabasePropertiesByView => ({
+  table: dedupeCaseInsensitive(tableColumns),
+  kanban: [],
+  gantt: [],
+  project: [],
+  pie: [],
+});
+
+const normalizePropertiesByView = (
+  propertiesByView: DatabasePropertiesByView | null | undefined,
+  tableColumns: string[],
+): DatabasePropertiesByView => {
+  const defaults = createDefaultPropertiesByView(tableColumns);
+  const source = propertiesByView ?? {};
+  const next: DatabasePropertiesByView = { ...defaults };
+  DATABASE_VIEW_TYPES.forEach((view) => {
+    if (!Array.isArray(source[view])) {
+      return;
+    }
+    next[view] = dedupeCaseInsensitive(source[view] ?? []);
+  });
+  next.table = dedupeCaseInsensitive(next.table ?? tableColumns);
+  return next;
+};
+
+const getPropertiesForView = (
+  propertiesByView: DatabasePropertiesByView | null | undefined,
+  view: DatabaseViewType,
+): string[] => dedupeCaseInsensitive(propertiesByView?.[view] ?? []);
 
 const buildCellMutationKey = (recordId: string, fieldKey: string) =>
   `${recordId}::${toLower(fieldKey)}`;
@@ -423,6 +471,7 @@ export const MarkdownHybridDatabaseBlock = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [viewType, setViewType] = useState<DatabaseViewType>(parsed.config.view.type);
   const [kanbanGroupBy, setKanbanGroupBy] = useState<string | null>(parsed.config.view.groupBy ?? null);
+  const [kanbanShowCover, setKanbanShowCover] = useState<boolean>(parsed.config.view.kanbanShowCover ?? false);
   const [timelineStartField, setTimelineStartField] = useState<string | null>(
     parsed.config.view.timelineStartField ?? null,
   );
@@ -469,7 +518,9 @@ export const MarkdownHybridDatabaseBlock = ({
   const [pieAggregateField, setPieAggregateField] = useState<string | null>(
     parsed.config.view.pieAggregateField ?? null,
   );
-  const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>(parsed.config.columns);
+  const [propertiesByView, setPropertiesByView] = useState<DatabasePropertiesByView>(
+    normalizePropertiesByView(parsed.config.propertiesByView, parsed.config.columns),
+  );
   const [activeFilters, setActiveFilters] = useState<DatabaseFilterGroup>(cloneFilterGroup(parsed.config.filters));
   const [activeSorts, setActiveSorts] = useState<DatabaseSortRule[]>(cloneSortRules(parsed.config.sort));
   const [activeCellEdit, setActiveCellEdit] = useState<DatabaseCellEditState | null>(null);
@@ -489,6 +540,7 @@ export const MarkdownHybridDatabaseBlock = ({
   const fieldDefinitionsRef = useRef(fieldDefinitions);
   const viewTypeRef = useRef(viewType);
   const kanbanGroupByRef = useRef<string | null>(kanbanGroupBy);
+  const kanbanShowCoverRef = useRef<boolean>(kanbanShowCover);
   const timelineStartFieldRef = useRef<string | null>(timelineStartField);
   const timelineEndFieldRef = useRef<string | null>(timelineEndField);
   const timelineModeRef = useRef<DatabaseTimelineMode>(timelineMode);
@@ -502,7 +554,7 @@ export const MarkdownHybridDatabaseBlock = ({
   const pieGroupFieldRef = useRef<string | null>(pieGroupField);
   const pieAggregateRef = useRef<"count" | "sum" | "avg">(pieAggregate);
   const pieAggregateFieldRef = useRef<string | null>(pieAggregateField);
-  const visibleColumnKeysRef = useRef(visibleColumnKeys);
+  const propertiesByViewRef = useRef(propertiesByView);
   const activeFiltersRef = useRef(activeFilters);
   const activeSortsRef = useRef(activeSorts);
 
@@ -516,6 +568,7 @@ export const MarkdownHybridDatabaseBlock = ({
     setFieldDefinitions(cloneFieldDefinitions(parsed.config.fields ?? []));
     setViewType(parsed.config.view.type);
     setKanbanGroupBy(parsed.config.view.groupBy ?? null);
+    setKanbanShowCover(parsed.config.view.kanbanShowCover ?? false);
     setTimelineStartField(parsed.config.view.timelineStartField ?? null);
     setTimelineEndField(parsed.config.view.timelineEndField ?? null);
     const nextTimelineMode = parsed.config.view.timelineMode ?? DEFAULT_TIMELINE_MODE;
@@ -543,7 +596,9 @@ export const MarkdownHybridDatabaseBlock = ({
     setPieGroupField(parsed.config.view.pieGroupField ?? null);
     setPieAggregate(parsed.config.view.pieAggregate ?? "count");
     setPieAggregateField(parsed.config.view.pieAggregateField ?? null);
-    setVisibleColumnKeys(parsed.config.columns);
+    setPropertiesByView(
+      normalizePropertiesByView(parsed.config.propertiesByView, parsed.config.columns),
+    );
     setActiveFilters(cloneFilterGroup(parsed.config.filters));
     setActiveSorts(cloneSortRules(parsed.config.sort));
     setActiveCellEdit(null);
@@ -558,6 +613,7 @@ export const MarkdownHybridDatabaseBlock = ({
     fieldDefinitionsRef.current = fieldDefinitions;
     viewTypeRef.current = viewType;
     kanbanGroupByRef.current = kanbanGroupBy;
+    kanbanShowCoverRef.current = kanbanShowCover;
     timelineStartFieldRef.current = timelineStartField;
     timelineEndFieldRef.current = timelineEndField;
     timelineModeRef.current = timelineMode;
@@ -571,7 +627,7 @@ export const MarkdownHybridDatabaseBlock = ({
     pieGroupFieldRef.current = pieGroupField;
     pieAggregateRef.current = pieAggregate;
     pieAggregateFieldRef.current = pieAggregateField;
-    visibleColumnKeysRef.current = visibleColumnKeys;
+    propertiesByViewRef.current = propertiesByView;
     activeFiltersRef.current = activeFilters;
     activeSortsRef.current = activeSorts;
   }, [
@@ -580,6 +636,7 @@ export const MarkdownHybridDatabaseBlock = ({
     fieldDefinitions,
     ganttZoom,
     kanbanGroupBy,
+    kanbanShowCover,
     pieAggregate,
     pieAggregateField,
     pieGroupField,
@@ -593,9 +650,9 @@ export const MarkdownHybridDatabaseBlock = ({
     projectMissingPlacement,
     projectStartField,
     projectUnitField,
+    propertiesByView,
     title,
     viewType,
-    visibleColumnKeys,
   ]);
 
   useEffect(
@@ -720,6 +777,11 @@ export const MarkdownHybridDatabaseBlock = ({
     };
   }, [reloadToken, sourceResolution.files]);
 
+  const visibleColumnKeys = useMemo(
+    () => getPropertiesForView(propertiesByView, viewType),
+    [propertiesByView, viewType],
+  );
+
   const persistConfig = useCallback((next: {
     title?: string;
     source?: DatabaseSourceSpec;
@@ -727,6 +789,7 @@ export const MarkdownHybridDatabaseBlock = ({
     viewType?: DatabaseViewType;
     view?: Partial<DatabaseViewSpec>;
     visibleColumns?: string[];
+    propertiesByView?: DatabasePropertiesByView;
     filters?: DatabaseFilterGroup;
     sorts?: DatabaseSortRule[];
   }) => {
@@ -738,6 +801,7 @@ export const MarkdownHybridDatabaseBlock = ({
       ...parsed.config.view,
       type: nextViewType,
       groupBy: next.view?.groupBy ?? kanbanGroupByRef.current ?? null,
+      kanbanShowCover: next.view?.kanbanShowCover ?? kanbanShowCoverRef.current ?? false,
       timelineStartField: next.view?.timelineStartField ?? timelineStartFieldRef.current ?? null,
       timelineEndField: next.view?.timelineEndField ?? timelineEndFieldRef.current ?? null,
       timelineMode: next.view?.timelineMode ?? timelineModeRef.current ?? DEFAULT_TIMELINE_MODE,
@@ -760,7 +824,22 @@ export const MarkdownHybridDatabaseBlock = ({
       pieAggregate: next.view?.pieAggregate ?? pieAggregateRef.current ?? "count",
       pieAggregateField: next.view?.pieAggregateField ?? pieAggregateFieldRef.current ?? null,
     };
-    const nextVisibleColumns = next.visibleColumns ?? visibleColumnKeysRef.current;
+    let nextPropertiesByView = normalizePropertiesByView(
+      next.propertiesByView ?? propertiesByViewRef.current,
+      parsed.config.columns,
+    );
+    if (next.visibleColumns) {
+      const targetView = next.viewType ?? next.view?.type ?? viewTypeRef.current;
+      nextPropertiesByView = {
+        ...nextPropertiesByView,
+        [targetView]: dedupeCaseInsensitive(next.visibleColumns),
+      };
+    }
+    const tableColumns = dedupeCaseInsensitive(nextPropertiesByView.table ?? parsed.config.columns);
+    nextPropertiesByView = {
+      ...nextPropertiesByView,
+      table: tableColumns,
+    };
     const nextFilters = next.filters ?? activeFiltersRef.current;
     const nextSorts = next.sorts ?? activeSortsRef.current;
 
@@ -770,7 +849,8 @@ export const MarkdownHybridDatabaseBlock = ({
       source: nextSource,
       fields: nextFields,
       view: nextView,
-      columns: nextVisibleColumns,
+      columns: tableColumns,
+      propertiesByView: nextPropertiesByView,
       filters: cloneFilterGroup(nextFilters),
       sort: cloneSortRules(nextSorts),
     };
@@ -789,6 +869,7 @@ export const MarkdownHybridDatabaseBlock = ({
           ...parsed.config.view,
           type: viewType,
           groupBy: kanbanGroupBy,
+          kanbanShowCover,
           timelineStartField,
           timelineEndField,
           timelineMode,
@@ -803,7 +884,8 @@ export const MarkdownHybridDatabaseBlock = ({
           pieAggregate,
           pieAggregateField,
         },
-        columns: visibleColumnKeys,
+        columns: getPropertiesForView(propertiesByView, "table"),
+        propertiesByView,
         filters: activeFilters,
         sort: activeSorts,
       },
@@ -828,6 +910,7 @@ export const MarkdownHybridDatabaseBlock = ({
       sourceResolution.warning,
       title,
       kanbanGroupBy,
+      kanbanShowCover,
       viewType,
       timelineStartField,
       timelineEndField,
@@ -842,6 +925,7 @@ export const MarkdownHybridDatabaseBlock = ({
       pieGroupField,
       pieAggregate,
       pieAggregateField,
+      propertiesByView,
       visibleColumnKeys,
     ],
   );
@@ -916,6 +1000,15 @@ export const MarkdownHybridDatabaseBlock = ({
     persistConfig({
       view: {
         groupBy: nextGroupBy,
+      },
+    });
+  };
+
+  const handleKanbanShowCoverChange = (nextShowCover: boolean) => {
+    setKanbanShowCover(nextShowCover);
+    persistConfig({
+      view: {
+        kanbanShowCover: nextShowCover,
       },
     });
   };
@@ -1335,11 +1428,13 @@ export const MarkdownHybridDatabaseBlock = ({
     ensureField(startKey);
     ensureField(endKey);
 
+    const currentColumns = getPropertiesForView(propertiesByViewRef.current, "gantt");
     const nextColumns = appendVisibleColumnIfMissing(
-      appendVisibleColumnIfMissing(visibleColumnKeysRef.current, startKey),
+      appendVisibleColumnIfMissing(currentColumns, startKey),
       endKey,
     );
-    const columnsChanged = nextColumns.length !== visibleColumnKeysRef.current.length;
+    const columnsChanged = nextColumns.length !== currentColumns.length ||
+      nextColumns.some((entry, index) => toLower(entry) !== toLower(currentColumns[index] ?? ""));
 
     const viewPatch: Partial<DatabaseViewSpec> = {};
     if (toLower(configuredStart) !== toLower(startKey)) {
@@ -1354,8 +1449,12 @@ export const MarkdownHybridDatabaseBlock = ({
       fieldDefinitionsRef.current = nextFields;
     }
     if (columnsChanged) {
-      setVisibleColumnKeys(nextColumns);
-      visibleColumnKeysRef.current = nextColumns;
+      const nextPropertiesByView = {
+        ...normalizePropertiesByView(propertiesByViewRef.current, parsed.config.columns),
+        gantt: nextColumns,
+      };
+      setPropertiesByView(nextPropertiesByView);
+      propertiesByViewRef.current = nextPropertiesByView;
     }
     if (viewPatch.timelineStartField) {
       setTimelineStartField(startKey);
@@ -1375,6 +1474,7 @@ export const MarkdownHybridDatabaseBlock = ({
       persistConfig({
         fields: nextFields,
         visibleColumns: nextColumns,
+        viewType: "gantt",
         view: {
           ...viewPatch,
         },
@@ -1385,7 +1485,7 @@ export const MarkdownHybridDatabaseBlock = ({
       startKey,
       endKey,
     };
-  }, [persistConfig]);
+  }, [parsed.config.columns, persistConfig]);
 
   const ensureProjectFieldSetup = useCallback(() => {
     const configuredStart = (projectStartFieldRef.current ?? "").trim();
@@ -1424,11 +1524,13 @@ export const MarkdownHybridDatabaseBlock = ({
     ensureField(startKey, "number");
     ensureField(unitKey, "unit");
 
+    const currentColumns = getPropertiesForView(propertiesByViewRef.current, "project");
     const nextColumns = appendVisibleColumnIfMissing(
-      appendVisibleColumnIfMissing(visibleColumnKeysRef.current, startKey),
+      appendVisibleColumnIfMissing(currentColumns, startKey),
       unitKey,
     );
-    const columnsChanged = nextColumns.length !== visibleColumnKeysRef.current.length;
+    const columnsChanged = nextColumns.length !== currentColumns.length ||
+      nextColumns.some((entry, index) => toLower(entry) !== toLower(currentColumns[index] ?? ""));
 
     const viewPatch: Partial<DatabaseViewSpec> = {};
     if (toLower(configuredStart) !== toLower(startKey)) {
@@ -1443,8 +1545,12 @@ export const MarkdownHybridDatabaseBlock = ({
       fieldDefinitionsRef.current = nextFields;
     }
     if (columnsChanged) {
-      setVisibleColumnKeys(nextColumns);
-      visibleColumnKeysRef.current = nextColumns;
+      const nextPropertiesByView = {
+        ...normalizePropertiesByView(propertiesByViewRef.current, parsed.config.columns),
+        project: nextColumns,
+      };
+      setPropertiesByView(nextPropertiesByView);
+      propertiesByViewRef.current = nextPropertiesByView;
     }
     if (viewPatch.projectStartField) {
       setProjectStartField(startKey);
@@ -1464,6 +1570,7 @@ export const MarkdownHybridDatabaseBlock = ({
       persistConfig({
         fields: nextFields,
         visibleColumns: nextColumns,
+        viewType: "project",
         view: {
           ...viewPatch,
         },
@@ -1474,7 +1581,7 @@ export const MarkdownHybridDatabaseBlock = ({
       startKey,
       unitKey,
     };
-  }, [persistConfig]);
+  }, [parsed.config.columns, persistConfig]);
 
   const handleCommitTimelineRange = useCallback(async ({
     record,
@@ -1621,14 +1728,21 @@ export const MarkdownHybridDatabaseBlock = ({
   }, [allowCellEditing, ensureProjectFieldSetup, records]);
 
   const handleToggleVisibility = (key: string, visible: boolean) => {
+    const targetView = viewTypeRef.current;
     const nextColumns = visible
       ? appendVisibleColumnIfMissing(visibleColumnKeys, key)
       : visibleColumnKeys.filter((entry) => entry.toLowerCase() !== key.toLowerCase());
-    setVisibleColumnKeys(nextColumns);
-    persistConfig({ visibleColumns: nextColumns });
+    const nextPropertiesByView = {
+      ...normalizePropertiesByView(propertiesByViewRef.current, parsed.config.columns),
+      [targetView]: nextColumns,
+    };
+    setPropertiesByView(nextPropertiesByView);
+    propertiesByViewRef.current = nextPropertiesByView;
+    persistConfig({ visibleColumns: nextColumns, viewType: targetView });
   };
 
   const handleReorderVisibleColumns = (fromKey: string, toKey: string) => {
+    const targetView = viewTypeRef.current;
     const fromIndex = visibleColumnKeys.findIndex((entry) => entry.toLowerCase() === fromKey.toLowerCase());
     const toIndex = visibleColumnKeys.findIndex((entry) => entry.toLowerCase() === toKey.toLowerCase());
     if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
@@ -1640,21 +1754,40 @@ export const MarkdownHybridDatabaseBlock = ({
       return;
     }
     nextColumns.splice(toIndex, 0, moved);
-    setVisibleColumnKeys(nextColumns);
-    persistConfig({ visibleColumns: nextColumns });
+    const nextPropertiesByView = {
+      ...normalizePropertiesByView(propertiesByViewRef.current, parsed.config.columns),
+      [targetView]: nextColumns,
+    };
+    setPropertiesByView(nextPropertiesByView);
+    propertiesByViewRef.current = nextPropertiesByView;
+    persistConfig({ visibleColumns: nextColumns, viewType: targetView });
   };
 
   const handleHideAllColumns = () => {
-    setVisibleColumnKeys([]);
-    persistConfig({ visibleColumns: [] });
+    const targetView = viewTypeRef.current;
+    const nextPropertiesByView = {
+      ...normalizePropertiesByView(propertiesByViewRef.current, parsed.config.columns),
+      [targetView]: [],
+    };
+    setPropertiesByView(nextPropertiesByView);
+    propertiesByViewRef.current = nextPropertiesByView;
+    persistConfig({ visibleColumns: [], viewType: targetView });
   };
 
   const handleRestoreDefaultColumns = () => {
-    const nextColumns = parsed.config.columns.length > 0
-      ? [...parsed.config.columns]
-      : [...defaultConfig.columns];
-    setVisibleColumnKeys(nextColumns);
-    persistConfig({ visibleColumns: nextColumns });
+    const targetView = viewTypeRef.current;
+    const parsedPropertiesByView = normalizePropertiesByView(parsed.config.propertiesByView, parsed.config.columns);
+    const defaultPropertiesByView = normalizePropertiesByView(defaultConfig.propertiesByView, defaultConfig.columns);
+    const parsedDefault = getPropertiesForView(parsedPropertiesByView, targetView);
+    const fallbackDefault = getPropertiesForView(defaultPropertiesByView, targetView);
+    const nextColumns = parsedDefault.length > 0 ? parsedDefault : fallbackDefault;
+    const nextPropertiesByView = {
+      ...normalizePropertiesByView(propertiesByViewRef.current, parsed.config.columns),
+      [targetView]: nextColumns,
+    };
+    setPropertiesByView(nextPropertiesByView);
+    propertiesByViewRef.current = nextPropertiesByView;
+    persistConfig({ visibleColumns: nextColumns, viewType: targetView });
   };
 
   const handleFilterChange = (nextGroup: DatabaseFilterGroup) => {
@@ -1752,13 +1885,21 @@ export const MarkdownHybridDatabaseBlock = ({
       origin: "formula",
       formula,
     };
+    const targetView = viewTypeRef.current;
     const nextFields = ensureFieldDefinition(fieldDefinitionsRef.current, nextField);
-    const nextColumns = appendVisibleColumnIfMissing(visibleColumnKeysRef.current, key);
+    const currentColumns = getPropertiesForView(propertiesByViewRef.current, targetView);
+    const nextColumns = appendVisibleColumnIfMissing(currentColumns, key);
+    const nextPropertiesByView = {
+      ...normalizePropertiesByView(propertiesByViewRef.current, parsed.config.columns),
+      [targetView]: nextColumns,
+    };
     setFieldDefinitions(nextFields);
-    setVisibleColumnKeys(nextColumns);
+    setPropertiesByView(nextPropertiesByView);
+    propertiesByViewRef.current = nextPropertiesByView;
     persistConfig({
       fields: nextFields,
       visibleColumns: nextColumns,
+      viewType: targetView,
     });
   };
 
@@ -1801,13 +1942,21 @@ export const MarkdownHybridDatabaseBlock = ({
         origin: "frontmatter",
         formula: null,
       };
+      const targetView = viewTypeRef.current;
       const nextFields = ensureFieldDefinition(fieldDefinitionsRef.current, nextField);
-      const nextColumns = appendVisibleColumnIfMissing(visibleColumnKeysRef.current, key);
+      const currentColumns = getPropertiesForView(propertiesByViewRef.current, targetView);
+      const nextColumns = appendVisibleColumnIfMissing(currentColumns, key);
+      const nextPropertiesByView = {
+        ...normalizePropertiesByView(propertiesByViewRef.current, parsed.config.columns),
+        [targetView]: nextColumns,
+      };
       setFieldDefinitions(nextFields);
-      setVisibleColumnKeys(nextColumns);
+      setPropertiesByView(nextPropertiesByView);
+      propertiesByViewRef.current = nextPropertiesByView;
       persistConfig({
         fields: nextFields,
         visibleColumns: nextColumns,
+        viewType: targetView,
       });
 
       fileCacheRef.current.clear();
@@ -1975,7 +2124,10 @@ export const MarkdownHybridDatabaseBlock = ({
           {panels.properties ? (
             <DatabasePropertiesPanel
               attributes={store.attributeRegistry}
+              viewType={viewType}
               visibleColumnKeys={visibleColumnKeys}
+              kanbanShowCover={kanbanShowCover}
+              onKanbanShowCoverChange={handleKanbanShowCoverChange}
               onToggleVisibility={handleToggleVisibility}
               onReorderVisibleColumns={handleReorderVisibleColumns}
               onHideAll={handleHideAllColumns}
@@ -2060,6 +2212,9 @@ export const MarkdownHybridDatabaseBlock = ({
           <DatabaseKanbanView
             records={store.visibleRecords}
             groupAttribute={kanbanGroupAttribute}
+            attributes={store.attributeRegistry}
+            visibleProperties={visibleColumns}
+            showCover={kanbanShowCover}
             pendingRecordIds={pendingRecordMutations}
             onMoveRecord={handleMoveKanbanRecord}
             onOpenRecord={openRecord}
@@ -2072,6 +2227,7 @@ export const MarkdownHybridDatabaseBlock = ({
             mode={timelineMode}
             baseDate={timelineBaseDate}
             zoom={ganttZoom}
+            visibleProperties={visibleColumns}
             editable={allowCellEditing}
             pendingRecordIds={pendingRecordMutations}
             onCommitRange={handleCommitTimelineRange}
@@ -2085,6 +2241,7 @@ export const MarkdownHybridDatabaseBlock = ({
             resolution={projectBlockResolution}
             defaultUnits={projectDefaultUnits}
             missingPlacement={projectMissingPlacement}
+            visibleProperties={visibleColumns}
             editable={allowCellEditing}
             pendingRecordIds={pendingRecordMutations}
             onCommitPlacement={handleCommitProjectPlacement}
@@ -2096,6 +2253,7 @@ export const MarkdownHybridDatabaseBlock = ({
             groupAttribute={pieGroupAttribute}
             aggregate={pieAggregate}
             aggregateAttribute={pieAggregateAttribute}
+            visibleProperties={visibleColumns}
           />
         )}
       </div>

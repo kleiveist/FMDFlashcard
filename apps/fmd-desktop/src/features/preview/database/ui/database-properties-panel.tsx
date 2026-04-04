@@ -8,11 +8,15 @@ import { type DragEvent, useMemo, useState } from "react";
 import {
   type DatabaseAttributeMeta,
   type DatabaseFieldType,
+  type DatabaseViewType,
 } from "../database-types";
 
 type DatabasePropertiesPanelProps = {
   attributes: DatabaseAttributeMeta[];
+  viewType: DatabaseViewType;
   visibleColumnKeys: string[];
+  kanbanShowCover: boolean;
+  onKanbanShowCoverChange: (next: boolean) => void;
   onToggleVisibility: (key: string, visible: boolean) => void;
   onReorderVisibleColumns: (fromKey: string, toKey: string) => void;
   onHideAll: () => void;
@@ -85,7 +89,10 @@ const resolveTypeIcon = (type: DatabaseFieldType) => {
 
 export const DatabasePropertiesPanel = ({
   attributes,
+  viewType,
   visibleColumnKeys,
+  kanbanShowCover,
+  onKanbanShowCoverChange,
   onToggleVisibility,
   onReorderVisibleColumns,
   onHideAll,
@@ -132,6 +139,23 @@ export const DatabasePropertiesPanel = ({
     () => ["all", ...new Set(attributes.map((attribute) => attribute.type))],
     [attributes],
   );
+
+  const viewLabel = useMemo(() => {
+    switch (viewType) {
+      case "table":
+        return "Table";
+      case "kanban":
+        return "Kanban";
+      case "gantt":
+        return "Timeline";
+      case "project":
+        return "Project";
+      case "pie":
+        return "Pie";
+      default:
+        return viewType;
+    }
+  }, [viewType]);
 
   const handleDragStart = (event: DragEvent<HTMLLIElement>, key: string) => {
     event.dataTransfer.effectAllowed = "move";
@@ -190,6 +214,7 @@ export const DatabasePropertiesPanel = ({
           ×
         </button>
       </header>
+      <p className="database-block-state">Aktiver View: {viewLabel}</p>
       <div className="database-block-panel-controls">
         <input
           type="search"
@@ -207,6 +232,16 @@ export const DatabasePropertiesPanel = ({
             </option>
           ))}
         </select>
+        {viewType === "kanban" ? (
+          <label className="database-block-properties-toggle">
+            <input
+              type="checkbox"
+              checked={kanbanShowCover}
+              onChange={(event) => onKanbanShowCoverChange(event.target.checked)}
+            />
+            Cover anzeigen
+          </label>
+        ) : null}
       </div>
       <ul className="database-block-properties-list">
         {filteredAttributes.map((attribute) => {

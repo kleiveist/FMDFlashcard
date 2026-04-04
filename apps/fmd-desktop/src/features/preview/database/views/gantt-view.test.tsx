@@ -58,6 +58,25 @@ const endAttribute: DatabaseAttributeMeta = {
   label: "Due",
 };
 
+const numberAttribute: DatabaseAttributeMeta = {
+  key: "priority",
+  label: "Priority",
+  type: "number",
+  origin: "frontmatter",
+  formula: null,
+  editable: true,
+  sortable: true,
+  filterable: true,
+  aggregatable: true,
+  viewCompatibility: {
+    supportsTable: true,
+    supportsKanbanGrouping: false,
+    supportsTimeline: false,
+    supportsPieGrouping: false,
+    supportsAggregation: true,
+  },
+};
+
 const baseRecord: DatabaseRecord = {
   fileId: "a.md",
   filePath: "/vault/a.md",
@@ -72,6 +91,7 @@ const baseRecord: DatabaseRecord = {
   normalizedFields: {
     startDate: new Date("2026-01-02"),
     dueDate: new Date("2026-01-12"),
+    priority: 2,
   },
 };
 
@@ -85,6 +105,7 @@ describe("DatabaseGanttView", () => {
         mode: "date",
         baseDate: null,
         zoom: "month",
+        visibleProperties: [],
       }),
     );
 
@@ -115,6 +136,7 @@ describe("DatabaseGanttView", () => {
         mode: "date",
         baseDate: null,
         zoom: "month",
+        visibleProperties: [],
         onOpenRecord,
       }),
     );
@@ -142,6 +164,7 @@ describe("DatabaseGanttView", () => {
         mode: "date",
         baseDate: null,
         zoom: "quarter",
+        visibleProperties: [],
       }),
     );
 
@@ -175,6 +198,7 @@ describe("DatabaseGanttView", () => {
         mode: "date",
         baseDate: null,
         zoom: "month",
+        visibleProperties: [],
       }),
     );
 
@@ -191,6 +215,7 @@ describe("DatabaseGanttView", () => {
         mode: "date",
         baseDate: null,
         zoom: "month",
+        visibleProperties: [],
       }),
       1000,
     );
@@ -198,6 +223,27 @@ describe("DatabaseGanttView", () => {
     const toggleButton = Array.from(container.querySelectorAll("button"))
       .find((button) => (button.textContent ?? "").includes("Liste anzeigen"));
     expect(toggleButton).toBeTruthy();
+    cleanup();
+  });
+
+  it("renders selected property meta in the right track area", () => {
+    const { container, cleanup } = render(
+      createElement(DatabaseGanttView, {
+        records: [baseRecord],
+        startAttribute,
+        endAttribute,
+        mode: "date",
+        baseDate: null,
+        zoom: "month",
+        visibleProperties: [numberAttribute],
+      }),
+    );
+
+    const meta = container.querySelector(".database-gantt-row-meta");
+    expect(meta).toBeTruthy();
+    expect(meta?.textContent).toContain("Priority");
+    expect(meta?.textContent).toContain("2");
+
     cleanup();
   });
 });

@@ -6228,6 +6228,18 @@ textarea.preview-editor {
   font-variant-numeric: tabular-nums;
 }
 
+.database-pie-legend-details {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 2px;
+}
+
+.database-pie-legend-details p {
+  margin: 0;
+  color: var(--db-muted);
+  font-size: 0.7rem;
+}
+
 .database-gantt-view {
   border: 1px solid var(--db-border);
   border-radius: var(--db-radius-table);
@@ -6365,6 +6377,25 @@ textarea.preview-editor {
   transform: translateY(-50%);
   color: var(--db-muted);
   font-size: 0.72rem;
+}
+
+.database-gantt-row-meta {
+  position: absolute;
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+  max-inline-size: 180px;
+  display: grid;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.database-gantt-row-meta p {
+  margin: 0;
+  color: var(--db-muted);
+  font-size: 0.68rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .database-gantt-bar {
@@ -6620,6 +6651,25 @@ textarea.preview-editor {
   font-size: 0.72rem;
 }
 
+.database-project-row-meta {
+  position: absolute;
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+  max-inline-size: 180px;
+  display: grid;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.database-project-row-meta p {
+  margin: 0;
+  color: var(--db-muted);
+  font-size: 0.68rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .database-project-bar {
   position: absolute;
   inset-block-start: 50%;
@@ -6768,6 +6818,19 @@ textarea.preview-editor {
   padding: 6px 8px;
 }
 
+.database-kanban-card-cover {
+  border-radius: calc(var(--db-radius-control) - 2px);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--db-surface-base) 88%, transparent);
+}
+
+.database-kanban-card-cover-image {
+  display: block;
+  width: 100%;
+  max-height: 120px;
+  object-fit: cover;
+}
+
 .database-kanban-card.is-pending {
   opacity: 0.72;
 }
@@ -6792,6 +6855,31 @@ textarea.preview-editor {
   color: var(--db-muted);
   font-size: 0.72rem;
   word-break: break-all;
+}
+
+.database-kanban-card-properties {
+  display: grid;
+  gap: 2px;
+}
+
+.database-kanban-card-meta-row {
+  margin: 0;
+  color: var(--db-muted);
+  font-size: 0.7rem;
+  word-break: break-word;
+}
+
+.database-kanban-card-properties.is-hover-only {
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: opacity 0.16s ease;
+}
+
+.database-kanban-card:hover .database-kanban-card-properties.is-hover-only,
+.database-kanban-card:focus-within .database-kanban-card-properties.is-hover-only {
+  opacity: 1;
+  max-height: 280px;
 }
 
 .database-block-title-input:focus-visible,

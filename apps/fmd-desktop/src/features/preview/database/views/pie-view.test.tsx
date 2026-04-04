@@ -71,6 +71,25 @@ const scoreAggregateAttribute: DatabaseAttributeMeta = {
   },
 };
 
+const ownerAttribute: DatabaseAttributeMeta = {
+  key: "owner",
+  label: "Owner",
+  type: "text",
+  origin: "frontmatter",
+  formula: null,
+  editable: true,
+  sortable: true,
+  filterable: true,
+  aggregatable: false,
+  viewCompatibility: {
+    supportsTable: true,
+    supportsKanbanGrouping: true,
+    supportsTimeline: false,
+    supportsPieGrouping: true,
+    supportsAggregation: false,
+  },
+};
+
 const baseRecord: DatabaseRecord = {
   fileId: "a.md",
   filePath: "/vault/a.md",
@@ -102,6 +121,7 @@ describe("DatabasePieView", () => {
         groupAttribute: null,
         aggregate: "count",
         aggregateAttribute: null,
+        visibleProperties: [],
       }),
     );
 
@@ -134,6 +154,7 @@ describe("DatabasePieView", () => {
         groupAttribute: statusGroupAttribute,
         aggregate: "count",
         aggregateAttribute: null,
+        visibleProperties: [],
       }),
     );
 
@@ -162,6 +183,7 @@ describe("DatabasePieView", () => {
         groupAttribute: tagsGroupAttribute,
         aggregate: "count",
         aggregateAttribute: null,
+        visibleProperties: [],
       }),
     );
 
@@ -179,6 +201,7 @@ describe("DatabasePieView", () => {
         groupAttribute: statusGroupAttribute,
         aggregate: "avg",
         aggregateAttribute: null,
+        visibleProperties: [],
       }),
     );
 
@@ -210,6 +233,7 @@ describe("DatabasePieView", () => {
         groupAttribute: statusGroupAttribute,
         aggregate: "sum",
         aggregateAttribute: scoreAggregateAttribute,
+        visibleProperties: [],
       }),
     );
 
@@ -266,10 +290,73 @@ describe("DatabasePieView", () => {
         groupAttribute: statusGroupAttribute,
         aggregate: "avg",
         aggregateAttribute: formulaAggregateAttribute,
+        visibleProperties: [],
       }),
     );
 
     expect(container.textContent).toContain("50");
+    cleanup();
+  });
+
+  it("renders pie legend detail samples for selected properties", () => {
+    const ownerA: DatabaseRecord = {
+      ...baseRecord,
+      fileId: "owner-a.md",
+      filePath: "/vault/owner-a.md",
+      relativePath: "owner-a.md",
+      normalizedFields: {
+        ...baseRecord.normalizedFields,
+        status: { raw: "Open" },
+        owner: "Alice",
+      },
+    };
+    const ownerB: DatabaseRecord = {
+      ...ownerA,
+      fileId: "owner-b.md",
+      filePath: "/vault/owner-b.md",
+      relativePath: "owner-b.md",
+      normalizedFields: {
+        ...ownerA.normalizedFields,
+        owner: "Bob",
+      },
+    };
+    const ownerC: DatabaseRecord = {
+      ...ownerA,
+      fileId: "owner-c.md",
+      filePath: "/vault/owner-c.md",
+      relativePath: "owner-c.md",
+      normalizedFields: {
+        ...ownerA.normalizedFields,
+        owner: "Cara",
+      },
+    };
+    const ownerD: DatabaseRecord = {
+      ...ownerA,
+      fileId: "owner-d.md",
+      filePath: "/vault/owner-d.md",
+      relativePath: "owner-d.md",
+      normalizedFields: {
+        ...ownerA.normalizedFields,
+        owner: "Dina",
+      },
+    };
+
+    const { container, cleanup } = render(
+      createElement(DatabasePieView, {
+        records: [ownerA, ownerB, ownerC, ownerD],
+        groupAttribute: statusGroupAttribute,
+        aggregate: "count",
+        aggregateAttribute: null,
+        visibleProperties: [ownerAttribute],
+      }),
+    );
+
+    const details = container.querySelector(".database-pie-legend-details");
+    expect(details).toBeTruthy();
+    expect(details?.textContent).toContain("Owner");
+    expect(details?.textContent).toContain("Alice");
+    expect(details?.textContent).toContain("(+1 weitere)");
+
     cleanup();
   });
 });

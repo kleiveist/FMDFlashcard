@@ -12,6 +12,7 @@ import {
   useState,
 } from "react";
 import {
+  type DatabaseAttributeMeta,
   type DatabaseProjectMissingPlacement,
   type DatabaseNormalizedFieldValue,
   type DatabaseRecord,
@@ -24,6 +25,7 @@ type DatabaseProjectViewProps = {
   resolution: number;
   defaultUnits: number;
   missingPlacement: DatabaseProjectMissingPlacement;
+  visibleProperties: DatabaseAttributeMeta[];
   editable?: boolean;
   pendingRecordIds?: string[];
   onOpenRecord?: (record: DatabaseRecord) => void;
@@ -110,6 +112,49 @@ const toNumericValue = (value: DatabaseNormalizedFieldValue): number | null => {
   return null;
 };
 
+const stringifyMetaValue = (
+  value: DatabaseNormalizedFieldValue,
+  type: DatabaseAttributeMeta["type"],
+): string | null => {
+  if (value === null || typeof value === "undefined") {
+    return null;
+  }
+  if (value instanceof Date) {
+    if (type === "time") {
+      return value.toLocaleTimeString(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+    if (type === "date") {
+      return value.toLocaleDateString();
+    }
+    return value.toLocaleString();
+  }
+  if (Array.isArray(value)) {
+    const entries = value.map((entry) => String(entry).trim()).filter(Boolean);
+    return entries.length > 0 ? entries.join(", ") : null;
+  }
+  if (typeof value === "object") {
+    if ("raw" in value) {
+      const raw = String(value.raw ?? "").trim();
+      return raw || null;
+    }
+    if ("value" in value && typeof value.value === "number" && Number.isFinite(value.value)) {
+      return String(value.value);
+    }
+    return null;
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? String(value) : null;
+  }
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+  const text = String(value).trim();
+  return text || null;
+};
+
 const buildEntry = ({
   record,
   startField,
@@ -159,6 +204,7 @@ export const DatabaseProjectView = ({
   resolution,
   defaultUnits,
   missingPlacement,
+  visibleProperties,
   editable = false,
   pendingRecordIds = [],
   onOpenRecord,
@@ -356,6 +402,30 @@ export const DatabaseProjectView = ({
             const width = hasPlacement ? Math.max(8, displayUnits * SLOT_WIDTH) : 0;
             const rowTitle = getRowTitle(record);
             const isPending = pendingIds.has(record.fileId);
+            const excludedPropertyKeys = new Set<string>([
+              toLower(startField),
+              toLower(unitField),
+            ]);
+            const propertyRows = visibleProperties
+              .filter((attribute) => !excludedPropertyKeys.has(toLower(attribute.key)))
+              .map((attribute) => {
+                const value = stringifyMetaValue(
+                  getRecordValueByField(record, attribute.key),
+                  attribute.type,
+                );
+                if (!value) {
+                  return null;
+                }
+                return {
+                  key: attribute.key,
+                  label: attribute.label || attribute.key,
+                  value,
+                };
+              })
+              .filter((entry): entry is { key: string; label: string; value: string } => Boolean(entry));
+            const rowMetaLeft = hasPlacement && startX !== null
+              ? clamp(startX + width + 10, 8, Math.max(8, resolution * SLOT_WIDTH - 200))
+              : 10;
 
             return (
               <Fragment key={record.fileId}>
@@ -479,6 +549,18 @@ export const DatabaseProjectView = ({
                     </span>
                   ) : missingPlacement === "show-unplaced" ? (
                     <span className="database-project-unplaced-hint">Nicht platziert</span>
+                  ) : null}
+                  {propertyRows.length > 0 ? (
+                    <div
+                      className="database-project-row-meta"
+                      style={{ left: `${rowMetaLeft}px` }}
+                    >
+                      {propertyRows.map((entry) => (
+                        <p key={entry.key}>
+                          <strong>{entry.label}:</strong> {entry.value}
+                        </p>
+                      ))}
+                    </div>
                   ) : null}
                 </div>
               </Fragment>

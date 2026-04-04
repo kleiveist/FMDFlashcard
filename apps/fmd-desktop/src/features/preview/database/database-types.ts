@@ -106,9 +106,12 @@ export type DatabaseSourceSpec = {
   query?: string;
 };
 
+export type DatabasePropertiesByView = Partial<Record<DatabaseViewType, string[]>>;
+
 export type DatabaseViewSpec = {
   type: DatabaseViewType;
   groupBy?: string | null;
+  kanbanShowCover?: boolean;
   timelineStartField?: string | null;
   timelineEndField?: string | null;
   timelineMode?: DatabaseTimelineMode;
@@ -136,6 +139,7 @@ export type DatabaseBlockConfig = {
   view: DatabaseViewSpec;
   fields?: DatabaseFieldDefinition[];
   columns: string[];
+  propertiesByView?: DatabasePropertiesByView;
   filters: DatabaseFilterGroup;
   sort: DatabaseSortRule[];
   options: DatabaseBlockOptions;

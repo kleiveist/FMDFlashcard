@@ -3,7 +3,7 @@ import { act, createElement, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { DatabaseProjectView } from "./project-view";
-import { type DatabaseRecord } from "../database-types";
+import { type DatabaseAttributeMeta, type DatabaseRecord } from "../database-types";
 
 const render = (element: ReactElement, viewportWidth = 1400) => {
   Object.defineProperty(window, "innerWidth", {
@@ -66,9 +66,31 @@ const createRecord = (
 const placedRecord = createRecord("placed", {
   unitsstart: 3,
   units: 4,
+  status: {
+    raw: "Open",
+  },
 });
 
 const unplacedRecord = createRecord("unplaced", {});
+
+const statusAttribute: DatabaseAttributeMeta = {
+  key: "status",
+  label: "Status",
+  type: "status",
+  origin: "frontmatter",
+  formula: null,
+  editable: true,
+  sortable: true,
+  filterable: true,
+  aggregatable: false,
+  viewCompatibility: {
+    supportsTable: true,
+    supportsKanbanGrouping: true,
+    supportsTimeline: false,
+    supportsPieGrouping: true,
+    supportsAggregation: false,
+  },
+};
 
 describe("DatabaseProjectView", () => {
   it("renders existing blocks and unplaced hints", () => {
@@ -80,6 +102,7 @@ describe("DatabaseProjectView", () => {
         resolution: 100,
         defaultUnits: 1,
         missingPlacement: "show-unplaced",
+        visibleProperties: [],
       }),
     );
 
@@ -99,6 +122,7 @@ describe("DatabaseProjectView", () => {
         resolution: 100,
         defaultUnits: 2,
         missingPlacement: "show-unplaced",
+        visibleProperties: [],
         editable: true,
         onCommitPlacement,
       }),
@@ -135,6 +159,7 @@ describe("DatabaseProjectView", () => {
         resolution: 100,
         defaultUnits: 1,
         missingPlacement: "show-unplaced",
+        visibleProperties: [],
         editable: true,
         onCommitPlacement,
       }),
@@ -175,6 +200,7 @@ describe("DatabaseProjectView", () => {
         resolution: 100,
         defaultUnits: 1,
         missingPlacement: "show-unplaced",
+        visibleProperties: [],
       }),
       1000,
     );
@@ -182,6 +208,27 @@ describe("DatabaseProjectView", () => {
     const toggleButton = Array.from(container.querySelectorAll("button"))
       .find((button) => (button.textContent ?? "").includes("Liste anzeigen"));
     expect(toggleButton).toBeTruthy();
+
+    cleanup();
+  });
+
+  it("renders selected property meta near project bars", () => {
+    const { container, cleanup } = render(
+      createElement(DatabaseProjectView, {
+        records: [placedRecord],
+        startField: "unitsstart",
+        unitField: "units",
+        resolution: 100,
+        defaultUnits: 1,
+        missingPlacement: "show-unplaced",
+        visibleProperties: [statusAttribute],
+      }),
+    );
+
+    const meta = container.querySelector(".database-project-row-meta");
+    expect(meta).toBeTruthy();
+    expect(meta?.textContent).toContain("Status");
+    expect(meta?.textContent).toContain("Open");
 
     cleanup();
   });

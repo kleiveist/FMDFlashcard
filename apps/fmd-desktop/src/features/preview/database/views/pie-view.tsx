@@ -16,12 +16,14 @@ type DatabasePieViewProps = {
   groupAttribute: DatabaseAttributeMeta | null;
   aggregate: "count" | "sum" | "avg";
   aggregateAttribute: DatabaseAttributeMeta | null;
+  visibleProperties: DatabaseAttributeMeta[];
 };
 
 type PieBucket = {
   label: string;
   value: number;
   sourceCount: number;
+  records: DatabaseRecord[];
 };
 
 const PIE_COLORS = [
@@ -148,6 +150,49 @@ const toAggregatableNumber = (
   return Number.NaN;
 };
 
+const stringifyDetailValue = (
+  value: DatabaseNormalizedFieldValue,
+  type: DatabaseAttributeMeta["type"],
+): string | null => {
+  if (value === null || typeof value === "undefined") {
+    return null;
+  }
+  if (value instanceof Date) {
+    if (type === "date") {
+      return value.toLocaleDateString();
+    }
+    if (type === "time") {
+      return value.toLocaleTimeString(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+    return value.toLocaleString();
+  }
+  if (Array.isArray(value)) {
+    const entries = value.map((entry) => String(entry).trim()).filter(Boolean);
+    return entries.length > 0 ? entries.join(", ") : null;
+  }
+  if (typeof value === "object") {
+    if ("raw" in value) {
+      const raw = String(value.raw ?? "").trim();
+      return raw || null;
+    }
+    if ("value" in value && typeof value.value === "number" && Number.isFinite(value.value)) {
+      return String(value.value);
+    }
+    return null;
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? String(value) : null;
+  }
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+  const text = String(value).trim();
+  return text || null;
+};
+
 const formatBucketValue = (value: number, aggregate: "count" | "sum" | "avg") => {
   if (aggregate === "count") {
     return String(Math.round(value));
@@ -164,6 +209,7 @@ export const DatabasePieView = ({
   groupAttribute,
   aggregate,
   aggregateAttribute,
+  visibleProperties,
 }: DatabasePieViewProps) => {
   const validationError = useMemo(() => {
     if (!groupAttribute || !groupAttribute.viewCompatibility.supportsPieGrouping) {
@@ -188,6 +234,7 @@ export const DatabasePieView = ({
     }
 
     const aggregateMap = new Map<string, { sum: number; count: number }>();
+    const recordsByBucket = new Map<string, DatabaseRecord[]>();
 
     records.forEach((record) => {
       const labels = getGroupLabels(
@@ -202,6 +249,8 @@ export const DatabasePieView = ({
             sum: current.sum + 1,
             count: current.count + 1,
           });
+          const bucketRecords = recordsByBucket.get(label) ?? [];
+          recordsByBucket.set(label, [...bucketRecords, record]);
         });
         return;
       }
@@ -222,6 +271,8 @@ export const DatabasePieView = ({
           sum: current.sum + numeric,
           count: current.count + 1,
         });
+        const bucketRecords = recordsByBucket.get(label) ?? [];
+        recordsByBucket.set(label, [...bucketRecords, record]);
       });
     });
 
@@ -232,17 +283,73 @@ export const DatabasePieView = ({
             label,
             value: stats.count > 0 ? stats.sum / stats.count : 0,
             sourceCount: stats.count,
+            records: recordsByBucket.get(label) ?? [],
           };
         }
         return {
           label,
           value: stats.sum,
           sourceCount: stats.count,
+          records: recordsByBucket.get(label) ?? [],
         };
       })
       .filter((bucket) => Number.isFinite(bucket.value) && bucket.value >= 0)
       .sort((left, right) => right.value - left.value || left.label.localeCompare(right.label));
   }, [aggregate, aggregateAttribute, groupAttribute, records, validationError]);
+
+  const legendDetailsByLabel = useMemo(() => {
+    if (!groupAttribute || visibleProperties.length === 0) {
+      return new Map<string, Array<{ key: string; label: string; text: string }>>();
+    }
+
+    const excludedKeys = new Set<string>([
+      groupAttribute.key,
+      ...(aggregateAttribute ? [aggregateAttribute.key] : []),
+    ].map((key) => toLower(key)));
+
+    const selectedProperties = visibleProperties
+      .filter((property) => !excludedKeys.has(toLower(property.key)));
+
+    const detailMap = new Map<string, Array<{ key: string; label: string; text: string }>>();
+    buckets.forEach((bucket) => {
+      const details = selectedProperties
+        .map((property) => {
+          const values: string[] = [];
+          const seen = new Set<string>();
+          bucket.records.forEach((record) => {
+            const value = stringifyDetailValue(
+              getRecordValueByField(record, property.key),
+              property.type,
+            );
+            if (!value) {
+              return;
+            }
+            const normalized = value.toLowerCase();
+            if (seen.has(normalized)) {
+              return;
+            }
+            seen.add(normalized);
+            values.push(value);
+          });
+          if (values.length === 0) {
+            return null;
+          }
+          const sample = values.slice(0, 3);
+          const remaining = values.length - sample.length;
+          return {
+            key: property.key,
+            label: property.label || property.key,
+            text: remaining > 0
+              ? `${sample.join(", ")} (+${remaining} weitere)`
+              : sample.join(", "),
+          };
+        })
+        .filter((entry): entry is { key: string; label: string; text: string } => Boolean(entry));
+      detailMap.set(bucket.label, details);
+    });
+
+    return detailMap;
+  }, [aggregateAttribute, buckets, groupAttribute, visibleProperties]);
 
   const total = useMemo(
     () => buckets.reduce((sum, bucket) => sum + bucket.value, 0),
@@ -318,6 +425,7 @@ export const DatabasePieView = ({
       <ul className="database-pie-legend">
         {buckets.map((bucket, index) => {
           const percent = total > 0 ? (bucket.value / total) * 100 : 0;
+          const details = legendDetailsByLabel.get(bucket.label) ?? [];
           return (
             <li key={bucket.label}>
               <span
@@ -332,6 +440,15 @@ export const DatabasePieView = ({
               <span className="database-pie-legend-percent">
                 {percent.toFixed(1)}%
               </span>
+              {details.length > 0 ? (
+                <div className="database-pie-legend-details">
+                  {details.map((detail) => (
+                    <p key={detail.key}>
+                      <strong>{detail.label}:</strong> {detail.text}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
             </li>
           );
         })}

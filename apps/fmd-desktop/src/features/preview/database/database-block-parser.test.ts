@@ -168,6 +168,7 @@ describe("database-block-parser", () => {
       "title: View Roundtrip",
       "view:",
       "  type: pie",
+      "  kanbanShowCover: true",
       "  timelineStartField: startDate",
       "  timelineEndField: dueDate",
       "  timelineMode: datetime",
@@ -181,6 +182,7 @@ describe("database-block-parser", () => {
 
     const parsed = parseDatabaseBlockConfigFromRaw(raw);
     expect(parsed.errors).toEqual([]);
+    expect(parsed.config.view.kanbanShowCover).toBe(true);
     expect(parsed.config.view.timelineStartField).toBe("startDate");
     expect(parsed.config.view.timelineEndField).toBe("dueDate");
     expect(parsed.config.view.timelineMode).toBe("datetime");
@@ -191,6 +193,7 @@ describe("database-block-parser", () => {
     expect(parsed.config.view.pieAggregateField).toBe("percent");
 
     const serialized = serializeDatabaseBlockConfig(parsed.config);
+    expect(serialized).toContain("kanbanShowCover: true");
     expect(serialized).toContain("timelineStartField: startDate");
     expect(serialized).toContain("timelineEndField: dueDate");
     expect(serialized).toContain("timelineMode: datetime");
@@ -202,6 +205,7 @@ describe("database-block-parser", () => {
 
     const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
     expect(reparsed.errors).toEqual([]);
+    expect(reparsed.config.view.kanbanShowCover).toBe(true);
     expect(reparsed.config.view.timelineStartField).toBe("startDate");
     expect(reparsed.config.view.timelineEndField).toBe("dueDate");
     expect(reparsed.config.view.timelineMode).toBe("datetime");
@@ -269,6 +273,74 @@ describe("database-block-parser", () => {
     expect(reparsed.config.view.blockResolution).toBe(200);
     expect(reparsed.config.view.defaultUnits).toBe(2);
     expect(reparsed.config.view.projectMissingPlacement).toBe("hide-unplaced");
+  });
+
+  it("roundtrips propertiesByView selections", () => {
+    const raw = [
+      "::::",
+      "title: Per View Properties",
+      "view:",
+      "  type: kanban",
+      "  kanbanShowCover: true",
+      "columns:",
+      "  - Dateiname",
+      "propertiesByView:",
+      "  table:",
+      "    - Dateiname",
+      "    - units",
+      "  kanban:",
+      "    - status",
+      "    - cover",
+      "  gantt:",
+      "    - start",
+      "    - end",
+      "  project:",
+      "    - unitsstart",
+      "    - units",
+      "  pie:",
+      "    - status",
+      "::::",
+    ].join("\n");
+
+    const parsed = parseDatabaseBlockConfigFromRaw(raw);
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.config.propertiesByView?.table).toEqual(["Dateiname", "units"]);
+    expect(parsed.config.propertiesByView?.kanban).toEqual(["status", "cover"]);
+    expect(parsed.config.propertiesByView?.gantt).toEqual(["start", "end"]);
+    expect(parsed.config.propertiesByView?.project).toEqual(["unitsstart", "units"]);
+    expect(parsed.config.propertiesByView?.pie).toEqual(["status"]);
+    expect(parsed.config.columns).toEqual(["Dateiname", "units"]);
+
+    const serialized = serializeDatabaseBlockConfig(parsed.config);
+    expect(serialized).toContain("propertiesByView:");
+    expect(serialized).toContain("kanbanShowCover: true");
+    expect(serialized).toContain("  kanban:");
+
+    const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
+    expect(reparsed.errors).toEqual([]);
+    expect(reparsed.config.propertiesByView?.table).toEqual(["Dateiname", "units"]);
+    expect(reparsed.config.propertiesByView?.kanban).toEqual(["status", "cover"]);
+    expect(reparsed.config.columns).toEqual(["Dateiname", "units"]);
+  });
+
+  it("migrates legacy columns to table-only propertiesByView", () => {
+    const raw = [
+      "::::",
+      "title: Legacy",
+      "columns:",
+      "  - Dateiname",
+      "  - status",
+      "::::",
+    ].join("\n");
+
+    const parsed = parseDatabaseBlockConfigFromRaw(raw);
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.config.columns).toEqual(["Dateiname", "status"]);
+    expect(parsed.config.propertiesByView?.table).toEqual(["Dateiname", "status"]);
+    expect(parsed.config.propertiesByView?.kanban).toEqual([]);
+    expect(parsed.config.propertiesByView?.gantt).toEqual([]);
+    expect(parsed.config.propertiesByView?.project).toEqual([]);
+    expect(parsed.config.propertiesByView?.pie).toEqual([]);
   });
 
   it("preserves nested filter groups during serialize/parse roundtrip", () => {

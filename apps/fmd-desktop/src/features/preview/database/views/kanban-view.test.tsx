@@ -45,6 +45,44 @@ const groupAttribute: DatabaseAttributeMeta = {
   },
 };
 
+const numericAttribute: DatabaseAttributeMeta = {
+  key: "priority",
+  label: "Priority",
+  type: "number",
+  origin: "frontmatter",
+  formula: null,
+  editable: true,
+  sortable: true,
+  filterable: true,
+  aggregatable: true,
+  viewCompatibility: {
+    supportsTable: true,
+    supportsKanbanGrouping: false,
+    supportsTimeline: false,
+    supportsPieGrouping: false,
+    supportsAggregation: true,
+  },
+};
+
+const imageAttribute: DatabaseAttributeMeta = {
+  key: "cover",
+  label: "Cover",
+  type: "image",
+  origin: "frontmatter",
+  formula: null,
+  editable: true,
+  sortable: true,
+  filterable: true,
+  aggregatable: false,
+  viewCompatibility: {
+    supportsTable: true,
+    supportsKanbanGrouping: false,
+    supportsTimeline: false,
+    supportsPieGrouping: false,
+    supportsAggregation: false,
+  },
+};
+
 const recordA: DatabaseRecord = {
   fileId: "a.md",
   filePath: "/vault/a.md",
@@ -81,6 +119,26 @@ const recordB: DatabaseRecord = {
   },
 };
 
+const coverRecord: DatabaseRecord = {
+  ...recordA,
+  fileId: "cover.md",
+  filePath: "/vault/cover.md",
+  relativePath: "cover.md",
+  fileName: "cover.md",
+  frontmatter: {
+    status: "Open",
+    cover: "cover.png",
+    priority: 2,
+  },
+  normalizedFields: {
+    status: {
+      raw: "Open",
+    },
+    cover: "cover.png",
+    priority: 2,
+  },
+};
+
 const createDragEvent = (type: string, dataTransfer: DataTransfer) => {
   const event = new Event(type, { bubbles: true, cancelable: true });
   Object.defineProperty(event, "dataTransfer", {
@@ -95,6 +153,9 @@ describe("DatabaseKanbanView", () => {
       createElement(DatabaseKanbanView, {
         records: [recordA, recordB],
         groupAttribute,
+        attributes: [groupAttribute],
+        visibleProperties: [],
+        showCover: false,
         pendingRecordIds: [],
         onMoveRecord: vi.fn(),
         onOpenRecord: vi.fn(),
@@ -115,6 +176,9 @@ describe("DatabaseKanbanView", () => {
       createElement(DatabaseKanbanView, {
         records: [recordA, recordB],
         groupAttribute,
+        attributes: [groupAttribute],
+        visibleProperties: [],
+        showCover: false,
         pendingRecordIds: [],
         onMoveRecord,
         onOpenRecord: vi.fn(),
@@ -147,6 +211,29 @@ describe("DatabaseKanbanView", () => {
     expect(onMoveRecord).toHaveBeenCalledTimes(1);
     expect(onMoveRecord.mock.calls[0]?.[0]?.fileId).toBe("a.md");
     expect(onMoveRecord.mock.calls[0]?.[1]).toBe("Done");
+
+    cleanup();
+  });
+
+  it("renders cover and hover-only property meta when cover mode is enabled", () => {
+    const { container, cleanup } = render(
+      createElement(DatabaseKanbanView, {
+        records: [coverRecord],
+        groupAttribute,
+        attributes: [groupAttribute, imageAttribute, numericAttribute],
+        visibleProperties: [numericAttribute],
+        showCover: true,
+        pendingRecordIds: [],
+        onMoveRecord: vi.fn(),
+        onOpenRecord: vi.fn(),
+      }),
+    );
+
+    expect(container.querySelector(".database-kanban-card-cover-image")).toBeTruthy();
+    const hoverOnlyMeta = container.querySelector(".database-kanban-card-properties.is-hover-only");
+    expect(hoverOnlyMeta).toBeTruthy();
+    expect(hoverOnlyMeta?.textContent).toContain("Priority");
+    expect(hoverOnlyMeta?.textContent).toContain("2");
 
     cleanup();
   });

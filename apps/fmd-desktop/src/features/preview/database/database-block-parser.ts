@@ -17,6 +17,7 @@ import {
   type DatabaseFilterRule,
   type DatabaseAttributeOrigin,
   type DatabaseGanttZoom,
+  type DatabasePropertiesByView,
   type DatabaseProjectMissingPlacement,
   type DatabaseTimelineMode,
   type DatabaseSortRule,
@@ -526,11 +527,55 @@ const parseViewType = (value: unknown): DatabaseViewType => {
   return "table";
 };
 
+const DATABASE_VIEW_TYPES: DatabaseViewType[] = ["table", "kanban", "gantt", "project", "pie"];
+
 const DEFAULT_PROJECT_START_FIELD = "unitsstart";
 const DEFAULT_PROJECT_UNIT_FIELD = "units";
 const DEFAULT_PROJECT_BLOCK_RESOLUTION = 100;
 const DEFAULT_PROJECT_DEFAULT_UNITS = 1;
 const DEFAULT_PROJECT_MISSING_PLACEMENT: DatabaseProjectMissingPlacement = "show-unplaced";
+
+const dedupeCaseInsensitive = (keys: string[]) => {
+  const seen = new Set<string>();
+  const next: string[] = [];
+  keys.forEach((key) => {
+    const normalized = key.trim().toLowerCase();
+    if (!normalized || seen.has(normalized)) {
+      return;
+    }
+    seen.add(normalized);
+    next.push(key.trim());
+  });
+  return next;
+};
+
+const createDefaultPropertiesByView = (tableColumns: string[]): DatabasePropertiesByView => ({
+  table: dedupeCaseInsensitive(tableColumns),
+  kanban: [],
+  gantt: [],
+  project: [],
+  pie: [],
+});
+
+const parsePropertiesByView = (
+  value: unknown,
+  tableColumns: string[],
+): DatabasePropertiesByView => {
+  const defaults = createDefaultPropertiesByView(tableColumns);
+  if (!isRecord(value)) {
+    return defaults;
+  }
+
+  const next: DatabasePropertiesByView = { ...defaults };
+  DATABASE_VIEW_TYPES.forEach((view) => {
+    if (!(view in value)) {
+      return;
+    }
+    next[view] = dedupeCaseInsensitive(asStringArray(value[view]));
+  });
+  next.table = dedupeCaseInsensitive(next.table ?? tableColumns);
+  return next;
+};
 
 const parsePositiveInteger = (value: unknown, fallback: number) => {
   const numeric = typeof value === "number"
@@ -580,6 +625,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
       timelineMode: "date",
       timelineBaseDate: null,
       ganttZoom: "month",
+      kanbanShowCover: false,
       projectStartField: DEFAULT_PROJECT_START_FIELD,
       projectUnitField: DEFAULT_PROJECT_UNIT_FIELD,
       blockResolution: DEFAULT_PROJECT_BLOCK_RESOLUTION,
@@ -593,6 +639,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
       timelineMode: "date",
       timelineBaseDate: null,
       ganttZoom: "month",
+      kanbanShowCover: false,
       projectStartField: DEFAULT_PROJECT_START_FIELD,
       projectUnitField: DEFAULT_PROJECT_UNIT_FIELD,
       blockResolution: DEFAULT_PROJECT_BLOCK_RESOLUTION,
@@ -605,6 +652,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
   return {
     type,
     groupBy: asString(value.groupBy) || null,
+    kanbanShowCover: Boolean(value.kanbanShowCover),
     timelineStartField: asString(value.timelineStartField) || null,
     timelineEndField: asString(value.timelineEndField) || null,
     timelineMode: parseTimelineMode(value.timelineMode),
@@ -631,6 +679,7 @@ export const createDefaultDatabaseBlockConfig = (): DatabaseBlockConfig => ({
   },
   view: {
     type: "table",
+    kanbanShowCover: false,
     timelineMode: "date",
     timelineBaseDate: null,
     ganttZoom: "month",
@@ -645,6 +694,10 @@ export const createDefaultDatabaseBlockConfig = (): DatabaseBlockConfig => ({
     "Dateiname",
     "Dateipfad",
   ],
+  propertiesByView: createDefaultPropertiesByView([
+    "Dateiname",
+    "Dateipfad",
+  ]),
   filters: createDefaultFilterGroup(),
   sort: [],
   options: {
@@ -673,14 +726,19 @@ const parseConfigObject = (value: unknown): DatabaseBlockConfig => {
   const defaults = createDefaultDatabaseBlockConfig();
   const record = isRecord(value) ? value : {};
   const hasExplicitColumns = Array.isArray(record.columns);
-  const columns = asStringArray(record.columns);
+  const parsedColumns = hasExplicitColumns
+    ? dedupeCaseInsensitive(asStringArray(record.columns))
+    : dedupeCaseInsensitive(defaults.columns);
+  const propertiesByView = parsePropertiesByView(record.propertiesByView, parsedColumns);
+  const columns = dedupeCaseInsensitive(propertiesByView.table ?? parsedColumns);
 
   return {
     title: asString(record.title, defaults.title),
     source: parseSourceSpec(record.source),
     view: parseViewSpec(record.view),
     fields: parseFieldDefinitions(record.fields),
-    columns: hasExplicitColumns ? columns : defaults.columns,
+    columns,
+    propertiesByView,
     filters: parseFilterGroup(record.filters),
     sort: parseSortRules(record.sort),
     options: parseOptions(record.options),
@@ -787,6 +845,9 @@ export const serializeDatabaseBlockConfig = (config: DatabaseBlockConfig) => {
   if (config.view.groupBy) {
     lines.push(`  groupBy: ${formatYamlScalar(config.view.groupBy)}`);
   }
+  if (config.view.kanbanShowCover) {
+    lines.push(`  kanbanShowCover: ${formatYamlScalar(config.view.kanbanShowCover)}`);
+  }
   if (config.view.timelineStartField) {
     lines.push(`  timelineStartField: ${formatYamlScalar(config.view.timelineStartField)}`);
   }
@@ -855,6 +916,23 @@ export const serializeDatabaseBlockConfig = (config: DatabaseBlockConfig) => {
       lines.push(`  - ${formatYamlScalar(column)}`);
     });
   }
+
+  const propertiesByView = parsePropertiesByView(
+    config.propertiesByView,
+    config.columns,
+  );
+  lines.push("propertiesByView:");
+  DATABASE_VIEW_TYPES.forEach((view) => {
+    const keys = dedupeCaseInsensitive(propertiesByView[view] ?? []);
+    if (keys.length === 0) {
+      lines.push(`  ${view}: []`);
+      return;
+    }
+    lines.push(`  ${view}:`);
+    keys.forEach((key) => {
+      lines.push(`    - ${formatYamlScalar(key)}`);
+    });
+  });
 
   lines.push("filters:");
   writeFilterGroupYaml(config.filters, 2, lines);

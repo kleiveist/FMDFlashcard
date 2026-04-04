@@ -7,6 +7,7 @@
 import { useMemo } from "react";
 import {
   type DatabaseAttributeMeta,
+  type DatabaseFieldType,
   type DatabaseNormalizedFieldValue,
   type DatabaseRecord,
 } from "../database-types";
@@ -14,6 +15,9 @@ import {
 type DatabaseKanbanViewProps = {
   records: DatabaseRecord[];
   groupAttribute: DatabaseAttributeMeta | null;
+  attributes: DatabaseAttributeMeta[];
+  visibleProperties: DatabaseAttributeMeta[];
+  showCover: boolean;
   pendingRecordIds: string[];
   onMoveRecord: (record: DatabaseRecord, nextGroupValue: string) => void;
   onOpenRecord: (record: DatabaseRecord) => void;
@@ -53,9 +57,78 @@ const stringifyGroupValue = (value: DatabaseNormalizedFieldValue) => {
   return text || EMPTY_GROUP_LABEL;
 };
 
+const stringifyMetaValue = (value: DatabaseNormalizedFieldValue, type: DatabaseFieldType): string | null => {
+  if (value === null || typeof value === "undefined") {
+    return null;
+  }
+  if (value instanceof Date) {
+    return type === "date"
+      ? value.toLocaleDateString()
+      : value.toLocaleString();
+  }
+  if (Array.isArray(value)) {
+    const entries = value.map((entry) => String(entry).trim()).filter(Boolean);
+    return entries.length > 0 ? entries.join(", ") : null;
+  }
+  if (typeof value === "object") {
+    if ("raw" in value) {
+      const raw = String(value.raw ?? "").trim();
+      return raw || null;
+    }
+    if ("value" in value && typeof value.value === "number" && Number.isFinite(value.value)) {
+      return String(value.value);
+    }
+    return null;
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? String(value) : null;
+  }
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+  const text = String(value).trim();
+  return text || null;
+};
+
+const normalizeCoverCandidate = (raw: string): string => {
+  const trimmed = raw.trim();
+  const wikilink = trimmed.match(/^\[\[([^\]|]+)(?:\|[^\]]+)?\]\]$/);
+  if (wikilink?.[1]) {
+    return wikilink[1].trim();
+  }
+  return trimmed;
+};
+
+const resolveCoverSource = (
+  record: DatabaseRecord,
+  attributes: DatabaseAttributeMeta[],
+): string | null => {
+  const preferredKeys = ["cover", "image", "thumbnail"];
+  for (const key of preferredKeys) {
+    const raw = getRecordValueByField(record, key);
+    const resolved = stringifyMetaValue(raw, "image");
+    if (resolved) {
+      return normalizeCoverCandidate(resolved);
+    }
+  }
+
+  const imageAttributes = attributes.filter((attribute) => attribute.type === "image");
+  for (const attribute of imageAttributes) {
+    const raw = getRecordValueByField(record, attribute.key);
+    const resolved = stringifyMetaValue(raw, attribute.type);
+    if (resolved) {
+      return normalizeCoverCandidate(resolved);
+    }
+  }
+  return null;
+};
+
 export const DatabaseKanbanView = ({
   records,
   groupAttribute,
+  attributes,
+  visibleProperties,
+  showCover,
   pendingRecordIds,
   onMoveRecord,
   onOpenRecord,
@@ -127,29 +200,74 @@ export const DatabaseKanbanView = ({
             <span>{group.records.length}</span>
           </header>
           <div className="database-kanban-column-body">
-            {group.records.map((record) => (
-              <article
-                key={record.fileId}
-                className={`database-kanban-card${pendingIds.has(record.fileId) ? " is-pending" : ""}`}
-                draggable={!pendingIds.has(record.fileId)}
-                onDragStart={(event) => {
-                  event.dataTransfer.effectAllowed = "move";
-                  event.dataTransfer.setData("text/plain", record.fileId);
-                }}
-              >
-                <button
-                  type="button"
-                  className="database-kanban-card-title"
-                  onClick={() => onOpenRecord(record)}
-                  data-md-block-control="true"
+            {group.records.map((record) => {
+              const coverSource = showCover ? resolveCoverSource(record, attributes) : null;
+              const metaRows = visibleProperties
+                .filter((attribute) =>
+                  toLower(attribute.key) !== toLower(groupAttribute.key))
+                .map((attribute) => {
+                  const value = stringifyMetaValue(
+                    getRecordValueByField(record, attribute.key),
+                    attribute.type,
+                  );
+                  if (!value) {
+                    return null;
+                  }
+                  return {
+                    key: attribute.key,
+                    label: attribute.label || attribute.key,
+                    value,
+                  };
+                })
+                .filter((entry): entry is { key: string; label: string; value: string } => Boolean(entry));
+
+              const hoverOnlyMeta = Boolean(showCover && coverSource);
+
+              return (
+                <article
+                  key={record.fileId}
+                  className={`database-kanban-card${pendingIds.has(record.fileId) ? " is-pending" : ""}${
+                    coverSource ? " has-cover" : ""
+                  }`}
+                  draggable={!pendingIds.has(record.fileId)}
+                  onDragStart={(event) => {
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", record.fileId);
+                  }}
                 >
-                  {record.systemFields.Dateiname ? String(record.systemFields.Dateiname) : record.fileId}
-                </button>
-                <p className="database-kanban-card-meta">
-                  {record.relativePath}
-                </p>
-              </article>
-            ))}
+                  {coverSource ? (
+                    <div className="database-kanban-card-cover">
+                      <img
+                        src={coverSource}
+                        alt=""
+                        className="database-kanban-card-cover-image"
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="database-kanban-card-title"
+                    onClick={() => onOpenRecord(record)}
+                    data-md-block-control="true"
+                  >
+                    {record.systemFields.Dateiname ? String(record.systemFields.Dateiname) : record.fileId}
+                  </button>
+                  <p className="database-kanban-card-meta">
+                    {record.relativePath}
+                  </p>
+                  {metaRows.length > 0 ? (
+                    <div className={`database-kanban-card-properties${hoverOnlyMeta ? " is-hover-only" : ""}`}>
+                      {metaRows.map((entry) => (
+                        <p key={entry.key} className="database-kanban-card-meta-row">
+                          <strong>{entry.label}:</strong> {entry.value}
+                        </p>
+                      ))}
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
           </div>
         </section>
       ))}
