@@ -42,12 +42,14 @@ const buildProps = () => ({
   isSortPanelOpen: false,
   isPropertiesPanelOpen: false,
   isGanttPanelOpen: false,
+  isProjectPanelOpen: false,
   isPiePanelOpen: false,
   onToggleSourcePanel: vi.fn(),
   onToggleFilterPanel: vi.fn(),
   onToggleSortPanel: vi.fn(),
   onTogglePropertiesPanel: vi.fn(),
   onToggleGanttPanel: vi.fn(),
+  onToggleProjectPanel: vi.fn(),
   onTogglePiePanel: vi.fn(),
 });
 
@@ -205,6 +207,27 @@ describe("DatabaseToolbar", () => {
 
     expect(pieButton).toBeTruthy();
     expect(props.onTogglePiePanel).toHaveBeenCalledTimes(1);
+
+    cleanup();
+  });
+
+  it("renders project options button for project view", () => {
+    const props = {
+      ...buildProps(),
+      viewType: "project" as const,
+    };
+    const { container, cleanup } = render(
+      createElement(DatabaseToolbar, props),
+    );
+
+    const projectButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => button.textContent?.includes("Project Optionen"));
+    act(() => {
+      projectButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(projectButton).toBeTruthy();
+    expect(props.onToggleProjectPanel).toHaveBeenCalledTimes(1);
 
     cleanup();
   });

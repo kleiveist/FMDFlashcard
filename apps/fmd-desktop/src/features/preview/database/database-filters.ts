@@ -364,6 +364,7 @@ const evaluateRuleByType = (
 ) => {
   switch (fieldType) {
     case "number":
+    case "unit":
     case "percent":
     case "score":
     case "rating":
@@ -399,6 +400,7 @@ const getNormalizedFieldValue = (record: DatabaseRecord, field: string) => {
 export const getFilterOperatorsForType = (type: DatabaseFieldType): DatabaseFilterOperator[] => {
   switch (type) {
     case "number":
+    case "unit":
     case "percent":
     case "score":
     case "rating":

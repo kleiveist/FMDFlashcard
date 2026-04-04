@@ -17,6 +17,7 @@ import {
   type DatabaseFilterRule,
   type DatabaseAttributeOrigin,
   type DatabaseGanttZoom,
+  type DatabaseProjectMissingPlacement,
   type DatabaseTimelineMode,
   type DatabaseSortRule,
   type DatabaseSourceSpec,
@@ -123,6 +124,7 @@ const parseFieldType = (value: unknown): DatabaseFieldType => {
     case "text":
     case "longtext":
     case "number":
+    case "unit":
     case "percent":
     case "boolean":
     case "time":
@@ -518,10 +520,33 @@ const parseSourceSpec = (value: unknown): DatabaseSourceSpec => {
 
 const parseViewType = (value: unknown): DatabaseViewType => {
   const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
-  if (normalized === "kanban" || normalized === "gantt" || normalized === "pie") {
+  if (normalized === "kanban" || normalized === "gantt" || normalized === "pie" || normalized === "project") {
     return normalized;
   }
   return "table";
+};
+
+const DEFAULT_PROJECT_START_FIELD = "projectStart";
+const DEFAULT_PROJECT_UNIT_FIELD = "units";
+const DEFAULT_PROJECT_BLOCK_RESOLUTION = 100;
+const DEFAULT_PROJECT_DEFAULT_UNITS = 1;
+const DEFAULT_PROJECT_MISSING_PLACEMENT: DatabaseProjectMissingPlacement = "show-unplaced";
+
+const parsePositiveInteger = (value: unknown, fallback: number) => {
+  const numeric = typeof value === "number"
+    ? value
+    : typeof value === "string"
+    ? Number(value.trim())
+    : Number.NaN;
+  if (!Number.isFinite(numeric)) {
+    return fallback;
+  }
+  return Number.isInteger(numeric) && numeric >= 1 ? numeric : fallback;
+};
+
+const parseProjectMissingPlacement = (value: unknown): DatabaseProjectMissingPlacement => {
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return normalized === "hide-unplaced" ? "hide-unplaced" : "show-unplaced";
 };
 
 const parseGanttZoom = (value: unknown): DatabaseGanttZoom => {
@@ -555,6 +580,11 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
       timelineMode: "date",
       timelineBaseDate: null,
       ganttZoom: "month",
+      projectStartField: DEFAULT_PROJECT_START_FIELD,
+      projectUnitField: DEFAULT_PROJECT_UNIT_FIELD,
+      blockResolution: DEFAULT_PROJECT_BLOCK_RESOLUTION,
+      defaultUnits: DEFAULT_PROJECT_DEFAULT_UNITS,
+      projectMissingPlacement: DEFAULT_PROJECT_MISSING_PLACEMENT,
     };
   }
   if (!isRecord(value)) {
@@ -563,6 +593,11 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
       timelineMode: "date",
       timelineBaseDate: null,
       ganttZoom: "month",
+      projectStartField: DEFAULT_PROJECT_START_FIELD,
+      projectUnitField: DEFAULT_PROJECT_UNIT_FIELD,
+      blockResolution: DEFAULT_PROJECT_BLOCK_RESOLUTION,
+      defaultUnits: DEFAULT_PROJECT_DEFAULT_UNITS,
+      projectMissingPlacement: DEFAULT_PROJECT_MISSING_PLACEMENT,
     };
   }
   const type = parseViewType(value.type);
@@ -575,6 +610,11 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
     timelineMode: parseTimelineMode(value.timelineMode),
     timelineBaseDate: asString(value.timelineBaseDate) || null,
     ganttZoom: parseGanttZoom(value.ganttZoom),
+    projectStartField: asString(value.projectStartField) || DEFAULT_PROJECT_START_FIELD,
+    projectUnitField: asString(value.projectUnitField) || DEFAULT_PROJECT_UNIT_FIELD,
+    blockResolution: parsePositiveInteger(value.blockResolution, DEFAULT_PROJECT_BLOCK_RESOLUTION),
+    defaultUnits: parsePositiveInteger(value.defaultUnits, DEFAULT_PROJECT_DEFAULT_UNITS),
+    projectMissingPlacement: parseProjectMissingPlacement(value.projectMissingPlacement),
     pieGroupField: asString(value.pieGroupField) || null,
     pieAggregate:
       pieAggregateRaw === "sum" || pieAggregateRaw === "avg"
@@ -594,6 +634,11 @@ export const createDefaultDatabaseBlockConfig = (): DatabaseBlockConfig => ({
     timelineMode: "date",
     timelineBaseDate: null,
     ganttZoom: "month",
+    projectStartField: DEFAULT_PROJECT_START_FIELD,
+    projectUnitField: DEFAULT_PROJECT_UNIT_FIELD,
+    blockResolution: DEFAULT_PROJECT_BLOCK_RESOLUTION,
+    defaultUnits: DEFAULT_PROJECT_DEFAULT_UNITS,
+    projectMissingPlacement: DEFAULT_PROJECT_MISSING_PLACEMENT,
   },
   fields: [],
   columns: [
@@ -756,6 +801,23 @@ export const serializeDatabaseBlockConfig = (config: DatabaseBlockConfig) => {
   }
   if (config.view.ganttZoom) {
     lines.push(`  ganttZoom: ${formatYamlScalar(config.view.ganttZoom)}`);
+  }
+  if (config.view.type === "project") {
+    if (config.view.projectStartField) {
+      lines.push(`  projectStartField: ${formatYamlScalar(config.view.projectStartField)}`);
+    }
+    if (config.view.projectUnitField) {
+      lines.push(`  projectUnitField: ${formatYamlScalar(config.view.projectUnitField)}`);
+    }
+    if (typeof config.view.blockResolution === "number" && Number.isFinite(config.view.blockResolution)) {
+      lines.push(`  blockResolution: ${formatYamlScalar(config.view.blockResolution)}`);
+    }
+    if (typeof config.view.defaultUnits === "number" && Number.isFinite(config.view.defaultUnits)) {
+      lines.push(`  defaultUnits: ${formatYamlScalar(config.view.defaultUnits)}`);
+    }
+    if (config.view.projectMissingPlacement) {
+      lines.push(`  projectMissingPlacement: ${formatYamlScalar(config.view.projectMissingPlacement)}`);
+    }
   }
   if (config.view.pieGroupField) {
     lines.push(`  pieGroupField: ${formatYamlScalar(config.view.pieGroupField)}`);

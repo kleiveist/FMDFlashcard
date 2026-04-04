@@ -251,6 +251,7 @@ export const inferFieldType = (key: string, value: unknown): DatabaseFieldType =
 export const resolveFieldCompatibility = (type: DatabaseFieldType): DatabaseViewCompatibility => {
   switch (type) {
     case "number":
+    case "unit":
     case "percent":
     case "score":
     case "rating":
@@ -315,7 +316,7 @@ export const normalizeFieldValueByType = (
     return list ?? [];
   }
 
-  if (type === "number" && typeof value === "number") {
+  if ((type === "number" || type === "unit") && typeof value === "number") {
     return value;
   }
 

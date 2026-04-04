@@ -230,6 +230,47 @@ describe("database-block-parser", () => {
     expect(parsed.config.view.timelineBaseDate).toBeNull();
   });
 
+  it("roundtrips project view config with project options", () => {
+    const raw = [
+      "::::",
+      "title: Project Board",
+      "view:",
+      "  type: project",
+      "  projectStartField: projectStart",
+      "  projectUnitField: units",
+      "  blockResolution: 200",
+      "  defaultUnits: 2",
+      "  projectMissingPlacement: hide-unplaced",
+      "::::",
+    ].join("\n");
+
+    const parsed = parseDatabaseBlockConfigFromRaw(raw);
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.config.view.type).toBe("project");
+    expect(parsed.config.view.projectStartField).toBe("projectStart");
+    expect(parsed.config.view.projectUnitField).toBe("units");
+    expect(parsed.config.view.blockResolution).toBe(200);
+    expect(parsed.config.view.defaultUnits).toBe(2);
+    expect(parsed.config.view.projectMissingPlacement).toBe("hide-unplaced");
+
+    const serialized = serializeDatabaseBlockConfig(parsed.config);
+    expect(serialized).toContain("type: project");
+    expect(serialized).toContain("projectStartField: projectStart");
+    expect(serialized).toContain("projectUnitField: units");
+    expect(serialized).toContain("blockResolution: 200");
+    expect(serialized).toContain("defaultUnits: 2");
+    expect(serialized).toContain("projectMissingPlacement: hide-unplaced");
+
+    const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
+    expect(reparsed.errors).toEqual([]);
+    expect(reparsed.config.view.type).toBe("project");
+    expect(reparsed.config.view.projectStartField).toBe("projectStart");
+    expect(reparsed.config.view.projectUnitField).toBe("units");
+    expect(reparsed.config.view.blockResolution).toBe(200);
+    expect(reparsed.config.view.defaultUnits).toBe(2);
+    expect(reparsed.config.view.projectMissingPlacement).toBe("hide-unplaced");
+  });
+
   it("preserves nested filter groups during serialize/parse roundtrip", () => {
     const config = createDefaultDatabaseBlockConfig();
     config.filters = {

@@ -75,7 +75,7 @@ const asTextValue = (value: unknown): string => {
 };
 
 const resolveEditorInputType = (type: DatabaseAttributeMeta["type"]) => {
-  if (type === "number" || type === "percent") {
+  if (type === "number" || type === "unit" || type === "percent") {
     return "number";
   }
   if (type === "date") {

@@ -383,8 +383,10 @@
 :root[data-design-mode="edge"] :is(
     .database-pie-view,
     .database-gantt-view,
+    .database-project-view,
     .database-pie-legend li,
-    .database-gantt-bar
+    .database-gantt-bar,
+    .database-project-bar
   ) {
   border-radius: 0;
 }

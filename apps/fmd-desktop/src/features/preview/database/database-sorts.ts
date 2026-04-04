@@ -94,6 +94,7 @@ const compareByType = (
 ) => {
   switch (type) {
     case "number":
+    case "unit":
     case "percent":
     case "score":
     case "rating":

@@ -113,4 +113,36 @@ describe("database-store", () => {
     const formulaField = snapshot.attributeRegistry.find((attribute) => attribute.key === "progressLabel");
     expect(formulaField?.origin).toBe("formula");
   });
+
+  it("keeps configured unit fields as numeric unit type", () => {
+    const record = buildNormalizedRecord({
+      fileId: "demo.md",
+      filePath: "/vault/demo.md",
+      relativePath: "demo.md",
+      frontmatter: {
+        units: 6,
+      },
+      systemFields: createSystemFieldsForRecord("demo.md", "/vault/demo.md"),
+    });
+
+    const config = createDefaultDatabaseBlockConfig();
+    config.fields = [
+      {
+        key: "units",
+        label: "Units",
+        type: "unit",
+        origin: "frontmatter",
+      },
+    ];
+
+    const snapshot = buildDatabaseStoreSnapshot({
+      records: [record],
+      config,
+      searchQuery: "",
+    });
+
+    const unitsField = snapshot.attributeRegistry.find((attribute) => attribute.key === "units");
+    expect(unitsField?.type).toBe("unit");
+    expect(snapshot.visibleRecords[0]?.normalizedFields.units).toBe(6);
+  });
 });

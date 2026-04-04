@@ -4,9 +4,10 @@
  * Shared type system for the markdown database block (phase 1).
  */
 
-export type DatabaseViewType = "table" | "kanban" | "gantt" | "pie";
+export type DatabaseViewType = "table" | "kanban" | "gantt" | "pie" | "project";
 export type DatabaseTimelineMode = "date" | "time" | "datetime";
 export type DatabaseGanttZoom = "year" | "quarter" | "month" | "week" | "day" | "hour" | "minute";
+export type DatabaseProjectMissingPlacement = "show-unplaced" | "hide-unplaced";
 
 export type DatabaseSourceType =
   | "current-folder"
@@ -20,6 +21,7 @@ export type DatabaseFieldType =
   | "text"
   | "longtext"
   | "number"
+  | "unit"
   | "percent"
   | "boolean"
   | "time"
@@ -112,6 +114,11 @@ export type DatabaseViewSpec = {
   timelineMode?: DatabaseTimelineMode;
   timelineBaseDate?: string | null;
   ganttZoom?: DatabaseGanttZoom;
+  projectStartField?: string | null;
+  projectUnitField?: string | null;
+  blockResolution?: number;
+  defaultUnits?: number;
+  projectMissingPlacement?: DatabaseProjectMissingPlacement;
   pieGroupField?: string | null;
   pieAggregate?: "count" | "sum" | "avg";
   pieAggregateField?: string | null;

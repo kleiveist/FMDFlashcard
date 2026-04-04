@@ -38,6 +38,23 @@ const attributes: DatabaseAttributeMeta[] = [
     },
   },
   {
+    key: "units",
+    label: "units",
+    type: "unit",
+    origin: "frontmatter",
+    editable: true,
+    sortable: true,
+    filterable: true,
+    aggregatable: true,
+    viewCompatibility: {
+      supportsTable: true,
+      supportsKanbanGrouping: false,
+      supportsTimeline: false,
+      supportsPieGrouping: false,
+      supportsAggregation: true,
+    },
+  },
+  {
     key: "percent",
     label: "percent",
     type: "percent",
@@ -157,6 +174,7 @@ const records: DatabaseRecord[] = [
   createRecord("a", {
     Section: "IUFS",
     Score: { raw: "20/25", value: 20, max: 25, ratio: 0.8 },
+    units: 6,
     percent: { raw: "80%", value: 80 },
     status: { raw: "3 yellow", rank: 3, label: "yellow" },
     tags: ["Exam", "IUFS"],
@@ -167,6 +185,7 @@ const records: DatabaseRecord[] = [
   createRecord("b", {
     Section: "Other",
     Score: { raw: "10/25", value: 10, max: 25, ratio: 0.4 },
+    units: 1,
     percent: { raw: "40%", value: 40 },
     status: { raw: "1 red", rank: 1, label: "red" },
     tags: ["Draft"],
@@ -285,6 +304,21 @@ describe("database-filters", () => {
         id: "group-1",
         op: "and",
         rules: [{ id: "rule-1", field: "startTime", op: "before", value: "12:00" }],
+      },
+      attributes,
+      "",
+    );
+
+    expect(filtered.map((record) => record.fileId)).toEqual(["a"]);
+  });
+
+  it("treats unit fields as numeric filters", () => {
+    const filtered = applyDatabaseFilters(
+      records,
+      {
+        id: "group-1",
+        op: "and",
+        rules: [{ id: "rule-1", field: "units", op: ">=", value: 2 }],
       },
       attributes,
       "",

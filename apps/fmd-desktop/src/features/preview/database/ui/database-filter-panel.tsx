@@ -112,7 +112,14 @@ const valueIsOptional = (op: string) =>
   op === "is false";
 
 const resolveInputType = (type: DatabaseFieldType) => {
-  if (type === "number" || type === "percent" || type === "score" || type === "rating" || type === "progress") {
+  if (
+    type === "number" ||
+    type === "unit" ||
+    type === "percent" ||
+    type === "score" ||
+    type === "rating" ||
+    type === "progress"
+  ) {
     return "number";
   }
   if (type === "date") {

@@ -396,7 +396,7 @@ const DATABASE_ATTRIBUTES_BLOCK_TEMPLATE = [
   "",
 ].join("\n");
 
-const buildDatabaseInsertTemplate = (viewType: "table" | "kanban" | "gantt" | "pie") => {
+const buildDatabaseInsertTemplate = (viewType: "table" | "kanban" | "gantt" | "pie" | "project") => {
   const config = createDefaultDatabaseBlockConfig();
   config.view = { type: viewType };
   config.columns = ["Dateiname"];
@@ -561,6 +561,12 @@ const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem
       id: "db-pie",
       label: "DB-Pie",
       template: buildDatabaseInsertTemplate("pie"),
+      icon: "database",
+    },
+    {
+      id: "db-project",
+      label: "DB-Project",
+      template: buildDatabaseInsertTemplate("project"),
       icon: "database",
     },
   ],

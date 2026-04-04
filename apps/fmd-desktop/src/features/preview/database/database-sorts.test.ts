@@ -38,6 +38,23 @@ const attributes: DatabaseAttributeMeta[] = [
     },
   },
   {
+    key: "units",
+    label: "units",
+    type: "unit",
+    origin: "frontmatter",
+    editable: true,
+    sortable: true,
+    filterable: true,
+    aggregatable: true,
+    viewCompatibility: {
+      supportsTable: true,
+      supportsKanbanGrouping: false,
+      supportsTimeline: false,
+      supportsPieGrouping: false,
+      supportsAggregation: true,
+    },
+  },
+  {
     key: "Due",
     label: "Due",
     type: "date",
@@ -89,18 +106,21 @@ const records: DatabaseRecord[] = [
   createRecord("item-2", {
     Rank: "SE2",
     Score: { raw: "20/25", value: 20, max: 25, ratio: 0.8 },
+    units: 6,
     Due: new Date("2026-03-25"),
     StartTime: "09:30",
   }),
   createRecord("item-10", {
     Rank: "SE10",
     Score: { raw: "18/25", value: 18, max: 25, ratio: 0.72 },
+    units: 3,
     Due: null,
     StartTime: "14:10",
   }),
   createRecord("item-1", {
     Rank: "SE1",
     Score: { raw: "10/25", value: 10, max: 25, ratio: 0.4 },
+    units: 1,
     Due: new Date("2026-03-21"),
     StartTime: "08:45",
   }),
@@ -196,6 +216,19 @@ describe("database-sorts", () => {
 
     const sorted = applyDatabaseSorts(records, rules, attributes);
     expect(sorted.map((record) => record.fileId)).toEqual(["item-1", "item-2", "item-10"]);
+  });
+
+  it("sorts unit values descending", () => {
+    const rules: DatabaseSortRule[] = [
+      {
+        id: "sort-1",
+        field: "units",
+        dir: "desc",
+      },
+    ];
+
+    const sorted = applyDatabaseSorts(records, rules, attributes);
+    expect(sorted.map((record) => record.fileId)).toEqual(["item-2", "item-10", "item-1"]);
   });
 
   it("uses natural relative-path tie-break ordering when rule values are equal", () => {

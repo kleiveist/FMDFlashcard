@@ -11,6 +11,7 @@ import {
 describe("frontmatter-update", () => {
   it("maps database field types to frontmatter kinds", () => {
     expect(mapDatabaseFieldTypeToFrontmatterKind("number")).toBe("number");
+    expect(mapDatabaseFieldTypeToFrontmatterKind("unit")).toBe("number");
     expect(mapDatabaseFieldTypeToFrontmatterKind("boolean")).toBe("boolean");
     expect(mapDatabaseFieldTypeToFrontmatterKind("tags")).toBe("tags");
     expect(mapDatabaseFieldTypeToFrontmatterKind("link")).toBe("link");
@@ -55,6 +56,27 @@ describe("frontmatter-update", () => {
     expect(result.action).toBe("updated");
     expect(result.markdown).toContain("section: new");
     expect(result.markdown).toContain("other: stay");
+  });
+
+  it("rejects invalid unit values during bulk attribute upsert", () => {
+    const source = [
+      "---",
+      "units: 2",
+      "---",
+      "Body",
+    ].join("\n");
+
+    const result = upsertFrontmatterAttributeInMarkdown({
+      markdown: source,
+      key: "units",
+      type: "unit",
+      initialValue: "0",
+      overwriteExisting: true,
+    });
+
+    expect(result.error).toBe("Unit value must be an integer >= 1.");
+    expect(result.action).toBe("failed");
+    expect(result.changed).toBe(false);
   });
 
   it("skips existing key when overwrite is disabled", () => {
@@ -119,6 +141,11 @@ describe("frontmatter-update", () => {
       kind: "number",
       error: null,
     });
+    expect(coerceDatabaseRecordFieldValue("unit", "4")).toMatchObject({
+      typedValue: 4,
+      kind: "number",
+      error: null,
+    });
     expect(coerceDatabaseRecordFieldValue("boolean", "true")).toMatchObject({
       typedValue: true,
       kind: "boolean",
@@ -155,6 +182,8 @@ describe("frontmatter-update", () => {
       error: null,
     });
     expect(coerceDatabaseRecordFieldValue("number", "not-a-number").error).toBe("Number value must be numeric.");
+    expect(coerceDatabaseRecordFieldValue("unit", "0").error).toBe("Unit value must be an integer >= 1.");
+    expect(coerceDatabaseRecordFieldValue("unit", "1.2").error).toBe("Unit value must be an integer >= 1.");
     expect(coerceDatabaseRecordFieldValue("boolean", "nope").error).toBe("Boolean value must be true or false.");
   });
 

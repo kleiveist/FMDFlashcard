@@ -41,6 +41,7 @@ import {
   type DatabaseFilterGroup,
   type DatabaseGanttZoom,
   type DatabaseNormalizedFieldValue,
+  type DatabaseProjectMissingPlacement,
   type DatabaseRecord,
   type DatabaseSourceSpec,
   type DatabaseSortRule,
@@ -56,6 +57,7 @@ import {
 import { compareNaturalPath } from "../../../lib/naturalSort";
 import { DatabaseFilterPanel } from "./ui/database-filter-panel";
 import { DatabaseGanttPanel } from "./ui/database-gantt-panel";
+import { DatabaseProjectPanel } from "./ui/database-project-panel";
 import { DatabasePiePanel } from "./ui/database-pie-panel";
 import { DatabasePropertiesPanel } from "./ui/database-properties-panel";
 import { DatabaseSourcePanel } from "./ui/database-source-panel";
@@ -64,6 +66,7 @@ import { DatabaseToolbar } from "./ui/database-toolbar";
 import { DatabaseGanttView } from "./views/gantt-view";
 import { DatabaseKanbanView } from "./views/kanban-view";
 import { DatabasePieView } from "./views/pie-view";
+import { DatabaseProjectView } from "./views/project-view";
 import { DatabaseTableView } from "./views/table-view";
 
 type DatabaseBlockProps = {
@@ -81,6 +84,7 @@ type DatabaseBlockOpenPanels = {
   filter: boolean;
   sort: boolean;
   gantt: boolean;
+  project: boolean;
   pie: boolean;
 };
 
@@ -113,6 +117,8 @@ const toWikilinkTarget = (relativePath: string) =>
   relativePath.replace(/\.md$/i, "");
 
 const toLower = (value: string) => value.trim().toLowerCase();
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
 
 const cloneFilterGroup = (group: DatabaseFilterGroup): DatabaseFilterGroup => ({
   ...group,
@@ -314,11 +320,17 @@ const defaultPanels: DatabaseBlockOpenPanels = {
   filter: false,
   sort: false,
   gantt: false,
+  project: false,
   pie: false,
 };
 
 const TITLE_COMMIT_DEBOUNCE_MS = 280;
 const DEFAULT_TIMELINE_MODE: DatabaseTimelineMode = "date";
+const DEFAULT_PROJECT_START_FIELD = "projectStart";
+const DEFAULT_PROJECT_UNIT_FIELD = "units";
+const DEFAULT_PROJECT_BLOCK_RESOLUTION = 100;
+const DEFAULT_PROJECT_DEFAULT_UNITS = 1;
+const DEFAULT_PROJECT_MISSING_PLACEMENT: DatabaseProjectMissingPlacement = "show-unplaced";
 const pad2 = (value: number) => String(value).padStart(2, "0");
 const resolveTodayBaseDate = () => {
   const now = new Date();
@@ -333,6 +345,60 @@ const resolveTimelineBaseDateForMode = (
     return normalized ?? resolveTodayBaseDate();
   }
   return normalized;
+};
+
+const asPositiveInteger = (value: unknown): number | null => {
+  if (typeof value === "number") {
+    if (Number.isInteger(value) && value >= 1) {
+      return value;
+    }
+    return null;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value.trim());
+    if (Number.isInteger(parsed) && parsed >= 1) {
+      return parsed;
+    }
+  }
+  return null;
+};
+
+const asNonNegativeInteger = (value: unknown): number | null => {
+  if (typeof value === "number") {
+    if (Number.isInteger(value) && value >= 0) {
+      return value;
+    }
+    return null;
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value.trim());
+    if (Number.isInteger(parsed) && parsed >= 0) {
+      return parsed;
+    }
+  }
+  return null;
+};
+
+const isProjectNumericType = (type: DatabaseFieldType) =>
+  type === "number" ||
+  type === "unit" ||
+  type === "percent" ||
+  type === "score" ||
+  type === "rating" ||
+  type === "progress";
+
+const pickProjectNumericAttribute = (
+  attributes: DatabaseAttributeMeta[],
+  preferredKey: string | null | undefined,
+) => {
+  if (!preferredKey) {
+    return null;
+  }
+  const preferred = attributes.find((attribute) => toLower(attribute.key) === toLower(preferredKey)) ?? null;
+  if (preferred && isProjectNumericType(preferred.type)) {
+    return preferred;
+  }
+  return null;
 };
 
 export const MarkdownHybridDatabaseBlock = ({
@@ -379,6 +445,21 @@ export const MarkdownHybridDatabaseBlock = ({
       parsed.config.view.ganttZoom ?? getTimelineDefaultZoom(parsed.config.view.timelineMode ?? DEFAULT_TIMELINE_MODE),
     ),
   );
+  const [projectStartField, setProjectStartField] = useState<string | null>(
+    parsed.config.view.projectStartField ?? DEFAULT_PROJECT_START_FIELD,
+  );
+  const [projectUnitField, setProjectUnitField] = useState<string | null>(
+    parsed.config.view.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD,
+  );
+  const [projectBlockResolution, setProjectBlockResolution] = useState<number>(
+    asPositiveInteger(parsed.config.view.blockResolution) ?? DEFAULT_PROJECT_BLOCK_RESOLUTION,
+  );
+  const [projectDefaultUnits, setProjectDefaultUnits] = useState<number>(
+    asPositiveInteger(parsed.config.view.defaultUnits) ?? DEFAULT_PROJECT_DEFAULT_UNITS,
+  );
+  const [projectMissingPlacement, setProjectMissingPlacement] = useState<DatabaseProjectMissingPlacement>(
+    parsed.config.view.projectMissingPlacement ?? DEFAULT_PROJECT_MISSING_PLACEMENT,
+  );
   const [pieGroupField, setPieGroupField] = useState<string | null>(
     parsed.config.view.pieGroupField ?? null,
   );
@@ -413,6 +494,11 @@ export const MarkdownHybridDatabaseBlock = ({
   const timelineModeRef = useRef<DatabaseTimelineMode>(timelineMode);
   const timelineBaseDateRef = useRef<string | null>(timelineBaseDate);
   const ganttZoomRef = useRef<DatabaseGanttZoom>(ganttZoom);
+  const projectStartFieldRef = useRef<string | null>(projectStartField);
+  const projectUnitFieldRef = useRef<string | null>(projectUnitField);
+  const projectBlockResolutionRef = useRef<number>(projectBlockResolution);
+  const projectDefaultUnitsRef = useRef<number>(projectDefaultUnits);
+  const projectMissingPlacementRef = useRef<DatabaseProjectMissingPlacement>(projectMissingPlacement);
   const pieGroupFieldRef = useRef<string | null>(pieGroupField);
   const pieAggregateRef = useRef<"count" | "sum" | "avg">(pieAggregate);
   const pieAggregateFieldRef = useRef<string | null>(pieAggregateField);
@@ -445,6 +531,15 @@ export const MarkdownHybridDatabaseBlock = ({
         parsed.config.view.ganttZoom ?? getTimelineDefaultZoom(nextTimelineMode),
       ),
     );
+    setProjectStartField(parsed.config.view.projectStartField ?? DEFAULT_PROJECT_START_FIELD);
+    setProjectUnitField(parsed.config.view.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD);
+    setProjectBlockResolution(
+      asPositiveInteger(parsed.config.view.blockResolution) ?? DEFAULT_PROJECT_BLOCK_RESOLUTION,
+    );
+    setProjectDefaultUnits(
+      asPositiveInteger(parsed.config.view.defaultUnits) ?? DEFAULT_PROJECT_DEFAULT_UNITS,
+    );
+    setProjectMissingPlacement(parsed.config.view.projectMissingPlacement ?? DEFAULT_PROJECT_MISSING_PLACEMENT);
     setPieGroupField(parsed.config.view.pieGroupField ?? null);
     setPieAggregate(parsed.config.view.pieAggregate ?? "count");
     setPieAggregateField(parsed.config.view.pieAggregateField ?? null);
@@ -468,6 +563,11 @@ export const MarkdownHybridDatabaseBlock = ({
     timelineModeRef.current = timelineMode;
     timelineBaseDateRef.current = timelineBaseDate;
     ganttZoomRef.current = ganttZoom;
+    projectStartFieldRef.current = projectStartField;
+    projectUnitFieldRef.current = projectUnitField;
+    projectBlockResolutionRef.current = projectBlockResolution;
+    projectDefaultUnitsRef.current = projectDefaultUnits;
+    projectMissingPlacementRef.current = projectMissingPlacement;
     pieGroupFieldRef.current = pieGroupField;
     pieAggregateRef.current = pieAggregate;
     pieAggregateFieldRef.current = pieAggregateField;
@@ -488,6 +588,11 @@ export const MarkdownHybridDatabaseBlock = ({
     timelineBaseDate,
     timelineMode,
     timelineStartField,
+    projectBlockResolution,
+    projectDefaultUnits,
+    projectMissingPlacement,
+    projectStartField,
+    projectUnitField,
     title,
     viewType,
     visibleColumnKeys,
@@ -640,6 +745,17 @@ export const MarkdownHybridDatabaseBlock = ({
       ganttZoom: next.view?.ganttZoom ?? ganttZoomRef.current ?? getTimelineDefaultZoom(
         next.view?.timelineMode ?? timelineModeRef.current ?? DEFAULT_TIMELINE_MODE,
       ),
+      projectStartField: next.view?.projectStartField ?? projectStartFieldRef.current ?? DEFAULT_PROJECT_START_FIELD,
+      projectUnitField: next.view?.projectUnitField ?? projectUnitFieldRef.current ?? DEFAULT_PROJECT_UNIT_FIELD,
+      blockResolution: next.view?.blockResolution ??
+        projectBlockResolutionRef.current ??
+        DEFAULT_PROJECT_BLOCK_RESOLUTION,
+      defaultUnits: next.view?.defaultUnits ??
+        projectDefaultUnitsRef.current ??
+        DEFAULT_PROJECT_DEFAULT_UNITS,
+      projectMissingPlacement: next.view?.projectMissingPlacement ??
+        projectMissingPlacementRef.current ??
+        DEFAULT_PROJECT_MISSING_PLACEMENT,
       pieGroupField: next.view?.pieGroupField ?? pieGroupFieldRef.current ?? null,
       pieAggregate: next.view?.pieAggregate ?? pieAggregateRef.current ?? "count",
       pieAggregateField: next.view?.pieAggregateField ?? pieAggregateFieldRef.current ?? null,
@@ -678,6 +794,11 @@ export const MarkdownHybridDatabaseBlock = ({
           timelineMode,
           timelineBaseDate,
           ganttZoom,
+          projectStartField,
+          projectUnitField,
+          blockResolution: projectBlockResolution,
+          defaultUnits: projectDefaultUnits,
+          projectMissingPlacement,
           pieGroupField,
           pieAggregate,
           pieAggregateField,
@@ -713,6 +834,11 @@ export const MarkdownHybridDatabaseBlock = ({
       timelineMode,
       timelineBaseDate,
       ganttZoom,
+      projectStartField,
+      projectUnitField,
+      projectBlockResolution,
+      projectDefaultUnits,
+      projectMissingPlacement,
       pieGroupField,
       pieAggregate,
       pieAggregateField,
@@ -735,6 +861,7 @@ export const MarkdownHybridDatabaseBlock = ({
       filter: panel === "filter",
       sort: panel === "sort",
       gantt: panel === "gantt",
+      project: panel === "project",
       pie: panel === "pie",
     });
   };
@@ -829,6 +956,60 @@ export const MarkdownHybridDatabaseBlock = ({
     });
   };
 
+  const handleProjectOptionsChange = (next: {
+    startField?: string | null;
+    unitField?: string | null;
+    blockResolution?: number;
+    defaultUnits?: number;
+    missingPlacement?: DatabaseProjectMissingPlacement;
+  }) => {
+    const nextStart = typeof next.startField === "undefined"
+      ? projectStartFieldRef.current ?? DEFAULT_PROJECT_START_FIELD
+      : next.startField ?? DEFAULT_PROJECT_START_FIELD;
+    const nextUnit = typeof next.unitField === "undefined"
+      ? projectUnitFieldRef.current ?? DEFAULT_PROJECT_UNIT_FIELD
+      : next.unitField ?? DEFAULT_PROJECT_UNIT_FIELD;
+    const previousResolution = projectBlockResolutionRef.current ?? DEFAULT_PROJECT_BLOCK_RESOLUTION;
+    const nextResolution = asPositiveInteger(next.blockResolution) ??
+      previousResolution;
+    const nextDefaultUnitCount = asPositiveInteger(next.defaultUnits) ??
+      projectDefaultUnitsRef.current ??
+      DEFAULT_PROJECT_DEFAULT_UNITS;
+    const nextMissingPlacement = next.missingPlacement ??
+      projectMissingPlacementRef.current ??
+      DEFAULT_PROJECT_MISSING_PLACEMENT;
+
+    setProjectStartField(nextStart);
+    projectStartFieldRef.current = nextStart;
+    setProjectUnitField(nextUnit);
+    projectUnitFieldRef.current = nextUnit;
+    setProjectBlockResolution(nextResolution);
+    projectBlockResolutionRef.current = nextResolution;
+    setProjectDefaultUnits(nextDefaultUnitCount);
+    projectDefaultUnitsRef.current = nextDefaultUnitCount;
+    setProjectMissingPlacement(nextMissingPlacement);
+    projectMissingPlacementRef.current = nextMissingPlacement;
+
+    persistConfig({
+      view: {
+        projectStartField: nextStart,
+        projectUnitField: nextUnit,
+        blockResolution: nextResolution,
+        defaultUnits: nextDefaultUnitCount,
+        projectMissingPlacement: nextMissingPlacement,
+      },
+    });
+
+    if (nextResolution !== previousResolution) {
+      void remapProjectPlacementsForResolution({
+        fromResolution: previousResolution,
+        toResolution: nextResolution,
+        startKey: nextStart,
+        unitKey: nextUnit,
+      });
+    }
+  };
+
   const handlePieOptionsChange = (next: {
     groupField?: string | null;
     aggregate?: "count" | "sum" | "avg";
@@ -888,6 +1069,154 @@ export const MarkdownHybridDatabaseBlock = ({
       systemFields: record.systemFields,
     });
   };
+
+  const remapProjectPlacementsForResolution = useCallback(
+    async ({
+      fromResolution,
+      toResolution,
+      startKey,
+      unitKey,
+    }: {
+      fromResolution: number;
+      toResolution: number;
+      startKey: string;
+      unitKey: string;
+    }) => {
+      if (!allowCellEditing) {
+        return;
+      }
+
+      const previousResolution = Math.max(1, Math.round(fromResolution));
+      const nextResolution = Math.max(1, Math.round(toResolution));
+      if (previousResolution === nextResolution) {
+        return;
+      }
+
+      const toRemap = records
+        .map((record) => {
+          const startRaw = getRecordValueByField(record, startKey);
+          const unitsRaw = getRecordValueByField(record, unitKey);
+          const start = asNonNegativeInteger(startRaw);
+          const units = asPositiveInteger(unitsRaw);
+          if (start === null || units === null) {
+            return null;
+          }
+
+          const oldStart = clamp(start, 0, Math.max(0, previousResolution - 1));
+          const oldUnits = clamp(units, 1, Math.max(1, previousResolution - oldStart));
+          const mappedStart = clamp(
+            Math.round((oldStart * nextResolution) / previousResolution),
+            0,
+            Math.max(0, nextResolution - 1),
+          );
+          const mappedEnd = clamp(
+            Math.round(((oldStart + oldUnits) * nextResolution) / previousResolution),
+            mappedStart + 1,
+            nextResolution,
+          );
+          const mappedUnits = Math.max(1, mappedEnd - mappedStart);
+          if (mappedStart === oldStart && mappedUnits === oldUnits) {
+            return null;
+          }
+
+          return {
+            record,
+            previousStart: oldStart,
+            previousUnits: oldUnits,
+            nextStart: mappedStart,
+            nextUnits: mappedUnits,
+          };
+        })
+        .filter(
+          (
+            entry,
+          ): entry is {
+            record: DatabaseRecord;
+            previousStart: number;
+            previousUnits: number;
+            nextStart: number;
+            nextUnits: number;
+          } => Boolean(entry),
+        );
+
+      if (toRemap.length === 0) {
+        return;
+      }
+
+      const rollbackByRecordId = new Map<string, DatabaseRecord>();
+      toRemap.forEach((entry) => {
+        rollbackByRecordId.set(entry.record.fileId, entry.record);
+      });
+
+      setRecords((previous) =>
+        previous.map((record) => {
+          const remapped = toRemap.find((entry) => entry.record.fileId === record.fileId);
+          if (!remapped) {
+            return record;
+          }
+          return applyOptimisticRecordFieldValue(
+            applyOptimisticRecordFieldValue(record, startKey, remapped.nextStart),
+            unitKey,
+            remapped.nextUnits,
+          );
+        }));
+      toRemap.forEach((entry) => {
+        addPendingRecordMutation(entry.record.fileId);
+      });
+      setOperationError(null);
+
+      let failed = 0;
+
+      for (const remapped of toRemap) {
+        try {
+          const startResult = await upsertDatabaseRecordField({
+            path: remapped.record.filePath,
+            relativePath: remapped.record.relativePath,
+            key: startKey,
+            type: "number",
+            value: remapped.nextStart,
+          });
+          if (startResult.error) {
+            throw new Error(startResult.error);
+          }
+
+          const unitsResult = await upsertDatabaseRecordField({
+            path: remapped.record.filePath,
+            relativePath: remapped.record.relativePath,
+            key: unitKey,
+            type: "unit",
+            value: remapped.nextUnits,
+          });
+          if (unitsResult.error) {
+            throw new Error(unitsResult.error);
+          }
+
+          fileCacheRef.current.set(remapped.record.filePath, unitsResult.markdown);
+        } catch {
+          failed += 1;
+          const rollback = rollbackByRecordId.get(remapped.record.fileId);
+          if (rollback) {
+            setRecords((previous) =>
+              previous.map((record) =>
+                record.fileId === rollback.fileId
+                  ? rollback
+                  : record));
+          }
+        } finally {
+          removePendingRecordMutation(remapped.record.fileId);
+        }
+      }
+
+      if (failed > 0) {
+        setOperationState(null);
+        setOperationError(`${failed} Placement(s) konnten nicht auf die neue Aufloesung gemappt werden.`);
+      } else {
+        setOperationError(null);
+        setOperationState("Project Raster neu skaliert.");
+      }
+    },
+    [allowCellEditing, records],
+  );
 
   const commitRecordFieldMutation = useCallback(
     async ({
@@ -1058,6 +1387,95 @@ export const MarkdownHybridDatabaseBlock = ({
     };
   }, [persistConfig]);
 
+  const ensureProjectFieldSetup = useCallback(() => {
+    const configuredStart = (projectStartFieldRef.current ?? "").trim();
+    const configuredUnit = (projectUnitFieldRef.current ?? "").trim();
+    const startKey = configuredStart || DEFAULT_PROJECT_START_FIELD;
+    const unitKey = configuredUnit || DEFAULT_PROJECT_UNIT_FIELD;
+
+    let nextFields = cloneFieldDefinitions(fieldDefinitionsRef.current);
+    let fieldsChanged = false;
+
+    const ensureField = (key: string, type: DatabaseFieldType) => {
+      const existing = nextFields.find((field) => toLower(field.key) === toLower(key));
+      if (existing) {
+        if (existing.type !== type) {
+          nextFields = nextFields.map((field) =>
+            toLower(field.key) === toLower(key)
+              ? { ...field, type }
+              : field);
+          fieldsChanged = true;
+        }
+        return;
+      }
+      nextFields = [
+        ...nextFields,
+        {
+          key,
+          label: key,
+          type,
+          origin: "frontmatter",
+          formula: null,
+        },
+      ];
+      fieldsChanged = true;
+    };
+
+    ensureField(startKey, "number");
+    ensureField(unitKey, "unit");
+
+    const nextColumns = appendVisibleColumnIfMissing(
+      appendVisibleColumnIfMissing(visibleColumnKeysRef.current, startKey),
+      unitKey,
+    );
+    const columnsChanged = nextColumns.length !== visibleColumnKeysRef.current.length;
+
+    const viewPatch: Partial<DatabaseViewSpec> = {};
+    if (toLower(configuredStart) !== toLower(startKey)) {
+      viewPatch.projectStartField = startKey;
+    }
+    if (toLower(configuredUnit) !== toLower(unitKey)) {
+      viewPatch.projectUnitField = unitKey;
+    }
+
+    if (fieldsChanged) {
+      setFieldDefinitions(nextFields);
+      fieldDefinitionsRef.current = nextFields;
+    }
+    if (columnsChanged) {
+      setVisibleColumnKeys(nextColumns);
+      visibleColumnKeysRef.current = nextColumns;
+    }
+    if (viewPatch.projectStartField) {
+      setProjectStartField(startKey);
+      projectStartFieldRef.current = startKey;
+    }
+    if (viewPatch.projectUnitField) {
+      setProjectUnitField(unitKey);
+      projectUnitFieldRef.current = unitKey;
+    }
+
+    if (
+      fieldsChanged ||
+      columnsChanged ||
+      typeof viewPatch.projectStartField !== "undefined" ||
+      typeof viewPatch.projectUnitField !== "undefined"
+    ) {
+      persistConfig({
+        fields: nextFields,
+        visibleColumns: nextColumns,
+        view: {
+          ...viewPatch,
+        },
+      });
+    }
+
+    return {
+      startKey,
+      unitKey,
+    };
+  }, [persistConfig]);
+
   const handleCommitTimelineRange = useCallback(async ({
     record,
     startTimestamp,
@@ -1129,6 +1547,78 @@ export const MarkdownHybridDatabaseBlock = ({
       removePendingRecordMutation(record.fileId);
     }
   }, [allowCellEditing, ensureTimelineFieldSetup, records]);
+
+  const handleCommitProjectPlacement = useCallback(async ({
+    record,
+    startSlot,
+    units,
+  }: {
+    record: DatabaseRecord;
+    startSlot: number;
+    units: number;
+  }) => {
+    if (!allowCellEditing) {
+      return;
+    }
+
+    const { startKey, unitKey } = ensureProjectFieldSetup();
+    const resolution = Math.max(1, projectBlockResolutionRef.current ?? DEFAULT_PROJECT_BLOCK_RESOLUTION);
+    const boundedStart = clamp(Math.round(startSlot), 0, Math.max(0, resolution - 1));
+    const boundedUnits = clamp(Math.round(units), 1, Math.max(1, resolution - boundedStart));
+
+    const previousRecord = records.find((entry) => entry.fileId === record.fileId);
+    if (!previousRecord) {
+      return;
+    }
+
+    const optimistic = applyOptimisticRecordFieldValue(
+      applyOptimisticRecordFieldValue(previousRecord, startKey, boundedStart),
+      unitKey,
+      boundedUnits,
+    );
+    setRecords((previous) =>
+      previous.map((entry) => (entry.fileId === record.fileId ? optimistic : entry)));
+    addPendingRecordMutation(record.fileId);
+    setOperationError(null);
+
+    try {
+      const startResult = await upsertDatabaseRecordField({
+        path: previousRecord.filePath,
+        relativePath: previousRecord.relativePath,
+        key: startKey,
+        type: "number",
+        value: boundedStart,
+      });
+      if (startResult.error) {
+        throw new Error(startResult.error);
+      }
+
+      const unitResult = await upsertDatabaseRecordField({
+        path: previousRecord.filePath,
+        relativePath: previousRecord.relativePath,
+        key: unitKey,
+        type: "unit",
+        value: boundedUnits,
+      });
+      if (unitResult.error) {
+        throw new Error(unitResult.error);
+      }
+
+      fileCacheRef.current.set(previousRecord.filePath, unitResult.markdown);
+      setOperationState("Project aktualisiert.");
+    } catch (error) {
+      setRecords((previous) =>
+        previous.map((entry) => (entry.fileId === previousRecord.fileId ? previousRecord : entry)));
+      setOperationState(null);
+      setOperationError(
+        error instanceof Error
+          ? error.message
+          : "Project Placement konnte nicht gespeichert werden.",
+      );
+    } finally {
+      removePendingRecordMutation(record.fileId);
+    }
+  }, [allowCellEditing, ensureProjectFieldSetup, records]);
 
   const handleToggleVisibility = (key: string, visible: boolean) => {
     const nextColumns = visible
@@ -1378,6 +1868,14 @@ export const MarkdownHybridDatabaseBlock = ({
     store.attributeRegistry,
     timelineEndField,
   );
+  const projectStartAttribute = pickProjectNumericAttribute(
+    store.attributeRegistry,
+    projectStartField,
+  );
+  const projectUnitAttribute = pickProjectNumericAttribute(
+    store.attributeRegistry,
+    projectUnitField,
+  );
   const pieGroupAttribute = pickPieGroupAttribute(
     store.attributeRegistry,
     pieGroupField,
@@ -1397,6 +1895,7 @@ export const MarkdownHybridDatabaseBlock = ({
     panels.filter ||
     panels.sort ||
     panels.gantt ||
+    panels.project ||
     panels.pie;
 
   return (
@@ -1421,12 +1920,14 @@ export const MarkdownHybridDatabaseBlock = ({
             isSortPanelOpen={panels.sort}
             isPropertiesPanelOpen={panels.properties}
             isGanttPanelOpen={panels.gantt}
+            isProjectPanelOpen={panels.project}
             isPiePanelOpen={panels.pie}
             onToggleSourcePanel={() => setPanel("source")}
             onToggleFilterPanel={() => setPanel("filter")}
             onToggleSortPanel={() => setPanel("sort")}
             onTogglePropertiesPanel={() => setPanel("properties")}
             onToggleGanttPanel={() => setPanel("gantt")}
+            onToggleProjectPanel={() => setPanel("project")}
             onTogglePiePanel={() => setPanel("pie")}
           />
         ) : null}
@@ -1513,6 +2014,18 @@ export const MarkdownHybridDatabaseBlock = ({
               onClose={() => setPanels(defaultPanels)}
             />
           ) : null}
+          {panels.project ? (
+            <DatabaseProjectPanel
+              attributes={store.attributeRegistry}
+              startField={projectStartField}
+              unitField={projectUnitField}
+              blockResolution={projectBlockResolution}
+              defaultUnits={projectDefaultUnits}
+              missingPlacement={projectMissingPlacement}
+              onChange={handleProjectOptionsChange}
+              onClose={() => setPanels(defaultPanels)}
+            />
+          ) : null}
           {panels.pie ? (
             <DatabasePiePanel
               attributes={store.attributeRegistry}
@@ -1562,6 +2075,19 @@ export const MarkdownHybridDatabaseBlock = ({
             editable={allowCellEditing}
             pendingRecordIds={pendingRecordMutations}
             onCommitRange={handleCommitTimelineRange}
+            onOpenRecord={openRecord}
+          />
+        ) : viewType === "project" ? (
+          <DatabaseProjectView
+            records={store.visibleRecords}
+            startField={projectStartAttribute?.key ?? projectStartField ?? DEFAULT_PROJECT_START_FIELD}
+            unitField={projectUnitAttribute?.key ?? projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD}
+            resolution={projectBlockResolution}
+            defaultUnits={projectDefaultUnits}
+            missingPlacement={projectMissingPlacement}
+            editable={allowCellEditing}
+            pendingRecordIds={pendingRecordMutations}
+            onCommitPlacement={handleCommitProjectPlacement}
             onOpenRecord={openRecord}
           />
         ) : (

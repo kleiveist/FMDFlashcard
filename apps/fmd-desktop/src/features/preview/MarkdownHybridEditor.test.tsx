@@ -2401,7 +2401,7 @@ describe("MarkdownHybridEditor", () => {
       const labels = menuButtons.map((button) =>
         button.querySelector(".markdown-hybrid-insert-menu-item-label")?.textContent?.trim() ?? "",
       );
-      expect(labels).toEqual(["Attributes", "DB-Table", "DB-Kanban", "DB-Timeline", "DB-Pie"]);
+      expect(labels).toEqual(["Attributes", "DB-Table", "DB-Kanban", "DB-Timeline", "DB-Pie", "DB-Project"]);
 
       cleanup();
     });
@@ -2414,6 +2414,7 @@ describe("MarkdownHybridEditor", () => {
         { label: "DB-Kanban", viewType: "kanban" },
         { label: "DB-Timeline", viewType: "gantt" },
         { label: "DB-Pie", viewType: "pie" },
+        { label: "DB-Project", viewType: "project" },
       ];
 
       for (const entry of expectations) {

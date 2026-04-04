@@ -37,6 +37,7 @@ const fieldTypeOptions: DatabaseFieldType[] = [
   "text",
   "longtext",
   "number",
+  "unit",
   "percent",
   "boolean",
   "time",
@@ -60,6 +61,7 @@ const fieldTypeOptions: DatabaseFieldType[] = [
 const resolveTypeIcon = (type: DatabaseFieldType) => {
   switch (type) {
     case "number":
+    case "unit":
     case "percent":
     case "score":
       return "#";

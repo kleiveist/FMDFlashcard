@@ -80,7 +80,7 @@ export type UpsertDatabaseRecordFieldParams = {
 export const mapDatabaseFieldTypeToFrontmatterKind = (
   type: DatabaseFieldType,
 ): FrontmatterPropertyKind => {
-  if (type === "number") {
+  if (type === "number" || type === "unit") {
     return "number";
   }
   if (type === "boolean") {
@@ -166,6 +166,14 @@ const toFiniteNumber = (value: DatabaseRecordFieldDraftValue) => {
   }
   const parsed = Number(trimmed);
   return Number.isFinite(parsed) ? parsed : null;
+};
+
+const toUnitNumber = (value: DatabaseRecordFieldDraftValue): number | null => {
+  const numeric = toFiniteNumber(value);
+  if (numeric === null || !Number.isInteger(numeric) || numeric < 1) {
+    return null;
+  }
+  return numeric;
 };
 
 const toBooleanOrNull = (value: DatabaseRecordFieldDraftValue): boolean | null => {
@@ -287,6 +295,32 @@ export const coerceDatabaseRecordFieldValue = (
       kind: "number",
       typedValue: numeric,
       addDraftValue: numeric === null ? "" : String(numeric),
+      error: null,
+    };
+  }
+
+  if (type === "unit") {
+    const unit = toUnitNumber(value);
+    if (unit === null && typeof value === "string" && value.trim().length > 0) {
+      return {
+        kind: "number",
+        typedValue: null,
+        addDraftValue: "",
+        error: "Unit value must be an integer >= 1.",
+      };
+    }
+    if (unit === null && typeof value === "number" && Number.isFinite(value)) {
+      return {
+        kind: "number",
+        typedValue: null,
+        addDraftValue: "",
+        error: "Unit value must be an integer >= 1.",
+      };
+    }
+    return {
+      kind: "number",
+      typedValue: unit,
+      addDraftValue: unit === null ? "" : String(unit),
       error: null,
     };
   }
@@ -434,6 +468,17 @@ export const upsertFrontmatterAttributeInMarkdown = ({
   );
 
   const kind = mapDatabaseFieldTypeToFrontmatterKind(type);
+  if (type === "unit") {
+    const unit = toUnitNumber(initialValue);
+    if (initialValue.trim().length > 0 && unit === null) {
+      return {
+        markdown,
+        action: "failed",
+        changed: false,
+        error: "Unit value must be an integer >= 1.",
+      };
+    }
+  }
 
   if (existing) {
     if (!overwriteExisting) {
@@ -449,7 +494,9 @@ export const upsertFrontmatterAttributeInMarkdown = ({
       markdown,
       key: existing.key,
       kind,
-      value: parseFrontmatterValueForKind(initialValue, kind),
+      value: type === "unit"
+        ? toUnitNumber(initialValue)
+        : parseFrontmatterValueForKind(initialValue, kind),
     });
 
     return {
@@ -464,7 +511,9 @@ export const upsertFrontmatterAttributeInMarkdown = ({
     markdown,
     key: nextKey,
     kind,
-    value: normalizeDraftStringForAdd(initialValue, kind),
+    value: type === "unit"
+      ? toUnitNumber(initialValue)
+      : normalizeDraftStringForAdd(initialValue, kind),
   });
 
   return {

@@ -25,12 +25,14 @@ type DatabaseToolbarProps = {
   isSortPanelOpen: boolean;
   isPropertiesPanelOpen: boolean;
   isGanttPanelOpen: boolean;
+  isProjectPanelOpen: boolean;
   isPiePanelOpen: boolean;
   onToggleSourcePanel: () => void;
   onToggleFilterPanel: () => void;
   onToggleSortPanel: () => void;
   onTogglePropertiesPanel: () => void;
   onToggleGanttPanel: () => void;
+  onToggleProjectPanel: () => void;
   onTogglePiePanel: () => void;
 };
 
@@ -38,6 +40,7 @@ const viewOptions: Array<{ value: DatabaseViewType; label: string }> = [
   { value: "table", label: "Table" },
   { value: "kanban", label: "Kanban" },
   { value: "gantt", label: "Timeline" },
+  { value: "project", label: "Project" },
   { value: "pie", label: "Pie" },
 ];
 
@@ -127,12 +130,14 @@ export const DatabaseToolbar = ({
   isSortPanelOpen,
   isPropertiesPanelOpen,
   isGanttPanelOpen,
+  isProjectPanelOpen,
   isPiePanelOpen,
   onToggleSourcePanel,
   onToggleFilterPanel,
   onToggleSortPanel,
   onTogglePropertiesPanel,
   onToggleGanttPanel,
+  onToggleProjectPanel,
   onTogglePiePanel,
 }: DatabaseToolbarProps) => {
   const handleViewChange = (event: ChangeEvent<HTMLSelectElement>) => {
@@ -231,6 +236,17 @@ export const DatabaseToolbar = ({
               data-md-block-control="true"
             >
               Timeline Optionen
+            </button>
+          ) : null}
+          {viewType === "project" ? (
+            <button
+              type="button"
+              className={`database-block-toolbar-button${isProjectPanelOpen ? " is-active" : ""}`}
+              onClick={onToggleProjectPanel}
+              aria-expanded={isProjectPanelOpen}
+              data-md-block-control="true"
+            >
+              Project Optionen
             </button>
           ) : null}
           {viewType === "pie" ? (
