@@ -17,6 +17,7 @@ import {
   type DatabaseFilterRule,
   type DatabaseAttributeOrigin,
   type DatabaseGanttZoom,
+  type DatabaseTimelineMode,
   type DatabaseSortRule,
   type DatabaseSourceSpec,
   type DatabaseSourceType,
@@ -124,6 +125,7 @@ const parseFieldType = (value: unknown): DatabaseFieldType => {
     case "number":
     case "percent":
     case "boolean":
+    case "time":
     case "date":
     case "datetime":
     case "select":
@@ -525,8 +527,12 @@ const parseViewType = (value: unknown): DatabaseViewType => {
 const parseGanttZoom = (value: unknown): DatabaseGanttZoom => {
   const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
   if (
+    normalized === "year" ||
+    normalized === "minute" ||
+    normalized === "hour" ||
     normalized === "day" ||
     normalized === "week" ||
+    normalized === "month" ||
     normalized === "quarter"
   ) {
     return normalized;
@@ -534,16 +540,28 @@ const parseGanttZoom = (value: unknown): DatabaseGanttZoom => {
   return "month";
 };
 
+const parseTimelineMode = (value: unknown): DatabaseTimelineMode => {
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (normalized === "time" || normalized === "datetime") {
+    return normalized;
+  }
+  return "date";
+};
+
 const parseViewSpec = (value: unknown): DatabaseViewSpec => {
   if (typeof value === "string") {
     return {
       type: parseViewType(value),
+      timelineMode: "date",
+      timelineBaseDate: null,
       ganttZoom: "month",
     };
   }
   if (!isRecord(value)) {
     return {
       type: "table",
+      timelineMode: "date",
+      timelineBaseDate: null,
       ganttZoom: "month",
     };
   }
@@ -554,6 +572,8 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
     groupBy: asString(value.groupBy) || null,
     timelineStartField: asString(value.timelineStartField) || null,
     timelineEndField: asString(value.timelineEndField) || null,
+    timelineMode: parseTimelineMode(value.timelineMode),
+    timelineBaseDate: asString(value.timelineBaseDate) || null,
     ganttZoom: parseGanttZoom(value.ganttZoom),
     pieGroupField: asString(value.pieGroupField) || null,
     pieAggregate:
@@ -571,6 +591,8 @@ export const createDefaultDatabaseBlockConfig = (): DatabaseBlockConfig => ({
   },
   view: {
     type: "table",
+    timelineMode: "date",
+    timelineBaseDate: null,
     ganttZoom: "month",
   },
   fields: [],
@@ -725,6 +747,12 @@ export const serializeDatabaseBlockConfig = (config: DatabaseBlockConfig) => {
   }
   if (config.view.timelineEndField) {
     lines.push(`  timelineEndField: ${formatYamlScalar(config.view.timelineEndField)}`);
+  }
+  if (config.view.timelineMode) {
+    lines.push(`  timelineMode: ${formatYamlScalar(config.view.timelineMode)}`);
+  }
+  if (config.view.timelineBaseDate) {
+    lines.push(`  timelineBaseDate: ${formatYamlScalar(config.view.timelineBaseDate)}`);
   }
   if (config.view.ganttZoom) {
     lines.push(`  ganttZoom: ${formatYamlScalar(config.view.ganttZoom)}`);

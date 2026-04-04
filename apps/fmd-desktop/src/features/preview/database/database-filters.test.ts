@@ -122,6 +122,23 @@ const attributes: DatabaseAttributeMeta[] = [
       supportsAggregation: false,
     },
   },
+  {
+    key: "startTime",
+    label: "startTime",
+    type: "time",
+    origin: "frontmatter",
+    editable: true,
+    sortable: true,
+    filterable: true,
+    aggregatable: false,
+    viewCompatibility: {
+      supportsTable: true,
+      supportsKanbanGrouping: false,
+      supportsTimeline: true,
+      supportsPieGrouping: false,
+      supportsAggregation: false,
+    },
+  },
 ];
 
 const createRecord = (id: string, fields: DatabaseRecord["normalizedFields"]): DatabaseRecord => ({
@@ -145,6 +162,7 @@ const records: DatabaseRecord[] = [
     tags: ["Exam", "IUFS"],
     passed: true,
     due: new Date("2026-03-21"),
+    startTime: "09:15",
   }),
   createRecord("b", {
     Section: "Other",
@@ -154,6 +172,7 @@ const records: DatabaseRecord[] = [
     tags: ["Draft"],
     passed: false,
     due: new Date("2026-03-28"),
+    startTime: "14:40",
   }),
 ];
 
@@ -251,6 +270,21 @@ describe("database-filters", () => {
             ],
           },
         ],
+      },
+      attributes,
+      "",
+    );
+
+    expect(filtered.map((record) => record.fileId)).toEqual(["a"]);
+  });
+
+  it("filters time fields with date operators", () => {
+    const filtered = applyDatabaseFilters(
+      records,
+      {
+        id: "group-1",
+        op: "and",
+        rules: [{ id: "rule-1", field: "startTime", op: "before", value: "12:00" }],
       },
       attributes,
       "",

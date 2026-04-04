@@ -5,7 +5,8 @@
  */
 
 export type DatabaseViewType = "table" | "kanban" | "gantt" | "pie";
-export type DatabaseGanttZoom = "day" | "week" | "month" | "quarter";
+export type DatabaseTimelineMode = "date" | "time" | "datetime";
+export type DatabaseGanttZoom = "year" | "quarter" | "month" | "week" | "day" | "hour" | "minute";
 
 export type DatabaseSourceType =
   | "current-folder"
@@ -21,6 +22,7 @@ export type DatabaseFieldType =
   | "number"
   | "percent"
   | "boolean"
+  | "time"
   | "date"
   | "datetime"
   | "select"
@@ -107,6 +109,8 @@ export type DatabaseViewSpec = {
   groupBy?: string | null;
   timelineStartField?: string | null;
   timelineEndField?: string | null;
+  timelineMode?: DatabaseTimelineMode;
+  timelineBaseDate?: string | null;
   ganttZoom?: DatabaseGanttZoom;
   pieGroupField?: string | null;
   pieAggregate?: "count" | "sum" | "avg";

@@ -11,6 +11,7 @@ import {
   type DatabaseRecord,
   type DatabaseSortRule,
 } from "./database-types";
+import { parseTimelineComparableValue } from "./database-time";
 
 const defaultCollator = new Intl.Collator(undefined, {
   sensitivity: "base",
@@ -50,15 +51,13 @@ const toNumeric = (value: unknown) => {
   return Number.NaN;
 };
 
-const toTimestamp = (value: unknown) => {
-  if (value instanceof Date) {
-    return value.getTime();
-  }
-  if (typeof value === "string") {
-    const parsed = Date.parse(value);
-    return Number.isFinite(parsed) ? parsed : Number.NaN;
-  }
-  return Number.NaN;
+const toTemporalComparable = (value: unknown, type: "date" | "datetime" | "time") => {
+  const parsed = parseTimelineComparableValue({
+    value,
+    fieldType: type,
+    mode: type === "time" ? "time" : type === "datetime" ? "datetime" : "date",
+  });
+  return typeof parsed === "number" && Number.isFinite(parsed) ? parsed : Number.NaN;
 };
 
 const toText = (value: unknown) => {
@@ -112,9 +111,10 @@ const compareByType = (
       return leftNumber - rightNumber;
     }
     case "date":
+    case "time":
     case "datetime": {
-      const leftTime = toTimestamp(left);
-      const rightTime = toTimestamp(right);
+      const leftTime = toTemporalComparable(left, type);
+      const rightTime = toTemporalComparable(right, type);
       if (!Number.isFinite(leftTime) && !Number.isFinite(rightTime)) {
         return 0;
       }

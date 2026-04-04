@@ -14,6 +14,14 @@ import {
   type DatabaseStatusValue,
   type DatabaseViewCompatibility,
 } from "./database-types";
+import {
+  isDateTimeValue,
+  isDateValue,
+  isTimeValue,
+  normalizeDateTimeValue,
+  normalizeDateValue,
+  normalizeTimeValue,
+} from "./database-time";
 
 const scorePattern = /^\s*(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)\s*$/;
 const percentPattern = /^\s*(-?\d+(?:\.\d+)?)\s*%\s*$/;
@@ -127,14 +135,38 @@ export const parseStatusValue = (value: unknown): DatabaseStatusValue | null => 
 };
 
 const parseDateLikeValue = (value: unknown) => {
+  if (value instanceof Date) {
+    const timestamp = value.getTime();
+    return Number.isFinite(timestamp) ? new Date(timestamp) : null;
+  }
   if (typeof value !== "string") {
     return null;
   }
-  const timestamp = Date.parse(value);
-  if (!Number.isFinite(timestamp)) {
+  const trimmed = value.trim();
+  if (!trimmed) {
     return null;
   }
-  return new Date(timestamp);
+  const normalizedDate = normalizeDateValue(trimmed);
+  if (normalizedDate) {
+    const [yearText, monthText, dayText] = normalizedDate.split("-");
+    const year = Number(yearText ?? Number.NaN);
+    const month = Number(monthText ?? Number.NaN);
+    const day = Number(dayText ?? Number.NaN);
+    return new Date(year, month - 1, day, 0, 0, 0, 0);
+  }
+  const normalizedDateTime = normalizeDateTimeValue(trimmed);
+  if (normalizedDateTime) {
+    const [datePart, timePart] = normalizedDateTime.split("T");
+    const [yearText, monthText, dayText] = (datePart ?? "").split("-");
+    const [hourText, minuteText] = (timePart ?? "").split(":");
+    const year = Number(yearText ?? Number.NaN);
+    const month = Number(monthText ?? Number.NaN);
+    const day = Number(dayText ?? Number.NaN);
+    const hours = Number(hourText ?? Number.NaN);
+    const minutes = Number(minuteText ?? Number.NaN);
+    return new Date(year, month - 1, day, hours, minutes, 0, 0);
+  }
+  return null;
 };
 
 const looksLikeLongText = (value: string) => value.length > 160 || value.includes("\n");
@@ -185,9 +217,20 @@ export const inferFieldType = (key: string, value: unknown): DatabaseFieldType =
   }
 
   const dateLike = parseDateLikeValue(value);
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (isTimeValue(trimmed)) {
+      return "time";
+    }
+    if (isDateTimeValue(trimmed)) {
+      return "datetime";
+    }
+    if (isDateValue(trimmed)) {
+      return "date";
+    }
+  }
   if (dateLike) {
-    const hasTime = typeof value === "string" && /\d{1,2}:\d{2}/.test(value);
-    return hasTime ? "datetime" : "date";
+    return "datetime";
   }
 
   if (isLinkField(value)) {
@@ -214,6 +257,7 @@ export const resolveFieldCompatibility = (type: DatabaseFieldType): DatabaseView
     case "progress":
       return numericCompatibility;
     case "date":
+    case "time":
     case "datetime":
     case "duration":
       return dateCompatibility;
@@ -254,6 +298,16 @@ export const normalizeFieldValueByType = (
 
   if (type === "date" || type === "datetime") {
     return parseDateLikeValue(value);
+  }
+
+  if (type === "time") {
+    if (typeof value === "string") {
+      return normalizeTimeValue(value) ?? value;
+    }
+    if (value instanceof Date && Number.isFinite(value.getTime())) {
+      return `${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}`;
+    }
+    return String(value);
   }
 
   if (type === "multiselect" || type === "tags") {

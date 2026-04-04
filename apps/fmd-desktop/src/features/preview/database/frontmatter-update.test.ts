@@ -14,6 +14,7 @@ describe("frontmatter-update", () => {
     expect(mapDatabaseFieldTypeToFrontmatterKind("boolean")).toBe("boolean");
     expect(mapDatabaseFieldTypeToFrontmatterKind("tags")).toBe("tags");
     expect(mapDatabaseFieldTypeToFrontmatterKind("link")).toBe("link");
+    expect(mapDatabaseFieldTypeToFrontmatterKind("time")).toBe("time");
     expect(mapDatabaseFieldTypeToFrontmatterKind("date")).toBe("text");
   });
 
@@ -126,6 +127,26 @@ describe("frontmatter-update", () => {
     expect(coerceDatabaseRecordFieldValue("date", "2026-03-21")).toMatchObject({
       typedValue: "2026-03-21",
       kind: "text",
+      error: null,
+    });
+    expect(coerceDatabaseRecordFieldValue("datetime", "2026-03-21T08:45")).toMatchObject({
+      typedValue: "2026-03-21T08:45",
+      kind: "text",
+      error: null,
+    });
+    expect(coerceDatabaseRecordFieldValue("time", "08:05")).toMatchObject({
+      typedValue: "08:05",
+      kind: "time",
+      error: null,
+    });
+    expect(coerceDatabaseRecordFieldValue("time", "2026-03-21")).toMatchObject({
+      typedValue: "2026-03-21",
+      kind: "time",
+      error: null,
+    });
+    expect(coerceDatabaseRecordFieldValue("time", "2026-03-21T08:05")).toMatchObject({
+      typedValue: "2026-03-21T08:05",
+      kind: "time",
       error: null,
     });
     expect(coerceDatabaseRecordFieldValue("percent", "80")).toMatchObject({

@@ -1526,6 +1526,66 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(headerLabels).not.toContain("Dateipfad");
   });
 
+  it("persists markdown-view database block config changes via onFrontmatterSave", async () => {
+    const onFrontmatterSave = vi.fn().mockResolvedValue(true);
+    const markdown = [
+      "::::",
+      "title: Database",
+      "source:",
+      "  type: current-folder",
+      "view:",
+      "  type: table",
+      "fields: []",
+      "columns:",
+      "  - Dateiname",
+      "filters:",
+      "  op: and",
+      "  rules: []",
+      "sort: []",
+      "options:",
+      "  editable: false",
+      "  showSearch: true",
+      "  showToolbar: true",
+      "::::",
+    ].join("\n");
+    invokeMock.mockResolvedValue([
+      "---",
+      "title: Demo",
+      "---",
+      "Body",
+    ].join("\n"));
+
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      onFrontmatterSave,
+      vaultFiles: [baseFile],
+    });
+    cleanup = localCleanup;
+
+    await flushAsyncInteraction();
+    const titleInput = container.querySelector<HTMLInputElement>(
+      ".preview-markdown-view-block-database-block .database-block-title-input",
+    );
+    expect(titleInput).toBeTruthy();
+
+    act(() => {
+      if (!titleInput) {
+        return;
+      }
+      titleInput.value = "Database Neu";
+      titleInput.dispatchEvent(new Event("input", { bubbles: true }));
+      titleInput.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+    });
+    await flushAsyncInteraction();
+
+    expect(onFrontmatterSave).toHaveBeenCalled();
+    const lastCallIndex = onFrontmatterSave.mock.calls.length - 1;
+    const nextMarkdown = String(
+      lastCallIndex >= 0 ? onFrontmatterSave.mock.calls[lastCallIndex]?.[0] ?? "" : "",
+    );
+    expect(nextMarkdown).toContain("title: 'Database Neu'");
+    expect((nextMarkdown.match(/::::/g) ?? []).length).toBe(2);
+  });
+
   it("renders chained cloze alternatives in markdown view as the first variant only", () => {
     const markdown = "Konzept: %Spezifikation%%Anforderungen%%Vorgaben%.";
     const { container, cleanup: localCleanup } = buildHarness(markdown);
@@ -4414,6 +4474,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       container.querySelector(".frontmatter-type-suggestions")?.textContent ?? "";
     expect(typeSuggestionText).toContain("Text");
     expect(typeSuggestionText).toContain("Task");
+    expect(typeSuggestionText).toContain("Zeit");
     expect(typeSuggestionText).toContain("Links");
     expect(typeSuggestionText).toContain("Nur Zahlen");
     expect(typeSuggestionText).toContain("Cover");
@@ -4746,6 +4807,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       container.querySelector(".frontmatter-type-suggestions")?.textContent ?? "";
     expect(typeSuggestionText).toContain("Text");
     expect(typeSuggestionText).toContain("Task");
+    expect(typeSuggestionText).toContain("Zeit");
     expect(typeSuggestionText).toContain("Nur Zahlen");
     expect(typeSuggestionText).toContain("Cover");
     expect(typeSuggestionText).not.toContain("Links");
@@ -4779,6 +4841,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       container.querySelector(".frontmatter-type-suggestions")?.textContent ?? "";
     expect(typeSuggestionText).toContain("Text");
     expect(typeSuggestionText).toContain("Task");
+    expect(typeSuggestionText).toContain("Zeit");
     expect(typeSuggestionText).toContain("Links");
     expect(typeSuggestionText).toContain("Nur Zahlen");
     expect(typeSuggestionText).not.toContain("Cover");

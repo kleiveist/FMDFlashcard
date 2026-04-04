@@ -81,6 +81,12 @@ const resolveEditorInputType = (type: DatabaseAttributeMeta["type"]) => {
   if (type === "date") {
     return "date";
   }
+  if (type === "time") {
+    return "time";
+  }
+  if (type === "datetime") {
+    return "datetime-local";
+  }
   return "text";
 };
 

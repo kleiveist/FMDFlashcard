@@ -53,6 +53,7 @@ import {
 } from "../features/preview/MarkdownHybridEditor";
 import {
   parseMarkdownBlocks,
+  replaceMarkdownBlock,
   normalizeCardBlockSource,
   normalizeHelpBlockSource,
   normalizeQuotePrefixedHashLines,
@@ -69,6 +70,11 @@ import {
   normalizeLegacyUnorderedListIndentation,
 } from "../features/preview/unorderedListNormalization";
 import { MarkdownHybridDatabaseBlock } from "../features/preview/database/database-block";
+import {
+  normalizeDateTimeValue,
+  normalizeDateValue,
+  normalizeTimeValue,
+} from "../features/preview/database/database-time";
 import {
   addFrontmatterProperty,
   collectFrontmatterValueSuggestions,
@@ -4745,6 +4751,21 @@ const FrontmatterNumberIcon = () => (
   </svg>
 );
 
+const FrontmatterTimeIcon = () => (
+  <svg
+    aria-hidden="true"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 7v5l3 2" />
+  </svg>
+);
+
 const FrontmatterToggleIcon = () => (
   <svg
     aria-hidden="true"
@@ -4847,6 +4868,8 @@ const FrontmatterPropertyIconView = ({
       return <FrontmatterImageIcon />;
     case "task":
       return <FrontmatterTaskIcon />;
+    case "time":
+      return <FrontmatterTimeIcon />;
     case "number":
       return <FrontmatterNumberIcon />;
     case "boolean":
@@ -4951,6 +4974,7 @@ const mergeSuggestionKeyLists = (...sources: string[][]) => {
 type FrontmatterAddPropertyType =
   | "text"
   | "task"
+  | "time"
   | "link"
   | "number"
   | "cover"
@@ -4977,6 +5001,12 @@ const FRONTMATTER_ADD_TYPE_OPTIONS: FrontmatterAddTypeOption[] = [
     icon: "task",
     label: "Task",
     description: "Points-Profil Zuordnung",
+  },
+  {
+    kind: "time",
+    icon: "time",
+    label: "Zeit",
+    description: "Datum, Uhrzeit oder Datum+Uhrzeit",
   },
   {
     kind: "link",
@@ -5090,6 +5120,7 @@ const normalizeStableSuggestions = (values: string[]) => {
 const isScalarEditableKind = (kind: FrontmatterPropertyKind) =>
   kind === "text" ||
   kind === "task" ||
+  kind === "time" ||
   kind === "unknown" ||
   kind === "link" ||
   kind === "cover" ||
@@ -5589,6 +5620,19 @@ const FrontmatterPropertiesPanel = ({
       let source = normalizeStableSuggestions(rawSource);
       if (kind === "number") {
         source = sortSuggestionValues(source.filter(isNumericSuggestionValue));
+      } else if (kind === "time") {
+        source = sortSuggestionValues(
+          normalizeStableSuggestions(
+            source
+              .map((value) =>
+                normalizeDateTimeValue(value.trim()) ??
+                normalizeDateValue(value.trim()) ??
+                normalizeTimeValue(value.trim()) ??
+                "",
+              )
+              .filter((value) => value !== ""),
+          ),
+        );
       } else if (kind === "link") {
         source = sortSuggestionValues(
           normalizeStableSuggestions(source.map((value) => normalizeWikilinkValue(value))),
@@ -5776,6 +5820,12 @@ const FrontmatterPropertiesPanel = ({
       if (kind === "number") {
         const parsed = Number(trimmed);
         return Number.isFinite(parsed) ? [String(parsed)] : [];
+      }
+      if (kind === "time") {
+        const normalized = normalizeDateTimeValue(trimmed) ??
+          normalizeDateValue(trimmed) ??
+          normalizeTimeValue(trimmed);
+        return normalized ? [normalized] : [];
       }
       if (kind === "link" || kind === "cover") {
         const normalized = normalizeWikilinkValue(trimmed);
@@ -6659,6 +6709,37 @@ const FrontmatterPropertiesPanel = ({
                     property,
                     kind: "number",
                     value: parsed,
+                  });
+                }
+                if (property.kind === "time") {
+                  const value = rawInput.trim();
+                  if (!value) {
+                    setRowErrors((current) => ({ ...current, [property.key]: "" }));
+                    return commitPropertyChange({
+                      property,
+                      kind: "time",
+                      value: null,
+                    });
+                  }
+                  const normalized = normalizeDateTimeValue(value) ??
+                    normalizeDateValue(value) ??
+                    normalizeTimeValue(value);
+                  if (!normalized) {
+                    setRowErrors((current) => ({
+                      ...current,
+                      [property.key]: "Format: YYYY-MM-DD, HH:mm oder YYYY-MM-DDTHH:mm.",
+                    }));
+                    return false;
+                  }
+                  setRowErrors((current) => ({ ...current, [property.key]: "" }));
+                  setDrafts((current) => ({
+                    ...current,
+                    [property.key]: normalized,
+                  }));
+                  return commitPropertyChange({
+                    property,
+                    kind: "time",
+                    value: normalized,
                   });
                 }
                 const nextValue = property.kind === "link" || property.kind === "cover"
@@ -10234,6 +10315,44 @@ export const PreviewPanel = ({
     pushActiveGroup();
     return items;
   }, [markdownViewBlocks]);
+  const markdownViewDatabaseBlockIndexById = useMemo(() => {
+    const indexById = new Map<string, number>();
+    let databaseBlockIndex = 0;
+    markdownViewBlocks.forEach((block) => {
+      if (block.kind !== "database-block") {
+        return;
+      }
+      indexById.set(block.id, databaseBlockIndex);
+      databaseBlockIndex += 1;
+    });
+    return indexById;
+  }, [markdownViewBlocks]);
+  const canEditMarkdownViewDatabaseBlock = Boolean(
+    canEdit &&
+      previewState === "idle" &&
+      onFrontmatterSave,
+  );
+  const commitMarkdownViewDatabaseBlock = useCallback(
+    async (databaseBlockIndex: number, nextRaw: string) => {
+      if (!canEditMarkdownViewDatabaseBlock || !onFrontmatterSave) {
+        return;
+      }
+      const sourceBlocks = parseMarkdownBlocks(preview);
+      const sourceDatabaseBlocks = sourceBlocks.filter(
+        (block) => block.kind === "database-block",
+      );
+      const sourceBlock = sourceDatabaseBlocks[databaseBlockIndex];
+      if (!sourceBlock) {
+        return;
+      }
+      const nextMarkdown = replaceMarkdownBlock(preview, sourceBlock, nextRaw);
+      if (nextMarkdown === preview) {
+        return;
+      }
+      await onFrontmatterSave(nextMarkdown);
+    },
+    [canEditMarkdownViewDatabaseBlock, onFrontmatterSave, preview],
+  );
   const hasVisiblePreviewContent = isCodeMode
     ? preview.length > 0
     : markdownSource.length > 0;
@@ -10340,6 +10459,7 @@ export const PreviewPanel = ({
           ? normalizeCardBlockSource(block.raw)
         : block.raw;
       if (block.kind === "database-block") {
+        const databaseBlockIndex = markdownViewDatabaseBlockIndexById.get(block.id) ?? -1;
         return (
           <div
             key={keyPrefix}
@@ -10353,8 +10473,13 @@ export const PreviewPanel = ({
               vaultFiles={vaultFiles}
               sourceRelativePath={sourceRelativePath ?? selectedFile?.relative_path}
               onNavigateWikilink={onNavigateWikilink}
-              onCommitRaw={() => {}}
-              allowCellEditing={false}
+              onCommitRaw={(nextRaw) => {
+                if (databaseBlockIndex < 0) {
+                  return;
+                }
+                void commitMarkdownViewDatabaseBlock(databaseBlockIndex, nextRaw);
+              }}
+              allowCellEditing={canEditMarkdownViewDatabaseBlock}
             />
           </div>
         );
@@ -10388,6 +10513,9 @@ export const PreviewPanel = ({
       );
     },
     [
+      canEditMarkdownViewDatabaseBlock,
+      commitMarkdownViewDatabaseBlock,
+      markdownViewDatabaseBlockIndexById,
       onNavigateWikilink,
       renderHybridMarkdownPreview,
       selectedFile?.relative_path,

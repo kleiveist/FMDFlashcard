@@ -8,7 +8,12 @@ import {
   type DatabaseRecord,
 } from "../database-types";
 
-const render = (element: ReactElement) => {
+const render = (element: ReactElement, viewportWidth = 1400) => {
+  Object.defineProperty(window, "innerWidth", {
+    configurable: true,
+    writable: true,
+    value: viewportWidth,
+  });
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -77,11 +82,13 @@ describe("DatabaseGanttView", () => {
         records: [baseRecord],
         startAttribute: null,
         endAttribute,
+        mode: "date",
+        baseDate: null,
         zoom: "month",
       }),
     );
 
-    expect(container.textContent).toContain("Start-Datumsfeld");
+    expect(container.textContent).toContain("Start-Zeitfeld");
     cleanup();
   });
 
@@ -105,6 +112,8 @@ describe("DatabaseGanttView", () => {
         records: [baseRecord, milestoneRecord],
         startAttribute,
         endAttribute,
+        mode: "date",
+        baseDate: null,
         zoom: "month",
         onOpenRecord,
       }),
@@ -113,7 +122,7 @@ describe("DatabaseGanttView", () => {
     expect(container.querySelectorAll(".database-gantt-bar").length).toBe(1);
     expect(container.querySelectorAll(".database-gantt-milestone").length).toBe(1);
 
-    const firstTitle = container.querySelector<HTMLButtonElement>(".database-gantt-row-title");
+    const firstTitle = container.querySelector<HTMLButtonElement>(".database-gantt-sidebar-row-title");
     act(() => {
       firstTitle?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -130,6 +139,8 @@ describe("DatabaseGanttView", () => {
         records: [baseRecord],
         startAttribute,
         endAttribute,
+        mode: "date",
+        baseDate: null,
         zoom: "quarter",
       }),
     );
@@ -161,11 +172,32 @@ describe("DatabaseGanttView", () => {
         records: [formulaRecord],
         startAttribute: formulaStartAttribute,
         endAttribute: null,
+        mode: "date",
+        baseDate: null,
         zoom: "month",
       }),
     );
 
     expect(container.querySelectorAll(".database-gantt-milestone").length).toBe(1);
+    cleanup();
+  });
+
+  it("shows mobile list toggle under narrow viewport", () => {
+    const { container, cleanup } = render(
+      createElement(DatabaseGanttView, {
+        records: [baseRecord],
+        startAttribute,
+        endAttribute,
+        mode: "date",
+        baseDate: null,
+        zoom: "month",
+      }),
+      1000,
+    );
+
+    const toggleButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => (button.textContent ?? "").includes("Liste anzeigen"));
+    expect(toggleButton).toBeTruthy();
     cleanup();
   });
 });

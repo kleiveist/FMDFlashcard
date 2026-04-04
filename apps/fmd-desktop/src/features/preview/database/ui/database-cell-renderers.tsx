@@ -16,6 +16,12 @@ type DatabaseCellRendererProps = {
 };
 
 const formatDateValue = (value: Date, type: DatabaseAttributeMeta["type"]) => {
+  if (type === "time") {
+    return new Intl.DateTimeFormat(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(value);
+  }
   if (type === "datetime") {
     return new Intl.DateTimeFormat(undefined, {
       year: "numeric",
@@ -133,8 +139,12 @@ export const DatabaseCellRenderer = ({
     return renderScoreValue(value as Extract<DatabaseNormalizedFieldValue, { value: number; max: number; ratio: number }>);
   }
 
-  if ((attribute.type === "date" || attribute.type === "datetime") && value instanceof Date) {
+  if ((attribute.type === "date" || attribute.type === "time" || attribute.type === "datetime") && value instanceof Date) {
     return formatDateValue(value, attribute.type);
+  }
+
+  if (attribute.type === "time" && typeof value === "string") {
+    return value;
   }
 
   if (attribute.type === "image" && typeof value === "string") {

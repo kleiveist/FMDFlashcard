@@ -136,6 +136,22 @@ describe("parseFrontmatterDocument", () => {
       value: "Exam",
     });
   });
+
+  it("parses date/time values as time kind", () => {
+    const source = [
+      "---",
+      "start: 2026-04-03",
+      "alarm: 09:30",
+      "slot: 2026-04-03T14:15",
+      "---",
+      "Body",
+    ].join("\n");
+    const parsed = parseFrontmatterDocument(source);
+
+    expect(parsed.properties.find((property) => property.key === "start")?.kind).toBe("time");
+    expect(parsed.properties.find((property) => property.key === "alarm")?.kind).toBe("time");
+    expect(parsed.properties.find((property) => property.key === "slot")?.kind).toBe("time");
+  });
 });
 
 describe("composeMarkdownWithBody", () => {
@@ -511,6 +527,27 @@ describe("addFrontmatterProperty", () => {
 
     expect(updated.error).toBeNull();
     expect(updated.markdown).toContain("tags:\n  - alpha\n  - beta");
+  });
+
+  it("validates and normalizes time-typed properties", () => {
+    const source = ["---", "title: Demo", "---", "Body"].join("\n");
+
+    const invalid = addFrontmatterProperty({
+      markdown: source,
+      key: "start",
+      value: "not-a-time",
+      kind: "time",
+    });
+    const valid = addFrontmatterProperty({
+      markdown: source,
+      key: "start",
+      value: "2026-04-03T09:05",
+      kind: "time",
+    });
+
+    expect(invalid.error).toContain("Zeit erwartet");
+    expect(valid.error).toBeNull();
+    expect(valid.markdown).toContain("start: 2026-04-03T09:05");
   });
 });
 

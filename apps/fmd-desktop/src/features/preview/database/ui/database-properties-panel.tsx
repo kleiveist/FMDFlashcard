@@ -39,6 +39,7 @@ const fieldTypeOptions: DatabaseFieldType[] = [
   "number",
   "percent",
   "boolean",
+  "time",
   "date",
   "datetime",
   "select",
@@ -63,6 +64,7 @@ const resolveTypeIcon = (type: DatabaseFieldType) => {
     case "score":
       return "#";
     case "date":
+    case "time":
     case "datetime":
       return "🕒";
     case "tags":

@@ -3,6 +3,7 @@ import {
   buildNormalizedRecord,
   createSystemFieldsForRecord,
   inferFieldType,
+  normalizeFieldValueByType,
   parsePercentValue,
   parseScoreValue,
   parseStatusValue,
@@ -51,6 +52,12 @@ describe("database-normalizers", () => {
     expect(inferFieldType("status", "3 🟡")).toBe("status");
     expect(inferFieldType("tags", ["A", "B"])).toBe("tags");
     expect(inferFieldType("date", "2026-03-21")).toBe("date");
+    expect(inferFieldType("start", "14:30")).toBe("time");
+    expect(inferFieldType("start", "2026-04-03T09:15")).toBe("datetime");
+  });
+
+  it("normalizes time values", () => {
+    expect(normalizeFieldValueByType("time", "14:30")).toBe("14:30");
   });
 
   it("builds normalized records and protects against case-insensitive duplicate keys", () => {

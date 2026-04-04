@@ -12,6 +12,7 @@ import {
   type DatabaseNormalizedFieldValue,
   type DatabaseRecord,
 } from "./database-types";
+import { parseTimelineComparableValue } from "./database-time";
 
 export type DatabaseFilterOperator = {
   value: string;
@@ -75,15 +76,13 @@ const booleanOperators: DatabaseFilterOperator[] = [
   { value: "is empty", label: "is empty" },
 ];
 
-const getDateTimestamp = (value: unknown) => {
-  if (value instanceof Date) {
-    return value.getTime();
-  }
-  if (typeof value === "string") {
-    const parsed = Date.parse(value);
-    return Number.isFinite(parsed) ? parsed : Number.NaN;
-  }
-  return Number.NaN;
+const getTemporalComparable = (value: unknown, type: "date" | "datetime" | "time") => {
+  const parsed = parseTimelineComparableValue({
+    value,
+    fieldType: type,
+    mode: type === "time" ? "time" : type === "datetime" ? "datetime" : "date",
+  });
+  return typeof parsed === "number" && Number.isFinite(parsed) ? parsed : Number.NaN;
 };
 
 const isFilterGroupEntry = (entry: DatabaseFilterRule | DatabaseFilterGroup): entry is DatabaseFilterGroup =>
@@ -235,7 +234,11 @@ const evaluateNumberRule = (value: unknown, rule: DatabaseFilterRule) => {
   return compareNumber(left, right, rule.op, rightBoundary);
 };
 
-const evaluateDateRule = (value: unknown, rule: DatabaseFilterRule) => {
+const evaluateDateRule = (
+  value: unknown,
+  rule: DatabaseFilterRule,
+  fieldType: "date" | "datetime" | "time",
+) => {
   if (rule.op === "is empty") {
     return isEmptyValue(value);
   }
@@ -243,9 +246,9 @@ const evaluateDateRule = (value: unknown, rule: DatabaseFilterRule) => {
     return !isEmptyValue(value);
   }
 
-  const left = getDateTimestamp(value);
-  const right = getDateTimestamp(rule.value);
-  const rightBoundary = getDateTimestamp(rule.valueTo);
+  const left = getTemporalComparable(value, fieldType);
+  const right = getTemporalComparable(rule.value, fieldType);
+  const rightBoundary = getTemporalComparable(rule.valueTo, fieldType);
   if (!Number.isFinite(left) || !Number.isFinite(right)) {
     return false;
   }
@@ -368,7 +371,8 @@ const evaluateRuleByType = (
       return evaluateNumberRule(value, rule);
     case "date":
     case "datetime":
-      return evaluateDateRule(value, rule);
+    case "time":
+      return evaluateDateRule(value, rule, fieldType);
     case "select":
     case "status":
       return evaluateSelectRule(value, rule);
@@ -402,6 +406,7 @@ export const getFilterOperatorsForType = (type: DatabaseFieldType): DatabaseFilt
       return numberOperators;
     case "date":
     case "datetime":
+    case "time":
       return dateOperators;
     case "select":
     case "status":

@@ -54,6 +54,23 @@ const attributes: DatabaseAttributeMeta[] = [
       supportsAggregation: false,
     },
   },
+  {
+    key: "StartTime",
+    label: "StartTime",
+    type: "time",
+    origin: "frontmatter",
+    editable: true,
+    sortable: true,
+    filterable: true,
+    aggregatable: false,
+    viewCompatibility: {
+      supportsTable: true,
+      supportsKanbanGrouping: false,
+      supportsTimeline: true,
+      supportsPieGrouping: false,
+      supportsAggregation: false,
+    },
+  },
 ];
 
 const createRecord = (id: string, fields: DatabaseRecord["normalizedFields"]): DatabaseRecord => ({
@@ -73,16 +90,19 @@ const records: DatabaseRecord[] = [
     Rank: "SE2",
     Score: { raw: "20/25", value: 20, max: 25, ratio: 0.8 },
     Due: new Date("2026-03-25"),
+    StartTime: "09:30",
   }),
   createRecord("item-10", {
     Rank: "SE10",
     Score: { raw: "18/25", value: 18, max: 25, ratio: 0.72 },
     Due: null,
+    StartTime: "14:10",
   }),
   createRecord("item-1", {
     Rank: "SE1",
     Score: { raw: "10/25", value: 10, max: 25, ratio: 0.4 },
     Due: new Date("2026-03-21"),
+    StartTime: "08:45",
   }),
 ];
 
@@ -158,5 +178,18 @@ describe("database-sorts", () => {
 
     const sorted = applyDatabaseSorts(records, rules, attributes);
     expect(sorted.map((record) => record.fileId)).toEqual(["item-2", "item-10", "item-1"]);
+  });
+
+  it("sorts time values ascending", () => {
+    const rules: DatabaseSortRule[] = [
+      {
+        id: "sort-1",
+        field: "StartTime",
+        dir: "asc",
+      },
+    ];
+
+    const sorted = applyDatabaseSorts(records, rules, attributes);
+    expect(sorted.map((record) => record.fileId)).toEqual(["item-1", "item-2", "item-10"]);
   });
 });

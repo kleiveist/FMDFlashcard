@@ -14,6 +14,11 @@ import {
   updateFrontmatterProperty,
 } from "../frontmatter";
 import { type DatabaseFieldType } from "./database-types";
+import {
+  normalizeDateTimeValue,
+  normalizeDateValue,
+  normalizeTimeValue,
+} from "./database-time";
 
 export type DatabaseFrontmatterUpsertAction = "added" | "updated" | "skipped" | "failed";
 
@@ -86,6 +91,9 @@ export const mapDatabaseFieldTypeToFrontmatterKind = (
   }
   if (type === "link") {
     return "link";
+  }
+  if (type === "time") {
+    return "time";
   }
   return "text";
 };
@@ -181,21 +189,41 @@ const toBooleanOrNull = (value: DatabaseRecordFieldDraftValue): boolean | null =
 };
 
 const toDateStringOrNull = (value: DatabaseRecordFieldDraftValue): string | null => {
-  if (typeof value !== "string") {
+  if (typeof value === "number" || typeof value === "boolean" || value === null) {
     return null;
   }
-  const trimmed = value.trim();
+  const text = typeof value === "string" ? value : String(value);
+  const trimmed = text.trim();
   if (!trimmed) {
     return null;
   }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return trimmed;
-  }
-  const parsed = Date.parse(trimmed);
-  if (!Number.isFinite(parsed)) {
+  return normalizeDateValue(trimmed);
+};
+
+const toDateTimeStringOrNull = (value: DatabaseRecordFieldDraftValue): string | null => {
+  if (typeof value === "number" || typeof value === "boolean" || value === null) {
     return null;
   }
-  return new Date(parsed).toISOString().slice(0, 10);
+  const text = typeof value === "string" ? value : String(value);
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return null;
+  }
+  return normalizeDateTimeValue(trimmed);
+};
+
+const toTemporalStringOrNull = (value: DatabaseRecordFieldDraftValue): string | null => {
+  if (typeof value === "number" || typeof value === "boolean" || value === null) {
+    return null;
+  }
+  const text = typeof value === "string" ? value : String(value);
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return null;
+  }
+  return normalizeDateTimeValue(trimmed) ??
+    normalizeDateValue(trimmed) ??
+    normalizeTimeValue(trimmed);
 };
 
 const toPercentStringOrNull = (value: DatabaseRecordFieldDraftValue): string | null => {
@@ -295,6 +323,42 @@ export const coerceDatabaseRecordFieldValue = (
       kind: "text",
       typedValue: dateValue,
       addDraftValue: dateValue ?? "",
+      error: null,
+    };
+  }
+
+  if (type === "datetime") {
+    const datetimeValue = toDateTimeStringOrNull(value);
+    if (value !== null && typeof value === "string" && value.trim().length > 0 && !datetimeValue) {
+      return {
+        kind: "text",
+        typedValue: null,
+        addDraftValue: "",
+        error: "Datetime value must match YYYY-MM-DDTHH:mm.",
+      };
+    }
+    return {
+      kind: "text",
+      typedValue: datetimeValue,
+      addDraftValue: datetimeValue ?? "",
+      error: null,
+    };
+  }
+
+  if (type === "time") {
+    const timeValue = toTemporalStringOrNull(value);
+    if (value !== null && typeof value === "string" && value.trim().length > 0 && !timeValue) {
+      return {
+        kind: "time",
+        typedValue: null,
+        addDraftValue: "",
+        error: "Time value must match YYYY-MM-DD, HH:mm, or YYYY-MM-DDTHH:mm.",
+      };
+    }
+    return {
+      kind: "time",
+      typedValue: timeValue,
+      addDraftValue: timeValue ?? "",
       error: null,
     };
   }

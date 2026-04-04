@@ -170,6 +170,8 @@ describe("database-block-parser", () => {
       "  type: pie",
       "  timelineStartField: startDate",
       "  timelineEndField: dueDate",
+      "  timelineMode: datetime",
+      "  timelineBaseDate: 2026-04-01",
       "  ganttZoom: quarter",
       "  pieGroupField: status",
       "  pieAggregate: avg",
@@ -181,6 +183,8 @@ describe("database-block-parser", () => {
     expect(parsed.errors).toEqual([]);
     expect(parsed.config.view.timelineStartField).toBe("startDate");
     expect(parsed.config.view.timelineEndField).toBe("dueDate");
+    expect(parsed.config.view.timelineMode).toBe("datetime");
+    expect(parsed.config.view.timelineBaseDate).toBe("2026-04-01");
     expect(parsed.config.view.ganttZoom).toBe("quarter");
     expect(parsed.config.view.pieGroupField).toBe("status");
     expect(parsed.config.view.pieAggregate).toBe("avg");
@@ -189,6 +193,8 @@ describe("database-block-parser", () => {
     const serialized = serializeDatabaseBlockConfig(parsed.config);
     expect(serialized).toContain("timelineStartField: startDate");
     expect(serialized).toContain("timelineEndField: dueDate");
+    expect(serialized).toContain("timelineMode: datetime");
+    expect(serialized).toContain("timelineBaseDate: 2026-04-01");
     expect(serialized).toContain("ganttZoom: quarter");
     expect(serialized).toContain("pieGroupField: status");
     expect(serialized).toContain("pieAggregate: avg");
@@ -198,10 +204,30 @@ describe("database-block-parser", () => {
     expect(reparsed.errors).toEqual([]);
     expect(reparsed.config.view.timelineStartField).toBe("startDate");
     expect(reparsed.config.view.timelineEndField).toBe("dueDate");
+    expect(reparsed.config.view.timelineMode).toBe("datetime");
+    expect(reparsed.config.view.timelineBaseDate).toBe("2026-04-01");
     expect(reparsed.config.view.ganttZoom).toBe("quarter");
     expect(reparsed.config.view.pieGroupField).toBe("status");
     expect(reparsed.config.view.pieAggregate).toBe("avg");
     expect(reparsed.config.view.pieAggregateField).toBe("percent");
+  });
+
+  it("parses extended timeline zoom values and mode defaults", () => {
+    const raw = [
+      "::::",
+      "title: Timeline Defaults",
+      "view:",
+      "  type: gantt",
+      "  timelineMode: time",
+      "  ganttZoom: minute",
+      "::::",
+    ].join("\n");
+
+    const parsed = parseDatabaseBlockConfigFromRaw(raw);
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.config.view.timelineMode).toBe("time");
+    expect(parsed.config.view.ganttZoom).toBe("minute");
+    expect(parsed.config.view.timelineBaseDate).toBeNull();
   });
 
   it("preserves nested filter groups during serialize/parse roundtrip", () => {

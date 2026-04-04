@@ -22,6 +22,12 @@ import {
   buildNormalizedRecord,
   createSystemFieldsForRecord,
 } from "./database-normalizers";
+import {
+  coerceTimelineZoom,
+  formatTimelineValueFromTimestamp,
+  getTimelineDefaultZoom,
+  normalizeTimelineBaseDate,
+} from "./database-time";
 import { toggleDatabaseSortRuleByField } from "./database-sort-rules";
 import {
   resolveDatabaseSourceFiles,
@@ -38,6 +44,7 @@ import {
   type DatabaseRecord,
   type DatabaseSourceSpec,
   type DatabaseSortRule,
+  type DatabaseTimelineMode,
   type DatabaseViewSpec,
   type DatabaseViewType,
 } from "./database-types";
@@ -169,9 +176,30 @@ const resolveCellDraftValue = (
       return Number.isFinite(numeric) ? String(numeric) : "";
     }
   }
-  if (attribute.type === "date" || attribute.type === "datetime") {
+  if (attribute.type === "date") {
     if (value instanceof Date) {
-      return value.toISOString().slice(0, 10);
+      const year = value.getFullYear();
+      const month = String(value.getMonth() + 1).padStart(2, "0");
+      const day = String(value.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+  }
+  if (attribute.type === "datetime") {
+    if (value instanceof Date) {
+      const year = value.getFullYear();
+      const month = String(value.getMonth() + 1).padStart(2, "0");
+      const day = String(value.getDate()).padStart(2, "0");
+      const hours = String(value.getHours()).padStart(2, "0");
+      const minutes = String(value.getMinutes()).padStart(2, "0");
+      return `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+  }
+  if (attribute.type === "time") {
+    if (typeof value === "string") {
+      return value;
+    }
+    if (value instanceof Date) {
+      return `${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}`;
     }
   }
   if (typeof value === "string") {
@@ -289,7 +317,22 @@ const defaultPanels: DatabaseBlockOpenPanels = {
 };
 
 const TITLE_COMMIT_DEBOUNCE_MS = 280;
-const DEFAULT_GANTT_ZOOM: DatabaseGanttZoom = "month";
+const DEFAULT_TIMELINE_MODE: DatabaseTimelineMode = "date";
+const pad2 = (value: number) => String(value).padStart(2, "0");
+const resolveTodayBaseDate = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+};
+const resolveTimelineBaseDateForMode = (
+  mode: DatabaseTimelineMode,
+  baseDate: string | null | undefined,
+) => {
+  const normalized = normalizeTimelineBaseDate(baseDate ?? null);
+  if (mode === "time") {
+    return normalized ?? resolveTodayBaseDate();
+  }
+  return normalized;
+};
 
 export const MarkdownHybridDatabaseBlock = ({
   raw,
@@ -319,8 +362,21 @@ export const MarkdownHybridDatabaseBlock = ({
   const [timelineEndField, setTimelineEndField] = useState<string | null>(
     parsed.config.view.timelineEndField ?? null,
   );
+  const [timelineMode, setTimelineMode] = useState<DatabaseTimelineMode>(
+    parsed.config.view.timelineMode ?? DEFAULT_TIMELINE_MODE,
+  );
+  const initialTimelineMode = parsed.config.view.timelineMode ?? DEFAULT_TIMELINE_MODE;
+  const [timelineBaseDate, setTimelineBaseDate] = useState<string | null>(
+    resolveTimelineBaseDateForMode(
+      initialTimelineMode,
+      parsed.config.view.timelineBaseDate ?? null,
+    ),
+  );
   const [ganttZoom, setGanttZoom] = useState<DatabaseGanttZoom>(
-    parsed.config.view.ganttZoom ?? DEFAULT_GANTT_ZOOM,
+    coerceTimelineZoom(
+      parsed.config.view.timelineMode ?? DEFAULT_TIMELINE_MODE,
+      parsed.config.view.ganttZoom ?? getTimelineDefaultZoom(parsed.config.view.timelineMode ?? DEFAULT_TIMELINE_MODE),
+    ),
   );
   const [pieGroupField, setPieGroupField] = useState<string | null>(
     parsed.config.view.pieGroupField ?? null,
@@ -353,6 +409,8 @@ export const MarkdownHybridDatabaseBlock = ({
   const kanbanGroupByRef = useRef<string | null>(kanbanGroupBy);
   const timelineStartFieldRef = useRef<string | null>(timelineStartField);
   const timelineEndFieldRef = useRef<string | null>(timelineEndField);
+  const timelineModeRef = useRef<DatabaseTimelineMode>(timelineMode);
+  const timelineBaseDateRef = useRef<string | null>(timelineBaseDate);
   const ganttZoomRef = useRef<DatabaseGanttZoom>(ganttZoom);
   const pieGroupFieldRef = useRef<string | null>(pieGroupField);
   const pieAggregateRef = useRef<"count" | "sum" | "avg">(pieAggregate);
@@ -373,7 +431,19 @@ export const MarkdownHybridDatabaseBlock = ({
     setKanbanGroupBy(parsed.config.view.groupBy ?? null);
     setTimelineStartField(parsed.config.view.timelineStartField ?? null);
     setTimelineEndField(parsed.config.view.timelineEndField ?? null);
-    setGanttZoom(parsed.config.view.ganttZoom ?? DEFAULT_GANTT_ZOOM);
+    const nextTimelineMode = parsed.config.view.timelineMode ?? DEFAULT_TIMELINE_MODE;
+    const nextTimelineBaseDate = resolveTimelineBaseDateForMode(
+      nextTimelineMode,
+      parsed.config.view.timelineBaseDate ?? null,
+    );
+    setTimelineMode(nextTimelineMode);
+    setTimelineBaseDate(nextTimelineBaseDate);
+    setGanttZoom(
+      coerceTimelineZoom(
+        nextTimelineMode,
+        parsed.config.view.ganttZoom ?? getTimelineDefaultZoom(nextTimelineMode),
+      ),
+    );
     setPieGroupField(parsed.config.view.pieGroupField ?? null);
     setPieAggregate(parsed.config.view.pieAggregate ?? "count");
     setPieAggregateField(parsed.config.view.pieAggregateField ?? null);
@@ -394,6 +464,8 @@ export const MarkdownHybridDatabaseBlock = ({
     kanbanGroupByRef.current = kanbanGroupBy;
     timelineStartFieldRef.current = timelineStartField;
     timelineEndFieldRef.current = timelineEndField;
+    timelineModeRef.current = timelineMode;
+    timelineBaseDateRef.current = timelineBaseDate;
     ganttZoomRef.current = ganttZoom;
     pieGroupFieldRef.current = pieGroupField;
     pieAggregateRef.current = pieAggregate;
@@ -412,6 +484,8 @@ export const MarkdownHybridDatabaseBlock = ({
     pieGroupField,
     source,
     timelineEndField,
+    timelineBaseDate,
+    timelineMode,
     timelineStartField,
     title,
     viewType,
@@ -560,7 +634,11 @@ export const MarkdownHybridDatabaseBlock = ({
       groupBy: next.view?.groupBy ?? kanbanGroupByRef.current ?? null,
       timelineStartField: next.view?.timelineStartField ?? timelineStartFieldRef.current ?? null,
       timelineEndField: next.view?.timelineEndField ?? timelineEndFieldRef.current ?? null,
-      ganttZoom: next.view?.ganttZoom ?? ganttZoomRef.current ?? DEFAULT_GANTT_ZOOM,
+      timelineMode: next.view?.timelineMode ?? timelineModeRef.current ?? DEFAULT_TIMELINE_MODE,
+      timelineBaseDate: next.view?.timelineBaseDate ?? timelineBaseDateRef.current ?? null,
+      ganttZoom: next.view?.ganttZoom ?? ganttZoomRef.current ?? getTimelineDefaultZoom(
+        next.view?.timelineMode ?? timelineModeRef.current ?? DEFAULT_TIMELINE_MODE,
+      ),
       pieGroupField: next.view?.pieGroupField ?? pieGroupFieldRef.current ?? null,
       pieAggregate: next.view?.pieAggregate ?? pieAggregateRef.current ?? "count",
       pieAggregateField: next.view?.pieAggregateField ?? pieAggregateFieldRef.current ?? null,
@@ -596,6 +674,8 @@ export const MarkdownHybridDatabaseBlock = ({
           groupBy: kanbanGroupBy,
           timelineStartField,
           timelineEndField,
+          timelineMode,
+          timelineBaseDate,
           ganttZoom,
           pieGroupField,
           pieAggregate,
@@ -629,6 +709,8 @@ export const MarkdownHybridDatabaseBlock = ({
       viewType,
       timelineStartField,
       timelineEndField,
+      timelineMode,
+      timelineBaseDate,
       ganttZoom,
       pieGroupField,
       pieAggregate,
@@ -713,6 +795,8 @@ export const MarkdownHybridDatabaseBlock = ({
   const handleGanttOptionsChange = (next: {
     startField?: string | null;
     endField?: string | null;
+    mode?: DatabaseTimelineMode;
+    baseDate?: string | null;
     zoom?: DatabaseGanttZoom;
   }) => {
     const nextStart = typeof next.startField === "undefined"
@@ -721,15 +805,24 @@ export const MarkdownHybridDatabaseBlock = ({
     const nextEnd = typeof next.endField === "undefined"
       ? timelineEndFieldRef.current
       : next.endField ?? null;
-    const nextZoom = next.zoom ?? ganttZoomRef.current ?? DEFAULT_GANTT_ZOOM;
+    const nextMode = next.mode ?? timelineModeRef.current ?? DEFAULT_TIMELINE_MODE;
+    let nextBaseDate = typeof next.baseDate === "undefined"
+      ? timelineBaseDateRef.current ?? null
+      : normalizeTimelineBaseDate(next.baseDate ?? null);
+    nextBaseDate = resolveTimelineBaseDateForMode(nextMode, nextBaseDate);
+    const nextZoom = coerceTimelineZoom(nextMode, next.zoom ?? ganttZoomRef.current);
 
     setTimelineStartField(nextStart);
     setTimelineEndField(nextEnd);
+    setTimelineMode(nextMode);
+    setTimelineBaseDate(nextBaseDate);
     setGanttZoom(nextZoom);
     persistConfig({
       view: {
         timelineStartField: nextStart,
         timelineEndField: nextEnd,
+        timelineMode: nextMode,
+        timelineBaseDate: nextBaseDate,
         ganttZoom: nextZoom,
       },
     });
@@ -881,6 +974,160 @@ export const MarkdownHybridDatabaseBlock = ({
     },
     [pendingCellMutations, records, tableCellEditingEnabled],
   );
+
+  const ensureTimelineFieldSetup = useCallback(() => {
+    const configuredStart = (timelineStartFieldRef.current ?? "").trim();
+    const configuredEnd = (timelineEndFieldRef.current ?? "").trim();
+    const startKey = configuredStart || "start";
+    const endKey = configuredEnd || "end";
+
+    let nextFields = cloneFieldDefinitions(fieldDefinitionsRef.current);
+    let fieldsChanged = false;
+
+    const ensureField = (key: string) => {
+      const existing = nextFields.some((field) => toLower(field.key) === toLower(key));
+      if (existing) {
+        return;
+      }
+      nextFields = [
+        ...nextFields,
+        {
+          key,
+          label: key,
+          type: "time",
+          origin: "frontmatter",
+          formula: null,
+        },
+      ];
+      fieldsChanged = true;
+    };
+
+    ensureField(startKey);
+    ensureField(endKey);
+
+    const nextColumns = appendVisibleColumnIfMissing(
+      appendVisibleColumnIfMissing(visibleColumnKeysRef.current, startKey),
+      endKey,
+    );
+    const columnsChanged = nextColumns.length !== visibleColumnKeysRef.current.length;
+
+    const viewPatch: Partial<DatabaseViewSpec> = {};
+    if (toLower(configuredStart) !== toLower(startKey)) {
+      viewPatch.timelineStartField = startKey;
+    }
+    if (toLower(configuredEnd) !== toLower(endKey)) {
+      viewPatch.timelineEndField = endKey;
+    }
+
+    if (fieldsChanged) {
+      setFieldDefinitions(nextFields);
+      fieldDefinitionsRef.current = nextFields;
+    }
+    if (columnsChanged) {
+      setVisibleColumnKeys(nextColumns);
+      visibleColumnKeysRef.current = nextColumns;
+    }
+    if (viewPatch.timelineStartField) {
+      setTimelineStartField(startKey);
+      timelineStartFieldRef.current = startKey;
+    }
+    if (viewPatch.timelineEndField) {
+      setTimelineEndField(endKey);
+      timelineEndFieldRef.current = endKey;
+    }
+
+    if (
+      fieldsChanged ||
+      columnsChanged ||
+      typeof viewPatch.timelineStartField !== "undefined" ||
+      typeof viewPatch.timelineEndField !== "undefined"
+    ) {
+      persistConfig({
+        fields: nextFields,
+        visibleColumns: nextColumns,
+        view: {
+          ...viewPatch,
+        },
+      });
+    }
+
+    return {
+      startKey,
+      endKey,
+    };
+  }, [persistConfig]);
+
+  const handleCommitTimelineRange = useCallback(async ({
+    record,
+    startTimestamp,
+    endTimestamp,
+  }: {
+    record: DatabaseRecord;
+    startTimestamp: number;
+    endTimestamp: number;
+  }) => {
+    if (!allowCellEditing) {
+      return;
+    }
+
+    const { startKey, endKey } = ensureTimelineFieldSetup();
+    const mode = timelineModeRef.current ?? DEFAULT_TIMELINE_MODE;
+    const startValue = formatTimelineValueFromTimestamp(startTimestamp, mode);
+    const endValue = formatTimelineValueFromTimestamp(Math.max(startTimestamp, endTimestamp), mode);
+
+    const previousRecord = records.find((entry) => entry.fileId === record.fileId);
+    if (!previousRecord) {
+      return;
+    }
+
+    const optimistic = applyOptimisticRecordFieldValue(
+      applyOptimisticRecordFieldValue(previousRecord, startKey, startValue),
+      endKey,
+      endValue,
+    );
+    setRecords((previous) =>
+      previous.map((entry) => (entry.fileId === record.fileId ? optimistic : entry)));
+    addPendingRecordMutation(record.fileId);
+    setOperationError(null);
+
+    try {
+      const startResult = await upsertDatabaseRecordField({
+        path: previousRecord.filePath,
+        relativePath: previousRecord.relativePath,
+        key: startKey,
+        type: "time",
+        value: startValue,
+      });
+      if (startResult.error) {
+        throw new Error(startResult.error);
+      }
+
+      const endResult = await upsertDatabaseRecordField({
+        path: previousRecord.filePath,
+        relativePath: previousRecord.relativePath,
+        key: endKey,
+        type: "time",
+        value: endValue,
+      });
+      if (endResult.error) {
+        throw new Error(endResult.error);
+      }
+
+      fileCacheRef.current.set(previousRecord.filePath, endResult.markdown);
+      setOperationState("Timeline aktualisiert.");
+    } catch (error) {
+      setRecords((previous) =>
+        previous.map((entry) => (entry.fileId === previousRecord.fileId ? previousRecord : entry)));
+      setOperationState(null);
+      setOperationError(
+        error instanceof Error
+          ? error.message
+          : "Timeline konnte nicht gespeichert werden.",
+      );
+    } finally {
+      removePendingRecordMutation(record.fileId);
+    }
+  }, [allowCellEditing, ensureTimelineFieldSetup, records]);
 
   const handleToggleVisibility = (key: string, visible: boolean) => {
     const nextColumns = visible
@@ -1258,6 +1505,8 @@ export const MarkdownHybridDatabaseBlock = ({
               attributes={store.attributeRegistry}
               startField={timelineStartField}
               endField={timelineEndField}
+              mode={timelineMode}
+              baseDate={timelineBaseDate}
               zoom={ganttZoom}
               onChange={handleGanttOptionsChange}
               onClose={() => setPanels(defaultPanels)}
@@ -1306,7 +1555,12 @@ export const MarkdownHybridDatabaseBlock = ({
             records={store.visibleRecords}
             startAttribute={timelineStartAttribute}
             endAttribute={timelineEndAttribute}
+            mode={timelineMode}
+            baseDate={timelineBaseDate}
             zoom={ganttZoom}
+            editable={allowCellEditing}
+            pendingRecordIds={pendingRecordMutations}
+            onCommitRange={handleCommitTimelineRange}
             onOpenRecord={openRecord}
           />
         ) : (

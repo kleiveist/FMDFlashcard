@@ -6,9 +6,19 @@
  *   fuer das Markdown-Preview-Properties-Panel.
  */
 
+import {
+  isDateTimeValue,
+  isDateValue,
+  isTimeValue,
+  normalizeDateTimeValue,
+  normalizeDateValue,
+  normalizeTimeValue,
+} from "./database/database-time";
+
 export type FrontmatterPropertyKind =
   | "text"
   | "task"
+  | "time"
   | "number"
   | "boolean"
   | "tags"
@@ -19,6 +29,7 @@ export type FrontmatterPropertyKind =
 export type FrontmatterPropertyIcon =
   | "text"
   | "task"
+  | "time"
   | "number"
   | "boolean"
   | "tags"
@@ -348,6 +359,12 @@ const resolvePropertyKind = ({
   if (typeof value === "number") {
     return "number";
   }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (isDateValue(trimmed) || isTimeValue(trimmed) || isDateTimeValue(trimmed)) {
+      return "time";
+    }
+  }
   if (typeof value === "string" && isWikilink(value)) {
     return isImageWikilink(value) ? "cover" : "link";
   }
@@ -367,6 +384,8 @@ const resolvePropertyIcon = (
       return "cover";
     case "task":
       return "task";
+    case "time":
+      return "time";
     case "number":
       return "number";
     case "boolean":
@@ -618,6 +637,20 @@ const normalizePropertyUpdateValue = (
     return typeof value === "boolean" ? value : null;
   }
 
+  if (kind === "time") {
+    if (typeof value !== "string") {
+      return null;
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    return normalizeDateTimeValue(trimmed) ??
+      normalizeDateValue(trimmed) ??
+      normalizeTimeValue(trimmed) ??
+      null;
+  }
+
   if (typeof value !== "string") {
     return null;
   }
@@ -641,6 +674,12 @@ const inferKindFromValue = (
   }
   if (typeof value === "number") {
     return "number";
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (isDateValue(trimmed) || isTimeValue(trimmed) || isDateTimeValue(trimmed)) {
+      return "time";
+    }
   }
   if (typeof value === "string" && isWikilink(value)) {
     return isImageWikilink(value) ? "cover" : "link";
@@ -896,6 +935,22 @@ const parseDraftValueForKind = (
     const normalized = normalizeWikilinkValue(trimmed);
     if (!normalized || !isImageWikilink(normalized)) {
       return { value: null, error: "Cover erwartet Bild-Link." };
+    }
+    return { value: normalized, error: null };
+  }
+
+  if (kind === "time") {
+    if (trimmed === "") {
+      return { value: null, error: null };
+    }
+    const normalized = normalizeDateTimeValue(trimmed) ??
+      normalizeDateValue(trimmed) ??
+      normalizeTimeValue(trimmed);
+    if (!normalized) {
+      return {
+        value: null,
+        error: "Zeit erwartet YYYY-MM-DD, HH:mm oder YYYY-MM-DDTHH:mm.",
+      };
     }
     return { value: normalized, error: null };
   }
