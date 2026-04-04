@@ -512,7 +512,7 @@ export const upsertFrontmatterAttributeInMarkdown = ({
     key: nextKey,
     kind,
     value: type === "unit"
-      ? toUnitNumber(initialValue)
+      ? stringifyAddDraftValue(toUnitNumber(initialValue))
       : normalizeDraftStringForAdd(initialValue, kind),
   });
 

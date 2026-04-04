@@ -11,7 +11,7 @@ import { SETTINGS_NAV_MODEL } from "./settingsNavigation";
 describe("SETTINGS_NAV_MODEL", () => {
   it("keeps Data & Index as single nav item and maps Profile Source + Ex- Import as subtabs", () => {
     const navItems = SETTINGS_NAV_MODEL.filter((entry) => entry.type === "item");
-    const ids = navItems.map((item) => item.id);
+    const ids: string[] = navItems.map((item) => item.id);
     const dataIndexIndex = ids.indexOf("vault-index");
 
     expect(ids.includes("data-sync")).toBe(false);

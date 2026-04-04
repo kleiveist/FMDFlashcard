@@ -102,12 +102,18 @@ describe("useFlashcardAreaToggle", () => {
     const { rerender, cleanup } = renderHook(options, (value) => {
       latest = value;
     });
+    const requireLatest = () => {
+      if (!latest) {
+        throw new Error("Expected hook value to be available.");
+      }
+      return latest;
+    };
 
-    expect(latest?.getToggleState(0).enabled).toBe(false);
-    expect(latest?.getToggleState(0).pending).toBe(false);
+    expect(requireLatest().getToggleState(0).enabled).toBe(false);
+    expect(requireLatest().getToggleState(0).pending).toBe(false);
 
     act(() => {
-      latest?.toggleCardArea(0, true);
+      requireLatest().toggleCardArea(0, true);
     });
 
     expect(stageTaskAreaToggle).toHaveBeenCalledWith(
@@ -117,7 +123,7 @@ describe("useFlashcardAreaToggle", () => {
       },
       true,
     );
-    expect(latest?.getToggleState(0).enabled).toBe(true);
+    expect(requireLatest().getToggleState(0).enabled).toBe(true);
 
     rerender({
       ...options,
@@ -128,7 +134,7 @@ describe("useFlashcardAreaToggle", () => {
         },
       },
     });
-    expect(latest?.getToggleState(0).enabled).toBe(true);
+    expect(requireLatest().getToggleState(0).enabled).toBe(true);
     cleanup();
   });
 
@@ -151,12 +157,18 @@ describe("useFlashcardAreaToggle", () => {
     const { cleanup } = renderHook(options, (value) => {
       latest = value;
     });
+    const requireLatest = () => {
+      if (!latest) {
+        throw new Error("Expected hook value to be available.");
+      }
+      return latest;
+    };
 
-    const state = latest?.getToggleState(2);
+    const state = requireLatest().getToggleState(2);
     expect(state?.disabledReason).toContain("range");
 
     act(() => {
-      latest?.toggleCardArea(2, false);
+      requireLatest().toggleCardArea(2, false);
     });
 
     expect(stageTaskAreaToggle).not.toHaveBeenCalled();
@@ -184,8 +196,14 @@ describe("useFlashcardAreaToggle", () => {
     const { cleanup } = renderHook(options, (value) => {
       latest = value;
     });
+    const requireLatest = () => {
+      if (!latest) {
+        throw new Error("Expected hook value to be available.");
+      }
+      return latest;
+    };
 
-    const state = latest?.getToggleState(4);
+    const state = requireLatest().getToggleState(4);
     expect(state?.notice).toBe("Saved at tab switch.");
     expect(state?.error).toBe("");
     cleanup();

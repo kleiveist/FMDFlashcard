@@ -43,7 +43,6 @@ import type {
   FlashcardScanEntry,
   FlashcardSourceMeta,
 } from "../flashcards/useFlashcards";
-import type { Flashcard } from "../../lib/flashcards";
 import {
   buildSpacedRepetitionSession,
   buildActiveSpacedRepetitionCardIdSet,
