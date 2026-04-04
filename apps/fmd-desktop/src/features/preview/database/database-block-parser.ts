@@ -908,19 +908,21 @@ export const serializeDatabaseBlockConfig = (config: DatabaseBlockConfig) => {
     });
   }
 
-  if (config.columns.length === 0) {
-    lines.push("columns: []");
-  } else {
-    lines.push("columns:");
-    config.columns.forEach((column) => {
-      lines.push(`  - ${formatYamlScalar(column)}`);
-    });
-  }
-
   const propertiesByView = parsePropertiesByView(
     config.propertiesByView,
     config.columns,
   );
+  const tableColumns = dedupeCaseInsensitive(propertiesByView.table ?? config.columns);
+
+  if (tableColumns.length === 0) {
+    lines.push("columns: []");
+  } else {
+    lines.push("columns:");
+    tableColumns.forEach((column) => {
+      lines.push(`  - ${formatYamlScalar(column)}`);
+    });
+  }
+
   lines.push("propertiesByView:");
   DATABASE_VIEW_TYPES.forEach((view) => {
     const keys = dedupeCaseInsensitive(propertiesByView[view] ?? []);

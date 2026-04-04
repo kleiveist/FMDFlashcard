@@ -99,6 +99,10 @@ describe("database-block-parser", () => {
     const config = createDefaultDatabaseBlockConfig();
     config.title = "Serialize Test";
     config.columns = ["Dateiname", "Score"];
+    config.propertiesByView = {
+      ...(config.propertiesByView ?? {}),
+      table: ["Dateiname", "Score"],
+    };
     config.fields = [
       {
         key: "ScoreRatio",

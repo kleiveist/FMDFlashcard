@@ -630,7 +630,7 @@ export const DatabaseGanttView = ({
             const rowTitle = getRowTitle(record);
             const isPending = pendingIds.has(record.fileId);
             const excludedPropertyKeys = new Set<string>([
-              startAttribute.key,
+              ...(startAttribute ? [startAttribute.key] : []),
               ...(endAttribute ? [endAttribute.key] : []),
             ].map((key) => toLower(key)));
             const propertyRows = visibleProperties
