@@ -1,4 +1,5 @@
 use std::{
+    cmp::Ordering,
     collections::HashMap,
     fs,
     path::{Component, Path, PathBuf},
@@ -350,6 +351,74 @@ fn sanitize_relative_path(relative_path: &str) -> Result<PathBuf, String> {
 
 fn format_relative_path(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
+}
+
+fn natural_compare_segments(left: &str, right: &str) -> Ordering {
+    let left_bytes = left.as_bytes();
+    let right_bytes = right.as_bytes();
+    let mut left_index = 0;
+    let mut right_index = 0;
+
+    while left_index < left_bytes.len() && right_index < right_bytes.len() {
+        let left_byte = left_bytes[left_index];
+        let right_byte = right_bytes[right_index];
+        let left_is_digit = left_byte.is_ascii_digit();
+        let right_is_digit = right_byte.is_ascii_digit();
+
+        if left_is_digit && right_is_digit {
+            let left_start = left_index;
+            let right_start = right_index;
+            while left_index < left_bytes.len() && left_bytes[left_index].is_ascii_digit() {
+                left_index += 1;
+            }
+            while right_index < right_bytes.len() && right_bytes[right_index].is_ascii_digit() {
+                right_index += 1;
+            }
+
+            let left_number = &left_bytes[left_start..left_index];
+            let right_number = &right_bytes[right_start..right_index];
+            let left_trimmed = &left_number[left_number
+                .iter()
+                .position(|value| *value != b'0')
+                .unwrap_or(left_number.len())..];
+            let right_trimmed = &right_number[right_number
+                .iter()
+                .position(|value| *value != b'0')
+                .unwrap_or(right_number.len())..];
+
+            match left_trimmed.len().cmp(&right_trimmed.len()) {
+                Ordering::Equal => {}
+                other => return other,
+            }
+            match left_trimmed.cmp(right_trimmed) {
+                Ordering::Equal => {}
+                other => return other,
+            }
+            match left_number.len().cmp(&right_number.len()) {
+                Ordering::Equal => {}
+                other => return other,
+            }
+            continue;
+        }
+
+        if left_byte != right_byte {
+            return left_byte.cmp(&right_byte);
+        }
+        left_index += 1;
+        right_index += 1;
+    }
+
+    left_bytes.len().cmp(&right_bytes.len())
+}
+
+fn natural_compare_text(left: &str, right: &str) -> Ordering {
+    let left_lower = left.to_lowercase();
+    let right_lower = right.to_lowercase();
+    let primary = natural_compare_segments(&left_lower, &right_lower);
+    if primary != Ordering::Equal {
+        return primary;
+    }
+    natural_compare_segments(left, right)
 }
 
 fn settings_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -775,9 +844,9 @@ fn list_vault_entries(
         }
     }
 
-    files.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
-    png_assets.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
-    folders.sort();
+    files.sort_by(|a, b| natural_compare_text(&a.relative_path, &b.relative_path));
+    png_assets.sort_by(|a, b| natural_compare_text(&a.relative_path, &b.relative_path));
+    folders.sort_by(|left, right| natural_compare_text(left, right));
     Ok(VaultScanResults {
         files,
         png_assets,
@@ -820,7 +889,7 @@ fn list_markdown_files(
         }
     }
 
-    files.sort_by(|a, b| a.relative_path.cmp(&b.relative_path));
+    files.sort_by(|a, b| natural_compare_text(&a.relative_path, &b.relative_path));
     Ok(files)
 }
 
@@ -857,7 +926,7 @@ fn list_directories(path: String) -> Result<Vec<String>, String> {
             entries.push(entry.file_name().to_string_lossy().to_string());
         }
     }
-    entries.sort();
+    entries.sort_by(|left, right| natural_compare_text(left, right));
     Ok(entries)
 }
 
@@ -1220,6 +1289,50 @@ fn delete_directory(vault_path: String, relative_path: String) -> Result<(), Str
         return Err("Path is not a directory.".to_string());
     }
     fs::remove_dir_all(&full_path).map_err(|err| err.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{natural_compare_text, VaultFile};
+
+    #[test]
+    fn natural_compare_orders_numeric_chunks() {
+        let mut values = vec!["10".to_string(), "2".to_string(), "1".to_string()];
+        values.sort_by(|left, right| natural_compare_text(left, right));
+        assert_eq!(values, vec!["1", "2", "10"]);
+    }
+
+    #[test]
+    fn natural_compare_orders_dotted_numeric_segments() {
+        let mut values = vec!["2.10".to_string(), "2.2".to_string(), "2.1".to_string()];
+        values.sort_by(|left, right| natural_compare_text(left, right));
+        assert_eq!(values, vec!["2.1", "2.2", "2.10"]);
+    }
+
+    #[test]
+    fn natural_compare_sorts_relative_paths_for_vault_files() {
+        let mut files = vec![
+            VaultFile {
+                path: "/vault/10-file.md".to_string(),
+                relative_path: "10-file.md".to_string(),
+            },
+            VaultFile {
+                path: "/vault/2-file.md".to_string(),
+                relative_path: "2-file.md".to_string(),
+            },
+            VaultFile {
+                path: "/vault/1-file.md".to_string(),
+                relative_path: "1-file.md".to_string(),
+            },
+        ];
+
+        files.sort_by(|left, right| natural_compare_text(&left.relative_path, &right.relative_path));
+        let sorted_relative_paths = files
+            .iter()
+            .map(|entry| entry.relative_path.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(sorted_relative_paths, vec!["1-file.md", "2-file.md", "10-file.md"]);
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

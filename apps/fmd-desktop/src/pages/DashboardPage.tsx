@@ -48,6 +48,7 @@ import {
 } from "../features/preview/frontmatter";
 import { deriveMarkdownEditorColors } from "../lib/markdownEditorColors";
 import { normalizeRelativePath, normalizeVaultPath } from "../lib/path";
+import { compareNaturalPath } from "../lib/naturalSort";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { DESKTOP_QUERY } from "../lib/breakpoints";
 import { ExamEditorView } from "./exam-editor/ExamEditorView";
@@ -1082,7 +1083,7 @@ const DashboardPageInner = (
         return [
           ...withoutSavedPath,
           { path, relative_path: savedRelativePath },
-        ].sort((a, b) => a.relative_path.localeCompare(b.relative_path));
+        ].sort((a, b) => compareNaturalPath(a.relative_path, b.relative_path));
       });
     },
     [

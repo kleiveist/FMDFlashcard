@@ -676,6 +676,60 @@ describe("ExamFilePanel", () => {
     cleanup();
   });
 
+  it("sorts numbered files in a group naturally", () => {
+    const groupedFiles = [
+      {
+        path: "/vault/10.md",
+        relative_path: "group/10.md",
+        status: "valid" as const,
+        taskCount: 1,
+        hasExamBlock: true,
+        error: null,
+      },
+      {
+        path: "/vault/2.md",
+        relative_path: "group/2.md",
+        status: "valid" as const,
+        taskCount: 1,
+        hasExamBlock: true,
+        error: null,
+      },
+      {
+        path: "/vault/1.md",
+        relative_path: "group/1.md",
+        status: "valid" as const,
+        taskCount: 1,
+        hasExamBlock: true,
+        error: null,
+      },
+    ];
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files: groupedFiles,
+        listState: "idle",
+        listError: "",
+        selectedPaths: [],
+        vaultPath: "/vault",
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile: vi.fn(),
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile: vi.fn(),
+      }),
+    );
+
+    const firstFileRow = container.querySelector(".exam-file-row");
+    const firstRowButtons = firstFileRow?.querySelectorAll(".exam-file-row-button") ?? [];
+    expect(firstRowButtons).toHaveLength(3);
+    expect(firstRowButtons[0]?.textContent).toContain("1.md");
+    expect(firstRowButtons[1]?.textContent).toContain("2.md");
+    expect(firstRowButtons[2]?.textContent).toContain("10.md");
+
+    cleanup();
+  });
+
   it("reorders selected files with two taps", () => {
     const onMoveSelectedFile = vi.fn();
     const reorderFiles = [

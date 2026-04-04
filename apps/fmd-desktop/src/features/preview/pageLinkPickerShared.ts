@@ -1,4 +1,5 @@
 import { normalizeRelativePath } from "../../lib/path";
+import { compareNaturalPath, compareNaturalText } from "../../lib/naturalSort";
 import type { VaultFile } from "../../lib/tree";
 
 export type PageLinkPickerReplaceRange = {
@@ -310,11 +311,11 @@ export const buildPageLinkCandidates = (vaultFiles?: VaultFile[]): PageLinkCandi
   }
 
   candidates.sort((left, right) => {
-    const labelCompare = left.label.localeCompare(right.label, undefined, { sensitivity: "base" });
+    const labelCompare = compareNaturalText(left.label, right.label);
     if (labelCompare !== 0) {
       return labelCompare;
     }
-    return left.target.localeCompare(right.target, undefined, { sensitivity: "base" });
+    return compareNaturalPath(left.target, right.target);
   });
   return candidates;
 };

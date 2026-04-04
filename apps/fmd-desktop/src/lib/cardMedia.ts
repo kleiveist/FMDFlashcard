@@ -7,6 +7,7 @@
  */
 
 import { normalizeRelativePath } from "./path";
+import { compareNaturalPath, compareNaturalText } from "./naturalSort";
 import type { VaultPngAsset } from "./tree";
 import {
   buildMarkdownMediaPreviewData as buildPreviewData,
@@ -372,15 +373,11 @@ export const buildVaultImageCandidates = (assets?: VaultPngAsset[] | null): Vaul
   (assets ?? [])
     .slice()
     .sort((left, right) => {
-      const fileNameCompare = left.file_name.localeCompare(right.file_name, undefined, {
-        sensitivity: "base",
-      });
+      const fileNameCompare = compareNaturalText(left.file_name, right.file_name);
       if (fileNameCompare !== 0) {
         return fileNameCompare;
       }
-      return left.relative_path.localeCompare(right.relative_path, undefined, {
-        sensitivity: "base",
-      });
+      return compareNaturalPath(left.relative_path, right.relative_path);
     })
     .map((asset) => {
       const relPath = normalizeRelativePath(asset.relative_path);

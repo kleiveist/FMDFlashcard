@@ -17,6 +17,7 @@
  */
 
 import { isHiddenPath, normalizeRelativePath } from "./path";
+import { compareNaturalText } from "./naturalSort";
 
 export type VaultFile = {
   path: string;
@@ -113,7 +114,7 @@ export const sortNodes = (nodes: TreeNode[]): TreeNode[] => {
     if (a.type !== b.type) {
       return a.type === "dir" ? -1 : 1;
     }
-    return a.name.localeCompare(b.name);
+    return compareNaturalText(a.name, b.name);
   });
 
   return sorted.map((node) => {

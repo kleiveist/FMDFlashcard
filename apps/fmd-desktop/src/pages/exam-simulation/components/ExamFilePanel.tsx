@@ -18,6 +18,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import type { ExamCombinationMode } from "../../../lib/examMixedSession";
+import { compareNaturalPath } from "../../../lib/naturalSort";
 import type { LoadState } from "../../../lib/types";
 import {
   areExamSelectionRowsEqual,
@@ -313,7 +314,7 @@ export const ExamFilePanel = ({
   const filteredEntries = useMemo(() => {
     return validFiles
       .slice()
-      .sort((left, right) => left.relative_path.localeCompare(right.relative_path))
+      .sort((left, right) => compareNaturalPath(left.relative_path, right.relative_path))
       .filter((entry) => {
         if (!normalizedSearch) {
           return true;

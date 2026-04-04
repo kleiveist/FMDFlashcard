@@ -93,6 +93,7 @@ import {
   updateFrontmatterProperty,
 } from "../features/preview/frontmatter";
 import { normalizeRelativePath } from "../lib/path";
+import { compareNaturalPath } from "../lib/naturalSort";
 import {
   normalizeMarkdownPipeTables,
   normalizeMarkdownTableCellPreviewValue,
@@ -5451,7 +5452,7 @@ const FrontmatterPropertiesPanel = ({
             sizeBytes: asset.size_bytes ?? null,
           };
         })
-        .sort((left, right) => left.relativePath.localeCompare(right.relativePath)),
+        .sort((left, right) => compareNaturalPath(left.relativePath, right.relativePath)),
     [vaultFiles, vaultPngAssets, vaultPath],
   );
 

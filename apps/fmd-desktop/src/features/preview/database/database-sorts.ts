@@ -12,6 +12,7 @@ import {
   type DatabaseSortRule,
 } from "./database-types";
 import { parseTimelineComparableValue } from "./database-time";
+import { compareNaturalPath } from "../../../lib/naturalSort";
 
 const defaultCollator = new Intl.Collator(undefined, {
   sensitivity: "base",
@@ -192,7 +193,7 @@ export const applyDatabaseSorts = (
   attributes: DatabaseAttributeMeta[],
 ) => {
   if (sortRules.length === 0) {
-    return records;
+    return [...records].sort((left, right) => compareNaturalPath(left.relativePath, right.relativePath));
   }
 
   const attributeByKey = new Map(
@@ -206,6 +207,6 @@ export const applyDatabaseSorts = (
         return compare;
       }
     }
-    return left.relativePath.localeCompare(right.relativePath);
+    return compareNaturalPath(left.relativePath, right.relativePath);
   });
 };

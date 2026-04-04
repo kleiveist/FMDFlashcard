@@ -79,6 +79,21 @@ describe("pageLinkPickerShared", () => {
     expect(candidates[0]?.wikilink).toBe("[[folder/Alpha]]");
   });
 
+  it("sorts numeric page names naturally", () => {
+    const files: VaultFile[] = [
+      { path: "/vault/10-Setup.md", relative_path: "10-Setup.md" },
+      { path: "/vault/2-Setup.md", relative_path: "2-Setup.md" },
+      { path: "/vault/1-Setup.md", relative_path: "1-Setup.md" },
+    ];
+
+    const candidates = buildPageLinkCandidates(files);
+    expect(candidates.map((entry) => entry.target)).toEqual([
+      "1-Setup",
+      "2-Setup",
+      "10-Setup",
+    ]);
+  });
+
   it("filters candidates by query text", () => {
     const files: VaultFile[] = [
       { path: "/vault/folder/Alpha.md", relative_path: "folder/Alpha.md" },

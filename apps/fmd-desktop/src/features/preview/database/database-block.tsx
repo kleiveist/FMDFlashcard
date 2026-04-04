@@ -53,6 +53,7 @@ import {
   coerceDatabaseRecordFieldValue,
   upsertDatabaseRecordField,
 } from "./frontmatter-update";
+import { compareNaturalPath } from "../../../lib/naturalSort";
 import { DatabaseFilterPanel } from "./ui/database-filter-panel";
 import { DatabaseGanttPanel } from "./ui/database-gantt-panel";
 import { DatabasePiePanel } from "./ui/database-pie-panel";
@@ -1353,7 +1354,7 @@ export const MarkdownHybridDatabaseBlock = ({
       const folder = slashIndex >= 0 ? normalized.slice(0, slashIndex) : "";
       folders.add(folder);
     });
-    return Array.from(folders).sort((left, right) => left.localeCompare(right));
+    return Array.from(folders).sort((left, right) => compareNaturalPath(left, right));
   }, [vaultFiles]);
 
   const kanbanGroupAttribute = pickKanbanGroupAttribute(

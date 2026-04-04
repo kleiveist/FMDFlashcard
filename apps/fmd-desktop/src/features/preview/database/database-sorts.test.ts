@@ -107,6 +107,11 @@ const records: DatabaseRecord[] = [
 ];
 
 describe("database-sorts", () => {
+  it("applies natural relative-path ordering when no sort rules are present", () => {
+    const sorted = applyDatabaseSorts(records, [], attributes);
+    expect(sorted.map((record) => record.fileId)).toEqual(["item-1", "item-2", "item-10"]);
+  });
+
   it("sorts naturally by text field", () => {
     const rules: DatabaseSortRule[] = [
       {
@@ -190,6 +195,24 @@ describe("database-sorts", () => {
     ];
 
     const sorted = applyDatabaseSorts(records, rules, attributes);
+    expect(sorted.map((record) => record.fileId)).toEqual(["item-1", "item-2", "item-10"]);
+  });
+
+  it("uses natural relative-path tie-break ordering when rule values are equal", () => {
+    const tied = [
+      createRecord("item-10", { Score: { raw: "10/25", value: 10, max: 25, ratio: 0.4 } }),
+      createRecord("item-2", { Score: { raw: "10/25", value: 10, max: 25, ratio: 0.4 } }),
+      createRecord("item-1", { Score: { raw: "10/25", value: 10, max: 25, ratio: 0.4 } }),
+    ];
+    const rules: DatabaseSortRule[] = [
+      {
+        id: "sort-1",
+        field: "Score",
+        dir: "asc",
+      },
+    ];
+
+    const sorted = applyDatabaseSorts(tied, rules, attributes);
     expect(sorted.map((record) => record.fileId)).toEqual(["item-1", "item-2", "item-10"]);
   });
 });

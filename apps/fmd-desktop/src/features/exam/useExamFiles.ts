@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { parseExamTasks } from "../../lib/exam";
 import { asErrorMessage } from "../../lib/errors";
+import { compareNaturalPath } from "../../lib/naturalSort";
 import type { LoadState } from "../../lib/types";
 import type { VaultFile } from "../../lib/tree";
 import { type ExamFileEntry } from "./types";
@@ -71,7 +72,7 @@ export const useExamFiles = ({ files, vaultPath }: UseExamFilesOptions) => {
     const markdownFiles = files
       .filter((file) => file.relative_path.toLowerCase().endsWith(".md"))
       .slice()
-      .sort((left, right) => left.relative_path.localeCompare(right.relative_path));
+      .sort((left, right) => compareNaturalPath(left.relative_path, right.relative_path));
 
     if (markdownFiles.length === 0) {
       setExamFiles([]);
