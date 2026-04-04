@@ -1,7 +1,7 @@
 import { LoadVaultTabData } from "../../types";
 
 export const dataAndSyncSection: LoadVaultTabData = {
-  title: { en: "Data & Sync", de: "Data & Sync" },
+  title: { en: "Profile Source", de: "Profile Source" },
   summary: {
     en: "Manage local stats storage and users.",
     de: "Lokale Statistik-Speicherung und Nutzer verwalten.",

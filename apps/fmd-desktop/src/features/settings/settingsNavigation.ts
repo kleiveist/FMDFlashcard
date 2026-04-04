@@ -24,8 +24,7 @@ export type SettingsNavIcon =
   | "keyboard-shortcuts"
   | "language"
   | "performance"
-  | "vault-index"
-  | "data-sync";
+  | "vault-index";
 
 export type SettingsSubPageId =
   | "exam-toggles"
@@ -37,7 +36,6 @@ export type SettingsSubPageId =
   | "performance-general"
   | "performance-debug"
   | "vault-index"
-  | "vault-data"
   | "data-sync"
   | "export-import";
 
@@ -119,20 +117,11 @@ export const SETTINGS_NAV_MODEL = [
   {
     type: "item",
     id: "vault-index",
-    label: "Vault & Index",
+    label: "Data & Index",
     icon: "vault-index",
     subPages: [
-      { id: "vault-index", label: "Vault & Index" },
-      { id: "vault-data", label: "Vault Data" },
-    ],
-  },
-  {
-    type: "item",
-    id: "data-sync",
-    label: "Data & Sync",
-    icon: "data-sync",
-    subPages: [
-      { id: "data-sync", label: "Data & Sync" },
+      { id: "vault-index", label: "Data & Index" },
+      { id: "data-sync", label: "Profile Source" },
       { id: "export-import", label: "Ex- Import" },
     ],
   },

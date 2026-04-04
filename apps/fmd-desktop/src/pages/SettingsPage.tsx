@@ -62,7 +62,6 @@ import {
   GaugeIcon,
   GlobeIcon,
   KeyboardIcon,
-  RefreshIcon,
   SettingsIcon,
 } from "../components/icons";
 import { FAST_FLASHCARD_DURATIONS } from "../features/fast-flashcard/constants";
@@ -98,7 +97,6 @@ const SETTINGS_NAV_ICONS: Record<SettingsNavIcon, () => ReactElement> = {
   language: GlobeIcon,
   performance: GaugeIcon,
   "vault-index": FolderIcon,
-  "data-sync": RefreshIcon,
 };
 
 const SETTINGS_NAV_ITEMS = SETTINGS_NAV_MODEL.filter(
@@ -482,6 +480,19 @@ export const SettingsPage = () => {
               onAccentInputChange={actions.handleAccentInputChange}
               onAccentPick={actions.handleAccentPick}
               onCopyAccent={actions.handleCopyAccent}
+              markdownEditorAccentEnabled={settings.markdownEditorAccentEnabled}
+              markdownEditorAccentLightHex={settings.markdownEditorAccentLightHex}
+              markdownEditorAccentDarkHex={settings.markdownEditorAccentDarkHex}
+              editorBlueprintGrid={settings.editorBlueprintGrid}
+              editorBlueprintGridIntensity={settings.editorBlueprintGridIntensity}
+              onMarkdownEditorAccentEnabledToggle={
+                settings.setMarkdownEditorAccentEnabled
+              }
+              onMarkdownEditorAccentHexChange={settings.setMarkdownEditorAccentHex}
+              onEditorBlueprintGridToggle={settings.setEditorBlueprintGrid}
+              onEditorBlueprintGridIntensityChange={
+                settings.setEditorBlueprintGridIntensity
+              }
               onDesignModeChange={actions.handleDesignModeChange}
               onThemeToggle={actions.handleThemeChange}
               designMode={settings.designMode}
@@ -493,23 +504,10 @@ export const SettingsPage = () => {
         return (
           <div className="settings-page settings-single-column">
             <MarkdownEditorSection
-              markdownEditorAccentEnabled={settings.markdownEditorAccentEnabled}
-              markdownEditorAccentLightHex={settings.markdownEditorAccentLightHex}
-              markdownEditorAccentDarkHex={settings.markdownEditorAccentDarkHex}
-              editorBlueprintGrid={settings.editorBlueprintGrid}
-              editorBlueprintGridIntensity={settings.editorBlueprintGridIntensity}
               cursorAccessoryEnabled={settings.cursorAccessoryEnabled}
               markdownPreviewDefaultMode={settings.markdownPreviewDefaultMode}
               markdownEditorOpenInNewTabByDefault={
                 settings.markdownEditorOpenInNewTabByDefault
-              }
-              onMarkdownEditorAccentEnabledToggle={
-                settings.setMarkdownEditorAccentEnabled
-              }
-              onMarkdownEditorAccentHexChange={settings.setMarkdownEditorAccentHex}
-              onEditorBlueprintGridToggle={settings.setEditorBlueprintGrid}
-              onEditorBlueprintGridIntensityChange={
-                settings.setEditorBlueprintGridIntensity
               }
               onCursorAccessoryEnabledToggle={settings.setCursorAccessoryEnabled}
               onMarkdownPreviewDefaultModeChange={
@@ -828,47 +826,48 @@ export const SettingsPage = () => {
           </div>
         );
       case "vault-index": {
-        const vaultSubPageId =
-          activeSubPageId === "vault-data" ? "vault-data" : "vault-index";
+        const dataHubSubPageId =
+          activeSubPageId === "data-sync" || activeSubPageId === "export-import"
+            ? activeSubPageId
+            : "vault-index";
         return (
           <div className="settings-page settings-single-column">
-            <VaultIndexSection
-              activeSubPageId={vaultSubPageId}
-              lastOpenedFile={lastOpenedFile}
-              listState={vault.listState}
-              listError={vault.listError}
-              lastRefreshAt={vault.lastRefreshAt}
-              onCopyVaultPath={actions.handleCopyVaultPath}
-              onShowHiddenFoldersToggle={settings.setShowHiddenFolders}
-              onShowEmptyFoldersToggle={settings.setShowEmptyFolders}
-              onRescanVault={actions.handleRescanVault}
-              onResetIndex={actions.handleResetIndex}
-              vaultIndexedComplete={vaultIndexedComplete}
-              showHiddenFolders={settings.showHiddenFolders}
-              showEmptyFolders={settings.showEmptyFolders}
-              vaultPath={vault.vaultPath}
-            />
-          </div>
-        );
-      }
-      case "data-sync":
-        return (
-          <div className="settings-page settings-single-column">
-            <section className="panel">
-              <div className="panel-body">
-                {activeSubPageId === "export-import" ? (
-                  <ExportImportSettingsView userVault={userVault} />
-                ) : (
+            {dataHubSubPageId === "data-sync" ? (
+              <section className="panel">
+                <div className="panel-body">
                   <DataSyncSettingsView
                     userVault={userVault}
                     spacedRepetition={spacedRepetition}
                     vaultSelection={profileSetupVaultSelection}
                   />
-                )}
-              </div>
-            </section>
+                </div>
+              </section>
+            ) : dataHubSubPageId === "export-import" ? (
+              <section className="panel">
+                <div className="panel-body">
+                  <ExportImportSettingsView userVault={userVault} />
+                </div>
+              </section>
+            ) : (
+              <VaultIndexSection
+                lastOpenedFile={lastOpenedFile}
+                listState={vault.listState}
+                listError={vault.listError}
+                lastRefreshAt={vault.lastRefreshAt}
+                onCopyVaultPath={actions.handleCopyVaultPath}
+                onShowHiddenFoldersToggle={settings.setShowHiddenFolders}
+                onShowEmptyFoldersToggle={settings.setShowEmptyFolders}
+                onRescanVault={actions.handleRescanVault}
+                onResetIndex={actions.handleResetIndex}
+                vaultIndexedComplete={vaultIndexedComplete}
+                showHiddenFolders={settings.showHiddenFolders}
+                showEmptyFolders={settings.showEmptyFolders}
+                vaultPath={vault.vaultPath}
+              />
+            )}
           </div>
         );
+      }
       default:
         return null;
     }

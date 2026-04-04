@@ -2,7 +2,7 @@
  * @file apps/fmd-desktop/src/components/settings/DataSyncTabContent.tsx
  *
  * Zweck:
- * - Rendert die UI-Komponenten fuer Data & Sync und Export/Import.
+ * - Rendert die UI-Komponenten fuer Profile Source und Export/Import.
  *
  * Verantwortlichkeiten:
  * - Baut die UI-Struktur und zugehoerige Klassen auf.
@@ -119,7 +119,7 @@ export const DataSyncSettingsView = ({
               <h3>Set up your user</h3>
               <p className="muted">
                 Create or load a user to save progress for this vault. You can edit
-                these settings later in Settings &gt; Data &amp; Sync.
+                these settings later in Settings &gt; Profile Source.
               </p>
             </div>
           </div>

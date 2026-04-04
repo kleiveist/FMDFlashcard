@@ -387,6 +387,31 @@
   gap: var(--ui-space-lg);
 }
 
+.appearance-settings-hub {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-md);
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.appearance-settings-hub .settings-tab-content {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.appearance-settings-hub .settings-tab-panel {
+  min-height: 0;
+}
+
+.appearance-settings-hub .settings-tab-panel > .editor-settings-block {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+
 .settings-tab-header {
   flex-wrap: wrap;
   align-items: flex-start;
@@ -402,6 +427,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--ui-space-md);
+}
+
+.settings-tab-panel[hidden] {
+  display: none !important;
 }
 
 .input-debug-panel .panel-body {
@@ -573,8 +602,7 @@
   padding-top: 0;
 }
 
-.vault-index-panel .setting-row:first-of-type,
-.vault-data-panel .setting-row:first-of-type {
+.vault-index-panel .setting-row:first-of-type {
   border-top: none;
   padding-top: 0;
 }
