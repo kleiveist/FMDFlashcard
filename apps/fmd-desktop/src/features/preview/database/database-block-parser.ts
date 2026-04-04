@@ -526,7 +526,7 @@ const parseViewType = (value: unknown): DatabaseViewType => {
   return "table";
 };
 
-const DEFAULT_PROJECT_START_FIELD = "projectStart";
+const DEFAULT_PROJECT_START_FIELD = "unitsstart";
 const DEFAULT_PROJECT_UNIT_FIELD = "units";
 const DEFAULT_PROJECT_BLOCK_RESOLUTION = 100;
 const DEFAULT_PROJECT_DEFAULT_UNITS = 1;

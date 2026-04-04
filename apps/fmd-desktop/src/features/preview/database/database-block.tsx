@@ -326,7 +326,7 @@ const defaultPanels: DatabaseBlockOpenPanels = {
 
 const TITLE_COMMIT_DEBOUNCE_MS = 280;
 const DEFAULT_TIMELINE_MODE: DatabaseTimelineMode = "date";
-const DEFAULT_PROJECT_START_FIELD = "projectStart";
+const DEFAULT_PROJECT_START_FIELD = "unitsstart";
 const DEFAULT_PROJECT_UNIT_FIELD = "units";
 const DEFAULT_PROJECT_BLOCK_RESOLUTION = 100;
 const DEFAULT_PROJECT_DEFAULT_UNITS = 1;

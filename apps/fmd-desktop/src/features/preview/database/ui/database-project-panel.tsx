@@ -75,7 +75,7 @@ export const DatabaseProjectPanel = ({
             value={startField ?? ""}
             onChange={(event) => onChange({ startField: event.target.value || null })}
           >
-            <option value="">Auto (projectStart)</option>
+            <option value="">Auto (unitsstart)</option>
             {numericAttributes.map((attribute) => (
               <option key={attribute.key} value={attribute.key}>{attribute.label || attribute.key}</option>
             ))}
@@ -144,7 +144,7 @@ export const DatabaseProjectPanel = ({
 
       {numericAttributes.length === 0 ? (
         <p className="database-block-state">
-          Keine numerischen Felder vorhanden. Beim Platzieren werden `projectStart` und `units` automatisch angelegt.
+          Keine numerischen Felder vorhanden. Beim Platzieren werden `unitsstart` und `units` automatisch angelegt.
         </p>
       ) : null}
       <p className="database-block-state">

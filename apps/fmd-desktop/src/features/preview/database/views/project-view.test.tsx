@@ -64,7 +64,7 @@ const createRecord = (
 });
 
 const placedRecord = createRecord("placed", {
-  projectStart: 3,
+  unitsstart: 3,
   units: 4,
 });
 
@@ -75,7 +75,7 @@ describe("DatabaseProjectView", () => {
     const { container, cleanup } = render(
       createElement(DatabaseProjectView, {
         records: [placedRecord, unplacedRecord],
-        startField: "projectStart",
+        startField: "unitsstart",
         unitField: "units",
         resolution: 100,
         defaultUnits: 1,
@@ -94,7 +94,7 @@ describe("DatabaseProjectView", () => {
     const { container, cleanup } = render(
       createElement(DatabaseProjectView, {
         records: [placedRecord, unplacedRecord],
-        startField: "projectStart",
+        startField: "unitsstart",
         unitField: "units",
         resolution: 100,
         defaultUnits: 2,
@@ -130,7 +130,7 @@ describe("DatabaseProjectView", () => {
     const { container, cleanup } = render(
       createElement(DatabaseProjectView, {
         records: [placedRecord],
-        startField: "projectStart",
+        startField: "unitsstart",
         unitField: "units",
         resolution: 100,
         defaultUnits: 1,
@@ -170,7 +170,7 @@ describe("DatabaseProjectView", () => {
     const { container, cleanup } = render(
       createElement(DatabaseProjectView, {
         records: [placedRecord],
-        startField: "projectStart",
+        startField: "unitsstart",
         unitField: "units",
         resolution: 100,
         defaultUnits: 1,
