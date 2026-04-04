@@ -547,7 +547,7 @@ describe("addFrontmatterProperty", () => {
 
     expect(invalid.error).toContain("Zeit erwartet");
     expect(valid.error).toBeNull();
-    expect(valid.markdown).toContain("start: 2026-04-03T09:05");
+    expect(valid.markdown).toContain("start: '2026-04-03T09:05'");
   });
 });
 

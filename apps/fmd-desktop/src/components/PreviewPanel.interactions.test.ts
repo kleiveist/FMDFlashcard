@@ -1562,18 +1562,17 @@ describe("PreviewPanel edit-safe interactions", () => {
     cleanup = localCleanup;
 
     await flushAsyncInteraction();
-    const titleInput = container.querySelector<HTMLInputElement>(
-      ".preview-markdown-view-block-database-block .database-block-title-input",
+    const viewSelect = container.querySelector<HTMLSelectElement>(
+      ".preview-markdown-view-block-database-block .database-block-view-select",
     );
-    expect(titleInput).toBeTruthy();
+    expect(viewSelect).toBeTruthy();
 
     act(() => {
-      if (!titleInput) {
+      if (!viewSelect) {
         return;
       }
-      titleInput.value = "Database Neu";
-      titleInput.dispatchEvent(new Event("input", { bubbles: true }));
-      titleInput.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+      viewSelect.value = "gantt";
+      viewSelect.dispatchEvent(new Event("change", { bubbles: true }));
     });
     await flushAsyncInteraction();
 
@@ -1582,7 +1581,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     const nextMarkdown = String(
       lastCallIndex >= 0 ? onFrontmatterSave.mock.calls[lastCallIndex]?.[0] ?? "" : "",
     );
-    expect(nextMarkdown).toContain("title: 'Database Neu'");
+    expect(nextMarkdown).toContain("type: gantt");
     expect((nextMarkdown.match(/::::/g) ?? []).length).toBe(2);
   });
 
