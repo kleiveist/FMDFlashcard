@@ -1086,12 +1086,13 @@ export const MarkdownHybridDatabaseBlock = ({
         return;
       }
 
-      setPanelLayerStyle({
+      const nextStyle: CSSProperties = {
         left: `${Math.round(nextLayout.left)}px`,
         top: `${Math.round(nextLayout.top)}px`,
-        ["--database-block-panel-max-height" as "--database-block-panel-max-height"]:
-          `${Math.max(0, Math.round(nextLayout.maxHeight))}px`,
-      });
+      };
+      (nextStyle as Record<string, string>)["--database-block-panel-max-height"] =
+        `${Math.max(0, Math.round(nextLayout.maxHeight))}px`;
+      setPanelLayerStyle(nextStyle);
     };
 
     updateLayerPosition();
