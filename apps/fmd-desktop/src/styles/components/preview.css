@@ -5666,6 +5666,27 @@ textarea.preview-editor {
   gap: 6px;
 }
 
+.database-block-rule-chips {
+  display: grid;
+  gap: 6px;
+}
+
+.database-block-rule-context {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--db-muted);
+}
+
+.database-block-sort-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.database-block-sort-chip {
+  border-style: dashed;
+}
+
 .database-block-filter-chip {
   border: 1px solid var(--db-border);
   border-radius: var(--db-radius-pill);
@@ -5961,6 +5982,12 @@ textarea.preview-editor {
 .database-block-panel-header h5 {
   margin: 0;
   font-size: 0.82rem;
+}
+
+.database-block-panel-context {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--db-muted);
 }
 
 .database-block-panel-close {

@@ -359,4 +359,40 @@ describe("DatabasePieView", () => {
 
     cleanup();
   });
+
+  it("keeps bucket order by first occurrence in the incoming record list", () => {
+    const doneRecord: DatabaseRecord = {
+      ...baseRecord,
+      fileId: "done-1.md",
+      filePath: "/vault/done-1.md",
+      relativePath: "done-1.md",
+      normalizedFields: {
+        ...baseRecord.normalizedFields,
+        status: { raw: "Done" },
+      },
+    };
+    const doneRecord2: DatabaseRecord = {
+      ...doneRecord,
+      fileId: "done-2.md",
+      filePath: "/vault/done-2.md",
+      relativePath: "done-2.md",
+      fileName: "done-2.md",
+    };
+
+    const { container, cleanup } = render(
+      createElement(DatabasePieView, {
+        records: [baseRecord, doneRecord, doneRecord2],
+        groupAttribute: statusGroupAttribute,
+        aggregate: "count",
+        aggregateAttribute: null,
+        visibleProperties: [],
+      }),
+    );
+
+    const labels = Array.from(container.querySelectorAll(".database-pie-legend-label"))
+      .map((node) => node.textContent?.trim());
+    expect(labels).toEqual(["Open", "Done"]);
+
+    cleanup();
+  });
 });

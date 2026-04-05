@@ -15,13 +15,23 @@ import {
   type DatabaseFieldType,
   type DatabaseFilterGroup,
   type DatabaseFilterRule,
+  type DatabaseViewType,
 } from "../database-types";
 
 type DatabaseFilterPanelProps = {
   attributes: DatabaseAttributeMeta[];
+  viewType: DatabaseViewType;
   filterGroup: DatabaseFilterGroup;
   onChange: (nextGroup: DatabaseFilterGroup) => void;
   onClose: () => void;
+};
+
+const FILTER_PANEL_HINTS: Record<DatabaseViewType, string> = {
+  table: "Filter wirkt auf Tabellenzeilen.",
+  kanban: "Filter wirkt auf Karten im Kanban-Board.",
+  gantt: "Filter wirkt synchron auf Liste links und Balkenzeilen rechts.",
+  project: "Filter wirkt synchron auf Liste links und Blockzeilen rechts.",
+  pie: "Filter wirkt auf die Datengrundlage des Pie-Charts.",
 };
 
 const isFilterGroupEntry = (entry: DatabaseFilterRule | DatabaseFilterGroup): entry is DatabaseFilterGroup =>
@@ -144,10 +154,13 @@ const resolveAttribute = (attributes: DatabaseAttributeMeta[], field: string) =>
 
 export const DatabaseFilterPanel = ({
   attributes,
+  viewType,
   filterGroup,
   onChange,
   onClose,
 }: DatabaseFilterPanelProps) => {
+  const viewHint = FILTER_PANEL_HINTS[viewType];
+
   if (attributes.length === 0) {
     return (
       <aside
@@ -162,6 +175,7 @@ export const DatabaseFilterPanel = ({
             ×
           </button>
         </header>
+        <p className="database-block-panel-context">{viewHint}</p>
         <p className="database-block-state">Keine Attribute verfuegbar.</p>
       </aside>
     );
@@ -326,6 +340,7 @@ export const DatabaseFilterPanel = ({
           ×
         </button>
       </header>
+      <p className="database-block-panel-context">{viewHint}</p>
 
       {renderGroup(filterGroup, 0, true)}
     </aside>

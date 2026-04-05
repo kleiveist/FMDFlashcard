@@ -237,4 +237,43 @@ describe("DatabaseKanbanView", () => {
 
     cleanup();
   });
+
+  it("keeps incoming record order within the same column", () => {
+    const openRecordZ: DatabaseRecord = {
+      ...recordA,
+      fileId: "z.md",
+      filePath: "/vault/z.md",
+      relativePath: "z.md",
+      fileName: "z.md",
+      systemFields: {
+        Dateiname: "z",
+      },
+      normalizedFields: {
+        status: {
+          raw: "Open",
+        },
+      },
+    };
+
+    const { container, cleanup } = render(
+      createElement(DatabaseKanbanView, {
+        records: [openRecordZ, recordA],
+        groupAttribute,
+        attributes: [groupAttribute],
+        visibleProperties: [],
+        showCover: false,
+        pendingRecordIds: [],
+        onMoveRecord: vi.fn(),
+        onOpenRecord: vi.fn(),
+      }),
+    );
+
+    const openColumn = Array.from(container.querySelectorAll(".database-kanban-column"))
+      .find((column) => column.textContent?.includes("Open"));
+    const titles = Array.from(openColumn?.querySelectorAll(".database-kanban-card-title") ?? [])
+      .map((node) => node.textContent?.trim());
+    expect(titles).toEqual(["z", "a"]);
+
+    cleanup();
+  });
 });

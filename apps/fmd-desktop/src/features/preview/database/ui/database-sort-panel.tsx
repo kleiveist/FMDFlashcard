@@ -8,13 +8,23 @@ import { type DragEvent } from "react";
 import {
   type DatabaseAttributeMeta,
   type DatabaseSortRule,
+  type DatabaseViewType,
 } from "../database-types";
 
 type DatabaseSortPanelProps = {
   attributes: DatabaseAttributeMeta[];
+  viewType: DatabaseViewType;
   sortRules: DatabaseSortRule[];
   onChange: (nextRules: DatabaseSortRule[]) => void;
   onClose: () => void;
+};
+
+const SORT_PANEL_HINTS: Record<DatabaseViewType, string> = {
+  table: "Sortierung ordnet Tabellenzeilen.",
+  kanban: "Sortierung ordnet Karten innerhalb jeder Spalte.",
+  gantt: "Sortierung ordnet die vertikale Reihenfolge links und rechts synchron.",
+  project: "Sortierung ordnet die vertikale Reihenfolge links und rechts synchron.",
+  pie: "Sortierung steuert die Reihenfolge von Segmenten und Legende.",
 };
 
 const createDefaultSortRule = (attributes: DatabaseAttributeMeta[]): DatabaseSortRule => ({
@@ -27,10 +37,13 @@ const createDefaultSortRule = (attributes: DatabaseAttributeMeta[]): DatabaseSor
 
 export const DatabaseSortPanel = ({
   attributes,
+  viewType,
   sortRules,
   onChange,
   onClose,
 }: DatabaseSortPanelProps) => {
+  const viewHint = SORT_PANEL_HINTS[viewType];
+
   if (attributes.length === 0) {
     return (
       <aside
@@ -45,6 +58,7 @@ export const DatabaseSortPanel = ({
             ×
           </button>
         </header>
+        <p className="database-block-panel-context">{viewHint}</p>
         <p className="database-block-state">Keine Attribute verfuegbar.</p>
       </aside>
     );
@@ -103,6 +117,7 @@ export const DatabaseSortPanel = ({
           ×
         </button>
       </header>
+      <p className="database-block-panel-context">{viewHint}</p>
       <div className="database-block-sort-list">
         {sortRules.map((rule) => (
           <div

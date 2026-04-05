@@ -362,6 +362,34 @@ const pickPieGroupAttribute = (
   return attributes.find((attribute) => attribute.viewCompatibility.supportsPieGrouping) ?? null;
 };
 
+type DatabaseViewBehavior = {
+  filterSubject: string;
+  sortSubject: string;
+};
+
+const VIEW_BEHAVIOR_BY_TYPE: Record<DatabaseViewType, DatabaseViewBehavior> = {
+  table: {
+    filterSubject: "Tabellenzeilen",
+    sortSubject: "Tabellenzeilen",
+  },
+  kanban: {
+    filterSubject: "Kanban-Karten",
+    sortSubject: "Karten innerhalb der Spalten",
+  },
+  gantt: {
+    filterSubject: "Timeline-Eintraege links und Balkenzeilen rechts",
+    sortSubject: "Timeline-Reihenfolge links und rechts",
+  },
+  project: {
+    filterSubject: "Project-Eintraege links und Blockzeilen rechts",
+    sortSubject: "Project-Reihenfolge links und rechts",
+  },
+  pie: {
+    filterSubject: "Pie-Datenbasis",
+    sortSubject: "Segmente und Legende",
+  },
+};
+
 const defaultPanels: DatabaseBlockOpenPanels = {
   source: false,
   properties: false,
@@ -1983,7 +2011,24 @@ export const MarkdownHybridDatabaseBlock = ({
     persistConfig({ filters: nextGroup });
   };
 
+  const handleRemoveSortRule = (ruleId: string) => {
+    const nextSorts = activeSorts.filter((rule) => rule.id !== ruleId);
+    activeSortsRef.current = nextSorts;
+    setActiveSorts(nextSorts);
+    persistConfig({ sorts: nextSorts });
+  };
+
+  const handleClearAllSorts = () => {
+    const nextSorts: DatabaseSortRule[] = [];
+    activeSortsRef.current = nextSorts;
+    setActiveSorts(nextSorts);
+    persistConfig({ sorts: nextSorts });
+  };
+
   const flatFilterRules = useMemo(() => getFlatFilterRules(activeFilters), [activeFilters]);
+  const hasActiveFilters = flatFilterRules.length > 0;
+  const hasActiveSorts = activeSorts.length > 0;
+  const viewBehavior = VIEW_BEHAVIOR_BY_TYPE[viewType];
 
   const availableFolders = useMemo(() => {
     const folders = new Set<string>();
@@ -2081,26 +2126,61 @@ export const MarkdownHybridDatabaseBlock = ({
           />
         ) : null}
 
-        {flatFilterRules.length > 0 ? (
-          <div className="database-block-filter-chips" data-md-block-control="true">
-            {flatFilterRules.map((entry) => (
-              <button
-                key={entry.ruleId}
-                type="button"
-                className="database-block-filter-chip"
-                onClick={() => handleRemoveFilterRule(entry.ruleId)}
-                title="Filter entfernen"
-              >
-                {`${entry.field} ${entry.op}${typeof entry.value !== "undefined" ? ` ${String(entry.value)}` : ""}`}
-              </button>
-            ))}
-            <button
-              type="button"
-              className="database-block-filter-chip database-block-filter-chip-clear"
-              onClick={handleClearAllFilters}
-            >
-              Alle Filter loeschen
-            </button>
+        {hasActiveFilters || hasActiveSorts ? (
+          <div className="database-block-rule-chips" data-md-block-control="true">
+            <p className="database-block-rule-context">
+              {`Filter: ${viewBehavior.filterSubject}. Sortierung: ${viewBehavior.sortSubject}.`}
+            </p>
+            {hasActiveFilters ? (
+              <div className="database-block-filter-chips">
+                {flatFilterRules.map((entry) => {
+                  const valueText = typeof entry.value !== "undefined" ? ` ${String(entry.value)}` : "";
+                  const rangeText = entry.op === "between" && typeof entry.valueTo !== "undefined"
+                    ? ` .. ${String(entry.valueTo)}`
+                    : "";
+                  return (
+                    <button
+                      key={entry.ruleId}
+                      type="button"
+                      className="database-block-filter-chip"
+                      onClick={() => handleRemoveFilterRule(entry.ruleId)}
+                      title="Filter entfernen"
+                    >
+                      {`${entry.field} ${entry.op}${valueText}${rangeText}`}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  className="database-block-filter-chip database-block-filter-chip-clear"
+                  onClick={handleClearAllFilters}
+                >
+                  Alle Filter loeschen
+                </button>
+              </div>
+            ) : null}
+            {hasActiveSorts ? (
+              <div className="database-block-sort-chips">
+                {activeSorts.map((rule, index) => (
+                  <button
+                    key={rule.id}
+                    type="button"
+                    className="database-block-filter-chip database-block-sort-chip"
+                    onClick={() => handleRemoveSortRule(rule.id)}
+                    title="Sortierung entfernen"
+                  >
+                    {`${index + 1}. ${rule.field} ${rule.dir === "asc" ? "ASC" : "DESC"}`}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="database-block-filter-chip database-block-filter-chip-clear"
+                  onClick={handleClearAllSorts}
+                >
+                  Sortierung loeschen
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -2141,6 +2221,7 @@ export const MarkdownHybridDatabaseBlock = ({
           {panels.filter ? (
             <DatabaseFilterPanel
               attributes={store.attributeRegistry}
+              viewType={viewType}
               filterGroup={activeFilters}
               onChange={handleFilterChange}
               onClose={() => setPanels(defaultPanels)}
@@ -2149,6 +2230,7 @@ export const MarkdownHybridDatabaseBlock = ({
           {panels.sort ? (
             <DatabaseSortPanel
               attributes={store.attributeRegistry}
+              viewType={viewType}
               sortRules={activeSorts}
               onChange={handleSortChange}
               onClose={() => setPanels(defaultPanels)}

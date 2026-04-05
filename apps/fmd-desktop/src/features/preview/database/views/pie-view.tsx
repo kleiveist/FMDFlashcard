@@ -293,8 +293,7 @@ export const DatabasePieView = ({
           records: recordsByBucket.get(label) ?? [],
         };
       })
-      .filter((bucket) => Number.isFinite(bucket.value) && bucket.value >= 0)
-      .sort((left, right) => right.value - left.value || left.label.localeCompare(right.label));
+      .filter((bucket) => Number.isFinite(bucket.value) && bucket.value >= 0);
   }, [aggregate, aggregateAttribute, groupAttribute, records, validationError]);
 
   const legendDetailsByLabel = useMemo(() => {
