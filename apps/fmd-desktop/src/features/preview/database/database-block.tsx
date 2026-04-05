@@ -6,12 +6,14 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import {
+  type CSSProperties,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { parseFrontmatterDocument } from "../frontmatter";
 import {
   createDefaultDatabaseBlockConfig,
@@ -93,6 +95,8 @@ type DatabaseBlockOpenPanels = {
   project: boolean;
   pie: boolean;
 };
+
+type DatabasePanelKey = keyof DatabaseBlockOpenPanels;
 
 type DatabaseCellEditState = {
   recordId: string;
@@ -221,6 +225,88 @@ const getRecordValueByField = (record: DatabaseRecord, field: string): DatabaseN
   const matchedKey = Object.keys(record.normalizedFields)
     .find((key) => toLower(key) === normalizedField);
   return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
+};
+
+const getOpenPanelKey = (panels: DatabaseBlockOpenPanels): DatabasePanelKey | null => {
+  if (panels.source) {
+    return "source";
+  }
+  if (panels.properties) {
+    return "properties";
+  }
+  if (panels.filter) {
+    return "filter";
+  }
+  if (panels.sort) {
+    return "sort";
+  }
+  if (panels.gantt) {
+    return "gantt";
+  }
+  if (panels.project) {
+    return "project";
+  }
+  if (panels.pie) {
+    return "pie";
+  }
+  return null;
+};
+
+const formatDateAsKey = (value: Date) => {
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatTimeAsKey = (value: Date) =>
+  `${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}`;
+
+const normalizeFilterValueSuggestions = (
+  value: DatabaseNormalizedFieldValue,
+  type: DatabaseFieldType,
+): string[] => {
+  if (value === null || typeof value === "undefined") {
+    return [];
+  }
+  if (value instanceof Date) {
+    if (type === "date") {
+      return [formatDateAsKey(value)];
+    }
+    if (type === "time") {
+      return [formatTimeAsKey(value)];
+    }
+    return [value.toISOString()];
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry).trim()).filter(Boolean);
+  }
+  if (typeof value === "object") {
+    const objectValue = value as {
+      value?: unknown;
+      raw?: unknown;
+      ratio?: unknown;
+    };
+    if (typeof objectValue.value === "number" && Number.isFinite(objectValue.value)) {
+      return [String(objectValue.value)];
+    }
+    if (typeof objectValue.raw !== "undefined") {
+      const raw = String(objectValue.raw ?? "").trim();
+      return raw ? [raw] : [];
+    }
+    if (typeof objectValue.ratio === "number" && Number.isFinite(objectValue.ratio)) {
+      return [String(objectValue.ratio)];
+    }
+    return [];
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? [String(value)] : [];
+  }
+  if (typeof value === "boolean") {
+    return [value ? "true" : "false"];
+  }
+  const text = String(value).trim();
+  return text ? [text] : [];
 };
 
 const resolveCellDraftValue = (
@@ -493,6 +579,16 @@ export const MarkdownHybridDatabaseBlock = ({
   const parsed = useMemo(() => parseDatabaseBlockConfigFromRaw(raw), [raw]);
   const defaultConfig = useMemo(() => createDefaultDatabaseBlockConfig(), []);
   const rootRef = useRef<HTMLElement | null>(null);
+  const panelLayerRef = useRef<HTMLDivElement | null>(null);
+  const panelTriggerRefs = useRef<Record<DatabasePanelKey, HTMLButtonElement | null>>({
+    source: null,
+    properties: null,
+    filter: null,
+    sort: null,
+    gantt: null,
+    project: null,
+    pie: null,
+  });
   const fileCacheRef = useRef<Map<string, string>>(new Map());
   const titlePersistTimeoutRef = useRef<number | null>(null);
 
@@ -571,6 +667,8 @@ export const MarkdownHybridDatabaseBlock = ({
     createEmptyVaultAttributeIndex(),
   );
   const [panels, setPanels] = useState<DatabaseBlockOpenPanels>(defaultPanels);
+  const [panelLayerStyle, setPanelLayerStyle] = useState<CSSProperties | undefined>(undefined);
+  const [isCompactPanelLayer, setIsCompactPanelLayer] = useState(false);
   const rollbackRecordSnapshotRef = useRef<Map<string, DatabaseRecord>>(new Map());
   const titleRef = useRef(title);
   const sourceRef = useRef(source);
@@ -594,9 +692,38 @@ export const MarkdownHybridDatabaseBlock = ({
   const propertiesByViewRef = useRef(propertiesByView);
   const activeFiltersRef = useRef(activeFilters);
   const activeSortsRef = useRef(activeSorts);
+  const openPanelKey = getOpenPanelKey(panels);
 
   const scheduleVaultAttributeRefresh = useCallback(() => {
     setVaultAttributeRefreshToken((value) => value + 1);
+  }, []);
+
+  const setSourceTriggerRef = useCallback((node: HTMLButtonElement | null) => {
+    panelTriggerRefs.current.source = node;
+  }, []);
+
+  const setPropertiesTriggerRef = useCallback((node: HTMLButtonElement | null) => {
+    panelTriggerRefs.current.properties = node;
+  }, []);
+
+  const setFilterTriggerRef = useCallback((node: HTMLButtonElement | null) => {
+    panelTriggerRefs.current.filter = node;
+  }, []);
+
+  const setSortTriggerRef = useCallback((node: HTMLButtonElement | null) => {
+    panelTriggerRefs.current.sort = node;
+  }, []);
+
+  const setGanttTriggerRef = useCallback((node: HTMLButtonElement | null) => {
+    panelTriggerRefs.current.gantt = node;
+  }, []);
+
+  const setProjectTriggerRef = useCallback((node: HTMLButtonElement | null) => {
+    panelTriggerRefs.current.project = node;
+  }, []);
+
+  const setPieTriggerRef = useCallback((node: HTMLButtonElement | null) => {
+    panelTriggerRefs.current.pie = node;
   }, []);
 
   useEffect(() => {
@@ -720,9 +847,6 @@ export const MarkdownHybridDatabaseBlock = ({
 
   useEffect(() => {
     const handlePointerDownOutside = (event: PointerEvent) => {
-      if (!rootRef.current) {
-        return;
-      }
       const target = event.target;
       if (!(target instanceof Node)) {
         return;
@@ -730,8 +854,17 @@ export const MarkdownHybridDatabaseBlock = ({
       const composedPath = typeof event.composedPath === "function"
         ? event.composedPath()
         : [];
-      const clickedInside = rootRef.current.contains(target) || composedPath.includes(rootRef.current);
-      if (!clickedInside) {
+      const clickedInsidePanelLayer = Boolean(
+        panelLayerRef.current &&
+        (panelLayerRef.current.contains(target) || composedPath.includes(panelLayerRef.current)),
+      );
+      const clickedPanelTrigger = Object.values(panelTriggerRefs.current)
+        .some((trigger) => Boolean(
+          trigger &&
+          (trigger.contains(target) || composedPath.includes(trigger)),
+        ));
+
+      if (!clickedInsidePanelLayer && !clickedPanelTrigger) {
         setPanels(defaultPanels);
       }
     };
@@ -881,6 +1014,76 @@ export const MarkdownHybridDatabaseBlock = ({
       cancelled = true;
     };
   }, [sourceResolution.files, vaultAttributeRefreshToken, vaultFiles]);
+
+  useEffect(() => {
+    if (!openPanelKey) {
+      setPanelLayerStyle(undefined);
+      return;
+    }
+
+    let frameHandle = 0;
+    let observer: ResizeObserver | null = null;
+
+    const updateLayerPosition = () => {
+      const compact = window.innerWidth <= 860;
+      setIsCompactPanelLayer(compact);
+      if (compact) {
+        setPanelLayerStyle(undefined);
+        return;
+      }
+
+      const trigger = panelTriggerRefs.current[openPanelKey];
+      if (!trigger) {
+        setPanelLayerStyle(undefined);
+        return;
+      }
+
+      const triggerRect = trigger.getBoundingClientRect();
+      const viewportPadding = 12;
+      const renderedPanel = panelLayerRef.current?.querySelector<HTMLElement>(".database-block-panel");
+      const measuredWidth = renderedPanel ? renderedPanel.getBoundingClientRect().width : Number.NaN;
+      const estimatedPanelWidth = Number.isFinite(measuredWidth) && measuredWidth > 0
+        ? measuredWidth
+        : Math.min(620, Math.max(280, window.innerWidth - 96));
+      const minLeft = viewportPadding;
+      const maxLeft = Math.max(viewportPadding, window.innerWidth - estimatedPanelWidth - viewportPadding);
+      const nextLeft = clamp(triggerRect.left, minLeft, maxLeft);
+      const nextTop = Math.max(viewportPadding, triggerRect.bottom + 8);
+
+      setPanelLayerStyle({
+        left: `${Math.round(nextLeft)}px`,
+        top: `${Math.round(nextTop)}px`,
+      });
+    };
+
+    updateLayerPosition();
+    frameHandle = window.requestAnimationFrame(updateLayerPosition);
+    if (typeof ResizeObserver !== "undefined") {
+      observer = new ResizeObserver(() => {
+        updateLayerPosition();
+      });
+      const activeTrigger = panelTriggerRefs.current[openPanelKey];
+      if (activeTrigger) {
+        observer.observe(activeTrigger);
+      }
+      if (rootRef.current) {
+        observer.observe(rootRef.current);
+      }
+      if (document.body) {
+        observer.observe(document.body);
+      }
+    }
+    window.addEventListener("resize", updateLayerPosition);
+    window.addEventListener("scroll", updateLayerPosition, true);
+    return () => {
+      if (frameHandle) {
+        window.cancelAnimationFrame(frameHandle);
+      }
+      observer?.disconnect();
+      window.removeEventListener("resize", updateLayerPosition);
+      window.removeEventListener("scroll", updateLayerPosition, true);
+    };
+  }, [openPanelKey]);
 
   const visibleColumnKeys = useMemo(
     () => getPropertiesForView(propertiesByView, viewType),
@@ -1044,14 +1247,19 @@ export const MarkdownHybridDatabaseBlock = ({
   const tableCellEditingEnabled = allowCellEditing;
 
   const setPanel = (panel: keyof DatabaseBlockOpenPanels) => {
-    setPanels({
-      source: panel === "source",
-      properties: panel === "properties",
-      filter: panel === "filter",
-      sort: panel === "sort",
-      gantt: panel === "gantt",
-      project: panel === "project",
-      pie: panel === "pie",
+    setPanels((previous) => {
+      if (previous[panel]) {
+        return defaultPanels;
+      }
+      return {
+        source: panel === "source",
+        properties: panel === "properties",
+        filter: panel === "filter",
+        sort: panel === "sort",
+        gantt: panel === "gantt",
+        project: panel === "project",
+        pie: panel === "pie",
+      };
     });
   };
 
@@ -2123,6 +2331,49 @@ export const MarkdownHybridDatabaseBlock = ({
     return Array.from(folders).sort((left, right) => compareNaturalPath(left, right));
   }, [vaultFiles]);
 
+  const filterValueSuggestionsByField = useMemo(() => {
+    const next: Record<string, DatabaseVaultAttributeIndex["suggestions"]> = {};
+
+    store.attributeRegistry.forEach((attribute) => {
+      const countsByNormalized = new Map<string, { key: string; count: number }>();
+      store.normalizedRecords.forEach((record) => {
+        const values = normalizeFilterValueSuggestions(
+          getRecordValueByField(record, attribute.key),
+          attribute.type,
+        );
+        values.forEach((entry) => {
+          const normalized = toLower(entry);
+          if (!normalized) {
+            return;
+          }
+          const current = countsByNormalized.get(normalized);
+          if (current) {
+            current.count += 1;
+            return;
+          }
+          countsByNormalized.set(normalized, {
+            key: entry,
+            count: 1,
+          });
+        });
+      });
+      next[toLower(attribute.key)] = Array.from(countsByNormalized.entries())
+        .map(([normalizedKey, value]) => ({
+          key: value.key,
+          normalizedKey,
+          count: value.count,
+        }))
+        .sort((left, right) => {
+          if (left.count !== right.count) {
+            return right.count - left.count;
+          }
+          return left.key.localeCompare(right.key, undefined, { sensitivity: "base" });
+        });
+    });
+
+    return next;
+  }, [store.attributeRegistry, store.normalizedRecords]);
+
   const kanbanGroupAttribute = pickKanbanGroupAttribute(
     store.attributeRegistry,
     kanbanGroupBy,
@@ -2174,6 +2425,98 @@ export const MarkdownHybridDatabaseBlock = ({
     panels.project ||
     panels.pie;
 
+  const openPanelContent = panels.source ? (
+    <DatabaseSourcePanel
+      source={source}
+      availableFolders={availableFolders}
+      onChange={handleSourceChange}
+      onClose={() => setPanels(defaultPanels)}
+    />
+  ) : panels.properties ? (
+    <DatabasePropertiesPanel
+      attributes={store.attributeRegistry}
+      attributeSuggestions={vaultAttributeIndex.suggestions}
+      viewType={viewType}
+      visibleColumnKeys={visibleColumnKeys}
+      kanbanShowCover={kanbanShowCover}
+      onKanbanShowCoverChange={handleKanbanShowCoverChange}
+      onToggleVisibility={handleToggleVisibility}
+      onReorderVisibleColumns={handleReorderVisibleColumns}
+      onHideAll={handleHideAllColumns}
+      onRestoreDefault={handleRestoreDefaultColumns}
+      onCreateAttribute={handleCreateAttribute}
+      onCreateFormula={handleCreateFormulaField}
+      isMutatingFrontmatter={isMutatingFrontmatter}
+      onClose={() => setPanels(defaultPanels)}
+    />
+  ) : panels.filter ? (
+    <DatabaseFilterPanel
+      attributes={store.attributeRegistry}
+      attributeSuggestions={vaultAttributeIndex.suggestions}
+      valueSuggestionsByField={filterValueSuggestionsByField}
+      viewType={viewType}
+      filterGroup={activeFilters}
+      onChange={handleFilterChange}
+      onClose={() => setPanels(defaultPanels)}
+    />
+  ) : panels.sort ? (
+    <DatabaseSortPanel
+      attributes={store.attributeRegistry}
+      attributeSuggestions={vaultAttributeIndex.suggestions}
+      viewType={viewType}
+      sortRules={activeSorts}
+      onChange={handleSortChange}
+      onClose={() => setPanels(defaultPanels)}
+    />
+  ) : panels.gantt ? (
+    <DatabaseGanttPanel
+      attributes={store.attributeRegistry}
+      startField={timelineStartField}
+      endField={timelineEndField}
+      mode={timelineMode}
+      baseDate={timelineBaseDate}
+      zoom={ganttZoom}
+      onChange={handleGanttOptionsChange}
+      onClose={() => setPanels(defaultPanels)}
+    />
+  ) : panels.project ? (
+    <DatabaseProjectPanel
+      attributes={store.attributeRegistry}
+      startField={projectStartField}
+      unitField={projectUnitField}
+      blockResolution={projectBlockResolution}
+      defaultUnits={projectDefaultUnits}
+      missingPlacement={projectMissingPlacement}
+      onChange={handleProjectOptionsChange}
+      onClose={() => setPanels(defaultPanels)}
+    />
+  ) : panels.pie ? (
+    <DatabasePiePanel
+      attributes={store.attributeRegistry}
+      groupField={pieGroupField}
+      aggregate={pieAggregate}
+      aggregateField={pieAggregateField}
+      onChange={handlePieOptionsChange}
+      onClose={() => setPanels(defaultPanels)}
+    />
+  ) : null;
+
+  const panelLayerNode = hasOpenPanel ? (
+    <div
+      ref={panelLayerRef}
+      className={`database-block-panel-layer${hasOpenPanel ? " is-open" : ""}`}
+      style={isCompactPanelLayer ? undefined : (panelLayerStyle ?? { visibility: "hidden" })}
+      data-md-block-control="true"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          setPanels(defaultPanels);
+        }
+      }}
+    >
+      {openPanelContent}
+    </div>
+  ) : null;
+
   return (
     <section className="database-block" ref={rootRef} data-md-block-control="true">
       <div className="database-block-header" data-md-block-control="true">
@@ -2205,6 +2548,13 @@ export const MarkdownHybridDatabaseBlock = ({
             onToggleGanttPanel={() => setPanel("gantt")}
             onToggleProjectPanel={() => setPanel("project")}
             onTogglePiePanel={() => setPanel("pie")}
+            sourceButtonRef={setSourceTriggerRef}
+            sortButtonRef={setSortTriggerRef}
+            filterButtonRef={setFilterTriggerRef}
+            propertiesButtonRef={setPropertiesTriggerRef}
+            ganttButtonRef={setGanttTriggerRef}
+            projectButtonRef={setProjectTriggerRef}
+            pieButtonRef={setPieTriggerRef}
           />
         ) : null}
 
@@ -2265,98 +2615,9 @@ export const MarkdownHybridDatabaseBlock = ({
             ) : null}
           </div>
         ) : null}
-
-        <div
-          className={`database-block-panel-layer${hasOpenPanel ? " is-open" : ""}`}
-          data-md-block-control="true"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setPanels(defaultPanels);
-            }
-          }}
-        >
-          {panels.source ? (
-            <DatabaseSourcePanel
-              source={source}
-              availableFolders={availableFolders}
-              onChange={handleSourceChange}
-              onClose={() => setPanels(defaultPanels)}
-            />
-          ) : null}
-          {panels.properties ? (
-            <DatabasePropertiesPanel
-              attributes={store.attributeRegistry}
-              attributeSuggestions={vaultAttributeIndex.suggestions}
-              viewType={viewType}
-              visibleColumnKeys={visibleColumnKeys}
-              kanbanShowCover={kanbanShowCover}
-              onKanbanShowCoverChange={handleKanbanShowCoverChange}
-              onToggleVisibility={handleToggleVisibility}
-              onReorderVisibleColumns={handleReorderVisibleColumns}
-              onHideAll={handleHideAllColumns}
-              onRestoreDefault={handleRestoreDefaultColumns}
-              onCreateAttribute={handleCreateAttribute}
-              onCreateFormula={handleCreateFormulaField}
-              isMutatingFrontmatter={isMutatingFrontmatter}
-              onClose={() => setPanels(defaultPanels)}
-            />
-          ) : null}
-          {panels.filter ? (
-            <DatabaseFilterPanel
-              attributes={store.attributeRegistry}
-              attributeSuggestions={vaultAttributeIndex.suggestions}
-              viewType={viewType}
-              filterGroup={activeFilters}
-              onChange={handleFilterChange}
-              onClose={() => setPanels(defaultPanels)}
-            />
-          ) : null}
-          {panels.sort ? (
-            <DatabaseSortPanel
-              attributes={store.attributeRegistry}
-              attributeSuggestions={vaultAttributeIndex.suggestions}
-              viewType={viewType}
-              sortRules={activeSorts}
-              onChange={handleSortChange}
-              onClose={() => setPanels(defaultPanels)}
-            />
-          ) : null}
-          {panels.gantt ? (
-            <DatabaseGanttPanel
-              attributes={store.attributeRegistry}
-              startField={timelineStartField}
-              endField={timelineEndField}
-              mode={timelineMode}
-              baseDate={timelineBaseDate}
-              zoom={ganttZoom}
-              onChange={handleGanttOptionsChange}
-              onClose={() => setPanels(defaultPanels)}
-            />
-          ) : null}
-          {panels.project ? (
-            <DatabaseProjectPanel
-              attributes={store.attributeRegistry}
-              startField={projectStartField}
-              unitField={projectUnitField}
-              blockResolution={projectBlockResolution}
-              defaultUnits={projectDefaultUnits}
-              missingPlacement={projectMissingPlacement}
-              onChange={handleProjectOptionsChange}
-              onClose={() => setPanels(defaultPanels)}
-            />
-          ) : null}
-          {panels.pie ? (
-            <DatabasePiePanel
-              attributes={store.attributeRegistry}
-              groupField={pieGroupField}
-              aggregate={pieAggregate}
-              aggregateField={pieAggregateField}
-              onChange={handlePieOptionsChange}
-              onClose={() => setPanels(defaultPanels)}
-            />
-          ) : null}
-        </div>
       </div>
+
+      {typeof document !== "undefined" ? createPortal(panelLayerNode, document.body) : panelLayerNode}
 
       <div className="database-block-content">
         {viewType === "table" ? (

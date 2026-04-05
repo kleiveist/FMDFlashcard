@@ -102,11 +102,15 @@ const toNumericValue = (value: DatabaseNormalizedFieldValue): number | null => {
     return Number.isFinite(parsed) ? parsed : null;
   }
   if (value && typeof value === "object") {
-    if ("value" in value && typeof value.value === "number" && Number.isFinite(value.value)) {
-      return value.value;
+    const objectValue = value as {
+      value?: unknown;
+      ratio?: unknown;
+    };
+    if (typeof objectValue.value === "number" && Number.isFinite(objectValue.value)) {
+      return objectValue.value;
     }
-    if ("ratio" in value && typeof value.ratio === "number" && Number.isFinite(value.ratio)) {
-      return value.ratio;
+    if (typeof objectValue.ratio === "number" && Number.isFinite(objectValue.ratio)) {
+      return objectValue.ratio;
     }
   }
   return null;
@@ -136,11 +140,15 @@ const stringifyMetaValue = (
     return entries.length > 0 ? entries.join(", ") : null;
   }
   if (typeof value === "object") {
-    if ("value" in value && typeof value.value === "number" && Number.isFinite(value.value)) {
-      return String(value.value);
+    const objectValue = value as {
+      value?: unknown;
+      raw?: unknown;
+    };
+    if (typeof objectValue.value === "number" && Number.isFinite(objectValue.value)) {
+      return String(objectValue.value);
     }
-    if ("raw" in value) {
-      const raw = String(value.raw ?? "").trim();
+    if (typeof objectValue.raw !== "undefined") {
+      const raw = String(objectValue.raw ?? "").trim();
       return raw || null;
     }
     return null;

@@ -12,7 +12,6 @@ import {
 } from "../database-filters";
 import {
   type DatabaseAttributeMeta,
-  type DatabaseFieldType,
   type DatabaseFilterGroup,
   type DatabaseFilterRule,
   type DatabaseVaultAttributeSuggestion,
@@ -23,6 +22,7 @@ import { DatabaseAttributeTypeahead } from "./database-attribute-typeahead";
 type DatabaseFilterPanelProps = {
   attributes: DatabaseAttributeMeta[];
   attributeSuggestions: DatabaseVaultAttributeSuggestion[];
+  valueSuggestionsByField?: Record<string, DatabaseVaultAttributeSuggestion[]>;
   viewType: DatabaseViewType;
   filterGroup: DatabaseFilterGroup;
   onChange: (nextGroup: DatabaseFilterGroup) => void;
@@ -52,6 +52,8 @@ const resolveAttribute = (attributes: DatabaseAttributeMeta[], field: string) =>
   const lower = field.trim().toLowerCase();
   return attributes.find((attribute) => attribute.key.trim().toLowerCase() === lower) ?? attributes[0] ?? null;
 };
+
+const toLower = (value: string) => value.trim().toLowerCase();
 
 const createDefaultRule = (
   attributes: DatabaseAttributeMeta[],
@@ -133,35 +135,13 @@ const valueIsOptional = (op: string) =>
   op === "is true" ||
   op === "is false";
 
-const resolveInputType = (type: DatabaseFieldType) => {
-  if (
-    type === "number" ||
-    type === "unit" ||
-    type === "percent" ||
-    type === "score" ||
-    type === "rating" ||
-    type === "progress"
-  ) {
-    return "number";
-  }
-  if (type === "date") {
-    return "date";
-  }
-  if (type === "time") {
-    return "time";
-  }
-  if (type === "datetime") {
-    return "datetime-local";
-  }
-  return "text";
-};
-
 const toRuleValueText = (value: unknown) =>
   typeof value === "string" ? value : String(value ?? "");
 
 export const DatabaseFilterPanel = ({
   attributes,
   attributeSuggestions,
+  valueSuggestionsByField = {},
   viewType,
   filterGroup,
   onChange,
@@ -199,6 +179,9 @@ export const DatabaseFilterPanel = ({
       valueTo: "",
     })));
   };
+
+  const resolveValueSuggestions = (field: string) =>
+    valueSuggestionsByField[toLower(field)] ?? [];
 
   const renderGroup = (group: DatabaseFilterGroup, depth: number, isRoot: boolean) => (
     <section key={group.id} className="database-block-filter-group" style={{ marginLeft: `${depth * 10}px` }}>
@@ -246,9 +229,9 @@ export const DatabaseFilterPanel = ({
 
           const attribute = resolveAttribute(attributes, entry.field);
           const operators = getFilterOperatorsForType(attribute?.type ?? "text");
-          const ruleInputType = resolveInputType(attribute?.type ?? "text");
           const showValueInput = !valueIsOptional(entry.op);
           const showBetween = entry.op === "between";
+          const valueSuggestions = resolveValueSuggestions(entry.field);
 
           return (
             <div key={entry.id} className="database-block-filter-row">
@@ -277,13 +260,14 @@ export const DatabaseFilterPanel = ({
               </select>
 
               {showValueInput ? (
-                <input
-                  type={ruleInputType}
+                <DatabaseAttributeTypeahead
                   value={toRuleValueText(entry.value)}
                   placeholder="Wert"
-                  onChange={(event) => onChange(updateRuleById(filterGroup, entry.id, (rule) => ({
+                  suggestions={valueSuggestions}
+                  noResultsLabel="Keine passenden Werte gefunden"
+                  onValueChange={(nextValue) => onChange(updateRuleById(filterGroup, entry.id, (rule) => ({
                     ...rule,
-                    value: event.target.value,
+                    value: nextValue,
                   })))}
                 />
               ) : (
@@ -291,13 +275,14 @@ export const DatabaseFilterPanel = ({
               )}
 
               {showBetween ? (
-                <input
-                  type={ruleInputType}
+                <DatabaseAttributeTypeahead
                   value={toRuleValueText(entry.valueTo)}
                   placeholder="Bis"
-                  onChange={(event) => onChange(updateRuleById(filterGroup, entry.id, (rule) => ({
+                  suggestions={valueSuggestions}
+                  noResultsLabel="Keine passenden Werte gefunden"
+                  onValueChange={(nextValue) => onChange(updateRuleById(filterGroup, entry.id, (rule) => ({
                     ...rule,
-                    valueTo: event.target.value,
+                    valueTo: nextValue,
                   })))}
                 />
               ) : null}

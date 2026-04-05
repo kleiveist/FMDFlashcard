@@ -7,6 +7,9 @@
 import { type ChangeEvent } from "react";
 import { type DatabaseViewType } from "../database-types";
 
+type DatabaseToolbarButtonRef = (node: HTMLButtonElement | null) => void;
+type DatabaseToolbarActionsRef = (node: HTMLDivElement | null) => void;
+
 type DatabaseToolbarProps = {
   title: string;
   sourceLabel: string;
@@ -34,6 +37,14 @@ type DatabaseToolbarProps = {
   onToggleGanttPanel: () => void;
   onToggleProjectPanel: () => void;
   onTogglePiePanel: () => void;
+  sourceButtonRef?: DatabaseToolbarButtonRef;
+  sortButtonRef?: DatabaseToolbarButtonRef;
+  filterButtonRef?: DatabaseToolbarButtonRef;
+  propertiesButtonRef?: DatabaseToolbarButtonRef;
+  ganttButtonRef?: DatabaseToolbarButtonRef;
+  projectButtonRef?: DatabaseToolbarButtonRef;
+  pieButtonRef?: DatabaseToolbarButtonRef;
+  toolbarActionsRef?: DatabaseToolbarActionsRef;
 };
 
 const viewOptions: Array<{ value: DatabaseViewType; label: string }> = [
@@ -87,14 +98,17 @@ const CompactToolbarActionButton = ({
   active,
   expanded,
   onClick,
+  buttonRef,
 }: {
   kind: CompactToolbarActionKind;
   label: string;
   active: boolean;
   expanded: boolean;
   onClick: () => void;
+  buttonRef?: DatabaseToolbarButtonRef;
 }) => (
   <button
+    ref={buttonRef}
     type="button"
     className={`database-block-toolbar-button database-block-toolbar-button-compactable${
       active ? " is-active" : ""
@@ -139,6 +153,14 @@ export const DatabaseToolbar = ({
   onToggleGanttPanel,
   onToggleProjectPanel,
   onTogglePiePanel,
+  sourceButtonRef,
+  sortButtonRef,
+  filterButtonRef,
+  propertiesButtonRef,
+  ganttButtonRef,
+  projectButtonRef,
+  pieButtonRef,
+  toolbarActionsRef,
 }: DatabaseToolbarProps) => {
   const handleViewChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const next = event.target.value as DatabaseViewType;
@@ -166,6 +188,7 @@ export const DatabaseToolbar = ({
           />
         </label>
         <button
+          ref={sourceButtonRef}
           type="button"
           className={`database-block-toolbar-button database-block-source-button${
             isSourcePanelOpen ? " is-active" : ""
@@ -177,7 +200,7 @@ export const DatabaseToolbar = ({
           {sourceLabel}
         </button>
       </div>
-      <div className="database-block-toolbar-actions">
+      <div className="database-block-toolbar-actions" ref={toolbarActionsRef}>
         <div className="database-block-toolbar-action-buttons">
           <label className="database-block-view-select-wrap">
             <span className="database-block-toolbar-label">View</span>
@@ -212,6 +235,7 @@ export const DatabaseToolbar = ({
             active={isSortPanelOpen}
             expanded={isSortPanelOpen}
             onClick={onToggleSortPanel}
+            buttonRef={sortButtonRef}
           />
           <CompactToolbarActionButton
             kind="filter"
@@ -219,6 +243,7 @@ export const DatabaseToolbar = ({
             active={isFilterPanelOpen}
             expanded={isFilterPanelOpen}
             onClick={onToggleFilterPanel}
+            buttonRef={filterButtonRef}
           />
           <CompactToolbarActionButton
             kind="properties"
@@ -226,9 +251,11 @@ export const DatabaseToolbar = ({
             active={isPropertiesPanelOpen}
             expanded={isPropertiesPanelOpen}
             onClick={onTogglePropertiesPanel}
+            buttonRef={propertiesButtonRef}
           />
           {viewType === "gantt" ? (
             <button
+              ref={ganttButtonRef}
               type="button"
               className={`database-block-toolbar-button${isGanttPanelOpen ? " is-active" : ""}`}
               onClick={onToggleGanttPanel}
@@ -240,6 +267,7 @@ export const DatabaseToolbar = ({
           ) : null}
           {viewType === "project" ? (
             <button
+              ref={projectButtonRef}
               type="button"
               className={`database-block-toolbar-button${isProjectPanelOpen ? " is-active" : ""}`}
               onClick={onToggleProjectPanel}
@@ -251,6 +279,7 @@ export const DatabaseToolbar = ({
           ) : null}
           {viewType === "pie" ? (
             <button
+              ref={pieButtonRef}
               type="button"
               className={`database-block-toolbar-button${isPiePanelOpen ? " is-active" : ""}`}
               onClick={onTogglePiePanel}

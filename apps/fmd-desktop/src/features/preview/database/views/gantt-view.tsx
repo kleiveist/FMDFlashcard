@@ -223,11 +223,15 @@ const stringifyMetaValue = (
     return entries.length > 0 ? entries.join(", ") : null;
   }
   if (typeof value === "object") {
-    if ("value" in value && typeof value.value === "number" && Number.isFinite(value.value)) {
-      return String(value.value);
+    const objectValue = value as {
+      value?: unknown;
+      raw?: unknown;
+    };
+    if (typeof objectValue.value === "number" && Number.isFinite(objectValue.value)) {
+      return String(objectValue.value);
     }
-    if ("raw" in value) {
-      const raw = String(value.raw ?? "").trim();
+    if (typeof objectValue.raw !== "undefined") {
+      const raw = String(objectValue.raw ?? "").trim();
       return raw || null;
     }
     return null;

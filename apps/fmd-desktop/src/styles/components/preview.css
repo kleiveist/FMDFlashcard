@@ -5943,18 +5943,15 @@ textarea.preview-editor {
 }
 
 .database-block-panel-layer {
-  position: absolute;
-  inset-inline: 0;
-  inset-block-start: calc(100% + 8px);
+  position: fixed;
+  inset: auto;
   display: none;
-  justify-content: flex-end;
-  align-items: flex-start;
   pointer-events: none;
-  z-index: 24;
+  z-index: 1200;
 }
 
 .database-block-panel-layer.is-open {
-  display: flex;
+  display: block;
   pointer-events: auto;
 }
 
@@ -7011,6 +7008,7 @@ textarea.preview-editor {
 
 @media (max-width: 860px) {
   .database-block-panel-layer.is-open {
+    display: flex;
     position: fixed;
     inset-inline: 0;
     inset-block-start: auto;
