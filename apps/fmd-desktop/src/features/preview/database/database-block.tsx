@@ -34,6 +34,11 @@ import {
   getTimelineDefaultZoom,
   normalizeTimelineBaseDate,
 } from "./database-time";
+import {
+  DATABASE_PANEL_LAYER_MAX_WIDTH,
+  DATABASE_PANEL_LAYER_MIN_WIDTH,
+  resolveDatabasePanelLayerStyle,
+} from "./database-panel-layer-style";
 import { toggleDatabaseSortRuleByField } from "./database-sort-rules";
 import {
   resolveDatabaseSourceFiles,
@@ -693,6 +698,7 @@ export const MarkdownHybridDatabaseBlock = ({
   const activeFiltersRef = useRef(activeFilters);
   const activeSortsRef = useRef(activeSorts);
   const openPanelKey = getOpenPanelKey(panels);
+  const isPropertiesPanelLayerLocal = openPanelKey === "properties";
 
   const scheduleVaultAttributeRefresh = useCallback(() => {
     setVaultAttributeRefreshToken((value) => value + 1);
@@ -1025,7 +1031,7 @@ export const MarkdownHybridDatabaseBlock = ({
     let observer: ResizeObserver | null = null;
 
     const updateLayerPosition = () => {
-      const compact = window.innerWidth <= 860;
+      const compact = window.innerWidth <= 860 && !isPropertiesPanelLayerLocal;
       setIsCompactPanelLayer(compact);
       if (compact) {
         setPanelLayerStyle(undefined);
@@ -1039,20 +1045,52 @@ export const MarkdownHybridDatabaseBlock = ({
       }
 
       const triggerRect = trigger.getBoundingClientRect();
-      const viewportPadding = 12;
       const renderedPanel = panelLayerRef.current?.querySelector<HTMLElement>(".database-block-panel");
-      const measuredWidth = renderedPanel ? renderedPanel.getBoundingClientRect().width : Number.NaN;
+      const measuredPanelRect = renderedPanel?.getBoundingClientRect();
+      const measuredWidth = measuredPanelRect?.width ?? Number.NaN;
+      const measuredHeight = measuredPanelRect?.height ?? Number.NaN;
       const estimatedPanelWidth = Number.isFinite(measuredWidth) && measuredWidth > 0
         ? measuredWidth
-        : Math.min(620, Math.max(280, window.innerWidth - 96));
-      const minLeft = viewportPadding;
-      const maxLeft = Math.max(viewportPadding, window.innerWidth - estimatedPanelWidth - viewportPadding);
-      const nextLeft = clamp(triggerRect.left, minLeft, maxLeft);
-      const nextTop = Math.max(viewportPadding, triggerRect.bottom + 8);
+        : Math.min(
+          DATABASE_PANEL_LAYER_MAX_WIDTH,
+          Math.max(DATABASE_PANEL_LAYER_MIN_WIDTH, window.innerWidth - 96),
+        );
+      const nextLayout = isPropertiesPanelLayerLocal
+        ? (() => {
+          const rootRect = rootRef.current?.getBoundingClientRect();
+          if (!rootRect || rootRect.width <= 0 || rootRect.height <= 0) {
+            return null;
+          }
+          return resolveDatabasePanelLayerStyle({
+            triggerRect: {
+              left: triggerRect.left - rootRect.left,
+              right: triggerRect.right - rootRect.left,
+              top: triggerRect.top - rootRect.top,
+              bottom: triggerRect.bottom - rootRect.top,
+            },
+            viewportWidth: rootRect.width,
+            viewportHeight: rootRect.height,
+            panelWidth: estimatedPanelWidth,
+            panelHeight: measuredHeight,
+          });
+        })()
+        : resolveDatabasePanelLayerStyle({
+          triggerRect,
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight,
+          panelWidth: estimatedPanelWidth,
+          panelHeight: measuredHeight,
+        });
+      if (!nextLayout) {
+        setPanelLayerStyle(undefined);
+        return;
+      }
 
       setPanelLayerStyle({
-        left: `${Math.round(nextLeft)}px`,
-        top: `${Math.round(nextTop)}px`,
+        left: `${Math.round(nextLayout.left)}px`,
+        top: `${Math.round(nextLayout.top)}px`,
+        ["--database-block-panel-max-height" as "--database-block-panel-max-height"]:
+          `${Math.max(0, Math.round(nextLayout.maxHeight))}px`,
       });
     };
 
@@ -1065,6 +1103,10 @@ export const MarkdownHybridDatabaseBlock = ({
       const activeTrigger = panelTriggerRefs.current[openPanelKey];
       if (activeTrigger) {
         observer.observe(activeTrigger);
+      }
+      const renderedPanel = panelLayerRef.current?.querySelector<HTMLElement>(".database-block-panel");
+      if (renderedPanel) {
+        observer.observe(renderedPanel);
       }
       if (rootRef.current) {
         observer.observe(rootRef.current);
@@ -1083,7 +1125,7 @@ export const MarkdownHybridDatabaseBlock = ({
       window.removeEventListener("resize", updateLayerPosition);
       window.removeEventListener("scroll", updateLayerPosition, true);
     };
-  }, [openPanelKey]);
+  }, [isPropertiesPanelLayerLocal, openPanelKey]);
 
   const visibleColumnKeys = useMemo(
     () => getPropertiesForView(propertiesByView, viewType),
@@ -2504,7 +2546,9 @@ export const MarkdownHybridDatabaseBlock = ({
   const panelLayerNode = hasOpenPanel ? (
     <div
       ref={panelLayerRef}
-      className={`database-block-panel-layer${hasOpenPanel ? " is-open" : ""}`}
+      className={`database-block-panel-layer${hasOpenPanel ? " is-open" : ""}${
+        isPropertiesPanelLayerLocal ? " is-local-properties" : ""
+      }`}
       style={isCompactPanelLayer ? undefined : (panelLayerStyle ?? { visibility: "hidden" })}
       data-md-block-control="true"
       onMouseDown={(event) => {
@@ -2617,7 +2661,9 @@ export const MarkdownHybridDatabaseBlock = ({
         ) : null}
       </div>
 
-      {typeof document !== "undefined" ? createPortal(panelLayerNode, document.body) : panelLayerNode}
+      {isPropertiesPanelLayerLocal
+        ? panelLayerNode
+        : (typeof document !== "undefined" ? createPortal(panelLayerNode, document.body) : panelLayerNode)}
 
       <div className="database-block-content">
         {viewType === "table" ? (

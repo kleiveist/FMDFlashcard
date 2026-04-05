@@ -5955,14 +5955,31 @@ textarea.preview-editor {
   pointer-events: auto;
 }
 
+.database-block-panel-layer.is-local-properties {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.database-block-panel-layer.is-local-properties .database-block-panel {
+  width: min(620px, calc(100% - 24px));
+}
+
 .database-block-panel {
   pointer-events: auto;
   width: min(620px, calc(100vw - 96px));
-  max-height: 360px;
-  overflow: auto;
+  max-height: var(--database-block-panel-max-height, min(78vh, 640px));
+  overflow-x: hidden;
+  overflow-y: auto;
   border: 1px solid var(--db-border);
   border-radius: var(--db-radius-table);
-  background: var(--db-surface-raised);
+  background-color: var(--panel);
+  background-image: linear-gradient(
+    color-mix(in srgb, var(--db-surface-raised) 86%, var(--panel)),
+    color-mix(in srgb, var(--db-surface-raised) 86%, var(--panel))
+  );
   box-shadow: var(--db-shadow-panel);
   padding: 10px;
   display: flex;
@@ -7020,9 +7037,25 @@ textarea.preview-editor {
     z-index: 1200;
   }
 
+  .database-block-panel-layer.is-local-properties.is-open {
+    display: block;
+    position: absolute;
+    inset: 0;
+    padding: 0;
+    background: transparent;
+    justify-content: initial;
+    align-items: initial;
+    z-index: 6;
+  }
+
   .database-block-panel {
     width: min(760px, calc(100vw - 24px));
     max-height: min(72vh, 560px);
+  }
+
+  .database-block-panel-layer.is-local-properties .database-block-panel {
+    width: min(620px, calc(100% - 24px));
+    max-height: var(--database-block-panel-max-height, min(78vh, 640px));
   }
 
   .database-pie-view {
