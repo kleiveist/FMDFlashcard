@@ -15,11 +15,14 @@ import {
   type DatabaseFieldType,
   type DatabaseFilterGroup,
   type DatabaseFilterRule,
+  type DatabaseVaultAttributeSuggestion,
   type DatabaseViewType,
 } from "../database-types";
+import { DatabaseAttributeTypeahead } from "./database-attribute-typeahead";
 
 type DatabaseFilterPanelProps = {
   attributes: DatabaseAttributeMeta[];
+  attributeSuggestions: DatabaseVaultAttributeSuggestion[];
   viewType: DatabaseViewType;
   filterGroup: DatabaseFilterGroup;
   onChange: (nextGroup: DatabaseFilterGroup) => void;
@@ -45,14 +48,23 @@ const nextId = (() => {
   };
 })();
 
-const createDefaultRule = (attributes: DatabaseAttributeMeta[]): DatabaseFilterRule => {
-  const firstAttribute = attributes[0];
+const resolveAttribute = (attributes: DatabaseAttributeMeta[], field: string) => {
+  const lower = field.trim().toLowerCase();
+  return attributes.find((attribute) => attribute.key.trim().toLowerCase() === lower) ?? attributes[0] ?? null;
+};
+
+const createDefaultRule = (
+  attributes: DatabaseAttributeMeta[],
+  suggestions: DatabaseVaultAttributeSuggestion[],
+): DatabaseFilterRule => {
+  const firstField = suggestions[0]?.key ?? attributes[0]?.key ?? "";
+  const firstAttribute = resolveAttribute(attributes, firstField);
   const type = firstAttribute?.type ?? "text";
   const firstOperator = getFilterOperatorsForType(type)[0]?.value ?? "is";
 
   return {
     id: nextId("filter-rule"),
-    field: firstAttribute?.key ?? "",
+    field: firstField,
     op: firstOperator,
     value: "",
   };
@@ -147,39 +159,15 @@ const resolveInputType = (type: DatabaseFieldType) => {
 const toRuleValueText = (value: unknown) =>
   typeof value === "string" ? value : String(value ?? "");
 
-const resolveAttribute = (attributes: DatabaseAttributeMeta[], field: string) => {
-  const lower = field.trim().toLowerCase();
-  return attributes.find((attribute) => attribute.key.trim().toLowerCase() === lower) ?? attributes[0] ?? null;
-};
-
 export const DatabaseFilterPanel = ({
   attributes,
+  attributeSuggestions,
   viewType,
   filterGroup,
   onChange,
   onClose,
 }: DatabaseFilterPanelProps) => {
   const viewHint = FILTER_PANEL_HINTS[viewType];
-
-  if (attributes.length === 0) {
-    return (
-      <aside
-        className="database-block-panel database-block-filter-panel"
-        data-md-block-control="true"
-        role="dialog"
-        aria-label="Database Filter"
-      >
-        <header className="database-block-panel-header">
-          <h5>Filter</h5>
-          <button type="button" className="database-block-panel-close" onClick={onClose} aria-label="Schliessen">
-            ×
-          </button>
-        </header>
-        <p className="database-block-panel-context">{viewHint}</p>
-        <p className="database-block-state">Keine Attribute verfuegbar.</p>
-      </aside>
-    );
-  }
 
   const handleGroupOpChange = (groupId: string, event: ChangeEvent<HTMLSelectElement>) => {
     const nextOp = event.target.value === "or" ? "or" : "and";
@@ -189,7 +177,7 @@ export const DatabaseFilterPanel = ({
   const handleAddRule = (groupId: string) => {
     onChange(replaceGroupById(filterGroup, groupId, (group) => ({
       ...group,
-      rules: [...group.rules, createDefaultRule(attributes)],
+      rules: [...group.rules, createDefaultRule(attributes, attributeSuggestions)],
     })));
   };
 
@@ -197,6 +185,18 @@ export const DatabaseFilterPanel = ({
     onChange(replaceGroupById(filterGroup, groupId, (group) => ({
       ...group,
       rules: [...group.rules, createDefaultGroup()],
+    })));
+  };
+
+  const handleFieldChange = (ruleId: string, nextField: string) => {
+    const nextAttribute = resolveAttribute(attributes, nextField);
+    const nextOperator = getFilterOperatorsForType(nextAttribute?.type ?? "text")[0]?.value ?? "is";
+    onChange(updateRuleById(filterGroup, ruleId, (rule) => ({
+      ...rule,
+      field: nextField,
+      op: nextOperator,
+      value: "",
+      valueTo: "",
     })));
   };
 
@@ -215,6 +215,7 @@ export const DatabaseFilterPanel = ({
             type="button"
             className="database-block-toolbar-button"
             onClick={() => handleAddRule(group.id)}
+            disabled={attributeSuggestions.length === 0}
           >
             Regel
           </button>
@@ -251,25 +252,13 @@ export const DatabaseFilterPanel = ({
 
           return (
             <div key={entry.id} className="database-block-filter-row">
-              <select
+              <DatabaseAttributeTypeahead
                 value={entry.field}
-                onChange={(event) => {
-                  const nextField = event.target.value;
-                  const nextAttribute = resolveAttribute(attributes, nextField);
-                  const nextOperator = getFilterOperatorsForType(nextAttribute?.type ?? "text")[0]?.value ?? "is";
-                  onChange(updateRuleById(filterGroup, entry.id, (rule) => ({
-                    ...rule,
-                    field: nextField,
-                    op: nextOperator,
-                    value: "",
-                    valueTo: "",
-                  })));
-                }}
-              >
-                {attributes.map((attributeEntry) => (
-                  <option key={attributeEntry.key} value={attributeEntry.key}>{attributeEntry.key}</option>
-                ))}
-              </select>
+                suggestions={attributeSuggestions}
+                strictSelection
+                placeholder="Attribut"
+                onValueChange={(nextField) => handleFieldChange(entry.id, nextField)}
+              />
 
               <select
                 value={entry.op}
@@ -341,6 +330,9 @@ export const DatabaseFilterPanel = ({
         </button>
       </header>
       <p className="database-block-panel-context">{viewHint}</p>
+      {attributeSuggestions.length === 0 ? (
+        <p className="database-block-state">Keine Vault-Attribute verfuegbar.</p>
+      ) : null}
 
       {renderGroup(filterGroup, 0, true)}
     </aside>

@@ -145,6 +145,17 @@ export type DatabaseBlockConfig = {
   options: DatabaseBlockOptions;
 };
 
+export type DatabaseVaultAttributeSuggestion = {
+  key: string;
+  normalizedKey: string;
+  count: number;
+};
+
+export type DatabaseVaultAttributeIndex = {
+  suggestions: DatabaseVaultAttributeSuggestion[];
+  byNormalizedKey: Record<string, DatabaseVaultAttributeSuggestion>;
+};
+
 export type DatabaseScoreValue = {
   raw: string;
   value: number;

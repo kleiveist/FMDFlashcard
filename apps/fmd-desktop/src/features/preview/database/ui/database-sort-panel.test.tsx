@@ -45,6 +45,14 @@ const attribute: DatabaseAttributeMeta = {
   },
 };
 
+const suggestions = [
+  {
+    key: "priority",
+    normalizedKey: "priority",
+    count: 2,
+  },
+];
+
 describe("DatabaseSortPanel", () => {
   it("renders view-specific sort impact hints", () => {
     const expectations: Array<[DatabaseViewType, string]> = [
@@ -59,6 +67,7 @@ describe("DatabaseSortPanel", () => {
       const { container, cleanup } = render(
         createElement(DatabaseSortPanel, {
           attributes: [attribute],
+          attributeSuggestions: suggestions,
           viewType,
           sortRules: [],
           onChange: vi.fn(),

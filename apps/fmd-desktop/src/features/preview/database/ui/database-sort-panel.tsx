@@ -8,11 +8,14 @@ import { type DragEvent } from "react";
 import {
   type DatabaseAttributeMeta,
   type DatabaseSortRule,
+  type DatabaseVaultAttributeSuggestion,
   type DatabaseViewType,
 } from "../database-types";
+import { DatabaseAttributeTypeahead } from "./database-attribute-typeahead";
 
 type DatabaseSortPanelProps = {
   attributes: DatabaseAttributeMeta[];
+  attributeSuggestions: DatabaseVaultAttributeSuggestion[];
   viewType: DatabaseViewType;
   sortRules: DatabaseSortRule[];
   onChange: (nextRules: DatabaseSortRule[]) => void;
@@ -27,9 +30,9 @@ const SORT_PANEL_HINTS: Record<DatabaseViewType, string> = {
   pie: "Sortierung steuert die Reihenfolge von Segmenten und Legende.",
 };
 
-const createDefaultSortRule = (attributes: DatabaseAttributeMeta[]): DatabaseSortRule => ({
+const createDefaultSortRule = (suggestions: DatabaseVaultAttributeSuggestion[]): DatabaseSortRule => ({
   id: `sort-rule-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-  field: attributes[0]?.key ?? "",
+  field: suggestions[0]?.key ?? "",
   dir: "asc",
   nulls: "last",
   natural: true,
@@ -37,32 +40,13 @@ const createDefaultSortRule = (attributes: DatabaseAttributeMeta[]): DatabaseSor
 
 export const DatabaseSortPanel = ({
   attributes,
+  attributeSuggestions,
   viewType,
   sortRules,
   onChange,
   onClose,
 }: DatabaseSortPanelProps) => {
   const viewHint = SORT_PANEL_HINTS[viewType];
-
-  if (attributes.length === 0) {
-    return (
-      <aside
-        className="database-block-panel database-block-sort-panel"
-        data-md-block-control="true"
-        role="dialog"
-        aria-label="Database Sortierung"
-      >
-        <header className="database-block-panel-header">
-          <h5>Sortierung</h5>
-          <button type="button" className="database-block-panel-close" onClick={onClose} aria-label="Schliessen">
-            ×
-          </button>
-        </header>
-        <p className="database-block-panel-context">{viewHint}</p>
-        <p className="database-block-state">Keine Attribute verfuegbar.</p>
-      </aside>
-    );
-  }
 
   const updateRule = (ruleId: string, patch: Partial<DatabaseSortRule>) => {
     onChange(
@@ -104,6 +88,8 @@ export const DatabaseSortPanel = ({
     onChange(nextRules);
   };
 
+  const hasSuggestionSource = attributeSuggestions.length > 0;
+
   return (
     <aside
       className="database-block-panel database-block-sort-panel"
@@ -118,60 +104,70 @@ export const DatabaseSortPanel = ({
         </button>
       </header>
       <p className="database-block-panel-context">{viewHint}</p>
+      {!hasSuggestionSource ? (
+        <p className="database-block-state">Keine Vault-Attribute verfuegbar.</p>
+      ) : null}
       <div className="database-block-sort-list">
-        {sortRules.map((rule) => (
-          <div
-            key={rule.id}
-            className="database-block-sort-row"
-            draggable
-            onDragStart={(event) => handleDragStart(event, rule.id)}
-            onDragOver={(event) => {
-              event.preventDefault();
-              event.dataTransfer.dropEffect = "move";
-            }}
-            onDrop={(event) => handleDrop(event, rule.id)}
-          >
-            <select
-              value={rule.field}
-              onChange={(event) => updateRule(rule.id, { field: event.target.value })}
+        {sortRules.map((rule) => {
+          const selectedAttribute = attributes.find((attribute) =>
+            attribute.key.trim().toLowerCase() === rule.field.trim().toLowerCase()) ?? null;
+          const isNaturalAllowed = selectedAttribute?.type !== "number";
+
+          return (
+            <div
+              key={rule.id}
+              className="database-block-sort-row"
+              draggable
+              onDragStart={(event) => handleDragStart(event, rule.id)}
+              onDragOver={(event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+              }}
+              onDrop={(event) => handleDrop(event, rule.id)}
             >
-              {attributes.map((attribute) => (
-                <option key={attribute.key} value={attribute.key}>{attribute.key}</option>
-              ))}
-            </select>
-            <select
-              value={rule.dir}
-              onChange={(event) => updateRule(rule.id, { dir: event.target.value === "desc" ? "desc" : "asc" })}
-            >
-              <option value="asc">ASC</option>
-              <option value="desc">DESC</option>
-            </select>
-            <select
-              value={rule.nulls ?? "last"}
-              onChange={(event) => updateRule(rule.id, { nulls: event.target.value === "first" ? "first" : "last" })}
-            >
-              <option value="last">Nulls last</option>
-              <option value="first">Nulls first</option>
-            </select>
-            <label className="database-block-sort-natural">
-              <input
-                type="checkbox"
-                checked={Boolean(rule.natural)}
-                onChange={(event) => updateRule(rule.id, { natural: event.target.checked })}
+              <DatabaseAttributeTypeahead
+                value={rule.field}
+                suggestions={attributeSuggestions}
+                strictSelection
+                placeholder="Attribut"
+                onValueChange={(nextField) => updateRule(rule.id, { field: nextField })}
               />
-              Natural
-            </label>
-            <button type="button" className="database-block-toolbar-button" onClick={() => removeRule(rule.id)}>
-              Entfernen
-            </button>
-          </div>
-        ))}
+              <select
+                value={rule.dir}
+                onChange={(event) => updateRule(rule.id, { dir: event.target.value === "desc" ? "desc" : "asc" })}
+              >
+                <option value="asc">ASC</option>
+                <option value="desc">DESC</option>
+              </select>
+              <select
+                value={rule.nulls ?? "last"}
+                onChange={(event) => updateRule(rule.id, { nulls: event.target.value === "first" ? "first" : "last" })}
+              >
+                <option value="last">Nulls last</option>
+                <option value="first">Nulls first</option>
+              </select>
+              <label className="database-block-sort-natural">
+                <input
+                  type="checkbox"
+                  checked={Boolean(rule.natural)}
+                  disabled={!isNaturalAllowed}
+                  onChange={(event) => updateRule(rule.id, { natural: event.target.checked })}
+                />
+                Natural
+              </label>
+              <button type="button" className="database-block-toolbar-button" onClick={() => removeRule(rule.id)}>
+                Entfernen
+              </button>
+            </div>
+          );
+        })}
       </div>
       <footer className="database-block-panel-footer">
         <button
           type="button"
           className="database-block-toolbar-button"
-          onClick={() => onChange([...sortRules, createDefaultSortRule(attributes)])}
+          onClick={() => onChange([...sortRules, createDefaultSortRule(attributeSuggestions)])}
+          disabled={!hasSuggestionSource}
         >
           Sortierung hinzufuegen
         </button>

@@ -19,6 +19,10 @@ import {
   serializeDatabaseBlockConfig,
 } from "./database-block-parser";
 import {
+  buildVaultAttributeIndexFromMarkdownDocuments,
+  createEmptyVaultAttributeIndex,
+} from "./database-attribute-discovery";
+import {
   buildNormalizedRecord,
   createSystemFieldsForRecord,
 } from "./database-normalizers";
@@ -47,6 +51,7 @@ import {
   type DatabaseSourceSpec,
   type DatabaseSortRule,
   type DatabaseTimelineMode,
+  type DatabaseVaultAttributeIndex,
   type DatabaseViewSpec,
   type DatabaseViewType,
 } from "./database-types";
@@ -561,6 +566,10 @@ export const MarkdownHybridDatabaseBlock = ({
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isMutatingFrontmatter, setIsMutatingFrontmatter] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
+  const [vaultAttributeRefreshToken, setVaultAttributeRefreshToken] = useState(0);
+  const [vaultAttributeIndex, setVaultAttributeIndex] = useState<DatabaseVaultAttributeIndex>(
+    createEmptyVaultAttributeIndex(),
+  );
   const [panels, setPanels] = useState<DatabaseBlockOpenPanels>(defaultPanels);
   const rollbackRecordSnapshotRef = useRef<Map<string, DatabaseRecord>>(new Map());
   const titleRef = useRef(title);
@@ -585,6 +594,10 @@ export const MarkdownHybridDatabaseBlock = ({
   const propertiesByViewRef = useRef(propertiesByView);
   const activeFiltersRef = useRef(activeFilters);
   const activeSortsRef = useRef(activeSorts);
+
+  const scheduleVaultAttributeRefresh = useCallback(() => {
+    setVaultAttributeRefreshToken((value) => value + 1);
+  }, []);
 
   useEffect(() => {
     if (titlePersistTimeoutRef.current !== null) {
@@ -804,6 +817,70 @@ export const MarkdownHybridDatabaseBlock = ({
       cancelled = true;
     };
   }, [reloadToken, sourceResolution.files]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const buildVaultAttributeIndex = async () => {
+      const candidateFiles = (vaultFiles?.length ?? 0) > 0
+        ? (vaultFiles ?? []).map((file) => ({
+          path: file.path,
+          relativePath: file.relative_path,
+        }))
+        : sourceResolution.files.map((file) => ({
+          path: file.path,
+          relativePath: file.relativePath,
+        }));
+
+      const availableFiles = candidateFiles
+        .filter((file) => {
+          const filePath = file.path ?? "";
+          const relativePath = file.relativePath ?? "";
+          return /\.md$/i.test(filePath) || /\.md$/i.test(relativePath);
+        });
+
+      if (availableFiles.length === 0) {
+        if (!cancelled) {
+          setVaultAttributeIndex(createEmptyVaultAttributeIndex());
+        }
+        return;
+      }
+
+      const availablePaths = new Set(availableFiles.map((file) => file.path));
+      for (const cachedPath of Array.from(fileCacheRef.current.keys())) {
+        if (!availablePaths.has(cachedPath)) {
+          fileCacheRef.current.delete(cachedPath);
+        }
+      }
+
+      const markdownDocuments = await Promise.all(
+        availableFiles.map(async (file) => {
+          const cached = fileCacheRef.current.get(file.path);
+          if (typeof cached === "string") {
+            return cached;
+          }
+          try {
+            const markdown = await invoke<string>("read_text_file", { path: file.path });
+            fileCacheRef.current.set(file.path, markdown);
+            return markdown;
+          } catch {
+            return "";
+          }
+        }),
+      );
+
+      if (cancelled) {
+        return;
+      }
+      setVaultAttributeIndex(buildVaultAttributeIndexFromMarkdownDocuments(markdownDocuments));
+    };
+
+    void buildVaultAttributeIndex();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [sourceResolution.files, vaultAttributeRefreshToken, vaultFiles]);
 
   const visibleColumnKeys = useMemo(
     () => getPropertiesForView(propertiesByView, viewType),
@@ -1335,8 +1412,9 @@ export const MarkdownHybridDatabaseBlock = ({
         setOperationError(null);
         setOperationState("Project Raster neu skaliert.");
       }
+      scheduleVaultAttributeRefresh();
     },
-    [allowCellEditing, records],
+    [allowCellEditing, records, scheduleVaultAttributeRefresh],
   );
 
   const commitRecordFieldMutation = useCallback(
@@ -1406,6 +1484,7 @@ export const MarkdownHybridDatabaseBlock = ({
         }
         fileCacheRef.current.set(previousRecord.filePath, result.markdown);
         setOperationState("Wert gespeichert.");
+        scheduleVaultAttributeRefresh();
       } catch (error) {
         const rollback = rollbackRecordSnapshotRef.current.get(mutationKey);
         if (rollback) {
@@ -1423,7 +1502,7 @@ export const MarkdownHybridDatabaseBlock = ({
         removePendingRecordMutation(record.fileId);
       }
     },
-    [pendingCellMutations, records, tableCellEditingEnabled],
+    [pendingCellMutations, records, scheduleVaultAttributeRefresh, tableCellEditingEnabled],
   );
 
   const ensureTimelineFieldSetup = useCallback(() => {
@@ -1669,6 +1748,7 @@ export const MarkdownHybridDatabaseBlock = ({
 
       fileCacheRef.current.set(previousRecord.filePath, endResult.markdown);
       setOperationState("Timeline aktualisiert.");
+      scheduleVaultAttributeRefresh();
     } catch (error) {
       setRecords((previous) =>
         previous.map((entry) => (entry.fileId === previousRecord.fileId ? previousRecord : entry)));
@@ -1681,7 +1761,7 @@ export const MarkdownHybridDatabaseBlock = ({
     } finally {
       removePendingRecordMutation(record.fileId);
     }
-  }, [allowCellEditing, ensureTimelineFieldSetup, records]);
+  }, [allowCellEditing, ensureTimelineFieldSetup, records, scheduleVaultAttributeRefresh]);
 
   const handleCommitProjectPlacement = useCallback(async ({
     record,
@@ -1741,6 +1821,7 @@ export const MarkdownHybridDatabaseBlock = ({
 
       fileCacheRef.current.set(previousRecord.filePath, unitResult.markdown);
       setOperationState("Project aktualisiert.");
+      scheduleVaultAttributeRefresh();
     } catch (error) {
       setRecords((previous) =>
         previous.map((entry) => (entry.fileId === previousRecord.fileId ? previousRecord : entry)));
@@ -1753,7 +1834,7 @@ export const MarkdownHybridDatabaseBlock = ({
     } finally {
       removePendingRecordMutation(record.fileId);
     }
-  }, [allowCellEditing, ensureProjectFieldSetup, records]);
+  }, [allowCellEditing, ensureProjectFieldSetup, records, scheduleVaultAttributeRefresh]);
 
   const handleToggleVisibility = (key: string, visible: boolean) => {
     const targetView = viewTypeRef.current;
@@ -1989,6 +2070,7 @@ export const MarkdownHybridDatabaseBlock = ({
 
       fileCacheRef.current.clear();
       setReloadToken((value) => value + 1);
+      scheduleVaultAttributeRefresh();
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : "Attribute konnten nicht gespeichert werden.");
     } finally {
@@ -2204,6 +2286,7 @@ export const MarkdownHybridDatabaseBlock = ({
           {panels.properties ? (
             <DatabasePropertiesPanel
               attributes={store.attributeRegistry}
+              attributeSuggestions={vaultAttributeIndex.suggestions}
               viewType={viewType}
               visibleColumnKeys={visibleColumnKeys}
               kanbanShowCover={kanbanShowCover}
@@ -2221,6 +2304,7 @@ export const MarkdownHybridDatabaseBlock = ({
           {panels.filter ? (
             <DatabaseFilterPanel
               attributes={store.attributeRegistry}
+              attributeSuggestions={vaultAttributeIndex.suggestions}
               viewType={viewType}
               filterGroup={activeFilters}
               onChange={handleFilterChange}
@@ -2230,6 +2314,7 @@ export const MarkdownHybridDatabaseBlock = ({
           {panels.sort ? (
             <DatabaseSortPanel
               attributes={store.attributeRegistry}
+              attributeSuggestions={vaultAttributeIndex.suggestions}
               viewType={viewType}
               sortRules={activeSorts}
               onChange={handleSortChange}

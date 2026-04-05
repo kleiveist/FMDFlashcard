@@ -8,11 +8,14 @@ import { type DragEvent, useMemo, useState } from "react";
 import {
   type DatabaseAttributeMeta,
   type DatabaseFieldType,
+  type DatabaseVaultAttributeSuggestion,
   type DatabaseViewType,
 } from "../database-types";
+import { DatabaseAttributeTypeahead } from "./database-attribute-typeahead";
 
 type DatabasePropertiesPanelProps = {
   attributes: DatabaseAttributeMeta[];
+  attributeSuggestions: DatabaseVaultAttributeSuggestion[];
   viewType: DatabaseViewType;
   visibleColumnKeys: string[];
   kanbanShowCover: boolean;
@@ -89,6 +92,7 @@ const resolveTypeIcon = (type: DatabaseFieldType) => {
 
 export const DatabasePropertiesPanel = ({
   attributes,
+  attributeSuggestions,
   viewType,
   visibleColumnKeys,
   kanbanShowCover,
@@ -277,11 +281,11 @@ export const DatabasePropertiesPanel = ({
       <section className="database-block-properties-create">
         <h6>Attribut hinzufügen</h6>
         <div className="database-block-panel-controls">
-          <input
-            type="text"
+          <DatabaseAttributeTypeahead
             value={newAttributeKey}
-            onChange={(event) => setNewAttributeKey(event.target.value)}
+            suggestions={attributeSuggestions}
             placeholder="Name"
+            onValueChange={setNewAttributeKey}
           />
           <select
             value={newAttributeType}
@@ -319,11 +323,11 @@ export const DatabasePropertiesPanel = ({
       <section className="database-block-properties-create">
         <h6>Formel hinzufügen</h6>
         <div className="database-block-panel-controls">
-          <input
-            type="text"
+          <DatabaseAttributeTypeahead
             value={newFormulaKey}
-            onChange={(event) => setNewFormulaKey(event.target.value)}
+            suggestions={attributeSuggestions}
             placeholder="Key"
+            onValueChange={setNewFormulaKey}
           />
           <input
             type="text"

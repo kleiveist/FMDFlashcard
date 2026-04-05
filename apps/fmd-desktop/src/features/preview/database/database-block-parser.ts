@@ -730,7 +730,17 @@ const parseConfigObject = (value: unknown): DatabaseBlockConfig => {
     ? dedupeCaseInsensitive(asStringArray(record.columns))
     : dedupeCaseInsensitive(defaults.columns);
   const propertiesByView = parsePropertiesByView(record.propertiesByView, parsedColumns);
-  const columns = dedupeCaseInsensitive(propertiesByView.table ?? parsedColumns);
+  const columns = hasExplicitColumns
+    ? parsedColumns
+    : dedupeCaseInsensitive(propertiesByView.table ?? parsedColumns);
+  const normalizedPropertiesByView: DatabasePropertiesByView = {
+    ...propertiesByView,
+    table: dedupeCaseInsensitive(
+      (propertiesByView.table ?? []).length > 0
+        ? propertiesByView.table ?? []
+        : columns,
+    ),
+  };
 
   return {
     title: asString(record.title, defaults.title),
@@ -738,7 +748,7 @@ const parseConfigObject = (value: unknown): DatabaseBlockConfig => {
     view: parseViewSpec(record.view),
     fields: parseFieldDefinitions(record.fields),
     columns,
-    propertiesByView,
+    propertiesByView: normalizedPropertiesByView,
     filters: parseFilterGroup(record.filters),
     sort: parseSortRules(record.sort),
     options: parseOptions(record.options),

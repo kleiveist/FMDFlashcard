@@ -44,6 +44,13 @@ const sampleAttribute: DatabaseAttributeMeta = {
 
 const buildProps = () => ({
   attributes: [sampleAttribute],
+  attributeSuggestions: [
+    {
+      key: "status",
+      normalizedKey: "status",
+      count: 3,
+    },
+  ],
   viewType: "table" as const,
   visibleColumnKeys: ["status"],
   kanbanShowCover: false,

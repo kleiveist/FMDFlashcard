@@ -6004,6 +6004,70 @@ textarea.preview-editor {
   flex-wrap: wrap;
 }
 
+.database-attribute-typeahead {
+  position: relative;
+  min-width: 0;
+}
+
+.database-attribute-typeahead > input {
+  width: 100%;
+}
+
+.database-attribute-typeahead-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-radius-control);
+  background: var(--db-surface-raised);
+  box-shadow: var(--db-shadow-panel);
+  z-index: 12;
+}
+
+.database-attribute-typeahead-list {
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+
+.database-attribute-typeahead-option {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: var(--db-radius-control);
+  background: transparent;
+  color: inherit;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.database-attribute-typeahead-option:hover,
+.database-attribute-typeahead-option:focus-visible {
+  border-color: color-mix(in srgb, var(--accent-border) 65%, var(--db-border));
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.database-attribute-typeahead-count {
+  font-size: 0.68rem;
+  color: var(--db-muted);
+}
+
+.database-attribute-typeahead-empty {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 0.74rem;
+  color: var(--db-muted);
+}
+
 .database-block-properties-list,
 .database-block-filter-list,
 .database-block-sort-list {

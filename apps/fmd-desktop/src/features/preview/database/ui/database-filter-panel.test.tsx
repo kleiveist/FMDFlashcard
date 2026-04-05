@@ -45,6 +45,14 @@ const attribute: DatabaseAttributeMeta = {
   },
 };
 
+const suggestions = [
+  {
+    key: "status",
+    normalizedKey: "status",
+    count: 3,
+  },
+];
+
 describe("DatabaseFilterPanel", () => {
   it("renders view-specific filter impact hints", () => {
     const expectations: Array<[DatabaseViewType, string]> = [
@@ -59,6 +67,7 @@ describe("DatabaseFilterPanel", () => {
       const { container, cleanup } = render(
         createElement(DatabaseFilterPanel, {
           attributes: [attribute],
+          attributeSuggestions: suggestions,
           viewType,
           filterGroup: {
             id: "root",
