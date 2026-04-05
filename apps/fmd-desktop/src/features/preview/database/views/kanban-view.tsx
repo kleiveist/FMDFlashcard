@@ -71,12 +71,12 @@ const stringifyMetaValue = (value: DatabaseNormalizedFieldValue, type: DatabaseF
     return entries.length > 0 ? entries.join(", ") : null;
   }
   if (typeof value === "object") {
+    if ("value" in value && typeof value.value === "number" && Number.isFinite(value.value)) {
+      return String(value.value);
+    }
     if ("raw" in value) {
       const raw = String(value.raw ?? "").trim();
       return raw || null;
-    }
-    if ("value" in value && typeof value.value === "number" && Number.isFinite(value.value)) {
-      return String(value.value);
     }
     return null;
   }
