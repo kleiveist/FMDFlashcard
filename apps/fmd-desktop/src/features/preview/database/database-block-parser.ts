@@ -726,13 +726,15 @@ const parseConfigObject = (value: unknown): DatabaseBlockConfig => {
   const defaults = createDefaultDatabaseBlockConfig();
   const record = isRecord(value) ? value : {};
   const hasExplicitColumns = Array.isArray(record.columns);
+  const hasExplicitPropertiesByViewTable = isRecord(record.propertiesByView) &&
+    Array.isArray(record.propertiesByView.table);
   const parsedColumns = hasExplicitColumns
     ? dedupeCaseInsensitive(asStringArray(record.columns))
     : dedupeCaseInsensitive(defaults.columns);
   const propertiesByView = parsePropertiesByView(record.propertiesByView, parsedColumns);
-  const columns = hasExplicitColumns
-    ? parsedColumns
-    : dedupeCaseInsensitive(propertiesByView.table ?? parsedColumns);
+  const columns = hasExplicitPropertiesByViewTable
+    ? dedupeCaseInsensitive(propertiesByView.table ?? parsedColumns)
+    : parsedColumns;
   const normalizedPropertiesByView: DatabasePropertiesByView = {
     ...propertiesByView,
     table: dedupeCaseInsensitive(
