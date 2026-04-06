@@ -1,0 +1,94 @@
+/**
+ * @file apps/fmd-desktop/src/styles/components/points-profiles.css
+ */
+
+.points-profiles-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-layout-gap);
+  min-height: 0;
+}
+
+.points-profiles-panel,
+.points-profiles-monitoring-panel {
+  min-height: 0;
+}
+
+.points-profiles-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: var(--ui-layout-gap);
+  align-items: stretch;
+  min-height: 0;
+}
+
+.points-profile-list-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.points-profiles-task-points-table {
+  max-height: 520px;
+}
+
+.points-profile-monitoring-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.points-profile-monitoring-item {
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.points-profile-monitoring-toggle {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.points-profile-monitoring-name {
+  font-weight: 600;
+}
+
+.points-profile-monitoring-count {
+  color: var(--muted);
+  white-space: nowrap;
+  font-size: 0.86rem;
+}
+
+.points-profile-monitoring-files {
+  list-style: none;
+  margin: 0;
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.points-profile-monitoring-files li {
+  font-size: 0.88rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1100px) {
+  .points-profiles-layout {
+    grid-template-columns: 1fr;
+  }
+}

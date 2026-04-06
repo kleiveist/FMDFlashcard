@@ -433,6 +433,14 @@
   gap: var(--ui-space-md);
 }
 
+.nav-group-divider {
+  height: 1px;
+  width: 100%;
+  background: var(--line-soft);
+  opacity: 0.55;
+  border-radius: 999px;
+}
+
 .nav-item {
   border: 1px solid transparent;
   background: transparent;

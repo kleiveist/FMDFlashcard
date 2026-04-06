@@ -71,12 +71,10 @@ type MarkdownEditorTab = {
   path: string;
   relativePath: string;
 };
-type ExamLeaveGuardTarget = "main-editor" | "profile-modal";
 type PendingExamLeaveAction =
   | "file-select"
   | "vault-view-change"
-  | "dashboard-leave"
-  | "profile-modal-close";
+  | "dashboard-leave";
 
 type DashboardPageProps = {
   initialVaultView?: DashboardView;
@@ -90,6 +88,7 @@ type DashboardPageProps = {
   gateDescription?: string;
   gateCtaLabel?: string;
   onOpenGate?: () => void;
+  onOpenPointsProfilesPage?: () => void;
 };
 
 export type DashboardPageHandle = {
@@ -110,6 +109,7 @@ const DashboardPageInner = (
     gateDescription,
     gateCtaLabel,
     onOpenGate,
+    onOpenPointsProfilesPage,
   }: DashboardPageProps,
   ref: ForwardedRef<DashboardPageHandle>,
 ) => {
@@ -129,14 +129,8 @@ const DashboardPageInner = (
     null,
   );
   const examControlsRef = useRef<ExamEditorControlsState | null>(null);
-  const [isTaskProfileEditorModalOpen, setIsTaskProfileEditorModalOpen] = useState(false);
-  const [taskProfileEditorControls, setTaskProfileEditorControls] =
-    useState<ExamEditorControlsState | null>(null);
-  const taskProfileEditorControlsRef = useRef<ExamEditorControlsState | null>(null);
   const [pendingExamLeaveAction, setPendingExamLeaveAction] =
     useState<PendingExamLeaveAction | null>(null);
-  const [pendingExamLeaveTarget, setPendingExamLeaveTarget] =
-    useState<ExamLeaveGuardTarget | null>(null);
   const [isExamLeaveSavePending, setIsExamLeaveSavePending] = useState(false);
   const previousSelectedMarkdownPathRef = useRef<string | null>(null);
   const isDesktopViewport = useMediaQuery(DESKTOP_QUERY, false);
@@ -274,13 +268,6 @@ const DashboardPageInner = (
     (controls: ExamEditorControlsState | null) => {
       examControlsRef.current = controls;
       setExamControls(controls);
-    },
-    [],
-  );
-  const handleTaskProfileEditorControlsReady = useCallback(
-    (controls: ExamEditorControlsState | null) => {
-      taskProfileEditorControlsRef.current = controls;
-      setTaskProfileEditorControls(controls);
     },
     [],
   );
@@ -685,30 +672,19 @@ const DashboardPageInner = (
     vaultView,
   ]);
 
-  const resolveDirtyExamContext = useCallback((): {
-    target: ExamLeaveGuardTarget;
-    controls: ExamEditorControlsState;
-  } | null => {
-    const modalControls = taskProfileEditorControlsRef.current;
-    if (
-      isTaskProfileEditorModalOpen &&
-      modalControls?.hasUnsavedChanges
-    ) {
-      return { target: "profile-modal", controls: modalControls };
-    }
-    const mainControls = examControlsRef.current;
-    if (vaultView === "exam" && mainControls?.hasUnsavedChanges) {
-      return { target: "main-editor", controls: mainControls };
+  const resolveDirtyExamControls = useCallback((): ExamEditorControlsState | null => {
+    const controls = examControlsRef.current;
+    if (vaultView === "exam" && controls?.hasUnsavedChanges) {
+      return controls;
     }
     return null;
-  }, [isTaskProfileEditorModalOpen, vaultView]);
+  }, [vaultView]);
 
   const completePendingExamLeave = useCallback((allowed: boolean) => {
     const resolve = pendingExamLeaveResolveRef.current;
     pendingExamLeaveProceedRef.current = null;
     pendingExamLeaveResolveRef.current = null;
     setPendingExamLeaveAction(null);
-    setPendingExamLeaveTarget(null);
     setIsExamLeaveSavePending(false);
     resolve?.(allowed);
   }, []);
@@ -738,8 +714,8 @@ const DashboardPageInner = (
       if (pendingExamLeaveAction) {
         return false;
       }
-      const dirtyContext = resolveDirtyExamContext();
-      if (!dirtyContext) {
+      const dirtyControls = resolveDirtyExamControls();
+      if (!dirtyControls) {
         await proceed();
         return true;
       }
@@ -747,11 +723,10 @@ const DashboardPageInner = (
         pendingExamLeaveProceedRef.current = proceed;
         pendingExamLeaveResolveRef.current = resolve;
         setPendingExamLeaveAction(action);
-        setPendingExamLeaveTarget(dirtyContext.target);
         setIsExamLeaveSavePending(false);
       });
     },
-    [pendingExamLeaveAction, resolveDirtyExamContext],
+    [pendingExamLeaveAction, resolveDirtyExamControls],
   );
 
   const runDashboardNavigationGuard = useCallback(
@@ -1094,18 +1069,6 @@ const DashboardPageInner = (
       vault.setFiles,
     ],
   );
-  const closeTaskProfileEditorModal = useCallback(() => {
-    setIsTaskProfileEditorModalOpen(false);
-    taskProfileEditorControlsRef.current = null;
-    setTaskProfileEditorControls(null);
-  }, []);
-
-  const handleCloseTaskProfileEditorModal = useCallback(() => {
-    void requestExamLeaveGuard("profile-modal-close", async () => {
-      closeTaskProfileEditorModal();
-    });
-  }, [closeTaskProfileEditorModal, requestExamLeaveGuard]);
-
   const handleOpenTaskProfileEditor = useCallback(
     async ({ taskValue }: { taskValue: string | null; propertyKey: string }) => {
       const requestedName = taskValue?.trim() ?? "";
@@ -1127,9 +1090,10 @@ const DashboardPageInner = (
       } else if (pointsProfiles.defaultProfileId) {
         pointsProfiles.setSelectedProfileId(pointsProfiles.defaultProfileId);
       }
-      setIsTaskProfileEditorModalOpen(true);
+      onOpenPointsProfilesPage?.();
     },
     [
+      onOpenPointsProfilesPage,
       pointsProfiles,
       pointsProfiles.createProfile,
       pointsProfiles.defaultProfileId,
@@ -1138,15 +1102,6 @@ const DashboardPageInner = (
       pointsProfiles.setSelectedProfileId,
     ],
   );
-
-  useEffect(() => {
-    if (!isTaskProfileEditorModalOpen || !taskProfileEditorControls) {
-      return;
-    }
-    if (taskProfileEditorControls.mode !== "points") {
-      taskProfileEditorControls.onModeChange("points");
-    }
-  }, [isTaskProfileEditorModalOpen, taskProfileEditorControls]);
 
   const noteModalActive = noteModalEnabled && isNoteModalOpen;
   const handleNoteModalClose = useCallback(() => {
@@ -1172,12 +1127,7 @@ const DashboardPageInner = (
   const handleTogglePanelsCollapsed = isExamDesktop
     ? handleToggleExamPanelsCollapsed
     : handleToggleNoteCollapsed;
-  const pendingExamLeaveControls =
-    pendingExamLeaveTarget === "profile-modal"
-      ? taskProfileEditorControls
-      : pendingExamLeaveTarget === "main-editor"
-        ? examControls
-        : null;
+  const pendingExamLeaveControls = examControlsRef.current;
   const canSavePendingExamChanges = Boolean(
     pendingExamLeaveControls?.canSave &&
       !pendingExamLeaveControls.isSaving &&
@@ -1232,15 +1182,6 @@ const DashboardPageInner = (
         aria-selected={examControls.mode === "content"}
       >
         Content
-      </button>
-      <button
-        type="button"
-        className={`pill pill-button ${examControls.mode === "points" ? "active" : ""}`}
-        onClick={() => examControls.onModeChange("points")}
-        role="tab"
-        aria-selected={examControls.mode === "points"}
-      >
-        Points
       </button>
     </div>
   ) : null;
@@ -1527,28 +1468,6 @@ const DashboardPageInner = (
             </button>
           </div>
         </div>
-      </ModalShell>
-      <ModalShell
-        isOpen={isTaskProfileEditorModalOpen}
-        title="Points Profile Editor"
-        onClose={handleCloseTaskProfileEditorModal}
-        className="task-profile-editor-modal-panel"
-        bodyClassName="task-profile-editor-modal-body"
-      >
-        <ExamEditorView
-          sourcePath={preview.selectedFile?.path ?? null}
-          sourceRelativePath={preview.selectedFile?.relative_path ?? null}
-          sourceMarkdown={preview.previewState === "idle" ? preview.preview : undefined}
-          activeFolderPath={normalizedActiveFolderPath || null}
-          vaultFiles={vault.files}
-          vaultPngAssets={vault.pngAssets}
-          vaultPath={vault.vaultPath ?? null}
-          pointsProfiles={pointsProfiles}
-          showMoveButtons={settings.examEditorShowMoveButtons}
-          variant="study"
-          onControlsReady={handleTaskProfileEditorControlsReady}
-          onSave={handleExamSave}
-        />
       </ModalShell>
     </div>
   );

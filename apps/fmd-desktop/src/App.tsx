@@ -64,6 +64,7 @@ import { FastFlashcardPage } from "./pages/FastFlashcardPage";
 import { HelpPage } from "./pages/HelpPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { SpacedRepetitionPage } from "./pages/SpacedRepetitionPage";
+import { PointsProfilesPage } from "./pages/PointsProfilesPage";
 import { DEFAULT_HELP_TOPIC_ID } from "./pages/help/helpContent";
 import type { StudySectionKey } from "./lib/studySections";
 import { SMART_QUERY } from "./lib/breakpoints";
@@ -449,6 +450,10 @@ const AppContent = () => {
     setIsSettingsOpen(false);
   }, []);
 
+  const handleOpenPointsProfilesFromDashboard = useCallback(() => {
+    void handleTabChange("points-profiles");
+  }, [handleTabChange]);
+
   const handleOpenUserManager = useCallback(() => {
     setIsUserRegistryModalOpen(true);
   }, []);
@@ -554,6 +559,7 @@ const AppContent = () => {
             ref={dashboardRef}
             initialVaultView={dashboardView}
             onVaultViewChange={setDashboardView}
+            onOpenPointsProfilesPage={handleOpenPointsProfilesFromDashboard}
             isNoteModalOpen={isNoteModalOpen}
             noteModalEnabled={isNoteModalEligible}
             onNoteModalClose={handleNoteModalClose}
@@ -579,6 +585,8 @@ const AppContent = () => {
           <FlashcardPage onSectionSelect={handleStudySectionSelect} />
         ) : activeTab === "card-monitoring" ? (
           <CardMonitoringPage ref={cardMonitoringRef} />
+        ) : activeTab === "points-profiles" ? (
+          <PointsProfilesPage />
         ) : activeTab === "spaced-repetition" ? (
           <SpacedRepetitionPage onSectionSelect={handleStudySectionSelect} />
         ) : (

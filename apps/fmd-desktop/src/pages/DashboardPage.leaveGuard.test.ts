@@ -250,9 +250,11 @@ const createMockAppState = ({
 const renderDashboard = ({
   initialVaultView = "exam",
   appState,
+  onOpenPointsProfilesPage,
 }: {
   initialVaultView?: "exam" | "markdown";
   appState?: ReturnType<typeof createMockAppState>;
+  onOpenPointsProfilesPage?: () => void;
 } = {}) => {
   const fallbackHandleSelectFile = vi.fn();
   const resolvedAppState =
@@ -270,6 +272,7 @@ const renderDashboard = ({
     root.render(
       React.createElement(DashboardPage, {
         initialVaultView,
+        onOpenPointsProfilesPage,
       }),
     );
   });
@@ -282,6 +285,7 @@ const renderDashboard = ({
         root.render(
           React.createElement(DashboardPage, {
             initialVaultView,
+            onOpenPointsProfilesPage,
           }),
         );
       });
@@ -372,7 +376,6 @@ describe("DashboardPage exam leave guard", () => {
     expect(topToolbar?.textContent).toContain("Save");
     expect(topToolbar?.textContent).toContain("Structure");
     expect(topToolbar?.textContent).toContain("Content");
-    expect(topToolbar?.textContent).toContain("Points");
     expect(topToolbar?.textContent).toContain("Saved path:");
     expect(container.querySelector(".note-column .exam-editor-controls-panel")).toBeFalsy();
     expect(container.querySelector(".right-overlay-rail.dashboard-overlay-rail")).toBeFalsy();
@@ -477,30 +480,15 @@ describe("DashboardPage exam leave guard", () => {
     secondRender.cleanup();
   });
 
-  it("guards closing the points profile modal with save/discard/cancel choices", async () => {
-    const save = vi.fn(async () => true);
-    examEditorMock.queue = [
-      createExamControls({
-        hasUnsavedChanges: true,
-        onSaveAndWait: save,
-      }),
-    ];
+  it("routes task profile button clicks to points profiles page callback", async () => {
+    const onOpenPointsProfilesPage = vi.fn();
     const { container, cleanup } = renderDashboard({
       initialVaultView: "markdown",
+      onOpenPointsProfilesPage,
     });
 
     await clickTestId(container, "mock-open-task-profile");
-    expect(container.textContent).toContain("Points Profile Editor");
-
-    await clickTestId(container, "modal-close:Points Profile Editor");
-    expect(container.textContent).toContain("Unsaved changes");
-
-    await clickModalButtonByText(container, "Unsaved changes", "Cancel");
-    expect(container.textContent).toContain("Points Profile Editor");
-
-    await clickTestId(container, "modal-close:Points Profile Editor");
-    await clickModalButtonByText(container, "Unsaved changes", "Discard");
-    expect(container.textContent).not.toContain("Points Profile Editor");
+    expect(onOpenPointsProfilesPage).toHaveBeenCalledTimes(1);
 
     cleanup();
   });

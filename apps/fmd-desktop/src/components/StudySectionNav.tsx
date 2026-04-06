@@ -6,6 +6,7 @@
  */
 
 import {
+  Fragment,
   type ComponentType,
   type RefObject,
   useCallback,
@@ -15,6 +16,7 @@ import {
 } from "react";
 import {
   CardsIcon,
+  CheckIcon,
   ExamEditorIcon,
   FolderIcon,
   GaugeIcon,
@@ -41,9 +43,11 @@ const SECTION_ICONS: Record<StudySectionKey, ComponentType> = {
   exam: ExamEditorIcon,
   flashcard: CardsIcon,
   "card-monitoring": GridEventIcon,
+  "points-profiles": CheckIcon,
   "fast-flashcard": GaugeIcon,
   "spaced-repetition": RefreshIcon,
 };
+const STUDY_SECTION_MONITORING_DIVIDER_BEFORE: StudySectionKey = "card-monitoring";
 
 export const StudySectionNav = ({
   activeTab,
@@ -132,17 +136,21 @@ export const StudySectionNav = ({
           const isActive = activeTab === section.key;
           const Icon = SECTION_ICONS[section.key];
           return (
-            <button
-              key={section.key}
-              type="button"
-              className={`nav-item study-section-tab ${isActive ? "active" : ""}`}
-              onClick={() => onSectionSelect(section.key)}
-              aria-pressed={isActive}
-              aria-label={isIconOnly ? section.label : undefined}
-              title={isIconOnly ? section.label : undefined}
-            >
-              {isIconOnly ? <Icon /> : section.label}
-            </button>
+            <Fragment key={section.key}>
+              {section.key === STUDY_SECTION_MONITORING_DIVIDER_BEFORE ? (
+                <span className="study-section-toolbar-divider" aria-hidden="true" />
+              ) : null}
+              <button
+                type="button"
+                className={`nav-item study-section-tab ${isActive ? "active" : ""}`}
+                onClick={() => onSectionSelect(section.key)}
+                aria-pressed={isActive}
+                aria-label={isIconOnly ? section.label : undefined}
+                title={isIconOnly ? section.label : undefined}
+              >
+                {isIconOnly ? <Icon /> : section.label}
+              </button>
+            </Fragment>
           );
         })}
         {showNoteAction ? (
@@ -171,9 +179,12 @@ export const StudySectionNav = ({
           <MenuIcon />
         </span>
         {STUDY_SECTIONS.map((section) => (
-          <span key={section.key} className="nav-item study-section-tab">
-            {section.label}
-          </span>
+          <Fragment key={section.key}>
+            {section.key === STUDY_SECTION_MONITORING_DIVIDER_BEFORE ? (
+              <span className="study-section-toolbar-divider" aria-hidden="true" />
+            ) : null}
+            <span className="nav-item study-section-tab">{section.label}</span>
+          </Fragment>
         ))}
         {showNoteAction ? (
           <span className="nav-item study-section-note-toggle" aria-hidden="true">

@@ -7410,7 +7410,7 @@ const FrontmatterPropertiesPanel = ({
                         className="frontmatter-label frontmatter-label-button"
                         disabled={rowDisabled}
                         draggable={false}
-                        title="Points Profile Editor oeffnen"
+                        title="Points Profiles Profile Editor oeffnen"
                         onMouseDown={(event) => {
                           event.preventDefault();
                           event.stopPropagation();

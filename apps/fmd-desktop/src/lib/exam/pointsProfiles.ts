@@ -10,7 +10,7 @@ import { AUTO_CARD_TYPES, type AutoCardType } from "./autoCards";
 export const EXAM_POINTS_PROFILE_SCHEMA_VERSION = 2;
 export const EXAM_POINTS_FRONTMATTER_KEY = "Task";
 export const EXAM_POINTS_DEFAULT_PROFILE_NAME = "Exam";
-export const EXAM_POINTS_MAX_TASK_COUNT = 20;
+export const EXAM_POINTS_MAX_TASK_COUNT = 30;
 export const EXAM_POINTS_DEFAULT_DURATION_MINUTES = 45;
 export const EXAM_POINTS_MAX_DURATION_MINUTES = 240;
 

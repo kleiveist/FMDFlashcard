@@ -9,7 +9,7 @@ export type ExamEditorSelection =
   | { type: "task"; taskId: string }
   | { type: "card"; taskId: string; cardId: string };
 
-export type ExamEditorMode = "structure" | "content" | "points";
+export type ExamEditorMode = "structure" | "content";
 
 export type ExamEditorControlsState = {
   mode: ExamEditorMode;

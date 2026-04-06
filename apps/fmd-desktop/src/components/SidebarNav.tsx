@@ -22,6 +22,7 @@
  */
 
 import {
+  Fragment,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   useCallback,
@@ -62,6 +63,7 @@ type SidebarNavProps = {
   onOpenUserManager: () => void;
   onMobileNavClose: () => void;
 };
+const SIDEBAR_MONITORING_DIVIDER_BEFORE: StudySectionKey = "card-monitoring";
 
 const buildUserInitials = (value: string) => {
   const parts = value
@@ -538,14 +540,18 @@ export const SidebarNav = ({
               {CARD_SECTIONS.map((section) => {
                 const isActive = activeTab === section.key;
                 return (
-                  <button
-                    key={section.key}
-                    type="button"
-                    className={`nav-item ${isActive ? "active" : ""}`}
-                    onClick={() => onTabChange(section.key)}
-                  >
-                    {section.label}
-                  </button>
+                  <Fragment key={section.key}>
+                    {section.key === SIDEBAR_MONITORING_DIVIDER_BEFORE ? (
+                      <div className="nav-group-divider" aria-hidden="true" />
+                    ) : null}
+                    <button
+                      type="button"
+                      className={`nav-item ${isActive ? "active" : ""}`}
+                      onClick={() => onTabChange(section.key)}
+                    >
+                      {section.label}
+                    </button>
+                  </Fragment>
                 );
               })}
             </nav>

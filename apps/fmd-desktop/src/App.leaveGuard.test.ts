@@ -246,6 +246,15 @@ vi.mock("./pages/CardMonitoringPage", async () => {
   return { CardMonitoringPage };
 });
 
+vi.mock("./pages/PointsProfilesPage", () => ({
+  PointsProfilesPage: () =>
+    React.createElement(
+      "div",
+      { "data-testid": "mock-points-profiles-page" },
+      "Points Profiles",
+    ),
+}));
+
 vi.mock("./pages/FastFlashcardPage", () => ({
   FastFlashcardPage: () =>
     React.createElement("div", { "data-testid": "mock-fast-flashcard-page" }, "Fast"),

@@ -35,20 +35,10 @@ import { importExamMarkdown, isExamMarkdown } from "../../features/exam-editor/i
 import { findNextNewExamFilename } from "../../features/exam-editor/fileNaming";
 import type { UseExamPointsProfilesHandle } from "../../features/exam-points/useExamPointsProfiles";
 import {
-  EXAM_POINTS_DEFAULT_DURATION_MINUTES,
-  EXAM_POINTS_MAX_TASK_COUNT,
-  createDefaultTypeRules,
-  normalizeTaskPoints,
-  normalizeTypeRules,
-  type ExamPointsDistribution,
-  type ExamPointsProfile,
-} from "../../lib/exam/pointsProfiles";
-import {
   removeExamTaskFrontmatterValue,
   resolveExamTaskFrontmatterValue,
   upsertExamTaskFrontmatterValue,
 } from "../../features/exam-points/frontmatterTask";
-import { AUTO_CARD_TYPES } from "../../lib/exam/autoCards";
 import { CardsIcon } from "../../components/icons";
 import { CardPalette } from "./components/CardPalette";
 import { ExamCanvas } from "./components/ExamCanvas";
@@ -91,41 +81,6 @@ type ExamEditorViewProps = {
     renamedFromPath?: string;
   }) => void;
 };
-
-type DraftPointsTypeRule = {
-  points: string;
-  mode: "all-or-nothing" | "partial";
-  penalty: string;
-};
-
-type DraftPointsTypeRuleMap = Record<string, DraftPointsTypeRule>;
-
-const clampNonNegativeInteger = (value: string | number, fallback = 0) => {
-  const parsed =
-    typeof value === "number"
-      ? value
-      : Number.parseInt(String(value).trim() || String(fallback), 10);
-  if (!Number.isFinite(parsed)) {
-    return fallback;
-  }
-  return Math.max(0, Math.floor(parsed));
-};
-
-const toTaskPointsDraft = (profile: ExamPointsProfile) =>
-  profile.taskPoints
-    .slice(0, EXAM_POINTS_MAX_TASK_COUNT)
-    .map((points) => String(Math.max(0, Math.floor(points))));
-
-const toTypeRulesDraft = (profile: ExamPointsProfile): DraftPointsTypeRuleMap =>
-  AUTO_CARD_TYPES.reduce((acc, type) => {
-    const rule = profile.typeRules[type];
-    acc[type] = {
-      points: String(Math.max(0, Math.floor(rule?.points ?? 0))),
-      mode: rule?.mode === "partial" ? "partial" : "all-or-nothing",
-      penalty: String(Math.max(0, Math.floor(rule?.penalty ?? 0))),
-    };
-    return acc;
-  }, {} as DraftPointsTypeRuleMap);
 
 const resolveMarkdownWithTaskProfile = ({
   sourceMarkdown,
@@ -348,34 +303,6 @@ export const ExamEditorView = ({
   );
   const [importMessage, setImportMessage] = useState("");
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
-  const [pointsMessage, setPointsMessage] = useState("");
-  const [pointsError, setPointsError] = useState("");
-  const [newPointsProfileName, setNewPointsProfileName] = useState("");
-  const [draftProfileName, setDraftProfileName] = useState("");
-  const [, setDraftDistribution] = useState<ExamPointsDistribution>("task-order");
-  const [draftTaskCount, setDraftTaskCount] = useState("5");
-  const [draftMaxTotalPoints, setDraftMaxTotalPoints] = useState("20");
-  const [draftDurationMinutes, setDraftDurationMinutes] = useState(
-    String(EXAM_POINTS_DEFAULT_DURATION_MINUTES),
-  );
-  const [draftTaskPoints, setDraftTaskPoints] = useState<string[]>(
-    Array.from({ length: EXAM_POINTS_MAX_TASK_COUNT }, () => "0"),
-  );
-  const [draftTypeRules, setDraftTypeRules] = useState<DraftPointsTypeRuleMap>(() =>
-    toTypeRulesDraft({
-      id: "draft",
-      name: "draft",
-      distribution: "task-order",
-      durationMinutes: EXAM_POINTS_DEFAULT_DURATION_MINUTES,
-      taskCount: 5,
-      maxTotalPoints: 20,
-      taskPoints: Array.from({ length: EXAM_POINTS_MAX_TASK_COUNT }, () => 0),
-      typeRules: createDefaultTypeRules(1),
-      createdAt: "",
-      updatedAt: "",
-      version: 1,
-    }),
-  );
   const [contentModalOpen, setContentModalOpen] = useState(false);
   const [paletteModalOpen, setPaletteModalOpen] = useState(false);
   const [propertiesModalOpen, setPropertiesModalOpen] = useState(false);
@@ -476,22 +403,6 @@ export const ExamEditorView = ({
   const assignedProfileNameForSelect = assignedProfileResolution.missing
     ? "__missing__"
     : assignedProfileResolution.profile?.name ?? "__standard__";
-
-  useEffect(() => {
-    const selectedProfile = pointsProfiles.selectedProfile;
-    if (!selectedProfile) {
-      return;
-    }
-    setDraftProfileName(selectedProfile.name);
-    setDraftDistribution("task-order");
-    setDraftDurationMinutes(String(selectedProfile.durationMinutes));
-    setDraftTaskCount(String(selectedProfile.taskCount));
-    setDraftMaxTotalPoints(String(selectedProfile.maxTotalPoints));
-    setDraftTaskPoints(toTaskPointsDraft(selectedProfile));
-    setDraftTypeRules(toTypeRulesDraft(selectedProfile));
-    setPointsError("");
-    setPointsMessage("");
-  }, [pointsProfiles.selectedProfile]);
 
   useEffect(() => {
     if (!assignedTaskProfileName || assignedTaskProfileName.trim()) {
@@ -963,212 +874,6 @@ export const ExamEditorView = ({
     setSaveState("idle");
   }, []);
 
-  const handleCreatePointsProfile = useCallback(async () => {
-    const requestedName = newPointsProfileName.trim();
-    if (!requestedName) {
-      setPointsError("Profile name is required.");
-      return;
-    }
-    setPointsError("");
-    setPointsMessage("");
-    const created = await pointsProfiles.createProfile(requestedName, {
-      seedFromProfileId: pointsProfiles.selectedProfileId,
-    });
-    if (!created.ok || !created.profile) {
-      setPointsError(created.error ?? "Profile could not be created.");
-      return;
-    }
-    setNewPointsProfileName("");
-    setPointsMessage(`Profile "${created.profile.name}" created.`);
-  }, [newPointsProfileName, pointsProfiles]);
-
-  const handleSetSelectedProfileAsDefault = useCallback(async () => {
-    const selectedId = pointsProfiles.selectedProfileId;
-    if (!selectedId) {
-      return;
-    }
-    const ok = await pointsProfiles.setDefaultProfileId(selectedId);
-    if (!ok) {
-      setPointsError("Default profile could not be updated.");
-      return;
-    }
-    setPointsError("");
-    setPointsMessage("Default profile updated.");
-  }, [pointsProfiles]);
-
-  const handleDeleteSelectedPointsProfile = useCallback(async () => {
-    const selected = pointsProfiles.selectedProfile;
-    if (!selected) {
-      return;
-    }
-    const isAssignedToCurrentExam =
-      assignedProfileResolution.profile?.id === selected.id;
-    const remainingProfiles = pointsProfiles.profiles.filter((profile) => profile.id !== selected.id);
-    const fallbackAssignedProfile =
-      selected.id === pointsProfiles.defaultProfileId
-        ? (remainingProfiles[0] ?? null)
-        : (pointsProfiles.defaultProfile ?? remainingProfiles[0] ?? null);
-    const currentRelativePath = normalizeRelativePath(sourceRelativePath ?? "");
-    const currentAbsolutePath = normalizeVaultPath(sourcePath ?? "");
-    if (vaultFiles && vaultFiles.length > 0) {
-      const markdownFiles = vaultFiles.filter((file) =>
-        file.relative_path.toLowerCase().endsWith(".md"),
-      );
-      const usages = await Promise.all(
-        markdownFiles.map(async (file) => {
-          const fileRelativePath = normalizeRelativePath(file.relative_path ?? "");
-          const fileAbsolutePath = normalizeVaultPath(file.path ?? "");
-          const isCurrentSourceFile =
-            (Boolean(currentRelativePath) && fileRelativePath === currentRelativePath) ||
-            (Boolean(currentAbsolutePath) && fileAbsolutePath === currentAbsolutePath);
-          if (isAssignedToCurrentExam && isCurrentSourceFile) {
-            return null;
-          }
-          try {
-            const contents = await invoke<string>("read_text_file", { path: file.path });
-            const assigned = resolveExamTaskFrontmatterValue(contents);
-            return assigned?.trim() === selected.name
-              ? file.relative_path || file.path
-              : null;
-          } catch {
-            return null;
-          }
-        }),
-      );
-      const matches = usages.filter((entry): entry is string => Boolean(entry));
-      if (matches.length > 0) {
-        const preview = matches.slice(0, 3).join(", ");
-        const suffix = matches.length > 3 ? ` (+${matches.length - 3} more)` : "";
-        setPointsError(
-          `Profile "${selected.name}" is still used in ${matches.length} file(s): ${preview}${suffix}`,
-        );
-        return;
-      }
-    }
-    setPointsError("");
-    setPointsMessage("");
-    const deleted = await pointsProfiles.deleteProfile(selected.id);
-    if (!deleted.ok || !deleted.profile) {
-      setPointsError(deleted.error ?? "Profile could not be deleted.");
-      return;
-    }
-    if (isAssignedToCurrentExam) {
-      handleAssignTaskProfileName(fallbackAssignedProfile?.name ?? null);
-      if (fallbackAssignedProfile?.name) {
-        setPointsMessage(
-          `Profile "${deleted.profile.name}" deleted. Current exam switched to default "${fallbackAssignedProfile.name}".`,
-        );
-      } else {
-        setPointsMessage(
-          `Profile "${deleted.profile.name}" deleted. Current exam switched to standard.`,
-        );
-      }
-      return;
-    }
-    setPointsMessage(`Profile "${deleted.profile.name}" deleted.`);
-  }, [
-    assignedProfileResolution.profile,
-    handleAssignTaskProfileName,
-    pointsProfiles,
-    sourcePath,
-    sourceRelativePath,
-    vaultFiles,
-  ]);
-
-  const handleDraftTaskPointChange = useCallback((index: number, value: string) => {
-    setDraftTaskPoints((prev) => {
-      const next = [...prev];
-      next[index] = value;
-      return next;
-    });
-  }, []);
-
-  const handleSavePointsProfile = useCallback(async () => {
-    const selected = pointsProfiles.selectedProfile;
-    if (!selected) {
-      return;
-    }
-    const nextName = draftProfileName.trim();
-    if (!nextName) {
-      setPointsError("Profile name is required.");
-      return;
-    }
-
-    setPointsError("");
-    setPointsMessage("");
-
-    let renamedName = selected.name;
-    if (nextName !== selected.name) {
-      const renamed = await pointsProfiles.renameProfile(selected.id, nextName);
-      if (!renamed.ok || !renamed.profile) {
-        setPointsError(renamed.error ?? "Profile could not be renamed.");
-        return;
-      }
-      renamedName = renamed.profile.name;
-      if (
-        assignedTaskProfileName &&
-        assignedTaskProfileName.trim() === selected.name
-      ) {
-        setAssignedTaskProfileName(renamedName);
-      }
-    }
-
-    const normalizedTaskCount = Math.min(
-      EXAM_POINTS_MAX_TASK_COUNT,
-      Math.max(1, clampNonNegativeInteger(draftTaskCount, selected.taskCount)),
-    );
-    const normalizedMax = clampNonNegativeInteger(
-      draftMaxTotalPoints,
-      selected.maxTotalPoints,
-    );
-    const normalizedDurationMinutes = Math.min(
-      240,
-      clampNonNegativeInteger(draftDurationMinutes, selected.durationMinutes),
-    );
-    const nextTaskPoints = normalizeTaskPoints(
-      draftTaskPoints.map((entry) => clampNonNegativeInteger(entry, 0)),
-      normalizedTaskCount,
-      normalizedMax,
-    );
-    const nextTypeRules = normalizeTypeRules(
-      AUTO_CARD_TYPES.reduce((acc, type) => {
-        const draft = draftTypeRules[type];
-        acc[type] = {
-          points: clampNonNegativeInteger(draft?.points ?? "0", 0),
-          mode: draft?.mode === "partial" ? "partial" : "all-or-nothing",
-          penalty: clampNonNegativeInteger(draft?.penalty ?? "0", 0),
-        };
-        return acc;
-      }, {} as Record<string, { points: number; mode: string; penalty: number }>),
-      1,
-    );
-
-    const updated = await pointsProfiles.updateProfile(selected.id, (profile) => ({
-      ...profile,
-      name: renamedName,
-      distribution: "task-order",
-      durationMinutes: normalizedDurationMinutes,
-      taskCount: normalizedTaskCount,
-      maxTotalPoints: normalizedMax,
-      taskPoints: nextTaskPoints,
-      typeRules: nextTypeRules,
-    }));
-    if (!updated.ok || !updated.profile) {
-      setPointsError(updated.error ?? "Profile could not be saved.");
-      return;
-    }
-    setPointsMessage(`Profile "${updated.profile.name}" saved.`);
-  }, [
-    assignedTaskProfileName,
-    draftDurationMinutes,
-    draftMaxTotalPoints,
-    draftProfileName,
-    draftTaskCount,
-    draftTaskPoints,
-    draftTypeRules,
-    pointsProfiles,
-  ]);
-
   const handleNewExam = useCallback(async () => {
     setSaveError("");
     setImportMessage("");
@@ -1590,7 +1295,7 @@ export const ExamEditorView = ({
         if (isEditableTarget(event.target)) {
           return;
         }
-        const modes: ExamEditorMode[] = ["structure", "content", "points"];
+        const modes: ExamEditorMode[] = ["structure", "content"];
         const currentIndex = modes.indexOf(mode);
         if (currentIndex === -1) {
           return;
@@ -1679,8 +1384,6 @@ export const ExamEditorView = ({
     lastLoadedRef.current = { path: sourcePath ?? null, markdown: sourceMarkdown };
     setImportWarnings([]);
     setImportMessage("");
-    setPointsMessage("");
-    setPointsError("");
     setSaveState("idle");
     setSaveError("");
     const sourcePathTitle = deriveExamTitleFromFilePath(sourcePath);
@@ -1891,185 +1594,9 @@ export const ExamEditorView = ({
       {assignedProfileResolution.missing && assignedProfileResolution.requestedName ? (
         <div className="error">
           Missing points profile "{assignedProfileResolution.requestedName}". Create or
-          reassign in the Points tab.
+          reassign in the Points Profiles page.
         </div>
       ) : null}
-    </div>
-  );
-
-  const normalizedDraftTaskCount = Math.min(
-    EXAM_POINTS_MAX_TASK_COUNT,
-    Math.max(1, clampNonNegativeInteger(draftTaskCount, 1)),
-  );
-  const draftTaskPointsSum = draftTaskPoints
-    .slice(0, normalizedDraftTaskCount)
-    .reduce((sum, value) => sum + clampNonNegativeInteger(value, 0), 0);
-
-  const pointsMode = (
-    <div className="exam-editor-content exam-editor-points">
-      <aside className="panel exam-editor-panel points-profile-nav">
-        <header className="panel-header">
-          <div>
-            <h2>Points Profiles</h2>
-            <p className="muted">Create and select profile presets.</p>
-          </div>
-        </header>
-        <div className="panel-body">
-          {pointsProfiles.error ? <div className="error">{pointsProfiles.error}</div> : null}
-          <ul className="points-profile-list">
-            {pointsProfiles.profiles.map((profile) => {
-              const active = profile.id === pointsProfiles.selectedProfileId;
-              const isDefault = profile.id === pointsProfiles.defaultProfileId;
-              return (
-                <li key={profile.id} className={active ? "active" : undefined}>
-                  <button
-                    type="button"
-                    className="points-profile-button"
-                    onClick={() => pointsProfiles.setSelectedProfileId(profile.id)}
-                  >
-                    <span>{profile.name}</span>
-                    {isDefault ? <span className="muted small">Default</span> : null}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-          <div className="points-profile-create">
-            <input
-              type="text"
-              className="text-input"
-              placeholder="New profile name"
-              value={newPointsProfileName}
-              onChange={(event) => setNewPointsProfileName(event.target.value)}
-            />
-            <button
-              type="button"
-              className="ghost small"
-              onClick={() => void handleCreatePointsProfile()}
-              disabled={pointsProfiles.saving}
-            >
-              Create
-            </button>
-          </div>
-          <div className="points-profile-actions">
-            <button
-              type="button"
-              className="ghost small"
-              onClick={() => void handleSetSelectedProfileAsDefault()}
-              disabled={
-                !pointsProfiles.selectedProfileId ||
-                pointsProfiles.selectedProfileId === pointsProfiles.defaultProfileId
-              }
-            >
-              Set as default
-            </button>
-            <button
-              type="button"
-              className="ghost small danger"
-              onClick={() => void handleDeleteSelectedPointsProfile()}
-              disabled={!pointsProfiles.selectedProfileId}
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      </aside>
-      <section className="panel exam-editor-panel points-profile-editor">
-        <header className="panel-header">
-          <div>
-            <h2>Profile Editor</h2>
-            <p className="muted">Configure scoring rules for task order.</p>
-          </div>
-          <button
-            type="button"
-            className="primary small"
-            onClick={() => void handleSavePointsProfile()}
-            disabled={!pointsProfiles.selectedProfile || pointsProfiles.saving}
-          >
-            Save profile
-          </button>
-        </header>
-        <div className="panel-body">
-          <div className="points-profile-content-box">
-            {pointsMessage ? <div className="muted">{pointsMessage}</div> : null}
-            {pointsError ? <div className="error">{pointsError}</div> : null}
-            {!pointsProfiles.selectedProfile ? (
-              <div className="exam-canvas-empty">
-                <p>Select a profile to edit.</p>
-              </div>
-            ) : (
-              <div className="points-profile-form">
-                <label className="setting-row">
-                  <span className="label">PROFILE NAME</span>
-                  <input
-                    type="text"
-                    className="text-input"
-                    value={draftProfileName}
-                    onChange={(event) => setDraftProfileName(event.target.value)}
-                  />
-                </label>
-                <label className="setting-row">
-                  <span className="label">DURATION</span>
-                  <div className="points-profile-duration-input">
-                    <input
-                      type="number"
-                      min={0}
-                      max={240}
-                      className="text-input exam-compact-input"
-                      value={draftDurationMinutes}
-                      onChange={(event) => setDraftDurationMinutes(event.target.value)}
-                    />
-                    <span className="muted">min</span>
-                  </div>
-                </label>
-                <div className="points-profile-grid">
-                  <label className="setting-row">
-                    <span className="label">TASK COUNT</span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={EXAM_POINTS_MAX_TASK_COUNT}
-                      className="text-input exam-compact-input"
-                      value={draftTaskCount}
-                      onChange={(event) => setDraftTaskCount(event.target.value)}
-                    />
-                  </label>
-                  <label className="setting-row">
-                    <span className="label">MAX TOTAL POINTS</span>
-                    <input
-                      type="number"
-                      min={0}
-                      className="text-input exam-compact-input"
-                      value={draftMaxTotalPoints}
-                      onChange={(event) => setDraftMaxTotalPoints(event.target.value)}
-                    />
-                  </label>
-                </div>
-                <div className="exam-points-table">
-                  {Array.from({ length: normalizedDraftTaskCount }, (_, index) => (
-                    <div key={`points-task-${index}`} className="exam-points-row">
-                      <span className="label">TASK {index + 1}</span>
-                      <input
-                        type="number"
-                        min={0}
-                        className="text-input exam-compact-input"
-                        value={draftTaskPoints[index] ?? "0"}
-                        onChange={(event) =>
-                          handleDraftTaskPointChange(index, event.target.value)
-                        }
-                      />
-                    </div>
-                  ))}
-                </div>
-                <div className="muted">
-                  Sum assigned: {draftTaskPointsSum} / Max total:{" "}
-                  {clampNonNegativeInteger(draftMaxTotalPoints, 0)}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
     </div>
   );
 
@@ -2256,7 +1783,7 @@ export const ExamEditorView = ({
             </div>
           </div>
         )
-      ) : mode === "content" ? (
+      ) : (
         isStudyView ? (
           <div className="exam-editor-structure">
             <ExamCanvas
@@ -2319,11 +1846,6 @@ export const ExamEditorView = ({
             />
           </>
         )
-      ) : (
-        <>
-          {alerts}
-          {pointsMode}
-        </>
       )}
     </div>
   );
