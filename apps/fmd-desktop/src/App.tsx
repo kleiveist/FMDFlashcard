@@ -53,6 +53,10 @@ import { registerGlobalShortcuts } from "./keybindings/registerGlobalShortcuts";
 import { useInputDebugInstrumentation } from "./features/input-debug/useInputDebug";
 import { subscribeSettingsFocus } from "./features/settings/settingsDeepLink";
 import type { PreviewFileOpenOptions } from "./features/preview/usePreview";
+import {
+  CardMonitoringPage,
+  type CardMonitoringPageHandle,
+} from "./pages/CardMonitoringPage";
 import { DashboardPage, type DashboardPageHandle, type DashboardView } from "./pages/DashboardPage";
 import { ExamSimulationPage } from "./pages/ExamSimulationPage";
 import { FlashcardPage } from "./pages/FlashcardPage";
@@ -96,6 +100,7 @@ const AppContent = () => {
     null,
   );
   const dashboardRef = useRef<DashboardPageHandle | null>(null);
+  const cardMonitoringRef = useRef<CardMonitoringPageHandle | null>(null);
   const noteButtonRef = useRef<HTMLButtonElement | null>(null);
   const noteWasOpenRef = useRef(false);
   const prevTabRef = useRef<StudySectionKey>(activeTab);
@@ -220,6 +225,17 @@ const AppContent = () => {
         const canLeaveDashboard =
           await dashboardRef.current.requestLeaveDashboard();
         if (!canLeaveDashboard) {
+          return false;
+        }
+      }
+      if (
+        activeTab === "card-monitoring" &&
+        tab !== "card-monitoring" &&
+        cardMonitoringRef.current
+      ) {
+        const canLeaveCardMonitoring =
+          await cardMonitoringRef.current.requestLeaveCardMonitoring();
+        if (!canLeaveCardMonitoring) {
           return false;
         }
       }
@@ -561,6 +577,8 @@ const AppContent = () => {
           />
         ) : activeTab === "flashcard" ? (
           <FlashcardPage onSectionSelect={handleStudySectionSelect} />
+        ) : activeTab === "card-monitoring" ? (
+          <CardMonitoringPage ref={cardMonitoringRef} />
         ) : activeTab === "spaced-repetition" ? (
           <SpacedRepetitionPage onSectionSelect={handleStudySectionSelect} />
         ) : (

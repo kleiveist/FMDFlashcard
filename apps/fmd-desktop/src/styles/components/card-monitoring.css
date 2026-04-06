@@ -1,0 +1,154 @@
+/*
+ * @file apps/fmd-desktop/src/styles/components/card-monitoring.css
+ */
+
+.card-monitoring-panel {
+  min-height: 0;
+}
+
+.card-monitoring-header p {
+  margin: 6px 0 0;
+}
+
+.card-monitoring-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--ui-space-sm);
+  align-items: end;
+}
+
+.card-monitoring-sort-direction {
+  justify-self: start;
+}
+
+.card-monitoring-actions {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--ui-space-sm);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--ui-radius-control);
+  padding: var(--ui-space-sm);
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+.card-monitoring-actions-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-sm);
+  align-items: center;
+}
+
+.card-monitoring-actions-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-xs);
+}
+
+.card-monitoring-list-viewport {
+  position: relative;
+  min-height: 320px;
+  max-height: min(70vh, 820px);
+  overflow: auto;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--ui-radius-control);
+  background: var(--block-bg);
+}
+
+.card-monitoring-list,
+.card-monitoring-list-virtual {
+  position: relative;
+}
+
+.card-monitoring-row-shell {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+}
+
+.card-monitoring-row {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-sm);
+  border-bottom: 1px solid var(--line-soft);
+  padding: 8px 12px;
+}
+
+.card-monitoring-row-folder {
+  font-weight: 700;
+  background: var(--panel);
+}
+
+.card-monitoring-row-file {
+  background: color-mix(in srgb, var(--panel) 76%, transparent);
+}
+
+.card-monitoring-file-selector,
+.card-monitoring-card-selector {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-xs);
+}
+
+.card-monitoring-card-order {
+  font-weight: 700;
+  min-width: 2.2rem;
+}
+
+.card-monitoring-card-type {
+  white-space: nowrap;
+}
+
+.card-monitoring-card-prompt {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-monitoring-card-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-xs);
+}
+
+.card-monitoring-row-card.is-staged {
+  background: color-mix(in srgb, var(--accent-soft) 68%, transparent);
+}
+
+.card-monitoring-leave-modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-sm);
+}
+
+.card-monitoring-leave-modal p {
+  margin: 0;
+}
+
+.card-monitoring-leave-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--ui-space-xs);
+}
+
+@media (max-width: 860px) {
+  .card-monitoring-actions {
+    position: static;
+  }
+
+  .card-monitoring-list-viewport {
+    max-height: none;
+  }
+
+  .card-monitoring-card-actions {
+    display: none;
+  }
+}

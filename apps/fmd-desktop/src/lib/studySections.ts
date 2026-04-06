@@ -2,6 +2,7 @@ export type StudySectionKey =
   | "dashboard"
   | "exam"
   | "flashcard"
+  | "card-monitoring"
   | "fast-flashcard"
   | "spaced-repetition";
 
@@ -16,6 +17,7 @@ export const STUDY_SECTIONS: StudySection[] = [
   { key: "flashcard", label: "Flashcard" },
   { key: "fast-flashcard", label: "Fast Flashcard" },
   { key: "spaced-repetition", label: "Repetition" },
+  { key: "card-monitoring", label: "Card Monitoring" },
 ];
 
 export const CARD_SECTIONS = STUDY_SECTIONS.filter(

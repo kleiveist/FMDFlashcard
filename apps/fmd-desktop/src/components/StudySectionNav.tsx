@@ -18,6 +18,7 @@ import {
   ExamEditorIcon,
   FolderIcon,
   GaugeIcon,
+  GridEventIcon,
   MarkdownIcon,
   MenuIcon,
   RefreshIcon,
@@ -39,6 +40,7 @@ const SECTION_ICONS: Record<StudySectionKey, ComponentType> = {
   dashboard: FolderIcon,
   exam: ExamEditorIcon,
   flashcard: CardsIcon,
+  "card-monitoring": GridEventIcon,
   "fast-flashcard": GaugeIcon,
   "spaced-repetition": RefreshIcon,
 };

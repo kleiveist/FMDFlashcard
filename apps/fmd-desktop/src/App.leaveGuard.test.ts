@@ -11,6 +11,11 @@ const dashboardGuard = vi.hoisted(() => ({
   requests: 0,
 }));
 
+const cardMonitoringGuard = vi.hoisted(() => ({
+  canLeave: true,
+  requests: 0,
+}));
+
 const appStateHolder = vi.hoisted(() => ({
   value: null as unknown,
 }));
@@ -72,6 +77,15 @@ vi.mock("./components/SidebarNav", () => ({
         "button",
         {
           type: "button",
+          "data-testid": "sidebar-switch-card-monitoring",
+          onClick: () => onTabChange("card-monitoring"),
+        },
+        "Sidebar: card monitoring",
+      ),
+      React.createElement(
+        "button",
+        {
+          type: "button",
           "data-testid": "sidebar-select-file",
           onClick: () =>
             onSelectVaultFile?.({
@@ -126,6 +140,15 @@ vi.mock("./components/StudySectionNav", () => ({
           onClick: () => onSectionSelect("flashcard"),
         },
         "StudyNav: flashcard",
+      ),
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          "data-testid": "study-nav-switch-card-monitoring",
+          onClick: () => onSectionSelect("card-monitoring"),
+        },
+        "StudyNav: card monitoring",
       ),
     ),
 }));
@@ -203,6 +226,25 @@ vi.mock("./pages/FlashcardPage", () => ({
   FlashcardPage: () =>
     React.createElement("div", { "data-testid": "mock-flashcard-page" }, "Flashcard"),
 }));
+
+vi.mock("./pages/CardMonitoringPage", async () => {
+  const ReactModule = await import("react");
+  const CardMonitoringPage = ReactModule.forwardRef((_props, ref) => {
+    ReactModule.useImperativeHandle(ref, () => ({
+      requestLeaveCardMonitoring: async () => {
+        cardMonitoringGuard.requests += 1;
+        return cardMonitoringGuard.canLeave;
+      },
+    }));
+    return ReactModule.createElement(
+      "div",
+      { "data-testid": "mock-card-monitoring-page" },
+      "Card Monitoring",
+    );
+  });
+  CardMonitoringPage.displayName = "MockCardMonitoringPage";
+  return { CardMonitoringPage };
+});
 
 vi.mock("./pages/FastFlashcardPage", () => ({
   FastFlashcardPage: () =>
@@ -381,6 +423,8 @@ describe("App dashboard leave guard integration", () => {
     vi.clearAllMocks();
     dashboardGuard.canLeave = true;
     dashboardGuard.requests = 0;
+    cardMonitoringGuard.canLeave = true;
+    cardMonitoringGuard.requests = 0;
     appStateHolder.value = createMockAppState();
   });
 
@@ -517,6 +561,41 @@ describe("App dashboard leave guard integration", () => {
       { openInNewTab: true },
     );
     expect(container.querySelector('[data-testid="mock-dashboard-page"]')).toBeTruthy();
+
+    cleanup();
+  });
+
+  it("blocks tab switches when card monitoring denies leave", async () => {
+    const { container, cleanup } = renderApp();
+
+    await clickTestId(container, "study-nav-switch-card-monitoring");
+    expect(container.querySelector('[data-testid="mock-card-monitoring-page"]')).toBeTruthy();
+
+    cardMonitoringGuard.requests = 0;
+    cardMonitoringGuard.canLeave = false;
+
+    await clickTestId(container, "study-nav-switch-exam");
+
+    expect(cardMonitoringGuard.requests).toBe(1);
+    expect(container.querySelector('[data-testid="mock-card-monitoring-page"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="mock-exam-simulation-page"]')).toBeNull();
+
+    cleanup();
+  });
+
+  it("allows tab switches when card monitoring confirms leave", async () => {
+    const { container, cleanup } = renderApp();
+
+    await clickTestId(container, "sidebar-switch-card-monitoring");
+    expect(container.querySelector('[data-testid="mock-card-monitoring-page"]')).toBeTruthy();
+
+    cardMonitoringGuard.requests = 0;
+    cardMonitoringGuard.canLeave = true;
+
+    await clickTestId(container, "study-nav-switch-exam");
+
+    expect(cardMonitoringGuard.requests).toBe(1);
+    expect(container.querySelector('[data-testid="mock-exam-simulation-page"]')).toBeTruthy();
 
     cleanup();
   });
