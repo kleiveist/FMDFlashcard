@@ -92,7 +92,7 @@ export type CardMonitoringPageHandle = {
   requestLeaveCardMonitoring: () => Promise<boolean>;
 };
 
-type CardMonitoringPageProps = Record<string, never>;
+type CardMonitoringPageProps = {};
 
 const pruneSelection = (values: Set<string>, validIds: Set<string>) => {
   const next = new Set<string>();

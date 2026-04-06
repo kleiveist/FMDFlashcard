@@ -107,9 +107,13 @@ describe("CardMonitoringPage", () => {
       },
     } as unknown as ReturnType<typeof useAppState>);
 
-    mockInvoke.mockImplementation(async (command, args?: Record<string, unknown>) => {
+    mockInvoke.mockImplementation(async (command, args) => {
+      const payload =
+        args && typeof args === "object" && !Array.isArray(args)
+          ? (args as Record<string, unknown>)
+          : {};
       if (command === "read_text_file") {
-        return contentsByPath[String(args?.path ?? "")] ?? "";
+        return contentsByPath[String(payload.path ?? "")] ?? "";
       }
       return null;
     });
@@ -156,13 +160,17 @@ describe("CardMonitoringPage", () => {
       },
     } as unknown as ReturnType<typeof useAppState>);
 
-    mockInvoke.mockImplementation(async (command, args?: Record<string, unknown>) => {
+    mockInvoke.mockImplementation(async (command, args) => {
+      const payload =
+        args && typeof args === "object" && !Array.isArray(args)
+          ? (args as Record<string, unknown>)
+          : {};
       if (command === "read_text_file") {
-        return contentsByPath[String(args?.path ?? "")] ?? "";
+        return contentsByPath[String(payload.path ?? "")] ?? "";
       }
       if (command === "write_text_file_atomic") {
-        const path = String(args?.path ?? "");
-        const contents = String(args?.contents ?? "");
+        const path = String(payload.path ?? "");
+        const contents = String(payload.contents ?? "");
         contentsByPath[path] = contents;
         return null;
       }

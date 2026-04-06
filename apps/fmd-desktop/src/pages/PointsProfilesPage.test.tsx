@@ -125,11 +125,15 @@ describe("PointsProfilesPage", () => {
       },
     } as unknown as ReturnType<typeof useAppState>);
 
-    mockInvoke.mockImplementation(async (command, args?: Record<string, unknown>) => {
+    mockInvoke.mockImplementation(async (command, args) => {
+      const payload =
+        args && typeof args === "object" && !Array.isArray(args)
+          ? (args as Record<string, unknown>)
+          : {};
       if (command !== "read_text_file") {
         return null;
       }
-      const path = String(args?.path ?? "");
+      const path = String(payload.path ?? "");
       if (path.endsWith("/folder/exam.md")) {
         return ["---", "Task: Exam", "---", "# doc"].join("\n");
       }
