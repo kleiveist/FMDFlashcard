@@ -89,6 +89,7 @@ type DashboardPageProps = {
   gateCtaLabel?: string;
   onOpenGate?: () => void;
   onOpenPointsProfilesPage?: () => void;
+  onOpenExamFromDatabaseRecord?: (target: { path: string; relativePath: string }) => void;
 };
 
 export type DashboardPageHandle = {
@@ -110,10 +111,19 @@ const DashboardPageInner = (
     gateCtaLabel,
     onOpenGate,
     onOpenPointsProfilesPage,
+    onOpenExamFromDatabaseRecord,
   }: DashboardPageProps,
   ref: ForwardedRef<DashboardPageHandle>,
 ) => {
-  const { actions, pointsProfiles, preview, settings, vault } = useAppState();
+  const {
+    actions,
+    examFiles: rawExamFiles,
+    pointsProfiles,
+    preview,
+    settings,
+    vault,
+  } = useAppState();
+  const examFiles = rawExamFiles ?? [];
   const [isEditing, setIsEditing] = useState(false);
   const [editDraft, setEditDraft] = useState("");
   const [editDraftSourcePath, setEditDraftSourcePath] = useState<string | null>(null);
@@ -229,6 +239,13 @@ const DashboardPageInner = (
     }
     return `${base} im Ordner ${normalizedActiveFolderPath}`;
   }, [normalizedActiveFolderPath, visibleFiles.length, vault.vaultPath]);
+  const runnableExamRelativePaths = useMemo(
+    () =>
+      examFiles
+        .filter((file) => file.status === "valid")
+        .map((file) => normalizeRelativePath(file.relative_path)),
+    [examFiles],
+  );
   const canEdit =
     Boolean(preview.selectedFile) && preview.previewState === "idle";
   const selectedMarkdownPath = preview.selectedFile?.path ?? null;
@@ -1104,6 +1121,12 @@ const DashboardPageInner = (
   );
 
   const noteModalActive = noteModalEnabled && isNoteModalOpen;
+  const handleOpenExamFromDatabase = useCallback(
+    (target: { path: string; relativePath: string }) => {
+      onOpenExamFromDatabaseRecord?.(target);
+    },
+    [onOpenExamFromDatabaseRecord],
+  );
   const handleNoteModalClose = useCallback(() => {
     onNoteModalClose?.();
   }, [onNoteModalClose]);
@@ -1307,6 +1330,8 @@ const DashboardPageInner = (
             onWriteCancel={handleWriteCancel}
             onFrontmatterSave={handleFrontmatterSave}
             onNavigateWikilink={handleFrontmatterWikilinkNavigate}
+            runnableExamRelativePaths={runnableExamRelativePaths}
+            onOpenExamFromDatabaseRecord={handleOpenExamFromDatabase}
             onOpenTaskProfileEditor={handleOpenTaskProfileEditor}
             taskProfileSummariesByName={frontmatterTaskProfileSummaries}
             valueSuggestionsByKey={frontmatterValueSuggestions}

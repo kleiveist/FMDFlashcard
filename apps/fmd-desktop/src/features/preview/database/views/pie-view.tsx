@@ -42,6 +42,7 @@ const PIE_COLORS = [
 const EMPTY_LABEL = "(leer)";
 
 const toLower = (value: string) => value.trim().toLowerCase();
+const isExamFieldKey = (key: string) => toLower(key) === "exam";
 
 const getRecordValueByField = (record: DatabaseRecord, field: string): DatabaseNormalizedFieldValue => {
   if (field in record.normalizedFields) {
@@ -308,10 +309,12 @@ export const DatabasePieView = ({
     const excludedKeys = new Set<string>([
       groupAttribute.key,
       ...(aggregateAttribute ? [aggregateAttribute.key] : []),
+      "Exam",
     ].map((key) => toLower(key)));
 
     const selectedProperties = visibleProperties
-      .filter((property) => !excludedKeys.has(toLower(property.key)));
+      .filter((property) =>
+        !excludedKeys.has(toLower(property.key)) && !isExamFieldKey(property.key));
 
     const detailMap = new Map<string, Array<{ key: string; label: string; text: string }>>();
     buckets.forEach((bucket) => {

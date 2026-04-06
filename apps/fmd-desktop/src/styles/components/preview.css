@@ -5870,6 +5870,33 @@ textarea.preview-editor {
   text-underline-offset: 2px;
 }
 
+.database-exam-action {
+  border: 1px solid color-mix(in srgb, var(--accent-border) 74%, var(--db-border));
+  background: color-mix(in srgb, var(--accent-soft) 22%, var(--db-surface-raised));
+  color: var(--accent-strong);
+  border-radius: max(4px, calc(var(--db-radius-control) - 1px));
+  padding: 1px 8px;
+  min-height: calc(var(--db-control-height) - 10px);
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.database-exam-action:hover {
+  border-color: color-mix(in srgb, var(--accent-border) 82%, var(--db-border));
+  background: color-mix(in srgb, var(--accent-soft) 28%, var(--db-surface-raised));
+}
+
+.database-exam-action:active {
+  background: color-mix(in srgb, var(--accent-soft) 34%, var(--db-surface-raised));
+}
+
+.database-exam-action:focus-visible {
+  outline: var(--ui-focus-outline);
+  outline-offset: 1px;
+}
+
 .database-table-empty,
 .database-view-empty {
   padding: 12px;
@@ -6503,6 +6530,10 @@ textarea.preview-editor {
   text-overflow: ellipsis;
 }
 
+.database-gantt-row-meta .database-exam-action {
+  pointer-events: auto;
+}
+
 .database-gantt-bar {
   position: absolute;
   inset-block-start: 50%;
@@ -6773,6 +6804,10 @@ textarea.preview-editor {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.database-project-row-meta .database-exam-action {
+  pointer-events: auto;
 }
 
 .database-project-bar {

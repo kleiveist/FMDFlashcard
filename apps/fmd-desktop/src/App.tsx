@@ -72,6 +72,10 @@ import { SMART_QUERY } from "./lib/breakpoints";
 type WalletGateId = "custom-path" | "profile" | "sync-provider";
 const isTaskAreaTab = (tab: StudySectionKey) =>
   tab === "flashcard" || tab === "fast-flashcard" || tab === "spaced-repetition";
+type ExamLaunchPreset = {
+  id: number;
+  combinationMode: "nested";
+};
 
 const AppContent = () => {
   const {
@@ -96,6 +100,9 @@ const AppContent = () => {
   const [activeTab, setActiveTab] = useState<StudySectionKey>("dashboard");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [dashboardView, setDashboardView] = useState<DashboardView>("markdown");
+  const [examLaunchPreset, setExamLaunchPreset] = useState<ExamLaunchPreset | null>(
+    null,
+  );
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [noteDialogSection, setNoteDialogSection] = useState<StudySectionKey | null>(
     null,
@@ -106,6 +113,7 @@ const AppContent = () => {
   const noteWasOpenRef = useRef(false);
   const prevTabRef = useRef<StudySectionKey>(activeTab);
   const prevDashboardViewRef = useRef<DashboardView>(dashboardView);
+  const nextExamLaunchPresetIdRef = useRef(1);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUserRegistryModalOpen, setIsUserRegistryModalOpen] = useState(false);
@@ -454,6 +462,34 @@ const AppContent = () => {
     void handleTabChange("points-profiles");
   }, [handleTabChange]);
 
+  const handleOpenExamFromDatabaseRecord = useCallback(
+    (target: { path: string; relativePath: string }) => {
+      void (async () => {
+        const changed = await handleTabChange("exam");
+        if (!changed) {
+          return;
+        }
+        actions.handleSetSelectedExamFiles([target.path]);
+        const presetId = nextExamLaunchPresetIdRef.current;
+        nextExamLaunchPresetIdRef.current += 1;
+        setExamLaunchPreset({
+          id: presetId,
+          combinationMode: "nested",
+        });
+      })();
+    },
+    [actions, handleTabChange],
+  );
+
+  const handleConsumeExamLaunchPreset = useCallback((presetId: number) => {
+    setExamLaunchPreset((current) => {
+      if (!current || current.id !== presetId) {
+        return current;
+      }
+      return null;
+    });
+  }, []);
+
   const handleOpenUserManager = useCallback(() => {
     setIsUserRegistryModalOpen(true);
   }, []);
@@ -560,6 +596,7 @@ const AppContent = () => {
             initialVaultView={dashboardView}
             onVaultViewChange={setDashboardView}
             onOpenPointsProfilesPage={handleOpenPointsProfilesFromDashboard}
+            onOpenExamFromDatabaseRecord={handleOpenExamFromDatabaseRecord}
             isNoteModalOpen={isNoteModalOpen}
             noteModalEnabled={isNoteModalEligible}
             onNoteModalClose={handleNoteModalClose}
@@ -577,6 +614,8 @@ const AppContent = () => {
             isRunSummaryNoteActionActive={
               isNoteModalOpen && noteDialogSection === "exam"
             }
+            launchPreset={examLaunchPreset}
+            onConsumeLaunchPreset={handleConsumeExamLaunchPreset}
             isExamFilesNoteOpen={isNoteModalOpen && noteDialogSection === "exam"}
             onCloseExamFilesNote={handleNoteModalClose}
             onOpenExamFileInMarkdownEditor={handleOpenExamFileInMarkdownEditor}

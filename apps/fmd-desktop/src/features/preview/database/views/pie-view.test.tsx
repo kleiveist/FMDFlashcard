@@ -90,6 +90,25 @@ const ownerAttribute: DatabaseAttributeMeta = {
   },
 };
 
+const examAttribute: DatabaseAttributeMeta = {
+  key: "Exam",
+  label: "Exam",
+  type: "boolean",
+  origin: "system",
+  formula: null,
+  editable: false,
+  sortable: true,
+  filterable: true,
+  aggregatable: false,
+  viewCompatibility: {
+    supportsTable: true,
+    supportsKanbanGrouping: true,
+    supportsTimeline: false,
+    supportsPieGrouping: true,
+    supportsAggregation: false,
+  },
+};
+
 const baseRecord: DatabaseRecord = {
   fileId: "a.md",
   filePath: "/vault/a.md",
@@ -104,6 +123,7 @@ const baseRecord: DatabaseRecord = {
   normalizedFields: {
     status: { raw: "Open" },
     tags: ["alpha", "beta"],
+    Exam: true,
     Score: {
       raw: "20/25",
       value: 20,
@@ -392,6 +412,34 @@ describe("DatabasePieView", () => {
     const labels = Array.from(container.querySelectorAll(".database-pie-legend-label"))
       .map((node) => node.textContent?.trim());
     expect(labels).toEqual(["Open", "Done"]);
+
+    cleanup();
+  });
+
+  it("does not render Exam property inside pie legend details", () => {
+    const ownerRecord: DatabaseRecord = {
+      ...baseRecord,
+      fileId: "owner-exam.md",
+      filePath: "/vault/owner-exam.md",
+      relativePath: "owner-exam.md",
+      normalizedFields: {
+        ...baseRecord.normalizedFields,
+        owner: "Alice",
+        Exam: true,
+      },
+    };
+    const { container, cleanup } = render(
+      createElement(DatabasePieView, {
+        records: [ownerRecord],
+        groupAttribute: statusGroupAttribute,
+        aggregate: "count",
+        aggregateAttribute: null,
+        visibleProperties: [ownerAttribute, examAttribute],
+      }),
+    );
+
+    expect(container.querySelector(".database-pie-legend-details")?.textContent ?? "")
+      .not.toContain("Exam");
 
     cleanup();
   });

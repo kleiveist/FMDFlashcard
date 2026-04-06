@@ -47,6 +47,7 @@ import { useExamSimulationViewModel } from "./hooks/useExamSimulationViewModel";
 import { ExamTogglesPanel } from "../../components/settings/ExamSettingsSection";
 import { useLayoutMode } from "../../lib/layoutMode";
 import { requestSettingsFocus } from "../../features/settings/settingsDeepLink";
+import type { ExamCombinationMode } from "../../lib/examMixedSession";
 import {
   formatBinding,
   getEffectiveBinding,
@@ -68,11 +69,17 @@ type OpenExamFileTarget = {
 type OpenExamFileOptions = {
   openInNewTab?: boolean;
 };
+type ExamLaunchPreset = {
+  id: number;
+  combinationMode: ExamCombinationMode;
+};
 
 type ExamSimulationPageProps = {
   runSummaryNoteActionEnabled?: boolean;
   onRunSummaryNoteAction?: () => void;
   isRunSummaryNoteActionActive?: boolean;
+  launchPreset?: ExamLaunchPreset | null;
+  onConsumeLaunchPreset?: (presetId: number) => void;
   isExamFilesNoteOpen?: boolean;
   onCloseExamFilesNote?: () => void;
   onOpenExamFileInMarkdownEditor?: (
@@ -85,6 +92,8 @@ export const ExamSimulationPage = ({
   runSummaryNoteActionEnabled = false,
   onRunSummaryNoteAction,
   isRunSummaryNoteActionActive = false,
+  launchPreset = null,
+  onConsumeLaunchPreset,
   isExamFilesNoteOpen = false,
   onCloseExamFilesNote = () => undefined,
   onOpenExamFileInMarkdownEditor,
@@ -188,6 +197,7 @@ export const ExamSimulationPage = ({
   const [overviewStatsTab, setOverviewStatsTab] = useState<StatsTab>("last");
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isExamTogglesOpen, setIsExamTogglesOpen] = useState(false);
+  const consumedLaunchPresetIdRef = useRef<number | null>(null);
   const autoViewModeRef = useRef(false);
   const isTableView = useLayoutMode() === "table";
   const openExamToggles = useCallback(() => {
@@ -221,6 +231,17 @@ export const ExamSimulationPage = ({
         : combinationMode === "sequential-shuffled"
           ? "Sequential + internal shuffle"
           : "Nested";
+  useEffect(() => {
+    if (!launchPreset) {
+      return;
+    }
+    if (consumedLaunchPresetIdRef.current === launchPreset.id) {
+      return;
+    }
+    handleCombinationModeChange(launchPreset.combinationMode);
+    consumedLaunchPresetIdRef.current = launchPreset.id;
+    onConsumeLaunchPreset?.(launchPreset.id);
+  }, [handleCombinationModeChange, launchPreset, onConsumeLaunchPreset]);
   const handleOpenExamFile = useCallback(
     (entry: OpenExamFileTarget, options?: OpenExamFileOptions) => {
       onOpenExamFileInMarkdownEditor?.(

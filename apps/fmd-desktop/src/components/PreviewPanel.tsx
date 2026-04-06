@@ -1557,6 +1557,8 @@ type PreviewPanelProps = {
   onWriteCancel?: () => void;
   onFrontmatterSave?: (nextPreview: string) => Promise<boolean>;
   onNavigateWikilink?: (wikilink: string) => void;
+  runnableExamRelativePaths?: string[];
+  onOpenExamFromDatabaseRecord?: (target: { path: string; relativePath: string }) => void;
   onOpenTaskProfileEditor?: (params: {
     taskValue: string | null;
     propertyKey: string;
@@ -8296,6 +8298,8 @@ export const PreviewPanel = ({
   onWriteCancel,
   onFrontmatterSave,
   onNavigateWikilink,
+  runnableExamRelativePaths,
+  onOpenExamFromDatabaseRecord,
   onOpenTaskProfileEditor,
   taskProfileSummariesByName,
   valueSuggestionsByKey,
@@ -10474,6 +10478,8 @@ export const PreviewPanel = ({
               vaultFiles={vaultFiles}
               sourceRelativePath={sourceRelativePath ?? selectedFile?.relative_path}
               onNavigateWikilink={onNavigateWikilink}
+              runnableExamRelativePaths={runnableExamRelativePaths}
+              onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
               onCommitRaw={(nextRaw) => {
                 if (databaseBlockIndex < 0) {
                   return;
@@ -10518,7 +10524,9 @@ export const PreviewPanel = ({
       commitMarkdownViewDatabaseBlock,
       markdownViewDatabaseBlockIndexById,
       onNavigateWikilink,
+      onOpenExamFromDatabaseRecord,
       renderHybridMarkdownPreview,
+      runnableExamRelativePaths,
       selectedFile?.relative_path,
       sourceRelativePath,
       vaultFiles,
@@ -11190,6 +11198,8 @@ export const PreviewPanel = ({
                   sourceHasFrontmatter={editFrontmatter.hasFrontmatter}
                   sourceRelativePath={sourceRelativePath ?? selectedFile?.relative_path}
                   onNavigateWikilink={onNavigateWikilink}
+                  runnableExamRelativePaths={runnableExamRelativePaths}
+                  onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
                   onChange={handleHybridBodyChange}
                   onDirtyChange={onHybridDirtyChange}
                   renderPreview={(source) =>

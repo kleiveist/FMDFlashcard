@@ -77,6 +77,25 @@ const numberAttribute: DatabaseAttributeMeta = {
   },
 };
 
+const examAttribute: DatabaseAttributeMeta = {
+  key: "Exam",
+  label: "Exam",
+  type: "boolean",
+  origin: "system",
+  formula: null,
+  editable: false,
+  sortable: true,
+  filterable: true,
+  aggregatable: false,
+  viewCompatibility: {
+    supportsTable: true,
+    supportsKanbanGrouping: true,
+    supportsTimeline: false,
+    supportsPieGrouping: true,
+    supportsAggregation: false,
+  },
+};
+
 const baseRecord: DatabaseRecord = {
   fileId: "a.md",
   filePath: "/vault/a.md",
@@ -92,6 +111,7 @@ const baseRecord: DatabaseRecord = {
     startDate: new Date("2026-01-02"),
     dueDate: new Date("2026-01-12"),
     priority: 2,
+    Exam: true,
   },
 };
 
@@ -243,6 +263,32 @@ describe("DatabaseGanttView", () => {
     expect(meta).toBeTruthy();
     expect(meta?.textContent).toContain("Priority");
     expect(meta?.textContent).toContain("2");
+
+    cleanup();
+  });
+
+  it("renders clickable exam action in row meta for eligible records", () => {
+    const onOpenExamFromRecord = vi.fn();
+    const { container, cleanup } = render(
+      createElement(DatabaseGanttView, {
+        records: [baseRecord],
+        startAttribute,
+        endAttribute,
+        mode: "date",
+        baseDate: null,
+        zoom: "month",
+        visibleProperties: [examAttribute],
+        onOpenExamFromRecord,
+      }),
+    );
+
+    const button = container.querySelector<HTMLButtonElement>(".database-gantt-row-meta .database-exam-action");
+    expect(button).toBeTruthy();
+    act(() => {
+      button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onOpenExamFromRecord).toHaveBeenCalledTimes(1);
+    expect(onOpenExamFromRecord.mock.calls[0]?.[0]?.fileId).toBe("a.md");
 
     cleanup();
   });

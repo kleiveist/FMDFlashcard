@@ -68,6 +68,7 @@ import {
   upsertDatabaseRecordField,
 } from "./frontmatter-update";
 import { compareNaturalPath } from "../../../lib/naturalSort";
+import { normalizeRelativePath } from "../../../lib/path";
 import { DatabaseFilterPanel } from "./ui/database-filter-panel";
 import { DatabaseGanttPanel } from "./ui/database-gantt-panel";
 import { DatabaseProjectPanel } from "./ui/database-project-panel";
@@ -87,6 +88,8 @@ type DatabaseBlockProps = {
   vaultFiles?: Array<{ path: string; relative_path: string }>;
   sourceRelativePath?: string | null;
   onNavigateWikilink?: (wikilink: string) => void;
+  runnableExamRelativePaths?: string[];
+  onOpenExamFromDatabaseRecord?: (target: { path: string; relativePath: string }) => void;
   onCommitRaw: (nextRaw: string) => void;
   allowCellEditing?: boolean;
 };
@@ -578,6 +581,8 @@ export const MarkdownHybridDatabaseBlock = ({
   vaultFiles,
   sourceRelativePath,
   onNavigateWikilink,
+  runnableExamRelativePaths,
+  onOpenExamFromDatabaseRecord,
   onCommitRaw,
   allowCellEditing = true,
 }: DatabaseBlockProps) => {
@@ -659,6 +664,15 @@ export const MarkdownHybridDatabaseBlock = ({
   const [activeSorts, setActiveSorts] = useState<DatabaseSortRule[]>(cloneSortRules(parsed.config.sort));
   const [activeCellEdit, setActiveCellEdit] = useState<DatabaseCellEditState | null>(null);
   const [pendingCellMutations, setPendingCellMutations] = useState<string[]>([]);
+  const runnableExamPathSet = useMemo(
+    () =>
+      new Set(
+        (runnableExamRelativePaths ?? []).map((relativePath) =>
+          normalizeRelativePath(relativePath).toLowerCase(),
+        ),
+      ),
+    [runnableExamRelativePaths],
+  );
   const [pendingRecordMutations, setPendingRecordMutations] = useState<string[]>([]);
   const [records, setRecords] = useState<DatabaseRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -919,7 +933,11 @@ export const MarkdownHybridDatabaseBlock = ({
               // Keep the record visible even if one file cannot be parsed/read.
             }
 
-            const systemFields = createSystemFieldsForRecord(file.relativePath, file.path);
+            const normalizedRelativePath = normalizeRelativePath(file.relativePath);
+            const isExamRunnable = runnableExamPathSet.has(normalizedRelativePath.toLowerCase());
+            const systemFields = createSystemFieldsForRecord(file.relativePath, file.path, {
+              isExamRunnable,
+            });
             return buildNormalizedRecord({
               fileId: file.relativePath,
               filePath: file.path,
@@ -955,7 +973,7 @@ export const MarkdownHybridDatabaseBlock = ({
     return () => {
       cancelled = true;
     };
-  }, [reloadToken, sourceResolution.files]);
+  }, [reloadToken, runnableExamPathSet, sourceResolution.files]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1310,6 +1328,16 @@ export const MarkdownHybridDatabaseBlock = ({
     const target = toWikilinkTarget(record.relativePath);
     onNavigateWikilink?.(`[[${target}]]`);
   };
+
+  const openExamFromRecord = useCallback(
+    (record: DatabaseRecord) => {
+      onOpenExamFromDatabaseRecord?.({
+        path: record.filePath,
+        relativePath: record.relativePath,
+      });
+    },
+    [onOpenExamFromDatabaseRecord],
+  );
 
   const commitTitle = useCallback((nextTitle: string) => {
     const normalizedTitle = nextTitle.trim() || "Database";
@@ -2676,6 +2704,7 @@ export const MarkdownHybridDatabaseBlock = ({
             activeEditCell={activeCellEdit}
             pendingCellMutations={pendingCellMutations}
             onOpenRecord={openRecord}
+            onOpenExamFromRecord={openExamFromRecord}
             onToggleColumnSort={handleToggleColumnSort}
             onReorderColumns={handleReorderVisibleColumns}
             onStartCellEdit={handleStartCellEdit}
@@ -2693,6 +2722,7 @@ export const MarkdownHybridDatabaseBlock = ({
             pendingRecordIds={pendingRecordMutations}
             onMoveRecord={handleMoveKanbanRecord}
             onOpenRecord={openRecord}
+            onOpenExamFromRecord={openExamFromRecord}
           />
         ) : viewType === "gantt" ? (
           <DatabaseGanttView
@@ -2707,6 +2737,7 @@ export const MarkdownHybridDatabaseBlock = ({
             pendingRecordIds={pendingRecordMutations}
             onCommitRange={handleCommitTimelineRange}
             onOpenRecord={openRecord}
+            onOpenExamFromRecord={openExamFromRecord}
           />
         ) : viewType === "project" ? (
           <DatabaseProjectView
@@ -2721,6 +2752,7 @@ export const MarkdownHybridDatabaseBlock = ({
             pendingRecordIds={pendingRecordMutations}
             onCommitPlacement={handleCommitProjectPlacement}
             onOpenRecord={openRecord}
+            onOpenExamFromRecord={openExamFromRecord}
           />
         ) : (
           <DatabasePieView

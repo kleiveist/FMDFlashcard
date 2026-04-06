@@ -61,6 +61,19 @@ const fileNameAttribute: DatabaseAttributeMeta = {
   viewCompatibility: compatibility,
 };
 
+const examAttribute: DatabaseAttributeMeta = {
+  key: "Exam",
+  label: "Exam",
+  type: "boolean",
+  origin: "system",
+  formula: null,
+  editable: false,
+  sortable: true,
+  filterable: true,
+  aggregatable: false,
+  viewCompatibility: compatibility,
+};
+
 const record: DatabaseRecord = {
   fileId: "docs/a.md",
   filePath: "/vault/docs/a.md",
@@ -79,6 +92,7 @@ const record: DatabaseRecord = {
     Task: "Alpha",
     Dateiname: "a",
     Dateipfad: "docs/a.md",
+    Exam: false,
   },
 };
 
@@ -253,6 +267,65 @@ describe("DatabaseTableView", () => {
 
     const scroll = container.querySelector<HTMLDivElement>(".database-table-scroll");
     expect(scroll?.style.maxHeight).toBe(`${50 * 34}px`);
+
+    cleanup();
+  });
+
+  it("renders exam action only for eligible exam rows", () => {
+    const onOpenExamFromRecord = vi.fn();
+    const examRecord: DatabaseRecord = {
+      ...record,
+      fileId: "docs/exam.md",
+      filePath: "/vault/docs/exam.md",
+      relativePath: "docs/exam.md",
+      fileName: "exam.md",
+      systemFields: {
+        ...record.systemFields,
+        Dateiname: "exam",
+        Dateipfad: "docs/exam.md",
+        Exam: true,
+      },
+      normalizedFields: {
+        ...record.normalizedFields,
+        Dateiname: "exam",
+        Dateipfad: "docs/exam.md",
+        Exam: true,
+      },
+    };
+    const nonExamRecord: DatabaseRecord = {
+      ...record,
+      fileId: "docs/no-exam.md",
+      filePath: "/vault/docs/no-exam.md",
+      relativePath: "docs/no-exam.md",
+      fileName: "no-exam.md",
+      systemFields: {
+        ...record.systemFields,
+        Dateiname: "no-exam",
+        Dateipfad: "docs/no-exam.md",
+        Exam: false,
+      },
+      normalizedFields: {
+        ...record.normalizedFields,
+        Dateiname: "no-exam",
+        Dateipfad: "docs/no-exam.md",
+        Exam: false,
+      },
+    };
+    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
+      columns: [fileNameAttribute, examAttribute],
+      records: [examRecord, nonExamRecord],
+      onOpenExamFromRecord,
+    })));
+
+    const examButtons = container.querySelectorAll<HTMLButtonElement>(".database-exam-action");
+    expect(examButtons).toHaveLength(1);
+    expect(container.querySelectorAll(".database-cell-empty").length).toBeGreaterThan(0);
+
+    act(() => {
+      examButtons[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onOpenExamFromRecord).toHaveBeenCalledTimes(1);
+    expect(onOpenExamFromRecord.mock.calls[0]?.[0]?.fileId).toBe("docs/exam.md");
 
     cleanup();
   });

@@ -155,7 +155,12 @@ vi.mock("./components/StudySectionNav", () => ({
 
 vi.mock("./pages/DashboardPage", async () => {
   const ReactModule = await import("react");
-  const DashboardPage = ReactModule.forwardRef((_props, ref) => {
+  const DashboardPage = ReactModule.forwardRef((
+    props: {
+      onOpenExamFromDatabaseRecord?: (target: { path: string; relativePath: string }) => void;
+    },
+    ref,
+  ) => {
     ReactModule.useImperativeHandle(ref, () => ({
       requestVaultViewChange: () => {},
       requestLeaveDashboard: async () => {
@@ -164,9 +169,26 @@ vi.mock("./pages/DashboardPage", async () => {
       },
     }));
     return ReactModule.createElement(
-      "div",
-      { "data-testid": "mock-dashboard-page" },
-      "Dashboard",
+      ReactModule.Fragment,
+      null,
+      ReactModule.createElement(
+        "div",
+        { "data-testid": "mock-dashboard-page" },
+        "Dashboard",
+      ),
+      ReactModule.createElement(
+        "button",
+        {
+          type: "button",
+          "data-testid": "mock-dashboard-open-exam-from-database",
+          onClick: () =>
+            props.onOpenExamFromDatabaseRecord?.({
+              path: "/vault/exam-from-database.md",
+              relativePath: "exam-from-database.md",
+            }),
+        },
+        "Dashboard: open exam from database",
+      ),
     );
   });
   DashboardPage.displayName = "MockDashboardPage";
@@ -176,11 +198,13 @@ vi.mock("./pages/DashboardPage", async () => {
 vi.mock("./pages/ExamSimulationPage", () => ({
   ExamSimulationPage: ({
     onOpenExamFileInMarkdownEditor,
+    launchPreset,
   }: {
     onOpenExamFileInMarkdownEditor?: (
       file: { path: string; relative_path: string },
       options?: { openInNewTab?: boolean },
     ) => void;
+    launchPreset?: { id: number; combinationMode: string } | null;
   }) =>
     React.createElement(
       React.Fragment,
@@ -189,6 +213,11 @@ vi.mock("./pages/ExamSimulationPage", () => ({
         "div",
         { "data-testid": "mock-exam-simulation-page" },
         "Exam",
+      ),
+      React.createElement(
+        "div",
+        { "data-testid": "mock-exam-launch-preset" },
+        launchPreset?.combinationMode ?? "none",
       ),
       React.createElement(
         "button",
@@ -353,6 +382,7 @@ const createMockAppState = () => ({
     getTaskAreaToggleNotice: vi.fn(() => ""),
     flushPendingTaskAreaToggles: vi.fn(async () => true),
     handleSelectFile: vi.fn(),
+    handleSetSelectedExamFiles: vi.fn(),
   },
   flashcardNoteFiles: [],
   flashcardNoteFilesError: "",
@@ -400,6 +430,13 @@ const createMockAppState = () => ({
 const getSelectFileSpy = () =>
   (appStateHolder.value as { actions: { handleSelectFile: ReturnType<typeof vi.fn> } })
     .actions.handleSelectFile;
+
+const getSetSelectedExamFilesSpy = () =>
+  (
+    appStateHolder.value as {
+      actions: { handleSetSelectedExamFiles: ReturnType<typeof vi.fn> };
+    }
+  ).actions.handleSetSelectedExamFiles;
 
 const renderApp = () => {
   const container = document.createElement("div");
@@ -549,6 +586,25 @@ describe("App dashboard leave guard integration", () => {
       relative_path: "from-exam-open.md",
     }, undefined);
     expect(container.querySelector('[data-testid="mock-dashboard-page"]')).toBeTruthy();
+
+    cleanup();
+  });
+
+  it("opens exam from database row with single selection and nested launch preset", async () => {
+    dashboardGuard.canLeave = true;
+    const { container, cleanup } = renderApp();
+
+    await clickTestId(container, "mock-dashboard-open-exam-from-database");
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(container.querySelector('[data-testid="mock-exam-simulation-page"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="mock-exam-launch-preset"]')?.textContent)
+      .toBe("nested");
+    expect(getSetSelectedExamFilesSpy()).toHaveBeenCalledWith([
+      "/vault/exam-from-database.md",
+    ]);
 
     cleanup();
   });

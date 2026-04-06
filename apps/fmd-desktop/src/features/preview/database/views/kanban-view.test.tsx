@@ -83,6 +83,25 @@ const imageAttribute: DatabaseAttributeMeta = {
   },
 };
 
+const examAttribute: DatabaseAttributeMeta = {
+  key: "Exam",
+  label: "Exam",
+  type: "boolean",
+  origin: "system",
+  formula: null,
+  editable: false,
+  sortable: true,
+  filterable: true,
+  aggregatable: false,
+  viewCompatibility: {
+    supportsTable: true,
+    supportsKanbanGrouping: true,
+    supportsTimeline: false,
+    supportsPieGrouping: true,
+    supportsAggregation: false,
+  },
+};
+
 const recordA: DatabaseRecord = {
   fileId: "a.md",
   filePath: "/vault/a.md",
@@ -136,6 +155,7 @@ const coverRecord: DatabaseRecord = {
     },
     cover: "cover.png",
     priority: 2,
+    Exam: true,
   },
 };
 
@@ -273,6 +293,45 @@ describe("DatabaseKanbanView", () => {
     const titles = Array.from(openColumn?.querySelectorAll(".database-kanban-card-title") ?? [])
       .map((node) => node.textContent?.trim());
     expect(titles).toEqual(["z", "a"]);
+
+    cleanup();
+  });
+
+  it("renders exam action for eligible records when Exam property is visible", () => {
+    const onOpenExamFromRecord = vi.fn();
+    const nonExamRecord: DatabaseRecord = {
+      ...recordB,
+      fileId: "c.md",
+      filePath: "/vault/c.md",
+      relativePath: "c.md",
+      fileName: "c.md",
+      normalizedFields: {
+        ...recordB.normalizedFields,
+        Exam: false,
+      },
+    };
+    const { container, cleanup } = render(
+      createElement(DatabaseKanbanView, {
+        records: [coverRecord, nonExamRecord],
+        groupAttribute,
+        attributes: [groupAttribute, examAttribute],
+        visibleProperties: [examAttribute],
+        showCover: false,
+        pendingRecordIds: [],
+        onMoveRecord: vi.fn(),
+        onOpenRecord: vi.fn(),
+        onOpenExamFromRecord,
+      }),
+    );
+
+    const examButton = container.querySelector<HTMLButtonElement>(".database-exam-action");
+    expect(examButton).toBeTruthy();
+
+    act(() => {
+      examButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onOpenExamFromRecord).toHaveBeenCalledTimes(1);
+    expect(onOpenExamFromRecord.mock.calls[0]?.[0]?.fileId).toBe("cover.md");
 
     cleanup();
   });

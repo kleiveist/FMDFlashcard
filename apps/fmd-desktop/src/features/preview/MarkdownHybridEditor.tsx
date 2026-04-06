@@ -342,6 +342,8 @@ type MarkdownHybridEditorProps = {
   sourceHasFrontmatter?: boolean;
   sourceRelativePath?: string | null;
   onNavigateWikilink?: (wikilink: string) => void;
+  runnableExamRelativePaths?: string[];
+  onOpenExamFromDatabaseRecord?: (target: { path: string; relativePath: string }) => void;
   onChange: (value: string) => void;
   onCommit?: (value: string, context: { block: MarkdownBlock }) => void;
   onDirtyChange?: (dirty: boolean) => void;
@@ -3272,6 +3274,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   sourceHasFrontmatter = false,
   sourceRelativePath,
   onNavigateWikilink,
+  runnableExamRelativePaths,
+  onOpenExamFromDatabaseRecord,
   onChange,
   onCommit,
   onDirtyChange,
@@ -9980,6 +9984,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
             vaultFiles={vaultFiles}
             sourceRelativePath={sourceRelativePath}
             onNavigateWikilink={onNavigateWikilink}
+            runnableExamRelativePaths={runnableExamRelativePaths}
+            onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
             onCommitRaw={(nextRaw) => {
               handleTableBlockCommitRaw(index, nextRaw);
             }}
@@ -10526,6 +10532,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                     vaultFiles={vaultFiles}
                     sourceRelativePath={sourceRelativePath}
                     onNavigateWikilink={onNavigateWikilink}
+                    runnableExamRelativePaths={runnableExamRelativePaths}
+                    onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
                     onCommitRaw={(nextRaw) => {
                       handleTableBlockCommitRaw(index, nextRaw);
                     }}

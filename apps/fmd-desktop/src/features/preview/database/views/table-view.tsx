@@ -30,6 +30,7 @@ type DatabaseTableViewProps = {
   } | null;
   pendingCellMutations: string[];
   onOpenRecord: (record: DatabaseRecord) => void;
+  onOpenExamFromRecord?: (record: DatabaseRecord) => void;
   onToggleColumnSort: (columnKey: string) => void;
   onReorderColumns: (fromKey: string, toKey: string) => void;
   onStartCellEdit: (record: DatabaseRecord, column: DatabaseAttributeMeta) => void;
@@ -100,6 +101,11 @@ const getRecordValueByField = (record: DatabaseRecord, field: string) => {
   return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
 };
 
+const isExamFieldKey = (key: string) => toLower(key) === "exam";
+
+const isExamCellEligible = (record: DatabaseRecord, field: string) =>
+  getRecordValueByField(record, field) === true;
+
 export const DatabaseTableView = ({
   records,
   columns,
@@ -108,6 +114,7 @@ export const DatabaseTableView = ({
   activeEditCell,
   pendingCellMutations,
   onOpenRecord,
+  onOpenExamFromRecord,
   onToggleColumnSort,
   onReorderColumns,
   onStartCellEdit,
@@ -370,6 +377,20 @@ export const DatabaseTableView = ({
                           value={getRecordValueByField(record, column.key)}
                         />
                       </button>
+                    ) : isExamFieldKey(column.key) ? (
+                      isExamCellEligible(record, column.key) && onOpenExamFromRecord ? (
+                        <button
+                          type="button"
+                          className="database-exam-action"
+                          onClick={() => onOpenExamFromRecord(record)}
+                          title="Exam starten"
+                          data-md-block-control="true"
+                        >
+                          Exam
+                        </button>
+                      ) : (
+                        <span className="database-cell-empty">—</span>
+                      )
                     ) : (
                       <DatabaseCellRenderer
                         attribute={column}

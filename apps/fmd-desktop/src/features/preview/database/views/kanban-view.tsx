@@ -21,11 +21,13 @@ type DatabaseKanbanViewProps = {
   pendingRecordIds: string[];
   onMoveRecord: (record: DatabaseRecord, nextGroupValue: string) => void;
   onOpenRecord: (record: DatabaseRecord) => void;
+  onOpenExamFromRecord?: (record: DatabaseRecord) => void;
 };
 
 const EMPTY_GROUP_LABEL = "(leer)";
 
 const toLower = (value: string) => value.trim().toLowerCase();
+const isExamFieldKey = (key: string) => toLower(key) === "exam";
 
 const getRecordValueByField = (record: DatabaseRecord, field: string) => {
   if (field in record.normalizedFields) {
@@ -136,6 +138,7 @@ export const DatabaseKanbanView = ({
   pendingRecordIds,
   onMoveRecord,
   onOpenRecord,
+  onOpenExamFromRecord,
 }: DatabaseKanbanViewProps) => {
   const pendingIds = useMemo(() => new Set(pendingRecordIds), [pendingRecordIds]);
   const recordsById = useMemo(
@@ -210,6 +213,16 @@ export const DatabaseKanbanView = ({
                 .filter((attribute) =>
                   toLower(attribute.key) !== toLower(groupAttribute.key))
                 .map((attribute) => {
+                  if (isExamFieldKey(attribute.key)) {
+                    const isExamEligible = getRecordValueByField(record, attribute.key) === true;
+                    if (!isExamEligible || !onOpenExamFromRecord) {
+                      return null;
+                    }
+                    return {
+                      key: attribute.key,
+                      kind: "action" as const,
+                    };
+                  }
                   const value = stringifyMetaValue(
                     getRecordValueByField(record, attribute.key),
                     attribute.type,
@@ -219,11 +232,15 @@ export const DatabaseKanbanView = ({
                   }
                   return {
                     key: attribute.key,
+                    kind: "text" as const,
                     label: attribute.label || attribute.key,
                     value,
                   };
                 })
-                .filter((entry): entry is { key: string; label: string; value: string } => Boolean(entry));
+                .filter((entry): entry is (
+                  | { key: string; kind: "text"; label: string; value: string }
+                  | { key: string; kind: "action" }
+                ) => Boolean(entry));
 
               const hoverOnlyMeta = Boolean(showCover && coverSource);
 
@@ -264,7 +281,21 @@ export const DatabaseKanbanView = ({
                     <div className={`database-kanban-card-properties${hoverOnlyMeta ? " is-hover-only" : ""}`}>
                       {metaRows.map((entry) => (
                         <p key={entry.key} className="database-kanban-card-meta-row">
-                          <strong>{entry.label}:</strong> {entry.value}
+                          {entry.kind === "action" ? (
+                            <button
+                              type="button"
+                              className="database-exam-action"
+                              onClick={() => onOpenExamFromRecord?.(record)}
+                              title="Exam starten"
+                              data-md-block-control="true"
+                            >
+                              Exam
+                            </button>
+                          ) : (
+                            <>
+                              <strong>{entry.label}:</strong> {entry.value}
+                            </>
+                          )}
                         </p>
                       ))}
                     </div>

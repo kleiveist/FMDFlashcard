@@ -366,7 +366,13 @@ const getFileFolder = (relativePath: string) => {
   return normalized.slice(0, slashIndex);
 };
 
-export const createSystemFieldsForRecord = (relativePath: string, fullPath: string) => {
+export const createSystemFieldsForRecord = (
+  relativePath: string,
+  fullPath: string,
+  options?: {
+    isExamRunnable?: boolean;
+  },
+) => {
   const fileName = getFileNameFromPath(relativePath);
   return {
     Dateiname: getFileStem(fileName),
@@ -378,6 +384,7 @@ export const createSystemFieldsForRecord = (relativePath: string, fullPath: stri
     Erstellt: null,
     Geaendert: null,
     Dateigroesse: null,
+    Exam: Boolean(options?.isExamRunnable),
   };
 };
 

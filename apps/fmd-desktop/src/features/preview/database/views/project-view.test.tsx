@@ -69,6 +69,7 @@ const placedRecord = createRecord("placed", {
   status: {
     raw: "Open",
   },
+  Exam: true,
 });
 
 const unplacedRecord = createRecord("unplaced", {});
@@ -80,6 +81,25 @@ const statusAttribute: DatabaseAttributeMeta = {
   origin: "frontmatter",
   formula: null,
   editable: true,
+  sortable: true,
+  filterable: true,
+  aggregatable: false,
+  viewCompatibility: {
+    supportsTable: true,
+    supportsKanbanGrouping: true,
+    supportsTimeline: false,
+    supportsPieGrouping: true,
+    supportsAggregation: false,
+  },
+};
+
+const examAttribute: DatabaseAttributeMeta = {
+  key: "Exam",
+  label: "Exam",
+  type: "boolean",
+  origin: "system",
+  formula: null,
+  editable: false,
   sortable: true,
   filterable: true,
   aggregatable: false,
@@ -229,6 +249,34 @@ describe("DatabaseProjectView", () => {
     expect(meta).toBeTruthy();
     expect(meta?.textContent).toContain("Status");
     expect(meta?.textContent).toContain("Open");
+
+    cleanup();
+  });
+
+  it("renders clickable exam action in row meta for eligible records", () => {
+    const onOpenExamFromRecord = vi.fn();
+    const { container, cleanup } = render(
+      createElement(DatabaseProjectView, {
+        records: [placedRecord],
+        startField: "unitsstart",
+        unitField: "units",
+        resolution: 100,
+        defaultUnits: 1,
+        missingPlacement: "show-unplaced",
+        visibleProperties: [examAttribute],
+        onOpenExamFromRecord,
+      }),
+    );
+
+    const button = container.querySelector<HTMLButtonElement>(
+      ".database-project-row-meta .database-exam-action",
+    );
+    expect(button).toBeTruthy();
+    act(() => {
+      button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onOpenExamFromRecord).toHaveBeenCalledTimes(1);
+    expect(onOpenExamFromRecord.mock.calls[0]?.[0]?.fileId).toBe("placed");
 
     cleanup();
   });

@@ -668,4 +668,59 @@ describe("ExamSimulationPage popup sync", () => {
 
     cleanup();
   });
+
+  it("applies launch preset once per preset id and consumes it exactly once", () => {
+    const handleCombinationModeChange = vi.fn();
+    const viewModel = {
+      ...createViewModel(),
+      handleCombinationModeChange,
+    };
+    const onConsumeLaunchPreset = vi.fn();
+    mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
+
+    const { rerender, cleanup } = render(
+      createElement(ExamSimulationPage, {
+        launchPreset: {
+          id: 1,
+          combinationMode: "nested",
+        },
+        onConsumeLaunchPreset,
+      }),
+    );
+
+    expect(handleCombinationModeChange).toHaveBeenCalledTimes(1);
+    expect(handleCombinationModeChange).toHaveBeenLastCalledWith("nested");
+    expect(onConsumeLaunchPreset).toHaveBeenCalledTimes(1);
+    expect(onConsumeLaunchPreset).toHaveBeenLastCalledWith(1);
+
+    rerender(
+      createElement(ExamSimulationPage, {
+        launchPreset: {
+          id: 1,
+          combinationMode: "nested",
+        },
+        onConsumeLaunchPreset,
+      }),
+    );
+
+    expect(handleCombinationModeChange).toHaveBeenCalledTimes(1);
+    expect(onConsumeLaunchPreset).toHaveBeenCalledTimes(1);
+
+    rerender(
+      createElement(ExamSimulationPage, {
+        launchPreset: {
+          id: 2,
+          combinationMode: "nested",
+        },
+        onConsumeLaunchPreset,
+      }),
+    );
+
+    expect(handleCombinationModeChange).toHaveBeenCalledTimes(2);
+    expect(handleCombinationModeChange).toHaveBeenLastCalledWith("nested");
+    expect(onConsumeLaunchPreset).toHaveBeenCalledTimes(2);
+    expect(onConsumeLaunchPreset).toHaveBeenLastCalledWith(2);
+
+    cleanup();
+  });
 });

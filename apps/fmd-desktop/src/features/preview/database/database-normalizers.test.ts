@@ -60,6 +60,18 @@ describe("database-normalizers", () => {
     expect(normalizeFieldValueByType("time", "14:30")).toBe("14:30");
   });
 
+  it("derives Exam as a boolean system field from runnable eligibility", () => {
+    const nonExamFields = createSystemFieldsForRecord("path/Note.md", "/vault/path/Note.md");
+    const examFields = createSystemFieldsForRecord(
+      "path/Exam.md",
+      "/vault/path/Exam.md",
+      { isExamRunnable: true },
+    );
+
+    expect(nonExamFields.Exam).toBe(false);
+    expect(examFields.Exam).toBe(true);
+  });
+
   it("builds normalized records and protects against case-insensitive duplicate keys", () => {
     const systemFields = createSystemFieldsForRecord("path/Exam.md", "/vault/path/Exam.md");
     const record = buildNormalizedRecord({

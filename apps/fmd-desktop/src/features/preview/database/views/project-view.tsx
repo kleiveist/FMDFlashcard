@@ -29,6 +29,7 @@ type DatabaseProjectViewProps = {
   editable?: boolean;
   pendingRecordIds?: string[];
   onOpenRecord?: (record: DatabaseRecord) => void;
+  onOpenExamFromRecord?: (record: DatabaseRecord) => void;
   onCommitPlacement?: (params: {
     record: DatabaseRecord;
     startSlot: number;
@@ -71,6 +72,7 @@ const SLOT_WIDTH = 18;
 const SIDEBAR_WIDTH = 280;
 
 const toLower = (value: string) => value.trim().toLowerCase();
+const isExamFieldKey = (key: string) => toLower(key) === "exam";
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
@@ -216,6 +218,7 @@ export const DatabaseProjectView = ({
   editable = false,
   pendingRecordIds = [],
   onOpenRecord,
+  onOpenExamFromRecord,
   onCommitPlacement,
 }: DatabaseProjectViewProps) => {
   const [interaction, setInteraction] = useState<InteractionState | null>(null);
@@ -417,6 +420,16 @@ export const DatabaseProjectView = ({
             const propertyRows = visibleProperties
               .filter((attribute) => !excludedPropertyKeys.has(toLower(attribute.key)))
               .map((attribute) => {
+                if (isExamFieldKey(attribute.key)) {
+                  const isExamEligible = getRecordValueByField(record, attribute.key) === true;
+                  if (!isExamEligible || !onOpenExamFromRecord) {
+                    return null;
+                  }
+                  return {
+                    key: attribute.key,
+                    kind: "action" as const,
+                  };
+                }
                 const value = stringifyMetaValue(
                   getRecordValueByField(record, attribute.key),
                   attribute.type,
@@ -426,11 +439,15 @@ export const DatabaseProjectView = ({
                 }
                 return {
                   key: attribute.key,
+                  kind: "text" as const,
                   label: attribute.label || attribute.key,
                   value,
                 };
               })
-              .filter((entry): entry is { key: string; label: string; value: string } => Boolean(entry));
+              .filter((entry): entry is (
+                | { key: string; kind: "text"; label: string; value: string }
+                | { key: string; kind: "action" }
+              ) => Boolean(entry));
             const rowMetaLeft = hasPlacement && startX !== null
               ? clamp(startX + width + 10, 8, Math.max(8, resolution * SLOT_WIDTH - 200))
               : 10;
@@ -565,7 +582,21 @@ export const DatabaseProjectView = ({
                     >
                       {propertyRows.map((entry) => (
                         <p key={entry.key}>
-                          <strong>{entry.label}:</strong> {entry.value}
+                          {entry.kind === "action" ? (
+                            <button
+                              type="button"
+                              className="database-exam-action"
+                              onClick={() => onOpenExamFromRecord?.(record)}
+                              title="Exam starten"
+                              data-md-block-control="true"
+                            >
+                              Exam
+                            </button>
+                          ) : (
+                            <>
+                              <strong>{entry.label}:</strong> {entry.value}
+                            </>
+                          )}
                         </p>
                       ))}
                     </div>
