@@ -5443,87 +5443,39 @@ textarea.preview-editor {
 
 .database-block-toolbar {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  overflow: visible;
 }
 
-.database-block-toolbar-main {
+.database-block-toolbar-row-main,
+.database-block-toolbar-row-secondary {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1 1 360px;
+  align-items: flex-end;
+  gap: 8px;
   min-width: 0;
   flex-wrap: wrap;
+  width: 100%;
 }
 
-.database-block-title-field {
-  display: inline-flex;
-  align-items: center;
-  flex: 1 1 220px;
-  min-width: min(100%, 220px);
-  gap: 6px;
-  font-size: 0.76rem;
-  color: var(--db-muted);
-}
-
-.database-block-title-input {
+.database-block-toolbar-row-secondary {
   min-height: var(--db-control-height);
-  border-radius: var(--db-radius-control);
-  border: 1px solid var(--db-border);
-  background: var(--field-bg);
-  color: var(--db-text);
-  padding: 4px 8px;
-  min-width: 140px;
-  width: min(420px, 100%);
-  flex: 1 1 220px;
 }
 
-.database-block-source {
-  color: var(--db-muted);
-  font-size: 0.76rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.database-block-toolbar-actions {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-left: auto;
-  flex: 1 1 420px;
-  min-width: min(100%, 280px);
-  flex-wrap: wrap;
-  align-content: flex-start;
-  container-type: inline-size;
-  container-name: database-toolbar-actions;
-}
-
-.database-block-toolbar-action-buttons {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  flex: 1 1 340px;
-  min-width: 0;
-  flex-wrap: wrap;
-}
-
-.database-block-toolbar-search-wrap {
-  display: flex;
-  justify-content: flex-end;
-  flex: 1 1 220px;
-  min-width: 160px;
-}
-
+.database-block-view-name-wrap,
 .database-block-view-select-wrap {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.76rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 0.74rem;
   color: var(--db-muted);
+}
+
+.database-block-view-name-wrap {
+  min-width: min(100%, 220px);
+  flex: 1 1 240px;
 }
 
 .database-block-toolbar-label {
@@ -5531,8 +5483,37 @@ textarea.preview-editor {
   color: var(--db-muted);
 }
 
-.database-block-title-input,
+.database-block-toolbar-dropdown-anchor {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
+.database-block-toolbar-dropdown-anchor-name {
+  min-width: min(100%, 220px);
+  max-width: 100%;
+  width: min(420px, 100%);
+}
+
+.database-block-toolbar-dropdown-anchor-search {
+  margin-inline-start: auto;
+}
+
+.database-block-view-name-button {
+  justify-content: space-between;
+  width: 100%;
+  min-width: 170px;
+}
+
+.database-block-view-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .database-block-view-select,
+.database-block-toolbar-create-view-input,
+.database-block-toolbar-search-input,
 .database-block-panel select,
 .database-block-panel input:not([type="checkbox"]):not([type="radio"]) {
   min-height: var(--db-control-height);
@@ -5583,8 +5564,10 @@ textarea.preview-editor {
   padding: 0 10px;
 }
 
-.database-block-toolbar-button-compactable {
-  flex: 0 0 auto;
+.database-block-toolbar-button-icon-only {
+  inline-size: var(--db-control-height);
+  min-inline-size: var(--db-control-height);
+  padding-inline: 0;
 }
 
 .database-block-toolbar-button-icon {
@@ -5606,10 +5589,6 @@ textarea.preview-editor {
   stroke-linejoin: round;
 }
 
-.database-block-toolbar-button-label {
-  display: inline;
-}
-
 .database-block-toolbar-button:hover {
   border-color: var(--db-border-strong);
   background: color-mix(in srgb, var(--db-surface-hover) 78%, var(--db-surface-raised));
@@ -5620,44 +5599,85 @@ textarea.preview-editor {
   background: color-mix(in srgb, var(--accent-soft) 24%, var(--db-surface-raised));
 }
 
-.database-block-search {
-  min-height: var(--db-control-height);
-  min-width: 140px;
-  width: 100%;
+.database-block-toolbar-dropdown-panel {
+  position: absolute;
+  inset-block-start: calc(100% + 6px);
+  border: 1px solid var(--db-border-strong);
   border-radius: var(--db-radius-control);
-  border: 1px solid var(--db-border);
-  background: var(--field-bg);
+  background: var(--db-surface-raised);
+  box-shadow: var(--db-shadow-panel);
+  padding: 8px;
+  z-index: 40;
+}
+
+.database-block-toolbar-dropdown-anchor-name .database-block-toolbar-dropdown-panel {
+  inset-inline-start: 0;
+  max-inline-size: min(360px, calc(100vw - 32px));
+}
+
+.database-block-search-dropdown {
+  inset-inline-end: 0;
+  inline-size: min(280px, calc(100vw - 32px));
+}
+
+.database-block-toolbar-search-input {
+  width: 100%;
+}
+
+.database-block-view-dropdown {
+  min-inline-size: 230px;
+}
+
+.database-block-view-dropdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow: auto;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--db-border);
+}
+
+.database-block-view-dropdown-item {
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--db-text);
-  padding: 4px 8px;
+  border-radius: calc(var(--db-radius-control) - 2px);
+  min-height: 28px;
+  text-align: left;
+  padding: 0 8px;
+  cursor: pointer;
+}
+
+.database-block-view-dropdown-item:hover {
+  background: color-mix(in srgb, var(--accent-soft) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent-border) 44%, transparent);
+}
+
+.database-block-view-dropdown-item.is-active {
+  background: color-mix(in srgb, var(--accent-soft) 30%, var(--db-surface-raised));
+  border-color: color-mix(in srgb, var(--accent-border) 66%, var(--db-border));
+}
+
+.database-block-view-dropdown-create {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .database-block-source-button {
-  flex: 0 1 320px;
-  max-width: min(360px, 80vw);
+  flex: 0 0 auto;
+  max-width: none;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-@container database-toolbar-actions (max-width: 700px) {
-  .database-block-toolbar-button-compactable {
-    inline-size: var(--db-control-height);
-    min-inline-size: var(--db-control-height);
-    padding-inline: 0;
-  }
+.database-block-view-select {
+  min-width: 124px;
+}
 
-  .database-block-toolbar-button-compactable .database-block-toolbar-button-label {
-    position: absolute;
-    inline-size: 1px;
-    block-size: 1px;
-    margin: -1px;
-    padding: 0;
-    border: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    clip: rect(0 0 0 0);
-    clip-path: inset(50%);
-  }
+.database-block-toolbar-row-secondary .database-block-toolbar-button {
+  min-width: 150px;
 }
 
 .database-block-filter-chips {
@@ -7022,10 +7042,10 @@ textarea.preview-editor {
   max-height: 280px;
 }
 
-.database-block-title-input:focus-visible,
 .database-block-view-select:focus-visible,
 .database-block-toolbar-button:focus-visible,
-.database-block-search:focus-visible,
+.database-block-toolbar-create-view-input:focus-visible,
+.database-block-toolbar-search-input:focus-visible,
 .database-table-cell-editor:focus-visible,
 .database-block-panel select:focus-visible,
 .database-block-panel input:not([type="checkbox"]):not([type="radio"]):focus-visible {
@@ -7035,26 +7055,17 @@ textarea.preview-editor {
 }
 
 @media (max-width: 980px) {
-  .database-block-toolbar-main,
-  .database-block-toolbar-actions {
+  .database-block-view-name-wrap {
     flex: 1 1 100%;
+  }
+
+  .database-block-toolbar-dropdown-anchor-name {
+    width: 100%;
     min-width: 0;
   }
 
-  .database-block-toolbar-actions {
-    margin-left: 0;
-    justify-content: flex-start;
-  }
-
-  .database-block-toolbar-action-buttons {
-    flex: 1 1 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .database-block-toolbar-search-wrap {
-    flex: 1 1 100%;
-    min-width: 0;
+  .database-block-toolbar-dropdown-anchor-search {
+    margin-inline-start: 0;
   }
 }
 

@@ -353,10 +353,10 @@
 }
 
 :root[data-design-mode="edge"] :is(
-    .database-block-title-input,
     .database-block-view-select,
     .database-block-toolbar-button,
-    .database-block-search,
+    .database-block-toolbar-create-view-input,
+    .database-block-toolbar-search-input,
     .database-block-panel select,
     .database-block-panel input:not([type="checkbox"]):not([type="radio"])
   ) {

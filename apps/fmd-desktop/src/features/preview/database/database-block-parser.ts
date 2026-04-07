@@ -23,6 +23,8 @@ import {
   type DatabaseSortRule,
   type DatabaseSourceSpec,
   type DatabaseSourceType,
+  type DatabaseSavedViewConfig,
+  type DatabaseSavedViewsConfig,
   type DatabaseViewSpec,
   type DatabaseViewType,
 } from "./database-types";
@@ -672,12 +674,155 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
   };
 };
 
-export const createDefaultDatabaseBlockConfig = (): DatabaseBlockConfig => ({
-  title: "Database",
-  source: {
-    type: "current-folder",
+const cloneFilterGroup = (group: DatabaseFilterGroup): DatabaseFilterGroup => ({
+  ...group,
+  rules: group.rules.map((entry) =>
+    "rules" in entry
+      ? cloneFilterGroup(entry)
+      : { ...entry }),
+});
+
+const cloneSortRules = (rules: DatabaseSortRule[]) => rules.map((rule) => ({ ...rule }));
+
+const cloneViewSpec = (view: DatabaseViewSpec): DatabaseViewSpec => ({ ...view });
+
+const cloneSavedViewConfig = (view: DatabaseSavedViewConfig): DatabaseSavedViewConfig => ({
+  ...view,
+  view: cloneViewSpec(view.view),
+  properties: dedupeCaseInsensitive(view.properties),
+  filters: cloneFilterGroup(view.filters),
+  sort: cloneSortRules(view.sort),
+});
+
+const cloneSavedViewsConfig = (views: DatabaseSavedViewsConfig): DatabaseSavedViewsConfig => ({
+  activeViewId: views.activeViewId,
+  items: views.items.map((item) => cloneSavedViewConfig(item)),
+});
+
+const createLegacyPropertiesMirror = (properties: string[]): DatabasePropertiesByView => {
+  const normalized = dedupeCaseInsensitive(properties);
+  return {
+    table: [...normalized],
+    kanban: [...normalized],
+    gantt: [...normalized],
+    project: [...normalized],
+    pie: [...normalized],
+  };
+};
+
+const resolveSavedViewForId = (
+  views: DatabaseSavedViewsConfig,
+  preferredId: string | null | undefined,
+): DatabaseSavedViewConfig => {
+  if (preferredId) {
+    const match = views.items.find((item) => item.id === preferredId);
+    if (match) {
+      return match;
+    }
+  }
+  return views.items[0]!;
+};
+
+const createMigratedSavedViews = (legacy: {
+  name: string;
+  view: DatabaseViewSpec;
+  properties: string[];
+  filters: DatabaseFilterGroup;
+  sort: DatabaseSortRule[];
+}): DatabaseSavedViewsConfig => {
+  const id = nextGeneratedId("saved-view");
+  const migrated: DatabaseSavedViewConfig = {
+    id,
+    name: legacy.name,
+    view: cloneViewSpec(legacy.view),
+    properties: dedupeCaseInsensitive(legacy.properties),
+    filters: cloneFilterGroup(legacy.filters),
+    sort: cloneSortRules(legacy.sort),
+  };
+  return {
+    activeViewId: id,
+    items: [migrated],
+  };
+};
+
+const parseSavedViews = (
+  value: unknown,
+  legacy: {
+    name: string;
+    view: DatabaseViewSpec;
+    properties: string[];
+    filters: DatabaseFilterGroup;
+    sort: DatabaseSortRule[];
   },
-  view: {
+): DatabaseSavedViewsConfig => {
+  if (!isRecord(value) || !Array.isArray(value.items)) {
+    return createMigratedSavedViews(legacy);
+  }
+
+  const parsedItems = value.items
+    .map((entry, index): DatabaseSavedViewConfig | null => {
+      if (!isRecord(entry)) {
+        return null;
+      }
+      const parsedView = parseViewSpec(entry.view ?? legacy.view);
+      const explicitProperties = dedupeCaseInsensitive(asStringArray(entry.properties));
+      const fallbackPropertiesByView = parsePropertiesByView(
+        entry.propertiesByView,
+        legacy.properties,
+      );
+      const scopedFallback = dedupeCaseInsensitive(fallbackPropertiesByView[parsedView.type] ?? []);
+      const fallbackProperties = scopedFallback.length > 0
+        ? scopedFallback
+        : dedupeCaseInsensitive(legacy.properties);
+      const properties = explicitProperties.length > 0 ? explicitProperties : fallbackProperties;
+
+      const parsedSort = parseSortRules("sort" in entry ? entry.sort : legacy.sort);
+      const parsedFilters = parseFilterGroup("filters" in entry ? entry.filters : legacy.filters);
+
+      return {
+        id: asString(entry.id) || nextGeneratedId("saved-view"),
+        name: asString(entry.name) || `View ${index + 1}`,
+        view: parsedView,
+        properties,
+        filters: parsedFilters,
+        sort: parsedSort,
+      };
+    })
+    .filter((entry): entry is DatabaseSavedViewConfig => Boolean(entry));
+
+  if (parsedItems.length === 0) {
+    return createMigratedSavedViews(legacy);
+  }
+
+  const seenIds = new Set<string>();
+  const normalizedItems = parsedItems.map((item) => {
+    let id = item.id.trim();
+    if (!id || seenIds.has(id)) {
+      id = nextGeneratedId("saved-view");
+    }
+    seenIds.add(id);
+    return {
+      ...item,
+      id,
+      name: item.name.trim() || "View",
+      properties: dedupeCaseInsensitive(item.properties),
+      filters: cloneFilterGroup(item.filters),
+      sort: cloneSortRules(item.sort),
+      view: cloneViewSpec(item.view),
+    };
+  });
+
+  const activeViewId = asString(value.activeViewId);
+  const hasActive = normalizedItems.some((item) => item.id === activeViewId);
+
+  return {
+    activeViewId: hasActive ? activeViewId : normalizedItems[0]!.id,
+    items: normalizedItems,
+  };
+};
+
+export const createDefaultDatabaseBlockConfig = (): DatabaseBlockConfig => {
+  const defaultView = parseViewSpec({
     type: "table",
     kanbanShowCover: false,
     timelineMode: "date",
@@ -688,24 +833,47 @@ export const createDefaultDatabaseBlockConfig = (): DatabaseBlockConfig => ({
     blockResolution: DEFAULT_PROJECT_BLOCK_RESOLUTION,
     defaultUnits: DEFAULT_PROJECT_DEFAULT_UNITS,
     projectMissingPlacement: DEFAULT_PROJECT_MISSING_PLACEMENT,
-  },
-  fields: [],
-  columns: [
+  });
+  const defaultProperties = [
     "Dateiname",
     "Dateipfad",
-  ],
-  propertiesByView: createDefaultPropertiesByView([
-    "Dateiname",
-    "Dateipfad",
-  ]),
-  filters: createDefaultFilterGroup(),
-  sort: [],
-  options: {
-    editable: false,
-    showSearch: true,
-    showToolbar: true,
-  },
-});
+  ];
+  const defaultFilters = createDefaultFilterGroup();
+  const defaultSort: DatabaseSortRule[] = [];
+  const defaultSavedViewId = "view-default";
+  const views: DatabaseSavedViewsConfig = {
+    activeViewId: defaultSavedViewId,
+    items: [
+      {
+        id: defaultSavedViewId,
+        name: "Database",
+        view: cloneViewSpec(defaultView),
+        properties: [...defaultProperties],
+        filters: cloneFilterGroup(defaultFilters),
+        sort: cloneSortRules(defaultSort),
+      },
+    ],
+  };
+
+  return {
+    title: "Database",
+    source: {
+      type: "current-folder",
+    },
+    view: cloneViewSpec(defaultView),
+    fields: [],
+    columns: [...defaultProperties],
+    propertiesByView: createLegacyPropertiesMirror(defaultProperties),
+    filters: cloneFilterGroup(defaultFilters),
+    sort: cloneSortRules(defaultSort),
+    options: {
+      editable: false,
+      showSearch: true,
+      showToolbar: true,
+    },
+    views,
+  };
+};
 
 const parseOptions = (value: unknown) => {
   if (!isRecord(value)) {
@@ -729,28 +897,39 @@ const parseConfigObject = (value: unknown): DatabaseBlockConfig => {
   const parsedColumns = hasExplicitColumns
     ? dedupeCaseInsensitive(asStringArray(record.columns))
     : dedupeCaseInsensitive(defaults.columns);
-  const propertiesByView = parsePropertiesByView(record.propertiesByView, parsedColumns);
-  const tableColumns = dedupeCaseInsensitive(propertiesByView.table ?? []);
-  const columns = tableColumns.length > 0 ? tableColumns : parsedColumns;
-  const normalizedPropertiesByView: DatabasePropertiesByView = {
-    ...propertiesByView,
-    table: dedupeCaseInsensitive(
-      (propertiesByView.table ?? []).length > 0
-        ? propertiesByView.table ?? []
-        : columns,
-    ),
-  };
+  const legacyView = parseViewSpec(record.view);
+  const legacyPropertiesByView = parsePropertiesByView(record.propertiesByView, parsedColumns);
+  const scopedLegacyProperties = dedupeCaseInsensitive(legacyPropertiesByView[legacyView.type] ?? []);
+  const legacyViewProperties = scopedLegacyProperties.length > 0
+    ? scopedLegacyProperties
+    : parsedColumns;
+  const legacyColumns = legacyViewProperties.length > 0 ? legacyViewProperties : parsedColumns;
+  const legacyFilters = parseFilterGroup(record.filters);
+  const legacySort = parseSortRules(record.sort);
+  const legacyName = asString(record.title, defaults.title);
+  const parsedViews = parseSavedViews(record.views, {
+    name: legacyName,
+    view: legacyView,
+    properties: legacyColumns,
+    filters: legacyFilters,
+    sort: legacySort,
+  });
+  const activeSavedView = resolveSavedViewForId(parsedViews, parsedViews.activeViewId);
+  const activeProperties = dedupeCaseInsensitive(activeSavedView.properties);
+  const activeFilters = cloneFilterGroup(activeSavedView.filters);
+  const activeSort = cloneSortRules(activeSavedView.sort);
 
   return {
-    title: asString(record.title, defaults.title),
+    title: activeSavedView.name,
     source: parseSourceSpec(record.source),
-    view: parseViewSpec(record.view),
+    view: cloneViewSpec(activeSavedView.view),
     fields: parseFieldDefinitions(record.fields),
-    columns,
-    propertiesByView: normalizedPropertiesByView,
-    filters: parseFilterGroup(record.filters),
-    sort: parseSortRules(record.sort),
+    columns: activeProperties,
+    propertiesByView: createLegacyPropertiesMirror(activeProperties),
+    filters: activeFilters,
+    sort: activeSort,
     options: parseOptions(record.options),
+    views: cloneSavedViewsConfig(parsedViews),
   };
 };
 
@@ -824,10 +1003,91 @@ function writeFilterGroupRulesYaml(
   }
 }
 
+function writeSortRulesYaml(
+  rules: DatabaseSortRule[],
+  indent: number,
+  lines: string[],
+) {
+  const indentText = " ".repeat(indent);
+  if (rules.length === 0) {
+    lines.push(`${indentText}sort: []`);
+    return;
+  }
+  lines.push(`${indentText}sort:`);
+  rules.forEach((sortRule) => {
+    lines.push(`${indentText}  - field: ${formatYamlScalar(sortRule.field)}`);
+    lines.push(`${indentText}    dir: ${formatYamlScalar(sortRule.dir)}`);
+    if (sortRule.nulls) {
+      lines.push(`${indentText}    nulls: ${formatYamlScalar(sortRule.nulls)}`);
+    }
+    if (sortRule.natural) {
+      lines.push(`${indentText}    natural: true`);
+    }
+  });
+}
+
+function writeViewSpecYaml(
+  view: DatabaseViewSpec,
+  indent: number,
+  lines: string[],
+) {
+  const indentText = " ".repeat(indent);
+  lines.push(`${indentText}type: ${formatYamlScalar(view.type)}`);
+  if (view.groupBy) {
+    lines.push(`${indentText}groupBy: ${formatYamlScalar(view.groupBy)}`);
+  }
+  if (view.kanbanShowCover) {
+    lines.push(`${indentText}kanbanShowCover: ${formatYamlScalar(view.kanbanShowCover)}`);
+  }
+  if (view.timelineStartField) {
+    lines.push(`${indentText}timelineStartField: ${formatYamlScalar(view.timelineStartField)}`);
+  }
+  if (view.timelineEndField) {
+    lines.push(`${indentText}timelineEndField: ${formatYamlScalar(view.timelineEndField)}`);
+  }
+  if (view.timelineMode) {
+    lines.push(`${indentText}timelineMode: ${formatYamlScalar(view.timelineMode)}`);
+  }
+  if (view.timelineBaseDate) {
+    lines.push(`${indentText}timelineBaseDate: ${formatYamlScalar(view.timelineBaseDate)}`);
+  }
+  if (view.ganttZoom) {
+    lines.push(`${indentText}ganttZoom: ${formatYamlScalar(view.ganttZoom)}`);
+  }
+  if (view.type === "project") {
+    if (view.projectStartField) {
+      lines.push(`${indentText}projectStartField: ${formatYamlScalar(view.projectStartField)}`);
+    }
+    if (view.projectUnitField) {
+      lines.push(`${indentText}projectUnitField: ${formatYamlScalar(view.projectUnitField)}`);
+    }
+    if (typeof view.blockResolution === "number" && Number.isFinite(view.blockResolution)) {
+      lines.push(`${indentText}blockResolution: ${formatYamlScalar(view.blockResolution)}`);
+    }
+    if (typeof view.defaultUnits === "number" && Number.isFinite(view.defaultUnits)) {
+      lines.push(`${indentText}defaultUnits: ${formatYamlScalar(view.defaultUnits)}`);
+    }
+    if (view.projectMissingPlacement) {
+      lines.push(`${indentText}projectMissingPlacement: ${formatYamlScalar(view.projectMissingPlacement)}`);
+    }
+  }
+  if (view.pieGroupField) {
+    lines.push(`${indentText}pieGroupField: ${formatYamlScalar(view.pieGroupField)}`);
+  }
+  if (view.pieAggregate) {
+    lines.push(`${indentText}pieAggregate: ${formatYamlScalar(view.pieAggregate)}`);
+  }
+  if (view.pieAggregateField) {
+    lines.push(`${indentText}pieAggregateField: ${formatYamlScalar(view.pieAggregateField)}`);
+  }
+}
+
 export const serializeDatabaseBlockConfig = (config: DatabaseBlockConfig) => {
+  const normalizedViews = cloneSavedViewsConfig(config.views);
+  const activeSavedView = resolveSavedViewForId(normalizedViews, normalizedViews.activeViewId);
   const lines: string[] = [];
   lines.push(DATABASE_BLOCK_OPEN_MARKER);
-  lines.push(`title: ${formatYamlScalar(config.title)}`);
+  lines.push(`title: ${formatYamlScalar(activeSavedView.name || config.title)}`);
   lines.push("source:");
   lines.push(`  type: ${formatYamlScalar(config.source.type)}`);
   if (config.source.path) {
@@ -849,56 +1109,6 @@ export const serializeDatabaseBlockConfig = (config: DatabaseBlockConfig) => {
     lines.push(`  query: ${formatYamlScalar(config.source.query)}`);
   }
 
-  lines.push("view:");
-  lines.push(`  type: ${formatYamlScalar(config.view.type)}`);
-  if (config.view.groupBy) {
-    lines.push(`  groupBy: ${formatYamlScalar(config.view.groupBy)}`);
-  }
-  if (config.view.kanbanShowCover) {
-    lines.push(`  kanbanShowCover: ${formatYamlScalar(config.view.kanbanShowCover)}`);
-  }
-  if (config.view.timelineStartField) {
-    lines.push(`  timelineStartField: ${formatYamlScalar(config.view.timelineStartField)}`);
-  }
-  if (config.view.timelineEndField) {
-    lines.push(`  timelineEndField: ${formatYamlScalar(config.view.timelineEndField)}`);
-  }
-  if (config.view.timelineMode) {
-    lines.push(`  timelineMode: ${formatYamlScalar(config.view.timelineMode)}`);
-  }
-  if (config.view.timelineBaseDate) {
-    lines.push(`  timelineBaseDate: ${formatYamlScalar(config.view.timelineBaseDate)}`);
-  }
-  if (config.view.ganttZoom) {
-    lines.push(`  ganttZoom: ${formatYamlScalar(config.view.ganttZoom)}`);
-  }
-  if (config.view.type === "project") {
-    if (config.view.projectStartField) {
-      lines.push(`  projectStartField: ${formatYamlScalar(config.view.projectStartField)}`);
-    }
-    if (config.view.projectUnitField) {
-      lines.push(`  projectUnitField: ${formatYamlScalar(config.view.projectUnitField)}`);
-    }
-    if (typeof config.view.blockResolution === "number" && Number.isFinite(config.view.blockResolution)) {
-      lines.push(`  blockResolution: ${formatYamlScalar(config.view.blockResolution)}`);
-    }
-    if (typeof config.view.defaultUnits === "number" && Number.isFinite(config.view.defaultUnits)) {
-      lines.push(`  defaultUnits: ${formatYamlScalar(config.view.defaultUnits)}`);
-    }
-    if (config.view.projectMissingPlacement) {
-      lines.push(`  projectMissingPlacement: ${formatYamlScalar(config.view.projectMissingPlacement)}`);
-    }
-  }
-  if (config.view.pieGroupField) {
-    lines.push(`  pieGroupField: ${formatYamlScalar(config.view.pieGroupField)}`);
-  }
-  if (config.view.pieAggregate) {
-    lines.push(`  pieAggregate: ${formatYamlScalar(config.view.pieAggregate)}`);
-  }
-  if (config.view.pieAggregateField) {
-    lines.push(`  pieAggregateField: ${formatYamlScalar(config.view.pieAggregateField)}`);
-  }
-
   const fields = config.fields ?? [];
   if (fields.length === 0) {
     lines.push("fields: []");
@@ -917,50 +1127,29 @@ export const serializeDatabaseBlockConfig = (config: DatabaseBlockConfig) => {
     });
   }
 
-  const propertiesByView = parsePropertiesByView(
-    config.propertiesByView,
-    config.columns,
-  );
-  const tableColumns = dedupeCaseInsensitive(propertiesByView.table ?? config.columns);
-
-  if (tableColumns.length === 0) {
-    lines.push("columns: []");
+  lines.push("views:");
+  lines.push(`  activeViewId: ${formatYamlScalar(normalizedViews.activeViewId)}`);
+  if (normalizedViews.items.length === 0) {
+    lines.push("  items: []");
   } else {
-    lines.push("columns:");
-    tableColumns.forEach((column) => {
-      lines.push(`  - ${formatYamlScalar(column)}`);
-    });
-  }
-
-  lines.push("propertiesByView:");
-  DATABASE_VIEW_TYPES.forEach((view) => {
-    const keys = dedupeCaseInsensitive(propertiesByView[view] ?? []);
-    if (keys.length === 0) {
-      lines.push(`  ${view}: []`);
-      return;
-    }
-    lines.push(`  ${view}:`);
-    keys.forEach((key) => {
-      lines.push(`    - ${formatYamlScalar(key)}`);
-    });
-  });
-
-  lines.push("filters:");
-  writeFilterGroupYaml(config.filters, 2, lines);
-
-  if (config.sort.length === 0) {
-    lines.push("sort: []");
-  } else {
-    lines.push("sort:");
-    config.sort.forEach((sortRule) => {
-      lines.push(`  - field: ${formatYamlScalar(sortRule.field)}`);
-      lines.push(`    dir: ${formatYamlScalar(sortRule.dir)}`);
-      if (sortRule.nulls) {
-        lines.push(`    nulls: ${formatYamlScalar(sortRule.nulls)}`);
+    lines.push("  items:");
+    normalizedViews.items.forEach((item) => {
+      const normalizedProperties = dedupeCaseInsensitive(item.properties);
+      lines.push(`    - id: ${formatYamlScalar(item.id)}`);
+      lines.push(`      name: ${formatYamlScalar(item.name)}`);
+      lines.push("      view:");
+      writeViewSpecYaml(item.view, 8, lines);
+      if (normalizedProperties.length === 0) {
+        lines.push("      properties: []");
+      } else {
+        lines.push("      properties:");
+        normalizedProperties.forEach((property) => {
+          lines.push(`        - ${formatYamlScalar(property)}`);
+        });
       }
-      if (sortRule.natural) {
-        lines.push("    natural: true");
-      }
+      lines.push("      filters:");
+      writeFilterGroupYaml(item.filters, 8, lines);
+      writeSortRulesYaml(item.sort, 6, lines);
     });
   }
 

@@ -133,16 +133,51 @@ export type DatabaseBlockOptions = {
   showToolbar: boolean;
 };
 
+export type DatabaseSavedViewConfig = {
+  id: string;
+  name: string;
+  view: DatabaseViewSpec;
+  properties: string[];
+  filters: DatabaseFilterGroup;
+  sort: DatabaseSortRule[];
+};
+
+export type DatabaseSavedViewsConfig = {
+  activeViewId: string;
+  items: DatabaseSavedViewConfig[];
+};
+
 export type DatabaseBlockConfig = {
   title: string;
   source: DatabaseSourceSpec;
+  /**
+   * Compatibility mirror of the active saved view.
+   * Persisted source of truth lives in `views`.
+   */
   view: DatabaseViewSpec;
   fields?: DatabaseFieldDefinition[];
+  /**
+   * Compatibility mirror of the active saved view properties.
+   * Persisted source of truth lives in `views`.
+   */
   columns: string[];
+  /**
+   * Compatibility mirror retained for legacy runtime paths.
+   * Persisted source of truth lives in `views`.
+   */
   propertiesByView?: DatabasePropertiesByView;
+  /**
+   * Compatibility mirror of the active saved view filters.
+   * Persisted source of truth lives in `views`.
+   */
   filters: DatabaseFilterGroup;
+  /**
+   * Compatibility mirror of the active saved view sort rules.
+   * Persisted source of truth lives in `views`.
+   */
   sort: DatabaseSortRule[];
   options: DatabaseBlockOptions;
+  views: DatabaseSavedViewsConfig;
 };
 
 export type DatabaseVaultAttributeSuggestion = {

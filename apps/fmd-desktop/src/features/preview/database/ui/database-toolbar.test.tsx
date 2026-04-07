@@ -23,8 +23,13 @@ const render = (element: ReactElement) => {
 };
 
 const buildProps = () => ({
-  title: "Exam Uebersicht",
-  sourceLabel: "Quelle: aktueller Ordner",
+  activeViewId: "view-table",
+  activeViewName: "Default View",
+  savedViews: [
+    { id: "view-table", name: "Default View" },
+    { id: "view-kanban", name: "Kanban Fokus" },
+  ],
+  sourceLabel: "Quelle",
   viewType: "table" as const,
   kanbanGroupBy: null,
   kanbanGroupByOptions: [
@@ -32,11 +37,11 @@ const buildProps = () => ({
   ],
   searchQuery: "",
   showSearch: true,
-  onTitleChange: vi.fn(),
-  onTitleBlur: vi.fn(),
   onSearchChange: vi.fn(),
   onViewTypeChange: vi.fn(),
   onKanbanGroupByChange: vi.fn(),
+  onSelectSavedView: vi.fn(),
+  onCreateSavedView: vi.fn(),
   isSourcePanelOpen: false,
   isFilterPanelOpen: false,
   isSortPanelOpen: false,
@@ -54,181 +59,189 @@ const buildProps = () => ({
 });
 
 describe("DatabaseToolbar", () => {
-  it("renders action buttons and search in separate right-aligned wrappers", () => {
+  it("renders unified main row with icon-only action buttons", () => {
     const props = buildProps();
-    const { container, cleanup } = render(
-      createElement(DatabaseToolbar, props),
-    );
+    const { container, cleanup } = render(createElement(DatabaseToolbar, props));
 
-    const actions = container.querySelector(".database-block-toolbar-actions");
-    const actionButtons = container.querySelector(".database-block-toolbar-action-buttons");
-    const searchWrap = container.querySelector(".database-block-toolbar-search-wrap");
-    const sortButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Sortieren"),
-    );
-    const filterButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Filtern"),
-    );
-    const propertiesButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("Eigenschaften"),
-    );
+    const mainRow = container.querySelector(".database-block-toolbar-row-main");
+    const viewButton = container.querySelector<HTMLButtonElement>(".database-block-view-name-button");
+    const sourceButton = container.querySelector<HTMLButtonElement>(".database-block-source-button");
+    const sortButton = container.querySelector<HTMLButtonElement>("button[aria-label='Sortieren']");
+    const filterButton = container.querySelector<HTMLButtonElement>("button[aria-label='Filtern']");
+    const propertiesButton = container.querySelector<HTMLButtonElement>("button[aria-label='Eigenschaften']");
+    const searchButton = container.querySelector<HTMLButtonElement>("button[aria-label='Suche']");
 
-    expect(actions).toBeTruthy();
-    expect(actionButtons).toBeTruthy();
-    expect(searchWrap?.querySelector(".database-block-search")).toBeTruthy();
-    expect(sortButton).toBeTruthy();
-    expect(filterButton).toBeTruthy();
-    expect(propertiesButton).toBeTruthy();
-    expect(
-      container.querySelectorAll(".database-block-toolbar-button-compactable"),
-    ).toHaveLength(3);
-    expect(sortButton?.getAttribute("aria-label")).toBe("Sortieren");
-    expect(filterButton?.getAttribute("aria-label")).toBe("Filtern");
-    expect(propertiesButton?.getAttribute("aria-label")).toBe("Eigenschaften");
-    expect(sortButton?.getAttribute("title")).toBe("Sortieren");
-    expect(filterButton?.getAttribute("title")).toBe("Filtern");
-    expect(propertiesButton?.getAttribute("title")).toBe("Eigenschaften");
-    expect(sortButton?.querySelector(".database-block-toolbar-button-icon svg")).toBeTruthy();
-    expect(filterButton?.querySelector(".database-block-toolbar-button-icon svg")).toBeTruthy();
-    expect(propertiesButton?.querySelector(".database-block-toolbar-button-icon svg")).toBeTruthy();
-    expect(sortButton?.querySelector(".database-block-toolbar-button-label")?.textContent).toContain(
-      "Sortieren",
-    );
-    expect(filterButton?.querySelector(".database-block-toolbar-button-label")?.textContent).toContain(
-      "Filtern",
-    );
-    expect(propertiesButton?.querySelector(".database-block-toolbar-button-label")?.textContent).toContain(
-      "Eigenschaften",
-    );
+    expect(mainRow).toBeTruthy();
+    expect(viewButton?.textContent).toContain("Default View");
+    expect(sourceButton?.textContent).toBe("Quelle");
+    expect(sortButton?.classList.contains("database-block-toolbar-button-icon-only")).toBe(true);
+    expect(filterButton?.classList.contains("database-block-toolbar-button-icon-only")).toBe(true);
+    expect(propertiesButton?.classList.contains("database-block-toolbar-button-icon-only")).toBe(true);
+    expect(searchButton?.classList.contains("database-block-toolbar-button-icon-only")).toBe(true);
+    expect(container.querySelector(".database-block-toolbar-search-input")).toBeNull();
 
     cleanup();
   });
 
-  it("forwards interaction events", () => {
+  it("forwards main-row interactions", () => {
     const props = buildProps();
-    const { container, cleanup } = render(
-      createElement(DatabaseToolbar, props),
-    );
+    const { container, cleanup } = render(createElement(DatabaseToolbar, props));
 
+    const sourceButton = container.querySelector<HTMLButtonElement>(".database-block-source-button");
     const sortButton = container.querySelector<HTMLButtonElement>("button[aria-label='Sortieren']");
-    const sourceButton = container.querySelector(".database-block-source-button");
-    const search = container.querySelector<HTMLInputElement>(".database-block-search");
+    const filterButton = container.querySelector<HTMLButtonElement>("button[aria-label='Filtern']");
+    const propertiesButton = container.querySelector<HTMLButtonElement>("button[aria-label='Eigenschaften']");
     const viewSelect = container.querySelector<HTMLSelectElement>(".database-block-view-select");
-    const titleInput = container.querySelector<HTMLInputElement>(".database-block-title-input");
 
     act(() => {
-      if (search) {
-        search.value = "IUFS";
-      }
+      sourceButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      sortButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      filterButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      propertiesButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       if (viewSelect) {
         viewSelect.value = "kanban";
+        viewSelect.dispatchEvent(new Event("change", { bubbles: true }));
       }
-      if (titleInput) {
-        titleInput.value = "Neue DB";
-      }
-      sortButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-      sourceButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-      search?.dispatchEvent(new Event("input", { bubbles: true }));
-      viewSelect?.dispatchEvent(new Event("change", { bubbles: true }));
-      titleInput?.dispatchEvent(new Event("change", { bubbles: true }));
     });
 
-    expect(props.onToggleSortPanel).toHaveBeenCalledTimes(1);
     expect(props.onToggleSourcePanel).toHaveBeenCalledTimes(1);
-    expect(props.onSearchChange).toHaveBeenCalled();
-    expect(props.onViewTypeChange).toHaveBeenCalled();
-    expect(props.onTitleChange).toHaveBeenCalled();
+    expect(props.onToggleSortPanel).toHaveBeenCalledTimes(1);
+    expect(props.onToggleFilterPanel).toHaveBeenCalledTimes(1);
+    expect(props.onTogglePropertiesPanel).toHaveBeenCalledTimes(1);
+    expect(props.onViewTypeChange).toHaveBeenCalledWith("kanban");
 
     cleanup();
   });
 
-  it("shows and forwards kanban group-by selection", () => {
-    const props = {
-      ...buildProps(),
-      viewType: "kanban" as const,
+  it("opens search dropdown and forwards search input changes", () => {
+    const props = buildProps();
+    const { container, cleanup } = render(createElement(DatabaseToolbar, props));
+
+    const searchButton = container.querySelector<HTMLButtonElement>("button[aria-label='Suche']");
+
+    act(() => {
+      searchButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const searchInput = container.querySelector<HTMLInputElement>(".database-block-toolbar-search-input");
+    expect(searchInput).toBeTruthy();
+
+    act(() => {
+      if (searchInput) {
+        searchInput.value = "IUFS";
+        searchInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+
+    expect(props.onSearchChange).toHaveBeenCalledWith("IUFS");
+
+    cleanup();
+  });
+
+  it("supports selecting and creating saved views from the dropdown", () => {
+    const props = buildProps();
+    const { container, cleanup } = render(createElement(DatabaseToolbar, props));
+
+    const viewButton = container.querySelector<HTMLButtonElement>(".database-block-view-name-button");
+
+    act(() => {
+      viewButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const activeItem = container.querySelector(".database-block-view-dropdown-item.is-active");
+    const secondItem = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"))
+      .find((button) => button.textContent?.includes("Kanban Fokus"));
+
+    expect(activeItem?.textContent).toContain("Default View");
+
+    act(() => {
+      secondItem?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(props.onSelectSavedView).toHaveBeenCalledWith("view-kanban");
+
+    act(() => {
+      viewButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const createInput = container.querySelector<HTMLInputElement>(".database-block-toolbar-create-view-input");
+    const createButton = Array.from(container.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.textContent?.includes("Create View"));
+
+    act(() => {
+      if (createInput) {
+        createInput.value = "Neue View";
+        createInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      createButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(props.onCreateSavedView).toHaveBeenCalledWith("Neue View");
+
+    cleanup();
+  });
+
+  it("renders view-specific controls in the fixed second row", () => {
+    const baseProps = buildProps();
+
+    const kanban = render(createElement(DatabaseToolbar, {
+      ...baseProps,
+      viewType: "kanban",
       kanbanGroupBy: "status",
-    };
-    const { container, cleanup } = render(
-      createElement(DatabaseToolbar, props),
-    );
-
-    const groupSelect = Array.from(container.querySelectorAll("select")).find((select) =>
-      select.value === "status",
-    );
-
+    }));
+    const secondaryKanban = kanban.container.querySelector(".database-block-toolbar-row-secondary");
+    const groupSelect = secondaryKanban?.querySelector<HTMLSelectElement>(".database-block-view-select");
+    expect(secondaryKanban).toBeTruthy();
+    expect(groupSelect).toBeTruthy();
     act(() => {
       if (groupSelect) {
         groupSelect.value = "";
+        groupSelect.dispatchEvent(new Event("change", { bubbles: true }));
       }
-      groupSelect?.dispatchEvent(new Event("change", { bubbles: true }));
     });
+    expect(baseProps.onKanbanGroupByChange).toHaveBeenCalledWith(null);
+    kanban.cleanup();
 
-    expect(groupSelect).toBeTruthy();
-    expect(props.onKanbanGroupByChange).toHaveBeenCalledWith(null);
-
-    cleanup();
-  });
-
-  it("renders timeline options button for gantt view", () => {
-    const props = {
-      ...buildProps(),
-      viewType: "gantt" as const,
-    };
-    const { container, cleanup } = render(
-      createElement(DatabaseToolbar, props),
-    );
-
-    const timelineButton = Array.from(container.querySelectorAll("button"))
+    const ganttProps = buildProps();
+    const gantt = render(createElement(DatabaseToolbar, {
+      ...ganttProps,
+      viewType: "gantt",
+    }));
+    const timelineButton = Array.from(gantt.container.querySelectorAll<HTMLButtonElement>("button"))
       .find((button) => button.textContent?.includes("Timeline Optionen"));
+    expect(timelineButton).toBeTruthy();
     act(() => {
       timelineButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
+    expect(ganttProps.onToggleGanttPanel).toHaveBeenCalledTimes(1);
+    gantt.cleanup();
 
-    expect(timelineButton).toBeTruthy();
-    expect(props.onToggleGanttPanel).toHaveBeenCalledTimes(1);
-
-    cleanup();
-  });
-
-  it("renders pie options button for pie view", () => {
-    const props = {
-      ...buildProps(),
-      viewType: "pie" as const,
-    };
-    const { container, cleanup } = render(
-      createElement(DatabaseToolbar, props),
-    );
-
-    const pieButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => button.textContent?.includes("Pie Optionen"));
-    act(() => {
-      pieButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    expect(pieButton).toBeTruthy();
-    expect(props.onTogglePiePanel).toHaveBeenCalledTimes(1);
-
-    cleanup();
-  });
-
-  it("renders project options button for project view", () => {
-    const props = {
-      ...buildProps(),
-      viewType: "project" as const,
-    };
-    const { container, cleanup } = render(
-      createElement(DatabaseToolbar, props),
-    );
-
-    const projectButton = Array.from(container.querySelectorAll("button"))
+    const projectProps = buildProps();
+    const project = render(createElement(DatabaseToolbar, {
+      ...projectProps,
+      viewType: "project",
+    }));
+    const projectButton = Array.from(project.container.querySelectorAll<HTMLButtonElement>("button"))
       .find((button) => button.textContent?.includes("Project Optionen"));
+    expect(projectButton).toBeTruthy();
     act(() => {
       projectButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
+    expect(projectProps.onToggleProjectPanel).toHaveBeenCalledTimes(1);
+    project.cleanup();
 
-    expect(projectButton).toBeTruthy();
-    expect(props.onToggleProjectPanel).toHaveBeenCalledTimes(1);
-
-    cleanup();
+    const pieProps = buildProps();
+    const pie = render(createElement(DatabaseToolbar, {
+      ...pieProps,
+      viewType: "pie",
+    }));
+    const pieButton = Array.from(pie.container.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.textContent?.includes("Pie Optionen"));
+    expect(pieButton).toBeTruthy();
+    act(() => {
+      pieButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(pieProps.onTogglePiePanel).toHaveBeenCalledTimes(1);
+    pie.cleanup();
   });
 });

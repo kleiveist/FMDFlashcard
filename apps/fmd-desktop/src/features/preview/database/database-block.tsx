@@ -55,6 +55,7 @@ import {
   type DatabasePropertiesByView,
   type DatabaseProjectMissingPlacement,
   type DatabaseRecord,
+  type DatabaseSavedViewConfig,
   type DatabaseSourceSpec,
   type DatabaseSortRule,
   type DatabaseTimelineMode,
@@ -112,24 +113,7 @@ type DatabaseCellEditState = {
   draftValue: string | boolean;
 };
 
-const getFolderLabel = (source: ReturnType<typeof parseDatabaseBlockConfigFromRaw>["config"]["source"]) => {
-  if (source.type === "current-folder") {
-    return "Quelle: aktueller Ordner";
-  }
-  if (source.type === "explicit-folder") {
-    return `Quelle: ${source.path || "(Ordner)"}`;
-  }
-  if (source.type === "multi-folder") {
-    return `Quelle: ${source.paths?.join(", ") || "(mehrere Ordner)"}`;
-  }
-  if (source.type === "tag-query") {
-    return "Quelle: tag-query (Phase-1 Stub)";
-  }
-  if (source.type === "manual-query") {
-    return "Quelle: manual-query (Phase-1 Stub)";
-  }
-  return "Quelle: linked-files (vorbereitet)";
-};
+const getFolderLabel = () => "Quelle";
 
 const toWikilinkTarget = (relativePath: string) =>
   relativePath.replace(/\.md$/i, "");
@@ -175,8 +159,6 @@ const appendVisibleColumnIfMissing = (columns: string[], key: string) =>
     ? columns
     : [...columns, key];
 
-const DATABASE_VIEW_TYPES: DatabaseViewType[] = ["table", "kanban", "gantt", "project", "pie"];
-
 const dedupeCaseInsensitive = (keys: string[]) => {
   const seen = new Set<string>();
   const next: string[] = [];
@@ -192,35 +174,73 @@ const dedupeCaseInsensitive = (keys: string[]) => {
   return next;
 };
 
-const createDefaultPropertiesByView = (tableColumns: string[]): DatabasePropertiesByView => ({
-  table: dedupeCaseInsensitive(tableColumns),
-  kanban: [],
-  gantt: [],
-  project: [],
-  pie: [],
-});
-
-const normalizePropertiesByView = (
-  propertiesByView: DatabasePropertiesByView | null | undefined,
-  tableColumns: string[],
-): DatabasePropertiesByView => {
-  const defaults = createDefaultPropertiesByView(tableColumns);
-  const source = propertiesByView ?? {};
-  const next: DatabasePropertiesByView = { ...defaults };
-  DATABASE_VIEW_TYPES.forEach((view) => {
-    if (!Array.isArray(source[view])) {
-      return;
-    }
-    next[view] = dedupeCaseInsensitive(source[view] ?? []);
-  });
-  next.table = dedupeCaseInsensitive(next.table ?? tableColumns);
-  return next;
+const createDefaultPropertiesByView = (tableColumns: string[]): DatabasePropertiesByView => {
+  const normalized = dedupeCaseInsensitive(tableColumns);
+  return {
+    table: [...normalized],
+    kanban: [...normalized],
+    gantt: [...normalized],
+    project: [...normalized],
+    pie: [...normalized],
+  };
 };
 
 const getPropertiesForView = (
   propertiesByView: DatabasePropertiesByView | null | undefined,
   view: DatabaseViewType,
 ): string[] => dedupeCaseInsensitive(propertiesByView?.[view] ?? []);
+
+const cloneSavedView = (savedView: DatabaseSavedViewConfig): DatabaseSavedViewConfig => ({
+  ...savedView,
+  view: { ...savedView.view },
+  properties: dedupeCaseInsensitive(savedView.properties),
+  filters: cloneFilterGroup(savedView.filters),
+  sort: cloneSortRules(savedView.sort),
+});
+
+const cloneSavedViews = (savedViews: DatabaseSavedViewConfig[]) =>
+  savedViews.map((savedView) => cloneSavedView(savedView));
+
+const findSavedViewById = (savedViews: DatabaseSavedViewConfig[], id: string | null | undefined) => {
+  if (!id) {
+    return savedViews[0] ?? null;
+  }
+  return savedViews.find((savedView) => savedView.id === id) ?? savedViews[0] ?? null;
+};
+
+const buildPropertiesMirror = (properties: string[]): DatabasePropertiesByView =>
+  createDefaultPropertiesByView(properties);
+
+const dedupeSavedViewsById = (savedViews: DatabaseSavedViewConfig[]): DatabaseSavedViewConfig[] => {
+  const seen = new Set<string>();
+  const next: DatabaseSavedViewConfig[] = [];
+  savedViews.forEach((savedView) => {
+    const trimmedId = savedView.id.trim();
+    if (!trimmedId || seen.has(trimmedId)) {
+      return;
+    }
+    seen.add(trimmedId);
+    next.push({
+      ...cloneSavedView(savedView),
+      id: trimmedId,
+      name: savedView.name.trim() || "View",
+    });
+  });
+  return next;
+};
+
+const createSavedViewId = (name: string, existingIds: Set<string>) => {
+  const base = name.trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "view";
+  let candidate = `view-${base}`;
+  let sequence = 2;
+  while (existingIds.has(candidate)) {
+    candidate = `view-${base}-${sequence}`;
+    sequence += 1;
+  }
+  return candidate;
+};
 
 const buildCellMutationKey = (recordId: string, fieldKey: string) =>
   `${recordId}::${toLower(fieldKey)}`;
@@ -499,7 +519,6 @@ const defaultPanels: DatabaseBlockOpenPanels = {
   pie: false,
 };
 
-const TITLE_COMMIT_DEBOUNCE_MS = 280;
 const DEFAULT_TIMELINE_MODE: DatabaseTimelineMode = "date";
 const DEFAULT_PROJECT_START_FIELD = "unitsstart";
 const DEFAULT_PROJECT_UNIT_FIELD = "units";
@@ -600,68 +619,82 @@ export const MarkdownHybridDatabaseBlock = ({
     pie: null,
   });
   const fileCacheRef = useRef<Map<string, string>>(new Map());
-  const titlePersistTimeoutRef = useRef<number | null>(null);
+  const parsedSavedViews = useMemo(() => {
+    const normalized = dedupeSavedViewsById(cloneSavedViews(parsed.config.views.items));
+    if (normalized.length > 0) {
+      return normalized;
+    }
+    return cloneSavedViews(defaultConfig.views.items);
+  }, [defaultConfig.views.items, parsed.config.views.items]);
+  const parsedActiveSavedView = useMemo(
+    () => findSavedViewById(parsedSavedViews, parsed.config.views.activeViewId) ?? parsedSavedViews[0]!,
+    [parsed.config.views.activeViewId, parsedSavedViews],
+  );
 
-  const [title, setTitle] = useState(parsed.config.title);
+  const [savedViews, setSavedViews] = useState<DatabaseSavedViewConfig[]>(parsedSavedViews);
+  const [activeViewId, setActiveViewId] = useState(parsedActiveSavedView.id);
   const [source, setSource] = useState<DatabaseSourceSpec>(cloneSourceSpec(parsed.config.source));
   const [fieldDefinitions, setFieldDefinitions] = useState<DatabaseFieldDefinition[]>(
     cloneFieldDefinitions(parsed.config.fields ?? []),
   );
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewType, setViewType] = useState<DatabaseViewType>(parsed.config.view.type);
-  const [kanbanGroupBy, setKanbanGroupBy] = useState<string | null>(parsed.config.view.groupBy ?? null);
-  const [kanbanShowCover, setKanbanShowCover] = useState<boolean>(parsed.config.view.kanbanShowCover ?? false);
+  const [viewType, setViewType] = useState<DatabaseViewType>(parsedActiveSavedView.view.type);
+  const [kanbanGroupBy, setKanbanGroupBy] = useState<string | null>(parsedActiveSavedView.view.groupBy ?? null);
+  const [kanbanShowCover, setKanbanShowCover] = useState<boolean>(parsedActiveSavedView.view.kanbanShowCover ?? false);
   const [timelineStartField, setTimelineStartField] = useState<string | null>(
-    parsed.config.view.timelineStartField ?? null,
+    parsedActiveSavedView.view.timelineStartField ?? null,
   );
   const [timelineEndField, setTimelineEndField] = useState<string | null>(
-    parsed.config.view.timelineEndField ?? null,
+    parsedActiveSavedView.view.timelineEndField ?? null,
   );
   const [timelineMode, setTimelineMode] = useState<DatabaseTimelineMode>(
-    parsed.config.view.timelineMode ?? DEFAULT_TIMELINE_MODE,
+    parsedActiveSavedView.view.timelineMode ?? DEFAULT_TIMELINE_MODE,
   );
-  const initialTimelineMode = parsed.config.view.timelineMode ?? DEFAULT_TIMELINE_MODE;
+  const initialTimelineMode = parsedActiveSavedView.view.timelineMode ?? DEFAULT_TIMELINE_MODE;
   const [timelineBaseDate, setTimelineBaseDate] = useState<string | null>(
     resolveTimelineBaseDateForMode(
       initialTimelineMode,
-      parsed.config.view.timelineBaseDate ?? null,
+      parsedActiveSavedView.view.timelineBaseDate ?? null,
     ),
   );
   const [ganttZoom, setGanttZoom] = useState<DatabaseGanttZoom>(
     coerceTimelineZoom(
-      parsed.config.view.timelineMode ?? DEFAULT_TIMELINE_MODE,
-      parsed.config.view.ganttZoom ?? getTimelineDefaultZoom(parsed.config.view.timelineMode ?? DEFAULT_TIMELINE_MODE),
+      parsedActiveSavedView.view.timelineMode ?? DEFAULT_TIMELINE_MODE,
+      parsedActiveSavedView.view.ganttZoom ??
+        getTimelineDefaultZoom(parsedActiveSavedView.view.timelineMode ?? DEFAULT_TIMELINE_MODE),
     ),
   );
   const [projectStartField, setProjectStartField] = useState<string | null>(
-    parsed.config.view.projectStartField ?? DEFAULT_PROJECT_START_FIELD,
+    parsedActiveSavedView.view.projectStartField ?? DEFAULT_PROJECT_START_FIELD,
   );
   const [projectUnitField, setProjectUnitField] = useState<string | null>(
-    parsed.config.view.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD,
+    parsedActiveSavedView.view.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD,
   );
   const [projectBlockResolution, setProjectBlockResolution] = useState<number>(
-    asPositiveInteger(parsed.config.view.blockResolution) ?? DEFAULT_PROJECT_BLOCK_RESOLUTION,
+    asPositiveInteger(parsedActiveSavedView.view.blockResolution) ?? DEFAULT_PROJECT_BLOCK_RESOLUTION,
   );
   const [projectDefaultUnits, setProjectDefaultUnits] = useState<number>(
-    asPositiveInteger(parsed.config.view.defaultUnits) ?? DEFAULT_PROJECT_DEFAULT_UNITS,
+    asPositiveInteger(parsedActiveSavedView.view.defaultUnits) ?? DEFAULT_PROJECT_DEFAULT_UNITS,
   );
   const [projectMissingPlacement, setProjectMissingPlacement] = useState<DatabaseProjectMissingPlacement>(
-    parsed.config.view.projectMissingPlacement ?? DEFAULT_PROJECT_MISSING_PLACEMENT,
+    parsedActiveSavedView.view.projectMissingPlacement ?? DEFAULT_PROJECT_MISSING_PLACEMENT,
   );
   const [pieGroupField, setPieGroupField] = useState<string | null>(
-    parsed.config.view.pieGroupField ?? null,
+    parsedActiveSavedView.view.pieGroupField ?? null,
   );
   const [pieAggregate, setPieAggregate] = useState<"count" | "sum" | "avg">(
-    parsed.config.view.pieAggregate ?? "count",
+    parsedActiveSavedView.view.pieAggregate ?? "count",
   );
   const [pieAggregateField, setPieAggregateField] = useState<string | null>(
-    parsed.config.view.pieAggregateField ?? null,
+    parsedActiveSavedView.view.pieAggregateField ?? null,
   );
   const [propertiesByView, setPropertiesByView] = useState<DatabasePropertiesByView>(
-    normalizePropertiesByView(parsed.config.propertiesByView, parsed.config.columns),
+    buildPropertiesMirror(parsedActiveSavedView.properties),
   );
-  const [activeFilters, setActiveFilters] = useState<DatabaseFilterGroup>(cloneFilterGroup(parsed.config.filters));
-  const [activeSorts, setActiveSorts] = useState<DatabaseSortRule[]>(cloneSortRules(parsed.config.sort));
+  const [activeFilters, setActiveFilters] = useState<DatabaseFilterGroup>(
+    cloneFilterGroup(parsedActiveSavedView.filters),
+  );
+  const [activeSorts, setActiveSorts] = useState<DatabaseSortRule[]>(cloneSortRules(parsedActiveSavedView.sort));
   const [activeCellEdit, setActiveCellEdit] = useState<DatabaseCellEditState | null>(null);
   const [pendingCellMutations, setPendingCellMutations] = useState<string[]>([]);
   const runnableExamPathSet = useMemo(
@@ -689,7 +722,8 @@ export const MarkdownHybridDatabaseBlock = ({
   const [panelLayerStyle, setPanelLayerStyle] = useState<CSSProperties | undefined>(undefined);
   const [isCompactPanelLayer, setIsCompactPanelLayer] = useState(false);
   const rollbackRecordSnapshotRef = useRef<Map<string, DatabaseRecord>>(new Map());
-  const titleRef = useRef(title);
+  const savedViewsRef = useRef(savedViews);
+  const activeViewIdRef = useRef(activeViewId);
   const sourceRef = useRef(source);
   const fieldDefinitionsRef = useRef(fieldDefinitions);
   const viewTypeRef = useRef(viewType);
@@ -747,56 +781,52 @@ export const MarkdownHybridDatabaseBlock = ({
   }, []);
 
   useEffect(() => {
-    if (titlePersistTimeoutRef.current !== null) {
-      window.clearTimeout(titlePersistTimeoutRef.current);
-      titlePersistTimeoutRef.current = null;
-    }
-    setTitle(parsed.config.title);
+    setSavedViews(parsedSavedViews);
+    setActiveViewId(parsedActiveSavedView.id);
     setSource(cloneSourceSpec(parsed.config.source));
     setFieldDefinitions(cloneFieldDefinitions(parsed.config.fields ?? []));
-    setViewType(parsed.config.view.type);
-    setKanbanGroupBy(parsed.config.view.groupBy ?? null);
-    setKanbanShowCover(parsed.config.view.kanbanShowCover ?? false);
-    setTimelineStartField(parsed.config.view.timelineStartField ?? null);
-    setTimelineEndField(parsed.config.view.timelineEndField ?? null);
-    const nextTimelineMode = parsed.config.view.timelineMode ?? DEFAULT_TIMELINE_MODE;
+    setViewType(parsedActiveSavedView.view.type);
+    setKanbanGroupBy(parsedActiveSavedView.view.groupBy ?? null);
+    setKanbanShowCover(parsedActiveSavedView.view.kanbanShowCover ?? false);
+    setTimelineStartField(parsedActiveSavedView.view.timelineStartField ?? null);
+    setTimelineEndField(parsedActiveSavedView.view.timelineEndField ?? null);
+    const nextTimelineMode = parsedActiveSavedView.view.timelineMode ?? DEFAULT_TIMELINE_MODE;
     const nextTimelineBaseDate = resolveTimelineBaseDateForMode(
       nextTimelineMode,
-      parsed.config.view.timelineBaseDate ?? null,
+      parsedActiveSavedView.view.timelineBaseDate ?? null,
     );
     setTimelineMode(nextTimelineMode);
     setTimelineBaseDate(nextTimelineBaseDate);
     setGanttZoom(
       coerceTimelineZoom(
         nextTimelineMode,
-        parsed.config.view.ganttZoom ?? getTimelineDefaultZoom(nextTimelineMode),
+        parsedActiveSavedView.view.ganttZoom ?? getTimelineDefaultZoom(nextTimelineMode),
       ),
     );
-    setProjectStartField(parsed.config.view.projectStartField ?? DEFAULT_PROJECT_START_FIELD);
-    setProjectUnitField(parsed.config.view.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD);
+    setProjectStartField(parsedActiveSavedView.view.projectStartField ?? DEFAULT_PROJECT_START_FIELD);
+    setProjectUnitField(parsedActiveSavedView.view.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD);
     setProjectBlockResolution(
-      asPositiveInteger(parsed.config.view.blockResolution) ?? DEFAULT_PROJECT_BLOCK_RESOLUTION,
+      asPositiveInteger(parsedActiveSavedView.view.blockResolution) ?? DEFAULT_PROJECT_BLOCK_RESOLUTION,
     );
     setProjectDefaultUnits(
-      asPositiveInteger(parsed.config.view.defaultUnits) ?? DEFAULT_PROJECT_DEFAULT_UNITS,
+      asPositiveInteger(parsedActiveSavedView.view.defaultUnits) ?? DEFAULT_PROJECT_DEFAULT_UNITS,
     );
-    setProjectMissingPlacement(parsed.config.view.projectMissingPlacement ?? DEFAULT_PROJECT_MISSING_PLACEMENT);
-    setPieGroupField(parsed.config.view.pieGroupField ?? null);
-    setPieAggregate(parsed.config.view.pieAggregate ?? "count");
-    setPieAggregateField(parsed.config.view.pieAggregateField ?? null);
-    setPropertiesByView(
-      normalizePropertiesByView(parsed.config.propertiesByView, parsed.config.columns),
-    );
-    setActiveFilters(cloneFilterGroup(parsed.config.filters));
-    setActiveSorts(cloneSortRules(parsed.config.sort));
+    setProjectMissingPlacement(parsedActiveSavedView.view.projectMissingPlacement ?? DEFAULT_PROJECT_MISSING_PLACEMENT);
+    setPieGroupField(parsedActiveSavedView.view.pieGroupField ?? null);
+    setPieAggregate(parsedActiveSavedView.view.pieAggregate ?? "count");
+    setPieAggregateField(parsedActiveSavedView.view.pieAggregateField ?? null);
+    setPropertiesByView(buildPropertiesMirror(parsedActiveSavedView.properties));
+    setActiveFilters(cloneFilterGroup(parsedActiveSavedView.filters));
+    setActiveSorts(cloneSortRules(parsedActiveSavedView.sort));
     setActiveCellEdit(null);
     setPendingCellMutations([]);
     setPendingRecordMutations([]);
     rollbackRecordSnapshotRef.current.clear();
-  }, [parsed.config]);
+  }, [parsed.config, parsedActiveSavedView, parsedSavedViews]);
 
   useEffect(() => {
-    titleRef.current = title;
+    savedViewsRef.current = savedViews;
+    activeViewIdRef.current = activeViewId;
     sourceRef.current = source;
     fieldDefinitionsRef.current = fieldDefinitions;
     viewTypeRef.current = viewType;
@@ -828,6 +858,7 @@ export const MarkdownHybridDatabaseBlock = ({
     pieAggregate,
     pieAggregateField,
     pieGroupField,
+    savedViews,
     source,
     timelineEndField,
     timelineBaseDate,
@@ -839,18 +870,9 @@ export const MarkdownHybridDatabaseBlock = ({
     projectStartField,
     projectUnitField,
     propertiesByView,
-    title,
+    activeViewId,
     viewType,
   ]);
-
-  useEffect(
-    () => () => {
-      if (titlePersistTimeoutRef.current !== null) {
-        window.clearTimeout(titlePersistTimeoutRef.current);
-      }
-    },
-    [],
-  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1150,33 +1172,51 @@ export const MarkdownHybridDatabaseBlock = ({
     () => getPropertiesForView(propertiesByView, viewType),
     [propertiesByView, viewType],
   );
+  const activeSavedView = useMemo(
+    () => findSavedViewById(savedViews, activeViewId),
+    [activeViewId, savedViews],
+  );
+  const activeViewName = activeSavedView?.name ?? parsed.config.title;
 
   const persistConfig = useCallback((next: {
-    title?: string;
     source?: DatabaseSourceSpec;
     fields?: DatabaseFieldDefinition[];
+    savedViews?: DatabaseSavedViewConfig[];
+    activeViewId?: string;
     viewType?: DatabaseViewType;
     view?: Partial<DatabaseViewSpec>;
     visibleColumns?: string[];
-    propertiesByView?: DatabasePropertiesByView;
     filters?: DatabaseFilterGroup;
     sorts?: DatabaseSortRule[];
   }) => {
-    const nextTitle = next.title ?? titleRef.current;
     const nextSource = cloneSourceSpec(next.source ?? sourceRef.current);
     const nextFields = cloneFieldDefinitions(next.fields ?? fieldDefinitionsRef.current);
+    let nextSavedViews = dedupeSavedViewsById(cloneSavedViews(next.savedViews ?? savedViewsRef.current));
+    if (nextSavedViews.length === 0) {
+      nextSavedViews = cloneSavedViews(defaultConfig.views.items);
+    }
+    const nextActiveView = findSavedViewById(nextSavedViews, next.activeViewId ?? activeViewIdRef.current);
+    if (!nextActiveView) {
+      return;
+    }
+    const nextActiveIndex = nextSavedViews.findIndex((savedView) => savedView.id === nextActiveView.id);
+    if (nextActiveIndex < 0) {
+      return;
+    }
+
     const nextViewType = next.viewType ?? viewTypeRef.current;
+    const resolvedTimelineMode = next.view?.timelineMode ?? timelineModeRef.current ?? DEFAULT_TIMELINE_MODE;
     const nextView: DatabaseViewSpec = {
-      ...parsed.config.view,
+      ...nextActiveView.view,
       type: nextViewType,
       groupBy: next.view?.groupBy ?? kanbanGroupByRef.current ?? null,
       kanbanShowCover: next.view?.kanbanShowCover ?? kanbanShowCoverRef.current ?? false,
       timelineStartField: next.view?.timelineStartField ?? timelineStartFieldRef.current ?? null,
       timelineEndField: next.view?.timelineEndField ?? timelineEndFieldRef.current ?? null,
-      timelineMode: next.view?.timelineMode ?? timelineModeRef.current ?? DEFAULT_TIMELINE_MODE,
+      timelineMode: resolvedTimelineMode,
       timelineBaseDate: next.view?.timelineBaseDate ?? timelineBaseDateRef.current ?? null,
       ganttZoom: next.view?.ganttZoom ?? ganttZoomRef.current ?? getTimelineDefaultZoom(
-        next.view?.timelineMode ?? timelineModeRef.current ?? DEFAULT_TIMELINE_MODE,
+        resolvedTimelineMode,
       ),
       projectStartField: next.view?.projectStartField ?? projectStartFieldRef.current ?? DEFAULT_PROJECT_START_FIELD,
       projectUnitField: next.view?.projectUnitField ?? projectUnitFieldRef.current ?? DEFAULT_PROJECT_UNIT_FIELD,
@@ -1193,45 +1233,52 @@ export const MarkdownHybridDatabaseBlock = ({
       pieAggregate: next.view?.pieAggregate ?? pieAggregateRef.current ?? "count",
       pieAggregateField: next.view?.pieAggregateField ?? pieAggregateFieldRef.current ?? null,
     };
-    let nextPropertiesByView = normalizePropertiesByView(
-      next.propertiesByView ?? propertiesByViewRef.current,
-      parsed.config.columns,
+    const nextVisibleColumns = dedupeCaseInsensitive(
+      next.visibleColumns ?? getPropertiesForView(propertiesByViewRef.current, viewTypeRef.current),
     );
-    if (next.visibleColumns) {
-      const targetView = next.viewType ?? next.view?.type ?? viewTypeRef.current;
-      nextPropertiesByView = {
-        ...nextPropertiesByView,
-        [targetView]: dedupeCaseInsensitive(next.visibleColumns),
-      };
-    }
-    const tableColumns = dedupeCaseInsensitive(nextPropertiesByView.table ?? parsed.config.columns);
-    nextPropertiesByView = {
-      ...nextPropertiesByView,
-      table: tableColumns,
+    const nextFilters = cloneFilterGroup(next.filters ?? activeFiltersRef.current);
+    const nextSorts = cloneSortRules(next.sorts ?? activeSortsRef.current);
+
+    nextSavedViews[nextActiveIndex] = {
+      ...nextActiveView,
+      view: nextView,
+      properties: nextVisibleColumns,
+      filters: nextFilters,
+      sort: nextSorts,
     };
-    const nextFilters = next.filters ?? activeFiltersRef.current;
-    const nextSorts = next.sorts ?? activeSortsRef.current;
+
+    setSavedViews(nextSavedViews);
+    savedViewsRef.current = nextSavedViews;
+    setActiveViewId(nextActiveView.id);
+    activeViewIdRef.current = nextActiveView.id;
+
+    const persistedViews = {
+      activeViewId: nextActiveView.id,
+      items: cloneSavedViews(nextSavedViews),
+    };
+    const propertiesMirror = buildPropertiesMirror(nextVisibleColumns);
 
     const nextConfig = {
       ...parsed.config,
-      title: nextTitle,
+      title: nextActiveView.name,
       source: nextSource,
       fields: nextFields,
       view: nextView,
-      columns: tableColumns,
-      propertiesByView: nextPropertiesByView,
-      filters: cloneFilterGroup(nextFilters),
-      sort: cloneSortRules(nextSorts),
+      columns: nextVisibleColumns,
+      propertiesByView: propertiesMirror,
+      filters: nextFilters,
+      sort: nextSorts,
+      views: persistedViews,
     };
     onCommitRaw(serializeDatabaseBlockConfig(nextConfig));
-  }, [onCommitRaw, parsed.config]);
+  }, [defaultConfig.views.items, onCommitRaw, parsed.config]);
 
   const store = useMemo(
     () => buildDatabaseStoreSnapshot({
       records,
       config: {
         ...parsed.config,
-        title,
+        title: activeViewName,
         source,
         fields: fieldDefinitions,
         view: {
@@ -1277,7 +1324,7 @@ export const MarkdownHybridDatabaseBlock = ({
       searchQuery,
       source,
       sourceResolution.warning,
-      title,
+      activeViewName,
       kanbanGroupBy,
       kanbanShowCover,
       viewType,
@@ -1339,34 +1386,141 @@ export const MarkdownHybridDatabaseBlock = ({
     [onOpenExamFromDatabaseRecord],
   );
 
-  const commitTitle = useCallback((nextTitle: string) => {
-    const normalizedTitle = nextTitle.trim() || "Database";
-    if (normalizedTitle === parsed.config.title) {
+  const handleSwitchSavedView = useCallback((nextSavedViewId: string) => {
+    const nextSavedView = findSavedViewById(savedViewsRef.current, nextSavedViewId);
+    if (!nextSavedView) {
       return;
     }
-    persistConfig({ title: normalizedTitle });
-  }, [parsed.config.title, persistConfig]);
+    const nextView = { ...nextSavedView.view };
+    const nextVisibleColumns = dedupeCaseInsensitive(nextSavedView.properties);
+    const nextFilters = cloneFilterGroup(nextSavedView.filters);
+    const nextSorts = cloneSortRules(nextSavedView.sort);
+    const nextPropertiesByView = buildPropertiesMirror(nextVisibleColumns);
 
-  const handleTitleChange = (nextTitle: string) => {
-    setTitle(nextTitle);
-    if (titlePersistTimeoutRef.current !== null) {
-      window.clearTimeout(titlePersistTimeoutRef.current);
-    }
-    titlePersistTimeoutRef.current = window.setTimeout(() => {
-      commitTitle(nextTitle);
-      titlePersistTimeoutRef.current = null;
-    }, TITLE_COMMIT_DEBOUNCE_MS);
-  };
+    setActiveViewId(nextSavedView.id);
+    activeViewIdRef.current = nextSavedView.id;
+    setViewType(nextView.type);
+    viewTypeRef.current = nextView.type;
+    setKanbanGroupBy(nextView.groupBy ?? null);
+    kanbanGroupByRef.current = nextView.groupBy ?? null;
+    setKanbanShowCover(nextView.kanbanShowCover ?? false);
+    kanbanShowCoverRef.current = nextView.kanbanShowCover ?? false;
+    setTimelineStartField(nextView.timelineStartField ?? null);
+    timelineStartFieldRef.current = nextView.timelineStartField ?? null;
+    setTimelineEndField(nextView.timelineEndField ?? null);
+    timelineEndFieldRef.current = nextView.timelineEndField ?? null;
+    const nextMode = nextView.timelineMode ?? DEFAULT_TIMELINE_MODE;
+    const nextBaseDate = resolveTimelineBaseDateForMode(nextMode, nextView.timelineBaseDate ?? null);
+    setTimelineMode(nextMode);
+    timelineModeRef.current = nextMode;
+    setTimelineBaseDate(nextBaseDate);
+    timelineBaseDateRef.current = nextBaseDate;
+    const nextZoom = coerceTimelineZoom(nextMode, nextView.ganttZoom ?? getTimelineDefaultZoom(nextMode));
+    setGanttZoom(nextZoom);
+    ganttZoomRef.current = nextZoom;
+    setProjectStartField(nextView.projectStartField ?? DEFAULT_PROJECT_START_FIELD);
+    projectStartFieldRef.current = nextView.projectStartField ?? DEFAULT_PROJECT_START_FIELD;
+    setProjectUnitField(nextView.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD);
+    projectUnitFieldRef.current = nextView.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD;
+    const nextResolution = asPositiveInteger(nextView.blockResolution) ?? DEFAULT_PROJECT_BLOCK_RESOLUTION;
+    setProjectBlockResolution(nextResolution);
+    projectBlockResolutionRef.current = nextResolution;
+    const nextDefaultUnits = asPositiveInteger(nextView.defaultUnits) ?? DEFAULT_PROJECT_DEFAULT_UNITS;
+    setProjectDefaultUnits(nextDefaultUnits);
+    projectDefaultUnitsRef.current = nextDefaultUnits;
+    const nextMissingPlacement = nextView.projectMissingPlacement ?? DEFAULT_PROJECT_MISSING_PLACEMENT;
+    setProjectMissingPlacement(nextMissingPlacement);
+    projectMissingPlacementRef.current = nextMissingPlacement;
+    setPieGroupField(nextView.pieGroupField ?? null);
+    pieGroupFieldRef.current = nextView.pieGroupField ?? null;
+    setPieAggregate(nextView.pieAggregate ?? "count");
+    pieAggregateRef.current = nextView.pieAggregate ?? "count";
+    setPieAggregateField(nextView.pieAggregateField ?? null);
+    pieAggregateFieldRef.current = nextView.pieAggregateField ?? null;
+    setPropertiesByView(nextPropertiesByView);
+    propertiesByViewRef.current = nextPropertiesByView;
+    setActiveFilters(nextFilters);
+    activeFiltersRef.current = nextFilters;
+    setActiveSorts(nextSorts);
+    activeSortsRef.current = nextSorts;
+    setPanels(defaultPanels);
+    setActiveCellEdit(null);
 
-  const handleTitleBlur = (nextTitle: string) => {
-    if (titlePersistTimeoutRef.current !== null) {
-      window.clearTimeout(titlePersistTimeoutRef.current);
-      titlePersistTimeoutRef.current = null;
+    persistConfig({
+      activeViewId: nextSavedView.id,
+      viewType: nextView.type,
+      view: nextView,
+      visibleColumns: nextVisibleColumns,
+      filters: nextFilters,
+      sorts: nextSorts,
+    });
+  }, [persistConfig]);
+
+  const handleCreateSavedView = useCallback((rawName: string) => {
+    const trimmedName = rawName.trim();
+    if (!trimmedName) {
+      return;
     }
-    const normalizedTitle = nextTitle.trim() || "Database";
-    setTitle(normalizedTitle);
-    commitTitle(normalizedTitle);
-  };
+    const existingByName = savedViewsRef.current.find((savedView) =>
+      toLower(savedView.name) === toLower(trimmedName));
+    if (existingByName) {
+      handleSwitchSavedView(existingByName.id);
+      return;
+    }
+
+    const existingIds = new Set(savedViewsRef.current.map((savedView) => savedView.id));
+    const nextId = createSavedViewId(trimmedName, existingIds);
+    const nextView: DatabaseViewSpec = {
+      type: viewTypeRef.current,
+      groupBy: kanbanGroupByRef.current ?? null,
+      kanbanShowCover: kanbanShowCoverRef.current ?? false,
+      timelineStartField: timelineStartFieldRef.current ?? null,
+      timelineEndField: timelineEndFieldRef.current ?? null,
+      timelineMode: timelineModeRef.current ?? DEFAULT_TIMELINE_MODE,
+      timelineBaseDate: timelineBaseDateRef.current ?? null,
+      ganttZoom: ganttZoomRef.current ?? getTimelineDefaultZoom(timelineModeRef.current ?? DEFAULT_TIMELINE_MODE),
+      projectStartField: projectStartFieldRef.current ?? DEFAULT_PROJECT_START_FIELD,
+      projectUnitField: projectUnitFieldRef.current ?? DEFAULT_PROJECT_UNIT_FIELD,
+      blockResolution: projectBlockResolutionRef.current ?? DEFAULT_PROJECT_BLOCK_RESOLUTION,
+      defaultUnits: projectDefaultUnitsRef.current ?? DEFAULT_PROJECT_DEFAULT_UNITS,
+      projectMissingPlacement: projectMissingPlacementRef.current ?? DEFAULT_PROJECT_MISSING_PLACEMENT,
+      pieGroupField: pieGroupFieldRef.current ?? null,
+      pieAggregate: pieAggregateRef.current ?? "count",
+      pieAggregateField: pieAggregateFieldRef.current ?? null,
+    };
+    const nextProperties = dedupeCaseInsensitive(
+      getPropertiesForView(propertiesByViewRef.current, viewTypeRef.current),
+    );
+    const nextFilters = cloneFilterGroup(activeFiltersRef.current);
+    const nextSorts = cloneSortRules(activeSortsRef.current);
+    const nextSavedView: DatabaseSavedViewConfig = {
+      id: nextId,
+      name: trimmedName,
+      view: nextView,
+      properties: nextProperties,
+      filters: nextFilters,
+      sort: nextSorts,
+    };
+    const nextSavedViews = dedupeSavedViewsById([
+      ...cloneSavedViews(savedViewsRef.current),
+      nextSavedView,
+    ]);
+
+    setSavedViews(nextSavedViews);
+    savedViewsRef.current = nextSavedViews;
+    setActiveViewId(nextId);
+    activeViewIdRef.current = nextId;
+
+    persistConfig({
+      savedViews: nextSavedViews,
+      activeViewId: nextId,
+      viewType: nextView.type,
+      view: nextView,
+      visibleColumns: nextProperties,
+      filters: nextFilters,
+      sorts: nextSorts,
+    });
+  }, [handleSwitchSavedView, persistConfig]);
 
   const handleSourceChange = (nextSource: DatabaseSourceSpec) => {
     const cloned = cloneSourceSpec(nextSource);
@@ -1814,7 +1968,7 @@ export const MarkdownHybridDatabaseBlock = ({
     ensureField(startKey);
     ensureField(endKey);
 
-    const currentColumns = getPropertiesForView(propertiesByViewRef.current, "gantt");
+    const currentColumns = getPropertiesForView(propertiesByViewRef.current, viewTypeRef.current);
     const nextColumns = appendVisibleColumnIfMissing(
       appendVisibleColumnIfMissing(currentColumns, startKey),
       endKey,
@@ -1835,10 +1989,7 @@ export const MarkdownHybridDatabaseBlock = ({
       fieldDefinitionsRef.current = nextFields;
     }
     if (columnsChanged) {
-      const nextPropertiesByView = {
-        ...normalizePropertiesByView(propertiesByViewRef.current, parsed.config.columns),
-        gantt: nextColumns,
-      };
+      const nextPropertiesByView = buildPropertiesMirror(nextColumns);
       setPropertiesByView(nextPropertiesByView);
       propertiesByViewRef.current = nextPropertiesByView;
     }
@@ -1860,7 +2011,6 @@ export const MarkdownHybridDatabaseBlock = ({
       persistConfig({
         fields: nextFields,
         visibleColumns: nextColumns,
-        viewType: "gantt",
         view: {
           ...viewPatch,
         },
@@ -1871,7 +2021,7 @@ export const MarkdownHybridDatabaseBlock = ({
       startKey,
       endKey,
     };
-  }, [parsed.config.columns, persistConfig]);
+  }, [persistConfig]);
 
   const ensureProjectFieldSetup = useCallback(() => {
     const configuredStart = (projectStartFieldRef.current ?? "").trim();
@@ -1910,7 +2060,7 @@ export const MarkdownHybridDatabaseBlock = ({
     ensureField(startKey, "number");
     ensureField(unitKey, "unit");
 
-    const currentColumns = getPropertiesForView(propertiesByViewRef.current, "project");
+    const currentColumns = getPropertiesForView(propertiesByViewRef.current, viewTypeRef.current);
     const nextColumns = appendVisibleColumnIfMissing(
       appendVisibleColumnIfMissing(currentColumns, startKey),
       unitKey,
@@ -1931,10 +2081,7 @@ export const MarkdownHybridDatabaseBlock = ({
       fieldDefinitionsRef.current = nextFields;
     }
     if (columnsChanged) {
-      const nextPropertiesByView = {
-        ...normalizePropertiesByView(propertiesByViewRef.current, parsed.config.columns),
-        project: nextColumns,
-      };
+      const nextPropertiesByView = buildPropertiesMirror(nextColumns);
       setPropertiesByView(nextPropertiesByView);
       propertiesByViewRef.current = nextPropertiesByView;
     }
@@ -1956,7 +2103,6 @@ export const MarkdownHybridDatabaseBlock = ({
       persistConfig({
         fields: nextFields,
         visibleColumns: nextColumns,
-        viewType: "project",
         view: {
           ...viewPatch,
         },
@@ -1967,7 +2113,7 @@ export const MarkdownHybridDatabaseBlock = ({
       startKey,
       unitKey,
     };
-  }, [parsed.config.columns, persistConfig]);
+  }, [persistConfig]);
 
   const handleCommitTimelineRange = useCallback(async ({
     record,
@@ -2116,21 +2262,16 @@ export const MarkdownHybridDatabaseBlock = ({
   }, [allowCellEditing, ensureProjectFieldSetup, records, scheduleVaultAttributeRefresh]);
 
   const handleToggleVisibility = (key: string, visible: boolean) => {
-    const targetView = viewTypeRef.current;
     const nextColumns = visible
       ? appendVisibleColumnIfMissing(visibleColumnKeys, key)
       : visibleColumnKeys.filter((entry) => entry.toLowerCase() !== key.toLowerCase());
-    const nextPropertiesByView = {
-      ...normalizePropertiesByView(propertiesByViewRef.current, parsed.config.columns),
-      [targetView]: nextColumns,
-    };
+    const nextPropertiesByView = buildPropertiesMirror(nextColumns);
     setPropertiesByView(nextPropertiesByView);
     propertiesByViewRef.current = nextPropertiesByView;
-    persistConfig({ visibleColumns: nextColumns, viewType: targetView });
+    persistConfig({ visibleColumns: nextColumns });
   };
 
   const handleReorderVisibleColumns = (fromKey: string, toKey: string) => {
-    const targetView = viewTypeRef.current;
     const fromIndex = visibleColumnKeys.findIndex((entry) => entry.toLowerCase() === fromKey.toLowerCase());
     const toIndex = visibleColumnKeys.findIndex((entry) => entry.toLowerCase() === toKey.toLowerCase());
     if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
@@ -2142,40 +2283,28 @@ export const MarkdownHybridDatabaseBlock = ({
       return;
     }
     nextColumns.splice(toIndex, 0, moved);
-    const nextPropertiesByView = {
-      ...normalizePropertiesByView(propertiesByViewRef.current, parsed.config.columns),
-      [targetView]: nextColumns,
-    };
+    const nextPropertiesByView = buildPropertiesMirror(nextColumns);
     setPropertiesByView(nextPropertiesByView);
     propertiesByViewRef.current = nextPropertiesByView;
-    persistConfig({ visibleColumns: nextColumns, viewType: targetView });
+    persistConfig({ visibleColumns: nextColumns });
   };
 
   const handleHideAllColumns = () => {
-    const targetView = viewTypeRef.current;
-    const nextPropertiesByView = {
-      ...normalizePropertiesByView(propertiesByViewRef.current, parsed.config.columns),
-      [targetView]: [],
-    };
+    const nextPropertiesByView = buildPropertiesMirror([]);
     setPropertiesByView(nextPropertiesByView);
     propertiesByViewRef.current = nextPropertiesByView;
-    persistConfig({ visibleColumns: [], viewType: targetView });
+    persistConfig({ visibleColumns: [] });
   };
 
   const handleRestoreDefaultColumns = () => {
-    const targetView = viewTypeRef.current;
-    const parsedPropertiesByView = normalizePropertiesByView(parsed.config.propertiesByView, parsed.config.columns);
-    const defaultPropertiesByView = normalizePropertiesByView(defaultConfig.propertiesByView, defaultConfig.columns);
-    const parsedDefault = getPropertiesForView(parsedPropertiesByView, targetView);
-    const fallbackDefault = getPropertiesForView(defaultPropertiesByView, targetView);
+    const parsedActiveSavedView = findSavedViewById(parsedSavedViews, parsed.config.views.activeViewId);
+    const parsedDefault = dedupeCaseInsensitive(parsedActiveSavedView?.properties ?? []);
+    const fallbackDefault = dedupeCaseInsensitive(defaultConfig.views.items[0]?.properties ?? []);
     const nextColumns = parsedDefault.length > 0 ? parsedDefault : fallbackDefault;
-    const nextPropertiesByView = {
-      ...normalizePropertiesByView(propertiesByViewRef.current, parsed.config.columns),
-      [targetView]: nextColumns,
-    };
+    const nextPropertiesByView = buildPropertiesMirror(nextColumns);
     setPropertiesByView(nextPropertiesByView);
     propertiesByViewRef.current = nextPropertiesByView;
-    persistConfig({ visibleColumns: nextColumns, viewType: targetView });
+    persistConfig({ visibleColumns: nextColumns });
   };
 
   const handleFilterChange = (nextGroup: DatabaseFilterGroup) => {
@@ -2273,21 +2402,16 @@ export const MarkdownHybridDatabaseBlock = ({
       origin: "formula",
       formula,
     };
-    const targetView = viewTypeRef.current;
     const nextFields = ensureFieldDefinition(fieldDefinitionsRef.current, nextField);
-    const currentColumns = getPropertiesForView(propertiesByViewRef.current, targetView);
+    const currentColumns = getPropertiesForView(propertiesByViewRef.current, viewTypeRef.current);
     const nextColumns = appendVisibleColumnIfMissing(currentColumns, key);
-    const nextPropertiesByView = {
-      ...normalizePropertiesByView(propertiesByViewRef.current, parsed.config.columns),
-      [targetView]: nextColumns,
-    };
+    const nextPropertiesByView = buildPropertiesMirror(nextColumns);
     setFieldDefinitions(nextFields);
     setPropertiesByView(nextPropertiesByView);
     propertiesByViewRef.current = nextPropertiesByView;
     persistConfig({
       fields: nextFields,
       visibleColumns: nextColumns,
-      viewType: targetView,
     });
   };
 
@@ -2330,21 +2454,16 @@ export const MarkdownHybridDatabaseBlock = ({
         origin: "frontmatter",
         formula: null,
       };
-      const targetView = viewTypeRef.current;
       const nextFields = ensureFieldDefinition(fieldDefinitionsRef.current, nextField);
-      const currentColumns = getPropertiesForView(propertiesByViewRef.current, targetView);
+      const currentColumns = getPropertiesForView(propertiesByViewRef.current, viewTypeRef.current);
       const nextColumns = appendVisibleColumnIfMissing(currentColumns, key);
-      const nextPropertiesByView = {
-        ...normalizePropertiesByView(propertiesByViewRef.current, parsed.config.columns),
-        [targetView]: nextColumns,
-      };
+      const nextPropertiesByView = buildPropertiesMirror(nextColumns);
       setFieldDefinitions(nextFields);
       setPropertiesByView(nextPropertiesByView);
       propertiesByViewRef.current = nextPropertiesByView;
       persistConfig({
         fields: nextFields,
         visibleColumns: nextColumns,
-        viewType: targetView,
       });
 
       fileCacheRef.current.clear();
@@ -2390,6 +2509,13 @@ export const MarkdownHybridDatabaseBlock = ({
   const hasActiveFilters = flatFilterRules.length > 0;
   const hasActiveSorts = activeSorts.length > 0;
   const viewBehavior = VIEW_BEHAVIOR_BY_TYPE[viewType];
+  const savedViewEntries = useMemo(
+    () => savedViews.map((savedView) => ({
+      id: savedView.id,
+      name: savedView.name,
+    })),
+    [savedViews],
+  );
 
   const availableFolders = useMemo(() => {
     const folders = new Set<string>();
@@ -2595,18 +2721,20 @@ export const MarkdownHybridDatabaseBlock = ({
       <div className="database-block-header" data-md-block-control="true">
         {parsed.config.options.showToolbar ? (
           <DatabaseToolbar
-            title={title}
-            sourceLabel={getFolderLabel(source)}
+            activeViewId={activeSavedView?.id ?? activeViewId}
+            activeViewName={activeViewName}
+            savedViews={savedViewEntries}
+            sourceLabel={getFolderLabel()}
             viewType={viewType}
             kanbanGroupBy={kanbanGroupBy}
             kanbanGroupByOptions={kanbanGroupByOptions}
             searchQuery={searchQuery}
             showSearch={parsed.config.options.showSearch}
-            onTitleChange={handleTitleChange}
-            onTitleBlur={handleTitleBlur}
             onSearchChange={setSearchQuery}
             onViewTypeChange={handleViewChange}
             onKanbanGroupByChange={handleKanbanGroupByChange}
+            onSelectSavedView={handleSwitchSavedView}
+            onCreateSavedView={handleCreateSavedView}
             isSourcePanelOpen={panels.source}
             isFilterPanelOpen={panels.filter}
             isSortPanelOpen={panels.sort}

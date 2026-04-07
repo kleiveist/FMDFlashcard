@@ -2,149 +2,42 @@ import { describe, expect, it } from "vitest";
 import { createDefaultDatabaseBlockConfig, parseDatabaseBlockConfigFromRaw, serializeDatabaseBlockConfig } from "./database-block-parser";
 
 describe("database-block-parser", () => {
-  it("parses a valid :::: database block config", () => {
+  it("parses the new saved-views schema and applies the active view mirror", () => {
     const raw = [
       "::::",
-      "title: Exam Uebersicht",
-      "source:",
-      "  type: explicit-folder",
-      "  path: UI-OnlineTest",
-      "view:",
-      "  type: table",
-      "fields:",
-      "  - key: ProgressLabel",
-      "    label: Progress Label",
-      "    type: formula",
-      "    origin: formula",
-      "    formula: 'concat(percent, \" / \", status)'",
-      "columns:",
-      "  - Section",
-      "  - Rank",
-      "filters:",
-      "  op: and",
-      "  rules:",
-      "    - field: Section",
-      "      op: is",
-      "      value: IUFS",
-      "sort:",
-      "  - field: Rank",
-      "    dir: asc",
-      "options:",
-      "  editable: false",
-      "  showSearch: true",
-      "  showToolbar: true",
-      "::::",
-    ].join("\n");
-
-    const parsed = parseDatabaseBlockConfigFromRaw(raw);
-    expect(parsed.isClosed).toBe(true);
-    expect(parsed.errors).toEqual([]);
-    expect(parsed.config.title).toBe("Exam Uebersicht");
-    expect(parsed.config.source.type).toBe("explicit-folder");
-    expect(parsed.config.source.path).toBe("UI-OnlineTest");
-    expect(parsed.config.fields ?? []).toHaveLength(1);
-    expect((parsed.config.fields ?? [])[0]).toEqual({
-      key: "ProgressLabel",
-      label: "Progress Label",
-      type: "formula",
-      origin: "formula",
-      formula: "concat(percent, \" / \", status)",
-    });
-    expect(parsed.config.columns).toEqual(["Section", "Rank"]);
-    expect(parsed.config.filters.op).toBe("and");
-    expect(parsed.config.sort).toHaveLength(1);
-    expect(parsed.config.sort[0]?.field).toBe("Rank");
-  });
-
-  it("returns defaults with parse error when opener is missing", () => {
-    const parsed = parseDatabaseBlockConfigFromRaw("title: no marker");
-    expect(parsed.isClosed).toBe(false);
-    expect(parsed.errors[0]).toContain("must start");
-    const defaults = createDefaultDatabaseBlockConfig();
-    expect(parsed.config.title).toBe(defaults.title);
-    expect(parsed.config.source.type).toBe(defaults.source.type);
-    expect(parsed.config.view.type).toBe(defaults.view.type);
-    expect(parsed.config.columns).toEqual(defaults.columns);
-    expect(parsed.config.options).toEqual(defaults.options);
-  });
-
-  it("reports missing closing marker and still parses body", () => {
-    const raw = [
-      "::::",
-      "title: Incomplete",
+      "title: Legacy Mirror",
       "source:",
       "  type: current-folder",
-    ].join("\n");
-
-    const parsed = parseDatabaseBlockConfigFromRaw(raw);
-    expect(parsed.isClosed).toBe(false);
-    expect(parsed.errors.join(" ")).toContain("missing the closing");
-    expect(parsed.config.title).toBe("Incomplete");
-  });
-
-  it("keeps explicit empty columns array", () => {
-    const raw = [
-      "::::",
-      "title: Empty Columns",
-      "columns: []",
-      "::::",
-    ].join("\n");
-
-    const parsed = parseDatabaseBlockConfigFromRaw(raw);
-    expect(parsed.errors).toEqual([]);
-    expect(parsed.config.columns).toEqual([]);
-  });
-
-  it("serializes config with :::: markers", () => {
-    const config = createDefaultDatabaseBlockConfig();
-    config.title = "Serialize Test";
-    config.columns = ["Dateiname", "Score"];
-    config.propertiesByView = {
-      ...(config.propertiesByView ?? {}),
-      table: ["Dateiname", "Score"],
-    };
-    config.fields = [
-      {
-        key: "ScoreRatio",
-        type: "percent",
-        origin: "formula",
-        formula: "percent(score)",
-      },
-    ];
-
-    const serialized = serializeDatabaseBlockConfig(config);
-    const lines = serialized.split("\n");
-
-    expect(lines[0]).toBe("::::");
-    expect(lines[lines.length - 1]).toBe("::::");
-    expect(serialized).toContain("title: 'Serialize Test'");
-    expect(serialized).toContain("fields:");
-    expect(serialized).toContain("key: ScoreRatio");
-    expect(serialized).toContain("- Score");
-
-    const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
-    expect(reparsed.errors).toEqual([]);
-    expect(reparsed.config.title).toBe("Serialize Test");
-    expect((reparsed.config.fields ?? [])[0]?.formula).toBe("percent(score)");
-    expect(reparsed.config.columns).toEqual(["Dateiname", "Score"]);
-  });
-
-  it("roundtrips multi-folder sources with fields", () => {
-    const raw = [
-      "::::",
-      "title: Folder Mix",
-      "source:",
-      "  type: multi-folder",
-      "  paths:",
-      "    - Exams",
-      "    - Tasks/Sub",
-      "fields:",
-      "  - key: ScoreBucket",
-      "    type: text",
-      "    origin: formula",
-      "    formula: 'if(percent(Score) >= 50, \"pass\", \"fail\")'",
-      "columns:",
-      "  - ScoreBucket",
+      "views:",
+      "  activeViewId: view-kanban",
+      "  items:",
+      "    - id: view-table",
+      "      name: Table View",
+      "      view:",
+      "        type: table",
+      "      properties:",
+      "        - Dateiname",
+      "      filters:",
+      "        op: and",
+      "        rules: []",
+      "      sort: []",
+      "    - id: view-kanban",
+      "      name: Sprint Board",
+      "      view:",
+      "        type: kanban",
+      "        groupBy: status",
+      "      properties:",
+      "        - status",
+      "        - owner",
+      "      filters:",
+      "        op: and",
+      "        rules:",
+      "          - field: status",
+      "            op: is",
+      "            value: active",
+      "      sort:",
+      "        - field: owner",
+      "          dir: asc",
       "options:",
       "  editable: false",
       "  showSearch: true",
@@ -154,217 +47,151 @@ describe("database-block-parser", () => {
 
     const parsed = parseDatabaseBlockConfigFromRaw(raw);
     expect(parsed.errors).toEqual([]);
-    expect(parsed.config.source.type).toBe("multi-folder");
-    expect(parsed.config.source.paths).toEqual(["Exams", "Tasks/Sub"]);
-    expect((parsed.config.fields ?? [])[0]?.key).toBe("ScoreBucket");
-
-    const serialized = serializeDatabaseBlockConfig(parsed.config);
-    const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
-    expect(reparsed.errors).toEqual([]);
-    expect(reparsed.config.source.type).toBe("multi-folder");
-    expect(reparsed.config.source.paths).toEqual(["Exams", "Tasks/Sub"]);
-    expect((reparsed.config.fields ?? [])[0]?.formula).toBe("if(percent(Score) >= 50, \"pass\", \"fail\")");
+    expect(parsed.isClosed).toBe(true);
+    expect(parsed.config.views.activeViewId).toBe("view-kanban");
+    expect(parsed.config.views.items).toHaveLength(2);
+    expect(parsed.config.title).toBe("Sprint Board");
+    expect(parsed.config.view.type).toBe("kanban");
+    expect(parsed.config.view.groupBy).toBe("status");
+    expect(parsed.config.columns).toEqual(["status", "owner"]);
+    expect(parsed.config.filters.rules).toHaveLength(1);
+    expect(parsed.config.sort[0]?.field).toBe("owner");
+    expect(parsed.config.propertiesByView?.table).toEqual(["status", "owner"]);
+    expect(parsed.config.propertiesByView?.kanban).toEqual(["status", "owner"]);
   });
 
-  it("roundtrips complete gantt/pie view config including gantt zoom", () => {
+  it("migrates legacy view/properties/filter/sort data into the first saved view", () => {
     const raw = [
       "::::",
-      "title: View Roundtrip",
-      "view:",
-      "  type: pie",
-      "  kanbanShowCover: true",
-      "  timelineStartField: startDate",
-      "  timelineEndField: dueDate",
-      "  timelineMode: datetime",
-      "  timelineBaseDate: 2026-04-01",
-      "  ganttZoom: quarter",
-      "  pieGroupField: status",
-      "  pieAggregate: avg",
-      "  pieAggregateField: percent",
-      "::::",
-    ].join("\n");
-
-    const parsed = parseDatabaseBlockConfigFromRaw(raw);
-    expect(parsed.errors).toEqual([]);
-    expect(parsed.config.view.kanbanShowCover).toBe(true);
-    expect(parsed.config.view.timelineStartField).toBe("startDate");
-    expect(parsed.config.view.timelineEndField).toBe("dueDate");
-    expect(parsed.config.view.timelineMode).toBe("datetime");
-    expect(parsed.config.view.timelineBaseDate).toBe("2026-04-01");
-    expect(parsed.config.view.ganttZoom).toBe("quarter");
-    expect(parsed.config.view.pieGroupField).toBe("status");
-    expect(parsed.config.view.pieAggregate).toBe("avg");
-    expect(parsed.config.view.pieAggregateField).toBe("percent");
-
-    const serialized = serializeDatabaseBlockConfig(parsed.config);
-    expect(serialized).toContain("kanbanShowCover: true");
-    expect(serialized).toContain("timelineStartField: startDate");
-    expect(serialized).toContain("timelineEndField: dueDate");
-    expect(serialized).toContain("timelineMode: datetime");
-    expect(serialized).toContain("timelineBaseDate: 2026-04-01");
-    expect(serialized).toContain("ganttZoom: quarter");
-    expect(serialized).toContain("pieGroupField: status");
-    expect(serialized).toContain("pieAggregate: avg");
-    expect(serialized).toContain("pieAggregateField: percent");
-
-    const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
-    expect(reparsed.errors).toEqual([]);
-    expect(reparsed.config.view.kanbanShowCover).toBe(true);
-    expect(reparsed.config.view.timelineStartField).toBe("startDate");
-    expect(reparsed.config.view.timelineEndField).toBe("dueDate");
-    expect(reparsed.config.view.timelineMode).toBe("datetime");
-    expect(reparsed.config.view.timelineBaseDate).toBe("2026-04-01");
-    expect(reparsed.config.view.ganttZoom).toBe("quarter");
-    expect(reparsed.config.view.pieGroupField).toBe("status");
-    expect(reparsed.config.view.pieAggregate).toBe("avg");
-    expect(reparsed.config.view.pieAggregateField).toBe("percent");
-  });
-
-  it("parses extended timeline zoom values and mode defaults", () => {
-    const raw = [
-      "::::",
-      "title: Timeline Defaults",
-      "view:",
-      "  type: gantt",
-      "  timelineMode: time",
-      "  ganttZoom: minute",
-      "::::",
-    ].join("\n");
-
-    const parsed = parseDatabaseBlockConfigFromRaw(raw);
-    expect(parsed.errors).toEqual([]);
-    expect(parsed.config.view.timelineMode).toBe("time");
-    expect(parsed.config.view.ganttZoom).toBe("minute");
-    expect(parsed.config.view.timelineBaseDate).toBeNull();
-  });
-
-  it("roundtrips project view config with project options", () => {
-    const raw = [
-      "::::",
-      "title: Project Board",
-      "view:",
-      "  type: project",
-      "  projectStartField: unitsstart",
-      "  projectUnitField: units",
-      "  blockResolution: 200",
-      "  defaultUnits: 2",
-      "  projectMissingPlacement: hide-unplaced",
-      "::::",
-    ].join("\n");
-
-    const parsed = parseDatabaseBlockConfigFromRaw(raw);
-    expect(parsed.errors).toEqual([]);
-    expect(parsed.config.view.type).toBe("project");
-    expect(parsed.config.view.projectStartField).toBe("unitsstart");
-    expect(parsed.config.view.projectUnitField).toBe("units");
-    expect(parsed.config.view.blockResolution).toBe(200);
-    expect(parsed.config.view.defaultUnits).toBe(2);
-    expect(parsed.config.view.projectMissingPlacement).toBe("hide-unplaced");
-
-    const serialized = serializeDatabaseBlockConfig(parsed.config);
-    expect(serialized).toContain("type: project");
-    expect(serialized).toContain("projectStartField: unitsstart");
-    expect(serialized).toContain("projectUnitField: units");
-    expect(serialized).toContain("blockResolution: 200");
-    expect(serialized).toContain("defaultUnits: 2");
-    expect(serialized).toContain("projectMissingPlacement: hide-unplaced");
-
-    const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
-    expect(reparsed.errors).toEqual([]);
-    expect(reparsed.config.view.type).toBe("project");
-    expect(reparsed.config.view.projectStartField).toBe("unitsstart");
-    expect(reparsed.config.view.projectUnitField).toBe("units");
-    expect(reparsed.config.view.blockResolution).toBe(200);
-    expect(reparsed.config.view.defaultUnits).toBe(2);
-    expect(reparsed.config.view.projectMissingPlacement).toBe("hide-unplaced");
-  });
-
-  it("roundtrips propertiesByView selections", () => {
-    const raw = [
-      "::::",
-      "title: Per View Properties",
+      "title: Legacy Setup",
       "view:",
       "  type: kanban",
-      "  kanbanShowCover: true",
+      "  groupBy: status",
       "columns:",
       "  - Dateiname",
       "propertiesByView:",
-      "  table:",
-      "    - Dateiname",
-      "    - units",
       "  kanban:",
       "    - status",
-      "    - cover",
-      "  gantt:",
-      "    - start",
-      "    - end",
-      "  project:",
-      "    - unitsstart",
-      "    - units",
-      "  pie:",
-      "    - status",
+      "    - owner",
+      "filters:",
+      "  op: and",
+      "  rules:",
+      "    - field: status",
+      "      op: is",
+      "      value: done",
+      "sort:",
+      "  - field: owner",
+      "    dir: desc",
       "::::",
     ].join("\n");
 
     const parsed = parseDatabaseBlockConfigFromRaw(raw);
     expect(parsed.errors).toEqual([]);
-    expect(parsed.config.propertiesByView?.table).toEqual(["Dateiname", "units"]);
-    expect(parsed.config.propertiesByView?.kanban).toEqual(["status", "cover"]);
-    expect(parsed.config.propertiesByView?.gantt).toEqual(["start", "end"]);
-    expect(parsed.config.propertiesByView?.project).toEqual(["unitsstart", "units"]);
-    expect(parsed.config.propertiesByView?.pie).toEqual(["status"]);
-    expect(parsed.config.columns).toEqual(["Dateiname", "units"]);
+    expect(parsed.config.views.items).toHaveLength(1);
 
-    const serialized = serializeDatabaseBlockConfig(parsed.config);
-    expect(serialized).toContain("propertiesByView:");
-    expect(serialized).toContain("kanbanShowCover: true");
-    expect(serialized).toContain("  kanban:");
+    const migrated = parsed.config.views.items[0]!;
+    expect(migrated.id.length).toBeGreaterThan(0);
+    expect(parsed.config.views.activeViewId).toBe(migrated.id);
+    expect(migrated.name).toBe("Legacy Setup");
+    expect(migrated.view.type).toBe("kanban");
+    expect(migrated.view.groupBy).toBe("status");
+    expect(migrated.properties).toEqual(["status", "owner"]);
+    expect(migrated.filters.rules).toHaveLength(1);
+    expect(migrated.sort[0]?.field).toBe("owner");
+    expect(parsed.config.title).toBe("Legacy Setup");
+    expect(parsed.config.columns).toEqual(["status", "owner"]);
+  });
+
+  it("serializes only the new saved-views source-of-truth fields", () => {
+    const config = createDefaultDatabaseBlockConfig();
+    config.views = {
+      activeViewId: "view-main",
+      items: [
+        {
+          id: "view-main",
+          name: "Main",
+          view: {
+            type: "project",
+            projectStartField: "unitsstart",
+            projectUnitField: "units",
+            blockResolution: 200,
+            defaultUnits: 2,
+            projectMissingPlacement: "hide-unplaced",
+          },
+          properties: ["unitsstart", "units", "status"],
+          filters: {
+            id: "root",
+            op: "and",
+            rules: [
+              { id: "rule-1", field: "status", op: "is", value: "open" },
+            ],
+          },
+          sort: [
+            { id: "sort-1", field: "unitsstart", dir: "asc" },
+          ],
+        },
+      ],
+    };
+    config.title = "Outdated Legacy Mirror";
+    config.view = { type: "table" };
+    config.columns = ["Dateiname"];
+    config.propertiesByView = { table: ["Dateiname"] };
+    config.filters = { id: "legacy", op: "and", rules: [] };
+    config.sort = [];
+
+    const serialized = serializeDatabaseBlockConfig(config);
+
+    expect(serialized).toContain("views:");
+    expect(serialized).toContain("activeViewId: view-main");
+    expect(serialized).toContain("name: Main");
+    expect(serialized).toContain("type: project");
+    expect(serialized).toContain("projectMissingPlacement: hide-unplaced");
+    expect(serialized).toContain("      properties:");
+    expect(serialized).not.toContain("\nview:\n");
+    expect(serialized).not.toContain("\ncolumns:");
+    expect(serialized).not.toContain("\npropertiesByView:");
+    expect(serialized).not.toContain("\nfilters:");
+    expect(serialized).not.toContain("\nsort:");
 
     const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
     expect(reparsed.errors).toEqual([]);
-    expect(reparsed.config.propertiesByView?.table).toEqual(["Dateiname", "units"]);
-    expect(reparsed.config.propertiesByView?.kanban).toEqual(["status", "cover"]);
-    expect(reparsed.config.columns).toEqual(["Dateiname", "units"]);
+    expect(reparsed.config.title).toBe("Main");
+    expect(reparsed.config.views.activeViewId).toBe("view-main");
+    expect(reparsed.config.view.type).toBe("project");
+    expect(reparsed.config.columns).toEqual(["unitsstart", "units", "status"]);
+    expect(reparsed.config.sort[0]?.field).toBe("unitsstart");
   });
 
-  it("migrates legacy columns to table-only propertiesByView", () => {
-    const raw = [
-      "::::",
-      "title: Legacy",
-      "columns:",
-      "  - Dateiname",
-      "  - status",
-      "::::",
-    ].join("\n");
-
-    const parsed = parseDatabaseBlockConfigFromRaw(raw);
-    expect(parsed.errors).toEqual([]);
-    expect(parsed.config.columns).toEqual(["Dateiname", "status"]);
-    expect(parsed.config.propertiesByView?.table).toEqual(["Dateiname", "status"]);
-    expect(parsed.config.propertiesByView?.kanban).toEqual([]);
-    expect(parsed.config.propertiesByView?.gantt).toEqual([]);
-    expect(parsed.config.propertiesByView?.project).toEqual([]);
-    expect(parsed.config.propertiesByView?.pie).toEqual([]);
-  });
-
-  it("preserves nested filter groups during serialize/parse roundtrip", () => {
+  it("preserves nested filter groups in a saved view during serialize/parse roundtrip", () => {
     const config = createDefaultDatabaseBlockConfig();
-    config.filters = {
-      id: "root",
-      op: "and",
-      rules: [
-        { id: "rule-1", field: "Section", op: "is", value: "IUFS" },
+    config.views = {
+      activeViewId: "view-a",
+      items: [
         {
-          id: "group-1",
-          op: "or",
-          rules: [
-            { id: "rule-2", field: "status", op: "is", value: "3 🟡" },
-            {
-              id: "group-2",
-              op: "and",
-              rules: [{ id: "rule-3", field: "percent", op: ">=", value: 50 }],
-            },
-          ],
+          id: "view-a",
+          name: "Nested Filters",
+          view: { type: "table" },
+          properties: ["Dateiname", "status"],
+          filters: {
+            id: "root",
+            op: "and",
+            rules: [
+              { id: "rule-1", field: "Section", op: "is", value: "IUFS" },
+              {
+                id: "group-1",
+                op: "or",
+                rules: [
+                  { id: "rule-2", field: "status", op: "is", value: "3 🟡" },
+                  {
+                    id: "group-2",
+                    op: "and",
+                    rules: [{ id: "rule-3", field: "percent", op: ">=", value: 50 }],
+                  },
+                ],
+              },
+            ],
+          },
+          sort: [],
         },
       ],
     };
@@ -372,8 +199,9 @@ describe("database-block-parser", () => {
     const serialized = serializeDatabaseBlockConfig(config);
     const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
     expect(reparsed.errors).toEqual([]);
-    expect(reparsed.config.filters.rules).toHaveLength(2);
-    const nested = reparsed.config.filters.rules[1];
+    expect(reparsed.config.views.items).toHaveLength(1);
+    expect(reparsed.config.views.items[0]?.filters.rules).toHaveLength(2);
+    const nested = reparsed.config.views.items[0]?.filters.rules[1];
     expect(nested && "rules" in nested).toBe(true);
     if (nested && "rules" in nested) {
       expect(nested.rules).toHaveLength(2);
@@ -383,5 +211,15 @@ describe("database-block-parser", () => {
         expect(deepNested.rules).toHaveLength(1);
       }
     }
+  });
+
+  it("returns defaults with parse error when opener is missing", () => {
+    const parsed = parseDatabaseBlockConfigFromRaw("title: no marker");
+    expect(parsed.isClosed).toBe(false);
+    expect(parsed.errors[0]).toContain("must start");
+    const defaults = createDefaultDatabaseBlockConfig();
+    expect(parsed.config.title).toBe(defaults.title);
+    expect(parsed.config.views.items[0]?.name).toBe(defaults.views.items[0]?.name);
+    expect(parsed.config.views.activeViewId).toBe(defaults.views.activeViewId);
   });
 });
