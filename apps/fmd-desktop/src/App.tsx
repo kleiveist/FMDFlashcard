@@ -261,14 +261,10 @@ const AppContent = () => {
   );
   const handleStudySectionSelect = useCallback(
     (tab: StudySectionKey) => {
+      if (tab === "dashboard") {
+        return;
+      }
       void (async () => {
-        if (tab === "dashboard") {
-          const nextView: DashboardView =
-            dashboardView === "markdown" ? "exam" : "markdown";
-          requestDashboardViewChange(nextView);
-          await handleTabChange("dashboard");
-          return;
-        }
         const changed = await handleTabChange(tab);
         if (!changed) {
           return;
@@ -290,13 +286,28 @@ const AppContent = () => {
       })();
     },
     [
-      dashboardView,
       flashcards,
       fastFlashcards,
       handleTabChange,
-      requestDashboardViewChange,
       spacedRepetition,
     ],
+  );
+  const handleDashboardViewSelect = useCallback(
+    (nextView: DashboardView) => {
+      void (async () => {
+        if (activeTab === "dashboard") {
+          requestDashboardViewChange(nextView);
+          setIsMobileNavOpen(false);
+          return;
+        }
+        const changed = await handleTabChange("dashboard");
+        if (!changed) {
+          return;
+        }
+        requestDashboardViewChange(nextView);
+      })();
+    },
+    [activeTab, handleTabChange, requestDashboardViewChange],
   );
   const handleSidebarTabChange = useCallback(
     (tab: StudySectionKey) => {
@@ -538,7 +549,9 @@ const AppContent = () => {
       {showStudySectionNav ? (
         <StudySectionNav
           activeTab={activeTab}
+          activeDashboardView={dashboardView}
           onSectionSelect={handleStudySectionSelect}
+          onDashboardViewSelect={handleDashboardViewSelect}
           isMobileNavOpen={isMobileNavOpen}
           onMobileNavOpen={() => setIsMobileNavOpen(true)}
           showNoteAction={showStudySectionNoteAction}

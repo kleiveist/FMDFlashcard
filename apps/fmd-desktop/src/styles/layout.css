@@ -46,7 +46,7 @@
   row-gap: var(--ui-space-sm);
 }
 
-.app-shell.compact-top-nav .study-section-nav {
+.app-shell.compact-top-nav .study-section-nav-stack {
   grid-column: 1 / -1;
   grid-row: 1;
   z-index: 1;

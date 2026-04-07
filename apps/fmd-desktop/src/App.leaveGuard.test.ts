@@ -16,6 +16,10 @@ const cardMonitoringGuard = vi.hoisted(() => ({
   requests: 0,
 }));
 
+const dashboardViewRequests = vi.hoisted(() => ({
+  values: [] as string[],
+}));
+
 const appStateHolder = vi.hoisted(() => ({
   value: null as unknown,
 }));
@@ -117,12 +121,32 @@ vi.mock("./components/SidebarNav", () => ({
 vi.mock("./components/StudySectionNav", () => ({
   StudySectionNav: ({
     onSectionSelect,
+    onDashboardViewSelect,
   }: {
     onSectionSelect: (tab: string) => void;
+    onDashboardViewSelect: (view: "markdown" | "exam") => void;
   }) =>
     React.createElement(
       React.Fragment,
       null,
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          "data-testid": "study-nav-open-editor-markdown",
+          onClick: () => onDashboardViewSelect("markdown"),
+        },
+        "StudyNav: open markdown editor",
+      ),
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          "data-testid": "study-nav-open-editor-exam",
+          onClick: () => onDashboardViewSelect("exam"),
+        },
+        "StudyNav: open exam editor",
+      ),
       React.createElement(
         "button",
         {
@@ -162,7 +186,9 @@ vi.mock("./pages/DashboardPage", async () => {
     ref,
   ) => {
     ReactModule.useImperativeHandle(ref, () => ({
-      requestVaultViewChange: () => {},
+      requestVaultViewChange: (nextView: "markdown" | "exam") => {
+        dashboardViewRequests.values.push(nextView);
+      },
       requestLeaveDashboard: async () => {
         dashboardGuard.requests += 1;
         return dashboardGuard.canLeave;
@@ -469,6 +495,7 @@ describe("App dashboard leave guard integration", () => {
     vi.clearAllMocks();
     dashboardGuard.canLeave = true;
     dashboardGuard.requests = 0;
+    dashboardViewRequests.values = [];
     cardMonitoringGuard.canLeave = true;
     cardMonitoringGuard.requests = 0;
     appStateHolder.value = createMockAppState();
@@ -586,6 +613,35 @@ describe("App dashboard leave guard integration", () => {
       relative_path: "from-exam-open.md",
     }, undefined);
     expect(container.querySelector('[data-testid="mock-dashboard-page"]')).toBeTruthy();
+
+    cleanup();
+  });
+
+  it("opens dashboard exam editor directly from study nav without exam simulation toggle", async () => {
+    dashboardGuard.canLeave = true;
+    const { container, cleanup } = renderApp();
+
+    await clickTestId(container, "study-nav-switch-exam");
+    expect(container.querySelector('[data-testid="mock-exam-simulation-page"]')).toBeTruthy();
+
+    await clickTestId(container, "study-nav-open-editor-exam");
+
+    expect(container.querySelector('[data-testid="mock-dashboard-page"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="mock-exam-simulation-page"]')).toBeNull();
+
+    cleanup();
+  });
+
+  it("keeps exam editor target stable on repeated clicks (no markdown/exam toggle)", async () => {
+    dashboardGuard.canLeave = true;
+    const { container, cleanup } = renderApp();
+
+    await clickTestId(container, "study-nav-open-editor-exam");
+    await clickTestId(container, "study-nav-open-editor-exam");
+
+    expect(dashboardViewRequests.values).toEqual(["exam", "exam"]);
+    expect(container.querySelector('[data-testid="mock-dashboard-page"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="mock-exam-simulation-page"]')).toBeNull();
 
     cleanup();
   });
