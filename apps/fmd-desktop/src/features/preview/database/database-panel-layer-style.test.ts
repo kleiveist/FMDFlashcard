@@ -22,6 +22,24 @@ describe("resolveDatabasePanelLayerStyle", () => {
     expect(layout.left).toBe(420);
   });
 
+  it("can align panel left edge with trigger left edge", () => {
+    const layout = resolveDatabasePanelLayerStyle({
+      triggerRect: {
+        left: 180,
+        right: 260,
+        top: 60,
+        bottom: 96,
+      },
+      viewportWidth: 1280,
+      viewportHeight: 900,
+      panelWidth: 480,
+      panelHeight: 400,
+      horizontalAlign: "left",
+    });
+
+    expect(layout.left).toBe(180);
+  });
+
   it("clamps the panel when there is not enough room on the left", () => {
     const layout = resolveDatabasePanelLayerStyle({
       triggerRect: {
@@ -90,5 +108,24 @@ describe("resolveDatabasePanelLayerStyle", () => {
 
     expect(layout.top).toBe(12);
     expect(layout.maxHeight).toBe(406);
+  });
+
+  it("keeps top edge below trigger when configured", () => {
+    const layout = resolveDatabasePanelLayerStyle({
+      triggerRect: {
+        left: 600,
+        right: 760,
+        top: 320,
+        bottom: 352,
+      },
+      viewportWidth: 1100,
+      viewportHeight: 430,
+      panelWidth: 520,
+      panelHeight: 520,
+      keepBelowTrigger: true,
+    });
+
+    expect(layout.top).toBe(360);
+    expect(layout.maxHeight).toBe(58);
   });
 });

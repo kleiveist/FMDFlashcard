@@ -49,6 +49,7 @@ const buildProps = () => ({
   isGanttPanelOpen: false,
   isProjectPanelOpen: false,
   isPiePanelOpen: false,
+  hasAnyPanelOpen: false,
   onToggleSourcePanel: vi.fn(),
   onToggleFilterPanel: vi.fn(),
   onToggleSortPanel: vi.fn(),
@@ -56,6 +57,7 @@ const buildProps = () => ({
   onToggleGanttPanel: vi.fn(),
   onToggleProjectPanel: vi.fn(),
   onTogglePiePanel: vi.fn(),
+  onCloseAllPanels: vi.fn(),
 });
 
 describe("DatabaseToolbar", () => {
@@ -134,6 +136,25 @@ describe("DatabaseToolbar", () => {
     });
 
     expect(props.onSearchChange).toHaveBeenCalledWith("IUFS");
+
+    cleanup();
+  });
+
+  it("closes open panels before opening search to avoid overlay", () => {
+    const props = {
+      ...buildProps(),
+      hasAnyPanelOpen: true,
+    };
+    const { container, cleanup } = render(createElement(DatabaseToolbar, props));
+
+    const searchButton = container.querySelector<HTMLButtonElement>("button[aria-label='Suche']");
+
+    act(() => {
+      searchButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(props.onCloseAllPanels).toHaveBeenCalledTimes(1);
+    expect(container.querySelector(".database-block-toolbar-search-input")).toBeNull();
 
     cleanup();
   });

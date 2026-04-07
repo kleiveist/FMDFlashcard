@@ -17,6 +17,8 @@ export type ResolveDatabasePanelLayerStyleInput = {
   viewportHeight: number;
   panelWidth: number;
   panelHeight?: number;
+  horizontalAlign?: "left" | "right";
+  keepBelowTrigger?: boolean;
 };
 
 export type DatabasePanelLayerLayout = {
@@ -42,6 +44,8 @@ export const resolveDatabasePanelLayerStyle = ({
   viewportHeight,
   panelWidth,
   panelHeight,
+  horizontalAlign = "right",
+  keepBelowTrigger = false,
 }: ResolveDatabasePanelLayerStyleInput): DatabasePanelLayerLayout => {
   const nextViewportWidth = Math.max(1, asFinite(viewportWidth, 1));
   const nextViewportHeight = Math.max(1, asFinite(viewportHeight, 1));
@@ -60,7 +64,9 @@ export const resolveDatabasePanelLayerStyle = ({
     minLeft,
     nextViewportWidth - nextPanelWidth - DATABASE_PANEL_LAYER_VIEWPORT_PADDING,
   );
-  const anchoredLeft = triggerRect.right - nextPanelWidth;
+  const anchoredLeft = horizontalAlign === "left"
+    ? triggerRect.left
+    : triggerRect.right - nextPanelWidth;
   const left = clamp(anchoredLeft, minLeft, maxLeft);
 
   const topCandidate = triggerRect.bottom + DATABASE_PANEL_LAYER_VERTICAL_GAP;
@@ -71,7 +77,9 @@ export const resolveDatabasePanelLayerStyle = ({
     DATABASE_PANEL_LAYER_VIEWPORT_PADDING,
     nextViewportHeight - DATABASE_PANEL_LAYER_VIEWPORT_PADDING - desiredVisibleHeight,
   );
-  const top = clamp(topCandidate, DATABASE_PANEL_LAYER_VIEWPORT_PADDING, maxTopForVisibleHeight);
+  const top = keepBelowTrigger
+    ? Math.max(DATABASE_PANEL_LAYER_VIEWPORT_PADDING, topCandidate)
+    : clamp(topCandidate, DATABASE_PANEL_LAYER_VIEWPORT_PADDING, maxTopForVisibleHeight);
 
   const availableHeight = Math.max(0, nextViewportHeight - top - DATABASE_PANEL_LAYER_VIEWPORT_PADDING);
   const maxHeight = Math.min(availableHeight, DATABASE_PANEL_LAYER_MAX_HEIGHT);
@@ -82,4 +90,3 @@ export const resolveDatabasePanelLayerStyle = ({
     maxHeight,
   };
 };
-

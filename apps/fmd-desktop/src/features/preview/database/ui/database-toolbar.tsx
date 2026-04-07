@@ -31,6 +31,7 @@ type DatabaseToolbarProps = {
   isGanttPanelOpen: boolean;
   isProjectPanelOpen: boolean;
   isPiePanelOpen: boolean;
+  hasAnyPanelOpen: boolean;
   onToggleSourcePanel: () => void;
   onToggleFilterPanel: () => void;
   onToggleSortPanel: () => void;
@@ -38,6 +39,7 @@ type DatabaseToolbarProps = {
   onToggleGanttPanel: () => void;
   onToggleProjectPanel: () => void;
   onTogglePiePanel: () => void;
+  onCloseAllPanels: () => void;
   sourceButtonRef?: DatabaseToolbarButtonRef;
   sortButtonRef?: DatabaseToolbarButtonRef;
   filterButtonRef?: DatabaseToolbarButtonRef;
@@ -160,6 +162,7 @@ export const DatabaseToolbar = ({
   isGanttPanelOpen,
   isProjectPanelOpen,
   isPiePanelOpen,
+  hasAnyPanelOpen,
   onToggleSourcePanel,
   onToggleFilterPanel,
   onToggleSortPanel,
@@ -167,6 +170,7 @@ export const DatabaseToolbar = ({
   onToggleGanttPanel,
   onToggleProjectPanel,
   onTogglePiePanel,
+  onCloseAllPanels,
   sourceButtonRef,
   sortButtonRef,
   filterButtonRef,
@@ -182,6 +186,7 @@ export const DatabaseToolbar = ({
   const searchDropdownRef = useRef<HTMLDivElement | null>(null);
   const [isViewDropdownOpen, setIsViewDropdownOpen] = useState(false);
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
+  const [pendingSearchOpen, setPendingSearchOpen] = useState(false);
   const [viewDropdownStyle, setViewDropdownStyle] = useState<CSSProperties | undefined>(undefined);
   const [searchDropdownStyle, setSearchDropdownStyle] = useState<CSSProperties | undefined>(undefined);
   const [newViewName, setNewViewName] = useState("");
@@ -274,6 +279,7 @@ export const DatabaseToolbar = ({
       }
       setIsViewDropdownOpen(false);
       setIsSearchDropdownOpen(false);
+      setPendingSearchOpen(false);
     };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") {
@@ -281,6 +287,7 @@ export const DatabaseToolbar = ({
       }
       setIsViewDropdownOpen(false);
       setIsSearchDropdownOpen(false);
+      setPendingSearchOpen(false);
     };
     window.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
@@ -305,6 +312,21 @@ export const DatabaseToolbar = ({
       window.removeEventListener("scroll", update, true);
     };
   }, [isSearchDropdownOpen, isViewDropdownOpen, positionDropdowns, normalizedSavedViews.length]);
+
+  useEffect(() => {
+    if (!hasAnyPanelOpen || !isSearchDropdownOpen) {
+      return;
+    }
+    setIsSearchDropdownOpen(false);
+  }, [hasAnyPanelOpen, isSearchDropdownOpen]);
+
+  useEffect(() => {
+    if (hasAnyPanelOpen || !pendingSearchOpen) {
+      return;
+    }
+    setIsSearchDropdownOpen(true);
+    setPendingSearchOpen(false);
+  }, [hasAnyPanelOpen, pendingSearchOpen]);
 
   useEffect(() => {
     if (isViewDropdownOpen) {
@@ -473,8 +495,14 @@ export const DatabaseToolbar = ({
               active={isSearchDropdownOpen}
               expanded={isSearchDropdownOpen}
               onClick={() => {
-                setIsSearchDropdownOpen((value) => !value);
                 setIsViewDropdownOpen(false);
+                if (hasAnyPanelOpen) {
+                  onCloseAllPanels();
+                  setPendingSearchOpen(true);
+                  return;
+                }
+                setPendingSearchOpen(false);
+                setIsSearchDropdownOpen((value) => !value);
               }}
             />
             {isSearchDropdownOpen ? (
@@ -501,19 +529,17 @@ export const DatabaseToolbar = ({
 
       <div className="database-block-toolbar-row-secondary">
         {viewType === "kanban" ? (
-          <label className="database-block-view-select-wrap">
-            <span className="database-block-toolbar-label">Group by</span>
-            <select
-              className="database-block-view-select"
-              value={kanbanGroupBy ?? ""}
-              onChange={(event) => onKanbanGroupByChange(event.target.value || null)}
-            >
-              <option value="">Auto</option>
-              {kanbanGroupByOptions.map((option) => (
-                <option key={option.key} value={option.key}>{option.label}</option>
-              ))}
-            </select>
-          </label>
+          <select
+            className="database-block-view-select database-block-view-select-secondary"
+            value={kanbanGroupBy ?? ""}
+            aria-label="Group by"
+            onChange={(event) => onKanbanGroupByChange(event.target.value || null)}
+          >
+            <option value="">Auto</option>
+            {kanbanGroupByOptions.map((option) => (
+              <option key={option.key} value={option.key}>{option.label}</option>
+            ))}
+          </select>
         ) : null}
         {viewType === "gantt" ? (
           <button

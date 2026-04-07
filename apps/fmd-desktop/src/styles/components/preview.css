@@ -5461,6 +5461,8 @@ textarea.preview-editor {
 
 .database-block-toolbar-row-secondary {
   min-height: var(--db-control-height);
+  width: auto;
+  margin-inline-start: auto;
 }
 
 .database-block-view-name-wrap,
@@ -5681,6 +5683,10 @@ textarea.preview-editor {
 }
 
 .database-block-toolbar-row-secondary .database-block-toolbar-button {
+  min-width: 150px;
+}
+
+.database-block-view-select-secondary {
   min-width: 150px;
 }
 
@@ -6036,6 +6042,10 @@ textarea.preview-editor {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.database-block-source-panel {
+  width: min(320px, calc(100vw - 96px));
 }
 
 .database-block-panel-header {
@@ -7069,6 +7079,11 @@ textarea.preview-editor {
   }
 
   .database-block-toolbar-row-main > .database-block-view-select-wrap {
+    margin-inline-start: 0;
+  }
+
+  .database-block-toolbar-row-secondary {
+    width: 100%;
     margin-inline-start: 0;
   }
 }

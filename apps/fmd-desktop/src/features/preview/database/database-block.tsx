@@ -1089,12 +1089,17 @@ export const MarkdownHybridDatabaseBlock = ({
       const measuredPanelRect = renderedPanel?.getBoundingClientRect();
       const measuredWidth = measuredPanelRect?.width ?? Number.NaN;
       const measuredHeight = measuredPanelRect?.height ?? Number.NaN;
+      const preferredMaxWidth = openPanelKey === "source"
+        ? Math.round(DATABASE_PANEL_LAYER_MAX_WIDTH / 2)
+        : DATABASE_PANEL_LAYER_MAX_WIDTH;
       const estimatedPanelWidth = Number.isFinite(measuredWidth) && measuredWidth > 0
         ? measuredWidth
         : Math.min(
-          DATABASE_PANEL_LAYER_MAX_WIDTH,
+          preferredMaxWidth,
           Math.max(DATABASE_PANEL_LAYER_MIN_WIDTH, window.innerWidth - 96),
         );
+      const horizontalAlign = openPanelKey === "source" ? "left" : "right";
+      const keepBelowTrigger = openPanelKey === "properties";
       const nextLayout = isPropertiesPanelLayerLocal
         ? (() => {
           const rootRect = rootRef.current?.getBoundingClientRect();
@@ -1112,6 +1117,8 @@ export const MarkdownHybridDatabaseBlock = ({
             viewportHeight: rootRect.height,
             panelWidth: estimatedPanelWidth,
             panelHeight: measuredHeight,
+            horizontalAlign,
+            keepBelowTrigger,
           });
         })()
         : resolveDatabasePanelLayerStyle({
@@ -1120,6 +1127,8 @@ export const MarkdownHybridDatabaseBlock = ({
           viewportHeight: window.innerHeight,
           panelWidth: estimatedPanelWidth,
           panelHeight: measuredHeight,
+          horizontalAlign,
+          keepBelowTrigger,
         });
       if (!nextLayout) {
         setPanelLayerStyle(undefined);
@@ -2742,6 +2751,7 @@ export const MarkdownHybridDatabaseBlock = ({
             isGanttPanelOpen={panels.gantt}
             isProjectPanelOpen={panels.project}
             isPiePanelOpen={panels.pie}
+            hasAnyPanelOpen={hasOpenPanel}
             onToggleSourcePanel={() => setPanel("source")}
             onToggleFilterPanel={() => setPanel("filter")}
             onToggleSortPanel={() => setPanel("sort")}
@@ -2749,6 +2759,7 @@ export const MarkdownHybridDatabaseBlock = ({
             onToggleGanttPanel={() => setPanel("gantt")}
             onToggleProjectPanel={() => setPanel("project")}
             onTogglePiePanel={() => setPanel("pie")}
+            onCloseAllPanels={() => setPanels(defaultPanels)}
             sourceButtonRef={setSourceTriggerRef}
             sortButtonRef={setSortTriggerRef}
             filterButtonRef={setFilterTriggerRef}
