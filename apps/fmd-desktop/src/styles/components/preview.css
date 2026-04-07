@@ -5474,8 +5474,8 @@ textarea.preview-editor {
 }
 
 .database-block-view-name-wrap {
-  min-width: min(100%, 220px);
-  flex: 1 1 240px;
+  min-width: 170px;
+  flex: 0 1 320px;
 }
 
 .database-block-toolbar-label {
@@ -5490,12 +5490,16 @@ textarea.preview-editor {
 }
 
 .database-block-toolbar-dropdown-anchor-name {
-  min-width: min(100%, 220px);
+  min-width: 170px;
   max-width: 100%;
-  width: min(420px, 100%);
+  width: 100%;
 }
 
 .database-block-toolbar-dropdown-anchor-search {
+  margin-inline-start: 0;
+}
+
+.database-block-toolbar-row-main > .database-block-view-select-wrap {
   margin-inline-start: auto;
 }
 
@@ -7064,7 +7068,7 @@ textarea.preview-editor {
     min-width: 0;
   }
 
-  .database-block-toolbar-dropdown-anchor-search {
+  .database-block-toolbar-row-main > .database-block-view-select-wrap {
     margin-inline-start: 0;
   }
 }
