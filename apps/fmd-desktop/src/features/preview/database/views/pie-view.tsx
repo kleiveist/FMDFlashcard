@@ -4,7 +4,7 @@
  * Pie/donut visualization with type-aware aggregations.
  */
 
-import { useMemo } from "react";
+import { type CSSProperties, useMemo } from "react";
 import {
   type DatabaseAttributeMeta,
   type DatabaseNormalizedFieldValue,
@@ -26,18 +26,7 @@ type PieBucket = {
   records: DatabaseRecord[];
 };
 
-const PIE_COLORS = [
-  "#4F46E5",
-  "#0EA5E9",
-  "#16A34A",
-  "#EAB308",
-  "#F97316",
-  "#EF4444",
-  "#A855F7",
-  "#14B8A6",
-  "#6366F1",
-  "#84CC16",
-];
+const PIE_MONO_TONE_STEPS = [88, 80, 72, 64, 56, 48, 40, 32, 24, 18];
 
 const EMPTY_LABEL = "(leer)";
 
@@ -207,6 +196,14 @@ const formatBucketValue = (value: number, aggregate: "count" | "sum" | "avg") =>
     maximumFractionDigits: fractionDigits,
     minimumFractionDigits: fractionDigits,
   });
+};
+
+const resolvePieAccentColor = (index: number) => {
+  const stepIndex = index % PIE_MONO_TONE_STEPS.length;
+  const cycle = Math.floor(index / PIE_MONO_TONE_STEPS.length);
+  const accentToken = cycle % 2 === 0 ? "var(--accent-strong)" : "var(--accent)";
+  const accentWeight = Math.max(18, PIE_MONO_TONE_STEPS[stepIndex]! - cycle * 6);
+  return `color-mix(in srgb, ${accentToken} ${accentWeight}%, var(--db-surface-raised))`;
 };
 
 export const DatabasePieView = ({
@@ -402,6 +399,7 @@ export const DatabasePieView = ({
             const dash = ratio * circumference;
             const dashArray = `${dash} ${Math.max(0, circumference - dash)}`;
             const dashOffset = -offset;
+            const bucketColor = resolvePieAccentColor(index);
             offset += dash;
 
             return (
@@ -411,7 +409,7 @@ export const DatabasePieView = ({
                 cy={size / 2}
                 r={radius}
                 fill="none"
-                stroke={PIE_COLORS[index % PIE_COLORS.length]}
+                stroke={bucketColor}
                 strokeWidth={strokeWidth}
                 strokeDasharray={dashArray}
                 strokeDashoffset={dashOffset}
@@ -431,12 +429,13 @@ export const DatabasePieView = ({
       <ul className="database-pie-legend">
         {buckets.map((bucket, index) => {
           const percent = total > 0 ? (bucket.value / total) * 100 : 0;
+          const bucketColor = resolvePieAccentColor(index);
           const details = legendDetailsByLabel.get(bucket.label) ?? [];
           return (
             <li key={bucket.label}>
               <span
                 className="database-pie-legend-dot"
-                style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}
+                style={{ "--db-pie-dot-color": bucketColor } as CSSProperties}
                 aria-hidden="true"
               />
               <span className="database-pie-legend-label">{bucket.label}</span>

@@ -343,13 +343,28 @@
   --db-radius-control: 0;
   --db-radius-table: 0;
   --db-radius-pill: 0;
-  --db-border: var(--ui-border-subtle);
-  --db-border-strong: var(--ui-border-hover);
-  --db-surface-base: transparent;
-  --db-surface-raised: color-mix(in srgb, var(--panel) 90%, transparent);
-  --db-surface-hover: var(--ui-nav-button-hover-bg);
-  --db-shadow-block: none;
-  --db-shadow-panel: none;
+  --db-accent-soft: color-mix(in srgb, var(--accent-weak-bg) 76%, transparent);
+  --db-accent-hover: color-mix(in srgb, var(--accent-weak-bg) 86%, transparent);
+  --db-accent-active: color-mix(in srgb, var(--accent-active-bg) 84%, transparent);
+  --db-accent-border: color-mix(in srgb, var(--accent-border) 90%, var(--ui-border-subtle));
+  --db-accent-border-strong: color-mix(in srgb, var(--accent-border) 96%, var(--line));
+  --db-accent-focus: color-mix(in srgb, var(--accent-focus-ring) 88%, transparent);
+  --db-frame-border: var(--ui-border-subtle);
+  --db-frame-border-strong: var(--ui-border-hover);
+  --db-frame-bg: transparent;
+  --db-frame-bg-raised: color-mix(in srgb, var(--panel) 90%, transparent);
+  --db-frame-bg-hover: color-mix(in srgb, var(--accent-weak-bg) 78%, var(--db-frame-bg-raised));
+  --db-frame-shadow: none;
+  --db-control-border: var(--ui-border-subtle);
+  --db-control-border-strong: var(--ui-border-hover);
+  --db-control-bg: transparent;
+  --db-control-hover-bg: color-mix(in srgb, var(--accent-weak-bg) 82%, transparent);
+  --db-control-active-border: var(--db-accent-border-strong);
+  --db-control-active-bg: color-mix(in srgb, var(--accent-active-bg) 82%, transparent);
+  --db-control-active-text: var(--accent-strong);
+  --db-panel-border: var(--ui-border-subtle);
+  --db-panel-bg: color-mix(in srgb, var(--panel) 92%, transparent);
+  --db-panel-shadow: none;
 }
 
 :root[data-design-mode="edge"] :is(
@@ -362,14 +377,15 @@
   ) {
   border-radius: 0;
   box-shadow: none;
-  border-color: transparent;
 }
 
 :root[data-design-mode="edge"] :is(
-    .database-block-toolbar-button:hover,
-    .database-block-toolbar-button.is-active
+    .database-block-panel,
+    .database-block-toolbar-dropdown-panel,
+    .database-attribute-typeahead-dropdown
   ) {
-  border-color: transparent;
+  box-shadow: none;
+  background-image: none;
 }
 
 :root[data-design-mode="edge"] .database-block-panel-layer.is-open {

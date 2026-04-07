@@ -5407,17 +5407,40 @@ textarea.preview-editor {
 .database-block {
   --db-control-height: 32px;
   --db-cell-padding-x: 11px;
-  --db-radius-block: 14px;
-  --db-radius-control: 10px;
-  --db-radius-table: 12px;
+  --db-radius-block: 16px;
+  --db-radius-control: 12px;
+  --db-radius-table: 14px;
   --db-radius-pill: 999px;
-  --db-border: color-mix(in srgb, var(--line-soft) 86%, transparent);
-  --db-border-strong: color-mix(in srgb, var(--line-strong) 88%, var(--line-soft));
-  --db-surface-base: color-mix(in srgb, var(--panel) 93%, transparent);
-  --db-surface-raised: color-mix(in srgb, var(--panel) 94%, transparent);
-  --db-surface-hover: color-mix(in srgb, var(--accent-soft) 16%, transparent);
-  --db-shadow-block: 0 4px 12px color-mix(in srgb, var(--ink) 8%, transparent);
-  --db-shadow-panel: 0 14px 28px color-mix(in srgb, var(--ink) 14%, transparent);
+  --db-accent-soft: color-mix(in srgb, var(--accent-soft) 78%, transparent);
+  --db-accent-hover: color-mix(in srgb, var(--accent-hover-bg) 82%, transparent);
+  --db-accent-active: color-mix(in srgb, var(--accent-active-bg) 86%, transparent);
+  --db-accent-border: color-mix(in srgb, var(--accent-border) 78%, var(--line-soft));
+  --db-accent-border-strong: color-mix(in srgb, var(--accent-border) 92%, var(--line-strong));
+  --db-accent-focus: color-mix(in srgb, var(--accent-focus-ring) 86%, transparent);
+  --db-accent-text: color-mix(in srgb, var(--accent-strong) 88%, var(--ink));
+  --db-frame-border: color-mix(in srgb, var(--line-soft) 82%, transparent);
+  --db-frame-border-strong: color-mix(in srgb, var(--line-strong) 84%, var(--line-soft));
+  --db-frame-bg: color-mix(in srgb, var(--panel) 92%, transparent);
+  --db-frame-bg-raised: color-mix(in srgb, var(--panel) 95%, transparent);
+  --db-frame-bg-hover: color-mix(in srgb, var(--db-accent-soft) 42%, var(--db-frame-bg-raised));
+  --db-frame-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 10%, transparent);
+  --db-control-border: color-mix(in srgb, var(--db-frame-border) 90%, transparent);
+  --db-control-border-strong: color-mix(in srgb, var(--db-frame-border-strong) 84%, var(--db-accent-border));
+  --db-control-bg: color-mix(in srgb, var(--field-bg) 90%, var(--db-frame-bg-raised));
+  --db-control-hover-bg: color-mix(in srgb, var(--db-accent-hover) 62%, var(--db-control-bg));
+  --db-control-active-border: var(--db-accent-border-strong);
+  --db-control-active-bg: color-mix(in srgb, var(--db-accent-active) 68%, var(--db-control-bg));
+  --db-control-active-text: var(--db-accent-text);
+  --db-panel-border: color-mix(in srgb, var(--db-frame-border-strong) 88%, var(--db-accent-border));
+  --db-panel-bg: var(--panel);
+  --db-panel-shadow: 0 16px 34px color-mix(in srgb, var(--ink) 18%, transparent);
+  --db-border: var(--db-frame-border);
+  --db-border-strong: var(--db-frame-border-strong);
+  --db-surface-base: var(--db-frame-bg);
+  --db-surface-raised: var(--db-frame-bg-raised);
+  --db-surface-hover: var(--db-frame-bg-hover);
+  --db-shadow-block: var(--db-frame-shadow);
+  --db-shadow-panel: var(--db-panel-shadow);
   --db-text: var(--ink);
   --db-muted: var(--muted);
   position: relative;
@@ -5524,9 +5547,9 @@ textarea.preview-editor {
 .database-block-panel input:not([type="checkbox"]):not([type="radio"]) {
   min-height: var(--db-control-height);
   border-radius: var(--db-radius-control);
-  border: 1px solid var(--db-border);
-  background: var(--field-bg);
-  color: var(--db-text);
+  border: 1px solid var(--db-control-border, var(--line-soft));
+  background: var(--db-control-bg, var(--field-bg));
+  color: var(--db-text, var(--ink));
   padding: 4px 8px;
 }
 
@@ -5563,8 +5586,8 @@ textarea.preview-editor {
   gap: 6px;
   min-height: var(--db-control-height);
   border-radius: var(--db-radius-control);
-  border: 1px solid var(--db-border);
-  background: var(--db-surface-raised);
+  border: 1px solid var(--db-control-border);
+  background: var(--db-control-bg);
   color: var(--db-text);
   cursor: pointer;
   padding: 0 10px;
@@ -5596,22 +5619,25 @@ textarea.preview-editor {
 }
 
 .database-block-toolbar-button:hover {
-  border-color: var(--db-border-strong);
-  background: color-mix(in srgb, var(--db-surface-hover) 78%, var(--db-surface-raised));
+  border-color: var(--db-control-border-strong);
+  background: var(--db-control-hover-bg);
 }
 
 .database-block-toolbar-button.is-active {
-  border-color: color-mix(in srgb, var(--accent-border) 70%, var(--db-border));
-  background: color-mix(in srgb, var(--accent-soft) 24%, var(--db-surface-raised));
+  border-color: var(--db-control-active-border);
+  background: var(--db-control-active-bg);
+  color: var(--db-control-active-text);
 }
 
 .database-block-toolbar-dropdown-panel {
   position: absolute;
   inset-block-start: calc(100% + 6px);
-  border: 1px solid var(--db-border-strong);
+  border: 1px solid var(--db-panel-border, var(--line-soft));
   border-radius: var(--db-radius-control);
-  background: var(--db-surface-raised);
-  box-shadow: var(--db-shadow-panel);
+  background-color: var(--db-panel-bg, var(--panel));
+  background: var(--db-panel-bg, var(--panel));
+  background-image: none;
+  box-shadow: var(--db-panel-shadow, var(--shadow-soft));
   padding: 8px;
   z-index: 40;
 }
@@ -5657,13 +5683,14 @@ textarea.preview-editor {
 }
 
 .database-block-view-dropdown-item:hover {
-  background: color-mix(in srgb, var(--accent-soft) 16%, transparent);
-  border-color: color-mix(in srgb, var(--accent-border) 44%, transparent);
+  background: var(--db-accent-soft);
+  border-color: var(--db-accent-border);
 }
 
 .database-block-view-dropdown-item.is-active {
-  background: color-mix(in srgb, var(--accent-soft) 30%, var(--db-surface-raised));
-  border-color: color-mix(in srgb, var(--accent-border) 66%, var(--db-border));
+  background: var(--db-control-active-bg);
+  border-color: var(--db-control-active-border);
+  color: var(--db-control-active-text);
 }
 
 .database-block-view-dropdown-create {
@@ -5794,7 +5821,7 @@ textarea.preview-editor {
 }
 
 .database-table-header-button:focus-visible {
-  outline: 2px solid var(--accent-border);
+  outline: 2px solid var(--db-accent-focus);
   outline-offset: -2px;
 }
 
@@ -6030,18 +6057,32 @@ textarea.preview-editor {
   max-height: var(--database-block-panel-max-height, min(78vh, 640px));
   overflow-x: hidden;
   overflow-y: auto;
-  border: 1px solid var(--db-border);
+  border: 1px solid var(--db-panel-border, var(--line-soft));
   border-radius: var(--db-radius-table);
-  background-color: var(--panel);
-  background-image: linear-gradient(
-    color-mix(in srgb, var(--db-surface-raised) 86%, var(--panel)),
-    color-mix(in srgb, var(--db-surface-raised) 86%, var(--panel))
-  );
-  box-shadow: var(--db-shadow-panel);
+  background-color: var(--db-panel-bg, var(--panel));
+  background: var(--db-panel-bg, var(--panel));
+  background-image: none;
+  box-shadow: var(--db-panel-shadow, var(--shadow-soft));
+  color: var(--db-text, var(--ink));
   padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+:root:not([data-design-mode="edge"]) :is(
+    .database-block-view-dropdown,
+    .database-block-search-dropdown,
+    .database-block-properties-panel
+  ) {
+  border-color: var(--db-panel-border, var(--line-soft));
+  background-color: var(--panel);
+  background: var(--panel);
+  background-image: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  opacity: 1;
 }
 
 .database-block-source-panel {
@@ -6062,15 +6103,19 @@ textarea.preview-editor {
 .database-block-panel-context {
   margin: 0;
   font-size: 0.74rem;
-  color: var(--db-muted);
+  color: var(--db-muted, var(--muted));
 }
 
 .database-block-panel-close {
   border: none;
   background: transparent;
-  color: var(--db-muted);
+  color: var(--db-muted, var(--muted));
   font-size: 1rem;
   cursor: pointer;
+}
+
+.database-block-panel-close:hover {
+  color: var(--db-accent-text, var(--accent-strong));
 }
 
 .database-block-panel-controls {
@@ -6127,8 +6172,8 @@ textarea.preview-editor {
 
 .database-attribute-typeahead-option:hover,
 .database-attribute-typeahead-option:focus-visible {
-  border-color: color-mix(in srgb, var(--accent-border) 65%, var(--db-border));
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: var(--db-accent-border);
+  background: var(--db-accent-soft);
 }
 
 .database-attribute-typeahead-count {
@@ -6164,7 +6209,8 @@ textarea.preview-editor {
 }
 
 .database-block-properties-item.is-visible {
-  border-color: color-mix(in srgb, var(--accent-border) 65%, var(--db-border));
+  border-color: var(--db-control-active-border);
+  background: color-mix(in srgb, var(--db-control-active-bg) 56%, transparent);
 }
 
 .database-block-properties-item label {
@@ -6373,6 +6419,7 @@ textarea.preview-editor {
   inline-size: 10px;
   block-size: 10px;
   border-radius: 50%;
+  background: var(--db-pie-dot-color, var(--accent));
 }
 
 .database-pie-legend-label {
@@ -7063,9 +7110,9 @@ textarea.preview-editor {
 .database-table-cell-editor:focus-visible,
 .database-block-panel select:focus-visible,
 .database-block-panel input:not([type="checkbox"]):not([type="radio"]):focus-visible {
-  outline: var(--ui-focus-outline);
+  outline: 2px solid var(--db-accent-focus);
   outline-offset: 1px;
-  border-color: color-mix(in srgb, var(--accent-border) 72%, var(--db-border));
+  border-color: var(--db-control-active-border);
 }
 
 @media (max-width: 980px) {
@@ -7141,18 +7188,45 @@ textarea.preview-editor {
 :root[data-design-mode="modern"] .database-block {
   --db-control-height: 34px;
   --db-cell-padding-x: 13px;
-  --db-radius-block: 18px;
   --db-radius-control: 14px;
   --db-radius-table: 16px;
-  --db-border: color-mix(in srgb, var(--line-soft) 68%, transparent);
-  --db-border-strong: color-mix(in srgb, var(--line-strong) 86%, var(--line-soft));
-  --db-surface-base: color-mix(in srgb, var(--panel) 82%, transparent);
-  --db-surface-raised: color-mix(in srgb, var(--panel) 90%, white 10%);
-  --db-surface-hover: color-mix(in srgb, var(--accent-soft) 24%, transparent);
-  --db-shadow-block: 0 8px 24px color-mix(in srgb, var(--ink) 10%, transparent);
-  --db-shadow-panel: 0 22px 44px color-mix(in srgb, var(--ink) 18%, transparent);
+  --db-accent-soft: color-mix(in srgb, var(--accent-soft) 92%, transparent);
+  --db-accent-hover: color-mix(in srgb, var(--accent-hover-bg) 92%, transparent);
+  --db-accent-active: color-mix(in srgb, var(--accent-active-bg) 94%, transparent);
+  --db-accent-border: color-mix(in srgb, var(--accent-border) 88%, var(--line-soft));
+  --db-accent-border-strong: color-mix(in srgb, var(--accent-border) 96%, var(--line-strong));
+  --db-accent-focus: color-mix(in srgb, var(--accent-focus-ring) 96%, transparent);
+  --db-control-border: color-mix(in srgb, var(--db-frame-border) 80%, var(--db-accent-border));
+  --db-control-border-strong: color-mix(in srgb, var(--db-frame-border-strong) 70%, var(--db-accent-border));
+  --db-control-bg: color-mix(in srgb, var(--field-bg) 86%, var(--panel));
+  --db-control-hover-bg: color-mix(in srgb, var(--db-accent-hover) 78%, var(--db-control-bg));
+  --db-control-active-bg: color-mix(in srgb, var(--db-accent-active) 80%, var(--db-control-bg));
+  --db-panel-border: color-mix(in srgb, var(--db-frame-border-strong) 78%, var(--db-accent-border));
+  --db-panel-bg: var(--panel);
+  --db-panel-shadow: 0 24px 48px color-mix(in srgb, var(--ink) 24%, transparent);
 }
 
 :root[data-design-mode="modern"] .database-block-properties-item {
   padding: 4px 6px;
+}
+
+:root[data-design-mode="smart"] .database-block {
+  --db-control-height: 33px;
+  --db-cell-padding-x: 12px;
+  --db-radius-control: 13px;
+  --db-radius-table: 15px;
+  --db-accent-soft: color-mix(in srgb, var(--accent-soft) 88%, transparent);
+  --db-accent-hover: color-mix(in srgb, var(--accent-hover-bg) 86%, transparent);
+  --db-accent-active: color-mix(in srgb, var(--accent-active-bg) 88%, transparent);
+  --db-accent-border: color-mix(in srgb, var(--accent-border) 86%, var(--line-soft));
+  --db-accent-border-strong: color-mix(in srgb, var(--accent-border) 94%, var(--line-strong));
+  --db-accent-focus: color-mix(in srgb, var(--accent-focus-ring) 92%, transparent);
+  --db-control-border: color-mix(in srgb, var(--db-frame-border) 86%, var(--db-accent-border));
+  --db-control-border-strong: color-mix(in srgb, var(--db-frame-border-strong) 80%, var(--db-accent-border));
+  --db-control-bg: color-mix(in srgb, var(--field-bg) 88%, var(--panel));
+  --db-control-hover-bg: color-mix(in srgb, var(--db-accent-hover) 70%, var(--db-control-bg));
+  --db-control-active-bg: color-mix(in srgb, var(--db-accent-active) 74%, var(--db-control-bg));
+  --db-panel-border: color-mix(in srgb, var(--db-frame-border-strong) 82%, var(--db-accent-border));
+  --db-panel-bg: var(--panel);
+  --db-panel-shadow: 0 18px 36px color-mix(in srgb, var(--ink) 20%, transparent);
 }

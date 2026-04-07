@@ -443,4 +443,91 @@ describe("DatabasePieView", () => {
 
     cleanup();
   });
+
+  it("uses accent-based monochrome colors for pie segments and legend dots", () => {
+    const doneRecord: DatabaseRecord = {
+      ...baseRecord,
+      fileId: "accent-done.md",
+      filePath: "/vault/accent-done.md",
+      relativePath: "accent-done.md",
+      normalizedFields: {
+        ...baseRecord.normalizedFields,
+        status: { raw: "Done" },
+      },
+    };
+
+    const { container, cleanup } = render(
+      createElement(DatabasePieView, {
+        records: [baseRecord, doneRecord],
+        groupAttribute: statusGroupAttribute,
+        aggregate: "count",
+        aggregateAttribute: null,
+        visibleProperties: [],
+      }),
+    );
+
+    const segmentStrokes = Array.from(container.querySelectorAll(".database-pie-chart circle"))
+      .slice(1)
+      .map((node) => node.getAttribute("stroke") ?? "");
+    const legendDots = Array.from(container.querySelectorAll<HTMLElement>(".database-pie-legend-dot"));
+
+    expect(segmentStrokes.length).toBeGreaterThan(0);
+    expect(legendDots.length).toBe(segmentStrokes.length);
+    segmentStrokes.forEach((stroke) => {
+      expect(stroke).toContain("color-mix(");
+      expect(stroke).toContain("var(--accent");
+      expect(stroke).toContain("var(--db-surface-raised)");
+    });
+
+    legendDots.forEach((dot, index) => {
+      const dotColor = dot.style.getPropertyValue("--db-pie-dot-color").trim();
+      expect(dotColor).toBe(segmentStrokes[index]);
+      expect(dotColor).toContain("color-mix(");
+      expect(dotColor).toContain("var(--accent");
+    });
+
+    cleanup();
+  });
+
+  it("creates distinct accent tone steps across multiple pie buckets", () => {
+    const doneRecord: DatabaseRecord = {
+      ...baseRecord,
+      fileId: "tone-done.md",
+      filePath: "/vault/tone-done.md",
+      relativePath: "tone-done.md",
+      normalizedFields: {
+        ...baseRecord.normalizedFields,
+        status: { raw: "Done" },
+      },
+    };
+    const reviewRecord: DatabaseRecord = {
+      ...baseRecord,
+      fileId: "tone-review.md",
+      filePath: "/vault/tone-review.md",
+      relativePath: "tone-review.md",
+      normalizedFields: {
+        ...baseRecord.normalizedFields,
+        status: { raw: "Review" },
+      },
+    };
+
+    const { container, cleanup } = render(
+      createElement(DatabasePieView, {
+        records: [baseRecord, doneRecord, reviewRecord],
+        groupAttribute: statusGroupAttribute,
+        aggregate: "count",
+        aggregateAttribute: null,
+        visibleProperties: [],
+      }),
+    );
+
+    const segmentStrokes = Array.from(container.querySelectorAll(".database-pie-chart circle"))
+      .slice(1)
+      .map((node) => node.getAttribute("stroke") ?? "");
+
+    expect(segmentStrokes).toHaveLength(3);
+    expect(new Set(segmentStrokes).size).toBeGreaterThan(1);
+
+    cleanup();
+  });
 });
