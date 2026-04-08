@@ -78,4 +78,35 @@ describe("database theme contracts", () => {
       /:root\[data-design-mode="edge"\]\s*:is\([\s\S]*?\.database-block-panel[\s\S]*?\.database-block-toolbar-dropdown-panel[\s\S]*?\)\s*\{[\s\S]*?box-shadow:\s*none;[\s\S]*?background-image:\s*none;[\s\S]*?\}/,
     );
   });
+
+  it("uses two-row clipped row-meta layout for gantt/project tracks without placeholder hint selectors", () => {
+    expect(previewCss).toMatch(
+      /\.database-gantt-row-meta,\s*\.database-project-row-meta\s*\{[\s\S]*?max-inline-size:\s*320px;[\s\S]*?grid-template-rows:\s*repeat\(2,\s*min-content\);[\s\S]*?grid-auto-flow:\s*column;[\s\S]*?overflow:\s*hidden;[\s\S]*?\}/,
+    );
+    expect(previewCss).toMatch(
+      /\.database-row-meta-item\s*\{[\s\S]*?white-space:\s*nowrap;[\s\S]*?text-overflow:\s*ellipsis;[\s\S]*?\}/,
+    );
+    expect(previewCss).toMatch(
+      /\.database-gantt-row-meta\s+\.database-row-meta-item,\s*\.database-project-row-meta\s+\.database-row-meta-item\s*\{[\s\S]*?margin:\s*0;[\s\S]*?line-height:\s*1;[\s\S]*?\}/,
+    );
+    expect(previewCss).not.toContain(".database-gantt-unscheduled-hint");
+    expect(previewCss).not.toContain(".database-project-unplaced-hint");
+  });
+
+  it("keeps project/gantt scroll ownership on outer host and exposes sidebar toggle controls", () => {
+    expect(previewCss).toMatch(
+      /\.database-gantt-grid-scroll\s*\{[\s\S]*?overflow:\s*visible;[\s\S]*?\}/,
+    );
+    expect(previewCss).toMatch(
+      /\.database-project-grid-scroll\s*\{[\s\S]*?overflow:\s*visible;[\s\S]*?\}/,
+    );
+    expect(previewCss).toMatch(
+      /\.database-gantt-mobile-controls\s*\{[\s\S]*?display:\s*flex;[\s\S]*?\}/,
+    );
+    expect(previewCss).toMatch(
+      /\.database-project-mobile-controls\s*\{[\s\S]*?display:\s*flex;[\s\S]*?\}/,
+    );
+    expect(previewCss).not.toContain(".database-gantt-sidebar-overlay");
+    expect(previewCss).not.toContain(".database-project-sidebar-overlay");
+  });
 });

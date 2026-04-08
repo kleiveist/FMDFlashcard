@@ -6457,20 +6457,21 @@ textarea.preview-editor {
   border: 1px solid var(--db-border);
   border-radius: var(--db-radius-table);
   background: var(--db-surface-raised);
-  overflow: hidden;
+  overflow: visible;
   position: relative;
 }
 
 .database-gantt-mobile-controls {
-  display: none;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
   padding: 8px;
   border-bottom: 1px solid var(--db-border);
   background: color-mix(in srgb, var(--db-surface-base) 82%, transparent);
 }
 
 .database-gantt-grid-scroll {
-  overflow: auto;
-  max-height: 66vh;
+  overflow: visible;
   min-height: 220px;
 }
 
@@ -6478,6 +6479,8 @@ textarea.preview-editor {
   display: grid;
   align-items: stretch;
   grid-auto-rows: minmax(40px, auto);
+  inline-size: max-content;
+  min-inline-size: 100%;
 }
 
 .database-gantt-sidebar-header,
@@ -6500,11 +6503,13 @@ textarea.preview-editor {
   font-size: 0.76rem;
   color: var(--db-muted);
   border-right: 1px solid var(--db-border);
+  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--db-border-strong) 58%, transparent);
 }
 
 .database-gantt-header-scale {
   position: relative;
   min-width: 100%;
+  border-inline-start: 1px solid color-mix(in srgb, var(--db-border-strong) 58%, transparent);
 }
 
 .database-gantt-header-tick {
@@ -6567,6 +6572,7 @@ textarea.preview-editor {
   position: relative;
   min-height: 40px;
   border-bottom: 1px solid var(--db-border);
+  border-inline-start: 1px solid color-mix(in srgb, var(--db-border-strong) 58%, transparent);
   background: var(--db-surface-raised);
 }
 
@@ -6583,32 +6589,34 @@ textarea.preview-editor {
   transform: translateY(-50%);
 }
 
-.database-gantt-unscheduled-hint {
-  position: absolute;
-  inset-inline-start: 10px;
-  inset-block-start: 50%;
-  transform: translateY(-50%);
-  color: var(--db-muted);
-  font-size: 0.72rem;
-}
-
-.database-gantt-row-meta {
+.database-gantt-row-meta,
+.database-project-row-meta {
   position: absolute;
   inset-block-start: 50%;
   transform: translateY(-50%);
-  max-inline-size: 180px;
+  max-inline-size: 320px;
   display: grid;
-  gap: 2px;
+  grid-template-rows: repeat(2, min-content);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 158px);
+  gap: 0 4px;
+  overflow: hidden;
   pointer-events: none;
 }
 
-.database-gantt-row-meta p {
-  margin: 0;
+.database-row-meta-item {
   color: var(--db-muted);
   font-size: 0.68rem;
+  min-inline-size: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.database-gantt-row-meta .database-row-meta-item,
+.database-project-row-meta .database-row-meta-item {
+  margin: 0;
+  line-height: 1;
 }
 
 .database-gantt-row-meta .database-exam-action {
@@ -6657,92 +6665,25 @@ textarea.preview-editor {
   border-radius: 1px;
 }
 
-.database-gantt-sidebar-overlay {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  width: min(320px, calc(100vw - 40px));
-  border-right: 1px solid var(--db-border);
-  background: color-mix(in srgb, var(--db-surface-base) 96%, transparent);
-  box-shadow: var(--db-shadow-panel);
-  z-index: 9;
-  display: grid;
-  grid-template-rows: auto 1fr;
-}
-
-.database-gantt-sidebar-overlay header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px;
-  border-bottom: 1px solid var(--db-border);
-}
-
-.database-gantt-sidebar-overlay header h6 {
-  margin: 0;
-  font-size: 0.78rem;
-}
-
-.database-gantt-sidebar-overlay-list {
-  overflow: auto;
-  display: grid;
-  gap: 1px;
-  background: var(--db-border);
-}
-
-.database-gantt-sidebar-overlay-row {
-  border: none;
-  background: var(--db-surface-raised);
-  color: var(--db-text);
-  display: grid;
-  gap: 2px;
-  text-align: left;
-  padding: 8px 10px;
-  cursor: pointer;
-}
-
-.database-gantt-sidebar-overlay-row span:last-child {
-  color: var(--db-muted);
-  font-size: 0.72rem;
-}
-
-.database-gantt-sidebar-overlay-row.is-unscheduled {
-  background: color-mix(in srgb, var(--db-surface-base) 86%, transparent);
-}
-
-@media (max-width: 1200px) {
-  .database-gantt-view.is-narrow .database-gantt-mobile-controls {
-    display: block;
-  }
-
-  .database-gantt-view.is-narrow .database-gantt-grid-scroll {
-    max-height: 72vh;
-  }
-
-  .database-gantt-view.is-narrow .database-gantt-sidebar-overlay {
-    width: min(340px, calc(100vw - 24px));
-  }
-}
-
 .database-project-view {
   border: 1px solid var(--db-border);
   border-radius: var(--db-radius-table);
   background: var(--db-surface-raised);
-  overflow: hidden;
+  overflow: visible;
   position: relative;
 }
 
 .database-project-mobile-controls {
-  display: none;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
   padding: 8px;
   border-bottom: 1px solid var(--db-border);
   background: color-mix(in srgb, var(--db-surface-base) 82%, transparent);
 }
 
 .database-project-grid-scroll {
-  overflow: auto;
-  max-height: 66vh;
+  overflow: visible;
   min-height: 220px;
 }
 
@@ -6750,6 +6691,8 @@ textarea.preview-editor {
   display: grid;
   align-items: stretch;
   grid-auto-rows: minmax(40px, auto);
+  inline-size: max-content;
+  min-inline-size: 100%;
 }
 
 .database-project-sidebar-header,
@@ -6772,11 +6715,13 @@ textarea.preview-editor {
   font-size: 0.76rem;
   color: var(--db-muted);
   border-right: 1px solid var(--db-border);
+  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--db-border-strong) 58%, transparent);
 }
 
 .database-project-header-scale {
   position: relative;
   min-width: 100%;
+  border-inline-start: 1px solid color-mix(in srgb, var(--db-border-strong) 58%, transparent);
 }
 
 .database-project-header-tick {
@@ -6844,6 +6789,7 @@ textarea.preview-editor {
   position: relative;
   min-height: 40px;
   border-bottom: 1px solid var(--db-border);
+  border-inline-start: 1px solid color-mix(in srgb, var(--db-border-strong) 58%, transparent);
   background:
     repeating-linear-gradient(
       to right,
@@ -6857,34 +6803,6 @@ textarea.preview-editor {
 
 .database-project-row-track.is-pending {
   opacity: 0.72;
-}
-
-.database-project-unplaced-hint {
-  position: absolute;
-  inset-inline-start: 10px;
-  inset-block-start: 50%;
-  transform: translateY(-50%);
-  color: var(--db-muted);
-  font-size: 0.72rem;
-}
-
-.database-project-row-meta {
-  position: absolute;
-  inset-block-start: 50%;
-  transform: translateY(-50%);
-  max-inline-size: 180px;
-  display: grid;
-  gap: 2px;
-  pointer-events: none;
-}
-
-.database-project-row-meta p {
-  margin: 0;
-  color: var(--db-muted);
-  font-size: 0.68rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .database-project-row-meta .database-exam-action {
@@ -6923,72 +6841,10 @@ textarea.preview-editor {
   inset-inline-end: -4px;
 }
 
-.database-project-sidebar-overlay {
-  position: absolute;
-  inset-block: 0;
-  inset-inline-start: 0;
-  width: min(320px, calc(100vw - 40px));
-  border-right: 1px solid var(--db-border);
-  background: color-mix(in srgb, var(--db-surface-base) 96%, transparent);
-  box-shadow: var(--db-shadow-panel);
-  z-index: 9;
-  display: grid;
-  grid-template-rows: auto 1fr;
-}
-
-.database-project-sidebar-overlay header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px;
-  border-bottom: 1px solid var(--db-border);
-}
-
-.database-project-sidebar-overlay header h6 {
-  margin: 0;
-  font-size: 0.78rem;
-}
-
-.database-project-sidebar-overlay-list {
-  overflow: auto;
-  display: grid;
-  gap: 1px;
-  background: var(--db-border);
-}
-
-.database-project-sidebar-overlay-row {
-  border: none;
-  background: var(--db-surface-raised);
-  color: var(--db-text);
-  display: grid;
-  gap: 2px;
-  text-align: left;
-  padding: 8px 10px;
-  cursor: pointer;
-}
-
-.database-project-sidebar-overlay-row span:last-child {
-  color: var(--db-muted);
-  font-size: 0.72rem;
-}
-
-.database-project-sidebar-overlay-row.is-unplaced {
-  background: color-mix(in srgb, var(--db-surface-base) 86%, transparent);
-}
-
-@media (max-width: 1200px) {
-  .database-project-view.is-narrow .database-project-mobile-controls {
-    display: block;
-  }
-
-  .database-project-view.is-narrow .database-project-grid-scroll {
-    max-height: 72vh;
-  }
-
-  .database-project-view.is-narrow .database-project-sidebar-overlay {
-    width: min(340px, calc(100vw - 24px));
-  }
+.database-gantt-view:focus-visible,
+.database-project-view:focus-visible {
+  outline: var(--ui-focus-outline);
+  outline-offset: 2px;
 }
 
 .database-kanban-view {

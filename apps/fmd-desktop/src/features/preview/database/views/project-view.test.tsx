@@ -69,6 +69,8 @@ const placedRecord = createRecord("placed", {
   status: {
     raw: "Open",
   },
+  owner: "Anna",
+  priority: 2,
   Exam: true,
 });
 
@@ -112,8 +114,46 @@ const examAttribute: DatabaseAttributeMeta = {
   },
 };
 
+const ownerAttribute: DatabaseAttributeMeta = {
+  key: "owner",
+  label: "Owner",
+  type: "text",
+  origin: "frontmatter",
+  formula: null,
+  editable: true,
+  sortable: true,
+  filterable: true,
+  aggregatable: false,
+  viewCompatibility: {
+    supportsTable: true,
+    supportsKanbanGrouping: true,
+    supportsTimeline: false,
+    supportsPieGrouping: true,
+    supportsAggregation: false,
+  },
+};
+
+const priorityAttribute: DatabaseAttributeMeta = {
+  key: "priority",
+  label: "Priority",
+  type: "number",
+  origin: "frontmatter",
+  formula: null,
+  editable: true,
+  sortable: true,
+  filterable: true,
+  aggregatable: true,
+  viewCompatibility: {
+    supportsTable: true,
+    supportsKanbanGrouping: true,
+    supportsTimeline: false,
+    supportsPieGrouping: true,
+    supportsAggregation: true,
+  },
+};
+
 describe("DatabaseProjectView", () => {
-  it("renders existing blocks and unplaced hints", () => {
+  it("renders existing blocks and keeps unplaced tracks without hints", () => {
     const { container, cleanup } = render(
       createElement(DatabaseProjectView, {
         records: [placedRecord, unplacedRecord],
@@ -127,7 +167,8 @@ describe("DatabaseProjectView", () => {
     );
 
     expect(container.querySelectorAll(".database-project-bar").length).toBe(1);
-    expect(container.querySelectorAll(".database-project-unplaced-hint").length).toBe(1);
+    expect(container.querySelectorAll(".database-project-row-track").length).toBe(2);
+    expect(container.querySelectorAll(".database-project-unplaced-hint").length).toBe(0);
 
     cleanup();
   });
@@ -211,7 +252,35 @@ describe("DatabaseProjectView", () => {
     cleanup();
   });
 
-  it("shows mobile list toggle under narrow viewport", () => {
+  it("shows sidebar toggle and collapses sidebar by reflow (no overlay)", () => {
+    const { container, cleanup } = render(
+      createElement(DatabaseProjectView, {
+        records: [placedRecord],
+        startField: "unitsstart",
+        unitField: "units",
+        resolution: 100,
+        defaultUnits: 1,
+        missingPlacement: "show-unplaced",
+        visibleProperties: [],
+      }),
+    );
+
+    const toggleButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => (button.textContent ?? "").includes("Datensatz"));
+    expect(toggleButton).toBeTruthy();
+    expect(container.querySelector(".database-project-sidebar-header")).toBeTruthy();
+
+    act(() => {
+      toggleButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(container.querySelector(".database-project-sidebar-header")).toBeNull();
+    expect(container.querySelector(".database-project-sidebar-overlay")).toBeNull();
+
+    cleanup();
+  });
+
+  it("uses the same sidebar toggle control on narrow viewport", () => {
     const { container, cleanup } = render(
       createElement(DatabaseProjectView, {
         records: [placedRecord],
@@ -226,13 +295,14 @@ describe("DatabaseProjectView", () => {
     );
 
     const toggleButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => (button.textContent ?? "").includes("Liste anzeigen"));
+      .find((button) => (button.textContent ?? "").includes("Datensatz anzeigen"));
     expect(toggleButton).toBeTruthy();
+    expect(container.querySelector(".database-project-sidebar-header")).toBeNull();
 
     cleanup();
   });
 
-  it("renders selected property meta near project bars", () => {
+  it("supports arrow-key navigation against nearest scroll host", () => {
     const { container, cleanup } = render(
       createElement(DatabaseProjectView, {
         records: [placedRecord],
@@ -241,7 +311,40 @@ describe("DatabaseProjectView", () => {
         resolution: 100,
         defaultUnits: 1,
         missingPlacement: "show-unplaced",
-        visibleProperties: [statusAttribute],
+        visibleProperties: [],
+      }),
+    );
+
+    Object.defineProperty(container, "scrollWidth", { configurable: true, value: 1200 });
+    Object.defineProperty(container, "clientWidth", { configurable: true, value: 640 });
+    container.style.overflowX = "auto";
+    const scrollBy = vi.fn();
+    Object.defineProperty(container, "scrollBy", { configurable: true, value: scrollBy });
+
+    const root = container.querySelector<HTMLElement>(".database-project-view");
+    root?.focus();
+    act(() => {
+      root?.dispatchEvent(new KeyboardEvent("keydown", {
+        key: "ArrowRight",
+        bubbles: true,
+        cancelable: true,
+      }));
+    });
+    expect(scrollBy).toHaveBeenCalled();
+
+    cleanup();
+  });
+
+  it("renders selected property meta in two-row flow items near project bars", () => {
+    const { container, cleanup } = render(
+      createElement(DatabaseProjectView, {
+        records: [placedRecord],
+        startField: "unitsstart",
+        unitField: "units",
+        resolution: 100,
+        defaultUnits: 1,
+        missingPlacement: "show-unplaced",
+        visibleProperties: [statusAttribute, ownerAttribute, priorityAttribute],
       }),
     );
 
@@ -249,6 +352,11 @@ describe("DatabaseProjectView", () => {
     expect(meta).toBeTruthy();
     expect(meta?.textContent).toContain("Status");
     expect(meta?.textContent).toContain("Open");
+    expect(meta?.textContent).toContain("Owner");
+    expect(meta?.textContent).toContain("Anna");
+    expect(meta?.textContent).toContain("Priority");
+    expect(meta?.textContent).toContain("2");
+    expect(meta?.querySelectorAll(".database-row-meta-item").length).toBe(3);
 
     cleanup();
   });

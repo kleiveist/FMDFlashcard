@@ -96,6 +96,44 @@ const examAttribute: DatabaseAttributeMeta = {
   },
 };
 
+const ownerAttribute: DatabaseAttributeMeta = {
+  key: "owner",
+  label: "Owner",
+  type: "text",
+  origin: "frontmatter",
+  formula: null,
+  editable: true,
+  sortable: true,
+  filterable: true,
+  aggregatable: false,
+  viewCompatibility: {
+    supportsTable: true,
+    supportsKanbanGrouping: false,
+    supportsTimeline: false,
+    supportsPieGrouping: false,
+    supportsAggregation: false,
+  },
+};
+
+const teamAttribute: DatabaseAttributeMeta = {
+  key: "team",
+  label: "Team",
+  type: "text",
+  origin: "frontmatter",
+  formula: null,
+  editable: true,
+  sortable: true,
+  filterable: true,
+  aggregatable: false,
+  viewCompatibility: {
+    supportsTable: true,
+    supportsKanbanGrouping: false,
+    supportsTimeline: false,
+    supportsPieGrouping: false,
+    supportsAggregation: false,
+  },
+};
+
 const baseRecord: DatabaseRecord = {
   fileId: "a.md",
   filePath: "/vault/a.md",
@@ -111,6 +149,8 @@ const baseRecord: DatabaseRecord = {
     startDate: new Date("2026-01-02"),
     dueDate: new Date("2026-01-12"),
     priority: 2,
+    owner: "Anna",
+    team: "Core",
     Exam: true,
   },
 };
@@ -175,6 +215,39 @@ describe("DatabaseGanttView", () => {
     cleanup();
   });
 
+  it("keeps unscheduled tracks without placeholder hint text", () => {
+    const unscheduledRecord: DatabaseRecord = {
+      ...baseRecord,
+      fileId: "unscheduled.md",
+      filePath: "/vault/unscheduled.md",
+      relativePath: "unscheduled.md",
+      fileName: "unscheduled.md",
+      systemFields: {
+        Dateiname: "Unscheduled",
+      },
+      normalizedFields: {
+        priority: 3,
+      },
+    };
+
+    const { container, cleanup } = render(
+      createElement(DatabaseGanttView, {
+        records: [baseRecord, unscheduledRecord],
+        startAttribute,
+        endAttribute,
+        mode: "date",
+        baseDate: null,
+        zoom: "month",
+        visibleProperties: [],
+      }),
+    );
+
+    expect(container.querySelectorAll(".database-gantt-row-track").length).toBe(2);
+    expect(container.querySelectorAll(".database-gantt-unscheduled-hint").length).toBe(0);
+
+    cleanup();
+  });
+
   it("uses quarter labels when gantt zoom is quarter", () => {
     const { container, cleanup } = render(
       createElement(DatabaseGanttView, {
@@ -226,7 +299,35 @@ describe("DatabaseGanttView", () => {
     cleanup();
   });
 
-  it("shows mobile list toggle under narrow viewport", () => {
+  it("shows sidebar toggle and collapses sidebar by reflow (no overlay)", () => {
+    const { container, cleanup } = render(
+      createElement(DatabaseGanttView, {
+        records: [baseRecord],
+        startAttribute,
+        endAttribute,
+        mode: "date",
+        baseDate: null,
+        zoom: "month",
+        visibleProperties: [],
+      }),
+    );
+
+    const toggleButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => (button.textContent ?? "").includes("Datensatz"));
+    expect(toggleButton).toBeTruthy();
+    expect(container.querySelector(".database-gantt-sidebar-header")).toBeTruthy();
+
+    act(() => {
+      toggleButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(container.querySelector(".database-gantt-sidebar-header")).toBeNull();
+    expect(container.querySelector(".database-gantt-sidebar-overlay")).toBeNull();
+
+    cleanup();
+  });
+
+  it("uses the same sidebar toggle control on narrow viewport", () => {
     const { container, cleanup } = render(
       createElement(DatabaseGanttView, {
         records: [baseRecord],
@@ -241,12 +342,14 @@ describe("DatabaseGanttView", () => {
     );
 
     const toggleButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => (button.textContent ?? "").includes("Liste anzeigen"));
+      .find((button) => (button.textContent ?? "").includes("Datensatz anzeigen"));
     expect(toggleButton).toBeTruthy();
+    expect(container.querySelector(".database-gantt-sidebar-header")).toBeNull();
+
     cleanup();
   });
 
-  it("renders selected property meta in the right track area", () => {
+  it("supports arrow-key navigation against nearest scroll host", () => {
     const { container, cleanup } = render(
       createElement(DatabaseGanttView, {
         records: [baseRecord],
@@ -255,7 +358,40 @@ describe("DatabaseGanttView", () => {
         mode: "date",
         baseDate: null,
         zoom: "month",
-        visibleProperties: [numberAttribute],
+        visibleProperties: [],
+      }),
+    );
+
+    Object.defineProperty(container, "scrollWidth", { configurable: true, value: 1400 });
+    Object.defineProperty(container, "clientWidth", { configurable: true, value: 640 });
+    container.style.overflowX = "auto";
+    const scrollBy = vi.fn();
+    Object.defineProperty(container, "scrollBy", { configurable: true, value: scrollBy });
+
+    const root = container.querySelector<HTMLElement>(".database-gantt-view");
+    root?.focus();
+    act(() => {
+      root?.dispatchEvent(new KeyboardEvent("keydown", {
+        key: "ArrowRight",
+        bubbles: true,
+        cancelable: true,
+      }));
+    });
+    expect(scrollBy).toHaveBeenCalled();
+
+    cleanup();
+  });
+
+  it("renders selected property meta as two-row flow items in the right track area", () => {
+    const { container, cleanup } = render(
+      createElement(DatabaseGanttView, {
+        records: [baseRecord],
+        startAttribute,
+        endAttribute,
+        mode: "date",
+        baseDate: null,
+        zoom: "month",
+        visibleProperties: [numberAttribute, ownerAttribute, teamAttribute],
       }),
     );
 
@@ -263,6 +399,11 @@ describe("DatabaseGanttView", () => {
     expect(meta).toBeTruthy();
     expect(meta?.textContent).toContain("Priority");
     expect(meta?.textContent).toContain("2");
+    expect(meta?.textContent).toContain("Owner");
+    expect(meta?.textContent).toContain("Anna");
+    expect(meta?.textContent).toContain("Team");
+    expect(meta?.textContent).toContain("Core");
+    expect(meta?.querySelectorAll(".database-row-meta-item").length).toBe(3);
 
     cleanup();
   });

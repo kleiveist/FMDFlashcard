@@ -5,6 +5,7 @@
  */
 
 import {
+  type KeyboardEvent as ReactKeyboardEvent,
   Fragment,
   useEffect,
   useMemo,
@@ -78,6 +79,10 @@ type InteractionState =
 
 const MAX_TICK_COUNT = 640;
 const SIDEBAR_WIDTH = 280;
+const ROW_META_MAX_WIDTH = 320;
+const ROW_META_EDGE_PADDING = 8;
+const KEYBOARD_SCROLL_STEP_X = 48;
+const KEYBOARD_SCROLL_STEP_Y = 40;
 
 const SEGMENT_WIDTH_BY_ZOOM: Record<DatabaseGanttZoom, number> = {
   minute: 64,
@@ -94,6 +99,24 @@ const isExamFieldKey = (key: string) => toLower(key) === "exam";
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
+
+const getNearestScrollHost = (element: HTMLElement | null): HTMLElement | null => {
+  if (!element || typeof window === "undefined") {
+    return null;
+  }
+  let current: HTMLElement | null = element;
+  while (current) {
+    const style = window.getComputedStyle(current);
+    const canScrollX = /(auto|scroll)/.test(style.overflowX) && current.scrollWidth > current.clientWidth;
+    const canScrollY = /(auto|scroll)/.test(style.overflowY) && current.scrollHeight > current.clientHeight;
+    if (canScrollX || canScrollY) {
+      return current;
+    }
+    current = current.parentElement;
+  }
+  const fallback = document.scrollingElement;
+  return fallback instanceof HTMLElement ? fallback : null;
+};
 
 const formatDate = (timestamp: number) =>
   new Date(timestamp).toLocaleDateString(undefined, {
@@ -342,27 +365,10 @@ export const DatabaseGanttView = ({
 }: DatabaseGanttViewProps) => {
   const [interaction, setInteraction] = useState<InteractionState | null>(null);
   const [draftByRecordId, setDraftByRecordId] = useState<Record<string, { startTs: number; endTs: number }>>({});
-  const [isNarrowLayout, setIsNarrowLayout] = useState(
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     typeof window !== "undefined" ? window.innerWidth < 1200 : false,
   );
-  const [isSidebarOverlayOpen, setIsSidebarOverlayOpen] = useState(false);
   const gridScrollRef = useRef<HTMLDivElement | null>(null);
-  const hasInitialAnchorRef = useRef(false);
-
-  useEffect(() => {
-    const handleResize = () => {
-      const narrow = window.innerWidth < 1200;
-      setIsNarrowLayout(narrow);
-      if (!narrow) {
-        setIsSidebarOverlayOpen(false);
-      }
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
 
   const entryByRecordId = useMemo(() => {
     const map = new Map<string, GanttEntry>();
@@ -467,33 +473,6 @@ export const DatabaseGanttView = ({
   }, [baseDate, entryByRecordId, mode, zoom]);
 
   useEffect(() => {
-    hasInitialAnchorRef.current = false;
-  }, [mode, zoom, startAttribute?.key, endAttribute?.key, records.length, baseDate]);
-
-  useEffect(() => {
-    const node = gridScrollRef.current;
-    if (!node || hasInitialAnchorRef.current) {
-      return;
-    }
-    const modeAnchorTimestamp = resolveModeAnchorTimestamp(mode, baseDate);
-    const anchorTimestamp = (() => {
-      const entries = Array.from(entryByRecordId.values());
-      if (entries.length > 0) {
-        const nearest = entries.reduce((previous, current) => {
-          const previousDistance = Math.abs(previous.startTs - modeAnchorTimestamp);
-          const currentDistance = Math.abs(current.startTs - modeAnchorTimestamp);
-          return currentDistance < previousDistance ? current : previous;
-        });
-        return nearest.startTs;
-      }
-      return modeAnchorTimestamp;
-    })();
-    const anchorX = timelineScale.timestampToX(anchorTimestamp);
-    node.scrollLeft = Math.max(0, anchorX - (node.clientWidth * 0.35));
-    hasInitialAnchorRef.current = true;
-  }, [baseDate, entryByRecordId, mode, timelineScale]);
-
-  useEffect(() => {
     if (!interaction) {
       return;
     }
@@ -579,27 +558,59 @@ export const DatabaseGanttView = ({
     );
   }
 
-  const sidebarWidth = isNarrowLayout ? 0 : SIDEBAR_WIDTH;
+  const sidebarWidth = isSidebarCollapsed ? 0 : SIDEBAR_WIDTH;
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.defaultPrevented) {
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("input, textarea, select, [contenteditable='true']")) {
+      return;
+    }
+    let left = 0;
+    let top = 0;
+    if (event.key === "ArrowLeft") {
+      left = -KEYBOARD_SCROLL_STEP_X;
+    } else if (event.key === "ArrowRight") {
+      left = KEYBOARD_SCROLL_STEP_X;
+    } else if (event.key === "ArrowUp") {
+      top = -KEYBOARD_SCROLL_STEP_Y;
+    } else if (event.key === "ArrowDown") {
+      top = KEYBOARD_SCROLL_STEP_Y;
+    }
+    if (!left && !top) {
+      return;
+    }
+    const host = getNearestScrollHost(gridScrollRef.current);
+    if (!host) {
+      return;
+    }
+    event.preventDefault();
+    host.scrollBy({ left, top, behavior: "auto" });
+  };
 
   return (
-    <div className={`database-gantt-view${isNarrowLayout ? " is-narrow" : ""}`}>
+    <div
+      className={`database-gantt-view${isSidebarCollapsed ? " is-sidebar-collapsed" : ""}`}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+    >
       {!startAttribute ? (
         <p className="database-block-state">
           Noch kein Start-Zeitfeld konfiguriert. Zieh einen Eintrag in die Timeline, um `start`/`end` automatisch anzulegen.
         </p>
       ) : null}
-      {isNarrowLayout ? (
-        <div className="database-gantt-mobile-controls">
-          <button
-            type="button"
-            className="database-block-toolbar-button"
-            onClick={() => setIsSidebarOverlayOpen((current) => !current)}
-            data-md-block-control="true"
-          >
-            {isSidebarOverlayOpen ? "Liste ausblenden" : "Liste anzeigen"}
-          </button>
-        </div>
-      ) : null}
+      <div className="database-gantt-mobile-controls">
+        <button
+          type="button"
+          className="database-block-toolbar-button"
+          onClick={() => setIsSidebarCollapsed((current) => !current)}
+          aria-expanded={!isSidebarCollapsed}
+          data-md-block-control="true"
+        >
+          {isSidebarCollapsed ? "Datensatz anzeigen" : "Datensatz ausblenden"}
+        </button>
+      </div>
 
       <div className="database-gantt-grid-scroll" ref={gridScrollRef}>
         <div
@@ -608,7 +619,7 @@ export const DatabaseGanttView = ({
             gridTemplateColumns: `${sidebarWidth}px ${timelineScale.totalWidth}px`,
           }}
         >
-          {!isNarrowLayout ? (
+          {!isSidebarCollapsed ? (
             <div className="database-gantt-sidebar-header">Datensatz</div>
           ) : null}
           <div className="database-gantt-header-scale">
@@ -672,12 +683,19 @@ export const DatabaseGanttView = ({
                 | { key: string; kind: "action" }
               ) => Boolean(entry));
             const rowMetaLeft = hasRange && endX !== null
-              ? clamp(endX + 10, 8, Math.max(8, timelineScale.totalWidth - 200))
+              ? clamp(
+                endX + 10,
+                ROW_META_EDGE_PADDING,
+                Math.max(
+                  ROW_META_EDGE_PADDING,
+                  timelineScale.totalWidth - (ROW_META_MAX_WIDTH + ROW_META_EDGE_PADDING),
+                ),
+              )
               : 10;
 
             return (
               <Fragment key={record.fileId}>
-                {!isNarrowLayout ? (
+                {!isSidebarCollapsed ? (
                   <div className={`database-gantt-sidebar-row${hasRange ? "" : " is-unscheduled"}`}>
                     <button
                       type="button"
@@ -718,8 +736,7 @@ export const DatabaseGanttView = ({
                       return;
                     }
                     const rect = event.currentTarget.getBoundingClientRect();
-                    const xInViewport = event.clientX - rect.left;
-                    const absoluteX = xInViewport + (gridScrollRef.current?.scrollLeft ?? 0) - sidebarWidth;
+                    const absoluteX = event.clientX - rect.left;
                     const startTimestamp = timelineScale.xToTimestamp(absoluteX);
                     const endTimestamp = startTimestamp + getTimelineDefaultDurationMs(mode);
                     onCommitRange({
@@ -793,18 +810,14 @@ export const DatabaseGanttView = ({
                         />
                       </span>
                     )
-                  ) : (
-                    <span className="database-gantt-unscheduled-hint">
-                      Kein Zeitbereich
-                    </span>
-                  )}
+                  ) : null}
                   {propertyRows.length > 0 ? (
                     <div
                       className="database-gantt-row-meta"
                       style={{ left: `${rowMetaLeft}px` }}
                     >
                       {propertyRows.map((entry) => (
-                        <p key={entry.key}>
+                        <p key={entry.key} className="database-row-meta-item">
                           {entry.kind === "action" ? (
                             <button
                               type="button"
@@ -830,44 +843,6 @@ export const DatabaseGanttView = ({
           })}
         </div>
       </div>
-
-      {isNarrowLayout && isSidebarOverlayOpen ? (
-        <aside className="database-gantt-sidebar-overlay" data-md-block-control="true">
-          <header>
-            <h6>Dateien</h6>
-            <button
-              type="button"
-              className="database-block-panel-close"
-              onClick={() => setIsSidebarOverlayOpen(false)}
-              aria-label="Liste schliessen"
-            >
-              ×
-            </button>
-          </header>
-          <div className="database-gantt-sidebar-overlay-list">
-            {records.map((record) => {
-              const hasRange = entryByRecordId.has(record.fileId);
-              return (
-                <button
-                  key={record.fileId}
-                  type="button"
-                  className={`database-gantt-sidebar-overlay-row${hasRange ? "" : " is-unscheduled"}`}
-                  title={record.relativePath}
-                  draggable={editable}
-                  onDragStart={(event) => {
-                    event.dataTransfer.effectAllowed = "move";
-                    event.dataTransfer.setData("text/plain", record.fileId);
-                  }}
-                  onClick={() => onOpenRecord?.(record)}
-                >
-                  <span>{getRowTitle(record)}</span>
-                  <span>{hasRange ? "Geplant" : "Unzugeordnet"}</span>
-                </button>
-              );
-            })}
-          </div>
-        </aside>
-      ) : null}
     </div>
   );
 };

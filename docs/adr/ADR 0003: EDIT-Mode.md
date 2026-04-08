@@ -53,27 +53,41 @@ Also Eintliche Sortiugn filterung Eingschaft auswhal prof Viwe name
 title: Database
 source:
   type: current-folder
-view:
-  type: table
-  timelineMode: date
-  ganttZoom: month
-  pieAggregate: count
-fields: []
-columns:
-  - Dateiname
-  - Dateipfad
-propertiesByView:
-  table:
-    - Dateiname
-    - Dateipfad
-  kanban: []
-  gantt: []
-  project: []
-  pie: []
-filters:
-  op: and
-  rules: []
-sort: []
+fields:
+  - key: unitsstart
+    label: unitsstart
+    type: number
+    origin: frontmatter
+  - key: units
+    label: units
+    type: unit
+    origin: frontmatter
+views:
+  activeViewId: saved-view-9
+  items:
+    - id: saved-view-9
+      name: Database
+      view:
+        type: project
+        timelineMode: date
+        ganttZoom: month
+        projectStartField: unitsstart
+        projectUnitField: units
+        blockResolution: 100
+        defaultUnits: 1
+        projectMissingPlacement: show-unplaced
+        pieAggregate: count
+      properties:
+        - Dateiname
+        - Dateipfad
+        - unitsstart
+        - units
+        - Dateigroesse
+        - Dateiendung
+      filters:
+        op: and
+        rules: []
+      sort: []
 options:
   editable: false
   showSearch: true

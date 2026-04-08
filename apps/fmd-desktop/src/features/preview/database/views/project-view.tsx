@@ -5,6 +5,7 @@
  */
 
 import {
+  type KeyboardEvent as ReactKeyboardEvent,
   Fragment,
   useEffect,
   useMemo,
@@ -70,12 +71,34 @@ type InteractionState =
 
 const SLOT_WIDTH = 18;
 const SIDEBAR_WIDTH = 280;
+const ROW_META_MAX_WIDTH = 320;
+const ROW_META_EDGE_PADDING = 8;
+const KEYBOARD_SCROLL_STEP_X = 48;
+const KEYBOARD_SCROLL_STEP_Y = 40;
 
 const toLower = (value: string) => value.trim().toLowerCase();
 const isExamFieldKey = (key: string) => toLower(key) === "exam";
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
+
+const getNearestScrollHost = (element: HTMLElement | null): HTMLElement | null => {
+  if (!element || typeof window === "undefined") {
+    return null;
+  }
+  let current: HTMLElement | null = element;
+  while (current) {
+    const style = window.getComputedStyle(current);
+    const canScrollX = /(auto|scroll)/.test(style.overflowX) && current.scrollWidth > current.clientWidth;
+    const canScrollY = /(auto|scroll)/.test(style.overflowY) && current.scrollHeight > current.clientHeight;
+    if (canScrollX || canScrollY) {
+      return current;
+    }
+    current = current.parentElement;
+  }
+  const fallback = document.scrollingElement;
+  return fallback instanceof HTMLElement ? fallback : null;
+};
 
 const getRowTitle = (record: DatabaseRecord) => {
   const fromSystem = record.systemFields.Dateiname;
@@ -223,26 +246,10 @@ export const DatabaseProjectView = ({
 }: DatabaseProjectViewProps) => {
   const [interaction, setInteraction] = useState<InteractionState | null>(null);
   const [draftByRecordId, setDraftByRecordId] = useState<Record<string, { startSlot: number; units: number }>>({});
-  const [isNarrowLayout, setIsNarrowLayout] = useState(
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     typeof window !== "undefined" ? window.innerWidth < 1200 : false,
   );
-  const [isSidebarOverlayOpen, setIsSidebarOverlayOpen] = useState(false);
   const gridScrollRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const handleResize = () => {
-      const narrow = window.innerWidth < 1200;
-      setIsNarrowLayout(narrow);
-      if (!narrow) {
-        setIsSidebarOverlayOpen(false);
-      }
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
 
   const entryByRecordId = useMemo(() => {
     const map = new Map<string, ProjectEntry>();
@@ -265,6 +272,10 @@ export const DatabaseProjectView = ({
   const slotBoundaries = useMemo(() =>
     Array.from({ length: resolution }, (_, index) => index),
   [resolution]);
+  const rowMetaClampMax = Math.max(
+    ROW_META_EDGE_PADDING,
+    resolution * SLOT_WIDTH - (ROW_META_MAX_WIDTH + ROW_META_EDGE_PADDING),
+  );
 
   const visibleRecords = useMemo(
     () => missingPlacement === "hide-unplaced"
@@ -361,24 +372,55 @@ export const DatabaseProjectView = ({
   }
 
   const totalWidth = Math.max(SLOT_WIDTH, resolution * SLOT_WIDTH);
-  const gridTemplateColumns = isNarrowLayout
-    ? `${totalWidth}px`
-    : `${SIDEBAR_WIDTH}px ${totalWidth}px`;
+  const sidebarWidth = isSidebarCollapsed ? 0 : SIDEBAR_WIDTH;
+  const gridTemplateColumns = `${sidebarWidth}px ${totalWidth}px`;
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.defaultPrevented) {
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("input, textarea, select, [contenteditable='true']")) {
+      return;
+    }
+    let left = 0;
+    let top = 0;
+    if (event.key === "ArrowLeft") {
+      left = -KEYBOARD_SCROLL_STEP_X;
+    } else if (event.key === "ArrowRight") {
+      left = KEYBOARD_SCROLL_STEP_X;
+    } else if (event.key === "ArrowUp") {
+      top = -KEYBOARD_SCROLL_STEP_Y;
+    } else if (event.key === "ArrowDown") {
+      top = KEYBOARD_SCROLL_STEP_Y;
+    }
+    if (!left && !top) {
+      return;
+    }
+    const host = getNearestScrollHost(gridScrollRef.current);
+    if (!host) {
+      return;
+    }
+    event.preventDefault();
+    host.scrollBy({ left, top, behavior: "auto" });
+  };
 
   return (
-    <div className={`database-project-view${isNarrowLayout ? " is-narrow" : ""}`}>
-      {isNarrowLayout ? (
-        <div className="database-project-mobile-controls">
-          <button
-            type="button"
-            className="database-block-toolbar-button"
-            onClick={() => setIsSidebarOverlayOpen((current) => !current)}
-            data-md-block-control="true"
-          >
-            {isSidebarOverlayOpen ? "Liste ausblenden" : "Liste anzeigen"}
-          </button>
-        </div>
-      ) : null}
+    <div
+      className={`database-project-view${isSidebarCollapsed ? " is-sidebar-collapsed" : ""}`}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+    >
+      <div className="database-project-mobile-controls">
+        <button
+          type="button"
+          className="database-block-toolbar-button"
+          onClick={() => setIsSidebarCollapsed((current) => !current)}
+          aria-expanded={!isSidebarCollapsed}
+          data-md-block-control="true"
+        >
+          {isSidebarCollapsed ? "Datensatz anzeigen" : "Datensatz ausblenden"}
+        </button>
+      </div>
 
       <div className="database-project-grid-scroll" ref={gridScrollRef}>
         <div
@@ -387,7 +429,7 @@ export const DatabaseProjectView = ({
             gridTemplateColumns,
           }}
         >
-          {!isNarrowLayout ? (
+          {!isSidebarCollapsed ? (
             <div className="database-project-sidebar-header">Datensatz</div>
           ) : null}
           <div className="database-project-header-scale">
@@ -449,12 +491,12 @@ export const DatabaseProjectView = ({
                 | { key: string; kind: "action" }
               ) => Boolean(entry));
             const rowMetaLeft = hasPlacement && startX !== null
-              ? clamp(startX + width + 10, 8, Math.max(8, resolution * SLOT_WIDTH - 200))
+              ? clamp(startX + width + 10, ROW_META_EDGE_PADDING, rowMetaClampMax)
               : 10;
 
             return (
               <Fragment key={record.fileId}>
-                {!isNarrowLayout ? (
+                {!isSidebarCollapsed ? (
                   <div className={`database-project-sidebar-row${hasPlacement ? "" : " is-unplaced"}`}>
                     <button
                       type="button"
@@ -572,8 +614,6 @@ export const DatabaseProjectView = ({
                         }}
                       />
                     </span>
-                  ) : missingPlacement === "show-unplaced" ? (
-                    <span className="database-project-unplaced-hint">Nicht platziert</span>
                   ) : null}
                   {propertyRows.length > 0 ? (
                     <div
@@ -581,7 +621,7 @@ export const DatabaseProjectView = ({
                       style={{ left: `${rowMetaLeft}px` }}
                     >
                       {propertyRows.map((entry) => (
-                        <p key={entry.key}>
+                        <p key={entry.key} className="database-row-meta-item">
                           {entry.kind === "action" ? (
                             <button
                               type="button"
@@ -607,44 +647,6 @@ export const DatabaseProjectView = ({
           })}
         </div>
       </div>
-
-      {isNarrowLayout && isSidebarOverlayOpen ? (
-        <aside className="database-project-sidebar-overlay" data-md-block-control="true">
-          <header>
-            <h6>Dateien</h6>
-            <button
-              type="button"
-              className="database-block-panel-close"
-              onClick={() => setIsSidebarOverlayOpen(false)}
-              aria-label="Liste schliessen"
-            >
-              ×
-            </button>
-          </header>
-          <div className="database-project-sidebar-overlay-list">
-            {visibleRecords.map((record) => {
-              const entry = entryByRecordId.get(record.fileId);
-              return (
-                <button
-                  key={record.fileId}
-                  type="button"
-                  className={`database-project-sidebar-overlay-row${entry ? "" : " is-unplaced"}`}
-                  title={record.relativePath}
-                  draggable={editable}
-                  onDragStart={(event) => {
-                    event.dataTransfer.effectAllowed = "move";
-                    event.dataTransfer.setData("text/plain", record.fileId);
-                  }}
-                  onClick={() => onOpenRecord?.(record)}
-                >
-                  <span>{getRowTitle(record)}</span>
-                  <span>{entry ? `Slot ${entry.startSlot} · ${entry.units}u` : "Unplatziert"}</span>
-                </button>
-              );
-            })}
-          </div>
-        </aside>
-      ) : null}
     </div>
   );
 };
