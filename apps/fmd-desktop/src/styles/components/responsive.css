@@ -163,17 +163,41 @@ body.focus-mode .app-shell[data-active-tab="exam"] .mobile-nav-header {
     padding-inline: var(--ui-space-md);
   }
 
+  .app-shell.compact-top-nav .content {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .content > .flashcard-layout,
+  .content > .fast-flashcard-layout,
+  .content > .spaced-repetition-layout,
+  .content > .exam-page {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+
+  .exam-page > .exam-layout {
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+  }
+
   .app-shell[data-active-tab="dashboard"][data-study-subview="exam"] .dashboard-page > .content-header {
     display: none;
   }
 
   .flashcard-layout {
     grid-template-columns: 1fr;
+    justify-items: stretch;
   }
 
   .exam-layout {
     grid-template-columns: 1fr;
     grid-template-areas: "exam-main";
+    justify-items: stretch;
   }
 
   .fast-flashcard-layout {
@@ -182,6 +206,7 @@ body.focus-mode .app-shell[data-active-tab="exam"] .mobile-nav-header {
       "fast-main"
       "fast-sidebar";
     grid-template-rows: auto auto;
+    justify-items: stretch;
   }
 
   .spaced-repetition-layout {
@@ -190,6 +215,31 @@ body.focus-mode .app-shell[data-active-tab="exam"] .mobile-nav-header {
       "sr-main"
       "sr-sidebar";
     grid-template-rows: auto auto;
+    justify-items: stretch;
+  }
+
+  .flashcard-main-stack,
+  .fast-flashcard-main,
+  .spaced-repetition-main,
+  .exam-main {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .flashcard-panel,
+  .fast-flashcard-panel,
+  .sr-flashcards-panel,
+  .exam-panel {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin: 0;
+    justify-self: stretch;
+    align-self: stretch;
+  }
+
+  .sr-flashcards-panel.is-empty {
+    align-self: stretch;
   }
 
   .flashcard-note-files-panel,
