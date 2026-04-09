@@ -6150,6 +6150,78 @@ textarea.preview-editor {
   background: var(--accent-border);
 }
 
+.monitoring-render-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 90px;
+}
+
+.monitoring-render-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.monitoring-render-text {
+  font-variant-numeric: tabular-nums;
+}
+
+.monitoring-render-badge {
+  border-radius: var(--db-radius-pill);
+  border: 1px solid color-mix(in srgb, var(--accent-border) 70%, var(--db-border));
+  padding: 1px 6px;
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.monitoring-render-progress {
+  position: relative;
+  width: 54px;
+  height: 6px;
+  border-radius: var(--db-radius-pill);
+  background: color-mix(in srgb, var(--db-border) 70%, transparent);
+  overflow: hidden;
+}
+
+.monitoring-render-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent-border);
+}
+
+.monitoring-render-ring {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.monitoring-render-ring-core {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--db-surface-base);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.58rem;
+  color: var(--db-muted);
+}
+
+.frontmatter-monitoring-preview {
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--db-muted);
+  font-size: 0.75rem;
+}
+
 .database-block-state {
   margin: 0;
   font-size: 0.76rem;

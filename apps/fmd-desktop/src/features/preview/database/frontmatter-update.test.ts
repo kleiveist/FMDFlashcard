@@ -177,7 +177,17 @@ describe("frontmatter-update", () => {
       error: null,
     });
     expect(coerceDatabaseRecordFieldValue("percent", "80")).toMatchObject({
-      typedValue: "80%",
+      typedValue: "80",
+      kind: "text",
+      error: null,
+    });
+    expect(coerceDatabaseRecordFieldValue("status", "2 🟢")).toMatchObject({
+      typedValue: "2",
+      kind: "text",
+      error: null,
+    });
+    expect(coerceDatabaseRecordFieldValue("status", "J ✅")).toMatchObject({
+      typedValue: "J",
       kind: "text",
       error: null,
     });
@@ -185,6 +195,7 @@ describe("frontmatter-update", () => {
     expect(coerceDatabaseRecordFieldValue("unit", "0").error).toBe("Unit value must be an integer >= 1.");
     expect(coerceDatabaseRecordFieldValue("unit", "1.2").error).toBe("Unit value must be an integer >= 1.");
     expect(coerceDatabaseRecordFieldValue("boolean", "nope").error).toBe("Boolean value must be true or false.");
+    expect(coerceDatabaseRecordFieldValue("status", "🟢").error).toBe("Status value must start with a code token.");
   });
 
   it("upserts record field values case-insensitively without duplicating yaml header", () => {
@@ -229,7 +240,7 @@ describe("frontmatter-update", () => {
     expect(result.error).toBeNull();
     expect(result.action).toBe("added");
     expect(result.changed).toBe(true);
-    expect(writes["/tmp/record.md"]).toMatch(/percent:\s*'?75%'?/);
+    expect(writes["/tmp/record.md"]).toMatch(/percent:\s*'?75'?/);
     expect((writes["/tmp/record.md"].match(/^---$/gm) ?? []).length).toBe(2);
   });
 });

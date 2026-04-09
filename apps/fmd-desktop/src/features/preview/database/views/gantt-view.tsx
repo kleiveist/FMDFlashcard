@@ -25,6 +25,11 @@ import {
   type DatabaseRecord,
   type DatabaseTimelineMode,
 } from "../database-types";
+import {
+  formatMonitoringCompactText,
+  renderMonitoringValue,
+  type MonitoringRenderProfile,
+} from "../../../monitoring/monitoring-render-rules";
 
 type DatabaseGanttViewProps = {
   records: DatabaseRecord[];
@@ -34,6 +39,7 @@ type DatabaseGanttViewProps = {
   baseDate: string | null;
   zoom: DatabaseGanttZoom;
   visibleProperties: DatabaseAttributeMeta[];
+  monitoringProfiles?: MonitoringRenderProfile[];
   editable?: boolean;
   pendingRecordIds?: string[];
   onOpenRecord?: (record: DatabaseRecord) => void;
@@ -207,12 +213,26 @@ const getRecordValueByField = (record: DatabaseRecord, field: string): DatabaseN
   return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
 };
 
-const toStatusLabel = (record: DatabaseRecord): string | null => {
-  const statusValue = Object.entries(record.normalizedFields)
-    .find(([key]) => toLower(key) === "status")?.[1];
-
-  if (!statusValue) {
+const toStatusLabel = (
+  record: DatabaseRecord,
+  monitoringProfiles: MonitoringRenderProfile[],
+): string | null => {
+  const entry = Object.entries(record.normalizedFields)
+    .find(([key]) => toLower(key) === "status");
+  if (!entry) {
     return null;
+  }
+  const [attributeKey, statusValue] = entry;
+  const monitoringText = formatMonitoringCompactText(
+    renderMonitoringValue({
+      attributeKey,
+      value: statusValue,
+      profiles: monitoringProfiles,
+    }),
+    statusValue,
+  ).trim();
+  if (monitoringText) {
+    return monitoringText;
   }
   if (typeof statusValue === "string") {
     return statusValue;
@@ -225,9 +245,22 @@ const toStatusLabel = (record: DatabaseRecord): string | null => {
 };
 
 const stringifyMetaValue = (
+  attributeKey: string,
   value: DatabaseNormalizedFieldValue,
   type: DatabaseAttributeMeta["type"],
+  monitoringProfiles: MonitoringRenderProfile[],
 ): string | null => {
+  const monitoringText = formatMonitoringCompactText(
+    renderMonitoringValue({
+      attributeKey,
+      value,
+      profiles: monitoringProfiles,
+    }),
+    value,
+  ).trim();
+  if (monitoringText) {
+    return monitoringText;
+  }
   if (value === null || typeof value === "undefined") {
     return null;
   }
@@ -277,12 +310,14 @@ const buildEntry = ({
   endAttribute,
   mode,
   baseDate,
+  monitoringProfiles,
 }: {
   record: DatabaseRecord;
   startAttribute: DatabaseAttributeMeta;
   endAttribute: DatabaseAttributeMeta | null;
   mode: DatabaseTimelineMode;
   baseDate: string | null;
+  monitoringProfiles: MonitoringRenderProfile[];
 }): GanttEntry | null => {
   const startValue = getRecordValueByField(record, startAttribute.key);
   const endValue = endAttribute ? getRecordValueByField(record, endAttribute.key) : null;
@@ -307,7 +342,7 @@ const buildEntry = ({
   }
 
   const title = getRowTitle(record);
-  const status = toStatusLabel(record);
+  const status = toStatusLabel(record, monitoringProfiles);
   const start = startTs ?? endTs ?? 0;
   const end = endTs ?? startTs ?? 0;
   const begin = Math.min(start, end);
@@ -357,6 +392,7 @@ export const DatabaseGanttView = ({
   baseDate,
   zoom,
   visibleProperties,
+  monitoringProfiles = [],
   editable = false,
   pendingRecordIds = [],
   onOpenRecord,
@@ -382,13 +418,14 @@ export const DatabaseGanttView = ({
         endAttribute,
         mode,
         baseDate,
+        monitoringProfiles,
       });
       if (entry) {
         map.set(record.fileId, entry);
       }
     });
     return map;
-  }, [baseDate, endAttribute, mode, records, startAttribute]);
+  }, [baseDate, endAttribute, mode, monitoringProfiles, records, startAttribute]);
 
   const pendingIds = useMemo(() => new Set(pendingRecordIds), [pendingRecordIds]);
   const recordById = useMemo(() => new Map(records.map((record) => [record.fileId, record])), [records]);
@@ -665,8 +702,10 @@ export const DatabaseGanttView = ({
                   };
                 }
                 const value = stringifyMetaValue(
+                  attribute.key,
                   getRecordValueByField(record, attribute.key),
                   attribute.type,
+                  monitoringProfiles,
                 );
                 if (!value) {
                   return null;

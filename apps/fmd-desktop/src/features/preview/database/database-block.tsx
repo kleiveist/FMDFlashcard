@@ -84,6 +84,7 @@ import { DatabaseKanbanView } from "./views/kanban-view";
 import { DatabasePieView } from "./views/pie-view";
 import { DatabaseProjectView } from "./views/project-view";
 import { DatabaseTableView } from "./views/table-view";
+import { type MonitoringRenderProfile } from "../../monitoring/monitoring-render-rules";
 
 type DatabaseBlockProps = {
   raw: string;
@@ -92,6 +93,7 @@ type DatabaseBlockProps = {
   onNavigateWikilink?: (wikilink: string) => void;
   runnableExamRelativePaths?: string[];
   onOpenExamFromDatabaseRecord?: (target: { path: string; relativePath: string }) => void;
+  monitoringProfiles?: MonitoringRenderProfile[];
   onCommitRaw: (nextRaw: string) => void;
   allowCellEditing?: boolean;
 };
@@ -603,6 +605,7 @@ export const MarkdownHybridDatabaseBlock = ({
   onNavigateWikilink,
   runnableExamRelativePaths,
   onOpenExamFromDatabaseRecord,
+  monitoringProfiles = [],
   onCommitRaw,
   allowCellEditing = true,
 }: DatabaseBlockProps) => {
@@ -2845,6 +2848,7 @@ export const MarkdownHybridDatabaseBlock = ({
             editable={tableCellEditingEnabled}
             activeEditCell={activeCellEdit}
             pendingCellMutations={pendingCellMutations}
+            monitoringProfiles={monitoringProfiles}
             onOpenRecord={openRecord}
             onOpenExamFromRecord={openExamFromRecord}
             onToggleColumnSort={handleToggleColumnSort}
@@ -2861,6 +2865,7 @@ export const MarkdownHybridDatabaseBlock = ({
             attributes={store.attributeRegistry}
             visibleProperties={visibleColumns}
             showCover={kanbanShowCover}
+            monitoringProfiles={monitoringProfiles}
             pendingRecordIds={pendingRecordMutations}
             onMoveRecord={handleMoveKanbanRecord}
             onOpenRecord={openRecord}
@@ -2875,6 +2880,7 @@ export const MarkdownHybridDatabaseBlock = ({
             baseDate={timelineBaseDate}
             zoom={ganttZoom}
             visibleProperties={visibleColumns}
+            monitoringProfiles={monitoringProfiles}
             editable={allowCellEditing}
             pendingRecordIds={pendingRecordMutations}
             onCommitRange={handleCommitTimelineRange}
@@ -2890,6 +2896,7 @@ export const MarkdownHybridDatabaseBlock = ({
             defaultUnits={projectDefaultUnits}
             missingPlacement={projectMissingPlacement}
             visibleProperties={visibleColumns}
+            monitoringProfiles={monitoringProfiles}
             editable={allowCellEditing}
             pendingRecordIds={pendingRecordMutations}
             onCommitPlacement={handleCommitProjectPlacement}
@@ -2903,6 +2910,7 @@ export const MarkdownHybridDatabaseBlock = ({
             aggregate={pieAggregate}
             aggregateAttribute={pieAggregateAttribute}
             visibleProperties={visibleColumns}
+            monitoringProfiles={monitoringProfiles}
           />
         )}
       </div>

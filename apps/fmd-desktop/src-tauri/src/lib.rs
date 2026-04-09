@@ -146,6 +146,7 @@ struct AppSettings {
     exam_help_enabled: Option<bool>,
     exam_show_task_sources: Option<bool>,
     keyboard_shortcuts: Option<KeyboardShortcutSettings>,
+    monitoring_render_profiles: Option<serde_json::Value>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default, Clone)]
@@ -291,6 +292,7 @@ impl AppSettings {
             && self.exam_help_enabled.is_none()
             && self.exam_show_task_sources.is_none()
             && self.keyboard_shortcuts.is_none()
+            && self.monitoring_render_profiles.is_none()
     }
 }
 
@@ -628,6 +630,7 @@ fn save_app_settings(
     exam_help_enabled: Option<bool>,
     exam_show_task_sources: Option<bool>,
     keyboard_shortcuts: Option<KeyboardShortcutSettings>,
+    monitoring_render_profiles: Option<serde_json::Value>,
 ) -> Result<(), String> {
     let path = settings_path(&app)?;
     let settings = AppSettings {
@@ -694,6 +697,7 @@ fn save_app_settings(
         exam_help_enabled,
         exam_show_task_sources,
         keyboard_shortcuts,
+        monitoring_render_profiles,
     };
     write_settings(&path, &settings)
 }

@@ -1341,6 +1341,7 @@ const DashboardPageInner = (
             onSelectMarkdownTab={handleSelectMarkdownTab}
             onCloseMarkdownTab={handleCloseMarkdownTab}
             onReorderMarkdownTabs={handleReorderMarkdownTabs}
+            monitoringProfiles={settings.monitoringRenderProfiles}
           />
         ) : (
           <ExamEditorView

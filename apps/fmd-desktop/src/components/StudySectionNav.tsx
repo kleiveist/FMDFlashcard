@@ -118,6 +118,12 @@ const SECONDARY_NAV_ITEMS: Record<PrimaryGroupKey, SecondaryNavItem[]> = {
       icon: CheckIcon,
       target: { type: "section", key: "points-profiles" },
     },
+    {
+      id: "monitoring-rules",
+      label: "Monitoring Rules",
+      icon: GaugeIcon,
+      target: { type: "section", key: "monitoring-rules" },
+    },
   ],
 };
 

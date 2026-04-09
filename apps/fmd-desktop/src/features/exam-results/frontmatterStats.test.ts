@@ -17,8 +17,8 @@ describe("upsertExamResultStatsFrontmatter", () => {
 
     expect(result.error).toBeNull();
     expect(result.markdown).toContain("Score: '7/10'");
-    expect(result.markdown).toContain("percent: '70%'");
-    expect(result.markdown).toContain("status: '4 🟠'");
+    expect(result.markdown).toContain("percent: '70'");
+    expect(result.markdown).toContain("status: '4'");
     expect(result.markdown).toContain("#exam");
   });
 
@@ -47,8 +47,8 @@ describe("upsertExamResultStatsFrontmatter", () => {
     expect(parsed.error).toBeNull();
     expect(collectKeys(result.markdown)).toEqual(["Task", "Score", "percent", "status"]);
     expect(parsed.properties.find((property) => property.key === "Score")?.value).toBe("9/10");
-    expect(parsed.properties.find((property) => property.key === "percent")?.value).toBe("90%");
-    expect(parsed.properties.find((property) => property.key === "status")?.value).toBe("1 🔵");
+    expect(parsed.properties.find((property) => property.key === "percent")?.value).toBe("90");
+    expect(parsed.properties.find((property) => property.key === "status")?.value).toBe("1");
   });
 
   it("keeps exactly one set of stats keys across repeated writes", () => {

@@ -17,6 +17,7 @@ import {
   type DatabaseRecord,
   type DatabaseSortRule,
 } from "../database-types";
+import { type MonitoringRenderProfile } from "../../../monitoring/monitoring-render-rules";
 
 type DatabaseTableViewProps = {
   records: DatabaseRecord[];
@@ -29,6 +30,7 @@ type DatabaseTableViewProps = {
     draftValue: string | boolean;
   } | null;
   pendingCellMutations: string[];
+  monitoringProfiles?: MonitoringRenderProfile[];
   onOpenRecord: (record: DatabaseRecord) => void;
   onOpenExamFromRecord?: (record: DatabaseRecord) => void;
   onToggleColumnSort: (columnKey: string) => void;
@@ -113,6 +115,7 @@ export const DatabaseTableView = ({
   editable,
   activeEditCell,
   pendingCellMutations,
+  monitoringProfiles = [],
   onOpenRecord,
   onOpenExamFromRecord,
   onToggleColumnSort,
@@ -375,6 +378,7 @@ export const DatabaseTableView = ({
                         <DatabaseCellRenderer
                           attribute={column}
                           value={getRecordValueByField(record, column.key)}
+                          monitoringProfiles={monitoringProfiles}
                         />
                       </button>
                     ) : isExamFieldKey(column.key) ? (
@@ -395,6 +399,7 @@ export const DatabaseTableView = ({
                       <DatabaseCellRenderer
                         attribute={column}
                         value={getRecordValueByField(record, column.key)}
+                        monitoringProfiles={monitoringProfiles}
                       />
                     )}
                   </span>

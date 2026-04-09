@@ -213,6 +213,7 @@ export type DatabasePercentValue = {
 
 export type DatabaseStatusValue = {
   raw: string;
+  code?: string;
   rank?: number;
   label?: string;
   emoji?: string;

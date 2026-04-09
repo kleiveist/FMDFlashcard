@@ -1797,8 +1797,8 @@ export const useExamSimulationViewModel = () => {
         return;
       }
       const scoreValue = `${results.totalAwarded}/${results.totalMax}`;
-      const percentValue = `${percent}%`;
-      const statusValue = resolveExamStatusDescriptor(percent).token;
+      const percentValue = String(percent);
+      const statusValue = String(resolveExamStatusDescriptor(percent).value);
       void (async () => {
         try {
           const contents = await invoke<string>("read_text_file", {

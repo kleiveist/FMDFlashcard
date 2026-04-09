@@ -121,9 +121,11 @@ describe("StudySectionNav", () => {
     await clickButtonByExactText(container, "Flashcard");
     await clickButtonByExactText(container, "Monitoring");
     await clickButtonByExactText(container, "Points Profiles");
+    await clickButtonByExactText(container, "Monitoring Rules");
 
     expect(onSectionSelect).toHaveBeenNthCalledWith(1, "flashcard");
     expect(onSectionSelect).toHaveBeenNthCalledWith(2, "points-profiles");
+    expect(onSectionSelect).toHaveBeenNthCalledWith(3, "monitoring-rules");
 
     cleanup();
   });

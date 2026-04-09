@@ -11,6 +11,11 @@ import {
   type DatabaseNormalizedFieldValue,
   type DatabaseRecord,
 } from "../database-types";
+import {
+  formatMonitoringCompactText,
+  renderMonitoringValue,
+  type MonitoringRenderProfile,
+} from "../../../monitoring/monitoring-render-rules";
 
 type DatabaseKanbanViewProps = {
   records: DatabaseRecord[];
@@ -18,6 +23,7 @@ type DatabaseKanbanViewProps = {
   attributes: DatabaseAttributeMeta[];
   visibleProperties: DatabaseAttributeMeta[];
   showCover: boolean;
+  monitoringProfiles?: MonitoringRenderProfile[];
   pendingRecordIds: string[];
   onMoveRecord: (record: DatabaseRecord, nextGroupValue: string) => void;
   onOpenRecord: (record: DatabaseRecord) => void;
@@ -39,7 +45,7 @@ const getRecordValueByField = (record: DatabaseRecord, field: string) => {
   return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
 };
 
-const stringifyGroupValue = (value: DatabaseNormalizedFieldValue) => {
+const stringifyRawGroupValue = (value: DatabaseNormalizedFieldValue) => {
   if (value === null || typeof value === "undefined") {
     return EMPTY_GROUP_LABEL;
   }
@@ -57,6 +63,23 @@ const stringifyGroupValue = (value: DatabaseNormalizedFieldValue) => {
   }
   const text = String(value).trim();
   return text || EMPTY_GROUP_LABEL;
+};
+
+const formatGroupLabel = (
+  key: string,
+  rawValue: string,
+  monitoringProfiles: MonitoringRenderProfile[],
+) => {
+  const monitoringText = formatMonitoringCompactText(
+    renderMonitoringValue({
+      attributeKey: key,
+      value: rawValue === EMPTY_GROUP_LABEL ? "" : rawValue,
+      profiles: monitoringProfiles,
+    }),
+    rawValue,
+  );
+  const trimmed = monitoringText.trim();
+  return trimmed || rawValue;
 };
 
 const stringifyMetaValue = (value: DatabaseNormalizedFieldValue, type: DatabaseFieldType): string | null => {
@@ -135,6 +158,7 @@ export const DatabaseKanbanView = ({
   attributes,
   visibleProperties,
   showCover,
+  monitoringProfiles = [],
   pendingRecordIds,
   onMoveRecord,
   onOpenRecord,
@@ -147,25 +171,29 @@ export const DatabaseKanbanView = ({
   );
   const grouped = useMemo(() => {
     if (!groupAttribute) {
-      return [] as Array<{ label: string; records: DatabaseRecord[] }>;
+      return [] as Array<{ key: string; label: string; records: DatabaseRecord[] }>;
     }
     const buckets = new Map<string, DatabaseRecord[]>();
     records.forEach((record) => {
-      const label = stringifyGroupValue(getRecordValueByField(record, groupAttribute.key));
-      const bucket = buckets.get(label);
+      const rawLabel = stringifyRawGroupValue(
+        getRecordValueByField(record, groupAttribute.key),
+      );
+      const bucket = buckets.get(rawLabel);
       if (bucket) {
         bucket.push(record);
       } else {
-        buckets.set(label, [record]);
+        buckets.set(rawLabel, [record]);
       }
     });
-    const labels = Array.from(buckets.keys()).sort((left, right) =>
-      left.localeCompare(right, undefined, { sensitivity: "base" }));
-    return labels.map((label) => ({
-      label,
-      records: buckets.get(label) ?? [],
-    }));
-  }, [groupAttribute, records]);
+    return Array.from(buckets.entries())
+      .map(([key, bucketRecords]) => ({
+        key,
+        label: formatGroupLabel(groupAttribute.key, key, monitoringProfiles),
+        records: bucketRecords,
+      }))
+      .sort((left, right) =>
+        left.label.localeCompare(right.label, undefined, { sensitivity: "base" }));
+  }, [groupAttribute, records, monitoringProfiles]);
 
   if (!groupAttribute || !groupAttribute.viewCompatibility.supportsKanbanGrouping) {
     return (
@@ -179,7 +207,7 @@ export const DatabaseKanbanView = ({
     <div className="database-kanban-view">
       {grouped.map((group) => (
         <section
-          key={group.label}
+          key={group.key}
           className="database-kanban-column"
           onDragOver={(event) => {
             event.preventDefault();
@@ -195,11 +223,13 @@ export const DatabaseKanbanView = ({
             if (!record) {
               return;
             }
-            const previousValue = stringifyGroupValue(getRecordValueByField(record, groupAttribute.key));
-            if (previousValue === group.label) {
+            const previousGroupValue = stringifyRawGroupValue(
+              getRecordValueByField(record, groupAttribute.key),
+            );
+            if (previousGroupValue === group.key) {
               return;
             }
-            onMoveRecord(record, group.label === EMPTY_GROUP_LABEL ? "" : group.label);
+            onMoveRecord(record, group.key === EMPTY_GROUP_LABEL ? "" : group.key);
           }}
         >
           <header className="database-kanban-column-header">
@@ -223,10 +253,20 @@ export const DatabaseKanbanView = ({
                       kind: "action" as const,
                     };
                   }
-                  const value = stringifyMetaValue(
-                    getRecordValueByField(record, attribute.key),
-                    attribute.type,
+                  const rawMetaValue = getRecordValueByField(record, attribute.key);
+                  const monitoringText = formatMonitoringCompactText(
+                    renderMonitoringValue({
+                      attributeKey: attribute.key,
+                      value: rawMetaValue,
+                      profiles: monitoringProfiles,
+                    }),
+                    rawMetaValue,
                   );
+                  const value = monitoringText ||
+                    stringifyMetaValue(
+                      rawMetaValue,
+                      attribute.type,
+                    );
                   if (!value) {
                     return null;
                   }

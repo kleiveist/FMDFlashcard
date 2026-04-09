@@ -107,6 +107,11 @@ import {
   FormulaAttributeBuilder,
   type FormulaBuilderAttributeOption,
 } from "../features/preview/formula/formula-attribute-builder";
+import { MonitoringRenderValue } from "../features/monitoring/MonitoringRenderValue";
+import {
+  renderMonitoringValue,
+  type MonitoringRenderProfile,
+} from "../features/monitoring/monitoring-render-rules";
 import {
   FrontmatterGripIcon,
   FrontmatterImageIcon,
@@ -1604,6 +1609,7 @@ type PreviewPanelProps = {
     targetPath: string,
     position: "before" | "after",
   ) => void;
+  monitoringProfiles?: MonitoringRenderProfile[];
 };
 
 export const canStartPreviewEdit = ({
@@ -5030,6 +5036,7 @@ type FrontmatterPropertiesPanelProps = {
   >;
   valueSuggestionsByKey?: Record<string, string[]>;
   keySuggestions?: string[];
+  monitoringProfiles?: MonitoringRenderProfile[];
 };
 
 const EMPTY_VALUE_SUGGESTIONS: Record<string, string[]> = {};
@@ -5053,6 +5060,7 @@ const FrontmatterPropertiesPanel = ({
   taskProfileSummariesByName,
   valueSuggestionsByKey = EMPTY_VALUE_SUGGESTIONS,
   keySuggestions = EMPTY_KEY_SUGGESTIONS,
+  monitoringProfiles = [],
 }: FrontmatterPropertiesPanelProps) => {
   const linksDocument = useMemo(
     () => parseFrontmatterLinks(sourceMarkdown),
@@ -6622,6 +6630,12 @@ const FrontmatterPropertiesPanel = ({
                 .toLowerCase()
                 .replace(/[^a-z0-9_-]+/g, "-")}`;
               const isCoverPickerListOpen = isCoverRowActive && isCoverPickerOpen && !rowDisabled;
+              const monitoringResult = renderMonitoringValue({
+                attributeKey: property.key,
+                value: property.value,
+                profiles: monitoringProfiles,
+              });
+              const monitoringFallback = stringifyPropertyValue(property).trim();
 
               const commitScalarDraft = async (rawInput: string) => {
                 if (property.kind === "number") {
@@ -7414,6 +7428,14 @@ const FrontmatterPropertiesPanel = ({
                       </div>
                     ) : null}
                     {renderValueEditor()}
+                    {monitoringResult ? (
+                      <div className="frontmatter-monitoring-preview">
+                        <MonitoringRenderValue
+                          result={monitoringResult}
+                          fallback={monitoringFallback}
+                        />
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               );
@@ -8266,6 +8288,7 @@ export const PreviewPanel = ({
   onSelectMarkdownTab,
   onCloseMarkdownTab,
   onReorderMarkdownTabs,
+  monitoringProfiles = [],
 }: PreviewPanelProps) => {
   const previewRef = useRef<HTMLDivElement | null>(null);
   const markdownViewRef = useRef<HTMLDivElement | null>(null);
@@ -10437,6 +10460,7 @@ export const PreviewPanel = ({
               onNavigateWikilink={onNavigateWikilink}
               runnableExamRelativePaths={runnableExamRelativePaths}
               onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
+              monitoringProfiles={monitoringProfiles}
               onCommitRaw={(nextRaw) => {
                 if (databaseBlockIndex < 0) {
                   return;
@@ -10487,6 +10511,7 @@ export const PreviewPanel = ({
       selectedFile?.relative_path,
       sourceRelativePath,
       vaultFiles,
+      monitoringProfiles,
     ],
   );
 
@@ -11142,6 +11167,7 @@ export const PreviewPanel = ({
                     taskProfileSummariesByName={taskProfileSummariesByName}
                     valueSuggestionsByKey={valueSuggestionsByKey}
                     keySuggestions={keySuggestions}
+                    monitoringProfiles={monitoringProfiles}
                   />
                 ) : null}
                 <MarkdownHybridEditor
@@ -11157,6 +11183,7 @@ export const PreviewPanel = ({
                   onNavigateWikilink={onNavigateWikilink}
                   runnableExamRelativePaths={runnableExamRelativePaths}
                   onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
+                  monitoringProfiles={monitoringProfiles}
                   onChange={handleHybridBodyChange}
                   onDirtyChange={onHybridDirtyChange}
                   renderPreview={(source) =>
@@ -11206,6 +11233,7 @@ export const PreviewPanel = ({
                       taskProfileSummariesByName={taskProfileSummariesByName}
                       valueSuggestionsByKey={valueSuggestionsByKey}
                       keySuggestions={keySuggestions}
+                      monitoringProfiles={monitoringProfiles}
                     />
                   ) : null}
                   <div

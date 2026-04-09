@@ -10,6 +10,11 @@ import {
   type DatabaseNormalizedFieldValue,
   type DatabaseRecord,
 } from "../database-types";
+import {
+  formatMonitoringCompactText,
+  renderMonitoringValue,
+  type MonitoringRenderProfile,
+} from "../../../monitoring/monitoring-render-rules";
 
 type DatabasePieViewProps = {
   records: DatabaseRecord[];
@@ -17,6 +22,7 @@ type DatabasePieViewProps = {
   aggregate: "count" | "sum" | "avg";
   aggregateAttribute: DatabaseAttributeMeta | null;
   visibleProperties: DatabaseAttributeMeta[];
+  monitoringProfiles?: MonitoringRenderProfile[];
 };
 
 type PieBucket = {
@@ -43,7 +49,22 @@ const getRecordValueByField = (record: DatabaseRecord, field: string): DatabaseN
   return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
 };
 
-const toLabel = (value: DatabaseNormalizedFieldValue): string => {
+const toLabel = (
+  attributeKey: string,
+  value: DatabaseNormalizedFieldValue,
+  monitoringProfiles: MonitoringRenderProfile[],
+): string => {
+  const monitoringText = formatMonitoringCompactText(
+    renderMonitoringValue({
+      attributeKey,
+      value,
+      profiles: monitoringProfiles,
+    }),
+    value,
+  ).trim();
+  if (monitoringText) {
+    return monitoringText;
+  }
   if (value === null || typeof value === "undefined") {
     return EMPTY_LABEL;
   }
@@ -68,8 +89,10 @@ const toLabel = (value: DatabaseNormalizedFieldValue): string => {
 };
 
 const getGroupLabels = (
+  attributeKey: string,
   groupType: DatabaseAttributeMeta["type"],
   value: DatabaseNormalizedFieldValue,
+  monitoringProfiles: MonitoringRenderProfile[],
 ): string[] => {
   if (groupType === "tags" || groupType === "multiselect") {
     if (Array.isArray(value)) {
@@ -87,7 +110,7 @@ const getGroupLabels = (
     }
     return [EMPTY_LABEL];
   }
-  return [toLabel(value)];
+  return [toLabel(attributeKey, value, monitoringProfiles)];
 };
 
 const toAggregatableNumber = (
@@ -141,9 +164,22 @@ const toAggregatableNumber = (
 };
 
 const stringifyDetailValue = (
+  attributeKey: string,
   value: DatabaseNormalizedFieldValue,
   type: DatabaseAttributeMeta["type"],
+  monitoringProfiles: MonitoringRenderProfile[],
 ): string | null => {
+  const monitoringText = formatMonitoringCompactText(
+    renderMonitoringValue({
+      attributeKey,
+      value,
+      profiles: monitoringProfiles,
+    }),
+    value,
+  ).trim();
+  if (monitoringText) {
+    return monitoringText;
+  }
   if (value === null || typeof value === "undefined") {
     return null;
   }
@@ -212,6 +248,7 @@ export const DatabasePieView = ({
   aggregate,
   aggregateAttribute,
   visibleProperties,
+  monitoringProfiles = [],
 }: DatabasePieViewProps) => {
   const validationError = useMemo(() => {
     if (!groupAttribute || !groupAttribute.viewCompatibility.supportsPieGrouping) {
@@ -240,8 +277,10 @@ export const DatabasePieView = ({
 
     records.forEach((record) => {
       const labels = getGroupLabels(
+        groupAttribute.key,
         groupAttribute.type,
         getRecordValueByField(record, groupAttribute.key),
+        monitoringProfiles,
       );
 
       if (aggregate === "count") {
@@ -296,7 +335,7 @@ export const DatabasePieView = ({
         };
       })
       .filter((bucket) => Number.isFinite(bucket.value) && bucket.value >= 0);
-  }, [aggregate, aggregateAttribute, groupAttribute, records, validationError]);
+  }, [aggregate, aggregateAttribute, groupAttribute, monitoringProfiles, records, validationError]);
 
   const legendDetailsByLabel = useMemo(() => {
     if (!groupAttribute || visibleProperties.length === 0) {
@@ -321,8 +360,10 @@ export const DatabasePieView = ({
           const seen = new Set<string>();
           bucket.records.forEach((record) => {
             const value = stringifyDetailValue(
+              property.key,
               getRecordValueByField(record, property.key),
               property.type,
+              monitoringProfiles,
             );
             if (!value) {
               return;
@@ -352,7 +393,7 @@ export const DatabasePieView = ({
     });
 
     return detailMap;
-  }, [aggregateAttribute, buckets, groupAttribute, visibleProperties]);
+  }, [aggregateAttribute, buckets, groupAttribute, monitoringProfiles, visibleProperties]);
 
   const total = useMemo(
     () => buckets.reduce((sum, bucket) => sum + bucket.value, 0),

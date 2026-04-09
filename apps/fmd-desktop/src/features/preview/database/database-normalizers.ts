@@ -23,10 +23,11 @@ import {
   normalizeDateValue,
   normalizeTimeValue,
 } from "./database-time";
+import { resolveMonitoringAliasType } from "../../monitoring/monitoring-render-rules";
 
 const scorePattern = /^\s*(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)\s*$/;
-const percentPattern = /^\s*(-?\d+(?:\.\d+)?)\s*%\s*$/;
-const statusPattern = /^\s*(\d+)\s+(.+)$/u;
+const percentPattern = /^\s*(-?\d+(?:\.\d+)?)\s*%?\s*$/;
+const statusPattern = /^\s*([0-9A-Za-z!]+)(?:\s+(.+))?$/u;
 const wikilinkPattern = /^\s*\[\[[^\]]+\]\]\s*$/;
 const imageExtensionPattern = /\.(png|jpe?g|webp|gif|svg)$/i;
 
@@ -92,6 +93,14 @@ export const parseScoreValue = (value: unknown): DatabaseScoreValue | null => {
 };
 
 export const parsePercentValue = (value: unknown): DatabasePercentValue | null => {
+  if (typeof value === "number") {
+    return Number.isFinite(value)
+      ? {
+          raw: String(value),
+          value,
+        }
+      : null;
+  }
   if (typeof value !== "string") {
     return null;
   }
@@ -110,6 +119,18 @@ export const parsePercentValue = (value: unknown): DatabasePercentValue | null =
 };
 
 export const parseStatusValue = (value: unknown): DatabaseStatusValue | null => {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      return null;
+    }
+    const rank = Math.floor(value);
+    return {
+      raw: String(value),
+      code: String(rank),
+      rank,
+      label: String(rank),
+    };
+  }
   if (typeof value !== "string") {
     return null;
   }
@@ -121,14 +142,17 @@ export const parseStatusValue = (value: unknown): DatabaseStatusValue | null => 
   if (!match) {
     return {
       raw: value,
+      code: trimmed,
       label: trimmed,
     };
   }
-  const rank = Number(match[1] ?? "");
-  const label = (match[2] ?? "").trim();
+  const code = String(match[1] ?? "").trim();
+  const rank = /^\d+$/.test(code) ? Number(code) : Number.NaN;
+  const label = (match[2] ?? "").trim() || code;
   const emojiMatch = label.match(/[\p{Emoji_Presentation}\p{Extended_Pictographic}]/u);
   return {
     raw: value,
+    code,
     rank: Number.isFinite(rank) ? rank : undefined,
     label,
     emoji: emojiMatch?.[0],
@@ -198,9 +222,21 @@ const isFormulaGroupedCountEntry = (value: unknown): value is DatabaseFormulaGro
   typeof (value as { count?: unknown }).count === "number";
 
 export const inferFieldType = (key: string, value: unknown): DatabaseFieldType => {
+  const monitoringAliasType = resolveMonitoringAliasType(key);
+
   const arrayValue = asArrayOfStrings(value);
   if (arrayValue) {
     return isTagsField(key) ? "tags" : "multiselect";
+  }
+
+  if (monitoringAliasType === "score") {
+    return "score";
+  }
+  if (monitoringAliasType === "percent") {
+    return "percent";
+  }
+  if (monitoringAliasType === "status") {
+    return "status";
   }
 
   if (isBooleanLike(value)) {
@@ -215,7 +251,7 @@ export const inferFieldType = (key: string, value: unknown): DatabaseFieldType =
     return "score";
   }
 
-  if (parsePercentValue(value)) {
+  if (typeof value === "string" && value.includes("%") && parsePercentValue(value)) {
     return "percent";
   }
 

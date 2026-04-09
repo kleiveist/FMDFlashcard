@@ -65,6 +65,7 @@ import { HelpPage } from "./pages/HelpPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { SpacedRepetitionPage } from "./pages/SpacedRepetitionPage";
 import { PointsProfilesPage } from "./pages/PointsProfilesPage";
+import { MonitoringRulesPage } from "./pages/MonitoringRulesPage";
 import { DEFAULT_HELP_TOPIC_ID } from "./pages/help/helpContent";
 import type { StudySectionKey } from "./lib/studySections";
 import { SMART_QUERY } from "./lib/breakpoints";
@@ -639,6 +640,8 @@ const AppContent = () => {
           <CardMonitoringPage ref={cardMonitoringRef} />
         ) : activeTab === "points-profiles" ? (
           <PointsProfilesPage />
+        ) : activeTab === "monitoring-rules" ? (
+          <MonitoringRulesPage />
         ) : activeTab === "spaced-repetition" ? (
           <SpacedRepetitionPage onSectionSelect={handleStudySectionSelect} />
         ) : (

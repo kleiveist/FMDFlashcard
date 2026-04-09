@@ -1,0 +1,208 @@
+/**
+ * @file apps/fmd-desktop/src/styles/components/monitoring-rules.css
+ */
+
+.monitoring-rules-panel {
+  min-height: 0;
+}
+
+.monitoring-rules-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.monitoring-rules-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: var(--ui-layout-gap);
+  min-height: 0;
+  align-items: start;
+}
+
+.monitoring-rules-list {
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  max-height: 68vh;
+  overflow-y: auto;
+}
+
+.monitoring-rules-list-item {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.monitoring-rules-list-item span {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.monitoring-rules-list-item.is-active {
+  border-color: var(--accent-border);
+  background: color-mix(in srgb, var(--accent-weak-bg) 82%, transparent);
+}
+
+.monitoring-rules-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-layout-gap);
+  min-height: 0;
+}
+
+.monitoring-rules-section {
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: var(--panel);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.monitoring-rules-section h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.monitoring-rules-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.monitoring-rules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.monitoring-rules-grid label,
+.monitoring-rules-rule-fields label,
+.monitoring-rules-preview-inputs label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.87rem;
+}
+
+.monitoring-rules-grid input,
+.monitoring-rules-grid select,
+.monitoring-rules-rule-fields input,
+.monitoring-rules-rule-fields select,
+.monitoring-rules-preview-inputs input {
+  min-height: 34px;
+}
+
+.monitoring-rules-rule-fields textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.monitoring-rules-enabled-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.monitoring-rules-enabled-toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.monitoring-rules-scopes {
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.monitoring-rules-scopes legend {
+  padding: 0 4px;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.monitoring-rules-scopes > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.monitoring-rules-scopes label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.monitoring-rules-rule-card {
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 84%, var(--surface));
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.monitoring-rules-rule-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.monitoring-rules-rule-head select {
+  min-width: 190px;
+}
+
+.monitoring-rules-rule-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.monitoring-rules-rule-fields label:last-child {
+  grid-column: 1 / -1;
+}
+
+.monitoring-rules-preview-inputs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.monitoring-rules-preview-output {
+  border: 1px dashed var(--line-soft);
+  border-radius: 10px;
+  min-height: 64px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: 1100px) {
+  .monitoring-rules-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .monitoring-rules-list {
+    max-height: 280px;
+  }
+}

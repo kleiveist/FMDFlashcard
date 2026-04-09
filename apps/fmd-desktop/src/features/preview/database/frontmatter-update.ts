@@ -239,7 +239,7 @@ const toPercentStringOrNull = (value: DatabaseRecordFieldDraftValue): string | n
     return null;
   }
   if (typeof value === "number") {
-    return Number.isFinite(value) ? `${value}%` : null;
+    return Number.isFinite(value) ? String(value) : null;
   }
   if (typeof value !== "string") {
     return null;
@@ -258,7 +258,31 @@ const toPercentStringOrNull = (value: DatabaseRecordFieldDraftValue): string | n
   if (!Number.isFinite(parsed)) {
     return null;
   }
-  return `${parsed}%`;
+  return String(parsed);
+};
+
+const toStatusCodeOrNull = (value: DatabaseRecordFieldDraftValue): string | null => {
+  if (value === null) {
+    return null;
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      return null;
+    }
+    return String(Math.trunc(value));
+  }
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const match = trimmed.match(/^([0-9A-Za-z!]+)/u);
+  if (!match?.[1]) {
+    return null;
+  }
+  return match[1];
 };
 
 const stringifyAddDraftValue = (value: FrontmatterPropertyValue): string => {
@@ -411,6 +435,30 @@ export const coerceDatabaseRecordFieldValue = (
       kind: "text",
       typedValue: percent,
       addDraftValue: percent ?? "",
+      error: null,
+    };
+  }
+
+  if (type === "status") {
+    const statusCode = toStatusCodeOrNull(value);
+    const hasUserInput = typeof value === "string"
+      ? value.trim().length > 0
+      : value !== null;
+    if (
+      hasUserInput &&
+      !statusCode
+    ) {
+      return {
+        kind: "text",
+        typedValue: null,
+        addDraftValue: "",
+        error: "Status value must start with a code token.",
+      };
+    }
+    return {
+      kind: "text",
+      typedValue: statusCode,
+      addDraftValue: statusCode ?? "",
       error: null,
     };
   }

@@ -28,6 +28,36 @@ const normalizeLineEnding = (value: "\n" | "\r\n" | string) =>
 
 const serializeYamlString = (value: string) => `'${value.replace(/'/g, "''")}'`;
 
+const normalizePercentForWrite = (value: string | null | undefined): string | null => {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) {
+    return null;
+  }
+  const normalized = trimmed.endsWith("%")
+    ? trimmed.slice(0, -1).trim()
+    : trimmed;
+  if (!normalized) {
+    return null;
+  }
+  const parsed = Number(normalized.replace(",", "."));
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  return String(parsed);
+};
+
+const normalizeStatusCodeForWrite = (value: string | null | undefined): string | null => {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) {
+    return null;
+  }
+  const match = trimmed.match(/^([0-9A-Za-z!]+)/u);
+  if (!match?.[1]) {
+    return null;
+  }
+  return match[1];
+};
+
 const buildFrontmatterBlock = (
   stats: ExamResultStatsValues,
   lineEnding: "\n" | "\r\n",
@@ -207,13 +237,21 @@ export const upsertExamResultStatsFrontmatter = ({
     Boolean(normalizedCorrectedScore) &&
     Boolean(normalizedCorrectedPercent) &&
     Boolean(normalizedCorrectedStatus);
+  const normalizedPercent = normalizePercentForWrite(percent);
+  const normalizedStatus = normalizeStatusCodeForWrite(status);
+  const normalizedCorrectedPercentForWrite = hasCompleteCorrectedValue
+    ? normalizePercentForWrite(normalizedCorrectedPercent)
+    : null;
+  const normalizedCorrectedStatusForWrite = hasCompleteCorrectedValue
+    ? normalizeStatusCodeForWrite(normalizedCorrectedStatus)
+    : null;
   const stats: ExamResultStatsValues = {
     score: score.trim(),
-    percent: percent.trim(),
-    status: status.trim(),
+    percent: normalizedPercent ?? "",
+    status: normalizedStatus ?? "",
     correctedScore: hasCompleteCorrectedValue ? normalizedCorrectedScore : null,
-    correctedPercent: hasCompleteCorrectedValue ? normalizedCorrectedPercent : null,
-    correctedStatus: hasCompleteCorrectedValue ? normalizedCorrectedStatus : null,
+    correctedPercent: hasCompleteCorrectedValue ? (normalizedCorrectedPercentForWrite ?? null) : null,
+    correctedStatus: hasCompleteCorrectedValue ? (normalizedCorrectedStatusForWrite ?? null) : null,
   };
   if (!stats.score || !stats.percent || !stats.status) {
     return { markdown, error: "Score, percent and status are required." };
@@ -222,6 +260,15 @@ export const upsertExamResultStatsFrontmatter = ({
     return {
       markdown,
       error: "Corrected score, percent and status must be provided together.",
+    };
+  }
+  if (
+    hasCompleteCorrectedValue &&
+    (!normalizedCorrectedPercentForWrite || !normalizedCorrectedStatusForWrite)
+  ) {
+    return {
+      markdown,
+      error: "Corrected percent and corrected status must use valid raw values.",
     };
   }
 

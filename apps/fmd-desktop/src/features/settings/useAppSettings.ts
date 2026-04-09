@@ -70,6 +70,10 @@ import {
   loadProfileSettings as loadUserVaultProfileSettings,
   saveProfileSettings as saveUserVaultProfileSettings,
 } from "../user-vault/storage";
+import {
+  normalizeMonitoringRenderProfiles,
+  type MonitoringRenderProfile,
+} from "../monitoring/monitoring-render-rules";
 
 type AppLanguage = "de" | "en";
 type EditorGridIntensity = "light" | "medium" | "strong";
@@ -200,6 +204,7 @@ export type AppSettings = {
   input_debug_enabled?: boolean | null;
   input_debug_redact_content?: boolean | null;
   keyboard_shortcuts?: KeyboardShortcutSettings | null;
+  monitoring_render_profiles?: MonitoringRenderProfile[] | null;
 };
 
 type PersistUpdates = {
@@ -269,6 +274,7 @@ type PersistUpdates = {
   inputDebugEnabled?: boolean;
   inputDebugRedactContent?: boolean;
   keyboardShortcuts?: KeyboardShortcutSettings;
+  monitoringRenderProfiles?: MonitoringRenderProfile[];
 };
 
 export type SettingsSnapshot = {
@@ -338,6 +344,7 @@ export type SettingsSnapshot = {
   inputDebugEnabled: boolean;
   inputDebugRedactContent: boolean;
   keyboardShortcuts: KeyboardShortcutSettings;
+  monitoringRenderProfiles: MonitoringRenderProfile[];
 };
 
 export const DEFAULT_THEME: ThemeMode = "light";
@@ -976,6 +983,7 @@ const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings =>
   input_debug_enabled: settings.inputDebugEnabled,
   input_debug_redact_content: settings.inputDebugRedactContent,
   keyboard_shortcuts: settings.keyboardShortcuts,
+  monitoring_render_profiles: settings.monitoringRenderProfiles,
 });
 
 export const normalizeSettings = (
@@ -1315,6 +1323,9 @@ export const normalizeSettings = (
     settings: storedKeyboardShortcuts,
     needsMigration: needsKeyboardShortcutsMigration,
   } = normalizeKeyboardShortcuts(stored.keyboard_shortcuts);
+  const storedMonitoringRenderProfiles = normalizeMonitoringRenderProfiles(
+    stored.monitoring_render_profiles,
+  );
 
   return {
     settings: {
@@ -1384,6 +1395,7 @@ export const normalizeSettings = (
       inputDebugEnabled: storedInputDebugEnabled,
       inputDebugRedactContent: storedInputDebugRedactContent,
       keyboardShortcuts: storedKeyboardShortcuts,
+      monitoringRenderProfiles: storedMonitoringRenderProfiles,
     },
     needsShowHiddenFoldersMigration,
     needsKeyboardShortcutsMigration,
@@ -1579,6 +1591,10 @@ export const useAppSettings = () => {
   );
   const [keyboardShortcuts, setKeyboardShortcutsState] =
     useState<KeyboardShortcutSettings>(DEFAULT_KEYBOARD_SHORTCUTS);
+  const [monitoringRenderProfiles, setMonitoringRenderProfilesState] =
+    useState<MonitoringRenderProfile[]>(() =>
+      normalizeMonitoringRenderProfiles(null),
+    );
   const autoSaveReady = useRef(false);
   const autoSaveTimer = useRef<number | null>(null);
   const needsShowHiddenFoldersMigration = useRef(false);
@@ -1779,6 +1795,15 @@ export const useAppSettings = () => {
     const { settings } = normalizeKeyboardShortcuts(value);
     setKeyboardShortcutsState(settings);
   }, []);
+
+  const setMonitoringRenderProfiles = useCallback(
+    (value: MonitoringRenderProfile[]) => {
+      setMonitoringRenderProfilesState(
+        normalizeMonitoringRenderProfiles(value),
+      );
+    },
+    [],
+  );
 
   const setKeyboardShortcutBinding = useCallback(
     (commandId: string, binding: string | null) => {
@@ -2005,6 +2030,7 @@ export const useAppSettings = () => {
       inputDebugEnabled,
       inputDebugRedactContent,
       keyboardShortcuts,
+      monitoringRenderProfiles,
     }),
     [
       accentColor,
@@ -2037,6 +2063,7 @@ export const useAppSettings = () => {
       inputDebugEnabled,
       inputDebugRedactContent,
       keyboardShortcuts,
+      monitoringRenderProfiles,
       flashcardMode,
       flashcardOrder,
       fastFlashcardMode,
@@ -2155,6 +2182,7 @@ export const useAppSettings = () => {
           inputDebugEnabled: settings.inputDebugEnabled,
           inputDebugRedactContent: settings.inputDebugRedactContent,
           keyboardShortcuts: settings.keyboardShortcuts,
+          monitoringRenderProfiles: settings.monitoringRenderProfiles,
         });
         return true;
       } catch (error) {
@@ -2288,6 +2316,8 @@ export const useAppSettings = () => {
         inputDebugRedactContent:
           updates.inputDebugRedactContent ?? inputDebugRedactContent,
         keyboardShortcuts: updates.keyboardShortcuts ?? keyboardShortcuts,
+        monitoringRenderProfiles:
+          updates.monitoringRenderProfiles ?? monitoringRenderProfiles,
       };
       const saved = await saveSettings(nextSettings);
       if (saved && "activeNotePath" in updates) {
@@ -2330,6 +2360,7 @@ export const useAppSettings = () => {
       examTaskTypeDefaultsByUserId,
       examAutoCardsReturnOnCorrect,
       keyboardShortcuts,
+      monitoringRenderProfiles,
       flashcardMode,
       flashcardOrder,
       fastFlashcardMode,
@@ -2469,6 +2500,7 @@ export const useAppSettings = () => {
     setInputDebugEnabledState(normalized.inputDebugEnabled);
     setInputDebugRedactContentState(normalized.inputDebugRedactContent);
     setKeyboardShortcutsState(normalized.keyboardShortcuts);
+    setMonitoringRenderProfilesState(normalized.monitoringRenderProfiles);
   }, []);
 
   useEffect(() => {
@@ -2677,6 +2709,7 @@ export const useAppSettings = () => {
     flashcardPageSize,
     flashcardScope,
     keyboardShortcuts,
+    monitoringRenderProfiles,
     showHiddenFolders,
     showEmptyFolders,
     language,
@@ -2730,6 +2763,7 @@ export const useAppSettings = () => {
     setKeyboardShortcuts,
     setKeyboardShortcutBinding,
     resetKeyboardShortcuts,
+    setMonitoringRenderProfiles,
     setShowHiddenFolders,
     setShowEmptyFolders,
     setUserVaultCustomPath,

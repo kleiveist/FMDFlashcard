@@ -125,6 +125,7 @@ import {
   type PageLinkPickerReplaceRange,
 } from "./pageLinkPickerShared";
 import { MathStructureDialog } from "./math-editor/MathStructureDialog";
+import { type MonitoringRenderProfile } from "../monitoring/monitoring-render-rules";
 
 export type MarkdownHybridEditorMode = "edit" | "write";
 export type MarkdownHybridEditorHandle = {
@@ -344,6 +345,7 @@ type MarkdownHybridEditorProps = {
   onNavigateWikilink?: (wikilink: string) => void;
   runnableExamRelativePaths?: string[];
   onOpenExamFromDatabaseRecord?: (target: { path: string; relativePath: string }) => void;
+  monitoringProfiles?: MonitoringRenderProfile[];
   onChange: (value: string) => void;
   onCommit?: (value: string, context: { block: MarkdownBlock }) => void;
   onDirtyChange?: (dirty: boolean) => void;
@@ -3276,6 +3278,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   onNavigateWikilink,
   runnableExamRelativePaths,
   onOpenExamFromDatabaseRecord,
+  monitoringProfiles = [],
   onChange,
   onCommit,
   onDirtyChange,
@@ -9986,6 +9989,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
             onNavigateWikilink={onNavigateWikilink}
             runnableExamRelativePaths={runnableExamRelativePaths}
             onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
+            monitoringProfiles={monitoringProfiles}
             onCommitRaw={(nextRaw) => {
               handleTableBlockCommitRaw(index, nextRaw);
             }}
@@ -10534,6 +10538,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                     onNavigateWikilink={onNavigateWikilink}
                     runnableExamRelativePaths={runnableExamRelativePaths}
                     onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
+                    monitoringProfiles={monitoringProfiles}
                     onCommitRaw={(nextRaw) => {
                       handleTableBlockCommitRaw(index, nextRaw);
                     }}

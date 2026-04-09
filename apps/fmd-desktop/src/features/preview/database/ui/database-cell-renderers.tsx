@@ -10,10 +10,17 @@ import {
   type DatabaseNormalizedFieldValue,
 } from "../database-types";
 import { type DatabaseFormulaGroupedCountEntry } from "../../formula/database-formula-types";
+import {
+  renderMonitoringValue,
+  type MonitoringRenderProfile,
+} from "../../../monitoring/monitoring-render-rules";
+import { MonitoringRenderValue } from "../../../monitoring/MonitoringRenderValue";
 
 type DatabaseCellRendererProps = {
   attribute: DatabaseAttributeMeta;
   value: DatabaseNormalizedFieldValue;
+  monitoringProfiles?: MonitoringRenderProfile[];
+  compact?: boolean;
 };
 
 const formatDateValue = (value: Date, type: DatabaseAttributeMeta["type"]) => {
@@ -139,9 +146,32 @@ const renderFallback = (value: DatabaseNormalizedFieldValue): ReactNode => {
 export const DatabaseCellRenderer = ({
   attribute,
   value,
+  monitoringProfiles = [],
+  compact = false,
 }: DatabaseCellRendererProps) => {
   if (value === null || typeof value === "undefined") {
     return <span className="database-cell-empty">—</span>;
+  }
+
+  const monitoringResult = renderMonitoringValue({
+    attributeKey: attribute.key,
+    value,
+    profiles: monitoringProfiles,
+  });
+  if (monitoringResult) {
+    const fallback =
+      typeof value === "string" || typeof value === "number"
+        ? String(value)
+        : typeof value === "object" && value !== null && "raw" in value
+          ? String((value as { raw?: unknown }).raw ?? "")
+          : "";
+    return (
+      <MonitoringRenderValue
+        result={monitoringResult}
+        fallback={fallback}
+        compact={compact}
+      />
+    );
   }
 
   if (attribute.type === "tags" || attribute.type === "multiselect") {

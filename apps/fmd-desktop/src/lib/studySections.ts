@@ -4,6 +4,7 @@ export type StudySectionKey =
   | "flashcard"
   | "card-monitoring"
   | "points-profiles"
+  | "monitoring-rules"
   | "fast-flashcard"
   | "spaced-repetition";
 
@@ -20,6 +21,7 @@ export const STUDY_SECTIONS: StudySection[] = [
   { key: "spaced-repetition", label: "Repetition" },
   { key: "card-monitoring", label: "Card Monitoring" },
   { key: "points-profiles", label: "Points Profiles" },
+  { key: "monitoring-rules", label: "Monitoring Rules" },
 ];
 
 export const CARD_SECTIONS = STUDY_SECTIONS.filter(

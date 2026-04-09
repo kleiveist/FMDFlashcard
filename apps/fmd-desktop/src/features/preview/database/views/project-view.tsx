@@ -18,6 +18,11 @@ import {
   type DatabaseNormalizedFieldValue,
   type DatabaseRecord,
 } from "../database-types";
+import {
+  formatMonitoringCompactText,
+  renderMonitoringValue,
+  type MonitoringRenderProfile,
+} from "../../../monitoring/monitoring-render-rules";
 
 type DatabaseProjectViewProps = {
   records: DatabaseRecord[];
@@ -27,6 +32,7 @@ type DatabaseProjectViewProps = {
   defaultUnits: number;
   missingPlacement: DatabaseProjectMissingPlacement;
   visibleProperties: DatabaseAttributeMeta[];
+  monitoringProfiles?: MonitoringRenderProfile[];
   editable?: boolean;
   pendingRecordIds?: string[];
   onOpenRecord?: (record: DatabaseRecord) => void;
@@ -142,9 +148,22 @@ const toNumericValue = (value: DatabaseNormalizedFieldValue): number | null => {
 };
 
 const stringifyMetaValue = (
+  attributeKey: string,
   value: DatabaseNormalizedFieldValue,
   type: DatabaseAttributeMeta["type"],
+  monitoringProfiles: MonitoringRenderProfile[],
 ): string | null => {
+  const monitoringText = formatMonitoringCompactText(
+    renderMonitoringValue({
+      attributeKey,
+      value,
+      profiles: monitoringProfiles,
+    }),
+    value,
+  ).trim();
+  if (monitoringText) {
+    return monitoringText;
+  }
   if (value === null || typeof value === "undefined") {
     return null;
   }
@@ -238,6 +257,7 @@ export const DatabaseProjectView = ({
   defaultUnits,
   missingPlacement,
   visibleProperties,
+  monitoringProfiles = [],
   editable = false,
   pendingRecordIds = [],
   onOpenRecord,
@@ -473,8 +493,10 @@ export const DatabaseProjectView = ({
                   };
                 }
                 const value = stringifyMetaValue(
+                  attribute.key,
                   getRecordValueByField(record, attribute.key),
                   attribute.type,
+                  monitoringProfiles,
                 );
                 if (!value) {
                   return null;
