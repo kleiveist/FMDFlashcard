@@ -44,11 +44,17 @@ const sampleAttribute: DatabaseAttributeMeta = {
 
 const buildProps = () => ({
   attributes: [sampleAttribute],
+  records: [],
   attributeSuggestions: [
     {
       key: "status",
       normalizedKey: "status",
       count: 3,
+    },
+    {
+      key: "f-status",
+      normalizedKey: "f-status",
+      count: 1,
     },
   ],
   viewType: "table" as const,
@@ -107,6 +113,59 @@ describe("DatabasePropertiesPanel", () => {
     });
 
     expect(props.onKanbanShowCoverChange).toHaveBeenCalledWith(true);
+
+    cleanup();
+  });
+
+  it("removes legacy formula section and exposes unified core labels", () => {
+    const props = buildProps();
+    const { container, cleanup } = render(
+      createElement(DatabasePropertiesPanel, props),
+    );
+
+    expect(container.textContent).not.toContain("Formel hinzufügen");
+    expect(container.textContent).toContain("Zahlen");
+    expect(container.textContent).toContain("Formel");
+    expect(container.textContent).not.toContain("Nur Zahlen");
+
+    cleanup();
+  });
+
+  it("filters attribute-key suggestions to f-* when formula type is selected", () => {
+    const props = buildProps();
+    const { container, cleanup } = render(
+      createElement(DatabasePropertiesPanel, props),
+    );
+
+    const createSection = container.querySelector(".database-block-properties-create");
+    const typeSelect = createSection?.querySelector<HTMLSelectElement>("select");
+    const keyInput = createSection?.querySelector<HTMLInputElement>(".database-attribute-typeahead input");
+    expect(typeSelect).toBeTruthy();
+    expect(keyInput).toBeTruthy();
+
+    act(() => {
+      if (!typeSelect) {
+        return;
+      }
+      typeSelect.value = "core:formula";
+      typeSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    act(() => {
+      keyInput?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+      keyInput?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const optionKeys = Array.from(
+      container.querySelectorAll<HTMLSpanElement>(
+        ".database-attribute-typeahead-option > span:first-child",
+      ),
+    )
+      .map((node) => node.textContent?.trim() ?? "")
+      .filter((value) => value.length > 0);
+
+    expect(optionKeys).toContain("f-status");
+    expect(optionKeys).not.toContain("status");
 
     cleanup();
   });

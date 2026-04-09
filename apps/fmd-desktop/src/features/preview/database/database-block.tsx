@@ -63,6 +63,7 @@ import {
   type DatabaseViewSpec,
   type DatabaseViewType,
 } from "./database-types";
+import { type DatabaseFormulaDefinitionV1 } from "../formula/database-formula-types";
 import {
   bulkUpsertDatabaseAttribute,
   coerceDatabaseRecordFieldValue,
@@ -1968,6 +1969,7 @@ export const MarkdownHybridDatabaseBlock = ({
           label: key,
           type: "time",
           origin: "frontmatter",
+          formulaDefinition: null,
           formula: null,
         },
       ];
@@ -2060,6 +2062,7 @@ export const MarkdownHybridDatabaseBlock = ({
           label: key,
           type,
           origin: "frontmatter",
+          formulaDefinition: null,
           formula: null,
         },
       ];
@@ -2395,21 +2398,18 @@ export const MarkdownHybridDatabaseBlock = ({
 
   const handleCreateFormulaField = ({
     key,
-    label,
-    type,
-    formula,
+    definition,
   }: {
     key: string;
-    label?: string;
-    type: DatabaseFieldType;
-    formula: string;
+    definition: DatabaseFormulaDefinitionV1;
   }) => {
     const nextField: DatabaseFieldDefinition = {
       key,
-      label,
-      type,
+      label: key,
+      type: "formula",
       origin: "formula",
-      formula,
+      formulaDefinition: definition,
+      formula: null,
     };
     const nextFields = ensureFieldDefinition(fieldDefinitionsRef.current, nextField);
     const currentColumns = getPropertiesForView(propertiesByViewRef.current, viewTypeRef.current);
@@ -2461,6 +2461,7 @@ export const MarkdownHybridDatabaseBlock = ({
         label: key,
         type,
         origin: "frontmatter",
+        formulaDefinition: null,
         formula: null,
       };
       const nextFields = ensureFieldDefinition(fieldDefinitionsRef.current, nextField);
@@ -2641,10 +2642,12 @@ export const MarkdownHybridDatabaseBlock = ({
   ) : panels.properties ? (
     <DatabasePropertiesPanel
       attributes={store.attributeRegistry}
+      records={store.normalizedRecords}
       attributeSuggestions={vaultAttributeIndex.suggestions}
       viewType={viewType}
       visibleColumnKeys={visibleColumnKeys}
       kanbanShowCover={kanbanShowCover}
+      availableFolders={availableFolders}
       onKanbanShowCoverChange={handleKanbanShowCoverChange}
       onToggleVisibility={handleToggleVisibility}
       onReorderVisibleColumns={handleReorderVisibleColumns}

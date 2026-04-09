@@ -4475,9 +4475,10 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(typeSuggestionText).toContain("Task");
     expect(typeSuggestionText).toContain("Zeit");
     expect(typeSuggestionText).toContain("Links");
-    expect(typeSuggestionText).toContain("Nur Zahlen");
+    expect(typeSuggestionText).toContain("Zahlen");
     expect(typeSuggestionText).toContain("Cover");
     expect(typeSuggestionText).toContain("Tags");
+    expect(typeSuggestionText).toContain("Formel");
   });
 
   it("validates number type before adding a property", async () => {
@@ -4513,7 +4514,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     });
     const numberOption = Array.from(
       container.querySelectorAll<HTMLButtonElement>(".frontmatter-type-option"),
-    ).find((button) => (button.textContent ?? "").includes("Nur Zahlen"));
+    ).find((button) => (button.textContent ?? "").includes("Zahlen"));
     act(() => {
       numberOption?.click();
     });
@@ -4561,7 +4562,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     });
 
     expect(onFrontmatterSave).not.toHaveBeenCalled();
-    expect(container.textContent ?? "").toContain("Nur Zahlen erlaubt.");
+    expect(container.textContent ?? "").toContain("Zahlenwert erwartet.");
 
     act(() => {
       if (!valueInput) {
@@ -4807,7 +4808,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(typeSuggestionText).toContain("Text");
     expect(typeSuggestionText).toContain("Task");
     expect(typeSuggestionText).toContain("Zeit");
-    expect(typeSuggestionText).toContain("Nur Zahlen");
+    expect(typeSuggestionText).toContain("Zahlen");
     expect(typeSuggestionText).toContain("Cover");
     expect(typeSuggestionText).not.toContain("Links");
     expect(typeSuggestionText).not.toContain("Tags");
@@ -4842,7 +4843,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(typeSuggestionText).toContain("Task");
     expect(typeSuggestionText).toContain("Zeit");
     expect(typeSuggestionText).toContain("Links");
-    expect(typeSuggestionText).toContain("Nur Zahlen");
+    expect(typeSuggestionText).toContain("Zahlen");
     expect(typeSuggestionText).not.toContain("Cover");
   });
 
@@ -4876,6 +4877,61 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(suggestionText).toContain("Section");
     expect(suggestionText).toContain("Rank");
     expect(suggestionText).not.toContain("Cover");
+  });
+
+  it("shows only f-* key suggestions when formula type is selected", async () => {
+    const markdown = ["---", "title: Demo", "---", "Body line"].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      keySuggestions: ["status", "f-status", "F-total", "title"],
+    });
+    cleanup = localCleanup;
+
+    const typeButton = container.querySelector(
+      'button[aria-label="Attribut-Typ"]',
+    ) as HTMLButtonElement | null;
+    const keyInput = container.querySelector(
+      'input[aria-label="Neues Attribut"]',
+    ) as HTMLInputElement | null;
+    expect(typeButton).toBeTruthy();
+    expect(keyInput).toBeTruthy();
+
+    act(() => {
+      typeButton?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const formulaOption = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".frontmatter-type-option"),
+    ).find((button) => (button.textContent ?? "").includes("Formel"));
+    act(() => {
+      formulaOption?.click();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      keyInput?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+      keyInput?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const suggestionValues = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(
+        "#frontmatter-add-key-suggestions .frontmatter-suggestion-option",
+      ),
+    )
+      .map((button) => button.textContent?.trim() ?? "")
+      .filter((value) => value.length > 0)
+      .map((value) => value.toLowerCase());
+
+    expect(suggestionValues).toContain("f-status");
+    expect(suggestionValues).toContain("f-total");
+    expect(suggestionValues).not.toContain("status");
+    expect(suggestionValues).not.toContain("title");
   });
 
   it("blocks creating a second cover via manual key input", async () => {

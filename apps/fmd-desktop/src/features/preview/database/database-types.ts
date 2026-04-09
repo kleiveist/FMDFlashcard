@@ -4,6 +4,11 @@
  * Shared type system for the markdown database block (phase 1).
  */
 
+import {
+  type DatabaseFormulaDefinitionV1,
+  type DatabaseFormulaGroupedCountEntry,
+} from "../formula/database-formula-types";
+
 export type DatabaseViewType = "table" | "kanban" | "gantt" | "pie" | "project";
 export type DatabaseTimelineMode = "date" | "time" | "datetime";
 export type DatabaseGanttZoom = "year" | "quarter" | "month" | "week" | "day" | "hour" | "minute";
@@ -82,7 +87,9 @@ export type DatabaseAttributeMeta = {
   label: string;
   type: DatabaseFieldType;
   origin: DatabaseAttributeOrigin;
+  formulaDefinition?: DatabaseFormulaDefinitionV1 | null;
   formula?: string | null;
+  legacyFormulaIncompatible?: boolean;
   editable: boolean;
   sortable: boolean;
   filterable: boolean;
@@ -95,6 +102,7 @@ export type DatabaseFieldDefinition = {
   label?: string;
   type: DatabaseFieldType;
   origin: DatabaseAttributeOrigin;
+  formulaDefinition?: DatabaseFormulaDefinitionV1 | null;
   formula?: string | null;
 };
 
@@ -215,6 +223,7 @@ export type DatabaseNormalizedFieldValue =
   | number
   | boolean
   | string[]
+  | DatabaseFormulaGroupedCountEntry[]
   | Date
   | DatabaseScoreValue
   | DatabasePercentValue

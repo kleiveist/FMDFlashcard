@@ -162,6 +162,42 @@ describe("database-block-parser", () => {
     expect(reparsed.config.sort[0]?.field).toBe("unitsstart");
   });
 
+  it("roundtrips structured formula definitions in fields", () => {
+    const config = createDefaultDatabaseBlockConfig();
+    config.fields = [
+      {
+        key: "f-status",
+        label: "f-status",
+        type: "formula",
+        origin: "formula",
+        formulaDefinition: {
+          version: 1,
+          operation: "group_count",
+          attributeKeys: ["Status"],
+          source: {
+            type: "multi-folder",
+            paths: ["alpha", "beta"],
+          },
+          shortTextRule: {
+            maxChars: 32,
+            maxTokens: 3,
+            requireSingleNumericCore: true,
+          },
+        },
+      },
+    ];
+
+    const serialized = serializeDatabaseBlockConfig(config);
+    expect(serialized).toContain("formulaDefinition:");
+    expect(serialized).toContain("operation: group_count");
+    expect(serialized).toContain("attributeKeys:");
+    expect(serialized).toContain("shortTextRule:");
+
+    const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
+    expect(reparsed.errors).toEqual([]);
+    expect(reparsed.config.fields?.[0]?.formulaDefinition).toEqual(config.fields[0]?.formulaDefinition);
+  });
+
   it("preserves nested filter groups in a saved view during serialize/parse roundtrip", () => {
     const config = createDefaultDatabaseBlockConfig();
     config.views = {

@@ -7,7 +7,10 @@
 import {
   applyDatabaseFilters,
 } from "./database-filters";
-import { evaluateDatabaseFormula } from "./database-formulas";
+import {
+  evaluateDatabaseAggregationFormula,
+  LEGACY_DATABASE_FORMULA_INCOMPATIBLE_MESSAGE,
+} from "./database-formulas";
 import {
   inferFieldType,
   normalizeFieldValueByType,
@@ -74,7 +77,9 @@ const buildAttributeMeta = (
     label: key,
     type,
     origin,
+    formulaDefinition: null,
     formula: null,
+    legacyFormulaIncompatible: false,
     editable: origin === "frontmatter",
     sortable: true,
     filterable: true,
@@ -124,7 +129,13 @@ const mergeConfiguredFieldDefinitions = (
       label: definition.label?.trim() || definition.key,
       type: definition.type,
       origin: definition.origin,
+      formulaDefinition: definition.formulaDefinition ?? null,
       formula: definition.formula ?? null,
+      legacyFormulaIncompatible: Boolean(
+        definition.type === "formula" &&
+          definition.formula &&
+          !definition.formulaDefinition,
+      ),
       editable: definition.origin === "frontmatter",
       sortable: true,
       filterable: true,
@@ -246,8 +257,7 @@ const evaluateFormulaFields = (
     return records;
   }
 
-  const formulaDefinitions = fieldDefinitions
-    .filter((definition) => definition.formula && definition.formula.trim().length > 0);
+  const formulaDefinitions = fieldDefinitions.filter((definition) => definition.type === "formula");
 
   if (formulaDefinitions.length === 0) {
     return records;
@@ -259,12 +269,27 @@ const evaluateFormulaFields = (
     };
 
     formulaDefinitions.forEach((definition) => {
-      const formula = definition.formula ?? "";
-      const evaluated = evaluateDatabaseFormula(formula, {
-        getFieldValue: (key) => getCaseInsensitiveFieldValue(nextNormalizedFields, key),
-      });
+      if (definition.formulaDefinition) {
+        const evaluated = evaluateDatabaseAggregationFormula({
+          definition: definition.formulaDefinition,
+          records,
+          currentRecord: {
+            ...record,
+            normalizedFields: nextNormalizedFields,
+          },
+          getFieldValue: (targetRecord, key) =>
+            getCaseInsensitiveFieldValue(targetRecord.normalizedFields, key),
+        });
+        nextNormalizedFields[definition.key] = normalizeFieldValueByType(definition.type, evaluated);
+        return;
+      }
 
-      nextNormalizedFields[definition.key] = normalizeFieldValueByType(definition.type, evaluated);
+      if (definition.formula && definition.formula.trim().length > 0) {
+        nextNormalizedFields[definition.key] = LEGACY_DATABASE_FORMULA_INCOMPATIBLE_MESSAGE;
+        return;
+      }
+
+      nextNormalizedFields[definition.key] = null;
     });
 
     return {

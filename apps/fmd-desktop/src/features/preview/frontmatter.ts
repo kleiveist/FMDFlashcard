@@ -14,6 +14,10 @@ import {
   normalizeDateValue,
   normalizeTimeValue,
 } from "./database/database-time";
+import {
+  normalizeDatabaseFormulaDefinitionV1,
+  type DatabaseFormulaDefinitionV1,
+} from "./formula/database-formula-types";
 
 export type FrontmatterPropertyKind =
   | "text"
@@ -24,6 +28,7 @@ export type FrontmatterPropertyKind =
   | "tags"
   | "link"
   | "cover"
+  | "formula"
   | "unknown";
 
 export type FrontmatterPropertyIcon =
@@ -35,9 +40,10 @@ export type FrontmatterPropertyIcon =
   | "tags"
   | "link"
   | "cover"
+  | "formula"
   | "unknown";
 
-export type FrontmatterPropertyValue = string | number | boolean | string[] | null;
+export type FrontmatterPropertyValue = string | number | boolean | string[] | DatabaseFormulaDefinitionV1 | null;
 
 export type FrontmatterProperty = {
   key: string;
@@ -333,6 +339,124 @@ const isImageWikilink = (value: string) => {
 };
 
 const normalizeSchemaKey = (key: string) => key.trim().toLowerCase();
+const isFormulaKey = (key: string) => normalizeSchemaKey(key).startsWith("f-");
+
+const parseFormulaDefinitionFromUnknownRaw = (rawValue: string): DatabaseFormulaDefinitionV1 | null => {
+  const source = normalizeNewlines(rawValue);
+  const lines = source.split("\n");
+  const root: Record<string, unknown> = {};
+  let lineIndex = 0;
+
+  const getIndent = (line: string) => {
+    const match = line.match(/^[ \t]*/);
+    return match ? match[0].length : 0;
+  };
+
+  const parseStringList = (baseIndent: number): string[] => {
+    const values: string[] = [];
+    while (lineIndex < lines.length) {
+      const nextLine = lines[lineIndex] ?? "";
+      if (nextLine.trim() === "") {
+        lineIndex += 1;
+        continue;
+      }
+      const nextIndent = getIndent(nextLine);
+      if (nextIndent < baseIndent) {
+        break;
+      }
+      const trimmed = nextLine.trim();
+      if (!trimmed.startsWith("- ")) {
+        break;
+      }
+      const scalar = parseScalar(trimmed.slice(2).trim());
+      if (typeof scalar === "string") {
+        values.push(scalar);
+      }
+      lineIndex += 1;
+    }
+    return values;
+  };
+
+  while (lineIndex < lines.length) {
+    const currentLine = lines[lineIndex] ?? "";
+    if (currentLine.trim() === "") {
+      lineIndex += 1;
+      continue;
+    }
+
+    const indent = getIndent(currentLine);
+    if (indent !== 0) {
+      return null;
+    }
+
+    const separatorIndex = currentLine.indexOf(":");
+    if (separatorIndex <= 0) {
+      return null;
+    }
+
+    const key = currentLine.slice(0, separatorIndex).trim();
+    const tail = currentLine.slice(separatorIndex + 1).trim();
+    lineIndex += 1;
+
+    if (tail.length > 0) {
+      root[key] = parseScalar(tail);
+      continue;
+    }
+
+    if (key === "attributeKeys") {
+      root[key] = parseStringList(2);
+      continue;
+    }
+
+    if (key === "source" || key === "shortTextRule") {
+      const nested: Record<string, unknown> = {};
+      while (lineIndex < lines.length) {
+        const nestedLine = lines[lineIndex] ?? "";
+        if (nestedLine.trim() === "") {
+          lineIndex += 1;
+          continue;
+        }
+        const nestedIndent = getIndent(nestedLine);
+        if (nestedIndent < 2) {
+          break;
+        }
+        if (nestedIndent !== 2) {
+          if (key === "source" && nestedLine.trim().startsWith("- ")) {
+            break;
+          }
+          if (nestedIndent > 2) {
+            lineIndex += 1;
+            continue;
+          }
+        }
+
+        const nestedSeparatorIndex = nestedLine.indexOf(":");
+        if (nestedSeparatorIndex <= 0) {
+          return null;
+        }
+        const nestedKey = nestedLine.slice(0, nestedSeparatorIndex).trim();
+        const nestedTail = nestedLine.slice(nestedSeparatorIndex + 1).trim();
+        lineIndex += 1;
+
+        if (nestedTail.length > 0) {
+          nested[nestedKey] = parseScalar(nestedTail);
+          continue;
+        }
+
+        if (nestedKey === "paths") {
+          nested.paths = parseStringList(4);
+          continue;
+        }
+
+        nested[nestedKey] = null;
+      }
+      root[key] = nested;
+      continue;
+    }
+  }
+
+  return normalizeDatabaseFormulaDefinitionV1(root);
+};
 
 const resolvePropertyKind = ({
   key,
@@ -346,6 +470,9 @@ const resolvePropertyKind = ({
   const schemaEntry = PROPERTY_SCHEMA[normalizeSchemaKey(key)];
   if (schemaEntry?.kind) {
     return schemaEntry.kind;
+  }
+  if (isFormulaKey(key)) {
+    return "formula";
   }
   if (yamlValueType === "unknown") {
     return "unknown";
@@ -394,6 +521,8 @@ const resolvePropertyIcon = (
       return "tags";
     case "link":
       return "link";
+    case "formula":
+      return "formula";
     case "unknown":
       return "unknown";
     default:
@@ -500,8 +629,13 @@ const parseYamlFrontmatter = (
 
     const rawLines = [line, ...continuationLines];
     const parsedValue = parsePropertyValue(tail, continuationLines);
+    const parsedFormulaValue = parsedValue.type === "unknown" && isFormulaKey(key)
+      ? parseFormulaDefinitionFromUnknownRaw(parsedValue.rawValue)
+      : null;
     const value: FrontmatterPropertyValue =
-      parsedValue.type === "scalar"
+      parsedFormulaValue
+        ? parsedFormulaValue
+        : parsedValue.type === "scalar"
         ? parsedValue.value
         : parsedValue.type === "string-array"
           ? parsedValue.value
@@ -512,13 +646,15 @@ const parseYamlFrontmatter = (
       value,
       yamlValueType: parsedValue.type,
     });
+    const preserveRaw = (parsedValue.type === "unknown" && !parsedFormulaValue) ||
+      (kind === "formula" && !normalizeDatabaseFormulaDefinitionV1(value));
     properties.push({
       key,
       kind,
       value,
       icon: resolvePropertyIcon(key, kind),
       rawLines,
-      preserveRaw: parsedValue.type === "unknown",
+      preserveRaw,
     });
 
     lineIndex = cursor;
@@ -611,6 +747,13 @@ const normalizePropertyUpdateValue = (
   kind: FrontmatterPropertyKind,
   value: FrontmatterPropertyValue,
 ): FrontmatterPropertyValue => {
+  if (kind === "formula") {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return null;
+    }
+    return normalizeDatabaseFormulaDefinitionV1(value);
+  }
+
   if (kind === "tags") {
     if (!Array.isArray(value)) {
       return null;
@@ -666,6 +809,9 @@ const inferKindFromValue = (
   if (schemaKind) {
     return schemaKind;
   }
+  if (isFormulaKey(key)) {
+    return "formula";
+  }
   if (Array.isArray(value) || normalizedKey === "tags") {
     return "tags";
   }
@@ -711,6 +857,13 @@ const coerceValueForKind = (
   kind: FrontmatterPropertyKind,
   value: FrontmatterPropertyValue,
 ): FrontmatterPropertyValue => {
+  if (kind === "formula") {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return null;
+    }
+    return normalizeDatabaseFormulaDefinitionV1(value);
+  }
+
   if (kind !== "tags") {
     return value;
   }
@@ -757,6 +910,44 @@ const serializeProperty = (property: ParsedFrontmatterProperty): string[] => {
 
   const key = property.key;
   const value = property.value;
+
+  if (property.kind === "formula") {
+    const normalized = normalizeDatabaseFormulaDefinitionV1(value);
+    if (!normalized) {
+      return [`${key}: null`];
+    }
+
+    const lines: string[] = [];
+    lines.push(`${key}:`);
+    lines.push(`  version: ${serializeScalar(normalized.version)}`);
+    lines.push(`  operation: ${serializeScalar(normalized.operation)}`);
+    if (normalized.attributeKeys.length === 0) {
+      lines.push("  attributeKeys: []");
+    } else {
+      lines.push("  attributeKeys:");
+      normalized.attributeKeys.forEach((attributeKey) => {
+        lines.push(`    - ${serializeString(attributeKey)}`);
+      });
+    }
+    lines.push("  source:");
+    lines.push(`    type: ${serializeScalar(normalized.source.type)}`);
+    if (normalized.source.path) {
+      lines.push(`    path: ${serializeString(normalized.source.path)}`);
+    }
+    if (normalized.source.paths && normalized.source.paths.length > 0) {
+      lines.push("    paths:");
+      normalized.source.paths.forEach((path) => {
+        lines.push(`      - ${serializeString(path)}`);
+      });
+    }
+    lines.push("  shortTextRule:");
+    lines.push(`    maxChars: ${serializeScalar(normalized.shortTextRule.maxChars)}`);
+    lines.push(`    maxTokens: ${serializeScalar(normalized.shortTextRule.maxTokens)}`);
+    lines.push(
+      `    requireSingleNumericCore: ${serializeScalar(normalized.shortTextRule.requireSingleNumericCore)}`,
+    );
+    return lines;
+  }
 
   if (property.kind === "tags") {
     if (!Array.isArray(value) || value.length === 0) {
@@ -889,13 +1080,24 @@ const parseDraftValueForKind = (
 ): { value: FrontmatterPropertyValue; error: string | null } => {
   const trimmed = input.trim();
 
+  if (kind === "formula") {
+    if (trimmed === "") {
+      return { value: null, error: null };
+    }
+    const normalized = parseFormulaDefinitionFromUnknownRaw(input);
+    if (!normalized) {
+      return { value: null, error: "Formel erwartet ein gueltiges Formel-Objekt." };
+    }
+    return { value: normalized, error: null };
+  }
+
   if (kind === "number") {
     if (trimmed === "") {
       return { value: null, error: null };
     }
     const parsed = Number(trimmed);
     if (!Number.isFinite(parsed)) {
-      return { value: null, error: "Nur Zahlen erlaubt." };
+      return { value: null, error: "Zahlenwert erwartet." };
     }
     return { value: parsed, error: null };
   }
@@ -1408,7 +1610,7 @@ export const addFrontmatterProperty = ({
 }: {
   markdown: string;
   key: string;
-  value: string;
+  value: string | FrontmatterPropertyValue;
   kind?: FrontmatterPropertyKind;
 }): { markdown: string; error: string | null } => {
   const parsed = parseFrontmatterDocumentInternal(markdown);
@@ -1438,9 +1640,24 @@ export const addFrontmatterProperty = ({
   }
 
   const resolvedKind = kind;
+  const stringValue = typeof value === "string" ? value : "";
   const typedDraft = resolvedKind
-    ? parseDraftValueForKind(resolvedKind, value)
-    : { value: parseDraftValue(value), error: null };
+    ? resolvedKind === "formula"
+      ? (() => {
+          const normalized = normalizeDatabaseFormulaDefinitionV1(value);
+          if (!normalized) {
+            return {
+              value: null,
+              error: "Formel erwartet ein gueltiges Formel-Objekt.",
+            };
+          }
+          return { value: normalized, error: null };
+        })()
+      : parseDraftValueForKind(resolvedKind, stringValue)
+    : {
+        value: typeof value === "string" ? parseDraftValue(value) : value,
+        error: null,
+      };
   if (typedDraft.error) {
     return {
       markdown,

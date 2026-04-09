@@ -102,7 +102,19 @@ const toText = (value: unknown) => {
     return value.toISOString();
   }
   if (Array.isArray(value)) {
-    return value.map((item) => String(item)).join(" ");
+    return value
+      .map((item) => {
+        if (
+          item &&
+          typeof item === "object" &&
+          "value" in item &&
+          "count" in item
+        ) {
+          return `${String((item as { count?: unknown }).count ?? "")} ${String((item as { value?: unknown }).value ?? "")}`.trim();
+        }
+        return String(item);
+      })
+      .join(" ");
   }
   if (typeof value === "object") {
     if ("raw" in (value as Record<string, unknown>)) {

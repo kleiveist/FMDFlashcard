@@ -8,17 +8,37 @@ import { type DragEvent, useMemo, useState } from "react";
 import {
   type DatabaseAttributeMeta,
   type DatabaseFieldType,
+  type DatabaseRecord,
   type DatabaseVaultAttributeSuggestion,
   type DatabaseViewType,
 } from "../database-types";
 import { DatabaseAttributeTypeahead } from "./database-attribute-typeahead";
+import {
+  CORE_ATTRIBUTE_TYPE_OPTIONS,
+  DATABASE_EXTENDED_TYPE_OPTIONS,
+  mapCoreTypeToDatabaseFieldType,
+  resolveDatabaseFieldTypeIcon,
+  resolveDatabaseFieldTypeLabel,
+  type CoreAttributeTypeId,
+} from "../../attribute-type-catalog";
+import {
+  buildDefaultDatabaseFormulaDefinitionV1,
+  type DatabaseFormulaDefinitionV1,
+} from "../../formula/database-formula-types";
+import {
+  FormulaAttributeBuilder,
+  type FormulaBuilderAttributeOption,
+} from "../../formula/formula-attribute-builder";
+import { FrontmatterPropertyIconView } from "../../frontmatter-property-icons";
 
 type DatabasePropertiesPanelProps = {
   attributes: DatabaseAttributeMeta[];
+  records: DatabaseRecord[];
   attributeSuggestions: DatabaseVaultAttributeSuggestion[];
   viewType: DatabaseViewType;
   visibleColumnKeys: string[];
   kanbanShowCover: boolean;
+  availableFolders?: string[];
   onKanbanShowCoverChange: (next: boolean) => void;
   onToggleVisibility: (key: string, visible: boolean) => void;
   onReorderVisibleColumns: (fromKey: string, toKey: string) => void;
@@ -32,70 +52,128 @@ type DatabasePropertiesPanelProps = {
   }) => Promise<void>;
   onCreateFormula: (payload: {
     key: string;
-    label?: string;
-    type: DatabaseFieldType;
-    formula: string;
+    definition: DatabaseFormulaDefinitionV1;
   }) => void;
   isMutatingFrontmatter: boolean;
   onClose: () => void;
 };
 
-const fieldTypeOptions: DatabaseFieldType[] = [
-  "text",
-  "longtext",
-  "number",
-  "unit",
-  "percent",
-  "boolean",
-  "time",
-  "date",
-  "datetime",
-  "select",
-  "multiselect",
-  "tags",
-  "link",
-  "file",
-  "image",
-  "status",
-  "rating",
-  "relation",
-  "formula",
-  "duration",
-  "progress",
-  "score",
-];
+const toLower = (value: string) => value.trim().toLowerCase();
+const shortTextNumericPattern = /[-+]?(?:\d+(?:[.,]\d+)?|\.\d+)/g;
 
-const resolveTypeIcon = (type: DatabaseFieldType) => {
-  switch (type) {
-    case "number":
-    case "unit":
-    case "percent":
-    case "score":
-      return "#";
-    case "date":
-    case "time":
-    case "datetime":
-      return "🕒";
-    case "tags":
-    case "multiselect":
-      return "🏷";
-    case "boolean":
-      return "✓";
-    case "link":
-      return "↗";
-    case "formula":
-      return "ƒ";
-    default:
-      return "Aa";
+const supportsMathByFieldType = (type: DatabaseFieldType) => {
+  if (
+    type === "number" ||
+    type === "unit" ||
+    type === "percent" ||
+    type === "score" ||
+    type === "rating" ||
+    type === "progress" ||
+    type === "status" ||
+    type === "formula"
+  ) {
+    return true;
   }
+  return false;
+};
+
+const getCaseInsensitiveRecordValue = (
+  record: DatabaseRecord,
+  key: string,
+) => {
+  if (key in record.normalizedFields) {
+    return record.normalizedFields[key];
+  }
+  const normalizedKey = toLower(key);
+  const matchedKey = Object.keys(record.normalizedFields)
+    .find((entryKey) => toLower(entryKey) === normalizedKey);
+  return matchedKey ? record.normalizedFields[matchedKey] : null;
+};
+
+const isShortNumericText = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 32) {
+    return false;
+  }
+  const tokens = trimmed.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0 || tokens.length > 3) {
+    return false;
+  }
+  const numericMatches = trimmed.match(shortTextNumericPattern) ?? [];
+  return numericMatches.length === 1;
+};
+
+const hasMathCompatibleTextValues = (
+  records: DatabaseRecord[],
+  key: string,
+) => {
+  for (const record of records) {
+    const raw = getCaseInsensitiveRecordValue(record, key);
+    if (typeof raw === "number" && Number.isFinite(raw)) {
+      return true;
+    }
+    if (typeof raw === "string" && isShortNumericText(raw)) {
+      return true;
+    }
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      const candidate = raw as { raw?: unknown; value?: unknown; rank?: unknown };
+      if (typeof candidate.value === "number" && Number.isFinite(candidate.value)) {
+        return true;
+      }
+      if (typeof candidate.rank === "number" && Number.isFinite(candidate.rank)) {
+        return true;
+      }
+      if (typeof candidate.raw === "string" && isShortNumericText(candidate.raw)) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
+const dedupeCaseInsensitive = (keys: string[]) => {
+  const seen = new Set<string>();
+  const next: string[] = [];
+  keys.forEach((key) => {
+    const trimmed = key.trim();
+    const normalized = trimmed.toLowerCase();
+    if (!trimmed || seen.has(normalized)) {
+      return;
+    }
+    seen.add(normalized);
+    next.push(trimmed);
+  });
+  return next;
+};
+
+const toCreateTypeSelection = (value: string): {
+  fieldType: DatabaseFieldType;
+  coreTypeId: CoreAttributeTypeId | null;
+} => {
+  if (value.startsWith("core:")) {
+    const coreTypeId = value.slice("core:".length) as CoreAttributeTypeId;
+    return {
+      fieldType: mapCoreTypeToDatabaseFieldType(coreTypeId),
+      coreTypeId,
+    };
+  }
+  const fieldType = value.startsWith("extended:")
+    ? (value.slice("extended:".length) as DatabaseFieldType)
+    : "text";
+  return {
+    fieldType,
+    coreTypeId: null,
+  };
 };
 
 export const DatabasePropertiesPanel = ({
   attributes,
+  records,
   attributeSuggestions,
   viewType,
   visibleColumnKeys,
   kanbanShowCover,
+  availableFolders,
   onKanbanShowCoverChange,
   onToggleVisibility,
   onReorderVisibleColumns,
@@ -109,13 +187,41 @@ export const DatabasePropertiesPanel = ({
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<DatabaseFieldType | "all">("all");
   const [newAttributeKey, setNewAttributeKey] = useState("");
-  const [newAttributeType, setNewAttributeType] = useState<DatabaseFieldType>("text");
+  const [createTypeSelection, setCreateTypeSelection] = useState<string>("core:text");
   const [newAttributeValue, setNewAttributeValue] = useState("");
   const [overwriteExisting, setOverwriteExisting] = useState(false);
-  const [newFormulaKey, setNewFormulaKey] = useState("");
-  const [newFormulaLabel, setNewFormulaLabel] = useState("");
-  const [newFormulaType, setNewFormulaType] = useState<DatabaseFieldType>("formula");
-  const [newFormulaExpression, setNewFormulaExpression] = useState("");
+  const [createError, setCreateError] = useState("");
+  const [formulaDefinition, setFormulaDefinition] = useState<DatabaseFormulaDefinitionV1>(
+    buildDefaultDatabaseFormulaDefinitionV1(),
+  );
+
+  const selectedCreateType = useMemo(
+    () => toCreateTypeSelection(createTypeSelection),
+    [createTypeSelection],
+  );
+
+  const isFormulaCreateMode = selectedCreateType.fieldType === "formula";
+  const createKeySuggestionFilter = useMemo(
+    () =>
+      isFormulaCreateMode
+        ? (suggestion: DatabaseVaultAttributeSuggestion) =>
+          suggestion.normalizedKey.trim().toLowerCase().startsWith("f-")
+        : undefined,
+    [isFormulaCreateMode],
+  );
+
+  const formulaAttributeOptions = useMemo<FormulaBuilderAttributeOption[]>(
+    () =>
+      attributes
+        .filter((attribute) => toLower(attribute.key) !== toLower(newAttributeKey))
+        .map((attribute) => ({
+          key: attribute.key,
+          label: attribute.label || attribute.key,
+          supportsMath: supportsMathByFieldType(attribute.type) ||
+            (attribute.type === "text" && hasMathCompatibleTextValues(records, attribute.key)),
+        })),
+    [attributes, newAttributeKey, records],
+  );
 
   const visibleByKey = useMemo(
     () => new Set(visibleColumnKeys.map((key) => key.toLowerCase())),
@@ -175,34 +281,83 @@ export const DatabasePropertiesPanel = ({
     onReorderVisibleColumns(sourceKey, targetKey);
   };
 
+  const resetCreateDraft = () => {
+    setNewAttributeKey("");
+    setCreateTypeSelection("core:text");
+    setNewAttributeValue("");
+    setOverwriteExisting(false);
+    setFormulaDefinition(buildDefaultDatabaseFormulaDefinitionV1());
+  };
+
   const handleCreateAttributeSubmit = async () => {
-    if (!newAttributeKey.trim()) {
+    const trimmedKey = newAttributeKey.trim();
+    if (!trimmedKey) {
+      setCreateError("Bitte einen Attribut-Namen angeben.");
       return;
     }
+    if (trimmedKey.includes(":")) {
+      setCreateError("Attribut-Name darf kein ':' enthalten.");
+      return;
+    }
+
+    if (isFormulaCreateMode) {
+      if (!trimmedKey.startsWith("f-")) {
+        setCreateError("Formel-Attribute muessen mit 'f-' beginnen.");
+        return;
+      }
+      const selectedAttributeKeys = dedupeCaseInsensitive(formulaDefinition.attributeKeys);
+      if (selectedAttributeKeys.length === 0) {
+        setCreateError("Bitte mindestens ein Quell-Attribut fuer die Formel waehlen.");
+        return;
+      }
+
+      const normalizedSource = (() => {
+        if (formulaDefinition.source.type === "explicit-folder") {
+          return {
+            type: "explicit-folder" as const,
+            path: formulaDefinition.source.path?.trim() ?? "",
+          };
+        }
+        if (formulaDefinition.source.type === "multi-folder") {
+          return {
+            type: "multi-folder" as const,
+            paths: dedupeCaseInsensitive(formulaDefinition.source.paths ?? []),
+          };
+        }
+        return { type: "current-folder" as const };
+      })();
+
+      if (normalizedSource.type === "explicit-folder" && !normalizedSource.path) {
+        setCreateError("Bitte einen Ordner fuer die Formelquelle angeben.");
+        return;
+      }
+
+      if (normalizedSource.type === "multi-folder" && normalizedSource.paths.length === 0) {
+        setCreateError("Bitte mindestens einen Ordner fuer die Formelquelle angeben.");
+        return;
+      }
+
+      onCreateFormula({
+        key: trimmedKey,
+        definition: {
+          ...formulaDefinition,
+          attributeKeys: selectedAttributeKeys,
+          source: normalizedSource,
+        },
+      });
+      setCreateError("");
+      resetCreateDraft();
+      return;
+    }
+
     await onCreateAttribute({
-      key: newAttributeKey.trim(),
-      type: newAttributeType,
+      key: trimmedKey,
+      type: selectedCreateType.fieldType,
       initialValue: newAttributeValue,
       overwriteExisting,
     });
-    setNewAttributeKey("");
-    setNewAttributeValue("");
-    setOverwriteExisting(false);
-  };
-
-  const handleCreateFormulaSubmit = () => {
-    if (!newFormulaKey.trim() || !newFormulaExpression.trim()) {
-      return;
-    }
-    onCreateFormula({
-      key: newFormulaKey.trim(),
-      label: newFormulaLabel.trim() || undefined,
-      type: newFormulaType,
-      formula: newFormulaExpression.trim(),
-    });
-    setNewFormulaKey("");
-    setNewFormulaLabel("");
-    setNewFormulaExpression("");
+    setCreateError("");
+    resetCreateDraft();
   };
 
   return (
@@ -268,10 +423,15 @@ export const DatabasePropertiesPanel = ({
                   checked={isVisible}
                   onChange={(event) => onToggleVisibility(attribute.key, event.target.checked)}
                 />
-                <span className="database-block-properties-icon" aria-hidden="true">{resolveTypeIcon(attribute.type)}</span>
+                <span className="database-block-properties-icon" aria-hidden="true">
+                  <FrontmatterPropertyIconView icon={resolveDatabaseFieldTypeIcon(attribute.type)} />
+                </span>
                 <span className="database-block-properties-key">{attribute.label || attribute.key}</span>
-                <span className="database-block-properties-type">{attribute.type}</span>
+                <span className="database-block-properties-type">{resolveDatabaseFieldTypeLabel(attribute.type)}</span>
                 <span className="database-block-properties-origin">{attribute.origin}</span>
+                {attribute.legacyFormulaIncompatible ? (
+                  <span className="database-block-properties-origin">Legacy inkompatibel</span>
+                ) : null}
               </label>
             </li>
           );
@@ -284,32 +444,60 @@ export const DatabasePropertiesPanel = ({
           <DatabaseAttributeTypeahead
             value={newAttributeKey}
             suggestions={attributeSuggestions}
-            placeholder="Name"
+            suggestionFilter={createKeySuggestionFilter}
+            placeholder={isFormulaCreateMode ? "f-status" : "Name"}
             onValueChange={setNewAttributeKey}
           />
           <select
-            value={newAttributeType}
-            onChange={(event) => setNewAttributeType(event.target.value as DatabaseFieldType)}
+            value={createTypeSelection}
+            onChange={(event) => setCreateTypeSelection(event.target.value)}
           >
-            {fieldTypeOptions.map((option) => (
-              <option key={option} value={option}>{option}</option>
-            ))}
+            <optgroup label="Kern">
+              {CORE_ATTRIBUTE_TYPE_OPTIONS.map((option) => (
+                <option key={`core-${option.id}`} value={`core:${option.id}`}>
+                  {option.label}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Erweitert">
+              {DATABASE_EXTENDED_TYPE_OPTIONS.map((option) => (
+                <option key={`extended-${option.fieldType}`} value={`extended:${option.fieldType}`}>
+                  {option.label}
+                </option>
+              ))}
+            </optgroup>
           </select>
-          <input
-            type="text"
-            value={newAttributeValue}
-            onChange={(event) => setNewAttributeValue(event.target.value)}
-            placeholder="Startwert"
-          />
+          {!isFormulaCreateMode ? (
+            <input
+              type="text"
+              value={newAttributeValue}
+              onChange={(event) => setNewAttributeValue(event.target.value)}
+              placeholder="Startwert"
+            />
+          ) : null}
         </div>
-        <label className="database-block-properties-toggle">
-          <input
-            type="checkbox"
-            checked={overwriteExisting}
-            onChange={(event) => setOverwriteExisting(event.target.checked)}
+
+        {isFormulaCreateMode ? (
+          <FormulaAttributeBuilder
+            idPrefix="database-create-formula"
+            value={formulaDefinition}
+            attributes={formulaAttributeOptions}
+            folderSuggestions={availableFolders}
+            onChange={setFormulaDefinition}
           />
-          Bestehende Werte überschreiben
-        </label>
+        ) : (
+          <label className="database-block-properties-toggle">
+            <input
+              type="checkbox"
+              checked={overwriteExisting}
+              onChange={(event) => setOverwriteExisting(event.target.checked)}
+            />
+            Bestehende Werte überschreiben
+          </label>
+        )}
+
+        {createError ? <p className="database-block-state">{createError}</p> : null}
+
         <button
           type="button"
           className="database-block-toolbar-button"
@@ -317,45 +505,6 @@ export const DatabasePropertiesPanel = ({
           disabled={isMutatingFrontmatter}
         >
           {isMutatingFrontmatter ? "Speichert..." : "Attribut anlegen"}
-        </button>
-      </section>
-
-      <section className="database-block-properties-create">
-        <h6>Formel hinzufügen</h6>
-        <div className="database-block-panel-controls">
-          <DatabaseAttributeTypeahead
-            value={newFormulaKey}
-            suggestions={attributeSuggestions}
-            placeholder="Key"
-            onValueChange={setNewFormulaKey}
-          />
-          <input
-            type="text"
-            value={newFormulaLabel}
-            onChange={(event) => setNewFormulaLabel(event.target.value)}
-            placeholder="Label (optional)"
-          />
-          <select
-            value={newFormulaType}
-            onChange={(event) => setNewFormulaType(event.target.value as DatabaseFieldType)}
-          >
-            {fieldTypeOptions.map((option) => (
-              <option key={option} value={option}>{option}</option>
-            ))}
-          </select>
-          <input
-            type="text"
-            value={newFormulaExpression}
-            onChange={(event) => setNewFormulaExpression(event.target.value)}
-            placeholder="concat(percent, ' / ', status)"
-          />
-        </div>
-        <button
-          type="button"
-          className="database-block-toolbar-button"
-          onClick={handleCreateFormulaSubmit}
-        >
-          Formel anlegen
         </button>
       </section>
 

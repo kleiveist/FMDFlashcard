@@ -1,401 +1,340 @@
 /**
  * @file apps/fmd-desktop/src/features/preview/database/database-formulas.ts
  *
- * Lightweight evaluator for local database formula fields.
+ * Aggregation-only formula engine for structured formula definitions.
  */
 
-const comparatorOperators = [">=", "<=", "!=", "==", ">", "<", "="] as const;
+import {
+  type DatabaseFormulaDefinitionV1,
+  type DatabaseFormulaGroupedCountEntry,
+  type DatabaseFormulaShortTextRule,
+} from "../formula/database-formula-types";
+import {
+  type DatabaseNormalizedFieldValue,
+  type DatabaseRecord,
+} from "./database-types";
 
-type FormulaValue = unknown;
+export const LEGACY_DATABASE_FORMULA_INCOMPATIBLE_MESSAGE = "Legacy-Formel inkompatibel";
 
-export type DatabaseFormulaContext = {
-  getFieldValue: (key: string) => unknown;
-  now?: () => Date;
+type EvaluateDatabaseAggregationFormulaParams = {
+  definition: DatabaseFormulaDefinitionV1;
+  records: DatabaseRecord[];
+  currentRecord: DatabaseRecord;
+  getFieldValue?: (record: DatabaseRecord, key: string) => DatabaseNormalizedFieldValue;
 };
 
-const toNumber = (value: unknown) => {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : Number.NaN;
+const numericPattern = /^[-+]?(?:\d+(?:[.,]\d+)?|\.\d+)$/;
+const numericCorePattern = /[-+]?(?:\d+(?:[.,]\d+)?|\.\d+)/g;
+
+const toLower = (value: string) => value.trim().toLowerCase();
+
+const toNormalizedPath = (value: string) =>
+  value.trim().replace(/\\+/g, "/").replace(/^\/+/, "").replace(/\/+$/, "");
+
+const fileBelongsToFolder = (relativePath: string, folder: string) => {
+  const normalizedFilePath = toNormalizedPath(relativePath);
+  const normalizedFolder = toNormalizedPath(folder);
+  if (!normalizedFolder) {
+    return true;
   }
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return Number.NaN;
-    }
-    const percentMatch = trimmed.match(/^(-?\d+(?:\.\d+)?)%$/);
-    if (percentMatch?.[1]) {
-      const parsedPercent = Number(percentMatch[1]);
-      return Number.isFinite(parsedPercent) ? parsedPercent : Number.NaN;
-    }
-    const parsed = Number(trimmed);
-    return Number.isFinite(parsed) ? parsed : Number.NaN;
-  }
-  if (value && typeof value === "object") {
-    const candidate = value as { ratio?: unknown; value?: unknown; rank?: unknown };
-    if (typeof candidate.ratio === "number" && Number.isFinite(candidate.ratio)) {
-      return candidate.ratio * 100;
-    }
-    if (typeof candidate.value === "number" && Number.isFinite(candidate.value)) {
-      return candidate.value;
-    }
-    if (typeof candidate.rank === "number" && Number.isFinite(candidate.rank)) {
-      return candidate.rank;
-    }
-  }
-  return Number.NaN;
+  return normalizedFilePath === normalizedFolder || normalizedFilePath.startsWith(`${normalizedFolder}/`);
 };
 
-const toText = (value: unknown): string => {
+const resolveFormulaSourceRecords = ({
+  definition,
+  records,
+  currentRecord,
+}: {
+  definition: DatabaseFormulaDefinitionV1;
+  records: DatabaseRecord[];
+  currentRecord: DatabaseRecord;
+}) => {
+  if (definition.source.type === "current-folder") {
+    return records.filter((record) => fileBelongsToFolder(record.relativePath, currentRecord.folder));
+  }
+
+  if (definition.source.type === "explicit-folder") {
+    const folderPath = definition.source.path?.trim() ?? "";
+    if (!folderPath) {
+      return records;
+    }
+    return records.filter((record) => fileBelongsToFolder(record.relativePath, folderPath));
+  }
+
+  if (definition.source.type === "multi-folder") {
+    const folders = (definition.source.paths ?? [])
+      .map((path) => path.trim())
+      .filter((path) => path.length > 0);
+    if (folders.length === 0) {
+      return records;
+    }
+    return records.filter((record) =>
+      folders.some((path) => fileBelongsToFolder(record.relativePath, path)));
+  }
+
+  return records;
+};
+
+const defaultGetFieldValue = (
+  record: DatabaseRecord,
+  key: string,
+): DatabaseNormalizedFieldValue => {
+  if (key in record.normalizedFields) {
+    return record.normalizedFields[key] ?? null;
+  }
+  const normalizedKey = toLower(key);
+  const matchedKey = Object.keys(record.normalizedFields)
+    .find((entryKey) => toLower(entryKey) === normalizedKey);
+  return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
+};
+
+const toFlatValues = (
+  value: DatabaseNormalizedFieldValue,
+): DatabaseNormalizedFieldValue[] => {
+  if (value === null || typeof value === "undefined") {
+    return [];
+  }
+  if (Array.isArray(value)) {
+    return value as DatabaseNormalizedFieldValue[];
+  }
+  return [value];
+};
+
+const collectFormulaValues = ({
+  records,
+  definition,
+  getFieldValue,
+}: {
+  records: DatabaseRecord[];
+  definition: DatabaseFormulaDefinitionV1;
+  getFieldValue: (record: DatabaseRecord, key: string) => DatabaseNormalizedFieldValue;
+}) => {
+  const values: DatabaseNormalizedFieldValue[] = [];
+  records.forEach((record) => {
+    definition.attributeKeys.forEach((attributeKey) => {
+      toFlatValues(getFieldValue(record, attributeKey)).forEach((entry) => {
+        values.push(entry);
+      });
+    });
+  });
+  return values;
+};
+
+const isGroupedCountEntry = (value: unknown): value is DatabaseFormulaGroupedCountEntry =>
+  Boolean(value) &&
+  typeof value === "object" &&
+  typeof (value as { value?: unknown }).value === "string" &&
+  typeof (value as { count?: unknown }).count === "number";
+
+const toGroupableText = (value: DatabaseNormalizedFieldValue): string => {
   if (value === null || typeof value === "undefined") {
     return "";
   }
   if (typeof value === "string") {
-    return value;
+    return value.trim();
   }
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value);
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? String(value) : "";
+  }
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
   }
   if (value instanceof Date) {
     return value.toISOString();
   }
   if (Array.isArray(value)) {
-    return value.map((entry) => toText(entry)).join(", ");
+    return value
+      .map((entry) => toGroupableText(entry as DatabaseNormalizedFieldValue))
+      .filter((entry) => entry.length > 0)
+      .join(" ");
   }
   if (typeof value === "object") {
-    if ("raw" in (value as Record<string, unknown>)) {
-      return String((value as { raw?: unknown }).raw ?? "");
+    if (isGroupedCountEntry(value)) {
+      return value.value;
+    }
+    if ("raw" in value) {
+      const raw = String((value as { raw?: unknown }).raw ?? "").trim();
+      if (raw) {
+        return raw;
+      }
     }
     return JSON.stringify(value);
   }
-  return String(value);
+  return String(value).trim();
 };
 
-const isTruthy = (value: unknown) => {
-  if (value === null || typeof value === "undefined") {
-    return false;
-  }
-  if (typeof value === "boolean") {
-    return value;
-  }
-  if (typeof value === "number") {
-    return Number.isFinite(value) && value !== 0;
-  }
-  if (typeof value === "string") {
-    return value.trim().length > 0;
-  }
-  if (Array.isArray(value)) {
-    return value.length > 0;
-  }
-  return true;
-};
-
-const isEmpty = (value: unknown) => {
-  if (value === null || typeof value === "undefined") {
-    return true;
-  }
-  if (typeof value === "string") {
-    return value.trim().length === 0;
-  }
-  if (Array.isArray(value)) {
-    return value.length === 0;
-  }
-  return false;
-};
-
-const isWrappedByParens = (input: string) => {
-  if (!input.startsWith("(") || !input.endsWith(")")) {
-    return false;
-  }
-  let depth = 0;
-  let quote: '"' | "'" | null = null;
-  for (let index = 0; index < input.length; index += 1) {
-    const char = input[index] ?? "";
-    if (quote) {
-      if (char === quote && input[index - 1] !== "\\") {
-        quote = null;
-      }
-      continue;
-    }
-    if (char === "\"" || char === "'") {
-      quote = char as '"' | "'";
-      continue;
-    }
-    if (char === "(") {
-      depth += 1;
-      continue;
-    }
-    if (char === ")") {
-      depth -= 1;
-      if (depth === 0 && index < input.length - 1) {
-        return false;
-      }
-    }
-  }
-  return depth === 0;
-};
-
-const findTopLevelComparator = (source: string): { operator: (typeof comparatorOperators)[number]; index: number } | null => {
-  let depth = 0;
-  let quote: '"' | "'" | null = null;
-
-  for (let index = 0; index < source.length; index += 1) {
-    const char = source[index] ?? "";
-
-    if (quote) {
-      if (char === quote && source[index - 1] !== "\\") {
-        quote = null;
-      }
-      continue;
-    }
-
-    if (char === "\"" || char === "'") {
-      quote = char as '"' | "'";
-      continue;
-    }
-
-    if (char === "(") {
-      depth += 1;
-      continue;
-    }
-
-    if (char === ")") {
-      depth = Math.max(0, depth - 1);
-      continue;
-    }
-
-    if (depth > 0) {
-      continue;
-    }
-
-    for (const operator of comparatorOperators) {
-      if (source.slice(index, index + operator.length) === operator) {
-        return { operator, index };
-      }
-    }
-  }
-
-  return null;
-};
-
-const splitTopLevelArgs = (source: string) => {
-  const args: string[] = [];
-  let depth = 0;
-  let quote: '"' | "'" | null = null;
-  let start = 0;
-
-  for (let index = 0; index < source.length; index += 1) {
-    const char = source[index] ?? "";
-    if (quote) {
-      if (char === quote && source[index - 1] !== "\\") {
-        quote = null;
-      }
-      continue;
-    }
-    if (char === "\"" || char === "'") {
-      quote = char as '"' | "'";
-      continue;
-    }
-    if (char === "(") {
-      depth += 1;
-      continue;
-    }
-    if (char === ")") {
-      depth = Math.max(0, depth - 1);
-      continue;
-    }
-    if (char === "," && depth === 0) {
-      args.push(source.slice(start, index).trim());
-      start = index + 1;
-    }
-  }
-
-  const tail = source.slice(start).trim();
-  if (tail) {
-    args.push(tail);
-  }
-
-  return args;
-};
-
-const compareValues = (
-  left: unknown,
-  right: unknown,
-  operator: (typeof comparatorOperators)[number],
-) => {
-  const leftNumber = toNumber(left);
-  const rightNumber = toNumber(right);
-  if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
-    switch (operator) {
-      case ">=":
-        return leftNumber >= rightNumber;
-      case "<=":
-        return leftNumber <= rightNumber;
-      case ">":
-        return leftNumber > rightNumber;
-      case "<":
-        return leftNumber < rightNumber;
-      case "=":
-      case "==":
-        return leftNumber === rightNumber;
-      case "!=":
-        return leftNumber !== rightNumber;
-      default:
-        return false;
-    }
-  }
-
-  const leftText = toText(left).trim().toLowerCase();
-  const rightText = toText(right).trim().toLowerCase();
-  switch (operator) {
-    case "=":
-    case "==":
-      return leftText === rightText;
-    case "!=":
-      return leftText !== rightText;
-    case ">":
-      return leftText > rightText;
-    case ">=":
-      return leftText >= rightText;
-    case "<":
-      return leftText < rightText;
-    case "<=":
-      return leftText <= rightText;
-    default:
-      return false;
-  }
-};
-
-const evaluateFunction = (
-  functionName: string,
-  args: FormulaValue[],
-  context: DatabaseFormulaContext,
-): FormulaValue => {
-  const normalizedName = functionName.trim().toLowerCase();
-
-  if (normalizedName === "concat") {
-    return args.map((arg) => toText(arg)).join("");
-  }
-
-  if (normalizedName === "if") {
-    return isTruthy(args[0]) ? (args[1] ?? null) : (args[2] ?? null);
-  }
-
-  if (normalizedName === "empty") {
-    return isEmpty(args[0]);
-  }
-
-  if (normalizedName === "lower") {
-    return toText(args[0]).toLowerCase();
-  }
-
-  if (normalizedName === "upper") {
-    return toText(args[0]).toUpperCase();
-  }
-
-  if (normalizedName === "slice") {
-    const source = toText(args[0]);
-    const start = Math.trunc(toNumber(args[1]));
-    const end = Math.trunc(toNumber(args[2]));
-    if (!Number.isFinite(start)) {
-      return source;
-    }
-    if (!Number.isFinite(end)) {
-      return source.slice(start);
-    }
-    return source.slice(start, end);
-  }
-
-  if (normalizedName === "percent" || normalizedName === "progress") {
-    const value = args[0];
-    if (value && typeof value === "object" && "ratio" in (value as Record<string, unknown>)) {
-      const ratio = Number((value as { ratio?: unknown }).ratio);
-      return Number.isFinite(ratio) ? ratio * 100 : null;
-    }
-    const numeric = toNumber(value);
-    return Number.isFinite(numeric) ? numeric : null;
-  }
-
-  if (normalizedName === "now") {
-    return (context.now?.() ?? new Date()).toISOString();
-  }
-
-  if (normalizedName === "datediff") {
-    const leftDate = Date.parse(toText(args[0]));
-    const rightDate = Date.parse(toText(args[1]));
-    if (!Number.isFinite(leftDate) || !Number.isFinite(rightDate)) {
-      return null;
-    }
-    const unit = toText(args[2] ?? "days").toLowerCase();
-    const diffMs = leftDate - rightDate;
-    if (unit === "hours") {
-      return diffMs / (1000 * 60 * 60);
-    }
-    return diffMs / (1000 * 60 * 60 * 24);
-  }
-
-  return null;
-};
-
-const evaluateExpressionInternal = (source: string, context: DatabaseFormulaContext): FormulaValue => {
-  const trimmed = source.trim();
+const parseNumericFromStringWithRule = (
+  raw: string,
+  shortTextRule: DatabaseFormulaShortTextRule,
+): number | null => {
+  const trimmed = raw.trim();
   if (!trimmed) {
     return null;
   }
 
-  if (isWrappedByParens(trimmed)) {
-    return evaluateExpressionInternal(trimmed.slice(1, -1), context);
+  if (numericPattern.test(trimmed)) {
+    const numeric = Number(trimmed.replace(",", "."));
+    return Number.isFinite(numeric) ? numeric : null;
   }
 
-  const quotedSingle = trimmed.match(/^'(.*)'$/);
-  if (quotedSingle) {
-    return quotedSingle[1]?.replace(/\\'/g, "'") ?? "";
+  if (trimmed.length > shortTextRule.maxChars) {
+    return null;
   }
-
-  const quotedDouble = trimmed.match(/^"(.*)"$/);
-  if (quotedDouble) {
-    return quotedDouble[1]?.replace(/\\"/g, '"') ?? "";
-  }
-
-  if (/^(true|false)$/i.test(trimmed)) {
-    return trimmed.toLowerCase() === "true";
-  }
-
-  if (/^(null|undefined)$/i.test(trimmed)) {
+  const tokens = trimmed.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0 || tokens.length > shortTextRule.maxTokens) {
     return null;
   }
 
-  if (/^[-+]?\d+(?:\.\d+)?$/.test(trimmed)) {
-    const parsed = Number(trimmed);
-    return Number.isFinite(parsed) ? parsed : null;
+  const numericMatches = trimmed.match(numericCorePattern) ?? [];
+  if (shortTextRule.requireSingleNumericCore && numericMatches.length !== 1) {
+    return null;
+  }
+  if (numericMatches.length === 0) {
+    return null;
   }
 
-  const comparator = findTopLevelComparator(trimmed);
-  if (comparator) {
-    const left = trimmed.slice(0, comparator.index).trim();
-    const right = trimmed.slice(comparator.index + comparator.operator.length).trim();
-    return compareValues(
-      evaluateExpressionInternal(left, context),
-      evaluateExpressionInternal(right, context),
-      comparator.operator,
-    );
-  }
-
-  const functionMatch = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)\((.*)\)$/s);
-  if (functionMatch?.[1] && typeof functionMatch[2] === "string") {
-    const args = splitTopLevelArgs(functionMatch[2]).map((arg) => evaluateExpressionInternal(arg, context));
-    return evaluateFunction(functionMatch[1], args, context);
-  }
-
-  return context.getFieldValue(trimmed);
+  const numeric = Number((numericMatches[0] ?? "").replace(",", "."));
+  return Number.isFinite(numeric) ? numeric : null;
 };
 
-export const evaluateDatabaseFormula = (
-  formula: string,
-  context: DatabaseFormulaContext,
-): FormulaValue => {
-  try {
-    return evaluateExpressionInternal(formula, context);
-  } catch {
+const toNumericValue = (
+  value: DatabaseNormalizedFieldValue,
+  shortTextRule: DatabaseFormulaShortTextRule,
+): number | null => {
+  if (value === null || typeof value === "undefined") {
     return null;
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === "string") {
+    return parseNumericFromStringWithRule(value, shortTextRule);
+  }
+  if (value instanceof Date) {
+    return null;
+  }
+  if (Array.isArray(value)) {
+    return null;
+  }
+  if (typeof value === "boolean") {
+    return value ? 1 : 0;
+  }
+  if (typeof value === "object") {
+    const withValue = value as { value?: unknown; rank?: unknown; raw?: unknown };
+    if (typeof withValue.value === "number" && Number.isFinite(withValue.value)) {
+      return withValue.value;
+    }
+    if (typeof withValue.rank === "number" && Number.isFinite(withValue.rank)) {
+      return withValue.rank;
+    }
+    if (typeof withValue.raw === "string") {
+      return parseNumericFromStringWithRule(withValue.raw, shortTextRule);
+    }
+    return null;
+  }
+  return null;
+};
+
+const evaluateCount = (values: DatabaseNormalizedFieldValue[]) =>
+  values.reduce((count, value) => {
+    const text = toGroupableText(value);
+    return text ? count + 1 : count;
+  }, 0);
+
+const evaluateGroupCount = (
+  values: DatabaseNormalizedFieldValue[],
+): DatabaseFormulaGroupedCountEntry[] => {
+  const buckets = new Map<string, { count: number; index: number }>();
+  values.forEach((value, index) => {
+    const normalized = toGroupableText(value);
+    if (!normalized) {
+      return;
+    }
+    const existing = buckets.get(normalized);
+    if (existing) {
+      existing.count += 1;
+      return;
+    }
+    buckets.set(normalized, {
+      count: 1,
+      index,
+    });
+  });
+
+  return Array.from(buckets.entries())
+    .map(([value, bucket]) => ({
+      value,
+      count: bucket.count,
+      index: bucket.index,
+    }))
+    .sort((left, right) => {
+      if (left.count !== right.count) {
+        return right.count - left.count;
+      }
+      return left.index - right.index;
+    })
+    .map(({ value, count }) => ({ value, count }));
+};
+
+const evaluateSum = (
+  values: DatabaseNormalizedFieldValue[],
+  shortTextRule: DatabaseFormulaShortTextRule,
+) => {
+  const numericValues = values
+    .map((value) => toNumericValue(value, shortTextRule))
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+
+  if (numericValues.length === 0) {
+    return null;
+  }
+
+  return numericValues.reduce((sum, value) => sum + value, 0);
+};
+
+const evaluateAvg = (
+  values: DatabaseNormalizedFieldValue[],
+  shortTextRule: DatabaseFormulaShortTextRule,
+) => {
+  const numericValues = values
+    .map((value) => toNumericValue(value, shortTextRule))
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+
+  if (numericValues.length === 0) {
+    return null;
+  }
+
+  const total = numericValues.reduce((sum, value) => sum + value, 0);
+  return total / numericValues.length;
+};
+
+export const evaluateDatabaseAggregationFormula = ({
+  definition,
+  records,
+  currentRecord,
+  getFieldValue,
+}: EvaluateDatabaseAggregationFormulaParams): DatabaseNormalizedFieldValue => {
+  const scopedRecords = resolveFormulaSourceRecords({
+    definition,
+    records,
+    currentRecord,
+  });
+
+  const readValue = getFieldValue ?? defaultGetFieldValue;
+  const values = collectFormulaValues({
+    records: scopedRecords,
+    definition,
+    getFieldValue: readValue,
+  });
+
+  switch (definition.operation) {
+    case "sum":
+      return evaluateSum(values, definition.shortTextRule);
+    case "avg":
+      return evaluateAvg(values, definition.shortTextRule);
+    case "group_count":
+      return evaluateGroupCount(values);
+    case "count":
+    default:
+      return evaluateCount(values);
   }
 };

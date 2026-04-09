@@ -12,6 +12,7 @@ import {
 type DatabaseAttributeTypeaheadProps = {
   value: string;
   suggestions: DatabaseVaultAttributeSuggestion[];
+  suggestionFilter?: (suggestion: DatabaseVaultAttributeSuggestion) => boolean;
   onValueChange: (nextValue: string) => void;
   placeholder?: string;
   strictSelection?: boolean;
@@ -62,6 +63,7 @@ const rankSuggestions = (
 export const DatabaseAttributeTypeahead = ({
   value,
   suggestions,
+  suggestionFilter,
   onValueChange,
   placeholder,
   strictSelection = false,
@@ -78,9 +80,14 @@ export const DatabaseAttributeTypeahead = ({
     }
   }, [isOpen, strictSelection, value]);
 
+  const filteredSuggestions = useMemo(
+    () => suggestionFilter ? suggestions.filter((suggestion) => suggestionFilter(suggestion)) : suggestions,
+    [suggestionFilter, suggestions],
+  );
+
   const ranked = useMemo(
-    () => rankSuggestions(suggestions, strictSelection ? query : value),
-    [query, strictSelection, suggestions, value],
+    () => rankSuggestions(filteredSuggestions, strictSelection ? query : value),
+    [filteredSuggestions, query, strictSelection, value],
   );
 
   const displayValue = strictSelection && isOpen ? query : value;
@@ -126,7 +133,7 @@ export const DatabaseAttributeTypeahead = ({
           }
 
           const normalized = toNormalized(query);
-          const exact = suggestions.find((entry) => entry.normalizedKey === normalized) ?? null;
+          const exact = filteredSuggestions.find((entry) => entry.normalizedKey === normalized) ?? null;
           if (exact) {
             onValueChange(exact.key);
             setQuery(exact.key);

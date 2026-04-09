@@ -152,6 +152,43 @@ describe("parseFrontmatterDocument", () => {
     expect(parsed.properties.find((property) => property.key === "alarm")?.kind).toBe("time");
     expect(parsed.properties.find((property) => property.key === "slot")?.kind).toBe("time");
   });
+
+  it("parses f-* keys as formula kind with structured formula object", () => {
+    const source = [
+      "---",
+      "f-status:",
+      "  version: 1",
+      "  operation: group_count",
+      "  attributeKeys:",
+      "    - Status",
+      "  source:",
+      "    type: current-folder",
+      "  shortTextRule:",
+      "    maxChars: 32",
+      "    maxTokens: 3",
+      "    requireSingleNumericCore: true",
+      "---",
+      "Body",
+    ].join("\n");
+
+    const parsed = parseFrontmatterDocument(source);
+    const formula = parsed.properties.find((property) => property.key === "f-status");
+    expect(formula?.kind).toBe("formula");
+    expect(formula?.icon).toBe("formula");
+    expect(formula?.value).toEqual({
+      version: 1,
+      operation: "group_count",
+      attributeKeys: ["Status"],
+      source: {
+        type: "current-folder",
+      },
+      shortTextRule: {
+        maxChars: 32,
+        maxTokens: 3,
+        requireSingleNumericCore: true,
+      },
+    });
+  });
 });
 
 describe("composeMarkdownWithBody", () => {
@@ -475,7 +512,7 @@ describe("addFrontmatterProperty", () => {
       kind: "number",
     });
 
-    expect(invalid.error).toContain("Nur Zahlen erlaubt");
+    expect(invalid.error).toContain("Zahlenwert erwartet");
     expect(valid.error).toBeNull();
     expect(valid.markdown).toContain("points: 42");
   });
@@ -548,6 +585,32 @@ describe("addFrontmatterProperty", () => {
     expect(invalid.error).toContain("Zeit erwartet");
     expect(valid.error).toBeNull();
     expect(valid.markdown).toContain("start: '2026-04-03T09:05'");
+  });
+
+  it("adds formula properties as structured YAML objects", () => {
+    const source = ["---", "title: Demo", "---", "Body"].join("\n");
+
+    const updated = addFrontmatterProperty({
+      markdown: source,
+      key: "f-status",
+      kind: "formula",
+      value: {
+        version: 1,
+        operation: "count",
+        attributeKeys: ["Status"],
+        source: { type: "current-folder" },
+        shortTextRule: {
+          maxChars: 32,
+          maxTokens: 3,
+          requireSingleNumericCore: true,
+        },
+      },
+    });
+
+    expect(updated.error).toBeNull();
+    expect(updated.markdown).toContain("f-status:");
+    expect(updated.markdown).toContain("operation: count");
+    expect(updated.markdown).toContain("attributeKeys:");
   });
 });
 

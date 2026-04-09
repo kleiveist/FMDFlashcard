@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createDefaultDatabaseBlockConfig } from "./database-block-parser";
 import { buildNormalizedRecord, createSystemFieldsForRecord } from "./database-normalizers";
 import { buildDatabaseStoreSnapshot } from "./database-store";
+import { LEGACY_DATABASE_FORMULA_INCOMPATIBLE_MESSAGE } from "./database-formulas";
 
 describe("database-store", () => {
   it("merges configured field definitions into attribute registry", () => {
@@ -70,15 +71,13 @@ describe("database-store", () => {
     expect(sectionField?.type).toBe("select");
   });
 
-  it("evaluates formula fields and exposes them to visible records", () => {
+  it("evaluates aggregation formula fields and exposes them to visible records", () => {
     const record = buildNormalizedRecord({
       fileId: "demo.md",
       filePath: "/vault/demo.md",
       relativePath: "demo.md",
       frontmatter: {
-        percent: "80%",
         status: "3 🟡",
-        Score: "20/25",
       },
       systemFields: createSystemFieldsForRecord("demo.md", "/vault/demo.md"),
     });
@@ -86,20 +85,40 @@ describe("database-store", () => {
     const config = createDefaultDatabaseBlockConfig();
     config.fields = [
       {
-        key: "progressLabel",
-        label: "Progress Label",
-        type: "text",
+        key: "f-status-count",
+        label: "Status Count",
+        type: "formula",
         origin: "formula",
-        formula: "concat(percent, ' / ', status)",
+        formulaDefinition: {
+          version: 1,
+          operation: "count",
+          attributeKeys: ["status"],
+          source: { type: "current-folder" },
+          shortTextRule: {
+            maxChars: 32,
+            maxTokens: 3,
+            requireSingleNumericCore: true,
+          },
+        },
       },
       {
-        key: "isPassed",
-        type: "boolean",
+        key: "f-status-group",
+        type: "formula",
         origin: "formula",
-        formula: "if(percent(Score) >= 50, true, false)",
+        formulaDefinition: {
+          version: 1,
+          operation: "group_count",
+          attributeKeys: ["status"],
+          source: { type: "current-folder" },
+          shortTextRule: {
+            maxChars: 32,
+            maxTokens: 3,
+            requireSingleNumericCore: true,
+          },
+        },
       },
     ];
-    config.columns = ["progressLabel", "isPassed"];
+    config.columns = ["f-status-count", "f-status-group"];
 
     const snapshot = buildDatabaseStoreSnapshot({
       records: [record],
@@ -107,11 +126,49 @@ describe("database-store", () => {
       searchQuery: "",
     });
 
-    expect(snapshot.visibleRecords[0]?.normalizedFields.progressLabel).toBe("80% / 3 🟡");
-    expect(snapshot.visibleRecords[0]?.normalizedFields.isPassed).toBe(true);
+    expect(snapshot.visibleRecords[0]?.normalizedFields["f-status-count"]).toBe(1);
+    expect(snapshot.visibleRecords[0]?.normalizedFields["f-status-group"]).toEqual([
+      { value: "3 🟡", count: 1 },
+    ]);
 
-    const formulaField = snapshot.attributeRegistry.find((attribute) => attribute.key === "progressLabel");
+    const formulaField = snapshot.attributeRegistry.find((attribute) => attribute.key === "f-status-count");
     expect(formulaField?.origin).toBe("formula");
+    expect(formulaField?.formulaDefinition?.operation).toBe("count");
+  });
+
+  it("marks legacy string formulas as incompatible and does not execute them", () => {
+    const record = buildNormalizedRecord({
+      fileId: "demo.md",
+      filePath: "/vault/demo.md",
+      relativePath: "demo.md",
+      frontmatter: {
+        status: "3 🟡",
+      },
+      systemFields: createSystemFieldsForRecord("demo.md", "/vault/demo.md"),
+    });
+
+    const config = createDefaultDatabaseBlockConfig();
+    config.fields = [
+      {
+        key: "legacyFormula",
+        type: "formula",
+        origin: "formula",
+        formula: "concat(status, ' old')",
+      },
+    ];
+    config.columns = ["legacyFormula"];
+
+    const snapshot = buildDatabaseStoreSnapshot({
+      records: [record],
+      config,
+      searchQuery: "",
+    });
+
+    expect(snapshot.visibleRecords[0]?.normalizedFields.legacyFormula).toBe(
+      LEGACY_DATABASE_FORMULA_INCOMPATIBLE_MESSAGE,
+    );
+    const legacyField = snapshot.attributeRegistry.find((attribute) => attribute.key === "legacyFormula");
+    expect(legacyField?.legacyFormulaIncompatible).toBe(true);
   });
 
   it("keeps configured unit fields as numeric unit type", () => {

@@ -28,6 +28,10 @@ import {
   type DatabaseViewSpec,
   type DatabaseViewType,
 } from "./database-types";
+import {
+  normalizeDatabaseFormulaDefinitionV1,
+  type DatabaseFormulaDefinitionV1,
+} from "../formula/database-formula-types";
 
 export const DATABASE_BLOCK_OPEN_MARKER = DATABASE_BLOCK_MARKER;
 export const DATABASE_BLOCK_CLOSE_MARKER = DATABASE_BLOCK_MARKER;
@@ -466,8 +470,15 @@ const parseFieldDefinitions = (value: unknown): DatabaseFieldDefinition[] => {
     }
     dedupe.add(dedupeKey);
 
-    const formula = asString(entry.formula) || null;
-    const originFallback: DatabaseAttributeOrigin = formula ? "formula" : "frontmatter";
+    const formulaDefinition = normalizeDatabaseFormulaDefinitionV1(
+      entry.formulaDefinition ?? (isRecord(entry.formula) ? entry.formula : null),
+    );
+    const formula = typeof entry.formula === "string"
+      ? asString(entry.formula) || null
+      : null;
+    const originFallback: DatabaseAttributeOrigin = formulaDefinition || formula
+      ? "formula"
+      : "frontmatter";
     const origin = parseAttributeOrigin(entry.origin, originFallback);
 
     fields.push({
@@ -475,6 +486,7 @@ const parseFieldDefinitions = (value: unknown): DatabaseFieldDefinition[] => {
       label: asString(entry.label) || undefined,
       type: parseFieldType(entry.type),
       origin,
+      formulaDefinition,
       formula,
     });
   });
@@ -1082,6 +1094,41 @@ function writeViewSpecYaml(
   }
 }
 
+const writeFormulaDefinitionYaml = (
+  definition: DatabaseFormulaDefinitionV1,
+  indent: number,
+  lines: string[],
+) => {
+  const indentText = " ".repeat(indent);
+  lines.push(`${indentText}version: ${formatYamlScalar(definition.version)}`);
+  lines.push(`${indentText}operation: ${formatYamlScalar(definition.operation)}`);
+  if (definition.attributeKeys.length === 0) {
+    lines.push(`${indentText}attributeKeys: []`);
+  } else {
+    lines.push(`${indentText}attributeKeys:`);
+    definition.attributeKeys.forEach((key) => {
+      lines.push(`${indentText}  - ${formatYamlScalar(key)}`);
+    });
+  }
+  lines.push(`${indentText}source:`);
+  lines.push(`${indentText}  type: ${formatYamlScalar(definition.source.type)}`);
+  if (definition.source.path) {
+    lines.push(`${indentText}  path: ${formatYamlScalar(definition.source.path)}`);
+  }
+  if (definition.source.paths && definition.source.paths.length > 0) {
+    lines.push(`${indentText}  paths:`);
+    definition.source.paths.forEach((path) => {
+      lines.push(`${indentText}    - ${formatYamlScalar(path)}`);
+    });
+  }
+  lines.push(`${indentText}shortTextRule:`);
+  lines.push(`${indentText}  maxChars: ${formatYamlScalar(definition.shortTextRule.maxChars)}`);
+  lines.push(`${indentText}  maxTokens: ${formatYamlScalar(definition.shortTextRule.maxTokens)}`);
+  lines.push(
+    `${indentText}  requireSingleNumericCore: ${formatYamlScalar(definition.shortTextRule.requireSingleNumericCore)}`,
+  );
+};
+
 export const serializeDatabaseBlockConfig = (config: DatabaseBlockConfig) => {
   const normalizedViews = cloneSavedViewsConfig(config.views);
   const activeSavedView = resolveSavedViewForId(normalizedViews, normalizedViews.activeViewId);
@@ -1121,7 +1168,10 @@ export const serializeDatabaseBlockConfig = (config: DatabaseBlockConfig) => {
       }
       lines.push(`    type: ${formatYamlScalar(field.type)}`);
       lines.push(`    origin: ${formatYamlScalar(field.origin)}`);
-      if (field.formula) {
+      if (field.formulaDefinition) {
+        lines.push("    formulaDefinition:");
+        writeFormulaDefinitionYaml(field.formulaDefinition, 6, lines);
+      } else if (field.formula) {
         lines.push(`    formula: ${formatYamlScalar(field.formula)}`);
       }
     });

@@ -14,6 +14,7 @@ import {
   type DatabaseStatusValue,
   type DatabaseViewCompatibility,
 } from "./database-types";
+import { type DatabaseFormulaGroupedCountEntry } from "../formula/database-formula-types";
 import {
   isDateTimeValue,
   isDateValue,
@@ -190,6 +191,12 @@ const asArrayOfStrings = (value: unknown): string[] | null => {
   return next.length > 0 ? next : [];
 };
 
+const isFormulaGroupedCountEntry = (value: unknown): value is DatabaseFormulaGroupedCountEntry =>
+  Boolean(value) &&
+  typeof value === "object" &&
+  typeof (value as { value?: unknown }).value === "string" &&
+  typeof (value as { count?: unknown }).count === "number";
+
 export const inferFieldType = (key: string, value: unknown): DatabaseFieldType => {
   const arrayValue = asArrayOfStrings(value);
   if (arrayValue) {
@@ -314,6 +321,27 @@ export const normalizeFieldValueByType = (
   if (type === "multiselect" || type === "tags") {
     const list = asArrayOfStrings(value);
     return list ?? [];
+  }
+
+  if (type === "formula") {
+    if (Array.isArray(value)) {
+      const groupedEntries = value
+        .filter((entry) => isFormulaGroupedCountEntry(entry))
+        .map((entry) => ({
+          value: entry.value,
+          count: entry.count,
+        }));
+      if (groupedEntries.length === value.length) {
+        return groupedEntries;
+      }
+    }
+    if (typeof value === "number" || typeof value === "boolean" || typeof value === "string") {
+      return value;
+    }
+    if (value === null || typeof value === "undefined") {
+      return null;
+    }
+    return String(value);
   }
 
   if ((type === "number" || type === "unit") && typeof value === "number") {

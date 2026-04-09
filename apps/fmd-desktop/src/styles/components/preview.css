@@ -484,6 +484,23 @@
   font-size: 0.74rem;
 }
 
+.frontmatter-formula-value {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  min-height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--line-soft);
+  background: var(--field-bg);
+  color: var(--ink);
+  padding: 6px 8px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .frontmatter-links-editor {
   display: flex;
   flex-direction: column;
@@ -1276,6 +1293,123 @@
 }
 
 .frontmatter-type-option-description {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.frontmatter-add-formula-builder-wrap {
+  grid-column: 1 / -1;
+}
+
+.formula-attribute-builder {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  padding: 8px;
+  background: var(--field-bg);
+}
+
+.formula-attribute-builder-field {
+  display: grid;
+  gap: 4px;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.formula-attribute-builder-option-list {
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+  max-height: 168px;
+  overflow-y: auto;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: var(--field-bg);
+}
+
+.formula-attribute-builder-option {
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 0.76rem;
+}
+
+.formula-attribute-builder-option:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.formula-attribute-builder-option:hover,
+.formula-attribute-builder-option:focus-visible {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  outline: none;
+}
+
+.formula-attribute-builder-option.is-selected {
+  border-color: var(--accent-border);
+  background: color-mix(in srgb, var(--accent-soft) 78%, transparent);
+}
+
+.formula-attribute-builder-option-check {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--line-soft) 80%, var(--ink));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  color: var(--accent-strong);
+  flex: 0 0 auto;
+}
+
+.formula-attribute-builder-option-copy {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.formula-attribute-builder-empty {
+  margin: 0;
+  border: 1px dashed var(--line-soft);
+  border-radius: 8px;
+  padding: 8px;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.formula-attribute-builder-field > input,
+.formula-attribute-builder-field > select {
+  width: 100%;
+  min-width: 0;
+  min-height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--line-soft);
+  background: var(--field-bg);
+  color: var(--ink);
+  padding: 6px 8px;
+  font-size: 0.78rem;
+}
+
+.formula-attribute-builder-field > select[multiple] {
+  min-height: 86px;
+}
+
+.formula-attribute-builder-hint {
+  margin: 2px 0 0;
   font-size: 0.7rem;
   color: var(--muted);
 }
@@ -6299,6 +6433,56 @@ textarea.preview-editor {
 .database-block-properties-create h6 {
   margin: 0;
   font-size: 0.76rem;
+  color: var(--db-muted);
+}
+
+.database-block-properties-create .formula-attribute-builder {
+  border-color: var(--db-border);
+  background: var(--db-surface-muted);
+}
+
+.database-block-properties-create .formula-attribute-builder-field {
+  color: var(--db-muted);
+}
+
+.database-block-properties-create .formula-attribute-builder-option-list {
+  border-color: var(--db-border);
+  background: var(--db-surface-raised);
+}
+
+.database-block-properties-create .formula-attribute-builder-option {
+  color: var(--db-ink);
+}
+
+.database-block-properties-create .formula-attribute-builder-option:hover,
+.database-block-properties-create .formula-attribute-builder-option:focus-visible {
+  border-color: var(--db-accent-border);
+  background: var(--db-accent-soft);
+}
+
+.database-block-properties-create .formula-attribute-builder-option.is-selected {
+  border-color: var(--db-accent-border);
+  background: color-mix(in srgb, var(--db-accent-soft) 70%, transparent);
+}
+
+.database-block-properties-create .formula-attribute-builder-option-check {
+  border-color: var(--db-border);
+  color: var(--db-accent-text);
+}
+
+.database-block-properties-create .formula-attribute-builder-empty {
+  border-color: var(--db-border);
+  color: var(--db-muted);
+}
+
+.database-block-properties-create .formula-attribute-builder-field > input,
+.database-block-properties-create .formula-attribute-builder-field > select {
+  border-color: var(--db-border);
+  background: var(--db-surface-raised);
+  color: var(--db-ink);
+}
+
+.database-block-properties-create .formula-attribute-builder-hint {
   color: var(--db-muted);
 }
 

@@ -92,6 +92,26 @@ import {
   updateFrontmatterLinks,
   updateFrontmatterProperty,
 } from "../features/preview/frontmatter";
+import {
+  CORE_ATTRIBUTE_TYPE_OPTIONS,
+  FRONTMATTER_DEFAULT_CORE_TYPE,
+  resolveAutoAttributeKeyForCoreType,
+  type CoreAttributeTypeId,
+} from "../features/preview/attribute-type-catalog";
+import {
+  buildDefaultDatabaseFormulaDefinitionV1,
+  normalizeDatabaseFormulaDefinitionV1,
+  type DatabaseFormulaDefinitionV1,
+} from "../features/preview/formula/database-formula-types";
+import {
+  FormulaAttributeBuilder,
+  type FormulaBuilderAttributeOption,
+} from "../features/preview/formula/formula-attribute-builder";
+import {
+  FrontmatterGripIcon,
+  FrontmatterImageIcon,
+  FrontmatterPropertyIconView,
+} from "../features/preview/frontmatter-property-icons";
 import { normalizeRelativePath } from "../lib/path";
 import { compareNaturalPath } from "../lib/naturalSort";
 import {
@@ -4704,191 +4724,10 @@ export const applyInteractionSpacing = (markdown: string) => {
   return normalized.join("\n");
 };
 
-const FrontmatterTextIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M6 6h12" />
-    <path d="M6 12h12" />
-    <path d="M6 18h8" />
-  </svg>
-);
-
-const FrontmatterTaskIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <rect x="4" y="4" width="16" height="16" rx="2.5" />
-    <path d="M8 9h8" />
-    <path d="M8 13h5" />
-    <path d="M8 17h3" />
-  </svg>
-);
-
-const FrontmatterNumberIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M8 5L6 19" />
-    <path d="M16 5l-2 14" />
-    <path d="M4 10h16" />
-    <path d="M3 15h16" />
-  </svg>
-);
-
-const FrontmatterTimeIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <circle cx="12" cy="12" r="8.5" />
-    <path d="M12 7v5l3 2" />
-  </svg>
-);
-
-const FrontmatterToggleIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <rect x="3" y="8" width="18" height="8" rx="4" />
-    <circle cx="9" cy="12" r="2.5" fill="currentColor" stroke="none" />
-  </svg>
-);
-
-const FrontmatterTagIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M20 13l-7 7-9-9V4h7l9 9z" />
-    <circle cx="8.5" cy="8.5" r="1.4" />
-  </svg>
-);
-
-const FrontmatterLinkIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1" />
-    <path d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1" />
-  </svg>
-);
-
-const FrontmatterImageIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <rect x="3" y="5" width="18" height="14" rx="2" />
-    <circle cx="9" cy="10" r="1.6" />
-    <path d="M3 16l5-4 4 3 3-2 6 5" />
-  </svg>
-);
-
-const FrontmatterUnknownIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <circle cx="12" cy="12" r="9" />
-    <path d="M9.6 9.2a2.4 2.4 0 0 1 4.8 0c0 1.4-1.5 1.9-2.3 2.5-.5.3-.7.7-.7 1.3" />
-    <circle cx="12" cy="17" r="1" fill="currentColor" stroke="none" />
-  </svg>
-);
-
-const FrontmatterGripIcon = () => (
-  <svg
-    aria-hidden="true"
-    viewBox="0 0 24 24"
-    fill="currentColor"
-  >
-    <circle cx="8" cy="7" r="1.2" />
-    <circle cx="8" cy="12" r="1.2" />
-    <circle cx="8" cy="17" r="1.2" />
-    <circle cx="16" cy="7" r="1.2" />
-    <circle cx="16" cy="12" r="1.2" />
-    <circle cx="16" cy="17" r="1.2" />
-  </svg>
-);
-
-const FrontmatterPropertyIconView = ({
-  icon,
-}: {
-  icon: FrontmatterPropertyIcon;
-}) => {
-  switch (icon) {
-    case "cover":
-      return <FrontmatterImageIcon />;
-    case "task":
-      return <FrontmatterTaskIcon />;
-    case "time":
-      return <FrontmatterTimeIcon />;
-    case "number":
-      return <FrontmatterNumberIcon />;
-    case "boolean":
-      return <FrontmatterToggleIcon />;
-    case "tags":
-      return <FrontmatterTagIcon />;
-    case "link":
-      return <FrontmatterLinkIcon />;
-    case "unknown":
-      return <FrontmatterUnknownIcon />;
-    default:
-      return <FrontmatterTextIcon />;
-  }
-};
-
 const stringifyPropertyValue = (property: FrontmatterProperty) => {
+  if (property.kind === "formula") {
+    return formatFormulaPropertySummary(property.value);
+  }
   if (Array.isArray(property.value)) {
     return property.value.join(", ");
   }
@@ -4974,14 +4813,24 @@ const mergeSuggestionKeyLists = (...sources: string[][]) => {
   return merged;
 };
 
-type FrontmatterAddPropertyType =
-  | "text"
-  | "task"
-  | "time"
-  | "link"
-  | "number"
-  | "cover"
-  | "tags";
+const toLower = (value: string) => value.trim().toLowerCase();
+
+const dedupeCaseInsensitive = (values: string[]) => {
+  const seen = new Set<string>();
+  const next: string[] = [];
+  values.forEach((value) => {
+    const trimmed = value.trim();
+    const normalized = trimmed.toLowerCase();
+    if (!trimmed || seen.has(normalized)) {
+      return;
+    }
+    seen.add(normalized);
+    next.push(trimmed);
+  });
+  return next;
+};
+
+type FrontmatterAddPropertyType = CoreAttributeTypeId;
 
 type FrontmatterAddTypeOption = {
   kind: FrontmatterAddPropertyType;
@@ -4990,72 +4839,21 @@ type FrontmatterAddTypeOption = {
   description: string;
 };
 
-const FRONTMATTER_DEFAULT_ADD_TYPE: FrontmatterAddPropertyType = "text";
+const FRONTMATTER_DEFAULT_ADD_TYPE: FrontmatterAddPropertyType = FRONTMATTER_DEFAULT_CORE_TYPE;
 
-const FRONTMATTER_ADD_TYPE_OPTIONS: FrontmatterAddTypeOption[] = [
-  {
-    kind: "text",
-    icon: "text",
-    label: "Text",
-    description: "Freier Text",
-  },
-  {
-    kind: "task",
-    icon: "task",
-    label: "Task",
-    description: "Points-Profil Zuordnung",
-  },
-  {
-    kind: "time",
-    icon: "time",
-    label: "Zeit",
-    description: "Datum, Uhrzeit oder Datum+Uhrzeit",
-  },
-  {
-    kind: "link",
-    icon: "link",
-    label: "Links",
-    description: "Wikilink oder Name",
-  },
-  {
-    kind: "number",
-    icon: "number",
-    label: "Nur Zahlen",
-    description: "Nur numerische Werte",
-  },
-  {
-    kind: "cover",
-    icon: "cover",
-    label: "Cover",
-    description: "Bild-Wikilink",
-  },
-  {
-    kind: "tags",
-    icon: "tags",
-    label: "Tags",
-    description: "Tag-Liste",
-  },
-];
+const FRONTMATTER_ADD_TYPE_OPTIONS: FrontmatterAddTypeOption[] = CORE_ATTRIBUTE_TYPE_OPTIONS.map((option) => ({
+  kind: option.id,
+  icon: option.icon as FrontmatterPropertyIcon,
+  label: option.label,
+  description: option.description,
+}));
 
 const addTypeSuggestionScope = "__frontmatter_add_type__";
 const addKeySuggestionScope = "__frontmatter_add_key__";
 const addValueSuggestionScope = "__frontmatter_add_value__";
 
-const resolveAutoAddKeyForType = (kind: FrontmatterAddPropertyType) => {
-  if (kind === "task") {
-    return "Task";
-  }
-  if (kind === "link") {
-    return "links";
-  }
-  if (kind === "tags") {
-    return "tags";
-  }
-  if (kind === "cover") {
-    return "Cover";
-  }
-  return null;
-};
+const resolveAutoAddKeyForType = (kind: FrontmatterAddPropertyType) =>
+  resolveAutoAttributeKeyForCoreType(kind);
 
 const isReservedTextSuggestionKey = (key: string) => {
   const normalized = key.trim().toLowerCase();
@@ -5135,7 +4933,7 @@ const isPrintableCharacterKey = (
   event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey;
 
 const resolveSuggestionValuesFromCommitted = (
-  value: string | number | boolean | string[] | null,
+  value: FrontmatterProperty["value"],
 ) => {
   if (typeof value === "string") {
     const trimmed = value.trim();
@@ -5148,6 +4946,44 @@ const resolveSuggestionValuesFromCommitted = (
     return [value ? "true" : "false"];
   }
   return [];
+};
+
+const formulaShortTextNumericPattern = /[-+]?(?:\d+(?:[.,]\d+)?|\.\d+)/g;
+
+const hasShortTextNumericExample = (values: string[]) =>
+  values.some((value) => {
+    const trimmed = value.trim();
+    if (!trimmed || trimmed.length > 32) {
+      return false;
+    }
+    const tokens = trimmed.split(/\s+/).filter(Boolean);
+    if (tokens.length === 0 || tokens.length > 3) {
+      return false;
+    }
+    const numericMatches = trimmed.match(formulaShortTextNumericPattern) ?? [];
+    return numericMatches.length === 1;
+  });
+
+const supportsMathForFrontmatterProperty = (
+  property: FrontmatterProperty,
+  suggestionValuesByKey: Record<string, string[]>,
+) => {
+  if (property.kind === "number" || property.kind === "formula") {
+    return true;
+  }
+  if (property.kind === "task" || property.kind === "text") {
+    const suggestions = suggestionValuesByKey[property.key] ?? [];
+    return hasShortTextNumericExample(suggestions);
+  }
+  return false;
+};
+
+const formatFormulaPropertySummary = (value: FrontmatterProperty["value"]) => {
+  const normalized = normalizeDatabaseFormulaDefinitionV1(value);
+  if (!normalized) {
+    return "Inkompatible Legacy-Formel";
+  }
+  return `${normalized.operation}(${normalized.attributeKeys.join(", ")})`;
 };
 
 const resolveWikilinkLabel = (wikilink: string) => {
@@ -5276,6 +5112,9 @@ const FrontmatterPropertiesPanel = ({
   );
   const [addKeyDraft, setAddKeyDraft] = useState("");
   const [addValueDraft, setAddValueDraft] = useState("");
+  const [addFormulaDefinition, setAddFormulaDefinition] = useState<DatabaseFormulaDefinitionV1>(
+    buildDefaultDatabaseFormulaDefinitionV1(),
+  );
   const [addError, setAddError] = useState("");
   const [addEditorModes, setAddEditorModes] = useState<{
     type: FrontmatterEditorMode;
@@ -5350,11 +5189,34 @@ const FrontmatterPropertiesPanel = ({
       hasExistingTaskAttribute,
     ],
   );
+  const isAddFormulaType = addTypeDraft === "formula";
+  const formulaBuilderAttributeOptions = useMemo<FormulaBuilderAttributeOption[]>(
+    () =>
+      gridProperties
+        .filter((property) => toLower(property.key) !== toLower(addKeyDraft))
+        .map((property) => ({
+          key: property.key,
+          label: property.key,
+          supportsMath: supportsMathForFrontmatterProperty(property, suggestionValuesByKey),
+        })),
+    [addKeyDraft, gridProperties, suggestionValuesByKey],
+  );
+  const formulaFolderSuggestions = useMemo(() => {
+    const folders = new Set<string>();
+    (vaultFiles ?? []).forEach((file) => {
+      const normalizedPath = normalizeRelativePath(file.relative_path).replace(/^\/+/, "");
+      const slashIndex = normalizedPath.lastIndexOf("/");
+      const folder = slashIndex >= 0 ? normalizedPath.slice(0, slashIndex) : "";
+      folders.add(folder);
+    });
+    return Array.from(folders).sort((left, right) => compareNaturalPath(left, right));
+  }, [vaultFiles]);
 
   useEffect(() => {
     setDrafts(initialDrafts);
     setEditorModes({});
     setAddEditorModes({ type: "idle", key: "idle", value: "idle" });
+    setAddFormulaDefinition(buildDefaultDatabaseFormulaDefinitionV1());
     setOpenSuggestionsKey(null);
     setSuggestionCursor({});
     setTagInputs({});
@@ -5386,6 +5248,13 @@ const FrontmatterPropertiesPanel = ({
     setAddTypeDraft(FRONTMATTER_DEFAULT_ADD_TYPE);
   }, [addTypeDraft, addTypeOptions]);
 
+  useEffect(() => {
+    if (addTypeDraft === "formula") {
+      return;
+    }
+    setAddFormulaDefinition(buildDefaultDatabaseFormulaDefinitionV1());
+  }, [addTypeDraft]);
+
   const scheduleAnimationFrame = useCallback((callback: () => void) => {
     const handle = window.requestAnimationFrame(() => {
       pendingFrameHandlesRef.current.delete(handle);
@@ -5408,6 +5277,7 @@ const FrontmatterPropertiesPanel = ({
     setDrafts(initialDrafts);
     setEditorModes({});
     setAddEditorModes({ type: "idle", key: "idle", value: "idle" });
+    setAddFormulaDefinition(buildDefaultDatabaseFormulaDefinitionV1());
     setOpenSuggestionsKey(null);
     setSuggestionCursor({});
     setTagInputs({});
@@ -5576,6 +5446,9 @@ const FrontmatterPropertiesPanel = ({
         if (existingPropertyKeys.has(normalized)) {
           return false;
         }
+        if (addTypeDraft === "formula" && !normalized.startsWith("f-")) {
+          return false;
+        }
         if (addTypeDraft === "text" && isReservedTextSuggestionKey(key)) {
           return false;
         }
@@ -5610,6 +5483,9 @@ const FrontmatterPropertiesPanel = ({
       kind: FrontmatterAddPropertyType;
       rawInput: string;
     }) => {
+      if (kind === "formula") {
+        return [];
+      }
       let rawSource = resolveValueSuggestionsForAddKey(key);
       if (kind === "cover") {
         rawSource = normalizeStableSuggestions([
@@ -5820,6 +5696,9 @@ const FrontmatterPropertiesPanel = ({
       if (!trimmed) {
         return [];
       }
+      if (kind === "formula") {
+        return [];
+      }
       if (kind === "number") {
         const parsed = Number(trimmed);
         return Number.isFinite(parsed) ? [String(parsed)] : [];
@@ -5899,6 +5778,10 @@ const FrontmatterPropertiesPanel = ({
       setAddError("Attribut-Name darf kein ':' enthalten.");
       return;
     }
+    if (addTypeDraft === "formula" && !nextKey.startsWith("f-")) {
+      setAddError("Formel-Attribute muessen mit 'f-' beginnen.");
+      return;
+    }
     if (addTypeDraft === "link") {
       const hasLinks = properties.some((property) => isLinkPropertyKey(property.key));
       if (hasLinks) {
@@ -5928,10 +5811,58 @@ const FrontmatterPropertiesPanel = ({
       setAddError(`Attribut "${nextKey}" existiert bereits.`);
       return;
     }
+    const formulaAttributeKeys = dedupeCaseInsensitive(addFormulaDefinition.attributeKeys);
+    if (addTypeDraft === "formula" && formulaAttributeKeys.length === 0) {
+      setAddError("Bitte mindestens ein Quell-Attribut fuer die Formel waehlen.");
+      return;
+    }
+
+    const normalizedFormulaSource = addTypeDraft === "formula"
+      ? (() => {
+          if (addFormulaDefinition.source.type === "explicit-folder") {
+            return {
+              type: "explicit-folder" as const,
+              path: addFormulaDefinition.source.path?.trim() ?? "",
+            };
+          }
+          if (addFormulaDefinition.source.type === "multi-folder") {
+            return {
+              type: "multi-folder" as const,
+              paths: dedupeCaseInsensitive(addFormulaDefinition.source.paths ?? []),
+            };
+          }
+          return { type: "current-folder" as const };
+        })()
+      : null;
+
+    if (
+      normalizedFormulaSource?.type === "explicit-folder" &&
+      !normalizedFormulaSource.path
+    ) {
+      setAddError("Bitte einen Ordner fuer die Formelquelle angeben.");
+      return;
+    }
+
+    if (
+      normalizedFormulaSource?.type === "multi-folder" &&
+      normalizedFormulaSource.paths.length === 0
+    ) {
+      setAddError("Bitte mindestens einen Ordner fuer die Formelquelle angeben.");
+      return;
+    }
+
+    const nextAddValue = addTypeDraft === "formula"
+      ? {
+          ...addFormulaDefinition,
+          attributeKeys: formulaAttributeKeys,
+          source: normalizedFormulaSource ?? addFormulaDefinition.source,
+        }
+      : nextValue;
+
     const updated = addFrontmatterProperty({
       markdown: sourceMarkdown,
       key: nextKey,
-      value: nextValue,
+      value: nextAddValue,
       kind: addTypeDraft,
     });
     if (updated.error) {
@@ -5955,16 +5886,19 @@ const FrontmatterPropertiesPanel = ({
       return;
     }
     updateKeySuggestionCache([nextKey]);
-    const normalizedValues = resolveSuggestionValuesFromAddedDraft({
-      kind: addTypeDraft,
-      value: nextValue,
-    });
-    if (normalizedValues.length > 0) {
-      updateSuggestionCache(nextKey, normalizedValues);
+    if (addTypeDraft !== "formula") {
+      const normalizedValues = resolveSuggestionValuesFromAddedDraft({
+        kind: addTypeDraft,
+        value: nextValue,
+      });
+      if (normalizedValues.length > 0) {
+        updateSuggestionCache(nextKey, normalizedValues);
+      }
     }
     setAddTypeDraft(FRONTMATTER_DEFAULT_ADD_TYPE);
     setAddKeyDraft("");
     setAddValueDraft("");
+    setAddFormulaDefinition(buildDefaultDatabaseFormulaDefinitionV1());
     setAddEditorModes({ type: "idle", key: "idle", value: "idle" });
     setOpenSuggestionsKey(null);
     setSuggestionCursor((current) => ({
@@ -5977,6 +5911,7 @@ const FrontmatterPropertiesPanel = ({
     addTypeDraft,
     addKeyDraft,
     addValueDraft,
+    addFormulaDefinition,
     controlsDisabled,
     addKeyInputRef,
     addValueInputRef,
@@ -6231,7 +6166,7 @@ const FrontmatterPropertiesPanel = ({
     kind: addTypeDraft,
     rawInput: isAddValueEditing ? addValueDraft : "",
   });
-  const isAddValueEnabled = selectedAddKey.length > 0;
+  const isAddValueEnabled = !isAddFormulaType && selectedAddKey.length > 0;
   const isAddKeyDropdownOpen =
     openSuggestionsKey === addKeySuggestionScope &&
     addKeySuggestions.length > 0 &&
@@ -7003,6 +6938,12 @@ const FrontmatterPropertiesPanel = ({
 
               const renderValueEditor = () => {
                 switch (property.kind) {
+                  case "formula":
+                    return (
+                      <div className="frontmatter-formula-value" title={formatFormulaPropertySummary(property.value)}>
+                        {formatFormulaPropertySummary(property.value)}
+                      </div>
+                    );
                   case "boolean":
                     return (
                       <label className="switch">
@@ -7481,7 +7422,7 @@ const FrontmatterPropertiesPanel = ({
               <div className="frontmatter-row frontmatter-links-row" role="row" data-frontmatter-key="__links__">
                 <div className="frontmatter-key" role="cell">
                   <span className="frontmatter-icon" aria-hidden="true">
-                    <FrontmatterLinkIcon />
+                    <FrontmatterPropertyIconView icon="link" />
                   </span>
                   <span className="frontmatter-label">Links</span>
                   <button
@@ -7713,6 +7654,18 @@ const FrontmatterPropertiesPanel = ({
                 </ul>
               ) : null}
             </div>
+            {isAddFormulaType ? (
+              <div className="frontmatter-add-formula-builder-wrap">
+                <FormulaAttributeBuilder
+                  idPrefix="frontmatter-add-formula"
+                  value={addFormulaDefinition}
+                  attributes={formulaBuilderAttributeOptions}
+                  folderSuggestions={formulaFolderSuggestions}
+                  disabled={controlsDisabled}
+                  onChange={setAddFormulaDefinition}
+                />
+              </div>
+            ) : null}
             <div className="frontmatter-add-input-wrap">
               <input
                 ref={addKeyInputRef}
@@ -7973,6 +7926,10 @@ const FrontmatterPropertiesPanel = ({
                             if (openSuggestionsKeyRef.current !== null) {
                               return;
                             }
+                            if (isAddFormulaType) {
+                              addKeyInputRef.current?.focus();
+                              return;
+                            }
                             addValueInputRef.current?.focus();
                           });
                         }}
@@ -7984,7 +7941,7 @@ const FrontmatterPropertiesPanel = ({
                 </ul>
               ) : null}
             </div>
-            <div className="frontmatter-add-input-wrap">
+            <div className="frontmatter-add-input-wrap" hidden={isAddFormulaType}>
               <input
                 ref={addValueInputRef}
                 type="text"
@@ -11334,7 +11291,7 @@ export const PreviewPanel = ({
                       >
                         <div className="markdown-hybrid-page-link-picker-search-shell">
                           <span className="markdown-hybrid-page-link-picker-search-icon" aria-hidden="true">
-                            <FrontmatterLinkIcon />
+                            <FrontmatterPropertyIconView icon="link" />
                           </span>
                           <input
                             ref={legacyMarkdownLinkPickerSearchInputRef}
@@ -11399,7 +11356,7 @@ export const PreviewPanel = ({
                                   title={candidate.target}
                                 >
                                   <span className="markdown-hybrid-page-link-picker-option-icon" aria-hidden="true">
-                                    <FrontmatterLinkIcon />
+                                    <FrontmatterPropertyIconView icon="link" />
                                   </span>
                                   <span className="markdown-hybrid-page-link-picker-option-text">
                                     <span className="markdown-hybrid-page-link-picker-option-label">

@@ -9,6 +9,7 @@ import {
   type DatabaseAttributeMeta,
   type DatabaseNormalizedFieldValue,
 } from "../database-types";
+import { type DatabaseFormulaGroupedCountEntry } from "../../formula/database-formula-types";
 
 type DatabaseCellRendererProps = {
   attribute: DatabaseAttributeMeta;
@@ -57,6 +58,27 @@ const renderStatusValue = (value: Extract<DatabaseNormalizedFieldValue, { raw: s
     return <span className="database-cell-empty">—</span>;
   }
   return <span className="database-cell-status">{raw}</span>;
+};
+
+const isGroupedCountEntry = (value: unknown): value is DatabaseFormulaGroupedCountEntry =>
+  Boolean(value) &&
+  typeof value === "object" &&
+  typeof (value as { value?: unknown }).value === "string" &&
+  typeof (value as { count?: unknown }).count === "number";
+
+const renderGroupedCountValue = (entries: DatabaseFormulaGroupedCountEntry[]) => {
+  if (entries.length === 0) {
+    return <span className="database-cell-empty">—</span>;
+  }
+  return (
+    <div className="database-cell-chip-list">
+      {entries.map((entry) => (
+        <span key={`${entry.value}:${entry.count}`} className="database-cell-chip">
+          {`${entry.count} × ${entry.value}`}
+        </span>
+      ))}
+    </div>
+  );
 };
 
 const renderPercentValue = (value: Extract<DatabaseNormalizedFieldValue, { value: number }>) => {
@@ -149,6 +171,13 @@ export const DatabaseCellRenderer = ({
 
   if (attribute.type === "image" && typeof value === "string") {
     return <span className="database-cell-image-text">{value}</span>;
+  }
+
+  if (attribute.type === "formula" && Array.isArray(value)) {
+    const groupedEntries = value.filter((entry) => isGroupedCountEntry(entry));
+    if (groupedEntries.length === value.length) {
+      return renderGroupedCountValue(groupedEntries);
+    }
   }
 
   if (attribute.type === "link" && typeof value === "string") {
