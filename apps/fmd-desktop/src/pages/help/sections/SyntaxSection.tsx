@@ -28,13 +28,12 @@ import {
 } from "../helpContent";
 
 type SyntaxSectionProps = {
+  language: AppLanguage;
   overviewBullets: string[];
   syntaxOverview: { title: LocalizedText; bullets?: LocalizedText[] };
   syntaxEntries: SyntaxEntry[];
   activeSyntax: SyntaxEntry | null;
-  syntaxLanguage: AppLanguage;
   setActiveSyntaxId: (value: string) => void;
-  setSyntaxLanguage: (value: AppLanguage) => void;
   handleCopy: (text: string, copyId: string) => void;
   copiedItemId: string | null;
   syntaxCopyExampleLabel: string;
@@ -49,13 +48,12 @@ type SyntaxSectionProps = {
 };
 
 export const SyntaxSection = ({
+  language,
   overviewBullets,
   syntaxOverview,
   syntaxEntries,
   activeSyntax,
-  syntaxLanguage,
   setActiveSyntaxId,
-  setSyntaxLanguage,
   handleCopy,
   copiedItemId,
   syntaxCopyExampleLabel,
@@ -70,7 +68,7 @@ export const SyntaxSection = ({
 }: SyntaxSectionProps) => {
   const hasOverview =
     (syntaxOverview.bullets?.length ?? 0) > 0 &&
-    (syntaxOverview.title?.[syntaxLanguage] ?? "").trim().length > 0;
+    (syntaxOverview.title?.[language] ?? "").trim().length > 0;
 
   return (
     <div className="help-detail-sections">
@@ -78,7 +76,7 @@ export const SyntaxSection = ({
         <div className="help-detail-section help-block">
           <div className="help-item-header">
             <span className="help-block-title">
-              {resolveText(syntaxOverview.title, syntaxLanguage)}
+              {resolveText(syntaxOverview.title, language)}
             </span>
           </div>
           {overviewBullets.length > 0 ? (
@@ -91,162 +89,142 @@ export const SyntaxSection = ({
         </div>
       ) : null}
       <div className="help-syntax-layout">
-      <div className="help-syntax-cards" role="tablist">
-        {syntaxEntries.map((entry) => {
-          const isActive = entry.id === activeSyntax?.id;
-          const entryTitle = resolveText(entry.title, syntaxLanguage);
-          const entrySnippet = entry.snippet
-            ? resolveText(entry.snippet, syntaxLanguage)
-            : "";
-          return (
-            <button
-              key={entry.id}
-              type="button"
-              className={`help-syntax-card${isActive ? " active" : ""}`}
-              onClick={() => setActiveSyntaxId(entry.id)}
-              role="tab"
-              aria-selected={isActive}
-            >
-              <div className="help-syntax-card-title">{entryTitle}</div>
-              <div className="help-syntax-card-meta">
-                <span className="help-syntax-card-label">{syntaxMarkersLabel}</span>
-                <div className="help-syntax-token-list">
-                  {entry.markers.map((marker) => (
-                    <span key={marker} className="help-syntax-token">
-                      {marker}
-                    </span>
-                  ))}
+        <div className="help-syntax-cards" role="tablist">
+          {syntaxEntries.map((entry) => {
+            const isActive = entry.id === activeSyntax?.id;
+            const entryTitle = resolveText(entry.title, language);
+            const entrySnippet = entry.snippet
+              ? resolveText(entry.snippet, language)
+              : "";
+            return (
+              <button
+                key={entry.id}
+                type="button"
+                className={`help-syntax-card${isActive ? " active" : ""}`}
+                onClick={() => setActiveSyntaxId(entry.id)}
+                role="tab"
+                aria-selected={isActive}
+              >
+                <div className="help-syntax-card-title">{entryTitle}</div>
+                <div className="help-syntax-card-meta">
+                  <span className="help-syntax-card-label">{syntaxMarkersLabel}</span>
+                  <div className="help-syntax-token-list">
+                    {entry.markers.map((marker) => (
+                      <span key={marker} className="help-syntax-token">
+                        {marker}
+                      </span>
+                    ))}
+                  </div>
                 </div>
+                <div className="help-syntax-card-rule">
+                  {resolveText(entry.keyRule, language)}
+                </div>
+                {entrySnippet ? (
+                  <pre className="help-syntax-snippet">{entrySnippet}</pre>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+        {activeSyntax ? (
+          <div className="help-syntax-detail">
+            <div className="help-syntax-detail-header">
+              <div className="help-syntax-detail-title">
+                {resolveText(activeSyntax.title, language)}
               </div>
-              <div className="help-syntax-card-rule">
-                {resolveText(entry.keyRule, syntaxLanguage)}
-              </div>
-              {entrySnippet ? (
-                <pre className="help-syntax-snippet">{entrySnippet}</pre>
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
-      {activeSyntax ? (
-        <div className="help-syntax-detail">
-          <div className="help-syntax-detail-header">
-            <div className="help-syntax-detail-title">
-              {resolveText(activeSyntax.title, syntaxLanguage)}
             </div>
-            <div className="help-syntax-lang-tabs">
-              <button
-                type="button"
-                className={`help-syntax-lang${
-                  syntaxLanguage === "en" ? " active" : ""
-                }`}
-                onClick={() => setSyntaxLanguage("en")}
-              >
-                EN
-              </button>
-              <button
-                type="button"
-                className={`help-syntax-lang${
-                  syntaxLanguage === "de" ? " active" : ""
-                }`}
-                onClick={() => setSyntaxLanguage("de")}
-              >
-                DE
-              </button>
-            </div>
-          </div>
-          <div className="help-syntax-section">
-            <div className="help-syntax-section-header">
-              <span className="label">{syntaxWhatItIsLabel}</span>
-            </div>
-            <p className="help-syntax-text">
-              {activeSyntax.detail[syntaxLanguage].whatItIs}
-            </p>
-          </div>
-          <div className="help-syntax-section">
-            <div className="help-syntax-section-header">
-              <span className="label">{syntaxRulesLabel}</span>
-            </div>
-            {activeSyntax.detail[syntaxLanguage].rulesNote ? (
-              <p className="help-syntax-text">
-                {activeSyntax.detail[syntaxLanguage].rulesNote}
-              </p>
-            ) : null}
-            <ul className="help-syntax-list">
-              {activeSyntax.detail[syntaxLanguage].rules.map((rule) => (
-                <li key={rule}>{rule}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="help-syntax-section">
-            <div className="help-syntax-section-header">
-              <span className="label">{syntaxPromptLabel}</span>
-              <button
-                type="button"
-                className="ghost small help-copy"
-                onClick={() =>
-                  handleCopy(
-                    activeSyntax.detail[syntaxLanguage].promptTemplate,
-                    `syntax-prompt-${activeSyntax.id}-${syntaxLanguage}`,
-                  )
-                }
-                aria-label={`${syntaxCopyPromptLabel}: ${resolveText(
-                  activeSyntax.title,
-                  syntaxLanguage,
-                )}`}
-              >
-                {copiedItemId ===
-                `syntax-prompt-${activeSyntax.id}-${syntaxLanguage}`
-                  ? syntaxCopiedLabel
-                  : syntaxCopyPromptLabel}
-              </button>
-            </div>
-            <pre className="help-code">
-              {activeSyntax.detail[syntaxLanguage].promptTemplate}
-            </pre>
-          </div>
-          <div className="help-syntax-section">
-            <div className="help-syntax-section-header">
-              <span className="label">{syntaxExampleLabel}</span>
-              <button
-                type="button"
-                className="ghost small help-copy"
-                onClick={() =>
-                  handleCopy(
-                    activeSyntax.detail[syntaxLanguage].example,
-                    `syntax-example-${activeSyntax.id}-${syntaxLanguage}`,
-                  )
-                }
-                aria-label={`${syntaxCopyExampleLabel}: ${resolveText(
-                  activeSyntax.title,
-                  syntaxLanguage,
-                )}`}
-              >
-                {copiedItemId ===
-                `syntax-example-${activeSyntax.id}-${syntaxLanguage}`
-                  ? syntaxCopiedLabel
-                  : syntaxCopyExampleLabel}
-              </button>
-            </div>
-            <pre className="help-code">
-              {activeSyntax.detail[syntaxLanguage].example}
-            </pre>
-          </div>
-          {activeSyntax.detail[syntaxLanguage].mistakes?.length ? (
             <div className="help-syntax-section">
               <div className="help-syntax-section-header">
-                <span className="label">{syntaxMistakesLabel}</span>
+                <span className="label">{syntaxWhatItIsLabel}</span>
               </div>
+              <p className="help-syntax-text">
+                {activeSyntax.detail[language].whatItIs}
+              </p>
+            </div>
+            <div className="help-syntax-section">
+              <div className="help-syntax-section-header">
+                <span className="label">{syntaxRulesLabel}</span>
+              </div>
+              {activeSyntax.detail[language].rulesNote ? (
+                <p className="help-syntax-text">
+                  {activeSyntax.detail[language].rulesNote}
+                </p>
+              ) : null}
               <ul className="help-syntax-list">
-                {activeSyntax.detail[syntaxLanguage].mistakes?.map((mistake) => (
-                  <li key={mistake}>{mistake}</li>
+                {activeSyntax.detail[language].rules.map((rule) => (
+                  <li key={rule}>{rule}</li>
                 ))}
               </ul>
             </div>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
+            <div className="help-syntax-section">
+              <div className="help-syntax-section-header">
+                <span className="label">{syntaxPromptLabel}</span>
+                <button
+                  type="button"
+                  className="ghost small help-copy"
+                  onClick={() =>
+                    handleCopy(
+                      activeSyntax.detail[language].promptTemplate,
+                      `syntax-prompt-${activeSyntax.id}-${language}`,
+                    )
+                  }
+                  aria-label={`${syntaxCopyPromptLabel}: ${resolveText(
+                    activeSyntax.title,
+                    language,
+                  )}`}
+                >
+                  {copiedItemId ===
+                  `syntax-prompt-${activeSyntax.id}-${language}`
+                    ? syntaxCopiedLabel
+                    : syntaxCopyPromptLabel}
+                </button>
+              </div>
+              <pre className="help-code">
+                {activeSyntax.detail[language].promptTemplate}
+              </pre>
+            </div>
+            <div className="help-syntax-section">
+              <div className="help-syntax-section-header">
+                <span className="label">{syntaxExampleLabel}</span>
+                <button
+                  type="button"
+                  className="ghost small help-copy"
+                  onClick={() =>
+                    handleCopy(
+                      activeSyntax.detail[language].example,
+                      `syntax-example-${activeSyntax.id}-${language}`,
+                    )
+                  }
+                  aria-label={`${syntaxCopyExampleLabel}: ${resolveText(
+                    activeSyntax.title,
+                    language,
+                  )}`}
+                >
+                  {copiedItemId ===
+                  `syntax-example-${activeSyntax.id}-${language}`
+                    ? syntaxCopiedLabel
+                    : syntaxCopyExampleLabel}
+                </button>
+              </div>
+              <pre className="help-code">
+                {activeSyntax.detail[language].example}
+              </pre>
+            </div>
+            {activeSyntax.detail[language].mistakes?.length ? (
+              <div className="help-syntax-section">
+                <div className="help-syntax-section-header">
+                  <span className="label">{syntaxMistakesLabel}</span>
+                </div>
+                <ul className="help-syntax-list">
+                  {activeSyntax.detail[language].mistakes?.map((mistake) => (
+                    <li key={mistake}>{mistake}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 };

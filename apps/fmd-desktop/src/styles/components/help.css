@@ -543,32 +543,6 @@
   font-size: 1rem;
 }
 
-.help-syntax-lang-tabs {
-  display: flex;
-  gap: 6px;
-}
-
-.help-syntax-lang {
-  border-radius: 999px;
-  border: 1px solid var(--line-soft);
-  padding: 4px 10px;
-  font-size: 0.75rem;
-  color: var(--muted);
-  background: transparent;
-  cursor: pointer;
-}
-
-.help-syntax-lang:focus-visible {
-  outline: 2px solid var(--accent-focus-ring);
-  outline-offset: 2px;
-}
-
-.help-syntax-lang.active {
-  border-color: var(--accent-border);
-  color: var(--ink);
-  background: var(--panel);
-}
-
 .help-syntax-section {
   display: flex;
   flex-direction: column;
@@ -603,10 +577,4 @@
   flex-direction: column;
   gap: 6px;
   color: var(--muted);
-}
-
-@media (max-width: 960px) {
-  .help-syntax-layout {
-    grid-template-columns: 1fr;
-  }
 }

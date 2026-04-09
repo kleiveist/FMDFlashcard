@@ -45,8 +45,6 @@ type HelpDetailSectionProps = {
   syntaxOverview: { title: LocalizedText; bullets?: LocalizedText[] };
   activeSyntax: SyntaxEntry | null;
   setActiveSyntaxId: (value: string) => void;
-  syntaxLanguage: AppLanguage;
-  setSyntaxLanguage: (value: AppLanguage) => void;
   copyLabel: string;
   copiedLabel: string;
   copiedItemId: string | null;
@@ -75,8 +73,6 @@ export const HelpDetailSection = ({
   syntaxOverview,
   activeSyntax,
   setActiveSyntaxId,
-  syntaxLanguage,
-  setSyntaxLanguage,
   copyLabel,
   copiedLabel,
   copiedItemId,
@@ -105,7 +101,7 @@ export const HelpDetailSection = ({
           <>
             <span className="help-crumb-sep">&gt;</span>
             <span className="help-breadcrumb-current help-breadcrumb-leaf">
-              {resolveText(activeSyntax.title, syntaxLanguage)}
+              {resolveText(activeSyntax.title, language)}
             </span>
           </>
         ) : null}
@@ -124,13 +120,12 @@ export const HelpDetailSection = ({
     <p className="muted">{resolveText(activeTopic.summary, language)}</p>
     {isSyntaxTopic ? (
       <SyntaxSection
+        language={language}
         overviewBullets={overviewBullets}
         syntaxOverview={syntaxOverview}
         syntaxEntries={syntaxEntries}
         activeSyntax={activeSyntax}
-        syntaxLanguage={syntaxLanguage}
         setActiveSyntaxId={setActiveSyntaxId}
-        setSyntaxLanguage={setSyntaxLanguage}
         handleCopy={handleCopy}
         copiedItemId={copiedItemId}
         syntaxCopyExampleLabel={syntaxCopyExampleLabel}

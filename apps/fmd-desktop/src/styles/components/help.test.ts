@@ -24,4 +24,13 @@ describe("help.css", () => {
     expect(helpCss).toContain("max-width: min(645px, calc(100vw - 32px));");
     expect(helpCss).toContain("max-height: min(610px, calc(100vh - 32px));");
   });
+
+  it("keeps help syntax layout consistently two-column", () => {
+    expect(helpCss).toContain(
+      "grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);",
+    );
+    expect(helpCss).not.toMatch(
+      /@media\s*\(max-width:\s*960px\)\s*\{[\s\S]*?\.help-syntax-layout/,
+    );
+  });
 });

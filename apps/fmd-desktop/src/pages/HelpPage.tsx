@@ -24,7 +24,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useAppState } from "../components/AppStateProvider";
 import {
-  AppLanguage,
   DEFAULT_HELP_TOPIC_ID,
   flashcardSyntaxEntries,
   flashcardSyntaxOverview,
@@ -51,9 +50,6 @@ export const HelpPage = ({ onCloseHelp }: HelpPageProps) => {
   );
   const [structuredSyntaxId, setStructuredSyntaxId] = useState<string | null>(
     structuredSyntaxEntries[0]?.id ?? null,
-  );
-  const [syntaxLanguage, setSyntaxLanguage] = useState<AppLanguage>(
-    settings.language,
   );
   const [copiedItemId, setCopiedItemId] = useState<string | null>(null);
   const copyTimeoutRef = useRef<number | null>(null);
@@ -99,19 +95,19 @@ export const HelpPage = ({ onCloseHelp }: HelpPageProps) => {
   const copiedLabel = resolveText(helpLabels.copied, language);
   const syntaxCopyExampleLabel = resolveText(
     helpLabels.copyExample,
-    syntaxLanguage,
+    language,
   );
-  const syntaxCopyPromptLabel = resolveText(helpLabels.copyPrompt, syntaxLanguage);
-  const syntaxCopiedLabel = resolveText(helpLabels.copied, syntaxLanguage);
-  const syntaxPromptLabel = resolveText(helpLabels.promptTemplate, syntaxLanguage);
-  const syntaxExampleLabel = resolveText(helpLabels.example, syntaxLanguage);
-  const syntaxRulesLabel = resolveText(helpLabels.rules, syntaxLanguage);
-  const syntaxWhatItIsLabel = resolveText(helpLabels.whatItIs, syntaxLanguage);
-  const syntaxMistakesLabel = resolveText(helpLabels.mistakes, syntaxLanguage);
-  const syntaxMarkersLabel = resolveText(helpLabels.markers, syntaxLanguage);
+  const syntaxCopyPromptLabel = resolveText(helpLabels.copyPrompt, language);
+  const syntaxCopiedLabel = resolveText(helpLabels.copied, language);
+  const syntaxPromptLabel = resolveText(helpLabels.promptTemplate, language);
+  const syntaxExampleLabel = resolveText(helpLabels.example, language);
+  const syntaxRulesLabel = resolveText(helpLabels.rules, language);
+  const syntaxWhatItIsLabel = resolveText(helpLabels.whatItIs, language);
+  const syntaxMistakesLabel = resolveText(helpLabels.mistakes, language);
+  const syntaxMarkersLabel = resolveText(helpLabels.markers, language);
   const syntaxOverviewBullets = resolveList(
     syntaxOverview.bullets,
-    syntaxLanguage,
+    language,
   );
 
   const handleCopy = async (text: string, copyId: string) => {
@@ -148,7 +144,6 @@ export const HelpPage = ({ onCloseHelp }: HelpPageProps) => {
         }
         return flashcardSyntaxEntries[0]?.id ?? null;
       });
-      setSyntaxLanguage(settings.language);
     }
     if (normalizedActiveTopic?.id === "structured-syntax") {
       setStructuredSyntaxId((prev) => {
@@ -157,9 +152,8 @@ export const HelpPage = ({ onCloseHelp }: HelpPageProps) => {
         }
         return structuredSyntaxEntries[0]?.id ?? null;
       });
-      setSyntaxLanguage(settings.language);
     }
-  }, [normalizedActiveTopic?.id, settings.language]);
+  }, [normalizedActiveTopic?.id]);
 
   useEffect(
     () => () => {
@@ -199,8 +193,6 @@ export const HelpPage = ({ onCloseHelp }: HelpPageProps) => {
                 setFlashcardSyntaxId(value);
               }
             }}
-            syntaxLanguage={syntaxLanguage}
-            setSyntaxLanguage={setSyntaxLanguage}
             copyLabel={copyLabel}
             copiedLabel={copiedLabel}
             copiedItemId={copiedItemId}

@@ -5,7 +5,7 @@
  * - Rendert die Seite Load Vault Guide Panel.
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   AppLanguage,
   LoadVaultTabId,
@@ -23,15 +23,10 @@ export const LoadVaultGuidePanel = ({ language }: LoadVaultGuidePanelProps) => {
   const [selectedTabId, setSelectedTabId] = useState<LoadVaultTabId>(
     defaultTabId,
   );
-  const [tabLanguage, setTabLanguage] = useState<AppLanguage>(language);
   const selectedTab =
     LOAD_VAULT_TABS[selectedTabId] ?? LOAD_VAULT_TABS[defaultTabId];
   const selectionError =
     !selectedTab || !defaultTabId || !LOAD_VAULT_TABS[defaultTabId];
-
-  useEffect(() => {
-    setTabLanguage(language);
-  }, [language]);
 
   return (
     <div className="help-detail-sections">
@@ -50,10 +45,10 @@ export const LoadVaultGuidePanel = ({ language }: LoadVaultGuidePanelProps) => {
                 aria-selected={isActive}
               >
                 <div className="help-syntax-card-title">
-                  {resolveText(tab.title, tabLanguage)}
+                  {resolveText(tab.title, language)}
                 </div>
                 <div className="help-syntax-card-rule">
-                  {resolveText(tab.summary, tabLanguage)}
+                  {resolveText(tab.summary, language)}
                 </div>
               </button>
             );
@@ -74,46 +69,26 @@ export const LoadVaultGuidePanel = ({ language }: LoadVaultGuidePanelProps) => {
             <>
               <div className="help-syntax-detail-header">
                 <div className="help-syntax-detail-title">
-                  {resolveText(selectedTab.title, tabLanguage)}
-                </div>
-                <div className="help-syntax-lang-tabs">
-                  <button
-                    type="button"
-                    className={`help-syntax-lang${
-                      tabLanguage === "en" ? " active" : ""
-                    }`}
-                    onClick={() => setTabLanguage("en")}
-                  >
-                    EN
-                  </button>
-                  <button
-                    type="button"
-                    className={`help-syntax-lang${
-                      tabLanguage === "de" ? " active" : ""
-                    }`}
-                    onClick={() => setTabLanguage("de")}
-                  >
-                    DE
-                  </button>
+                  {resolveText(selectedTab.title, language)}
                 </div>
               </div>
               {selectedTab.blocks.map((block) => (
                 <div key={block.id} className="help-syntax-section">
                   <div className="help-syntax-section-header">
                     <span className="label">
-                      {resolveText(block.title, tabLanguage)}
+                      {resolveText(block.title, language)}
                     </span>
                   </div>
                   {block.text ? (
                     <p className="help-syntax-text">
-                      {resolveText(block.text, tabLanguage)}
+                      {resolveText(block.text, language)}
                     </p>
                   ) : null}
                   {block.bullets && block.bullets.length > 0 ? (
                     <ul className="help-syntax-list">
                       {block.bullets.map((item, index) => (
                         <li key={`${block.id}-${index}`}>
-                          {resolveText(item, tabLanguage)}
+                          {resolveText(item, language)}
                         </li>
                       ))}
                     </ul>

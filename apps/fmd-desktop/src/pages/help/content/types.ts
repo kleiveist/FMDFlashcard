@@ -61,26 +61,48 @@ export type HelpTopic = {
   icon?: string;
 };
 
-export type AppSectionId =
+export type AppSectionCategoryId = "editor" | "study" | "monitoring";
+
+export type AppSectionItemId =
+  | "markdown-view-modus"
+  | "markdown-code-editor"
+  | "markdown-editor"
+  | "markdown-hybrid-editor"
+  | "exam-editor"
+  | "exam"
   | "flashcard"
   | "fast-flashcard"
-  | "spaced-repetition"
-  | "exam";
+  | "repetition"
+  | "card-monitoring"
+  | "points-profiles";
 
-export type AppSectionDetail = {
+export type AppSectionDetailAction = {
+  id: string;
+  label: LocalizedText;
+  description: LocalizedText;
+};
+
+export type AppSectionDetailData = {
   whatIs: LocalizedText;
   purpose: LocalizedText[];
   whatYouSee: LocalizedText;
+  keyBehavior?: LocalizedText;
   workflow: LocalizedText;
-  showCards: LocalizedText;
   tips?: LocalizedText;
+  actions?: AppSectionDetailAction[];
 };
 
-export type AppSectionData = {
+export type AppSectionItemData = {
   title: LocalizedText;
   summary: LocalizedText;
   action: LocalizedText;
-  detail: AppSectionDetail;
+  detail: AppSectionDetailData;
+};
+
+export type AppSectionCategoryData = {
+  title: LocalizedText;
+  summary: LocalizedText;
+  itemOrder: AppSectionItemId[];
 };
 
 export type LoadVaultTabId = "vault-and-index" | "data-and-sync";
