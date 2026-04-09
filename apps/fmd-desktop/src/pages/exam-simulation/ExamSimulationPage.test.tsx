@@ -128,6 +128,7 @@ const createViewModel = () => {
   const noop = vi.fn();
   return {
     settings: {
+      language: "en",
       keyboardShortcuts: { bindings: {} },
       examHelpEnabled: true,
       examShowTimeline: true,
@@ -287,6 +288,8 @@ describe("ExamSimulationPage popup sync", () => {
     expect(popupProps?.selectedProfileId).toBe("profile-1");
     expect(sidebarProps?.combinationMode).toBe("fully-mixed");
     expect(popupProps?.combinationMode).toBe("fully-mixed");
+    expect(sidebarProps?.language).toBe("en");
+    expect(popupProps?.language).toBe("en");
     expect(sidebarProps?.hidePanelStatus).toBeUndefined();
     expect(popupProps?.hidePanelStatus).toBeUndefined();
     expect(sidebarProps?.compactSummary).toEqual({

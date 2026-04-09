@@ -1156,6 +1156,112 @@ describe("ExamFilePanel", () => {
     cleanup();
   });
 
+  it("shows the english mode tooltip after hover delay and closes it on leave", () => {
+    vi.useFakeTimers();
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files,
+        listState: "idle",
+        listError: "",
+        selectedPaths: ["/vault/a.md"],
+        vaultPath: "/vault",
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile: vi.fn(),
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile: vi.fn(),
+        combinationMode: "fully-mixed",
+        onCombinationModeChange: vi.fn(),
+        language: "en",
+      }),
+    );
+
+    try {
+      const status = container.querySelector(".exam-file-panel-status");
+      const nestedButton = Array.from(
+        status?.querySelectorAll<HTMLButtonElement>("button") ?? [],
+      ).find((button) => button.textContent?.trim() === "Nested");
+      const anchor = nestedButton?.closest<HTMLElement>(".ui-tooltip-anchor");
+      expect(anchor).toBeTruthy();
+
+      act(() => {
+        anchor?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+      });
+      expect(document.body.querySelector('[role="tooltip"]')).toBeNull();
+
+      act(() => {
+        vi.advanceTimersByTime(449);
+      });
+      expect(document.body.querySelector('[role="tooltip"]')).toBeNull();
+
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(document.body.textContent).toContain(
+        "Runs your selected rows as groups. Inside each group, tasks are matched by task number and one task per number is picked in order.",
+      );
+
+      act(() => {
+        anchor?.dispatchEvent(
+          new MouseEvent("mouseout", {
+            bubbles: true,
+            relatedTarget: document.body,
+          }),
+        );
+      });
+      expect(document.body.querySelector('[role="tooltip"]')).toBeNull();
+    } finally {
+      cleanup();
+      vi.useRealTimers();
+    }
+  });
+
+  it("renders german mode tooltip copy when language=de", () => {
+    vi.useFakeTimers();
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files,
+        listState: "idle",
+        listError: "",
+        selectedPaths: ["/vault/a.md"],
+        vaultPath: "/vault",
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile: vi.fn(),
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile: vi.fn(),
+        combinationMode: "fully-mixed",
+        onCombinationModeChange: vi.fn(),
+        language: "de",
+      }),
+    );
+
+    try {
+      const status = container.querySelector(".exam-file-panel-status");
+      const fullyMixedButton = Array.from(
+        status?.querySelectorAll<HTMLButtonElement>("button") ?? [],
+      ).find((button) => button.textContent?.trim() === "Fully mixed");
+      const anchor = fullyMixedButton?.closest<HTMLElement>(".ui-tooltip-anchor");
+      expect(anchor).toBeTruthy();
+
+      act(() => {
+        anchor?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+        vi.advanceTimersByTime(450);
+      });
+
+      expect(document.body.textContent).toContain(
+        "Legt alle Aufgaben aus allen ausgewählten Dateien in einen gemeinsamen Pool und mischt alles vollständig.",
+      );
+    } finally {
+      cleanup();
+      vi.useRealTimers();
+    }
+  });
+
   it("renders selected order in compact rows without step labels", () => {
     const extendedFiles = [
       {

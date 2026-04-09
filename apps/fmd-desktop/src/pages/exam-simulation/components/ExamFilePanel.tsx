@@ -17,6 +17,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import { Tooltip } from "../../../components/Tooltip";
 import type { ExamCombinationMode } from "../../../lib/examMixedSession";
 import { compareNaturalPath } from "../../../lib/naturalSort";
 import type { LoadState } from "../../../lib/types";
@@ -52,6 +53,8 @@ type ExamFileOpenOptions = {
   openInNewTab?: boolean;
 };
 
+type AppLanguage = "de" | "en";
+
 type ExamFilePanelProps = {
   files: ExamFileEntry[];
   listState: LoadState;
@@ -77,6 +80,7 @@ type ExamFilePanelProps = {
   listScrollMode?: "internal" | "external";
   combinationMode?: ExamCombinationMode;
   onCombinationModeChange?: (mode: ExamCombinationMode) => void;
+  language?: AppLanguage;
   className?: string;
   hidePanelStatus?: boolean;
 };
@@ -110,6 +114,30 @@ const FILE_LIST_OVERSCAN = 5;
 const FILE_LIST_VISIBLE_ROWS = 8;
 const FILE_VIEWPORT_TOOLBAR_HEIGHT = 72;
 const FILE_ROW_COLUMNS = 3;
+const EXAM_MODE_TOOLTIP_DELAY_MS = 450;
+
+const EXAM_MODE_TOOLTIP_COPY: Record<AppLanguage, Record<ExamCombinationMode, string>> = {
+  en: {
+    nested:
+      "Runs your selected rows as groups. Inside each group, tasks are matched by task number and one task per number is picked in order.",
+    "sequential-shuffled":
+      "Keeps the selected file order. Tasks inside each file are shuffled before being appended.",
+    sequential:
+      "Keeps the selected file order and each file's original task order.",
+    "fully-mixed":
+      "Puts all tasks from all selected files into one pool and shuffles everything.",
+  },
+  de: {
+    nested:
+      "Führt deine ausgewählten Zeilen als Gruppen aus. Innerhalb jeder Gruppe werden Aufgaben nach Aufgabennummer abgeglichen und pro Nummer wird eine Aufgabe in Reihenfolge gewählt.",
+    "sequential-shuffled":
+      "Behält die Reihenfolge der ausgewählten Dateien bei. Aufgaben innerhalb jeder Datei werden vor dem Anhängen gemischt.",
+    sequential:
+      "Behält die Reihenfolge der ausgewählten Dateien und die originale Aufgabenreihenfolge je Datei bei.",
+    "fully-mixed":
+      "Legt alle Aufgaben aus allen ausgewählten Dateien in einen gemeinsamen Pool und mischt alles vollständig.",
+  },
+};
 
 export const ExamFilePanel = ({
   files,
@@ -133,6 +161,7 @@ export const ExamFilePanel = ({
   listScrollMode = "internal",
   combinationMode,
   onCombinationModeChange,
+  language = "en",
   className,
   hidePanelStatus = false,
 }: ExamFilePanelProps) => {
@@ -800,42 +829,62 @@ export const ExamFilePanel = ({
           <div className="exam-file-panel-status">
             {combinationMode && onCombinationModeChange ? (
               <div className="exam-file-panel-mode-grid">
-                <button
-                  type="button"
-                  className={`pill pill-button exam-selected-mode-nested ${
-                    combinationMode === "nested" ? "active" : ""
-                  }`}
-                  onClick={() => onCombinationModeChange("nested")}
+                <Tooltip
+                  content={EXAM_MODE_TOOLTIP_COPY[language].nested}
+                  openDelayMs={EXAM_MODE_TOOLTIP_DELAY_MS}
                 >
-                  Nested
-                </button>
-                <button
-                  type="button"
-                  className={`pill pill-button ${
-                    combinationMode === "sequential-shuffled" ? "active" : ""
-                  }`}
-                  onClick={() => onCombinationModeChange("sequential-shuffled")}
+                  <button
+                    type="button"
+                    className={`pill pill-button exam-selected-mode-nested ${
+                      combinationMode === "nested" ? "active" : ""
+                    }`}
+                    onClick={() => onCombinationModeChange("nested")}
+                  >
+                    Nested
+                  </button>
+                </Tooltip>
+                <Tooltip
+                  content={EXAM_MODE_TOOLTIP_COPY[language]["sequential-shuffled"]}
+                  openDelayMs={EXAM_MODE_TOOLTIP_DELAY_MS}
                 >
-                  Sequential + internal shuffle
-                </button>
-                <button
-                  type="button"
-                  className={`pill pill-button ${
-                    combinationMode === "sequential" ? "active" : ""
-                  }`}
-                  onClick={() => onCombinationModeChange("sequential")}
+                  <button
+                    type="button"
+                    className={`pill pill-button ${
+                      combinationMode === "sequential-shuffled" ? "active" : ""
+                    }`}
+                    onClick={() => onCombinationModeChange("sequential-shuffled")}
+                  >
+                    Sequential + internal shuffle
+                  </button>
+                </Tooltip>
+                <Tooltip
+                  content={EXAM_MODE_TOOLTIP_COPY[language].sequential}
+                  openDelayMs={EXAM_MODE_TOOLTIP_DELAY_MS}
                 >
-                  Sequential
-                </button>
-                <button
-                  type="button"
-                  className={`pill pill-button ${
-                    combinationMode === "fully-mixed" ? "active" : ""
-                  }`}
-                  onClick={() => onCombinationModeChange("fully-mixed")}
+                  <button
+                    type="button"
+                    className={`pill pill-button ${
+                      combinationMode === "sequential" ? "active" : ""
+                    }`}
+                    onClick={() => onCombinationModeChange("sequential")}
+                  >
+                    Sequential
+                  </button>
+                </Tooltip>
+                <Tooltip
+                  content={EXAM_MODE_TOOLTIP_COPY[language]["fully-mixed"]}
+                  openDelayMs={EXAM_MODE_TOOLTIP_DELAY_MS}
                 >
-                  Fully mixed
-                </button>
+                  <button
+                    type="button"
+                    className={`pill pill-button ${
+                      combinationMode === "fully-mixed" ? "active" : ""
+                    }`}
+                    onClick={() => onCombinationModeChange("fully-mixed")}
+                  >
+                    Fully mixed
+                  </button>
+                </Tooltip>
               </div>
             ) : null}
             <div className="exam-file-panel-kpis">

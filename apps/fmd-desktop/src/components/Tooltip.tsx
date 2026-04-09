@@ -5,6 +5,7 @@ type TooltipProps = {
   content: ReactNode;
   children: ReactNode;
   placement?: "top" | "bottom";
+  openDelayMs?: number;
 };
 
 type TooltipPosition = {
@@ -16,11 +17,49 @@ export const Tooltip = ({
   content,
   children,
   placement = "top",
+  openDelayMs = 0,
 }: TooltipProps) => {
   const tooltipId = useId();
   const anchorRef = useRef<HTMLSpanElement | null>(null);
+  const openTimerRef = useRef<number | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState<TooltipPosition | null>(null);
+
+  const clearOpenTimer = useCallback(() => {
+    if (openTimerRef.current === null || typeof window === "undefined") {
+      return;
+    }
+    window.clearTimeout(openTimerRef.current);
+    openTimerRef.current = null;
+  }, []);
+
+  const openFromHover = useCallback(() => {
+    clearOpenTimer();
+    if (openDelayMs <= 0 || typeof window === "undefined") {
+      setIsOpen(true);
+      return;
+    }
+    openTimerRef.current = window.setTimeout(() => {
+      setIsOpen(true);
+      openTimerRef.current = null;
+    }, openDelayMs);
+  }, [clearOpenTimer, openDelayMs]);
+
+  const closeTooltip = useCallback(() => {
+    clearOpenTimer();
+    setIsOpen(false);
+  }, [clearOpenTimer]);
+  const openFromFocus = useCallback(() => {
+    clearOpenTimer();
+    setIsOpen(true);
+  }, [clearOpenTimer]);
+
+  useEffect(
+    () => () => {
+      clearOpenTimer();
+    },
+    [clearOpenTimer],
+  );
 
   const updatePosition = useCallback(() => {
     const anchor = anchorRef.current;
@@ -56,10 +95,10 @@ export const Tooltip = ({
       <span
         ref={anchorRef}
         className="ui-tooltip-anchor"
-        onMouseEnter={() => setIsOpen(true)}
-        onMouseLeave={() => setIsOpen(false)}
-        onFocus={() => setIsOpen(true)}
-        onBlur={() => setIsOpen(false)}
+        onMouseEnter={openFromHover}
+        onMouseLeave={closeTooltip}
+        onFocus={openFromFocus}
+        onBlur={closeTooltip}
         aria-describedby={isOpen ? tooltipId : undefined}
       >
         {children}

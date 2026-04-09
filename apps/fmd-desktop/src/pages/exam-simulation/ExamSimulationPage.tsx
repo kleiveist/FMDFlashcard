@@ -933,6 +933,7 @@ export const ExamSimulationPage = ({
               onToggleFile={handleToggleExamSelection}
               combinationMode={combinationMode}
               onCombinationModeChange={handleCombinationModeChange}
+              language={settings.language}
               className="exam-files-panel"
             />
           </div>
@@ -950,6 +951,7 @@ export const ExamSimulationPage = ({
           onToggleFile={handleToggleExamSelection}
           combinationMode={combinationMode}
           onCombinationModeChange={handleCombinationModeChange}
+          language={settings.language}
         />
       </NoteModal>
       <NoteModal
