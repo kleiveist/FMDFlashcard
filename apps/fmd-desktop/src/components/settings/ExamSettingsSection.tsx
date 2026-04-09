@@ -29,8 +29,14 @@ import {
   type ExamAiEvaluation,
 } from "../../features/settings/useAppSettings";
 import type { AutoCardType, AutoCardTypeMap } from "../../lib/exam/autoCards";
+import {
+  formatSettingsText,
+  type SettingsLanguage,
+  tSettings,
+} from "../../features/settings/settingsI18n";
 
 type ExamSettingsPanelProps = {
+  language: SettingsLanguage;
   maxTotalPoints: number;
   taskCount: number;
   taskPoints: number[];
@@ -44,6 +50,7 @@ type ExamSettingsPanelProps = {
 };
 
 type ExamTogglesPanelProps = {
+  language: SettingsLanguage;
   resetStatisticsPending?: boolean;
   onResetStatistics?: () => void;
   timeLimitEnabled: boolean;
@@ -66,6 +73,7 @@ const clampInput = (value: string) => {
 };
 
 export const ExamSettingsPanel = ({
+  language,
   maxTotalPoints,
   taskCount,
   taskPoints,
@@ -93,14 +101,18 @@ export const ExamSettingsPanel = ({
     <section className="panel exam-settings-panel" id="exam-settings-section">
       <div className="panel-header">
         <div>
-          <h2>Exam Settings</h2>
-          <p className="muted">Define the max score and task point allocation.</p>
+          <h2>{tSettings(language, "settings.examSettings.title")}</h2>
+          <p className="muted">
+            {tSettings(language, "settings.examSettings.description")}
+          </p>
         </div>
       </div>
       <div className="panel-body">
         <div className="exam-settings-grid">
           <label className="setting-inline">
-            <span className="label">MAX TOTAL POINTS</span>
+            <span className="label">
+              {tSettings(language, "settings.examSettings.maxTotalPoints")}
+            </span>
             <input
               type="number"
               min={0}
@@ -111,7 +123,9 @@ export const ExamSettingsPanel = ({
             />
           </label>
           <label className="setting-inline">
-            <span className="label">NUMBER OF TASKS</span>
+            <span className="label">
+              {tSettings(language, "settings.examSettings.numberOfTasks")}
+            </span>
             <input
               type="number"
               min={1}
@@ -123,7 +137,9 @@ export const ExamSettingsPanel = ({
             />
           </label>
           <label className="setting-inline">
-            <span className="label">DURATION</span>
+            <span className="label">
+              {tSettings(language, "settings.examSettings.duration")}
+            </span>
             <div className="exam-time-input">
               <input
                 type="number"
@@ -134,7 +150,9 @@ export const ExamSettingsPanel = ({
                 id="exam-duration"
                 onChange={(event) => onDurationChange(event.target.value)}
               />
-              <span className="muted">min</span>
+              <span className="muted">
+                {tSettings(language, "settings.examSettings.minutesShort")}
+              </span>
             </div>
           </label>
         </div>
@@ -142,7 +160,11 @@ export const ExamSettingsPanel = ({
         <div className="exam-points-table" id="exam-task-points">
           {taskPoints.map((points, index) => (
             <div key={`exam-task-point-${index}`} className="exam-points-row">
-              <span className="label">Task {index + 1}</span>
+              <span className="label">
+                {formatSettingsText(language, "settings.examSettings.taskLabel", {
+                  index: index + 1,
+                })}
+              </span>
               <input
                 type="number"
                 min={0}
@@ -157,9 +179,16 @@ export const ExamSettingsPanel = ({
 
         <div className="exam-settings-summary">
           <div className="muted">
-            Sum assigned: {sumAssigned} / Max total: {maxTotalPoints}
+            {formatSettingsText(language, "settings.examSettings.summaryAssigned", {
+              assigned: sumAssigned,
+              max: maxTotalPoints,
+            })}
           </div>
-          <div className="muted">Remaining: {remaining}</div>
+          <div className="muted">
+            {formatSettingsText(language, "settings.examSettings.summaryRemaining", {
+              remaining,
+            })}
+          </div>
         </div>
 
         <div className="exam-settings-actions">
@@ -169,13 +198,13 @@ export const ExamSettingsPanel = ({
             onClick={onResetStatistics}
             disabled={resetStatisticsPending}
           >
-            Reset Statistics
+            {tSettings(language, "settings.examSettings.resetStatistics")}
           </button>
         </div>
 
         {!isValid ? (
           <div className="error">
-            Assigned points must match the max total before starting an exam.
+            {tSettings(language, "settings.examSettings.invalid")}
           </div>
         ) : null}
       </div>
@@ -184,6 +213,7 @@ export const ExamSettingsPanel = ({
 };
 
 export const ExamTogglesPanel = ({
+  language,
   resetStatisticsPending,
   onResetStatistics,
   timeLimitEnabled,
@@ -199,12 +229,14 @@ export const ExamTogglesPanel = ({
   <section className="panel exam-settings-toggles-panel" id="exam-settings-section">
     <div className="panel-header">
       <div>
-        <h2>Exam Toggles</h2>
+        <h2>{tSettings(language, "settings.examToggles.title")}</h2>
       </div>
     </div>
     <div className="panel-body">
       <div className="setting-row">
-        <span className="label">TIME LIMIT</span>
+        <span className="label">
+          {tSettings(language, "settings.examToggles.timeLimit")}
+        </span>
         <div className="setting-inline">
           <label className="switch">
             <input
@@ -214,11 +246,17 @@ export const ExamTogglesPanel = ({
             />
             <span className="slider" />
           </label>
-          <span className="muted">{timeLimitEnabled ? "Enabled" : "Disabled"}</span>
+          <span className="muted">
+            {timeLimitEnabled
+              ? tSettings(language, "settings.common.enabled")
+              : tSettings(language, "settings.common.disabled")}
+          </span>
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">TIMELINE</span>
+        <span className="label">
+          {tSettings(language, "settings.examToggles.timeline")}
+        </span>
         <div className="setting-inline">
           <label className="switch">
             <input
@@ -228,11 +266,17 @@ export const ExamTogglesPanel = ({
             />
             <span className="slider" />
           </label>
-          <span className="muted">{showTimeline ? "Shown" : "Hidden"}</span>
+          <span className="muted">
+            {showTimeline
+              ? tSettings(language, "settings.common.shown")
+              : tSettings(language, "settings.common.hidden")}
+          </span>
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">HELP / HINTS</span>
+        <span className="label">
+          {tSettings(language, "settings.examToggles.helpHints")}
+        </span>
         <div className="setting-inline">
           <label className="switch">
             <input
@@ -242,11 +286,17 @@ export const ExamTogglesPanel = ({
             />
             <span className="slider" />
           </label>
-          <span className="muted">{helpEnabled ? "Enabled" : "Disabled"}</span>
+          <span className="muted">
+            {helpEnabled
+              ? tSettings(language, "settings.common.enabled")
+              : tSettings(language, "settings.common.disabled")}
+          </span>
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">TASK SOURCES</span>
+        <span className="label">
+          {tSettings(language, "settings.examToggles.taskSources")}
+        </span>
         <div className="setting-inline">
           <label className="switch">
             <input
@@ -256,23 +306,33 @@ export const ExamTogglesPanel = ({
             />
             <span className="slider" />
           </label>
-          <span className="muted">{showTaskSources ? "Shown" : "Hidden"}</span>
+          <span className="muted">
+            {showTaskSources
+              ? tSettings(language, "settings.common.shown")
+              : tSettings(language, "settings.common.hidden")}
+          </span>
         </div>
       </div>
 
       <div className="setting-row">
-        <span className="label">AI EVALUATION</span>
+        <span className="label">
+          {tSettings(language, "settings.examToggles.aiEvaluation")}
+        </span>
         <div className="setting-inline">
           <label className="switch">
             <input type="checkbox" checked={aiEvaluation.enabled} disabled />
             <span className="slider" />
           </label>
-          <span className="muted">Coming soon.</span>
+          <span className="muted">
+            {tSettings(language, "settings.examToggles.comingSoon")}
+          </span>
         </div>
       </div>
       {onResetStatistics ? (
         <div className="setting-row">
-          <span className="label">RUN HISTORY</span>
+          <span className="label">
+            {tSettings(language, "settings.examToggles.runHistory")}
+          </span>
           <div className="setting-actions">
             <button
               type="button"
@@ -280,7 +340,7 @@ export const ExamTogglesPanel = ({
               onClick={onResetStatistics}
               disabled={resetStatisticsPending}
             >
-              Reset Statistics
+              {tSettings(language, "settings.examToggles.resetStatistics")}
             </button>
           </div>
         </div>
@@ -290,6 +350,7 @@ export const ExamTogglesPanel = ({
 );
 
 type AutoCardsSettingsPanelProps = {
+  language: SettingsLanguage;
   enabledTypes: AutoCardTypeMap;
   onTypeToggle: (type: AutoCardType, value: boolean) => void;
   returnCardsEnabled: boolean;
@@ -297,6 +358,7 @@ type AutoCardsSettingsPanelProps = {
 };
 
 type ExamTaskTypeDefaultsPanelProps = {
+  language: SettingsLanguage;
   pointsByType: Record<AutoCardType, number>;
   timeSecondsByType: Record<AutoCardType, number>;
   onPointChange: (type: AutoCardType, value: string) => void;
@@ -306,47 +368,42 @@ type ExamTaskTypeDefaultsPanelProps = {
 
 const AUTO_CARD_TYPE_OPTIONS: Array<{
   type: AutoCardType;
-  label: string;
-  description: string;
 }> = [
   {
     type: "qa",
-    label: "Q&A (QA)",
-    description: "Free-text answers with an official solution.",
   },
   {
     type: "tf",
-    label: "True/False (TF)",
-    description: "Statement-based true/false interactions.",
   },
   {
     type: "m1",
-    label: "Multiple Choice (M1)",
-    description: "Single-correct multiple choice.",
   },
   {
     type: "m2",
-    label: "Multiple Choice (M2)",
-    description: "Multiple-correct multiple choice.",
   },
   {
     type: "cl",
-    label: "Cloze Typed (CL)",
-    description: "Typed blanks only.",
   },
   {
     type: "cd",
-    label: "Cloze Drag (CD)",
-    description: "Drag-token blanks only.",
   },
   {
     type: "cld",
-    label: "Cloze Mixed (CLD)",
-    description: "Combination of typed blanks and drag tokens.",
   },
 ];
 
+const AUTO_CARD_TYPE_LABEL_KEYS = {
+  qa: "settings.autoCardType.qa",
+  tf: "settings.autoCardType.tf",
+  m1: "settings.autoCardType.m1",
+  m2: "settings.autoCardType.m2",
+  cl: "settings.autoCardType.cl",
+  cd: "settings.autoCardType.cd",
+  cld: "settings.autoCardType.cld",
+} as const;
+
 export const AutoCardsSettingsPanel = ({
+  language,
   enabledTypes,
   onTypeToggle,
   returnCardsEnabled,
@@ -361,24 +418,19 @@ export const AutoCardsSettingsPanel = ({
     <section className="panel exam-auto-cards-panel">
       <div className="panel-header">
         <div>
-          <h2>Auto Cards</h2>
+          <h2>{tSettings(language, "settings.autoCards.title")}</h2>
         </div>
       </div>
       <div className="panel-body">
-        <div className="muted">
-          Exam finish-time auto card conversion was removed.
-        </div>
-        <div className="muted">
-          Use the task detail popup in Exam Results to wrap or unwrap a task with
-          <code> #card ... #endcard </code>
-          directly in the source file.
-        </div>
+        <div className="muted">{tSettings(language, "settings.autoCards.removed")}</div>
+        <div className="muted">{tSettings(language, "settings.autoCards.detail")}</div>
       </div>
     </section>
   );
 };
 
 export const ExamTaskTypeDefaultsPanel = ({
+  language,
   pointsByType,
   timeSecondsByType,
   onPointChange,
@@ -388,37 +440,43 @@ export const ExamTaskTypeDefaultsPanel = ({
   <section className="panel exam-task-type-defaults-panel" id="exam-settings-task-type-defaults">
     <div className="panel-header">
       <div>
-        <h2>Task Type Points</h2>
+        <h2>{tSettings(language, "settings.taskTypeDefaults.title")}</h2>
         <p className="muted">
-          Standardwerte fuer Exams ohne zugewiesenes Points-Profil.
+          {tSettings(language, "settings.taskTypeDefaults.description")}
         </p>
       </div>
       <button type="button" className="ghost small" onClick={onResetPreset}>
-        Preset wiederherstellen
+        {tSettings(language, "settings.taskTypeDefaults.restorePreset")}
       </button>
     </div>
     <div className="panel-body">
       <div className="muted">
-        Preset: QA {EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.qa}, TF{" "}
-        {EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.tf}, M1{" "}
-        {EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.m1}, M2{" "}
-        {EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.m2}, CL{" "}
-        {EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.cl}, CD{" "}
-        {EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.cd}, CLD{" "}
-        {EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.cld}
+        {formatSettingsText(language, "settings.taskTypeDefaults.presetPoints", {
+          qa: EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.qa,
+          tf: EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.tf,
+          m1: EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.m1,
+          m2: EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.m2,
+          cl: EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.cl,
+          cd: EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.cd,
+          cld: EXAM_TASK_TYPE_LEGACY_PRESET_POINTS.cld,
+        })}
       </div>
       <div className="muted">
-        Time preset (sec): QA {EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.qa}, TF{" "}
-        {EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.tf}, M1{" "}
-        {EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.m1}, M2{" "}
-        {EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.m2}, CL{" "}
-        {EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.cl}, CD{" "}
-        {EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.cd}, CLD{" "}
-        {EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.cld}
+        {formatSettingsText(language, "settings.taskTypeDefaults.presetTime", {
+          qa: EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.qa,
+          tf: EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.tf,
+          m1: EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.m1,
+          m2: EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.m2,
+          cl: EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.cl,
+          cd: EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.cd,
+          cld: EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS.cld,
+        })}
       </div>
       {AUTO_CARD_TYPE_OPTIONS.map((option) => (
         <div key={option.type} className="setting-row">
-          <span className="label">{option.label}</span>
+          <span className="label">
+            {tSettings(language, AUTO_CARD_TYPE_LABEL_KEYS[option.type])}
+          </span>
           <div className="setting-inline">
             <input
               type="number"
@@ -427,7 +485,9 @@ export const ExamTaskTypeDefaultsPanel = ({
               value={pointsByType[option.type]}
               onChange={(event) => onPointChange(option.type, event.target.value)}
             />
-            <span className="muted">points</span>
+            <span className="muted">
+              {tSettings(language, "settings.taskTypeDefaults.points")}
+            </span>
             <input
               type="number"
               min={0}
@@ -435,7 +495,9 @@ export const ExamTaskTypeDefaultsPanel = ({
               value={timeSecondsByType[option.type]}
               onChange={(event) => onTimeSecondsChange(option.type, event.target.value)}
             />
-            <span className="muted">sec</span>
+            <span className="muted">
+              {tSettings(language, "settings.taskTypeDefaults.seconds")}
+            </span>
           </div>
         </div>
       ))}

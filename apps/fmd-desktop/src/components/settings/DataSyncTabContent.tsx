@@ -28,33 +28,20 @@ import type { UserVaultState } from "../../features/user-vault/useUserVault";
 import { isSyncProviderEnabled, isWordPressEnabled } from "../../lib/featureFlags";
 import type { UserRegistryControlsProps } from "../UserToolsPanel";
 import {
+  type SettingsLanguage,
+  tSettings,
+} from "../../features/settings/settingsI18n";
+import {
   ProfileSetupView,
   type ProfileSetupVaultSelection,
 } from "./ProfileSetupSections";
 
-type AppLanguage = "de" | "en";
-
-const LANGUAGE_LABELS: Record<
-  AppLanguage,
-  { heading: string; placeholder: string; deLabel: string; enLabel: string }
-> = {
-  de: {
-    heading: "Sprache",
-    placeholder: "Kommt spaeter.",
-    deLabel: "Deutsch",
-    enLabel: "Englisch",
-  },
-  en: {
-    heading: "Language",
-    placeholder: "Coming later.",
-    deLabel: "German",
-    enLabel: "English",
-  },
-};
+type AppLanguage = SettingsLanguage;
 
 type DataSyncSettingsViewMode = "settings" | "onboarding";
 
 type DataSyncSettingsViewProps = {
+  language?: SettingsLanguage;
   userVault: UserVaultState;
   spacedRepetition: UserRegistryControlsProps["spacedRepetition"];
   vaultSelection: ProfileSetupVaultSelection;
@@ -62,33 +49,41 @@ type DataSyncSettingsViewProps = {
 };
 
 type SyncProviderSectionProps = {
+  language?: SettingsLanguage;
   label?: string;
 };
 
-export const SyncProviderSection = ({ label = "SYNC PROVIDER" }: SyncProviderSectionProps) => {
+export const SyncProviderSection = ({
+  language = "en",
+  label,
+}: SyncProviderSectionProps) => {
   const syncProviderEnabled = isSyncProviderEnabled();
   return (
     <div className="setting-row">
-      <span className="label">{label}</span>
+      <span className="label">
+        {label ?? tSettings(language, "settings.dataSync.syncProvider")}
+      </span>
       <div className="setting-inline">
         <span className="value">
           {syncProviderEnabled
-            ? "Enabled via VITE_SYNC_PROVIDER_ENABLED"
-            : "Disabled (flag off)"}
+            ? tSettings(language, "settings.dataSync.enabledViaFlag")
+            : tSettings(language, "settings.dataSync.disabledFlag")}
         </span>
         <button type="button" className="ghost small" disabled>
-          {syncProviderEnabled ? "Active" : "Coming soon"}
+          {syncProviderEnabled
+            ? tSettings(language, "settings.dataSync.active")
+            : tSettings(language, "settings.dataSync.comingSoon")}
         </button>
       </div>
       <span className="helper-text">
-        Set VITE_SYNC_PROVIDER_ENABLED=true to allow the integration to initialize.
-        No calls are made while disabled.
+        {tSettings(language, "settings.dataSync.syncProviderHelper")}
       </span>
     </div>
   );
 };
 
 export const DataSyncSettingsView = ({
+  language = "en",
   userVault,
   spacedRepetition,
   vaultSelection,
@@ -115,11 +110,12 @@ export const DataSyncSettingsView = ({
         <section className="panel">
           <div className="panel-header">
             <div className="panel-header-content">
-              <span className="eyebrow">User required</span>
-              <h3>Set up your user</h3>
+              <span className="eyebrow">
+                {tSettings(language, "settings.dataSync.onboarding.eyebrow")}
+              </span>
+              <h3>{tSettings(language, "settings.dataSync.onboarding.title")}</h3>
               <p className="muted">
-                Create or load a user to save progress for this vault. You can edit
-                these settings later in Settings &gt; Profile Source.
+                {tSettings(language, "settings.dataSync.onboarding.description")}
               </p>
             </div>
           </div>
@@ -127,6 +123,7 @@ export const DataSyncSettingsView = ({
       ) : null}
       {!isOnboarding ? (
         <ProfileSetupView
+          language={language}
           userVault={userVault}
           spacedRepetition={spacedRepetition}
           vaultSelection={vaultSelection}
@@ -138,10 +135,12 @@ export const DataSyncSettingsView = ({
 };
 
 type ExportImportSettingsViewProps = {
+  language?: SettingsLanguage;
   userVault: UserVaultState;
 };
 
 export const ExportImportSettingsView = ({
+  language = "en",
   userVault,
 }: ExportImportSettingsViewProps) => {
   const [importStrategy, setImportStrategy] =
@@ -183,7 +182,9 @@ export const ExportImportSettingsView = ({
   return (
     <>
       <div className="setting-row">
-        <span className="label">EXPORT / IMPORT (JSON)</span>
+        <span className="label">
+          {tSettings(language, "settings.dataSync.exportImportJson")}
+        </span>
         <div className="setting-actions">
           <button
             type="button"
@@ -191,7 +192,7 @@ export const ExportImportSettingsView = ({
             onClick={handleExportActive}
             disabled={!canExportActive || userVault.isBusy}
           >
-            Export user
+            {tSettings(language, "settings.dataSync.exportUser")}
           </button>
           <button
             type="button"
@@ -199,12 +200,12 @@ export const ExportImportSettingsView = ({
             onClick={handleExportAll}
             disabled={!canExportAll || userVault.isBusy}
           >
-            Export all users
+            {tSettings(language, "settings.dataSync.exportAllUsers")}
           </button>
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">Import JSON</span>
+        <span className="label">{tSettings(language, "settings.dataSync.importJson")}</span>
         <div className="setting-inline">
           <select
             className="text-input"
@@ -215,8 +216,12 @@ export const ExportImportSettingsView = ({
             disabled={!canImport || userVault.isBusy}
             aria-label="Import strategy"
           >
-            <option value="merge">Merge</option>
-            <option value="overwrite">Overwrite</option>
+            <option value="merge">
+              {tSettings(language, "settings.dataSync.importStrategy.merge")}
+            </option>
+            <option value="overwrite">
+              {tSettings(language, "settings.dataSync.importStrategy.overwrite")}
+            </option>
           </select>
           <button
             type="button"
@@ -224,34 +229,35 @@ export const ExportImportSettingsView = ({
             onClick={handleImport}
             disabled={!canImport || userVault.isBusy}
           >
-            Import JSON
-          </button>
-        </div>
-      <span className="helper-text">
-          Merge keeps existing entries and adds new ones. Overwrite replaces data.
-      </span>
-      </div>
-      <div className="setting-row">
-        <span className="label">WORDPRESS</span>
-        <div className="setting-inline">
-          <span className="value">
-            {wordpressEnabled
-              ? "Enabled via VITE_WORDPRESS_ENABLED"
-              : "Disabled (flag off)"}
-          </span>
-          <button type="button" className="ghost small" disabled>
-            {wordpressEnabled ? "Active" : "Coming soon"}
+            {tSettings(language, "settings.dataSync.importButton")}
           </button>
         </div>
         <span className="helper-text">
-          Set VITE_WORDPRESS_ENABLED=true to allow the integration to initialize.
-          No calls are made while disabled.
+          {tSettings(language, "settings.dataSync.importHelper")}
         </span>
       </div>
-      <SyncProviderSection />
+      <div className="setting-row">
+        <span className="label">{tSettings(language, "settings.dataSync.wordpress")}</span>
+        <div className="setting-inline">
+          <span className="value">
+            {wordpressEnabled
+              ? tSettings(language, "settings.dataSync.enabledViaWordpressFlag")
+              : tSettings(language, "settings.dataSync.disabledFlag")}
+          </span>
+          <button type="button" className="ghost small" disabled>
+            {wordpressEnabled
+              ? tSettings(language, "settings.dataSync.active")
+              : tSettings(language, "settings.dataSync.comingSoon")}
+          </button>
+        </div>
+        <span className="helper-text">
+          {tSettings(language, "settings.dataSync.wordpressHelper")}
+        </span>
+      </div>
+      <SyncProviderSection language={language} />
       {userVault.error ? (
         <div className="setting-row">
-          <span className="label">Status</span>
+          <span className="label">{tSettings(language, "settings.dataSync.status")}</span>
           <span className="helper-text error-text">{userVault.error}</span>
         </div>
       ) : null}
@@ -268,12 +274,11 @@ export const LanguageTabContent = ({
   language,
   onLanguageChange,
 }: LanguageTabContentProps) => {
-  const labels = LANGUAGE_LABELS[language];
   return (
     <>
-      <p className="muted">{labels.placeholder}</p>
+      <p className="muted">{tSettings(language, "settings.language.placeholder")}</p>
       <div className="setting-row">
-        <span className="label">{labels.heading}</span>
+        <span className="label">{tSettings(language, "settings.language.label")}</span>
         <div className="pill-grid">
           <button
             type="button"
@@ -281,7 +286,7 @@ export const LanguageTabContent = ({
             aria-pressed={language === "de"}
             onClick={() => onLanguageChange("de")}
           >
-            {labels.deLabel}
+            {tSettings(language, "settings.language.buttonGerman")}
           </button>
           <button
             type="button"
@@ -289,10 +294,12 @@ export const LanguageTabContent = ({
             aria-pressed={language === "en"}
             onClick={() => onLanguageChange("en")}
           >
-            {labels.enLabel}
+            {tSettings(language, "settings.language.buttonEnglish")}
           </button>
         </div>
-        <span className="helper-text">{labels.placeholder}</span>
+        <span className="helper-text">
+          {tSettings(language, "settings.language.placeholder")}
+        </span>
       </div>
     </>
   );

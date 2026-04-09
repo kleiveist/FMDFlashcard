@@ -21,8 +21,14 @@
 
 import { useEffect } from "react";
 import { registerCloseLayer } from "../../../lib/shortcuts/closeOrBack";
+import {
+  formatSettingsText,
+  type SettingsLanguage,
+  tSettings,
+} from "../../../features/settings/settingsI18n";
 
 type SrDeleteModalProps = {
+  language?: SettingsLanguage;
   isDeleteDialogOpen: boolean;
   deleteTargetName: string;
   deleteConfirmInput: string;
@@ -33,6 +39,7 @@ type SrDeleteModalProps = {
 };
 
 export const SrDeleteModal = ({
+  language = "en",
   isDeleteDialogOpen,
   deleteTargetName,
   deleteConfirmInput,
@@ -65,12 +72,16 @@ export const SrDeleteModal = ({
         aria-modal="true"
         aria-labelledby="delete-user-title"
       >
-        <h3 id="delete-user-title">Delete user</h3>
+        <h3 id="delete-user-title">{tSettings(language, "settings.deleteUser.title")}</h3>
         <p className="muted">
-          This permanently deletes the user and all spaced repetition progress.
+          {tSettings(language, "settings.deleteUser.description")}
         </p>
         <div className="modal-body">
-          <span className="label">Type {deleteTargetName} to confirm</span>
+          <span className="label">
+            {formatSettingsText(language, "settings.deleteUser.typeToConfirm", {
+              name: deleteTargetName,
+            })}
+          </span>
           <input
             type="text"
             className="text-input"
@@ -79,12 +90,12 @@ export const SrDeleteModal = ({
             aria-label="Type the username to confirm deletion"
           />
           <span className="helper-text">
-            Match is case-sensitive. Leading/trailing spaces are ignored.
+            {tSettings(language, "settings.deleteUser.helper")}
           </span>
         </div>
         <div className="modal-actions">
           <button type="button" className="ghost" onClick={handleDeleteCancel}>
-            Cancel
+            {tSettings(language, "settings.common.cancel")}
           </button>
           <button
             type="button"
@@ -92,7 +103,7 @@ export const SrDeleteModal = ({
             onClick={handleDeleteConfirm}
             disabled={!canConfirmDelete}
           >
-            Delete
+            {tSettings(language, "settings.user.delete")}
           </button>
         </div>
       </div>

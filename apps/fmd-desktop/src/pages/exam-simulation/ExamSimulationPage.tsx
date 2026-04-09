@@ -958,6 +958,7 @@ export const ExamSimulationPage = ({
         title="Exam Toggles"
       >
         <ExamTogglesPanel
+          language={settings.language}
           timeLimitEnabled={settings.examTimeLimitEnabled}
           showTimeline={settings.examShowTimeline}
           helpEnabled={settings.examHelpEnabled}

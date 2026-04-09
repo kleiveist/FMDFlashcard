@@ -75,6 +75,10 @@ import {
   type SettingsSubPageId,
 } from "../features/settings/settingsNavigation";
 import {
+  resolveSettingsNavModel,
+  tSettings,
+} from "../features/settings/settingsI18n";
+import {
   SPACED_REPETITION_BOXES,
   SPACED_REPETITION_PAGE_SIZES,
 } from "../features/spaced-repetition/useSpacedRepetition";
@@ -253,6 +257,17 @@ export const SettingsPage = () => {
     vault,
   } = useAppState();
   const { language, setLanguage } = settings;
+  const localizedNavModel = useMemo(
+    () => resolveSettingsNavModel(language),
+    [language],
+  );
+  const localizedNavItems = useMemo(
+    () =>
+      localizedNavModel.filter(
+        (entry): entry is SettingsNavItem => entry.type === "item",
+      ),
+    [localizedNavModel],
+  );
   const lastOpenedFile = preview.selectedFile?.relative_path ?? null;
   const vaultIndexedComplete = useMemo(
     () => Boolean(vault.vaultPath) && vault.listState === "idle",
@@ -393,8 +408,8 @@ export const SettingsPage = () => {
   );
 
   const activeItem =
-    SETTINGS_NAV_ITEMS.find((item) => item.id === activeSettingsPage) ??
-    SETTINGS_NAV_ITEMS[0];
+    localizedNavItems.find((item) => item.id === activeSettingsPage) ??
+    localizedNavItems[0];
   const activeSubPageId =
     activeItem?.subPages && activeItem.subPages.length > 0
       ? activeSubPages[activeItem.id] ?? activeItem.subPages[0].id
@@ -448,7 +463,7 @@ export const SettingsPage = () => {
       className="primary"
       onClick={actions.handleOpenVaultManager}
     >
-      Manage Vaults
+      {tSettings(language, "settings.page.manageVaults")}
     </button>
   );
   const profileSetupVaultSelection = useMemo(
@@ -474,6 +489,7 @@ export const SettingsPage = () => {
         return (
           <div className="settings-page settings-single-column">
             <AppearanceSection
+              language={language}
               accentColor={settings.accentColor}
               accentDraft={settings.accentDraft}
               accentError={settings.accentError}
@@ -504,6 +520,7 @@ export const SettingsPage = () => {
         return (
           <div className="settings-page settings-single-column">
             <MarkdownEditorSection
+              language={language}
               cursorAccessoryEnabled={settings.cursorAccessoryEnabled}
               markdownPreviewDefaultMode={settings.markdownPreviewDefaultMode}
               markdownEditorOpenInNewTabByDefault={
@@ -523,6 +540,7 @@ export const SettingsPage = () => {
         return (
           <div className="settings-page settings-single-column">
             <ExamEditorSection
+              language={language}
               examEditorShowMoveButtons={settings.examEditorShowMoveButtons}
               onExamEditorShowMoveButtonsToggle={settings.setExamEditorShowMoveButtons}
             />
@@ -533,6 +551,7 @@ export const SettingsPage = () => {
           <div className="settings-page settings-single-column">
             {activeSubPageId === "auto-cards" ? (
               <AutoCardsSettingsPanel
+                language={language}
                 enabledTypes={settings.examAutoCardsTypes}
                 onTypeToggle={settings.setExamAutoCardsTypeEnabled}
                 returnCardsEnabled={settings.examAutoCardsReturnOnCorrect}
@@ -540,6 +559,7 @@ export const SettingsPage = () => {
               />
             ) : activeSubPageId === "task-type-defaults" ? (
               <ExamTaskTypeDefaultsPanel
+                language={language}
                 pointsByType={settings.examTaskTypeDefaultPoints}
                 timeSecondsByType={settings.examTaskTypeDefaultTimeSeconds}
                 onPointChange={handleExamTaskTypeDefaultPointChange}
@@ -551,6 +571,7 @@ export const SettingsPage = () => {
               />
             ) : (
               <ExamTogglesPanel
+                language={language}
                 resetStatisticsPending={isResetExamStatsPending}
                 onResetStatistics={handleResetExamStatistics}
                 timeLimitEnabled={settings.examTimeLimitEnabled}
@@ -573,13 +594,17 @@ export const SettingsPage = () => {
               <section className="panel fast-flashcard-tools-panel">
                 <div className="panel-header">
                   <div>
-                    <h2>Fast Flashcard Tools</h2>
-                    <p className="muted">Control fast flashcard ordering rules.</p>
+                    <h2>{tSettings(language, "settings.fastFlashcard.title")}</h2>
+                    <p className="muted">
+                      {tSettings(language, "settings.fastFlashcard.description")}
+                    </p>
                   </div>
                 </div>
                 <div className="panel-body">
                   <div className="setting-row">
-                    <span className="label">DEFAULT ORDER</span>
+                    <span className="label">
+                      {tSettings(language, "settings.fastFlashcard.defaultOrder")}
+                    </span>
                     <div className="pill-grid">
                       <button
                         type="button"
@@ -589,7 +614,7 @@ export const SettingsPage = () => {
                         aria-pressed={settings.fastFlashcardOrder === "in-order"}
                         onClick={() => settings.setFastFlashcardOrder("in-order")}
                       >
-                        In order
+                        {tSettings(language, "settings.flashcardTools.inOrder")}
                       </button>
                       <button
                         type="button"
@@ -599,12 +624,14 @@ export const SettingsPage = () => {
                         aria-pressed={settings.fastFlashcardOrder === "random"}
                         onClick={() => settings.setFastFlashcardOrder("random")}
                       >
-                        Random
+                        {tSettings(language, "settings.flashcardTools.random")}
                       </button>
                     </div>
                   </div>
                   <div className="setting-row">
-                    <span className="label">MODE</span>
+                    <span className="label">
+                      {tSettings(language, "settings.fastFlashcard.mode")}
+                    </span>
                     <select
                       className="text-input"
                       value={settings.fastFlashcardMode}
@@ -615,17 +642,36 @@ export const SettingsPage = () => {
                       }
                       aria-label="Select mode filter"
                     >
-                      <option value="all">All</option>
-                      <option value="qa">Q&amp;A</option>
-                      <option value="multiple-choice">Multiple Choice</option>
-                      <option value="fill-blank">Fill-in-the-blank</option>
-                      <option value="assignment">Assignment</option>
-                      <option value="true-false">True/False</option>
-                      <option value="mix">Mix</option>
+                      <option value="all">
+                        {tSettings(language, "settings.flashcardTools.mode.all")}
+                      </option>
+                      <option value="qa">
+                        {tSettings(language, "settings.flashcardTools.mode.qa")}
+                      </option>
+                      <option value="multiple-choice">
+                        {tSettings(
+                          language,
+                          "settings.flashcardTools.mode.multipleChoice",
+                        )}
+                      </option>
+                      <option value="fill-blank">
+                        {tSettings(language, "settings.flashcardTools.mode.fillBlank")}
+                      </option>
+                      <option value="assignment">
+                        {tSettings(language, "settings.flashcardTools.mode.assignment")}
+                      </option>
+                      <option value="true-false">
+                        {tSettings(language, "settings.flashcardTools.mode.trueFalse")}
+                      </option>
+                      <option value="mix">
+                        {tSettings(language, "settings.flashcardTools.mode.mix")}
+                      </option>
                     </select>
                   </div>
                   <div className="setting-row">
-                    <span className="label">AUTO TIME</span>
+                    <span className="label">
+                      {tSettings(language, "settings.fastFlashcard.autoTime")}
+                    </span>
                     <div className="setting-inline">
                       <label className="switch">
                         <input
@@ -641,14 +687,16 @@ export const SettingsPage = () => {
                       </label>
                       <span className="muted">
                         {settings.fastFlashcardAutoTimeEnabled
-                          ? "Enabled"
-                          : "Disabled"}
+                          ? tSettings(language, "settings.common.enabled")
+                          : tSettings(language, "settings.common.disabled")}
                       </span>
                     </div>
                   </div>
                   {!settings.fastFlashcardAutoTimeEnabled ? (
                     <div className="setting-row">
-                      <span className="label">DURATION</span>
+                      <span className="label">
+                        {tSettings(language, "settings.fastFlashcard.duration")}
+                      </span>
                       <div className="pill-grid">
                         {FAST_FLASHCARD_DURATIONS.map((duration) => (
                           <button
@@ -669,7 +717,9 @@ export const SettingsPage = () => {
                     </div>
                   ) : null}
                   <div className="setting-row">
-                    <span className="label">DEFAULT SCOPE</span>
+                    <span className="label">
+                      {tSettings(language, "settings.fastFlashcard.defaultScope")}
+                    </span>
                     <div className="pill-grid">
                       <button
                         type="button"
@@ -679,7 +729,7 @@ export const SettingsPage = () => {
                         aria-pressed={settings.fastFlashcardScope === "current"}
                         onClick={() => settings.setFastFlashcardScope("current")}
                       >
-                        Current note
+                        {tSettings(language, "settings.flashcardTools.currentNote")}
                       </button>
                       <button
                         type="button"
@@ -689,12 +739,14 @@ export const SettingsPage = () => {
                         aria-pressed={settings.fastFlashcardScope === "vault"}
                         onClick={() => settings.setFastFlashcardScope("vault")}
                       >
-                        Whole vault
+                        {tSettings(language, "settings.flashcardTools.wholeVault")}
                       </button>
                     </div>
                   </div>
                   <div className="setting-row">
-                    <span className="label">HELP / HINTS</span>
+                    <span className="label">
+                      {tSettings(language, "settings.fastFlashcard.helpHints")}
+                    </span>
                     <div className="setting-inline">
                       <label className="switch">
                         <input
@@ -707,19 +759,23 @@ export const SettingsPage = () => {
                         <span className="slider" />
                       </label>
                       <span className="muted">
-                        {settings.fastFlashcardHelpEnabled ? "Enabled" : "Disabled"}
+                        {settings.fastFlashcardHelpEnabled
+                          ? tSettings(language, "settings.common.enabled")
+                          : tSettings(language, "settings.common.disabled")}
                       </span>
                     </div>
                   </div>
                   <div className="setting-row">
-                    <span className="label">SESSION HISTORY</span>
+                    <span className="label">
+                      {tSettings(language, "settings.fastFlashcard.sessionHistory")}
+                    </span>
                     <div className="setting-actions">
                       <button
                         type="button"
                         className="ghost small"
                         onClick={() => setIsResetHistoryOpen(true)}
                       >
-                        Reset history
+                        {tSettings(language, "settings.fastFlashcard.resetHistory")}
                       </button>
                     </div>
                   </div>
@@ -727,6 +783,7 @@ export const SettingsPage = () => {
               </section>
             ) : activeSubPageId === "spaced-repetition-tools" ? (
               <SpacedRepetitionSettingsSection
+                language={language}
                 spacedRepetitionBoxes={spacedRepetition.spacedRepetitionBoxes}
                 spacedRepetitionBoxOptions={SPACED_REPETITION_BOXES}
                 spacedRepetitionOrder={spacedRepetition.spacedRepetitionOrder}
@@ -750,6 +807,7 @@ export const SettingsPage = () => {
               />
             ) : (
               <FlashcardsSettingsSection
+                language={language}
                 flashcardMode={flashcards.flashcardMode}
                 flashcardOrder={flashcards.flashcardOrder}
                 flashcardPageSize={flashcards.flashcardPageSize}
@@ -771,6 +829,7 @@ export const SettingsPage = () => {
         return (
           <div className="settings-page settings-single-column">
             <KeyboardShortcutsSection
+              language={language}
               keyboardShortcuts={settings.keyboardShortcuts}
               setKeyboardShortcuts={settings.setKeyboardShortcuts}
             />
@@ -782,8 +841,10 @@ export const SettingsPage = () => {
             <section className="panel settings-language-panel">
               <div className="panel-header">
                 <div>
-                  <h2>Language Pages</h2>
-                  <p className="muted">Set the app language.</p>
+                  <h2>{tSettings(language, "settings.language.panelTitle")}</h2>
+                  <p className="muted">
+                    {tSettings(language, "settings.language.panelDescription")}
+                  </p>
                 </div>
               </div>
               <div className="panel-body">
@@ -800,6 +861,7 @@ export const SettingsPage = () => {
           <div className="settings-page settings-single-column">
             {activeSubPageId === "performance-debug" ? (
               <InputDebugSection
+                language={language}
                 enabled={settings.inputDebugEnabled}
                 redactContent={settings.inputDebugRedactContent}
                 setEnabled={settings.setInputDebugEnabled}
@@ -809,12 +871,15 @@ export const SettingsPage = () => {
               <section className="panel settings-performance-panel">
                 <div className="panel-header">
                   <div>
-                    <h2>Performance</h2>
-                    <p className="muted">Tune vault scans for larger libraries.</p>
+                    <h2>{tSettings(language, "settings.performance.title")}</h2>
+                    <p className="muted">
+                      {tSettings(language, "settings.performance.description")}
+                    </p>
                   </div>
                 </div>
                 <div className="panel-body">
                   <PerformanceTabContent
+                    language={language}
                     maxFilesPerScan={settings.maxFilesPerScan}
                     onMaxFilesPerScanChange={actions.handleMaxFilesPerScanChange}
                     scanParallelism={settings.scanParallelism}
@@ -836,6 +901,7 @@ export const SettingsPage = () => {
               <section className="panel">
                 <div className="panel-body">
                   <DataSyncSettingsView
+                    language={language}
                     userVault={userVault}
                     spacedRepetition={spacedRepetition}
                     vaultSelection={profileSetupVaultSelection}
@@ -845,11 +911,12 @@ export const SettingsPage = () => {
             ) : dataHubSubPageId === "export-import" ? (
               <section className="panel">
                 <div className="panel-body">
-                  <ExportImportSettingsView userVault={userVault} />
+                  <ExportImportSettingsView language={language} userVault={userVault} />
                 </div>
               </section>
             ) : (
               <VaultIndexSection
+                language={language}
                 lastOpenedFile={lastOpenedFile}
                 listState={vault.listState}
                 listError={vault.listError}
@@ -884,7 +951,7 @@ export const SettingsPage = () => {
       <div className="settings-layout">
         {showCompactListOnly ? (
           <SettingsNav
-            items={SETTINGS_NAV_MODEL}
+            items={localizedNavModel}
             activeId={activeSettingsPage}
             onSelect={handleSettingsSelect}
           />
@@ -892,7 +959,7 @@ export const SettingsPage = () => {
           <>
             {!isCompactSettings ? (
               <SettingsNav
-                items={SETTINGS_NAV_MODEL}
+                items={localizedNavModel}
                 activeId={activeSettingsPage}
                 onSelect={handleSettingsSelect}
               />
@@ -911,6 +978,7 @@ export const SettingsPage = () => {
         )}
       </div>
       <ResetSessionHistoryModal
+        language={language}
         isOpen={isResetHistoryOpen}
         isPending={isResetHistoryPending}
         onCancel={() => setIsResetHistoryOpen(false)}

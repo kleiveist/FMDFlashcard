@@ -24,10 +24,12 @@ import { useState } from "react";
 import { type DesignMode, type ThemeMode } from "../../lib/theme";
 import { ACCENT_PALETTE } from "./accentPalette";
 import { EditorAccentSettingsBlock } from "./EditorAccentSettingsBlock";
+import { type SettingsLanguage, tSettings } from "../../features/settings/settingsI18n";
 
 type AppearanceTabId = "appearance" | "editor-accent";
 
 type AppearanceSectionProps = {
+  language: SettingsLanguage;
   accentColor: string;
   accentDraft: string;
   accentError: string;
@@ -55,6 +57,7 @@ type AppearanceSectionProps = {
 };
 
 export const AppearanceSection = ({
+  language,
   accentColor,
   accentDraft,
   accentError,
@@ -94,7 +97,7 @@ export const AppearanceSection = ({
           id={appearanceTabId}
           onClick={() => setActiveTab("appearance")}
         >
-          Appearance
+          {tSettings(language, "settings.appearance.tab.appearance")}
         </button>
         <button
           type="button"
@@ -108,7 +111,7 @@ export const AppearanceSection = ({
           id={editorAccentTabId}
           onClick={() => setActiveTab("editor-accent")}
         >
-          Accent Editor
+          {tSettings(language, "settings.appearance.tab.accentEditor")}
         </button>
       </div>
       <div className="settings-tab-content">
@@ -122,19 +125,18 @@ export const AppearanceSection = ({
           <section className="panel appearance-panel">
             <div className="panel-header">
               <div>
-                <h2>Appearance</h2>
-                <p className="muted">
-                  Theme, Designmodus und Akzentfarbe praegen die Oberflaeche und bleiben
-                  gespeichert.
-                </p>
+                <h2>{tSettings(language, "settings.appearance.title")}</h2>
+                <p className="muted">{tSettings(language, "settings.appearance.description")}</p>
               </div>
             </div>
             <div className="panel-body">
               <div className="appearance-main">
                 <div className="setting-row">
-                  <span className="label">Theme</span>
+                  <span className="label">{tSettings(language, "settings.appearance.theme")}</span>
                   <div className="theme-toggle">
-                    <span className="toggle-label">Hell</span>
+                    <span className="toggle-label">
+                      {tSettings(language, "settings.appearance.theme.light")}
+                    </span>
                     <label className="switch">
                       <input
                         type="checkbox"
@@ -146,14 +148,18 @@ export const AppearanceSection = ({
                       />
                       <span className="slider" />
                     </label>
-                    <span className="toggle-label">Dunkel</span>
+                    <span className="toggle-label">
+                      {tSettings(language, "settings.appearance.theme.dark")}
+                    </span>
                   </div>
                   <span className="helper-text">
-                    Wechselt Hintergrund, Kontrast und Panels.
+                    {tSettings(language, "settings.appearance.theme.helper")}
                   </span>
                 </div>
                 <div className="setting-row">
-                  <span className="label">Designmodus</span>
+                  <span className="label">
+                    {tSettings(language, "settings.appearance.designMode")}
+                  </span>
                   <div
                     className="design-mode-toggle"
                     role="radiogroup"
@@ -167,7 +173,7 @@ export const AppearanceSection = ({
                       onClick={() => onDesignModeChange("smart")}
                       aria-pressed={designMode === "smart"}
                     >
-                      Smart Design
+                      {tSettings(language, "settings.appearance.designMode.smart")}
                     </button>
                     <button
                       type="button"
@@ -177,7 +183,7 @@ export const AppearanceSection = ({
                       onClick={() => onDesignModeChange("modern")}
                       aria-pressed={designMode === "modern"}
                     >
-                      Modern Design
+                      {tSettings(language, "settings.appearance.designMode.modern")}
                     </button>
                     <button
                       type="button"
@@ -185,15 +191,17 @@ export const AppearanceSection = ({
                       onClick={() => onDesignModeChange("edge")}
                       aria-pressed={designMode === "edge"}
                     >
-                      Edge Design
+                      {tSettings(language, "settings.appearance.designMode.edge")}
                     </button>
                   </div>
                   <span className="helper-text">
-                    Steuert Form, Dichte, Navigation und Flaechenstil app-weit.
+                    {tSettings(language, "settings.appearance.designMode.helper")}
                   </span>
                 </div>
                 <div className="setting-row">
-                  <span className="label">Akzentfarbe</span>
+                  <span className="label">
+                    {tSettings(language, "settings.appearance.accentColor")}
+                  </span>
                   <div className="accent-controls">
                     <input
                       type="color"
@@ -225,11 +233,12 @@ export const AppearanceSection = ({
                       aria-label="Akzentfarbe als HEX"
                     />
                     <button type="button" className="ghost small" onClick={onCopyAccent}>
-                      Kopieren
+                      {tSettings(language, "settings.appearance.accentColor.copy")}
                     </button>
                   </div>
                   <span className={`helper-text ${accentError ? "error-text" : ""}`}>
-                    {accentError || "HEX Wert der Akzentfarbe (#RRGGBB)."}
+                    {accentError ||
+                      tSettings(language, "settings.appearance.accentColor.helper")}
                   </span>
                 </div>
               </div>
@@ -244,6 +253,7 @@ export const AppearanceSection = ({
           hidden={activeTab !== "editor-accent"}
         >
           <EditorAccentSettingsBlock
+            language={language}
             markdownEditorAccentEnabled={markdownEditorAccentEnabled}
             markdownEditorAccentLightHex={markdownEditorAccentLightHex}
             markdownEditorAccentDarkHex={markdownEditorAccentDarkHex}

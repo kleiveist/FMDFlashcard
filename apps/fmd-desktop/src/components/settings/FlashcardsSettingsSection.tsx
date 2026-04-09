@@ -27,8 +27,10 @@ import type {
   FlashcardScope,
   StatsResetMode,
 } from "../../features/flashcards/useFlashcards";
+import { type SettingsLanguage, tSettings } from "../../features/settings/settingsI18n";
 
 type FlashcardsSettingsSectionProps = {
+  language: SettingsLanguage;
   flashcardMode: FlashcardMode;
   flashcardOrder: FlashcardOrder;
   flashcardPageSize: FlashcardPageSize;
@@ -45,6 +47,7 @@ type FlashcardsSettingsSectionProps = {
 };
 
 export const FlashcardsSettingsSection = ({
+  language,
   flashcardMode,
   flashcardOrder,
   flashcardPageSize,
@@ -62,13 +65,15 @@ export const FlashcardsSettingsSection = ({
   <section className="panel settings-flashcards-panel">
     <div className="panel-header">
       <div>
-        <h2>Flashcard Tools</h2>
-        <p className="muted">Default behavior for scans and review sessions.</p>
+        <h2>{tSettings(language, "settings.flashcardTools.title")}</h2>
+        <p className="muted">{tSettings(language, "settings.flashcardTools.description")}</p>
       </div>
     </div>
     <div className="panel-body">
       <div className="setting-row">
-        <span className="label">DEFAULT ORDER</span>
+        <span className="label">
+          {tSettings(language, "settings.flashcardTools.defaultOrder")}
+        </span>
         <div className="pill-grid">
           <button
             type="button"
@@ -78,7 +83,7 @@ export const FlashcardsSettingsSection = ({
             aria-pressed={flashcardOrder === "in-order"}
             onClick={() => setFlashcardOrder("in-order")}
           >
-            In order
+            {tSettings(language, "settings.flashcardTools.inOrder")}
           </button>
           <button
             type="button"
@@ -86,12 +91,12 @@ export const FlashcardsSettingsSection = ({
             aria-pressed={flashcardOrder === "random"}
             onClick={() => setFlashcardOrder("random")}
           >
-            Random
+            {tSettings(language, "settings.flashcardTools.random")}
           </button>
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">MODE</span>
+        <span className="label">{tSettings(language, "settings.flashcardTools.mode")}</span>
         <select
           className="text-input"
           value={flashcardMode}
@@ -100,17 +105,27 @@ export const FlashcardsSettingsSection = ({
           }
           aria-label="Select mode filter"
         >
-          <option value="all">All</option>
-          <option value="qa">Q&amp;A</option>
-          <option value="multiple-choice">Multiple Choice</option>
-          <option value="fill-blank">Fill-in-the-blank</option>
-          <option value="assignment">Assignment</option>
-          <option value="true-false">True/False</option>
-          <option value="mix">Mix</option>
+          <option value="all">{tSettings(language, "settings.flashcardTools.mode.all")}</option>
+          <option value="qa">{tSettings(language, "settings.flashcardTools.mode.qa")}</option>
+          <option value="multiple-choice">
+            {tSettings(language, "settings.flashcardTools.mode.multipleChoice")}
+          </option>
+          <option value="fill-blank">
+            {tSettings(language, "settings.flashcardTools.mode.fillBlank")}
+          </option>
+          <option value="assignment">
+            {tSettings(language, "settings.flashcardTools.mode.assignment")}
+          </option>
+          <option value="true-false">
+            {tSettings(language, "settings.flashcardTools.mode.trueFalse")}
+          </option>
+          <option value="mix">{tSettings(language, "settings.flashcardTools.mode.mix")}</option>
         </select>
       </div>
       <div className="setting-row">
-        <span className="label">PAGE SIZE</span>
+        <span className="label">
+          {tSettings(language, "settings.flashcardTools.pageSize")}
+        </span>
         <div className="pill-grid">
           {flashcardPageSizes.map((size) => (
             <button
@@ -128,7 +143,9 @@ export const FlashcardsSettingsSection = ({
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">DEFAULT SCOPE</span>
+        <span className="label">
+          {tSettings(language, "settings.flashcardTools.defaultScope")}
+        </span>
         <div className="pill-grid">
           <button
             type="button"
@@ -138,7 +155,7 @@ export const FlashcardsSettingsSection = ({
             aria-pressed={flashcardScope === "current"}
             onClick={() => setFlashcardScope("current")}
           >
-            Current note
+            {tSettings(language, "settings.flashcardTools.currentNote")}
           </button>
           <button
             type="button"
@@ -146,12 +163,14 @@ export const FlashcardsSettingsSection = ({
             aria-pressed={flashcardScope === "vault"}
             onClick={() => setFlashcardScope("vault")}
           >
-            Whole vault
+            {tSettings(language, "settings.flashcardTools.wholeVault")}
           </button>
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">STATISTICS RESET</span>
+        <span className="label">
+          {tSettings(language, "settings.flashcardTools.statisticsReset")}
+        </span>
         <div className="pill-grid">
           <button
             type="button"
@@ -159,7 +178,7 @@ export const FlashcardsSettingsSection = ({
             aria-pressed={statsResetMode === "scan"}
             onClick={() => setStatsResetMode("scan")}
           >
-            Per scan
+            {tSettings(language, "settings.flashcardTools.perScan")}
           </button>
           <button
             type="button"
@@ -167,12 +186,14 @@ export const FlashcardsSettingsSection = ({
             aria-pressed={statsResetMode === "session"}
             onClick={() => setStatsResetMode("session")}
           >
-            Per session
+            {tSettings(language, "settings.flashcardTools.perSession")}
           </button>
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">HELP / HINTS</span>
+        <span className="label">
+          {tSettings(language, "settings.flashcardTools.helpHints")}
+        </span>
         <div className="setting-inline">
           <label className="switch">
             <input
@@ -182,7 +203,11 @@ export const FlashcardsSettingsSection = ({
             />
             <span className="slider" />
           </label>
-          <span className="muted">{helpEnabled ? "Enabled" : "Disabled"}</span>
+          <span className="muted">
+            {helpEnabled
+              ? tSettings(language, "settings.common.enabled")
+              : tSettings(language, "settings.common.disabled")}
+          </span>
         </div>
       </div>
     </div>

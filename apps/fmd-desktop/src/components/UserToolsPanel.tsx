@@ -11,6 +11,7 @@
 
 import { CollapsiblePanelHeader } from "./CollapsiblePanelHeader";
 import type { ExamStage } from "../pages/exam-simulation/examSimulationTypes";
+import { type SettingsLanguage, tSettings } from "../features/settings/settingsI18n";
 
 export type ExamStageControls = {
   stage: ExamStage;
@@ -122,6 +123,7 @@ type UserRegistryState = {
 };
 
 export type UserRegistryControlsProps = {
+  language?: SettingsLanguage;
   spacedRepetition: UserRegistryState;
   handleDeleteOpen: () => void;
   showActiveUser?: boolean;
@@ -132,6 +134,7 @@ export type UserRegistryControlsProps = {
 };
 
 export const UserRegistryControls = ({
+  language = "en",
   spacedRepetition,
   handleDeleteOpen,
   showActiveUser = true,
@@ -143,7 +146,7 @@ export const UserRegistryControls = ({
   <>
     {showActiveUser ? (
       <div className="setting-row">
-        <span className="label">Active user</span>
+        <span className="label">{tSettings(language, "settings.user.activeUser")}</span>
         <div className="setting-inline">
           <span className="value">
             {spacedRepetition.spacedRepetitionActiveUser ?? "—"}
@@ -152,7 +155,7 @@ export const UserRegistryControls = ({
       </div>
     ) : null}
     <div className="setting-row">
-      <span className="label">User list</span>
+      <span className="label">{tSettings(language, "settings.user.userList")}</span>
       <select
         className="text-input"
         value={spacedRepetition.spacedRepetitionSelectedUserId}
@@ -162,7 +165,7 @@ export const UserRegistryControls = ({
         aria-label="Select user"
         disabled={disableSelect}
       >
-        <option value="">Select user</option>
+        <option value="">{tSettings(language, "settings.user.selectUser")}</option>
         {spacedRepetition.spacedRepetitionUsers.map((user) => (
           <option key={user.id} value={user.id}>
             {user.name}
@@ -171,7 +174,7 @@ export const UserRegistryControls = ({
       </select>
     </div>
     <div className="setting-row">
-      <span className="label">New user</span>
+      <span className="label">{tSettings(language, "settings.user.newUser")}</span>
       <div className="setting-inline">
         <input
           type="text"
@@ -183,7 +186,7 @@ export const UserRegistryControls = ({
               spacedRepetition.setSpacedRepetitionUserError("");
             }
           }}
-          placeholder="User name"
+          placeholder={tSettings(language, "settings.user.userName")}
           aria-label="New user name"
         />
         <button
@@ -192,7 +195,7 @@ export const UserRegistryControls = ({
           onClick={spacedRepetition.handleSpacedRepetitionCreateUser}
           disabled={disableCreate}
         >
-          Create
+          {tSettings(language, "settings.user.create")}
         </button>
       </div>
       {spacedRepetition.spacedRepetitionUserError ? (
@@ -202,7 +205,7 @@ export const UserRegistryControls = ({
       ) : null}
     </div>
     <div className="setting-row">
-      <span className="label">Actions</span>
+      <span className="label">{tSettings(language, "settings.user.actions")}</span>
       <div className="setting-actions">
         <button
           type="button"
@@ -212,7 +215,7 @@ export const UserRegistryControls = ({
             disableLoad || !spacedRepetition.spacedRepetitionSelectedUserId
           }
         >
-          Load
+          {tSettings(language, "settings.user.load")}
         </button>
         <button
           type="button"
@@ -222,7 +225,7 @@ export const UserRegistryControls = ({
             disableDelete || !spacedRepetition.spacedRepetitionSelectedUserId
           }
         >
-          Delete
+          {tSettings(language, "settings.user.delete")}
         </button>
       </div>
     </div>

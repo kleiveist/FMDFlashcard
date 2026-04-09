@@ -19,7 +19,10 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
+import { type SettingsLanguage, tSettings } from "../../features/settings/settingsI18n";
+
 type MarkdownEditorSectionProps = {
+  language: SettingsLanguage;
   cursorAccessoryEnabled: boolean;
   markdownPreviewDefaultMode: "markdown" | "raw" | "hybrid";
   markdownEditorOpenInNewTabByDefault: boolean;
@@ -29,21 +32,27 @@ type MarkdownEditorSectionProps = {
 };
 
 type ExamEditorSectionProps = {
+  language: SettingsLanguage;
   examEditorShowMoveButtons: boolean;
   onExamEditorShowMoveButtonsToggle: (value: boolean) => void;
 };
 
 export const ExamEditorSection = ({
+  language,
   examEditorShowMoveButtons,
   onExamEditorShowMoveButtonsToggle,
 }: ExamEditorSectionProps) => (
   <div className="editor-settings-block">
-    <h3>Move buttons</h3>
-    <p className="muted">Quick controls for moving content blocks.</p>
+    <h3>{tSettings(language, "settings.examEditor.moveButtons")}</h3>
+    <p className="muted">
+      {tSettings(language, "settings.examEditor.moveButtons.description")}
+    </p>
     <div className="setting-row">
-      <span className="label">Show Up/Down buttons</span>
+      <span className="label">
+        {tSettings(language, "settings.examEditor.showUpDownButtons")}
+      </span>
       <div className="theme-toggle">
-        <span className="toggle-label">Off</span>
+        <span className="toggle-label">{tSettings(language, "settings.common.off")}</span>
         <label className="switch">
           <input
             type="checkbox"
@@ -53,13 +62,14 @@ export const ExamEditorSection = ({
           />
           <span className="slider" />
         </label>
-        <span className="toggle-label">On</span>
+        <span className="toggle-label">{tSettings(language, "settings.common.on")}</span>
       </div>
     </div>
   </div>
 );
 
 export const MarkdownEditorSection = ({
+  language,
   cursorAccessoryEnabled,
   markdownPreviewDefaultMode,
   markdownEditorOpenInNewTabByDefault,
@@ -68,13 +78,15 @@ export const MarkdownEditorSection = ({
   onMarkdownEditorOpenInNewTabByDefaultToggle,
 }: MarkdownEditorSectionProps) => (
   <div className="editor-settings-block">
-    <h3>Markdown editor</h3>
-    <p className="muted">Behavior and defaults for markdown editing.</p>
+    <h3>{tSettings(language, "settings.markdownEditor.title")}</h3>
+    <p className="muted">{tSettings(language, "settings.markdownEditor.description")}</p>
     <div className="setting-row">
-      <span className="label">Backspace-Hilfstaste anzeigen</span>
+      <span className="label">
+        {tSettings(language, "settings.markdownEditor.backspaceAccessory")}
+      </span>
       <div className="setting-subrow">
         <div className="theme-toggle">
-          <span className="toggle-label">Off</span>
+          <span className="toggle-label">{tSettings(language, "settings.common.off")}</span>
           <label className="switch">
             <input
               type="checkbox"
@@ -84,16 +96,17 @@ export const MarkdownEditorSection = ({
             />
             <span className="slider" />
           </label>
-          <span className="toggle-label">On</span>
+          <span className="toggle-label">{tSettings(language, "settings.common.on")}</span>
         </div>
         <span className="helper-text">
-          Zeigt bei kleinen Bildschirmbreiten eine zusaetzliche Backspace-
-          Hilfstaste an, sobald ein Textfeld aktiv ist.
+          {tSettings(language, "settings.markdownEditor.backspaceAccessory.helper")}
         </span>
       </div>
     </div>
     <div className="setting-row">
-      <span className="label">Default preview mode</span>
+      <span className="label">
+        {tSettings(language, "settings.markdownEditor.defaultPreviewMode")}
+      </span>
       <div className="pill-grid" role="tablist" aria-label="Default preview mode">
         <button
           type="button"
@@ -103,7 +116,7 @@ export const MarkdownEditorSection = ({
           aria-pressed={markdownPreviewDefaultMode === "markdown"}
           onClick={() => onMarkdownPreviewDefaultModeChange("markdown")}
         >
-          Markdown-View
+          {tSettings(language, "settings.markdownEditor.previewMode.markdown")}
         </button>
         <button
           type="button"
@@ -113,7 +126,7 @@ export const MarkdownEditorSection = ({
           aria-pressed={markdownPreviewDefaultMode === "raw"}
           onClick={() => onMarkdownPreviewDefaultModeChange("raw")}
         >
-          Markdown-Code
+          {tSettings(language, "settings.markdownEditor.previewMode.raw")}
         </button>
         <button
           type="button"
@@ -123,15 +136,17 @@ export const MarkdownEditorSection = ({
           aria-pressed={markdownPreviewDefaultMode === "hybrid"}
           onClick={() => onMarkdownPreviewDefaultModeChange("hybrid")}
         >
-          Markdown-Hybridblock
+          {tSettings(language, "settings.markdownEditor.previewMode.hybrid")}
         </button>
       </div>
     </div>
     <div className="setting-row">
-      <span className="label">Immer in neuem Tab oeffnen</span>
+      <span className="label">
+        {tSettings(language, "settings.markdownEditor.openInNewTab")}
+      </span>
       <div className="setting-subrow">
         <div className="theme-toggle">
-          <span className="toggle-label">Off</span>
+          <span className="toggle-label">{tSettings(language, "settings.common.off")}</span>
           <label className="switch">
             <input
               type="checkbox"
@@ -143,10 +158,10 @@ export const MarkdownEditorSection = ({
             />
             <span className="slider" />
           </label>
-          <span className="toggle-label">On</span>
+          <span className="toggle-label">{tSettings(language, "settings.common.on")}</span>
         </div>
         <span className="helper-text">
-          Wenn aktiv, oeffnen Markdown-Dateien standardmaessig in neuen Tabs.
+          {tSettings(language, "settings.markdownEditor.openInNewTab.helper")}
         </span>
       </div>
     </div>

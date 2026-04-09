@@ -19,7 +19,16 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
+import { type SettingsLanguage, tSettings } from "../../features/settings/settingsI18n";
+
+const PARALLELISM_LABEL_KEYS = {
+  low: "settings.performance.parallelism.low",
+  medium: "settings.performance.parallelism.medium",
+  high: "settings.performance.parallelism.high",
+} as const;
+
 type PerformanceTabContentProps = {
+  language: SettingsLanguage;
   maxFilesPerScan: string;
   onMaxFilesPerScanChange: (value: string) => void;
   scanParallelism: "low" | "medium" | "high";
@@ -27,6 +36,7 @@ type PerformanceTabContentProps = {
 };
 
 export const PerformanceTabContent = ({
+  language,
   maxFilesPerScan,
   onMaxFilesPerScanChange,
   scanParallelism,
@@ -34,7 +44,9 @@ export const PerformanceTabContent = ({
 }: PerformanceTabContentProps) => (
   <>
     <div className="setting-row">
-      <span className="label">Max files per vault scan</span>
+      <span className="label">
+        {tSettings(language, "settings.performance.maxFilesPerScan")}
+      </span>
       <input
         type="text"
         inputMode="numeric"
@@ -42,15 +54,17 @@ export const PerformanceTabContent = ({
         className="text-input"
         value={maxFilesPerScan}
         onChange={(event) => onMaxFilesPerScanChange(event.target.value)}
-        placeholder="Optional"
+        placeholder={tSettings(language, "settings.performance.optional")}
         aria-label="Max files per vault scan"
       />
       <span className="helper-text">
-        Leave empty to disable the large vault warning.
+        {tSettings(language, "settings.performance.maxFilesHelper")}
       </span>
     </div>
     <div className="setting-row">
-      <span className="label">Scan parallelism</span>
+      <span className="label">
+        {tSettings(language, "settings.performance.scanParallelism")}
+      </span>
       <div className="pill-grid">
         {(["low", "medium", "high"] as const).map((level) => (
           <button
@@ -60,7 +74,7 @@ export const PerformanceTabContent = ({
             aria-pressed={scanParallelism === level}
             onClick={() => setScanParallelism(level)}
           >
-            {level.charAt(0).toUpperCase() + level.slice(1)}
+            {tSettings(language, PARALLELISM_LABEL_KEYS[level])}
           </button>
         ))}
       </div>

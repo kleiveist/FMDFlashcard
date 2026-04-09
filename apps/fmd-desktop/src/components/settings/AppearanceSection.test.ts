@@ -14,6 +14,7 @@ describe("AppearanceSection", () => {
   it("renders edge design option and marks it active", () => {
     const markup = renderToStaticMarkup(
       createElement(AppearanceSection, {
+        language: "en",
         accentColor: "#e07a5f",
         accentDraft: "#e07a5f",
         accentError: "",

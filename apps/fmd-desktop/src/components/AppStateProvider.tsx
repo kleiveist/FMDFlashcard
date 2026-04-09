@@ -1205,10 +1205,14 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         setAccentError("");
         setAccentColor(nextValue);
       } else {
-        setAccentError("HEX muss #RRGGBB sein.");
+        setAccentError(
+          settings.language === "de"
+            ? "HEX muss #RRGGBB sein."
+            : "HEX must be #RRGGBB.",
+        );
       }
     },
-    [setAccentColor, setAccentDraft, setAccentError],
+    [setAccentColor, setAccentDraft, setAccentError, settings.language],
   );
 
   const handleCopyAccent = useCallback(async () => {

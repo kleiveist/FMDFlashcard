@@ -27,8 +27,10 @@ import type {
   SpacedRepetitionRepetitionStrength,
 } from "../../features/spaced-repetition/useSpacedRepetition";
 import type { FlashcardMode } from "../../features/flashcards/useFlashcards";
+import { type SettingsLanguage, tSettings } from "../../features/settings/settingsI18n";
 
 type SpacedRepetitionSettingsSectionProps = {
+  language: SettingsLanguage;
   spacedRepetitionBoxes: SpacedRepetitionBoxes;
   spacedRepetitionBoxOptions: SpacedRepetitionBoxes[];
   spacedRepetitionOrder: SpacedRepetitionOrder;
@@ -50,6 +52,7 @@ type SpacedRepetitionSettingsSectionProps = {
 };
 
 export const SpacedRepetitionSettingsSection = ({
+  language,
   spacedRepetitionBoxes,
   spacedRepetitionBoxOptions,
   spacedRepetitionOrder,
@@ -70,13 +73,15 @@ export const SpacedRepetitionSettingsSection = ({
   <section className="panel spaced-repetition-panel">
     <div className="panel-header">
       <div>
-        <h2>Spaced Repetition Tools</h2>
-        <p className="muted">Configure spaced repetition behavior.</p>
+        <h2>{tSettings(language, "settings.spacedRepetition.title")}</h2>
+        <p className="muted">{tSettings(language, "settings.spacedRepetition.description")}</p>
       </div>
     </div>
     <div className="panel-body">
       <div className="setting-row">
-        <span className="label">DEFAULT ORDER</span>
+        <span className="label">
+          {tSettings(language, "settings.spacedRepetition.defaultOrder")}
+        </span>
         <div className="pill-grid">
           <button
             type="button"
@@ -86,7 +91,7 @@ export const SpacedRepetitionSettingsSection = ({
             aria-pressed={spacedRepetitionOrder === "in-order"}
             onClick={() => setSpacedRepetitionOrder("in-order")}
           >
-            In order
+            {tSettings(language, "settings.flashcardTools.inOrder")}
           </button>
           <button
             type="button"
@@ -96,7 +101,7 @@ export const SpacedRepetitionSettingsSection = ({
             aria-pressed={spacedRepetitionOrder === "random"}
             onClick={() => setSpacedRepetitionOrder("random")}
           >
-            Random
+            {tSettings(language, "settings.flashcardTools.random")}
           </button>
           <button
             type="button"
@@ -106,12 +111,14 @@ export const SpacedRepetitionSettingsSection = ({
             aria-pressed={spacedRepetitionOrder === "repetition"}
             onClick={() => setSpacedRepetitionOrder("repetition")}
           >
-            Repetition
+            {tSettings(language, "settings.spacedRepetition.repetition")}
           </button>
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">MODE</span>
+        <span className="label">
+          {tSettings(language, "settings.spacedRepetition.mode")}
+        </span>
         <select
           className="text-input"
           value={flashcardMode}
@@ -120,17 +127,27 @@ export const SpacedRepetitionSettingsSection = ({
           }
           aria-label="Select mode filter"
         >
-          <option value="all">All</option>
-          <option value="qa">Q&amp;A</option>
-          <option value="multiple-choice">Multiple Choice</option>
-          <option value="fill-blank">Fill-in-the-blank</option>
-          <option value="assignment">Assignment</option>
-          <option value="true-false">True/False</option>
-          <option value="mix">Mix</option>
+          <option value="all">{tSettings(language, "settings.flashcardTools.mode.all")}</option>
+          <option value="qa">{tSettings(language, "settings.flashcardTools.mode.qa")}</option>
+          <option value="multiple-choice">
+            {tSettings(language, "settings.flashcardTools.mode.multipleChoice")}
+          </option>
+          <option value="fill-blank">
+            {tSettings(language, "settings.flashcardTools.mode.fillBlank")}
+          </option>
+          <option value="assignment">
+            {tSettings(language, "settings.flashcardTools.mode.assignment")}
+          </option>
+          <option value="true-false">
+            {tSettings(language, "settings.flashcardTools.mode.trueFalse")}
+          </option>
+          <option value="mix">{tSettings(language, "settings.flashcardTools.mode.mix")}</option>
         </select>
       </div>
       <div className="setting-row">
-        <span className="label">PAGE SIZE</span>
+        <span className="label">
+          {tSettings(language, "settings.spacedRepetition.pageSize")}
+        </span>
         <div className="pill-grid">
           {spacedRepetitionPageSizes.map((size) => (
             <button
@@ -148,7 +165,7 @@ export const SpacedRepetitionSettingsSection = ({
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">BOXES</span>
+        <span className="label">{tSettings(language, "settings.spacedRepetition.boxes")}</span>
         <div className="pill-grid">
           {spacedRepetitionBoxOptions.map((box) => (
             <button
@@ -158,13 +175,15 @@ export const SpacedRepetitionSettingsSection = ({
               aria-pressed={spacedRepetitionBoxes === box}
               onClick={() => setSpacedRepetitionBoxes(box)}
             >
-              {box} Boxes
+              {box} {tSettings(language, "settings.spacedRepetition.boxesSuffix")}
             </button>
           ))}
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">AUTO TIME</span>
+        <span className="label">
+          {tSettings(language, "settings.spacedRepetition.autoTime")}
+        </span>
         <div className="setting-inline">
           <label className="switch">
             <input
@@ -174,11 +193,17 @@ export const SpacedRepetitionSettingsSection = ({
             />
             <span className="slider" />
           </label>
-          <span className="muted">{autoTimeEnabled ? "Enabled" : "Disabled"}</span>
+          <span className="muted">
+            {autoTimeEnabled
+              ? tSettings(language, "settings.common.enabled")
+              : tSettings(language, "settings.common.disabled")}
+          </span>
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">REPETITION STRENGTH</span>
+        <span className="label">
+          {tSettings(language, "settings.spacedRepetition.repetitionStrength")}
+        </span>
         <div className="pill-grid">
           <button
             type="button"
@@ -188,7 +213,7 @@ export const SpacedRepetitionSettingsSection = ({
             aria-pressed={spacedRepetitionRepetitionStrength === "weak"}
             onClick={() => setSpacedRepetitionRepetitionStrength("weak")}
           >
-            Weak
+            {tSettings(language, "settings.spacedRepetition.repetitionStrength.weak")}
           </button>
           <button
             type="button"
@@ -198,7 +223,7 @@ export const SpacedRepetitionSettingsSection = ({
             aria-pressed={spacedRepetitionRepetitionStrength === "medium"}
             onClick={() => setSpacedRepetitionRepetitionStrength("medium")}
           >
-            Medium
+            {tSettings(language, "settings.spacedRepetition.repetitionStrength.medium")}
           </button>
           <button
             type="button"
@@ -208,12 +233,14 @@ export const SpacedRepetitionSettingsSection = ({
             aria-pressed={spacedRepetitionRepetitionStrength === "strong"}
             onClick={() => setSpacedRepetitionRepetitionStrength("strong")}
           >
-            Strong
+            {tSettings(language, "settings.spacedRepetition.repetitionStrength.strong")}
           </button>
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">HELP / HINTS</span>
+        <span className="label">
+          {tSettings(language, "settings.spacedRepetition.helpHints")}
+        </span>
         <div className="setting-inline">
           <label className="switch">
             <input
@@ -223,7 +250,11 @@ export const SpacedRepetitionSettingsSection = ({
             />
             <span className="slider" />
           </label>
-          <span className="muted">{helpEnabled ? "Enabled" : "Disabled"}</span>
+          <span className="muted">
+            {helpEnabled
+              ? tSettings(language, "settings.common.enabled")
+              : tSettings(language, "settings.common.disabled")}
+          </span>
         </div>
       </div>
     </div>

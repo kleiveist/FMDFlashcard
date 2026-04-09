@@ -1,7 +1,13 @@
 import { useMemo, useState } from "react";
 import { useInputDebug } from "../../features/input-debug/useInputDebug";
+import {
+  formatSettingsText,
+  type SettingsLanguage,
+  tSettings,
+} from "../../features/settings/settingsI18n";
 
 type InputDebugSectionProps = {
+  language: SettingsLanguage;
   enabled: boolean;
   redactContent: boolean;
   setEnabled: (value: boolean) => void;
@@ -9,6 +15,7 @@ type InputDebugSectionProps = {
 };
 
 export const InputDebugSection = ({
+  language,
   enabled,
   redactContent,
   setEnabled,
@@ -22,15 +29,15 @@ export const InputDebugSection = ({
 
   const lastEventLabel = useMemo(() => {
     if (!lastEventTs) {
-      return "n/a";
+      return tSettings(language, "settings.inputDebug.lastEventNone");
     }
     return new Date(lastEventTs).toLocaleString();
-  }, [lastEventTs]);
+  }, [language, lastEventTs]);
 
   const handleRedactionToggle = (next: boolean) => {
     if (!next) {
       const confirmed = window.confirm(
-        "Turning off redaction may capture typed content in the exported log. Continue?",
+        tSettings(language, "settings.inputDebug.redactionConfirm"),
       );
       if (!confirmed) {
         return;
@@ -46,14 +53,21 @@ export const InputDebugSection = ({
     try {
       const result = await exportLog(includeSystemInfo);
       if (!result) {
-        setStatusMessage("Export canceled.");
+        setStatusMessage(tSettings(language, "settings.inputDebug.exportCanceled"));
         return;
       }
-      setStatusMessage(`Exported ${result.eventCount} events to ${result.path}.`);
+      setStatusMessage(
+        formatSettingsText(language, "settings.inputDebug.exported", {
+          count: result.eventCount,
+          path: result.path,
+        }),
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setStatusError(true);
-      setStatusMessage(`Export failed: ${message}`);
+      setStatusMessage(
+        formatSettingsText(language, "settings.inputDebug.exportFailed", { message }),
+      );
     } finally {
       setIsExporting(false);
     }
@@ -62,22 +76,22 @@ export const InputDebugSection = ({
   const handleClear = () => {
     clear();
     setStatusError(false);
-    setStatusMessage("Input log cleared.");
+    setStatusMessage(tSettings(language, "settings.inputDebug.inputLogCleared"));
   };
 
   return (
     <section className="panel input-debug-panel">
       <div className="panel-header">
         <div>
-          <h2>Debug</h2>
-          <p className="muted">
-            Only for debugging. No typed content is stored by default.
-          </p>
+          <h2>{tSettings(language, "settings.inputDebug.title")}</h2>
+          <p className="muted">{tSettings(language, "settings.inputDebug.description")}</p>
         </div>
       </div>
       <div className="panel-body">
         <div className="setting-row">
-          <span className="label">INPUT DEBUG MODE</span>
+          <span className="label">
+            {tSettings(language, "settings.inputDebug.inputMode")}
+          </span>
           <div className="setting-inline">
             <label className="switch">
               <input
@@ -87,12 +101,18 @@ export const InputDebugSection = ({
               />
               <span className="slider" />
             </label>
-            <span className="muted">{enabled ? "On" : "Off"}</span>
+            <span className="muted">
+              {enabled
+                ? tSettings(language, "settings.common.on")
+                : tSettings(language, "settings.common.off")}
+            </span>
           </div>
         </div>
 
         <div className="setting-row">
-          <span className="label">REDACT CONTENT</span>
+          <span className="label">
+            {tSettings(language, "settings.inputDebug.redactContent")}
+          </span>
           <div className="setting-inline">
             <label className="switch">
               <input
@@ -102,24 +122,30 @@ export const InputDebugSection = ({
               />
               <span className="slider" />
             </label>
-            <span className="muted">{redactContent ? "On" : "Off"}</span>
+            <span className="muted">
+              {redactContent
+                ? tSettings(language, "settings.common.on")
+                : tSettings(language, "settings.common.off")}
+            </span>
           </div>
           {!redactContent ? (
             <span className="helper-text input-debug-warning">
-              Content redaction is disabled. Typed text may appear in exported logs.
+              {tSettings(language, "settings.inputDebug.warning")}
             </span>
           ) : null}
         </div>
 
         <div className="setting-row">
-          <span className="label">EXPORT OPTIONS</span>
+          <span className="label">
+            {tSettings(language, "settings.inputDebug.exportOptions")}
+          </span>
           <label className="status-checkbox">
             <input
               type="checkbox"
               checked={includeSystemInfo}
               onChange={(event) => setIncludeSystemInfo(event.target.checked)}
             />
-            <span>Include system information</span>
+            <span>{tSettings(language, "settings.inputDebug.includeSystemInfo")}</span>
           </label>
           <div className="setting-actions">
             <button
@@ -128,14 +154,19 @@ export const InputDebugSection = ({
               onClick={() => void handleExport()}
               disabled={isExporting}
             >
-              {isExporting ? "Exporting..." : "Export Input Log"}
+              {isExporting
+                ? tSettings(language, "settings.inputDebug.exporting")
+                : tSettings(language, "settings.inputDebug.exportInputLog")}
             </button>
             <button type="button" className="ghost small" onClick={handleClear}>
-              Clear Input Log
+              {tSettings(language, "settings.inputDebug.clearInputLog")}
             </button>
           </div>
           <p className="muted input-debug-meta">
-            Events in buffer: {bufferCount} | last event: {lastEventLabel}
+            {formatSettingsText(language, "settings.inputDebug.eventsInBuffer", {
+              count: bufferCount,
+              last: lastEventLabel,
+            })}
           </p>
           {statusMessage ? (
             <p className={`muted input-debug-status ${statusError ? "is-error" : "is-success"}`}>
@@ -146,7 +177,7 @@ export const InputDebugSection = ({
 
         {diagnosticHints.length > 0 ? (
           <div className="input-debug-hints">
-            <h3>Diagnostic hints</h3>
+            <h3>{tSettings(language, "settings.inputDebug.diagnosticHints")}</h3>
             <ul>
               {diagnosticHints.map((hint) => (
                 <li key={hint}>{hint}</li>

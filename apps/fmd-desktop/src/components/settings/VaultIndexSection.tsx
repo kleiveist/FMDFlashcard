@@ -22,8 +22,14 @@
 
 import type { ChangeEvent } from "react";
 import { type LoadState } from "../../lib/types";
+import {
+  formatSettingsText,
+  type SettingsLanguage,
+  tSettings,
+} from "../../features/settings/settingsI18n";
 
 type VaultIndexSectionProps = {
+  language: SettingsLanguage;
   lastOpenedFile: string | null;
   listState: LoadState;
   listError: string;
@@ -40,6 +46,7 @@ type VaultIndexSectionProps = {
 };
 
 export const VaultIndexSection = ({
+  language,
   lastOpenedFile,
   listState,
   listError,
@@ -66,7 +73,7 @@ export const VaultIndexSection = ({
   const isRefreshing = listState === "loading";
   const lastRefreshLabel = lastRefreshAt
     ? new Date(lastRefreshAt).toLocaleString()
-    : "Not refreshed yet";
+    : tSettings(language, "settings.vaultIndex.notRefreshedYet");
   const hasLastOpenedFile =
     typeof lastOpenedFile === "string" && lastOpenedFile.trim().length > 0;
 
@@ -74,7 +81,9 @@ export const VaultIndexSection = ({
     <section className="panel vault-index-panel">
       <div className="panel-body">
         <div className="setting-row">
-          <span className="label">Current vault path</span>
+          <span className="label">
+            {tSettings(language, "settings.vaultIndex.currentVaultPath")}
+          </span>
           <div className="setting-inline">
             <span className="value path-value">{vaultPath ?? "—"}</span>
             <button
@@ -83,18 +92,20 @@ export const VaultIndexSection = ({
               onClick={onCopyVaultPath}
               disabled={!vaultPath}
             >
-              Copy
+              {tSettings(language, "settings.common.copy")}
             </button>
           </div>
         </div>
         {hasLastOpenedFile ? (
           <div className="setting-row">
-            <span className="label">Last opened</span>
+            <span className="label">{tSettings(language, "settings.vaultIndex.lastOpened")}</span>
             <span className="value path-value">{lastOpenedFile}</span>
           </div>
         ) : null}
         <div className="setting-row">
-          <span className="label">Status indicators</span>
+          <span className="label">
+            {tSettings(language, "settings.vaultIndex.statusIndicators")}
+          </span>
           <div className="status-list">
             <div className="status-item">
               <label className="status-checkbox">
@@ -104,16 +115,16 @@ export const VaultIndexSection = ({
                   disabled
                   aria-label="Fully processed"
                 />
-                <span>Fully processed</span>
+                <span>{tSettings(language, "settings.vaultIndex.fullyProcessed")}</span>
               </label>
               <span className="helper-text">
-                All notes have been scanned and indexed.
+                {tSettings(language, "settings.vaultIndex.fullyProcessedHelper")}
               </span>
             </div>
           </div>
         </div>
         <div className="setting-row">
-          <span className="label">Actions</span>
+          <span className="label">{tSettings(language, "settings.vaultIndex.actions")}</span>
           <div className="setting-actions">
             <button
               type="button"
@@ -121,7 +132,7 @@ export const VaultIndexSection = ({
               onClick={() => onRescanVault("settings:vault-index")}
               disabled={!vaultPath || isRefreshing}
             >
-              Rescan vault
+              {tSettings(language, "settings.vaultIndex.rescanVault")}
             </button>
             <button
               type="button"
@@ -129,15 +140,19 @@ export const VaultIndexSection = ({
               onClick={onResetIndex}
               disabled={!vaultPath || isRefreshing}
             >
-              Reset index
+              {tSettings(language, "settings.vaultIndex.resetIndex")}
             </button>
           </div>
           <span className="helper-text">
-            Reset index clears the current vault registration.
+            {tSettings(language, "settings.vaultIndex.resetIndexHelper")}
           </span>
           <div className="setting-inline">
             <span className="muted">
-              {isRefreshing ? "Refreshing active vault..." : `Last refresh: ${lastRefreshLabel}`}
+              {isRefreshing
+                ? tSettings(language, "settings.vaultIndex.refreshing")
+                : formatSettingsText(language, "settings.vaultIndex.lastRefresh", {
+                    value: lastRefreshLabel,
+                  })}
             </span>
           </div>
           {listError ? (
@@ -148,10 +163,10 @@ export const VaultIndexSection = ({
         </div>
         <div className="setting-row">
           <label className="label" htmlFor={showHiddenFoldersInputId}>
-            Show Hidden Folders
+            {tSettings(language, "settings.vaultIndex.showHiddenFolders")}
           </label>
           <div className="theme-toggle">
-            <span className="toggle-label">Off</span>
+            <span className="toggle-label">{tSettings(language, "settings.common.off")}</span>
             <label className="switch">
               <input
                 id={showHiddenFoldersInputId}
@@ -162,15 +177,15 @@ export const VaultIndexSection = ({
               />
               <span className="slider" />
             </label>
-            <span className="toggle-label">On</span>
+            <span className="toggle-label">{tSettings(language, "settings.common.on")}</span>
           </div>
         </div>
         <div className="setting-row">
           <label className="label" htmlFor={showEmptyFoldersInputId}>
-            Show Empty Folders
+            {tSettings(language, "settings.vaultIndex.showEmptyFolders")}
           </label>
           <div className="theme-toggle">
-            <span className="toggle-label">Off</span>
+            <span className="toggle-label">{tSettings(language, "settings.common.off")}</span>
             <label className="switch">
               <input
                 id={showEmptyFoldersInputId}
@@ -181,7 +196,7 @@ export const VaultIndexSection = ({
               />
               <span className="slider" />
             </label>
-            <span className="toggle-label">On</span>
+            <span className="toggle-label">{tSettings(language, "settings.common.on")}</span>
           </div>
         </div>
       </div>

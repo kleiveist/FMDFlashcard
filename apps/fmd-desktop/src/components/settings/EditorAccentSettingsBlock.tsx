@@ -7,10 +7,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isValidHex, normalizeHex } from "../../lib/color";
+import { type SettingsLanguage, tSettings } from "../../features/settings/settingsI18n";
 
 type AccentMode = "light" | "dark";
 
 type EditorAccentSettingsBlockProps = {
+  language: SettingsLanguage;
   markdownEditorAccentEnabled: boolean;
   markdownEditorAccentLightHex: string;
   markdownEditorAccentDarkHex: string;
@@ -32,7 +34,14 @@ const GRID_INTENSITY_OPTIONS: Array<"light" | "medium" | "strong"> = [
 
 const ACCENT_MODE_OPTIONS: AccentMode[] = ["light", "dark"];
 
+const GRID_INTENSITY_LABEL_KEYS = {
+  light: "settings.editorAccent.intensity.light",
+  medium: "settings.editorAccent.intensity.medium",
+  strong: "settings.editorAccent.intensity.strong",
+} as const;
+
 export const EditorAccentSettingsBlock = ({
+  language,
   markdownEditorAccentEnabled,
   markdownEditorAccentLightHex,
   markdownEditorAccentDarkHex,
@@ -101,11 +110,11 @@ export const EditorAccentSettingsBlock = ({
       } else {
         setAccentErrors((prev) => ({
           ...prev,
-          [accentMode]: "HEX must be #RRGGBB.",
+          [accentMode]: tSettings(language, "settings.appearance.accentColor.hexError"),
         }));
       }
     },
-    [accentMode, onMarkdownEditorAccentHexChange],
+    [accentMode, language, onMarkdownEditorAccentHexChange],
   );
 
   const handleAccentPick = useCallback(
@@ -145,13 +154,15 @@ export const EditorAccentSettingsBlock = ({
 
   return (
     <div className="editor-settings-block">
-      <h3>Accent Editor</h3>
-      <p className="muted">Custom colors and blueprint helpers.</p>
+      <h3>{tSettings(language, "settings.editorAccent.title")}</h3>
+      <p className="muted">{tSettings(language, "settings.editorAccent.description")}</p>
       <div className="setting-row">
-        <span className="label">ACCENT COLOR (MARKDOWN EDITOR)</span>
+        <span className="label">
+          {tSettings(language, "settings.editorAccent.markdownAccentLabel")}
+        </span>
         <div className="setting-subrow">
           <div className="theme-toggle">
-            <span className="toggle-label">Off</span>
+            <span className="toggle-label">{tSettings(language, "settings.common.off")}</span>
             <label className="switch">
               <input
                 type="checkbox"
@@ -163,7 +174,7 @@ export const EditorAccentSettingsBlock = ({
               />
               <span className="slider" />
             </label>
-            <span className="toggle-label">On</span>
+            <span className="toggle-label">{tSettings(language, "settings.common.on")}</span>
           </div>
           {markdownEditorAccentEnabled ? (
             <>
@@ -180,7 +191,9 @@ export const EditorAccentSettingsBlock = ({
                     aria-pressed={accentMode === mode}
                     onClick={() => setAccentMode(mode)}
                   >
-                    {mode === "dark" ? "Dark" : "Light"}
+                    {mode === "dark"
+                      ? tSettings(language, "settings.editorAccent.markdownAccentMode.dark")
+                      : tSettings(language, "settings.editorAccent.markdownAccentMode.light")}
                   </button>
                 ))}
               </div>
@@ -200,25 +213,30 @@ export const EditorAccentSettingsBlock = ({
                   aria-label={`Accent hex for ${accentMode} mode`}
                 />
                 <button type="button" className="ghost small" onClick={handleCopy}>
-                  {isCopied ? "Copied" : "Copy"}
+                  {isCopied
+                    ? tSettings(language, "settings.common.copied")
+                    : tSettings(language, "settings.common.copy")}
                 </button>
               </div>
               <span className={`helper-text ${activeError ? "error-text" : ""}`}>
-                {activeError || "HEX value of the accent color (#RRGGBB)."}
+                {activeError ||
+                  tSettings(language, "settings.editorAccent.markdownAccentHexHelper")}
               </span>
             </>
           ) : (
             <span className="helper-text">
-              Uses the app Accent Color from Appearance.
+              {tSettings(language, "settings.editorAccent.useAppAccentHelper")}
             </span>
           )}
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">Blueprint grid (markdown editor)</span>
+        <span className="label">
+          {tSettings(language, "settings.editorAccent.blueprintGrid")}
+        </span>
         <div className="appearance-editor-inline">
           <div className="theme-toggle">
-            <span className="toggle-label">Off</span>
+            <span className="toggle-label">{tSettings(language, "settings.common.off")}</span>
             <label className="switch">
               <input
                 type="checkbox"
@@ -228,10 +246,12 @@ export const EditorAccentSettingsBlock = ({
               />
               <span className="slider" />
             </label>
-            <span className="toggle-label">On</span>
+            <span className="toggle-label">{tSettings(language, "settings.common.on")}</span>
           </div>
           <div className="appearance-grid-intensity">
-            <span className="toggle-label">Intensity</span>
+            <span className="toggle-label">
+              {tSettings(language, "settings.editorAccent.intensity")}
+            </span>
             <div className="pill-grid">
               {GRID_INTENSITY_OPTIONS.map((option) => (
                 <button
@@ -243,8 +263,7 @@ export const EditorAccentSettingsBlock = ({
                   aria-pressed={editorBlueprintGridIntensity === option}
                   onClick={() => onEditorBlueprintGridIntensityChange(option)}
                 >
-                  {option.charAt(0).toUpperCase()}
-                  {option.slice(1)}
+                  {tSettings(language, GRID_INTENSITY_LABEL_KEYS[option])}
                 </button>
               ))}
             </div>

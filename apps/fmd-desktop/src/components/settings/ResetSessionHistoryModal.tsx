@@ -21,8 +21,10 @@
 
 import { useEffect } from "react";
 import { registerCloseLayer } from "../../lib/shortcuts/closeOrBack";
+import { type SettingsLanguage, tSettings } from "../../features/settings/settingsI18n";
 
 type ResetSessionHistoryModalProps = {
+  language: SettingsLanguage;
   isOpen: boolean;
   isPending?: boolean;
   onCancel: () => void;
@@ -30,6 +32,7 @@ type ResetSessionHistoryModalProps = {
 };
 
 export const ResetSessionHistoryModal = ({
+  language,
   isOpen,
   isPending = false,
   onCancel,
@@ -60,15 +63,17 @@ export const ResetSessionHistoryModal = ({
         aria-labelledby="reset-session-history-title"
         aria-describedby="reset-session-history-body"
       >
-        <h3 id="reset-session-history-title">Reset Session History</h3>
+        <h3 id="reset-session-history-title">
+          {tSettings(language, "settings.resetHistory.title")}
+        </h3>
         <div className="modal-body" id="reset-session-history-body">
           <p className="muted">
-            This will delete all saved session results (top scores and recent runs).
+            {tSettings(language, "settings.resetHistory.description")}
           </p>
         </div>
         <div className="modal-actions">
           <button type="button" className="ghost" onClick={onCancel} disabled={isPending}>
-            Cancel
+            {tSettings(language, "settings.common.cancel")}
           </button>
           <button
             type="button"
@@ -76,7 +81,9 @@ export const ResetSessionHistoryModal = ({
             onClick={onConfirm}
             disabled={isPending}
           >
-            {isPending ? "Resetting..." : "Reset"}
+            {isPending
+              ? tSettings(language, "settings.common.resetting")
+              : tSettings(language, "settings.common.reset")}
           </button>
         </div>
       </div>

@@ -14,6 +14,7 @@ describe("VaultIndexSection", () => {
   it("renders actions, refresh status and integrated vault data toggles in one panel", () => {
     const markup = renderToStaticMarkup(
       createElement(VaultIndexSection, {
+        language: "en",
         lastOpenedFile: "notes/example.md",
         listState: "idle",
         listError: "",
