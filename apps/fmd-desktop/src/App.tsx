@@ -692,6 +692,7 @@ const AppContent = () => {
               userVault={userVault}
               spacedRepetition={spacedRepetition}
               showActiveUser
+              language={settings.language}
             />
           </div>
         </section>

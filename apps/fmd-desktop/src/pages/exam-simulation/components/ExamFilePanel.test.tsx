@@ -1326,10 +1326,11 @@ describe("ExamFilePanel", () => {
           value: originalMatchMedia,
         });
       } else {
-        const windowWithOptionalMatchMedia = window as Window & {
-          matchMedia?: typeof window.matchMedia;
-        };
-        delete windowWithOptionalMatchMedia.matchMedia;
+        Object.defineProperty(window, "matchMedia", {
+          configurable: true,
+          writable: true,
+          value: undefined,
+        });
       }
     }
   });

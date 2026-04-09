@@ -44,7 +44,35 @@ export type SettingsNavSubPage = {
   label: string;
 };
 
-export const SETTINGS_NAV_MODEL = [
+export type SettingsPageId =
+  | "appearance"
+  | "markdown-editor"
+  | "exam-editor"
+  | "exam-settings"
+  | "review-tools"
+  | "keyboard-shortcuts"
+  | "language"
+  | "performance"
+  | "vault-index";
+
+export type SettingsNavDivider = {
+  type: "divider";
+  label: string;
+};
+
+export type SettingsNavItem = {
+  type: "item";
+  id: SettingsPageId;
+  label: string;
+  icon: SettingsNavIcon;
+  title?: string;
+  subPages?: readonly SettingsNavSubPage[];
+};
+
+export type SettingsNavEntry = SettingsNavDivider | SettingsNavItem;
+export type SettingsNavModel = readonly SettingsNavEntry[];
+
+export const SETTINGS_NAV_MODEL: SettingsNavModel = [
   { type: "divider", label: "DESIGN" },
   {
     type: "item",
@@ -125,13 +153,4 @@ export const SETTINGS_NAV_MODEL = [
       { id: "export-import", label: "Ex- Import" },
     ],
   },
-] as const;
-
-export type SettingsNavEntry = (typeof SETTINGS_NAV_MODEL)[number];
-export type SettingsNavItem = Extract<SettingsNavEntry, { type: "item" }> & {
-  title?: string;
-  subPages?: readonly SettingsNavSubPage[];
-};
-export type SettingsNavDivider = Extract<SettingsNavEntry, { type: "divider" }>;
-export type SettingsNavModel = readonly SettingsNavEntry[];
-export type SettingsPageId = SettingsNavItem["id"];
+];

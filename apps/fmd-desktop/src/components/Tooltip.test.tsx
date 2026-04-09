@@ -26,11 +26,11 @@ describe("Tooltip", () => {
   it("opens only after the configured hover delay and closes on leave", () => {
     vi.useFakeTimers();
     const { container, cleanup } = render(
-      createElement(
-        Tooltip,
-        { content: "Delayed tooltip", openDelayMs: 450 },
-        createElement("button", { type: "button" }, "Trigger"),
-      ),
+      createElement(Tooltip, {
+        content: "Delayed tooltip",
+        openDelayMs: 450,
+        children: createElement("button", { type: "button" }, "Trigger"),
+      }),
     );
 
     try {
@@ -70,11 +70,11 @@ describe("Tooltip", () => {
   it("does not open when hover ends before delay elapses", () => {
     vi.useFakeTimers();
     const { container, cleanup } = render(
-      createElement(
-        Tooltip,
-        { content: "Should not open", openDelayMs: 450 },
-        createElement("button", { type: "button" }, "Trigger"),
-      ),
+      createElement(Tooltip, {
+        content: "Should not open",
+        openDelayMs: 450,
+        children: createElement("button", { type: "button" }, "Trigger"),
+      }),
     );
 
     try {
@@ -108,11 +108,11 @@ describe("Tooltip", () => {
 
   it("opens immediately on focus and closes on blur", () => {
     const { container, cleanup } = render(
-      createElement(
-        Tooltip,
-        { content: "Focus tooltip", openDelayMs: 450 },
-        createElement("button", { type: "button" }, "Trigger"),
-      ),
+      createElement(Tooltip, {
+        content: "Focus tooltip",
+        openDelayMs: 450,
+        children: createElement("button", { type: "button" }, "Trigger"),
+      }),
     );
 
     try {
@@ -135,11 +135,11 @@ describe("Tooltip", () => {
 
   it("supports start alignment from anchor left edge", () => {
     const { container, cleanup } = render(
-      createElement(
-        Tooltip,
-        { content: "Start aligned", horizontalAlign: "start" },
-        createElement("button", { type: "button" }, "Trigger"),
-      ),
+      createElement(Tooltip, {
+        content: "Start aligned",
+        horizontalAlign: "start",
+        children: createElement("button", { type: "button" }, "Trigger"),
+      }),
     );
 
     try {
