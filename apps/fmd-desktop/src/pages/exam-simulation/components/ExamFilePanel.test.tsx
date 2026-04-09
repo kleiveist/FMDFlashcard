@@ -1262,6 +1262,78 @@ describe("ExamFilePanel", () => {
     }
   });
 
+  it("uses start-aligned mode tooltips on viewports below 1200px", () => {
+    vi.useFakeTimers();
+    const hadMatchMedia = "matchMedia" in window;
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      writable: true,
+      value: (query: string) => ({
+        matches: query === "(max-width: 1199.98px)",
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(() => false),
+      }),
+    });
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files,
+        listState: "idle",
+        listError: "",
+        selectedPaths: ["/vault/a.md"],
+        vaultPath: "/vault",
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile: vi.fn(),
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile: vi.fn(),
+        combinationMode: "fully-mixed",
+        onCombinationModeChange: vi.fn(),
+        language: "en",
+      }),
+    );
+
+    try {
+      const status = container.querySelector(".exam-file-panel-status");
+      const nestedButton = Array.from(
+        status?.querySelectorAll<HTMLButtonElement>("button") ?? [],
+      ).find((button) => button.textContent?.trim() === "Nested");
+      const anchor = nestedButton?.closest<HTMLElement>(".ui-tooltip-anchor");
+      expect(anchor).toBeTruthy();
+
+      act(() => {
+        anchor?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+        vi.advanceTimersByTime(450);
+      });
+
+      const tooltip = document.body.querySelector<HTMLElement>('[role="tooltip"]');
+      expect(tooltip).toBeTruthy();
+      expect(tooltip?.className).toContain("ui-tooltip-align-start");
+    } finally {
+      cleanup();
+      vi.useRealTimers();
+      if (hadMatchMedia) {
+        Object.defineProperty(window, "matchMedia", {
+          configurable: true,
+          writable: true,
+          value: originalMatchMedia,
+        });
+      } else {
+        const windowWithOptionalMatchMedia = window as Window & {
+          matchMedia?: typeof window.matchMedia;
+        };
+        delete windowWithOptionalMatchMedia.matchMedia;
+      }
+    }
+  });
+
   it("renders selected order in compact rows without step labels", () => {
     const extendedFiles = [
       {

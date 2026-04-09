@@ -6,6 +6,7 @@ type TooltipProps = {
   children: ReactNode;
   placement?: "top" | "bottom";
   openDelayMs?: number;
+  horizontalAlign?: "center" | "start";
 };
 
 type TooltipPosition = {
@@ -18,6 +19,7 @@ export const Tooltip = ({
   children,
   placement = "top",
   openDelayMs = 0,
+  horizontalAlign = "center",
 }: TooltipProps) => {
   const tooltipId = useId();
   const anchorRef = useRef<HTMLSpanElement | null>(null);
@@ -72,9 +74,12 @@ export const Tooltip = ({
         placement === "top"
           ? rect.top + window.scrollY
           : rect.bottom + window.scrollY,
-      left: rect.left + window.scrollX + rect.width / 2,
+      left:
+        rect.left +
+        window.scrollX +
+        (horizontalAlign === "start" ? 0 : rect.width / 2),
     });
-  }, [placement]);
+  }, [horizontalAlign, placement]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -108,7 +113,7 @@ export const Tooltip = ({
             <div
               id={tooltipId}
               role="tooltip"
-              className={`ui-tooltip ui-tooltip-${placement}`}
+              className={`ui-tooltip ui-tooltip-${placement} ui-tooltip-align-${horizontalAlign}`}
               style={{
                 top: `${position.top}px`,
                 left: `${position.left}px`,

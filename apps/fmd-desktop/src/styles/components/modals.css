@@ -208,12 +208,20 @@
   pointer-events: none;
 }
 
-.ui-tooltip-top {
+.ui-tooltip-top.ui-tooltip-align-center {
   transform: translate(-50%, calc(-100% - 10px));
 }
 
-.ui-tooltip-bottom {
+.ui-tooltip-bottom.ui-tooltip-align-center {
   transform: translate(-50%, 10px);
+}
+
+.ui-tooltip-top.ui-tooltip-align-start {
+  transform: translate(0, calc(-100% - 10px));
+}
+
+.ui-tooltip-bottom.ui-tooltip-align-start {
+  transform: translate(0, 10px);
 }
 
 .anchored-popup {

@@ -132,4 +132,45 @@ describe("Tooltip", () => {
       cleanup();
     }
   });
+
+  it("supports start alignment from anchor left edge", () => {
+    const { container, cleanup } = render(
+      createElement(
+        Tooltip,
+        { content: "Start aligned", horizontalAlign: "start" },
+        createElement("button", { type: "button" }, "Trigger"),
+      ),
+    );
+
+    try {
+      const anchor = container.querySelector<HTMLElement>(".ui-tooltip-anchor");
+      expect(anchor).toBeTruthy();
+      Object.defineProperty(anchor, "getBoundingClientRect", {
+        configurable: true,
+        value: () =>
+          ({
+            x: 120,
+            y: 40,
+            left: 120,
+            top: 40,
+            width: 80,
+            height: 24,
+            right: 200,
+            bottom: 64,
+            toJSON: () => ({}),
+          }) as DOMRect,
+      });
+
+      act(() => {
+        anchor?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+      });
+
+      const tooltip = document.body.querySelector<HTMLElement>('[role="tooltip"]');
+      expect(tooltip).toBeTruthy();
+      expect(tooltip?.className).toContain("ui-tooltip-align-start");
+      expect(tooltip?.style.left).toBe("120px");
+    } finally {
+      cleanup();
+    }
+  });
 });

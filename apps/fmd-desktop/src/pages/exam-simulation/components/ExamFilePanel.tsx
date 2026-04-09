@@ -21,6 +21,7 @@ import { Tooltip } from "../../../components/Tooltip";
 import type { ExamCombinationMode } from "../../../lib/examMixedSession";
 import { compareNaturalPath } from "../../../lib/naturalSort";
 import type { LoadState } from "../../../lib/types";
+import { useMediaQuery } from "../../../lib/useMediaQuery";
 import {
   areExamSelectionRowsEqual,
   buildExamSelectionRowsFromPaths,
@@ -165,6 +166,8 @@ export const ExamFilePanel = ({
   className,
   hidePanelStatus = false,
 }: ExamFilePanelProps) => {
+  const isCompactModeTooltip = useMediaQuery("(max-width: 1199.98px)", false);
+  const modeTooltipAlign = isCompactModeTooltip ? "start" : "center";
   const [search, setSearch] = useState("");
   const [scrollTop, setScrollTop] = useState(0);
   const [moveSourcePath, setMoveSourcePath] = useState<string | null>(null);
@@ -832,6 +835,7 @@ export const ExamFilePanel = ({
                 <Tooltip
                   content={EXAM_MODE_TOOLTIP_COPY[language].nested}
                   openDelayMs={EXAM_MODE_TOOLTIP_DELAY_MS}
+                  horizontalAlign={modeTooltipAlign}
                 >
                   <button
                     type="button"
@@ -846,6 +850,7 @@ export const ExamFilePanel = ({
                 <Tooltip
                   content={EXAM_MODE_TOOLTIP_COPY[language]["sequential-shuffled"]}
                   openDelayMs={EXAM_MODE_TOOLTIP_DELAY_MS}
+                  horizontalAlign={modeTooltipAlign}
                 >
                   <button
                     type="button"
@@ -860,6 +865,7 @@ export const ExamFilePanel = ({
                 <Tooltip
                   content={EXAM_MODE_TOOLTIP_COPY[language].sequential}
                   openDelayMs={EXAM_MODE_TOOLTIP_DELAY_MS}
+                  horizontalAlign={modeTooltipAlign}
                 >
                   <button
                     type="button"
@@ -874,6 +880,7 @@ export const ExamFilePanel = ({
                 <Tooltip
                   content={EXAM_MODE_TOOLTIP_COPY[language]["fully-mixed"]}
                   openDelayMs={EXAM_MODE_TOOLTIP_DELAY_MS}
+                  horizontalAlign={modeTooltipAlign}
                 >
                   <button
                     type="button"
