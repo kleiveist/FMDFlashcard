@@ -51,7 +51,7 @@ export const MonitoringRenderValue = ({
       ) : null}
       {result.progressRing && percent !== null ? (
         <span className="monitoring-render-ring" aria-hidden="true" style={ringStyle}>
-          <span className="monitoring-render-ring-core">{Math.round(percent)}%</span>
+          <span className="monitoring-render-ring-core" />
         </span>
       ) : null}
     </div>

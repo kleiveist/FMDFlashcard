@@ -481,8 +481,21 @@ export const MonitoringRulesPage = () => {
                   </button>
                 </div>
 
-                {draft.rules.map((rule) => (
-                  <article key={rule.id} className="monitoring-rules-rule-card">
+                {draft.rules.map((rule) => {
+                  const rulePreviewProfile: MonitoringRenderProfile = {
+                    ...cloneProfile(draft),
+                    rules: [cloneRule(rule)],
+                  };
+                  const rulePreviewResult = previewAttribute
+                    ? renderMonitoringValue({
+                        attributeKey: previewAttribute,
+                        value: previewValue,
+                        profiles: [rulePreviewProfile],
+                      })
+                    : null;
+
+                  return (
+                    <article key={rule.id} className="monitoring-rules-rule-card">
                     <header className="monitoring-rules-rule-head">
                       <select
                         value={rule.type}
@@ -737,7 +750,7 @@ export const MonitoringRulesPage = () => {
                           />
                         </label>
                         <label>
-                          Thresholds (`>= 90 ⭐`, eine Zeile je Regel)
+                          {"Thresholds (`>= 90 ⭐`, eine Zeile je Regel)"}
                           <textarea
                             value={thresholdsToText(rule)}
                             onChange={(event) => {
@@ -817,8 +830,21 @@ export const MonitoringRulesPage = () => {
                         </label>
                       </div>
                     ) : null}
-                  </article>
-                ))}
+
+                      <div className="monitoring-rules-rule-preview">
+                        <span className="monitoring-rules-rule-preview-label">
+                          Regel-Vorschau
+                        </span>
+                        <div className="monitoring-rules-rule-preview-value">
+                          <MonitoringRenderValue
+                            result={rulePreviewResult}
+                            fallback={previewValue}
+                          />
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
               </section>
 
               <section className="monitoring-rules-section">

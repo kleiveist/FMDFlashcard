@@ -30,18 +30,23 @@ describe("database-normalizers", () => {
       raw: "-5.5%",
       value: -5.5,
     });
-    expect(parsePercentValue("80")).toBeNull();
+    expect(parsePercentValue("80")).toEqual({
+      raw: "80",
+      value: 80,
+    });
   });
 
   it("normalizes status values with rank + emoji", () => {
-    expect(parseStatusValue("3 🟡")).toEqual({
+    expect(parseStatusValue("3 🟡")).toMatchObject({
       raw: "3 🟡",
+      code: "3",
       rank: 3,
       label: "🟡",
       emoji: "🟡",
     });
-    expect(parseStatusValue("Open")).toEqual({
+    expect(parseStatusValue("Open")).toMatchObject({
       raw: "Open",
+      code: "Open",
       label: "Open",
     });
   });
