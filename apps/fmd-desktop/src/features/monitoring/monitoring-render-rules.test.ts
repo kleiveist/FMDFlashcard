@@ -136,9 +136,11 @@ describe("monitoring-render-rules", () => {
 
     expect(result).not.toBeNull();
     expect(result?.displayText).toBe("86%");
-    expect(result?.progressBar).toBe(true);
-    expect(result?.progressRing).toBe(false);
     expect(result?.percentValue).toBe(86);
+    expect(result?.progressVisual).toEqual({
+      style: "bar",
+      percent: 86,
+    });
   });
 
   it("renders progress ring when configured", () => {
@@ -156,7 +158,8 @@ describe("monitoring-render-rules", () => {
         },
         {
           id: "progress-ring-1",
-          type: "progress-ring",
+          type: "progress-visual",
+          visualStyle: "ring",
           min: 0,
           max: 100,
         },
@@ -170,9 +173,47 @@ describe("monitoring-render-rules", () => {
     });
 
     expect(result?.displayText).toBe("42%");
-    expect(result?.progressRing).toBe(true);
-    expect(result?.progressBar).toBe(false);
     expect(result?.percentValue).toBe(42);
+    expect(result?.progressVisual).toEqual({
+      style: "ring",
+      percent: 42,
+    });
+  });
+
+  it("renders progress pie when configured", () => {
+    const profile = createProfile({
+      id: "pie-profile",
+      name: "Pie",
+      attributeAliases: ["pie-percent"],
+      inputFormat: "numeric-percent",
+      rules: [
+        {
+          id: "percent-format-pie",
+          type: "percent-format",
+          decimals: 0,
+          clamp: true,
+        },
+        {
+          id: "progress-pie-1",
+          type: "progress-visual",
+          visualStyle: "pie",
+          min: 0,
+          max: 100,
+        },
+      ],
+    });
+
+    const result = renderMonitoringValue({
+      attributeKey: "pie-percent",
+      value: "25",
+      profiles: [profile],
+    });
+
+    expect(result?.displayText).toBe("25%");
+    expect(result?.progressVisual).toEqual({
+      style: "pie",
+      percent: 25,
+    });
   });
 
   it("renders status mappings for raw code and legacy code+emoji", () => {
@@ -300,5 +341,37 @@ describe("monitoring-render-rules", () => {
     expect(result).not.toBeNull();
     expect(result?.displayText).toBe("not-a-ratio");
     expect(result?.percentValue).toBeNull();
+  });
+
+  it("migrates legacy progress rule types to progress-visual", () => {
+    const normalized = normalizeMonitoringRenderProfiles([
+      {
+        id: "legacy-progress",
+        name: "Legacy Progress",
+        attributeAliases: ["percent"],
+        inputFormat: "numeric-percent",
+        scopes: ["database"],
+        rules: [
+          { id: "legacy-bar", type: "progress-bar", min: 0, max: 100 },
+          { id: "legacy-ring", type: "progress-ring", min: 0, max: 100 },
+          { id: "legacy-wing", type: "progresswing", min: 0, max: 100 },
+        ],
+      },
+    ]);
+
+    expect(normalized).toHaveLength(1);
+    expect(normalized[0]?.rules).toHaveLength(3);
+    expect(normalized[0]?.rules[0]).toMatchObject({
+      type: "progress-visual",
+      visualStyle: "bar",
+    });
+    expect(normalized[0]?.rules[1]).toMatchObject({
+      type: "progress-visual",
+      visualStyle: "ring",
+    });
+    expect(normalized[0]?.rules[2]).toMatchObject({
+      type: "progress-visual",
+      visualStyle: "ring",
+    });
   });
 });

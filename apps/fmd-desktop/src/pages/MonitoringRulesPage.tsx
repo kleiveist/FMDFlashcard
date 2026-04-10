@@ -44,8 +44,7 @@ const ALL_RULE_TYPES: MonitoringRenderRule["type"][] = [
   "value-map",
   "ratio-derived-percent",
   "percent-format",
-  "progress-bar",
-  "progress-ring",
+  "progress-visual",
   "threshold-symbol",
   "grouped-label-map",
 ];
@@ -257,8 +256,8 @@ const summarizeRuleFallback = (rule: MonitoringRenderRule) => {
   if (rule.type === "percent-format") {
     return `Decimals ${rule.decimals ?? 0}`;
   }
-  if (rule.type === "progress-bar" || rule.type === "progress-ring") {
-    return `${rule.min ?? 0}-${rule.max ?? 100}`;
+  if (rule.type === "progress-visual") {
+    return `${toLabel(rule.visualStyle ?? "bar")} ${rule.min ?? 0}-${rule.max ?? 100}`;
   }
   if (rule.type === "grouped-label-map") {
     const first = rule.groups[0];
@@ -1164,7 +1163,15 @@ export const MonitoringRulesPage = () => {
                         <span className="monitoring-rules-rule-button-text">
                           {entry.buttonLabel}
                         </span>
-                        {entry.previewResult?.symbol ? (
+                        {entry.previewResult?.progressVisual ? (
+                          <span className="monitoring-rules-rule-button-indicator" aria-hidden="true">
+                            <MonitoringRenderValue
+                              result={entry.previewResult}
+                              compact
+                              showText={false}
+                            />
+                          </span>
+                        ) : entry.previewResult?.symbol ? (
                           <span
                             className="monitoring-rules-rule-button-indicator"
                             aria-hidden="true"
@@ -1407,8 +1414,30 @@ export const MonitoringRulesPage = () => {
                       </div>
                     ) : null}
 
-                    {activeRule.type === "progress-bar" || activeRule.type === "progress-ring" ? (
-                      <div className="monitoring-rules-rule-fields">
+                    {activeRule.type === "progress-visual" ? (
+                      <div className="monitoring-rules-rule-fields monitoring-rules-rule-fields--progress-visual">
+                        <label>
+                          Visual Style
+                          <select
+                            value={activeRule.visualStyle ?? "bar"}
+                            onChange={(event) => {
+                              const nextStyle: "bar" | "ring" | "pie" = event.target.value === "ring"
+                                ? "ring"
+                                : event.target.value === "pie"
+                                  ? "pie"
+                                  : "bar";
+                              updateRule(activeRule.id, (current) =>
+                                current.type === "progress-visual"
+                                  ? { ...current, visualStyle: nextStyle }
+                                  : current,
+                              );
+                            }}
+                          >
+                            <option value="bar">▭ Balken</option>
+                            <option value="ring">◌ Ring</option>
+                            <option value="pie">◔ Torte</option>
+                          </select>
+                        </label>
                         <label>
                           Min
                           <input
@@ -1417,7 +1446,7 @@ export const MonitoringRulesPage = () => {
                             onChange={(event) => {
                               const next = Number(event.target.value);
                               updateRule(activeRule.id, (current) =>
-                                current.type === activeRule.type
+                                current.type === "progress-visual"
                                   ? { ...current, min: Number.isFinite(next) ? next : 0 }
                                   : current,
                               );
@@ -1432,7 +1461,7 @@ export const MonitoringRulesPage = () => {
                             onChange={(event) => {
                               const next = Number(event.target.value);
                               updateRule(activeRule.id, (current) =>
-                                current.type === activeRule.type
+                                current.type === "progress-visual"
                                   ? { ...current, max: Number.isFinite(next) ? next : 100 }
                                   : current,
                               );

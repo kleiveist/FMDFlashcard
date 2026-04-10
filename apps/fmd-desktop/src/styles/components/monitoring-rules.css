@@ -352,6 +352,13 @@
 .monitoring-rules-rule-button-indicator {
   flex: 0 0 auto;
   font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.monitoring-rules-rule-button-indicator .monitoring-render-compact {
+  gap: 4px;
 }
 
 .monitoring-rules-rule-remove-button {
@@ -442,6 +449,15 @@
 }
 
 .monitoring-rules-rule-fields--decimals-toggle label:last-child {
+  grid-column: auto;
+}
+
+.monitoring-rules-rule-fields--progress-visual {
+  grid-template-columns: repeat(3, minmax(140px, 1fr));
+  align-items: end;
+}
+
+.monitoring-rules-rule-fields--progress-visual label:last-child {
   grid-column: auto;
 }
 
@@ -566,6 +582,10 @@
 
   .monitoring-rules-rule-fields--decimals-toggle {
     grid-template-columns: minmax(140px, 1fr) auto;
+  }
+
+  .monitoring-rules-rule-fields--progress-visual {
+    grid-template-columns: 1fr;
   }
 
   .monitoring-rules-rule-preview-layout {

@@ -329,6 +329,67 @@ describe("MonitoringRulesPage", () => {
     cleanup();
   });
 
+  it("uses unified progress visual type and exposes style variants", async () => {
+    const { container, cleanup } = renderPage();
+    await flush();
+
+    await click(container.querySelector(".monitoring-rules-rule-button"));
+    const modalPanel = container.querySelector("[data-testid='mock-modal-panel']");
+    const typeSelect = modalPanel?.querySelector<HTMLSelectElement>(
+      ".monitoring-rules-rule-head select",
+    );
+    expect(typeSelect).toBeTruthy();
+    const typeOptions = Array.from(typeSelect?.options ?? [], (option) => option.textContent ?? "");
+    expect(typeOptions).toContain("Progress Visual");
+    expect(typeOptions).not.toContain("Progress Bar");
+    expect(typeOptions).not.toContain("Progress Ring");
+
+    await changeSelect(typeSelect ?? null, "progress-visual");
+
+    const visualStyleSelect = modalPanel?.querySelector<HTMLSelectElement>(
+      ".monitoring-rules-rule-fields select",
+    );
+    expect(visualStyleSelect).toBeTruthy();
+    const styleValues = Array.from(visualStyleSelect?.options ?? [], (option) => option.value);
+    expect(styleValues).toEqual(["bar", "ring", "pie"]);
+
+    cleanup();
+  });
+
+  it("renders ring/pie in modal preview and mini graphic preview in rule buttons", async () => {
+    const { container, cleanup } = renderPage();
+    await flush();
+
+    await click(container.querySelector(".monitoring-rules-rule-button"));
+    const modalPanel = container.querySelector("[data-testid='mock-modal-panel']");
+    await changeSelect(
+      modalPanel?.querySelector<HTMLSelectElement>(".monitoring-rules-rule-head select") ?? null,
+      "progress-visual",
+    );
+    const visualStyleSelect = modalPanel?.querySelector<HTMLSelectElement>(
+      ".monitoring-rules-rule-fields--progress-visual select",
+    );
+    await changeSelect(visualStyleSelect ?? null, "ring");
+    expect(
+      modalPanel?.querySelector(".monitoring-rules-rule-preview-value .monitoring-render-ring"),
+    ).toBeTruthy();
+
+    await changeSelect(visualStyleSelect ?? null, "pie");
+    expect(
+      modalPanel?.querySelector(".monitoring-rules-rule-preview-value .monitoring-render-pie"),
+    ).toBeTruthy();
+
+    await click(container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"));
+
+    expect(
+      container.querySelector(
+        ".monitoring-rules-rule-button-indicator .monitoring-render-pie.is-compact",
+      ),
+    ).toBeTruthy();
+
+    cleanup();
+  });
+
   it("renders split preview layout with raw value control only in modal", async () => {
     const { container, cleanup } = renderPage();
     await flush();

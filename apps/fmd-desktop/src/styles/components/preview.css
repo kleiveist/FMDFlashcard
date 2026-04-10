@@ -6182,6 +6182,11 @@ textarea.preview-editor {
   overflow: hidden;
 }
 
+.monitoring-render-progress.is-compact {
+  width: 36px;
+  height: 5px;
+}
+
 .monitoring-render-progress-fill {
   display: block;
   height: 100%;
@@ -6190,24 +6195,67 @@ textarea.preview-editor {
 }
 
 .monitoring-render-ring {
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-.monitoring-render-ring-core {
-  width: 22px;
-  height: 22px;
+.monitoring-render-ring.is-compact {
+  width: 18px;
+  height: 18px;
+}
+
+.monitoring-render-ring-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.monitoring-render-ring-track {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 4;
+}
+
+.monitoring-render-ring-fill {
+  fill: none;
+  stroke: var(--accent-border);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.monitoring-render-ring-inner {
+  fill: transparent;
+}
+
+.monitoring-render-pie {
+  width: 24px;
+  height: 24px;
   border-radius: 999px;
-  background: var(--db-surface-base);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.58rem;
-  color: var(--db-muted);
+  border: none;
+}
+
+.monitoring-render-pie.is-compact {
+  width: 18px;
+  height: 18px;
+}
+
+.monitoring-render-pie-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.monitoring-render-pie-track {
+  fill: transparent;
+}
+
+.monitoring-render-pie-fill {
+  fill: var(--accent-border);
 }
 
 .frontmatter-monitoring-preview {

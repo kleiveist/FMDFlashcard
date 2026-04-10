@@ -35,6 +35,8 @@ export type MonitoringThresholdRuleEntry = {
   symbol: string;
 };
 
+export type MonitoringProgressVisualStyle = "bar" | "ring" | "pie";
+
 type MonitoringRulePreviewContext = {
   rulePreviewAlias?: string;
   rulePreviewRawValue?: string;
@@ -64,13 +66,8 @@ export type MonitoringRenderRule =
     } & MonitoringRulePreviewContext
   | {
       id: string;
-      type: "progress-bar";
-      min?: number;
-      max?: number;
-    } & MonitoringRulePreviewContext
-  | {
-      id: string;
-      type: "progress-ring";
+      type: "progress-visual";
+      visualStyle?: MonitoringProgressVisualStyle;
       min?: number;
       max?: number;
     } & MonitoringRulePreviewContext
@@ -108,8 +105,10 @@ export type MonitoringRenderResult = {
   symbol: string | null;
   badge: string | null;
   percentValue: number | null;
-  progressBar: boolean;
-  progressRing: boolean;
+  progressVisual: {
+    style: MonitoringProgressVisualStyle;
+    percent: number;
+  } | null;
   compactText: string;
 };
 
@@ -199,18 +198,11 @@ export const createMonitoringRenderRule = (
       clamp: true,
     };
   }
-  if (type === "progress-bar") {
+  if (type === "progress-visual") {
     return {
       id: createRuleId("rule"),
       type,
-      min: 0,
-      max: 100,
-    };
-  }
-  if (type === "progress-ring") {
-    return {
-      id: createRuleId("rule"),
-      type,
+      visualStyle: "bar",
       min: 0,
       max: 100,
     };
@@ -269,7 +261,8 @@ export const DEFAULT_MONITORING_RENDER_PROFILES: MonitoringRenderProfile[] = [
       },
       {
         id: "monitoring-percent-bar",
-        type: "progress-bar",
+        type: "progress-visual",
+        visualStyle: "bar",
         min: 0,
         max: 100,
       },
@@ -488,7 +481,15 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
   if (!isRecord(value)) {
     return null;
   }
-  const type = String(value.type ?? "").trim() as MonitoringRenderRule["type"];
+  const rawType = String(value.type ?? "").trim().toLowerCase();
+  const legacyProgressStyle = rawType === "progress-bar"
+    ? "bar"
+    : rawType === "progress-ring" || rawType === "progresswing"
+      ? "ring"
+      : null;
+  const type = (rawType === "progress-visual" || legacyProgressStyle
+    ? "progress-visual"
+    : rawType) as MonitoringRenderRule["type"];
   const id = String(value.id ?? "").trim() || createRuleId("rule");
   const rulePreviewAlias =
     typeof value.rulePreviewAlias === "string" ? value.rulePreviewAlias.trim() : "";
@@ -531,23 +532,17 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
       ...previewContext,
     };
   }
-  if (type === "progress-bar") {
+  if (type === "progress-visual") {
     const min = Number(value.min ?? Number.NaN);
     const max = Number(value.max ?? Number.NaN);
+    const styleValue = String(value.visualStyle ?? "").trim().toLowerCase();
+    const visualStyle = styleValue === "bar" || styleValue === "ring" || styleValue === "pie"
+      ? styleValue
+      : legacyProgressStyle ?? "bar";
     return {
       id,
       type,
-      min: Number.isFinite(min) ? min : 0,
-      max: Number.isFinite(max) ? max : 100,
-      ...previewContext,
-    };
-  }
-  if (type === "progress-ring") {
-    const min = Number(value.min ?? Number.NaN);
-    const max = Number(value.max ?? Number.NaN);
-    return {
-      id,
-      type,
+      visualStyle,
       min: Number.isFinite(min) ? min : 0,
       max: Number.isFinite(max) ? max : 100,
       ...previewContext,
@@ -863,8 +858,7 @@ export const renderMonitoringValue = ({
   let symbol: string | null = null;
   let badge: string | null = null;
   let percentValue: number | null = null;
-  let progressBar = false;
-  let progressRing = false;
+  let progressVisual: MonitoringRenderResult["progressVisual"] = null;
 
   profile.rules.forEach((rule) => {
     if (rule.type === "value-map") {
@@ -930,27 +924,22 @@ export const renderMonitoringValue = ({
       return;
     }
 
-    if (rule.type === "progress-bar") {
+    if (rule.type === "progress-visual") {
       const basis = percentValue ?? parsed.numericValue;
       if (basis === null) {
         return;
       }
       const min = Number.isFinite(rule.min ?? Number.NaN) ? Number(rule.min) : 0;
       const max = Number.isFinite(rule.max ?? Number.NaN) ? Number(rule.max) : 100;
-      percentValue = clampPercent(basis, min, max);
-      progressBar = true;
-      return;
-    }
-
-    if (rule.type === "progress-ring") {
-      const basis = percentValue ?? parsed.numericValue;
-      if (basis === null) {
+      const clampedPercent = clampPercent(basis, min, max);
+      if (clampedPercent === null) {
         return;
       }
-      const min = Number.isFinite(rule.min ?? Number.NaN) ? Number(rule.min) : 0;
-      const max = Number.isFinite(rule.max ?? Number.NaN) ? Number(rule.max) : 100;
-      percentValue = clampPercent(basis, min, max);
-      progressRing = true;
+      percentValue = clampedPercent;
+      progressVisual = {
+        style: rule.visualStyle ?? "bar",
+        percent: clampedPercent,
+      };
       return;
     }
 
@@ -1014,8 +1003,7 @@ export const renderMonitoringValue = ({
     symbol,
     badge,
     percentValue,
-    progressBar,
-    progressRing,
+    progressVisual,
     compactText,
   };
 };
