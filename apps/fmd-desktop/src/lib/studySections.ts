@@ -21,7 +21,7 @@ export const STUDY_SECTIONS: StudySection[] = [
   { key: "spaced-repetition", label: "Repetition" },
   { key: "card-monitoring", label: "Card Monitoring" },
   { key: "points-profiles", label: "Points Profiles" },
-  { key: "monitoring-rules", label: "Monitoring Rules" },
+  { key: "monitoring-rules", label: "Attribute Rules" },
 ];
 
 export const CARD_SECTIONS = STUDY_SECTIONS.filter(

@@ -124,7 +124,7 @@ const SECONDARY_NAV_ITEMS: Record<PrimaryGroupKey, SecondaryNavItem[]> = {
     },
     {
       id: "monitoring-rules",
-      label: "Monitoring Rules",
+      label: "Attribute Rules",
       icon: GaugeIcon,
       target: { type: "section", key: "monitoring-rules" },
     },

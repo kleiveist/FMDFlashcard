@@ -35,6 +35,11 @@ export type MonitoringThresholdRuleEntry = {
   symbol: string;
 };
 
+type MonitoringRulePreviewContext = {
+  rulePreviewAlias?: string;
+  rulePreviewRawValue?: string;
+};
+
 export type MonitoringRenderRule =
   | {
       id: string;
@@ -43,39 +48,39 @@ export type MonitoringRenderRule =
       caseSensitive?: boolean;
       displayMode?: "append" | "replace";
       separator?: string;
-    }
+    } & MonitoringRulePreviewContext
   | {
       id: string;
       type: "ratio-derived-percent";
       decimals?: number;
       showBase?: boolean;
       wrapInParentheses?: boolean;
-    }
+    } & MonitoringRulePreviewContext
   | {
       id: string;
       type: "percent-format";
       decimals?: number;
       clamp?: boolean;
-    }
+    } & MonitoringRulePreviewContext
   | {
       id: string;
       type: "progress-bar";
       min?: number;
       max?: number;
-    }
+    } & MonitoringRulePreviewContext
   | {
       id: string;
       type: "progress-ring";
       min?: number;
       max?: number;
-    }
+    } & MonitoringRulePreviewContext
   | {
       id: string;
       type: "threshold-symbol";
       thresholds: MonitoringThresholdRuleEntry[];
       appendToText?: boolean;
       separator?: string;
-    }
+    } & MonitoringRulePreviewContext
   | {
       id: string;
       type: "grouped-label-map";
@@ -83,7 +88,7 @@ export type MonitoringRenderRule =
       caseSensitive?: boolean;
       replaceText?: boolean;
       separator?: string;
-    };
+    } & MonitoringRulePreviewContext;
 
 export type MonitoringRenderProfile = {
   id: string;
@@ -311,36 +316,72 @@ const dedupeAliases = (aliases: string[]) => {
   return next;
 };
 
+const resolveRulePreviewAlias = (
+  value: string | undefined,
+  profileAliases: string[],
+) => {
+  if (profileAliases.length === 0) {
+    return value?.trim() ?? "";
+  }
+  const normalized = toLower(value ?? "");
+  if (!normalized) {
+    return profileAliases[0] ?? "";
+  }
+  const matched = profileAliases.find((alias) => toLower(alias) === normalized);
+  return matched ?? profileAliases[0] ?? "";
+};
+
+const hydrateRulePreviewContext = (
+  rule: MonitoringRenderRule,
+  profileAliases: string[],
+  fallbackRawValue: string,
+): MonitoringRenderRule => ({
+  ...rule,
+  rulePreviewAlias: resolveRulePreviewAlias(rule.rulePreviewAlias, profileAliases),
+  rulePreviewRawValue:
+    typeof rule.rulePreviewRawValue === "string"
+      ? rule.rulePreviewRawValue
+      : fallbackRawValue,
+});
+
 const cloneDefaultProfiles = () =>
   DEFAULT_MONITORING_RENDER_PROFILES.map((profile) => ({
     ...profile,
     previewRawValue: profile.previewRawValue ?? "",
     attributeAliases: [...profile.attributeAliases],
     scopes: [...profile.scopes],
-    rules: profile.rules.map((rule) => {
-      if (rule.type === "value-map") {
-        return {
-          ...rule,
-          mappings: rule.mappings.map((entry) => ({ ...entry })),
-        };
-      }
-      if (rule.type === "threshold-symbol") {
-        return {
-          ...rule,
-          thresholds: rule.thresholds.map((entry) => ({ ...entry })),
-        };
-      }
-      if (rule.type === "grouped-label-map") {
-        return {
-          ...rule,
-          groups: rule.groups.map((group) => ({
-            ...group,
-            values: [...group.values],
-          })),
-        };
-      }
-      return { ...rule };
-    }),
+    rules: profile.rules
+      .map((rule) => {
+        if (rule.type === "value-map") {
+          return {
+            ...rule,
+            mappings: rule.mappings.map((entry) => ({ ...entry })),
+          };
+        }
+        if (rule.type === "threshold-symbol") {
+          return {
+            ...rule,
+            thresholds: rule.thresholds.map((entry) => ({ ...entry })),
+          };
+        }
+        if (rule.type === "grouped-label-map") {
+          return {
+            ...rule,
+            groups: rule.groups.map((group) => ({
+              ...group,
+              values: [...group.values],
+            })),
+          };
+        }
+        return { ...rule };
+      })
+      .map((rule) =>
+        hydrateRulePreviewContext(
+          rule,
+          profile.attributeAliases,
+          profile.previewRawValue ?? resolveMonitoringPreviewRawDefault(profile.inputFormat),
+        ),
+      ),
   }));
 
 const normalizeScopes = (value: unknown): MonitoringRenderScope[] => {
@@ -449,6 +490,14 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
   }
   const type = String(value.type ?? "").trim() as MonitoringRenderRule["type"];
   const id = String(value.id ?? "").trim() || createRuleId("rule");
+  const rulePreviewAlias =
+    typeof value.rulePreviewAlias === "string" ? value.rulePreviewAlias.trim() : "";
+  const rulePreviewRawValue =
+    typeof value.rulePreviewRawValue === "string" ? value.rulePreviewRawValue : undefined;
+  const previewContext: MonitoringRulePreviewContext = {
+    rulePreviewAlias: rulePreviewAlias || undefined,
+    rulePreviewRawValue,
+  };
 
   if (type === "value-map") {
     return {
@@ -458,6 +507,7 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
       caseSensitive: Boolean(value.caseSensitive),
       displayMode: value.displayMode === "replace" ? "replace" : "append",
       separator: String(value.separator ?? " "),
+      ...previewContext,
     };
   }
   if (type === "ratio-derived-percent") {
@@ -468,6 +518,7 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
       decimals: Number.isFinite(decimals) ? Math.max(0, Math.min(6, Math.floor(decimals))) : 0,
       showBase: value.showBase !== false,
       wrapInParentheses: value.wrapInParentheses !== false,
+      ...previewContext,
     };
   }
   if (type === "percent-format") {
@@ -477,6 +528,7 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
       type,
       decimals: Number.isFinite(decimals) ? Math.max(0, Math.min(6, Math.floor(decimals))) : 0,
       clamp: value.clamp !== false,
+      ...previewContext,
     };
   }
   if (type === "progress-bar") {
@@ -487,6 +539,7 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
       type,
       min: Number.isFinite(min) ? min : 0,
       max: Number.isFinite(max) ? max : 100,
+      ...previewContext,
     };
   }
   if (type === "progress-ring") {
@@ -497,6 +550,7 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
       type,
       min: Number.isFinite(min) ? min : 0,
       max: Number.isFinite(max) ? max : 100,
+      ...previewContext,
     };
   }
   if (type === "threshold-symbol") {
@@ -506,6 +560,7 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
       thresholds: normalizeThresholds(value.thresholds),
       appendToText: value.appendToText !== false,
       separator: String(value.separator ?? " "),
+      ...previewContext,
     };
   }
   if (type === "grouped-label-map") {
@@ -516,6 +571,7 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
       caseSensitive: Boolean(value.caseSensitive),
       replaceText: Boolean(value.replaceText),
       separator: String(value.separator ?? " "),
+      ...previewContext,
     };
   }
   return null;
@@ -547,14 +603,18 @@ export const normalizeMonitoringRenderProfiles = (
             .map((rule) => normalizeRule(rule))
             .filter((rule): rule is MonitoringRenderRule => Boolean(rule))
         : [];
+      const normalizedAliases = dedupeAliases(aliases);
+      const hydratedRules = rules.map((rule) =>
+        hydrateRulePreviewContext(rule, normalizedAliases, previewRawValue),
+      );
       const profile: MonitoringRenderProfile = {
         id,
         name,
-        attributeAliases: dedupeAliases(aliases),
+        attributeAliases: normalizedAliases,
         inputFormat,
         previewRawValue,
         scopes: normalizeScopes(entry.scopes),
-        rules,
+        rules: hydratedRules,
         enabled: entry.enabled !== false,
       };
       if (profile.attributeAliases.length === 0) {

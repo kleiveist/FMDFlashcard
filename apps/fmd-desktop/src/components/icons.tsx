@@ -436,6 +436,27 @@ export const CloseIcon = () => {
   );
 };
 
+export const TrashIcon = () => {
+  const stroke = getStrokeProps();
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={stroke.strokeWidth}
+      strokeLinecap={stroke.strokeLinecap}
+      strokeLinejoin={stroke.strokeLinejoin}
+    >
+      <path d="M4 7h16" />
+      <path d="M9 7V5h6v2" />
+      <path d="M7 7l1 12h8l1-12" />
+      <line x1="10" y1="11" x2="10" y2="16" />
+      <line x1="14" y1="11" x2="14" y2="16" />
+    </svg>
+  );
+};
+
 export const AlertIcon = () => {
   const stroke = getStrokeProps();
   return (

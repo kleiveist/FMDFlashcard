@@ -215,15 +215,56 @@
   resize: vertical;
 }
 
-.monitoring-rules-enabled-toggle {
+.monitoring-rules-rule-fields label.monitoring-rules-enabled-toggle,
+.monitoring-rules-grid label.monitoring-rules-enabled-toggle,
+.monitoring-rules-preview-inputs label.monitoring-rules-enabled-toggle {
   display: inline-flex;
+  flex-direction: row;
   align-items: center;
+  gap: 8px;
+  justify-self: start;
+  width: fit-content;
+  max-width: 50%;
+}
+
+.monitoring-rules-enabled-toggle > input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.monitoring-rules-enabled-toggle-switch {
+  width: auto;
+  justify-content: flex-start;
+  min-height: calc(var(--ui-control-height-compact) * 0.5);
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
   gap: 8px;
 }
 
-.monitoring-rules-enabled-toggle input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
+.monitoring-rules-enabled-toggle-text {
+  min-width: 0;
+  font-size: 0.87rem;
+  line-height: 1.2;
+}
+
+.monitoring-rules-enabled-toggle-switch .switch {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 26px;
+}
+
+.monitoring-rules-enabled-toggle-switch .slider::before {
+  width: 20px;
+  height: 20px;
+  left: 3px;
+  top: 3px;
+}
+
+.monitoring-rules-enabled-toggle-switch .switch input:checked + .slider::before {
+  transform: translateX(20px);
 }
 
 .monitoring-rules-scopes {
@@ -253,6 +294,106 @@
   gap: 6px;
 }
 
+.monitoring-rules-rule-button-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.monitoring-rules-rule-row {
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 86%, var(--surface));
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.monitoring-rules-rule-row:hover {
+  border-color: var(--accent-border);
+  background: color-mix(in srgb, var(--accent-weak-bg) 72%, var(--panel));
+}
+
+.monitoring-rules-rule-row.is-active {
+  border-color: var(--accent-border);
+  background: color-mix(in srgb, var(--accent-weak-bg) 86%, transparent);
+}
+
+.monitoring-rules-rule-button {
+  width: 100%;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  min-height: 40px;
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.monitoring-rules-rule-button:focus-visible {
+  outline: var(--ui-focus-outline);
+  outline-offset: var(--ui-focus-offset);
+}
+
+.monitoring-rules-rule-button-text {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.88rem;
+}
+
+.monitoring-rules-rule-button-indicator {
+  flex: 0 0 auto;
+  font-size: 0.95rem;
+}
+
+.monitoring-rules-rule-remove-button {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  margin-right: 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.monitoring-rules-rule-remove-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.monitoring-rules-rule-remove-button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--error-border) 65%, var(--line-soft));
+  background: color-mix(in srgb, var(--error-bg) 72%, transparent);
+  color: var(--error-ink);
+}
+
+.monitoring-rules-rule-remove-button:focus-visible {
+  outline: var(--ui-focus-outline);
+  outline-offset: var(--ui-focus-offset);
+}
+
+.monitoring-rules-rule-remove-button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
 .monitoring-rules-rule-card {
   border: 1px solid var(--line-soft);
   border-radius: 10px;
@@ -280,8 +421,45 @@
   gap: 10px;
 }
 
+.monitoring-rules-rule-fields--ratio {
+  grid-template-columns: minmax(150px, 0.9fr) repeat(2, minmax(140px, 1fr));
+  align-items: end;
+}
+
+.monitoring-rules-rule-fields--ratio label:last-child {
+  grid-column: auto;
+}
+
+.monitoring-rules-rule-fields--decimals-toggle {
+  grid-template-columns: minmax(160px, 1fr) minmax(140px, 0.9fr);
+  align-items: end;
+}
+
+.monitoring-rules-rule-fields--decimals-toggle .monitoring-rules-enabled-toggle-switch {
+  width: fit-content;
+  max-width: none;
+  justify-self: start;
+}
+
+.monitoring-rules-rule-fields--decimals-toggle label:last-child {
+  grid-column: auto;
+}
+
+.monitoring-rules-enabled-toggle-switch-compact {
+  width: fit-content;
+  gap: 5px;
+  max-width: 110px;
+}
+
 .monitoring-rules-rule-fields label:last-child {
   grid-column: 1 / -1;
+}
+
+.monitoring-rules-rule-preview-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 1fr);
+  gap: 10px;
+  align-items: start;
 }
 
 .monitoring-rules-rule-preview {
@@ -302,6 +480,37 @@
   min-height: 38px;
   display: flex;
   align-items: center;
+}
+
+.monitoring-rules-rule-preview-fields {
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.monitoring-rules-rule-preview-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.84rem;
+}
+
+.monitoring-rules-rule-preview-field select,
+.monitoring-rules-rule-preview-field input {
+  min-height: var(--ui-control-height-compact);
+}
+
+.monitoring-rules-rule-modal-panel {
+  width: min(900px, 96vw);
+  max-height: min(88vh, 820px);
+}
+
+.monitoring-rules-rule-modal-body {
+  overflow: auto;
+  min-height: 0;
 }
 
 .monitoring-rules-preview-inputs {
@@ -344,5 +553,22 @@
 
   .monitoring-rules-profile-active-toggle {
     align-self: center;
+  }
+
+  .monitoring-rules-rule-fields--ratio {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+    align-items: end;
+  }
+
+  .monitoring-rules-rule-fields--ratio > label:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .monitoring-rules-rule-fields--decimals-toggle {
+    grid-template-columns: minmax(140px, 1fr) auto;
+  }
+
+  .monitoring-rules-rule-preview-layout {
+    grid-template-columns: 1fr;
   }
 }

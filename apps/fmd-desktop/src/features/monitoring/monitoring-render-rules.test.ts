@@ -27,9 +27,11 @@ describe("monitoring-render-rules", () => {
     expect(normalized[0]?.previewRawValue).toBe("59/69");
     expect(normalized[1]?.previewRawValue).toBe("86");
     expect(normalized[2]?.previewRawValue).toBe("2");
+    expect(normalized[0]?.rules[0]?.rulePreviewAlias).toBe("score");
+    expect(normalized[0]?.rules[0]?.rulePreviewRawValue).toBe("59/69");
   });
 
-  it("keeps previewRawValue when normalizing stored profiles", () => {
+  it("keeps previewRawValue and rule preview context when normalizing stored profiles", () => {
     const normalized = normalizeMonitoringRenderProfiles([
       {
         id: "custom-profile",
@@ -38,12 +40,70 @@ describe("monitoring-render-rules", () => {
         inputFormat: "code",
         previewRawValue: "X",
         scopes: ["database"],
-        rules: [],
+        rules: [
+          {
+            id: "custom-rule",
+            type: "value-map",
+            mappings: [{ from: "X", to: "✅" }],
+            rulePreviewAlias: "custom",
+            rulePreviewRawValue: "X",
+          },
+        ],
       },
     ]);
 
     expect(normalized).toHaveLength(1);
     expect(normalized[0]?.previewRawValue).toBe("X");
+    expect(normalized[0]?.rules[0]?.rulePreviewAlias).toBe("custom");
+    expect(normalized[0]?.rules[0]?.rulePreviewRawValue).toBe("X");
+  });
+
+  it("hydrates missing per-rule preview fields from profile defaults", () => {
+    const normalized = normalizeMonitoringRenderProfiles([
+      {
+        id: "custom-profile",
+        name: "Custom",
+        attributeAliases: ["status", "state"],
+        inputFormat: "code",
+        previewRawValue: "J",
+        scopes: ["database"],
+        rules: [
+          {
+            id: "custom-rule",
+            type: "value-map",
+            mappings: [{ from: "J", to: "✅" }],
+          },
+        ],
+      },
+    ]);
+
+    expect(normalized[0]?.rules[0]?.rulePreviewAlias).toBe("status");
+    expect(normalized[0]?.rules[0]?.rulePreviewRawValue).toBe("J");
+  });
+
+  it("falls back to first profile alias when stored rule alias is invalid", () => {
+    const normalized = normalizeMonitoringRenderProfiles([
+      {
+        id: "custom-profile",
+        name: "Custom",
+        attributeAliases: ["score", "result"],
+        inputFormat: "numeric-percent",
+        previewRawValue: "77",
+        scopes: ["database"],
+        rules: [
+          {
+            id: "custom-rule",
+            type: "percent-format",
+            decimals: 0,
+            rulePreviewAlias: "missing-alias",
+            rulePreviewRawValue: "42",
+          },
+        ],
+      },
+    ]);
+
+    expect(normalized[0]?.rules[0]?.rulePreviewAlias).toBe("score");
+    expect(normalized[0]?.rules[0]?.rulePreviewRawValue).toBe("42");
   });
 
   it("resolves aliases case-insensitively including corrected keys", () => {
