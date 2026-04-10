@@ -124,6 +124,26 @@
   min-width: 140px;
 }
 
+select.text-input {
+  border-color: var(--ui-control-border-open);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ui-control-bg) 80%, var(--accent-hover-bg)) 0%,
+    color-mix(in srgb, var(--ui-control-bg) 90%, var(--accent-weak-bg)) 100%
+  );
+}
+
+select.text-input:hover:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+select.text-input:focus-visible,
+select.text-input:open {
+  border-color: var(--ui-control-border-active);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ui-control-bg-open) 72%, var(--accent-active-bg)) 0%,
+    color-mix(in srgb, var(--ui-control-bg-open) 88%, var(--accent-hover-bg)) 100%
+  );
+}
+
 .hex-input {
   font-family: var(--mono);
   letter-spacing: 0.02em;

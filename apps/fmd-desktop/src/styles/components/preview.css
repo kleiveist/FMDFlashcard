@@ -125,21 +125,22 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border: 1px solid var(--line-soft);
+  border: 1px solid color-mix(in srgb, var(--line-soft) 82%, transparent);
   border-radius: 12px;
-  background: var(--field-bg);
-  background:
-    linear-gradient(
-      rgba(var(--accent-rgb), 0.04),
-      rgba(var(--accent-rgb), 0.04)
-    ),
-    var(--field-bg);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 10%, transparent);
   padding: 8px 9px;
 }
 
 :root[data-design-mode="modern"] .frontmatter-panel {
   border: 1px solid var(--ui-border-subtle);
   border-radius: var(--ui-radius-control);
+}
+
+:root[data-design-mode="edge"] .frontmatter-panel {
+  border-color: var(--ui-border-subtle);
+  background: transparent;
+  box-shadow: none;
 }
 
 .preview .frontmatter-panel,

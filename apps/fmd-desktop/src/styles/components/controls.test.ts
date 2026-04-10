@@ -32,6 +32,12 @@ describe("controls.css", () => {
     expect(controlsCss).toContain("--ui-control-bg-open");
   });
 
+  it("applies accent-tinted styling for select controls with text-input class", () => {
+    expect(controlsCss).toContain("select.text-input");
+    expect(controlsCss).toContain("--accent-hover-bg");
+    expect(controlsCss).toContain("--accent-active-bg");
+  });
+
   it("includes field-like button system for toolbar/switch controls", () => {
     const buttonMatch = controlsCss.match(
       /:is\(([^)]*\.ghost\.small[^)]*\.preview-mode-button[^)]*\.design-mode-option[^)]*\.database-block-toolbar-button[^)]*)\)\s*\{[\s\S]*?--ui-button-field-font-size|:is\(([^)]*\.ghost\.small[^)]*\.preview-mode-button[^)]*\.design-mode-option[^)]*\.database-block-toolbar-button[^)]*)\)\s*\{/,

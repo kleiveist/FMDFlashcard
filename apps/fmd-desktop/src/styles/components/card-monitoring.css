@@ -11,10 +11,108 @@
 }
 
 .card-monitoring-filters {
+  --ui-control-bg: color-mix(in srgb, var(--panel) 86%, var(--accent-weak-bg));
+  --ui-control-bg-hover: color-mix(in srgb, var(--panel) 78%, var(--accent-hover-bg));
+  --ui-control-bg-active: color-mix(in srgb, var(--panel) 74%, var(--accent-active-bg));
+  --ui-control-bg-open: color-mix(in srgb, var(--panel) 72%, var(--accent-active-bg));
+  --ui-control-border: color-mix(in srgb, var(--line-soft) 64%, var(--accent-weak-border));
+  --ui-control-border-hover: color-mix(in srgb, var(--accent-border) 90%, var(--line-soft));
+  --ui-control-border-active: color-mix(in srgb, var(--accent-border) 96%, var(--line));
+  --ui-control-border-open: color-mix(in srgb, var(--accent-border) 92%, var(--line-soft));
+  --ui-button-field-bg: color-mix(in srgb, var(--panel) 84%, var(--accent-weak-bg));
+  --ui-button-field-hover-bg: color-mix(in srgb, var(--panel) 76%, var(--accent-hover-bg));
+  --ui-button-field-active-bg: color-mix(in srgb, var(--panel) 72%, var(--accent-active-bg));
+  --ui-button-field-open-bg: color-mix(in srgb, var(--panel) 72%, var(--accent-active-bg));
+  --ui-button-field-border: color-mix(in srgb, var(--line-soft) 62%, var(--accent-weak-border));
+  --ui-button-field-hover-border: color-mix(in srgb, var(--accent-border) 90%, var(--line-soft));
+  --ui-button-field-active-border: color-mix(in srgb, var(--accent-border) 96%, var(--line));
+  --ui-button-field-open-border: color-mix(in srgb, var(--accent-border) 92%, var(--line-soft));
+  --ui-button-field-hover-text: var(--accent-strong);
+  --ui-button-field-active-text: var(--accent-strong);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: var(--ui-space-sm);
   align-items: end;
+}
+
+.card-monitoring-filters :is(select.text-input, input.text-input) {
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent-soft) 58%, transparent);
+}
+
+.card-monitoring-filters select.text-input {
+  border-color: var(--ui-control-border-open);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ui-control-bg) 76%, var(--accent-hover-bg)) 0%,
+    color-mix(in srgb, var(--ui-control-bg) 88%, var(--accent-weak-bg)) 100%
+  );
+}
+
+.card-monitoring-filters select.text-input:hover:not(:disabled),
+.card-monitoring-filters select.text-input:focus-visible,
+.card-monitoring-filters select.text-input:open {
+  border-color: var(--ui-control-border-active);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ui-control-bg-open) 68%, var(--accent-active-bg)) 0%,
+    color-mix(in srgb, var(--ui-control-bg-open) 84%, var(--accent-hover-bg)) 100%
+  );
+}
+
+:root[data-design-mode="edge"] .card-monitoring-panel .card-monitoring-filters {
+  --ui-control-shadow-focus: 0 0 0 2px var(--accent-focus-ring);
+}
+
+:root[data-design-mode="edge"] .card-monitoring-panel .card-monitoring-filters :is(
+    select.text-input,
+    input.text-input
+  ) {
+  border-color: var(--ui-control-border-open);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ui-control-bg) 62%, var(--accent-hover-bg)) 0%,
+    color-mix(in srgb, var(--ui-control-bg) 80%, var(--accent-weak-bg)) 100%
+  );
+}
+
+:root[data-design-mode="edge"] .card-monitoring-panel .card-monitoring-filters :is(
+    select.text-input,
+    input.text-input
+  ):hover:not(:disabled):not([readonly]):not([aria-readonly="true"]) {
+  border-color: var(--ui-control-border-active);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ui-control-bg-open) 56%, var(--accent-active-bg)) 0%,
+    color-mix(in srgb, var(--ui-control-bg-open) 74%, var(--accent-hover-bg)) 100%
+  );
+}
+
+:root[data-design-mode="edge"] .card-monitoring-panel .card-monitoring-filters :is(
+    select.text-input,
+    input.text-input
+  ):focus-visible {
+  border-color: var(--ui-control-border-active);
+  box-shadow: var(--ui-control-shadow-focus);
+}
+
+:root[data-design-mode="edge"] .card-monitoring-panel .card-monitoring-filters select.text-input:open {
+  border-color: var(--ui-control-border-active);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ui-control-bg-open) 52%, var(--accent-active-bg)) 0%,
+    color-mix(in srgb, var(--ui-control-bg-open) 72%, var(--accent-hover-bg)) 100%
+  );
+}
+
+:root[data-design-mode="edge"] .card-monitoring-panel .card-monitoring-sort-direction {
+  border-color: var(--ui-button-field-open-border);
+  background: var(--ui-button-field-open-bg);
+}
+
+:root[data-design-mode="edge"] .card-monitoring-panel .card-monitoring-sort-direction:hover,
+:root[data-design-mode="edge"] .card-monitoring-panel .card-monitoring-sort-direction:focus-visible {
+  border-color: var(--ui-button-field-active-border);
+  background: var(--ui-button-field-active-bg);
 }
 
 .card-monitoring-sort-direction {
