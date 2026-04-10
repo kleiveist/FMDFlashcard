@@ -372,6 +372,7 @@ vi.mock("./keybindings/registerGlobalShortcuts", () => ({
 
 vi.mock("./features/settings/settingsDeepLink", () => ({
   subscribeSettingsFocus: () => () => {},
+  requestSettingsFocus: vi.fn(),
 }));
 
 vi.mock("./features/input-debug/useInputDebug", () => ({

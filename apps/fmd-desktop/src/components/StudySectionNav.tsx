@@ -24,6 +24,7 @@ import {
   MarkdownIcon,
   MenuIcon,
   RefreshIcon,
+  SettingsIcon,
 } from "./icons";
 import type { DashboardView } from "../pages/dashboardPreviewMode";
 import type { StudySectionKey } from "../lib/studySections";
@@ -39,6 +40,9 @@ type StudySectionNavProps = {
   onNoteAction?: () => void;
   noteActionRef?: RefObject<HTMLButtonElement | null>;
   isNoteActionActive?: boolean;
+  showSettingsAction?: boolean;
+  onSettingsAction?: () => void;
+  settingsActionLabel?: string;
 };
 
 type PrimaryGroupKey = "editor" | "study" | "monitoring";
@@ -214,6 +218,9 @@ export const StudySectionNav = ({
   onNoteAction,
   noteActionRef,
   isNoteActionActive = false,
+  showSettingsAction = false,
+  onSettingsAction,
+  settingsActionLabel = "Settings",
 }: StudySectionNavProps) => {
   const derivedPrimaryGroup = useMemo(
     () => getPrimaryGroupForTab(activeTab),
@@ -232,7 +239,9 @@ export const StudySectionNav = ({
   );
   const primaryOverflow = useIconOnlyOverflow(
     true,
-    showNoteAction ? "primary-with-note" : "primary-without-note",
+    `${showNoteAction ? "primary-with-note" : "primary-without-note"}-${
+      showSettingsAction ? "with-settings" : "without-settings"
+    }`,
   );
   const secondaryOverflow = useIconOnlyOverflow(
     isSecondaryVisible,
@@ -322,6 +331,17 @@ export const StudySectionNav = ({
             <MarkdownIcon />
           </button>
         ) : null}
+        {showSettingsAction ? (
+          <button
+            type="button"
+            className="nav-item study-section-settings-toggle"
+            onClick={onSettingsAction}
+            aria-label={settingsActionLabel}
+            title={settingsActionLabel}
+          >
+            <SettingsIcon />
+          </button>
+        ) : null}
       </nav>
       <div
         ref={primaryOverflow.measureRef}
@@ -344,6 +364,11 @@ export const StudySectionNav = ({
         {showNoteAction ? (
           <span className="nav-item study-section-note-toggle" aria-hidden="true">
             <MarkdownIcon />
+          </span>
+        ) : null}
+        {showSettingsAction ? (
+          <span className="nav-item study-section-settings-toggle" aria-hidden="true">
+            <SettingsIcon />
           </span>
         ) : null}
       </div>

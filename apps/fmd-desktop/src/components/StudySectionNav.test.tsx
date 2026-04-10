@@ -12,6 +12,9 @@ type RenderOptions = {
   activeDashboardView?: DashboardView;
   onSectionSelect?: (tab: StudySectionKey) => void;
   onDashboardViewSelect?: (view: DashboardView) => void;
+  showSettingsAction?: boolean;
+  onSettingsAction?: () => void;
+  settingsActionLabel?: string;
 };
 
 const findButtonByExactText = (container: HTMLElement, label: string) =>
@@ -32,6 +35,9 @@ const renderStudySectionNav = ({
   activeDashboardView = "markdown",
   onSectionSelect = vi.fn(),
   onDashboardViewSelect = vi.fn(),
+  showSettingsAction = false,
+  onSettingsAction = vi.fn(),
+  settingsActionLabel = "Settings",
 }: RenderOptions = {}) => {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -48,6 +54,9 @@ const renderStudySectionNav = ({
         onMobileNavOpen={vi.fn()}
         showNoteAction
         onNoteAction={vi.fn()}
+        showSettingsAction={showSettingsAction}
+        onSettingsAction={onSettingsAction}
+        settingsActionLabel={settingsActionLabel}
       />,
     );
   });
@@ -127,6 +136,29 @@ describe("StudySectionNav", () => {
     expect(onSectionSelect).toHaveBeenNthCalledWith(2, "points-profiles");
     expect(onSectionSelect).toHaveBeenNthCalledWith(3, "monitoring-rules");
 
+    cleanup();
+  });
+
+  it("renders and triggers settings action when configured", async () => {
+    const onSettingsAction = vi.fn();
+    const { container, cleanup } = renderStudySectionNav({
+      showSettingsAction: true,
+      onSettingsAction,
+      settingsActionLabel: "Flashcard Tools",
+    });
+
+    const settingsButton = container.querySelector<HTMLButtonElement>(
+      'button.study-section-settings-toggle[aria-label="Flashcard Tools"]',
+    );
+    expect(settingsButton).toBeTruthy();
+
+    await act(async () => {
+      settingsButton?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
+    });
+
+    expect(onSettingsAction).toHaveBeenCalledTimes(1);
     cleanup();
   });
 });

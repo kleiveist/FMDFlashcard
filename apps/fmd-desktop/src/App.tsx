@@ -51,7 +51,10 @@ import { getShortcutById } from "./lib/shortcuts/registry";
 import { isSyncProviderEnabled, logWordPressFeatureStatus } from "./lib/featureFlags";
 import { registerGlobalShortcuts } from "./keybindings/registerGlobalShortcuts";
 import { useInputDebugInstrumentation } from "./features/input-debug/useInputDebug";
-import { subscribeSettingsFocus } from "./features/settings/settingsDeepLink";
+import {
+  requestSettingsFocus,
+  subscribeSettingsFocus,
+} from "./features/settings/settingsDeepLink";
 import type { PreviewFileOpenOptions } from "./features/preview/usePreview";
 import {
   CardMonitoringPage,
@@ -138,6 +141,31 @@ const AppContent = () => {
   const isExamRunSummaryNoteTriggerEnabled = activeTab === "exam" && isExamNoteViewport;
   const showStudySectionNoteAction =
     isNoteModalEligible && !isExamRunSummaryNoteTriggerEnabled;
+  const studySectionSettingsAction = useMemo(() => {
+    if (activeTab === "flashcard") {
+      return {
+        label: "Flashcard Tools",
+        subPageId: "flashcard-tools" as const,
+        scrollSelector: ".settings-flashcards-panel",
+      };
+    }
+    if (activeTab === "fast-flashcard") {
+      return {
+        label: "Fast Flashcard Tools",
+        subPageId: "fast-flashcard-tools" as const,
+        scrollSelector: ".fast-flashcard-tools-panel",
+      };
+    }
+    if (activeTab === "spaced-repetition") {
+      return {
+        label: "Spaced Repetition Tools",
+        subPageId: "spaced-repetition-tools" as const,
+        scrollSelector: ".spaced-repetition-panel",
+      };
+    }
+    return null;
+  }, [activeTab]);
+  const showStudySectionSettingsAction = studySectionSettingsAction !== null;
   const noteFilesDialogOpen = Boolean(
     isNoteModalOpen &&
       noteDialogSection &&
@@ -510,6 +538,20 @@ const AppContent = () => {
     setIsUserRegistryModalOpen(false);
   }, []);
 
+  const handleStudySectionSettingsAction = useCallback(() => {
+    if (!studySectionSettingsAction) {
+      return;
+    }
+    setIsNoteModalOpen(false);
+    setNoteDialogSection(null);
+    requestSettingsFocus({
+      pageId: "review-tools",
+      subPageId: studySectionSettingsAction.subPageId,
+      scrollSelector: studySectionSettingsAction.scrollSelector,
+      highlight: true,
+    });
+  }, [studySectionSettingsAction]);
+
   useEffect(() => {
     return subscribeSettingsFocus((request) => {
       settingsNav.setActiveSettingsPage(request.pageId);
@@ -559,6 +601,9 @@ const AppContent = () => {
           onNoteAction={handleNoteModalOpen}
           noteActionRef={noteButtonRef}
           isNoteActionActive={isNoteModalOpen}
+          showSettingsAction={showStudySectionSettingsAction}
+          onSettingsAction={handleStudySectionSettingsAction}
+          settingsActionLabel={studySectionSettingsAction?.label}
         />
       ) : null}
       <SidebarNav
