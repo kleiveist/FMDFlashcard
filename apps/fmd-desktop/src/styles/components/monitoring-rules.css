@@ -163,7 +163,7 @@
 .monitoring-rules-profile-control input,
 .monitoring-rules-profile-control select {
   width: 100%;
-  min-height: 34px;
+  min-height: var(--ui-control-height-compact);
 }
 
 .monitoring-rules-alias-combobox {
@@ -207,7 +207,7 @@
 .monitoring-rules-rule-fields input,
 .monitoring-rules-rule-fields select,
 .monitoring-rules-preview-inputs input {
-  min-height: 34px;
+  min-height: var(--ui-control-height-compact);
 }
 
 .monitoring-rules-rule-fields textarea {

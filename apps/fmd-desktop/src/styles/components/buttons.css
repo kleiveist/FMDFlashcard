@@ -50,31 +50,45 @@ button {
 }
 
 .ghost {
-  background: transparent;
-  border: 1px solid var(--ui-border-subtle);
-  color: var(--ink);
+  background: var(--ui-button-field-bg);
+  border: 1px solid var(--ui-button-field-border);
+  color: var(--ui-button-field-text);
+  box-shadow: var(--ui-button-field-shadow-rest);
 }
 
 .ghost:hover {
-  border-color: var(--ui-border-hover);
-  background: var(--ui-nav-button-hover-bg);
-  color: var(--accent-strong);
+  border-color: var(--ui-button-field-hover-border);
+  background: var(--ui-button-field-hover-bg);
+  color: var(--ui-button-field-hover-text);
+  box-shadow: var(--ui-button-field-shadow-hover);
+}
+
+.ghost[aria-expanded="true"]:not(:disabled) {
+  border-color: var(--ui-button-field-open-border);
+  background: var(--ui-button-field-open-bg);
+  color: var(--ui-button-field-active-text);
 }
 
 .primary:focus-visible,
 .ghost:focus-visible {
-  outline: var(--ui-focus-outline);
-  outline-offset: var(--ui-focus-offset);
+  outline: var(--ui-control-focus-outline);
+  outline-offset: var(--ui-control-focus-offset);
 }
 
 .ghost:disabled {
-  opacity: 0.55;
+  opacity: 0.62;
   cursor: not-allowed;
+  border-color: var(--ui-button-field-disabled-border);
+  background: var(--ui-button-field-disabled-bg);
+  color: var(--ui-button-field-disabled-text);
+  box-shadow: none;
 }
 
 .ghost.small.active {
-  border-color: var(--accent-border);
-  color: var(--accent-strong);
+  border-color: var(--ui-button-field-active-border);
+  background: var(--ui-button-field-active-bg);
+  color: var(--ui-button-field-active-text);
+  box-shadow: var(--ui-button-field-shadow-active);
 }
 
 .ghost.small {

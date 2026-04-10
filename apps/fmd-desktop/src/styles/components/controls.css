@@ -1,0 +1,328 @@
+/*
+ * @file apps/fmd-desktop/src/styles/components/controls.css
+ *
+ * Zweck:
+ * - Globales Basissystem fuer Form-Controls und feldartige Button-Controls.
+ *
+ * Verantwortlichkeiten:
+ * - Vereinheitlicht Inputs/Selects/Textareas inkl. Hover/Focus/Active/Disabled/Readonly.
+ * - Bindet Accent-Farbe und Design-Modus ueber zentrale Tokens ein.
+ */
+
+.database-block {
+  --ui-control-focus-outline: 2px solid var(--db-accent-focus, var(--accent-focus-ring));
+}
+
+:where(input[type="checkbox"], input[type="radio"]) {
+  accent-color: var(--accent);
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]), select, textarea) {
+  min-height: var(--ui-control-height);
+  border-radius: var(--ui-radius-control);
+  border: 1px solid var(--ui-control-border);
+  background: var(--ui-control-bg);
+  color: var(--ui-control-text);
+  box-shadow: var(--ui-control-shadow-rest);
+  caret-color: var(--ui-control-caret);
+  font: inherit;
+  font-size: var(--ui-control-font-size);
+  font-weight: var(--ui-control-font-weight);
+  line-height: 1.2;
+  padding: var(--ui-control-padding-y) var(--ui-control-padding-x);
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    outline-color 0.18s ease;
+}
+
+:where(textarea) {
+  min-height: calc(var(--ui-control-height) * 2.3);
+  padding-block: var(--ui-space-sm);
+  line-height: 1.35;
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]), textarea)::placeholder {
+  color: var(--ui-control-placeholder);
+  opacity: 1;
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]), select, textarea):hover:not(:disabled):not([readonly]):not([aria-readonly="true"]) {
+  border-color: var(--ui-control-border-hover);
+  background: var(--ui-control-bg-hover);
+  box-shadow: var(--ui-control-shadow-hover);
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]), select, textarea):active:not(:disabled):not([readonly]):not([aria-readonly="true"]) {
+  border-color: var(--ui-control-border-active);
+  background: var(--ui-control-bg-active);
+  box-shadow: var(--ui-control-shadow-active);
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]), select, textarea):focus-visible {
+  outline: var(--ui-control-focus-outline);
+  outline-offset: var(--ui-control-focus-offset);
+  border-color: var(--ui-control-border-active);
+  box-shadow: var(--ui-control-shadow-focus);
+}
+
+:where(select:open),
+:where([role="combobox"][aria-expanded="true"]) {
+  border-color: var(--ui-control-border-open);
+  background: var(--ui-control-bg-open);
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]), select, textarea):is([readonly], [aria-readonly="true"]) {
+  border-color: var(--ui-control-border-readonly);
+  background: var(--ui-control-bg-readonly);
+  color: var(--ui-control-text-readonly);
+  cursor: default;
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]), select, textarea):disabled {
+  border-color: var(--ui-control-border-disabled);
+  background: var(--ui-control-bg-disabled);
+  color: var(--ui-control-text-disabled);
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]), textarea):disabled::placeholder {
+  color: var(--ui-control-text-disabled);
+}
+
+.text-input,
+.hex-input,
+.inline-rename-input,
+.frontmatter-type-select,
+.database-block-view-select,
+.database-block-toolbar-create-view-input,
+.database-block-toolbar-search-input,
+.database-table-cell-editor,
+.database-block-panel select,
+.database-block-panel input:not([type="checkbox"]):not([type="radio"]),
+.formula-attribute-builder-field > input,
+.formula-attribute-builder-field > select {
+  min-height: var(--db-control-height, var(--ui-control-height));
+  border-radius: var(--db-radius-control, var(--ui-radius-control));
+  border: 1px solid var(--db-control-border, var(--ui-control-border));
+  background: var(--db-control-bg, var(--ui-control-bg));
+  color: var(--db-text, var(--ui-control-text));
+  box-shadow: var(--ui-control-shadow-rest);
+  caret-color: var(--ui-control-caret);
+  font: inherit;
+  font-size: var(--ui-control-font-size);
+  font-weight: var(--ui-control-font-weight);
+  line-height: 1.2;
+  padding: var(--ui-control-padding-y) var(--ui-control-padding-x);
+}
+
+.text-input {
+  min-width: 140px;
+}
+
+.hex-input {
+  font-family: var(--mono);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.text-input::placeholder,
+.hex-input::placeholder,
+.inline-rename-input::placeholder,
+.database-block-toolbar-create-view-input::placeholder,
+.database-block-toolbar-search-input::placeholder,
+.database-table-cell-editor::placeholder,
+.database-block-panel input:not([type="checkbox"]):not([type="radio"])::placeholder,
+.formula-attribute-builder-field > input::placeholder {
+  color: var(--ui-control-placeholder);
+  opacity: 1;
+}
+
+.text-input:hover:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.hex-input:hover:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.inline-rename-input:hover:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.frontmatter-type-select:hover:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.database-block-view-select:hover:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.database-block-toolbar-create-view-input:hover:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.database-block-toolbar-search-input:hover:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.database-table-cell-editor:hover:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.database-block-panel select:hover:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.database-block-panel input:not([type="checkbox"]):not([type="radio"]):hover:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.formula-attribute-builder-field > input:hover:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.formula-attribute-builder-field > select:hover:not(:disabled):not([readonly]):not([aria-readonly="true"]) {
+  border-color: var(--db-control-border-strong, var(--ui-control-border-hover));
+  background: var(--db-control-hover-bg, var(--ui-control-bg-hover));
+  box-shadow: var(--ui-control-shadow-hover);
+}
+
+.text-input:active:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.hex-input:active:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.inline-rename-input:active:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.frontmatter-type-select:active:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.database-block-view-select:active:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.database-block-toolbar-create-view-input:active:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.database-block-toolbar-search-input:active:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.database-table-cell-editor:active:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.database-block-panel select:active:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.database-block-panel input:not([type="checkbox"]):not([type="radio"]):active:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.formula-attribute-builder-field > input:active:not(:disabled):not([readonly]):not([aria-readonly="true"]),
+.formula-attribute-builder-field > select:active:not(:disabled):not([readonly]):not([aria-readonly="true"]) {
+  border-color: var(--db-control-active-border, var(--ui-control-border-active));
+  background: var(--db-control-active-bg, var(--ui-control-bg-active));
+  box-shadow: var(--ui-control-shadow-active);
+}
+
+.text-input:focus-visible,
+.hex-input:focus-visible,
+.inline-rename-input:focus-visible,
+.frontmatter-type-select:focus-visible,
+.database-block-view-select:focus-visible,
+.database-block-toolbar-create-view-input:focus-visible,
+.database-block-toolbar-search-input:focus-visible,
+.database-table-cell-editor:focus-visible,
+.database-block-panel select:focus-visible,
+.database-block-panel input:not([type="checkbox"]):not([type="radio"]):focus-visible,
+.formula-attribute-builder-field > input:focus-visible,
+.formula-attribute-builder-field > select:focus-visible {
+  outline: var(--ui-control-focus-outline);
+  outline-offset: var(--ui-control-focus-offset);
+  border-color: var(--db-control-active-border, var(--ui-control-border-active));
+  box-shadow: var(--ui-control-shadow-focus);
+}
+
+.text-input[role="combobox"][aria-expanded="true"],
+.hex-input[role="combobox"][aria-expanded="true"],
+.inline-rename-input[role="combobox"][aria-expanded="true"],
+.frontmatter-type-select[aria-expanded="true"],
+.database-block-view-select:open,
+.database-block-panel select:open,
+.database-block-toolbar-create-view-input[role="combobox"][aria-expanded="true"],
+.database-block-toolbar-search-input[role="combobox"][aria-expanded="true"] {
+  border-color: var(--db-control-active-border, var(--ui-control-border-open));
+  background: var(--db-control-active-bg, var(--ui-control-bg-open));
+}
+
+.text-input:is([readonly], [aria-readonly="true"]),
+.hex-input:is([readonly], [aria-readonly="true"]),
+.inline-rename-input:is([readonly], [aria-readonly="true"]),
+.frontmatter-type-select:is([readonly], [aria-readonly="true"]),
+.database-block-view-select:is([readonly], [aria-readonly="true"]),
+.database-block-toolbar-create-view-input:is([readonly], [aria-readonly="true"]),
+.database-block-toolbar-search-input:is([readonly], [aria-readonly="true"]),
+.database-table-cell-editor:is([readonly], [aria-readonly="true"]),
+.database-block-panel select:is([readonly], [aria-readonly="true"]),
+.database-block-panel input:not([type="checkbox"]):not([type="radio"]):is([readonly], [aria-readonly="true"]),
+.formula-attribute-builder-field > input:is([readonly], [aria-readonly="true"]),
+.formula-attribute-builder-field > select:is([readonly], [aria-readonly="true"]) {
+  border-color: var(--ui-control-border-readonly);
+  background: var(--ui-control-bg-readonly);
+  color: var(--ui-control-text-readonly);
+  cursor: default;
+}
+
+.text-input:disabled,
+.hex-input:disabled,
+.inline-rename-input:disabled,
+.frontmatter-type-select:disabled,
+.database-block-view-select:disabled,
+.database-block-toolbar-create-view-input:disabled,
+.database-block-toolbar-search-input:disabled,
+.database-table-cell-editor:disabled,
+.database-block-panel select:disabled,
+.database-block-panel input:not([type="checkbox"]):not([type="radio"]):disabled,
+.formula-attribute-builder-field > input:disabled,
+.formula-attribute-builder-field > select:disabled {
+  border-color: var(--ui-control-border-disabled);
+  background: var(--ui-control-bg-disabled);
+  color: var(--ui-control-text-disabled);
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.text-input:disabled::placeholder,
+.hex-input:disabled::placeholder,
+.inline-rename-input:disabled::placeholder,
+.database-block-toolbar-create-view-input:disabled::placeholder,
+.database-block-toolbar-search-input:disabled::placeholder,
+.database-table-cell-editor:disabled::placeholder,
+.database-block-panel input:not([type="checkbox"]):not([type="radio"]):disabled::placeholder,
+.formula-attribute-builder-field > input:disabled::placeholder {
+  color: var(--ui-control-text-disabled);
+}
+
+.text-input.exam-compact-input,
+.exam-compact-input {
+  min-height: var(--ui-control-height-compact);
+  font-size: var(--ui-control-font-size-compact);
+  padding-inline: var(--ui-space-sm);
+}
+
+.inline-rename-input {
+  min-height: var(--ui-control-height-compact);
+  font-size: var(--ui-tree-font-size);
+  padding-inline: var(--ui-space-xs);
+}
+
+.frontmatter-type-select,
+.formula-attribute-builder-field > input,
+.formula-attribute-builder-field > select {
+  min-height: var(--ui-control-height-compact);
+  font-size: var(--ui-control-font-size-compact);
+  padding-inline: var(--ui-space-sm);
+}
+
+:is(.ghost.small, .preview-mode-button, .design-mode-option, .database-block-toolbar-button, .focus-toggle, .markdown-hybrid-table-view-toggle) {
+  min-height: var(--db-control-height, var(--ui-control-height-compact));
+  border-radius: var(--db-radius-control, var(--ui-radius-control));
+  border: 1px solid var(--db-control-border, var(--ui-button-field-border));
+  background: var(--db-control-bg, var(--ui-button-field-bg));
+  color: var(--db-text, var(--ui-button-field-text));
+  box-shadow: var(--ui-button-field-shadow-rest);
+  font-size: var(--ui-button-field-font-size);
+  font-weight: var(--ui-button-field-font-weight);
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease,
+    outline-color 0.18s ease;
+}
+
+:is(.ghost.small, .preview-mode-button, .design-mode-option, .database-block-toolbar-button, .focus-toggle, .markdown-hybrid-table-view-toggle):hover:not(:disabled) {
+  border-color: var(--db-control-border-strong, var(--ui-button-field-hover-border));
+  background: var(--db-control-hover-bg, var(--ui-button-field-hover-bg));
+  color: var(--db-control-active-text, var(--ui-button-field-hover-text));
+  box-shadow: var(--ui-button-field-shadow-hover);
+}
+
+:is(.ghost.small, .preview-mode-button, .design-mode-option, .database-block-toolbar-button, .focus-toggle, .markdown-hybrid-table-view-toggle):is(.active, .is-active, [aria-pressed="true"]):not(:disabled) {
+  border-color: var(--db-control-active-border, var(--ui-button-field-active-border));
+  background: var(--db-control-active-bg, var(--ui-button-field-active-bg));
+  color: var(--db-control-active-text, var(--ui-button-field-active-text));
+  box-shadow: var(--ui-button-field-shadow-active);
+}
+
+:is(.ghost.small, .preview-mode-button, .design-mode-option, .database-block-toolbar-button, .focus-toggle, .markdown-hybrid-table-view-toggle)[aria-expanded="true"]:not(:disabled) {
+  border-color: var(--db-control-active-border, var(--ui-button-field-open-border));
+  background: var(--db-control-active-bg, var(--ui-button-field-open-bg));
+  color: var(--db-control-active-text, var(--ui-button-field-active-text));
+}
+
+:is(.ghost.small, .preview-mode-button, .design-mode-option, .database-block-toolbar-button, .focus-toggle, .markdown-hybrid-table-view-toggle):focus-visible {
+  outline: var(--ui-control-focus-outline);
+  outline-offset: var(--ui-control-focus-offset);
+}
+
+:is(.ghost.small, .preview-mode-button, .design-mode-option, .database-block-toolbar-button, .focus-toggle, .markdown-hybrid-table-view-toggle):disabled {
+  border-color: var(--ui-button-field-disabled-border);
+  background: var(--ui-button-field-disabled-bg);
+  color: var(--ui-button-field-disabled-text);
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.62;
+}

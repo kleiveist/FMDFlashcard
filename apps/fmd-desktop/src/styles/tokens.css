@@ -117,6 +117,54 @@
   --ui-tree-row-active-bg: var(--accent-active-bg);
   --ui-tree-row-active-border: var(--accent-border);
   --ui-tree-row-selected-border: var(--accent-strong);
+  --ui-control-font-size: 0.85rem;
+  --ui-control-font-size-compact: 0.8rem;
+  --ui-control-font-weight: 500;
+  --ui-control-padding-x: var(--ui-space-md);
+  --ui-control-padding-y: 0;
+  --ui-control-gap: var(--ui-space-xs);
+  --ui-control-bg: var(--field-bg);
+  --ui-control-bg-hover: var(--accent-weak-bg);
+  --ui-control-bg-active: var(--accent-hover-bg);
+  --ui-control-bg-open: var(--accent-hover-bg);
+  --ui-control-bg-disabled: var(--block-bg);
+  --ui-control-bg-readonly: var(--block-bg);
+  --ui-control-border: var(--field-border);
+  --ui-control-border-hover: var(--ui-border-hover);
+  --ui-control-border-active: var(--accent-border);
+  --ui-control-border-open: var(--accent-weak-border);
+  --ui-control-border-disabled: var(--ui-border-subtle);
+  --ui-control-border-readonly: var(--ui-border-subtle);
+  --ui-control-text: var(--ink);
+  --ui-control-placeholder: var(--muted);
+  --ui-control-text-disabled: var(--muted);
+  --ui-control-text-readonly: var(--ink);
+  --ui-control-caret: var(--accent-strong);
+  --ui-control-shadow-rest: none;
+  --ui-control-shadow-hover: none;
+  --ui-control-shadow-active: none;
+  --ui-control-shadow-focus: 0 0 0 2px var(--accent-focus-ring);
+  --ui-control-focus-outline: 2px solid var(--accent-focus-ring);
+  --ui-control-focus-offset: 1px;
+  --ui-button-field-font-size: 0.82rem;
+  --ui-button-field-font-weight: 600;
+  --ui-button-field-bg: var(--ui-nav-button-bg);
+  --ui-button-field-border: var(--ui-nav-button-border);
+  --ui-button-field-text: var(--ink);
+  --ui-button-field-hover-bg: var(--ui-nav-button-hover-bg);
+  --ui-button-field-hover-border: var(--ui-border-hover);
+  --ui-button-field-hover-text: var(--accent-strong);
+  --ui-button-field-active-bg: var(--ui-nav-button-active-bg);
+  --ui-button-field-active-border: var(--ui-nav-button-active-border);
+  --ui-button-field-active-text: var(--accent-strong);
+  --ui-button-field-open-bg: var(--accent-hover-bg);
+  --ui-button-field-open-border: var(--accent-weak-border);
+  --ui-button-field-disabled-bg: transparent;
+  --ui-button-field-disabled-border: var(--ui-border-subtle);
+  --ui-button-field-disabled-text: var(--muted);
+  --ui-button-field-shadow-rest: none;
+  --ui-button-field-shadow-hover: none;
+  --ui-button-field-shadow-active: none;
   --mono: "JetBrains Mono", "Fira Code", "IBM Plex Mono", monospace;
   --bg-gradient: radial-gradient(
     circle at top left,
@@ -239,6 +287,13 @@
   --accent-weak-border: rgba(var(--accent-rgb), 0.2);
   --accent-focus-ring: rgba(var(--accent-rgb), 0.32);
   --accent-glow: rgba(var(--accent-rgb), 0.24);
+  --ui-control-bg-disabled: rgba(237, 242, 244, 0.04);
+  --ui-control-bg-readonly: rgba(237, 242, 244, 0.06);
+  --ui-control-border-disabled: rgba(237, 242, 244, 0.16);
+  --ui-control-border-readonly: rgba(237, 242, 244, 0.22);
+  --ui-control-text-disabled: rgba(237, 242, 244, 0.58);
+  --ui-control-text-readonly: rgba(237, 242, 244, 0.88);
+  --ui-button-field-disabled-text: rgba(237, 242, 244, 0.55);
   --md-grid-line-neutral-light: rgba(0, 0, 0, 0.035);
   --md-grid-line-neutral-medium: rgba(0, 0, 0, 0.055);
   --md-grid-line-neutral-strong: rgba(0, 0, 0, 0.07);
@@ -289,6 +344,19 @@
   --ui-tree-row-active-bg: var(--accent-active-bg);
   --ui-tree-row-active-border: var(--accent-border);
   --ui-tree-row-selected-border: var(--accent-strong);
+  --ui-control-bg-hover: var(--accent-weak-bg);
+  --ui-control-bg-active: var(--accent-hover-bg);
+  --ui-control-bg-open: var(--accent-hover-bg);
+  --ui-control-border-open: var(--accent-border);
+  --ui-control-shadow-rest: 0 1px 0 rgba(18, 24, 27, 0.04);
+  --ui-control-shadow-hover: 0 1px 0 rgba(18, 24, 27, 0.06);
+  --ui-control-shadow-active: 0 0 0 1px var(--accent-weak-border);
+  --ui-button-field-bg: var(--accent-weak-bg);
+  --ui-button-field-border: var(--accent-weak-border);
+  --ui-button-field-hover-bg: var(--accent-hover-bg);
+  --ui-button-field-active-bg: var(--accent-active-bg);
+  --ui-button-field-open-bg: var(--accent-hover-bg);
+  --ui-button-field-open-border: var(--accent-weak-border);
 }
 
 :root[data-design-mode="modern"] {
@@ -347,6 +415,33 @@
     var(--accent-border) 74%,
     transparent
   );
+  --ui-control-font-size: 0.8rem;
+  --ui-control-font-size-compact: 0.76rem;
+  --ui-control-padding-x: var(--ui-space-sm);
+  --ui-control-bg: color-mix(in srgb, var(--field-bg) 88%, transparent);
+  --ui-control-bg-hover: color-mix(in srgb, var(--accent-hover-bg) 74%, var(--field-bg));
+  --ui-control-bg-active: color-mix(in srgb, var(--accent-active-bg) 78%, var(--field-bg));
+  --ui-control-bg-open: color-mix(in srgb, var(--accent-active-bg) 70%, var(--field-bg));
+  --ui-control-border: color-mix(in srgb, var(--ui-border-subtle) 88%, transparent);
+  --ui-control-border-hover: color-mix(in srgb, var(--accent-border) 76%, transparent);
+  --ui-control-border-active: color-mix(in srgb, var(--accent-border) 84%, var(--line-soft));
+  --ui-control-border-open: color-mix(in srgb, var(--accent-border) 78%, transparent);
+  --ui-control-shadow-rest: 0 1px 0 rgba(19, 26, 28, 0.03);
+  --ui-control-shadow-hover: 0 2px 6px rgba(19, 26, 28, 0.06);
+  --ui-control-shadow-active: 0 1px 3px rgba(19, 26, 28, 0.08);
+  --ui-control-shadow-focus: 0 0 0 2px var(--accent-focus-ring), 0 8px 16px rgba(19, 26, 28, 0.1);
+  --ui-button-field-font-size: 0.78rem;
+  --ui-button-field-bg: transparent;
+  --ui-button-field-border: transparent;
+  --ui-button-field-hover-bg: color-mix(in srgb, var(--accent-hover-bg) 74%, transparent);
+  --ui-button-field-hover-border: transparent;
+  --ui-button-field-active-bg: color-mix(in srgb, var(--accent-active-bg) 78%, transparent);
+  --ui-button-field-active-border: color-mix(in srgb, var(--accent-border) 62%, transparent);
+  --ui-button-field-open-bg: color-mix(in srgb, var(--accent-hover-bg) 78%, transparent);
+  --ui-button-field-open-border: transparent;
+  --ui-button-field-shadow-rest: 0 1px 0 rgba(19, 26, 28, 0.03);
+  --ui-button-field-shadow-hover: 0 2px 6px rgba(19, 26, 28, 0.08);
+  --ui-button-field-shadow-active: inset 0 0 0 1px color-mix(in srgb, var(--accent-border) 55%, transparent);
 }
 
 :root[data-design-mode="edge"] {
@@ -397,6 +492,40 @@
   --ui-tree-row-active-bg: var(--accent-active-bg);
   --ui-tree-row-active-border: var(--accent-border);
   --ui-tree-row-selected-border: var(--accent-strong);
+  --ui-control-font-size: 0.76rem;
+  --ui-control-font-size-compact: 0.72rem;
+  --ui-control-padding-x: var(--ui-space-sm);
+  --ui-control-bg: transparent;
+  --ui-control-bg-hover: var(--accent-weak-bg);
+  --ui-control-bg-active: var(--accent-active-bg);
+  --ui-control-bg-open: var(--accent-active-bg);
+  --ui-control-bg-disabled: transparent;
+  --ui-control-bg-readonly: transparent;
+  --ui-control-border: transparent;
+  --ui-control-border-hover: var(--accent-border);
+  --ui-control-border-active: var(--accent-border);
+  --ui-control-border-open: var(--accent-border);
+  --ui-control-border-disabled: transparent;
+  --ui-control-border-readonly: var(--ui-border-subtle);
+  --ui-control-shadow-rest: none;
+  --ui-control-shadow-hover: none;
+  --ui-control-shadow-active: none;
+  --ui-control-shadow-focus: none;
+  --ui-control-focus-offset: 1px;
+  --ui-button-field-font-size: 0.74rem;
+  --ui-button-field-bg: transparent;
+  --ui-button-field-border: transparent;
+  --ui-button-field-hover-bg: var(--accent-weak-bg);
+  --ui-button-field-hover-border: transparent;
+  --ui-button-field-active-bg: var(--accent-active-bg);
+  --ui-button-field-active-border: transparent;
+  --ui-button-field-open-bg: var(--accent-active-bg);
+  --ui-button-field-open-border: transparent;
+  --ui-button-field-disabled-bg: transparent;
+  --ui-button-field-disabled-border: transparent;
+  --ui-button-field-shadow-rest: none;
+  --ui-button-field-shadow-hover: none;
+  --ui-button-field-shadow-active: none;
   --glow: none;
 }
 
@@ -405,6 +534,12 @@
   --ui-shadow-flyout: 0 12px 28px rgba(0, 0, 0, 0.3);
   --ui-shadow-dialog: 0 16px 34px rgba(0, 0, 0, 0.38);
   --ui-sidebar-shell-shadow: 0 6px 16px rgba(0, 0, 0, 0.24);
+  --ui-control-shadow-rest: 0 1px 0 rgba(0, 0, 0, 0.24);
+  --ui-control-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.34);
+  --ui-control-shadow-active: 0 1px 4px rgba(0, 0, 0, 0.44);
+  --ui-control-shadow-focus: 0 0 0 2px var(--accent-focus-ring), 0 10px 20px rgba(0, 0, 0, 0.38);
+  --ui-button-field-shadow-rest: 0 1px 0 rgba(0, 0, 0, 0.2);
+  --ui-button-field-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.32);
 }
 
 :root[data-theme="dark"][data-design-mode="edge"] {
@@ -426,6 +561,12 @@
   --ui-nav-button-active-border: transparent;
   --ui-tree-row-hover-bg: var(--ui-nav-button-hover-bg);
   --ui-tree-row-active-bg: var(--ui-nav-button-active-bg);
+  --ui-control-border-hover: color-mix(in srgb, var(--accent-border) 92%, var(--line));
+  --ui-control-border-active: color-mix(in srgb, var(--accent-border) 95%, var(--line));
+  --ui-control-border-open: color-mix(in srgb, var(--accent-border) 95%, var(--line));
+  --ui-button-field-hover-bg: var(--ui-nav-button-hover-bg);
+  --ui-button-field-active-bg: var(--ui-nav-button-active-bg);
+  --ui-button-field-open-bg: var(--ui-nav-button-active-bg);
 }
 
 @supports (color: color-mix(in srgb, white 50%, black)) {
@@ -465,6 +606,32 @@
     );
     --accent-focus-ring: color-mix(in srgb, var(--accent) 45%, transparent);
     --accent-glow: color-mix(in srgb, var(--accent) 26%, transparent);
+    --ui-control-bg: color-mix(in srgb, var(--field-bg) 90%, var(--accent) 10%);
+    --ui-control-bg-hover: color-mix(in srgb, var(--field-bg) 84%, var(--accent) 16%);
+    --ui-control-bg-active: color-mix(in srgb, var(--field-bg) 78%, var(--accent) 22%);
+    --ui-control-bg-open: color-mix(in srgb, var(--field-bg) 80%, var(--accent) 20%);
+    --ui-control-bg-disabled: color-mix(in srgb, var(--field-bg) 96%, var(--line-soft) 4%);
+    --ui-control-bg-readonly: color-mix(in srgb, var(--field-bg) 92%, var(--accent) 8%);
+    --ui-control-border: color-mix(in srgb, var(--field-border) 88%, var(--line-soft));
+    --ui-control-border-hover: color-mix(in srgb, var(--accent-border) 82%, var(--field-border));
+    --ui-control-border-active: color-mix(in srgb, var(--accent-border) 92%, var(--line-soft));
+    --ui-control-border-open: color-mix(in srgb, var(--accent-border) 88%, var(--line-soft));
+    --ui-control-border-disabled: color-mix(in srgb, var(--line-soft) 90%, transparent);
+    --ui-control-border-readonly: color-mix(in srgb, var(--accent-border) 62%, var(--line-soft));
+    --ui-control-placeholder: color-mix(in srgb, var(--muted) 85%, transparent);
+    --ui-control-text-disabled: color-mix(in srgb, var(--muted) 78%, var(--line));
+    --ui-control-text-readonly: color-mix(in srgb, var(--ink) 88%, var(--muted));
+    --ui-control-shadow-focus: 0 0 0 2px color-mix(in srgb, var(--accent-focus-ring) 90%, transparent);
+    --ui-button-field-bg: color-mix(in srgb, var(--ui-nav-button-bg) 90%, transparent);
+    --ui-button-field-border: color-mix(in srgb, var(--ui-nav-button-border) 88%, transparent);
+    --ui-button-field-hover-bg: color-mix(in srgb, var(--ui-nav-button-hover-bg) 86%, transparent);
+    --ui-button-field-hover-border: color-mix(in srgb, var(--accent-border) 80%, var(--ui-border-subtle));
+    --ui-button-field-active-bg: color-mix(in srgb, var(--ui-nav-button-active-bg) 88%, transparent);
+    --ui-button-field-active-border: color-mix(in srgb, var(--accent-border) 86%, var(--ui-border-subtle));
+    --ui-button-field-open-bg: color-mix(in srgb, var(--ui-nav-button-hover-bg) 88%, transparent);
+    --ui-button-field-open-border: color-mix(in srgb, var(--accent-border) 84%, var(--ui-border-subtle));
+    --ui-button-field-disabled-border: color-mix(in srgb, var(--ui-border-subtle) 88%, transparent);
+    --ui-button-field-disabled-text: color-mix(in srgb, var(--muted) 80%, var(--line-soft));
     --md-surface-bg: color-mix(in srgb, var(--preview-bg) 94%, var(--md-link) 6%);
     --md-table-bg: color-mix(in srgb, var(--preview-bg) 94%, var(--md-link) 6%);
     --md-table-head-bg: color-mix(in srgb, var(--preview-bg) 88%, var(--md-link) 12%);
@@ -511,6 +678,32 @@
     );
     --accent-focus-ring: color-mix(in srgb, var(--accent) 50%, transparent);
     --accent-glow: color-mix(in srgb, var(--accent) 30%, transparent);
+    --ui-control-bg: color-mix(in srgb, var(--field-bg) 90%, var(--accent) 10%);
+    --ui-control-bg-hover: color-mix(in srgb, var(--field-bg) 84%, var(--accent) 16%);
+    --ui-control-bg-active: color-mix(in srgb, var(--field-bg) 80%, var(--accent) 20%);
+    --ui-control-bg-open: color-mix(in srgb, var(--field-bg) 82%, var(--accent) 18%);
+    --ui-control-bg-disabled: color-mix(in srgb, var(--field-bg) 95%, black 5%);
+    --ui-control-bg-readonly: color-mix(in srgb, var(--field-bg) 86%, var(--accent) 14%);
+    --ui-control-border: color-mix(in srgb, var(--field-border) 84%, var(--line-soft));
+    --ui-control-border-hover: color-mix(in srgb, var(--accent-border) 86%, var(--field-border));
+    --ui-control-border-active: color-mix(in srgb, var(--accent-border) 94%, var(--line-soft));
+    --ui-control-border-open: color-mix(in srgb, var(--accent-border) 90%, var(--line-soft));
+    --ui-control-border-disabled: color-mix(in srgb, var(--line-soft) 85%, transparent);
+    --ui-control-border-readonly: color-mix(in srgb, var(--accent-border) 68%, var(--line-soft));
+    --ui-control-placeholder: color-mix(in srgb, var(--muted) 86%, transparent);
+    --ui-control-text-disabled: color-mix(in srgb, var(--muted) 82%, var(--line));
+    --ui-control-text-readonly: color-mix(in srgb, var(--ink) 90%, var(--muted));
+    --ui-control-shadow-focus: 0 0 0 2px color-mix(in srgb, var(--accent-focus-ring) 94%, transparent);
+    --ui-button-field-bg: color-mix(in srgb, var(--ui-nav-button-bg) 88%, transparent);
+    --ui-button-field-border: color-mix(in srgb, var(--ui-nav-button-border) 86%, transparent);
+    --ui-button-field-hover-bg: color-mix(in srgb, var(--ui-nav-button-hover-bg) 84%, transparent);
+    --ui-button-field-hover-border: color-mix(in srgb, var(--accent-border) 82%, var(--ui-border-subtle));
+    --ui-button-field-active-bg: color-mix(in srgb, var(--ui-nav-button-active-bg) 88%, transparent);
+    --ui-button-field-active-border: color-mix(in srgb, var(--accent-border) 88%, var(--ui-border-subtle));
+    --ui-button-field-open-bg: color-mix(in srgb, var(--ui-nav-button-hover-bg) 86%, transparent);
+    --ui-button-field-open-border: color-mix(in srgb, var(--accent-border) 86%, var(--ui-border-subtle));
+    --ui-button-field-disabled-border: color-mix(in srgb, var(--ui-border-subtle) 82%, transparent);
+    --ui-button-field-disabled-text: color-mix(in srgb, var(--muted) 82%, var(--line-soft));
     --md-grid-line-accent-light: color-mix(
       in srgb,
       var(--md-link) 4%,

@@ -974,50 +974,10 @@
   min-height: var(--ui-control-height-compact);
   padding: 0 var(--ui-space-md);
   border-radius: var(--ui-radius-control);
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--ink);
-  font-size: 0.82rem;
-  font-weight: 600;
+  font-size: var(--ui-button-field-font-size);
+  font-weight: var(--ui-button-field-font-weight);
   cursor: pointer;
   transition: 0.2s ease;
-}
-
-.design-mode-option:hover {
-  background: var(--ui-nav-button-hover-bg);
-}
-
-.design-mode-option.active {
-  background: var(--ui-nav-button-active-bg);
-  border-color: var(--ui-nav-button-active-border);
-  color: var(--accent-strong);
-}
-
-.design-mode-option:focus-visible {
-  outline: var(--ui-focus-outline);
-  outline-offset: 1px;
-}
-
-.text-input {
-  min-width: 140px;
-  min-height: var(--ui-control-height);
-  padding: 0 var(--ui-space-md);
-  border-radius: var(--ui-radius-control);
-  border: 1px solid var(--field-border);
-  background: var(--field-bg);
-  color: var(--ink);
-  font-size: 0.85rem;
-}
-
-.text-input:focus-visible {
-  outline: none;
-  border-color: var(--ui-border-hover);
-  box-shadow: 0 0 0 2px var(--field-glow);
-}
-
-.text-input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .accent-controls {
@@ -1089,14 +1049,6 @@
 
 .hex-input {
   min-width: 120px;
-  min-height: var(--ui-control-height);
-  padding: 0 var(--ui-space-md);
-  border-radius: var(--ui-radius-control);
-  border: 1px solid var(--field-border);
-  background: var(--field-bg);
-  color: var(--ink);
-  font-family: var(--mono);
-  font-size: 0.85rem;
 }
 
 .helper-text {

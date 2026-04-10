@@ -432,10 +432,6 @@
   background: color-mix(in srgb, var(--accent-soft) 70%, transparent);
 }
 
-.frontmatter-panel .text-input:focus-visible {
-  box-shadow: none;
-}
-
 .frontmatter-row-error {
   font-size: 0.72rem;
   color: var(--error-ink);
