@@ -335,7 +335,11 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
           aria-expanded={isNoteFilesPopupOpen}
           title="Note Files"
         >
-          <span className="study-header-quick-action-icon" aria-hidden="true">
+          <span
+            className="study-header-quick-action-icon"
+            aria-hidden="true"
+            style={{ width: 16, height: 16 }}
+          >
             <FileIcon />
           </span>
         </button>
@@ -354,7 +358,11 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
           aria-label="Fast Flashcard Tools"
           title="Fast Flashcard Tools"
         >
-          <span className="study-header-quick-action-icon" aria-hidden="true">
+          <span
+            className="study-header-quick-action-icon"
+            aria-hidden="true"
+            style={{ width: 16, height: 16 }}
+          >
             <SettingsIcon />
           </span>
         </button>

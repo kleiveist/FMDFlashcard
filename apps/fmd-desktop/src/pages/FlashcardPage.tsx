@@ -465,7 +465,11 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
           aria-expanded={isNoteFilesPopupOpen}
           title="Note Files"
         >
-          <span className="study-header-quick-action-icon" aria-hidden="true">
+          <span
+            className="study-header-quick-action-icon"
+            aria-hidden="true"
+            style={{ width: 16, height: 16 }}
+          >
             <FileIcon />
           </span>
         </button>
@@ -484,7 +488,11 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
           aria-label="Flashcard Tools"
           title="Flashcard Tools"
         >
-          <span className="study-header-quick-action-icon" aria-hidden="true">
+          <span
+            className="study-header-quick-action-icon"
+            aria-hidden="true"
+            style={{ width: 16, height: 16 }}
+          >
             <SettingsIcon />
           </span>
         </button>

@@ -148,7 +148,11 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
           aria-expanded={isNoteFilesPopupOpen}
           title="Note Files"
         >
-          <span className="study-header-quick-action-icon" aria-hidden="true">
+          <span
+            className="study-header-quick-action-icon"
+            aria-hidden="true"
+            style={{ width: 16, height: 16 }}
+          >
             <FileIcon />
           </span>
         </button>
@@ -167,7 +171,11 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
           aria-label="Spaced Repetition Tools"
           title="Spaced Repetition Tools"
         >
-          <span className="study-header-quick-action-icon" aria-hidden="true">
+          <span
+            className="study-header-quick-action-icon"
+            aria-hidden="true"
+            style={{ width: 16, height: 16 }}
+          >
             <SettingsIcon />
           </span>
         </button>

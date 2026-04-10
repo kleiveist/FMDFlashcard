@@ -182,11 +182,13 @@
 
 :root {
   --study-header-quick-action-size: 44px;
+  --study-header-quick-action-icon-size: 16px;
 }
 
 :root[data-design-mode="modern"],
 :root[data-design-mode="edge"] {
   --study-header-quick-action-size: 34px;
+  --study-header-quick-action-icon-size: 16px;
 }
 
 .study-header-quick-actions {
@@ -211,33 +213,22 @@
 }
 
 .study-header-quick-action-icon {
-  width: max(16px, calc(var(--ui-control-icon-size) + 2px));
-  height: max(16px, calc(var(--ui-control-icon-size) + 2px));
+  width: var(--study-header-quick-action-icon-size, 16px) !important;
+  height: var(--study-header-quick-action-icon-size, 16px) !important;
+  min-width: var(--study-header-quick-action-icon-size, 16px);
+  min-height: var(--study-header-quick-action-icon-size, 16px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   line-height: 0;
-}
-
-:root[data-design-mode="modern"] .study-header-quick-action-icon {
-  width: min(
-    calc(var(--study-header-quick-action-size) - 6px),
-    calc(var(--ui-control-icon-size) + 10px)
-  );
-  height: min(
-    calc(var(--study-header-quick-action-size) - 6px),
-    calc(var(--ui-control-icon-size) + 10px)
-  );
-}
-
-:root[data-design-mode="modern"] .study-header-quick-action-icon svg {
-  width: 100%;
-  height: 100%;
+  flex: 0 0 auto;
 }
 
 .study-header-quick-action-icon svg {
-  width: 100%;
-  height: 100%;
+  width: var(--study-header-quick-action-icon-size, 16px) !important;
+  height: var(--study-header-quick-action-icon-size, 16px) !important;
+  min-width: var(--study-header-quick-action-icon-size, 16px);
+  min-height: var(--study-header-quick-action-icon-size, 16px);
   display: block;
   margin: 0;
   transform: translate3d(0, 0, 0);
