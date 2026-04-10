@@ -90,6 +90,7 @@ export type MonitoringRenderProfile = {
   name: string;
   attributeAliases: string[];
   inputFormat: MonitoringInputFormat;
+  previewRawValue?: string;
   scopes: MonitoringRenderScope[];
   rules: MonitoringRenderRule[];
   enabled?: boolean;
@@ -136,6 +137,24 @@ const DEFAULT_STATUS_MAP: MonitoringValueMapEntry[] = [
 export const MONITORING_SCORE_ALIASES = ["score", "corrected score"];
 export const MONITORING_PERCENT_ALIASES = ["percent", "corrected percent"];
 export const MONITORING_STATUS_ALIASES = ["status", "corrected status"];
+
+export const resolveMonitoringPreviewRawDefault = (
+  inputFormat: MonitoringInputFormat,
+) => {
+  if (inputFormat === "ratio") {
+    return "59/69";
+  }
+  if (inputFormat === "numeric-percent") {
+    return "86";
+  }
+  if (inputFormat === "code") {
+    return "2";
+  }
+  if (inputFormat === "short-structured-text-with-number") {
+    return "2 Status";
+  }
+  return "";
+};
 
 const DEFAULT_SCOPES: MonitoringRenderScope[] = [
   "monitoring-page",
@@ -216,6 +235,7 @@ export const DEFAULT_MONITORING_RENDER_PROFILES: MonitoringRenderProfile[] = [
     name: "Score",
     attributeAliases: [...MONITORING_SCORE_ALIASES],
     inputFormat: "ratio",
+    previewRawValue: resolveMonitoringPreviewRawDefault("ratio"),
     scopes: [...DEFAULT_SCOPES],
     rules: [
       {
@@ -233,6 +253,7 @@ export const DEFAULT_MONITORING_RENDER_PROFILES: MonitoringRenderProfile[] = [
     name: "Percent",
     attributeAliases: [...MONITORING_PERCENT_ALIASES],
     inputFormat: "numeric-percent",
+    previewRawValue: resolveMonitoringPreviewRawDefault("numeric-percent"),
     scopes: [...DEFAULT_SCOPES],
     rules: [
       {
@@ -255,6 +276,7 @@ export const DEFAULT_MONITORING_RENDER_PROFILES: MonitoringRenderProfile[] = [
     name: "Status",
     attributeAliases: [...MONITORING_STATUS_ALIASES],
     inputFormat: "code",
+    previewRawValue: resolveMonitoringPreviewRawDefault("code"),
     scopes: [...DEFAULT_SCOPES],
     rules: [
       {
@@ -292,6 +314,7 @@ const dedupeAliases = (aliases: string[]) => {
 const cloneDefaultProfiles = () =>
   DEFAULT_MONITORING_RENDER_PROFILES.map((profile) => ({
     ...profile,
+    previewRawValue: profile.previewRawValue ?? "",
     attributeAliases: [...profile.attributeAliases],
     scopes: [...profile.scopes],
     rules: profile.rules.map((rule) => {
@@ -515,6 +538,10 @@ export const normalizeMonitoringRenderProfiles = (
       const aliases = Array.isArray(entry.attributeAliases)
         ? entry.attributeAliases.map((alias) => String(alias ?? ""))
         : [];
+      const inputFormat = normalizeInputFormat(entry.inputFormat);
+      const previewRawValue = typeof entry.previewRawValue === "string"
+        ? entry.previewRawValue
+        : resolveMonitoringPreviewRawDefault(inputFormat);
       const rules = Array.isArray(entry.rules)
         ? entry.rules
             .map((rule) => normalizeRule(rule))
@@ -524,7 +551,8 @@ export const normalizeMonitoringRenderProfiles = (
         id,
         name,
         attributeAliases: dedupeAliases(aliases),
-        inputFormat: normalizeInputFormat(entry.inputFormat),
+        inputFormat,
+        previewRawValue,
         scopes: normalizeScopes(entry.scopes),
         rules,
         enabled: entry.enabled !== false,

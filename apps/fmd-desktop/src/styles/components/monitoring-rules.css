@@ -85,6 +85,108 @@
   gap: 10px;
 }
 
+.monitoring-rules-profile-section {
+  gap: 8px;
+}
+
+.monitoring-rules-profile-compact-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(62px, auto)
+    minmax(150px, 1fr)
+    minmax(240px, 1.4fr)
+    minmax(170px, 1fr)
+    auto;
+  grid-template-areas:
+    "title label-name label-alias label-format active"
+    ". control-name control-alias control-format active";
+  gap: 8px 10px;
+  align-items: start;
+}
+
+.monitoring-rules-profile-compact-grid > * {
+  min-width: 0;
+}
+
+.monitoring-rules-profile-title {
+  grid-area: title;
+  margin: 0;
+  font-size: 1rem;
+  align-self: center;
+}
+
+.monitoring-rules-profile-label {
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.2;
+  align-self: end;
+}
+
+.monitoring-rules-profile-label-name {
+  grid-area: label-name;
+}
+
+.monitoring-rules-profile-label-alias {
+  grid-area: label-alias;
+}
+
+.monitoring-rules-profile-label-format {
+  grid-area: label-format;
+}
+
+.monitoring-rules-profile-active-toggle {
+  grid-area: active;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: center;
+  justify-self: end;
+  font-size: 0.84rem;
+}
+
+.monitoring-rules-profile-control-name {
+  grid-area: control-name;
+}
+
+.monitoring-rules-profile-control-alias {
+  grid-area: control-alias;
+}
+
+.monitoring-rules-profile-control-format {
+  grid-area: control-format;
+}
+
+.monitoring-rules-profile-control {
+  min-width: 0;
+}
+
+.monitoring-rules-profile-control input,
+.monitoring-rules-profile-control select {
+  width: 100%;
+  min-height: 34px;
+}
+
+.monitoring-rules-alias-combobox {
+  position: relative;
+}
+
+.monitoring-rules-alias-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 20;
+  margin: 0;
+}
+
+.monitoring-rules-alias-empty {
+  color: var(--muted);
+  font-size: 0.78rem;
+  padding: 8px 10px;
+}
+
 .monitoring-rules-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -224,5 +326,23 @@
 
   .monitoring-rules-list {
     max-height: 280px;
+  }
+}
+
+@media (max-width: 980px) {
+  .monitoring-rules-profile-compact-grid {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "title active"
+      "label-name label-name"
+      "control-name control-name"
+      "label-alias label-alias"
+      "control-alias control-alias"
+      "label-format label-format"
+      "control-format control-format";
+  }
+
+  .monitoring-rules-profile-active-toggle {
+    align-self: center;
   }
 }

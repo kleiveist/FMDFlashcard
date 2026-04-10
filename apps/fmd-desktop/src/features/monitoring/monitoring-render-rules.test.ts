@@ -24,6 +24,26 @@ describe("monitoring-render-rules", () => {
     expect(normalized).toHaveLength(3);
     expect(normalized.map((profile) => profile.name)).toEqual(["Score", "Percent", "Status"]);
     expect(normalized[2]?.attributeAliases).toContain("corrected status");
+    expect(normalized[0]?.previewRawValue).toBe("59/69");
+    expect(normalized[1]?.previewRawValue).toBe("86");
+    expect(normalized[2]?.previewRawValue).toBe("2");
+  });
+
+  it("keeps previewRawValue when normalizing stored profiles", () => {
+    const normalized = normalizeMonitoringRenderProfiles([
+      {
+        id: "custom-profile",
+        name: "Custom",
+        attributeAliases: ["custom"],
+        inputFormat: "code",
+        previewRawValue: "X",
+        scopes: ["database"],
+        rules: [],
+      },
+    ]);
+
+    expect(normalized).toHaveLength(1);
+    expect(normalized[0]?.previewRawValue).toBe("X");
   });
 
   it("resolves aliases case-insensitively including corrected keys", () => {

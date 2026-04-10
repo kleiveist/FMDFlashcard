@@ -4,12 +4,18 @@
  * Global manager for monitoring render profiles.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useAppState } from "../components/AppStateProvider";
+import {
+  buildFrontmatterSuggestionIndex,
+  sortFrontmatterKeySuggestions,
+} from "../features/preview/frontmatter";
 import { MonitoringRenderValue } from "../features/monitoring/MonitoringRenderValue";
 import {
   createMonitoringRenderRule,
   renderMonitoringValue,
+  resolveMonitoringPreviewRawDefault,
   type MonitoringInputFormat,
   type MonitoringRenderProfile,
   type MonitoringRenderRule,
@@ -69,6 +75,30 @@ const parseCsv = (input: string) =>
       .map((entry) => entry.trim())
       .filter(Boolean),
   );
+
+const resolveAliasTokenBounds = (value: string, cursor: number) => {
+  const boundedCursor = Math.max(0, Math.min(cursor, value.length));
+  const prefix = value.slice(0, boundedCursor);
+  const suffix = value.slice(boundedCursor);
+  const start = Math.max(0, prefix.lastIndexOf(",") + 1);
+  const suffixComma = suffix.indexOf(",");
+  const end = suffixComma < 0 ? value.length : boundedCursor + suffixComma;
+  return {
+    start,
+    end,
+    token: value.slice(start, end).trim(),
+  };
+};
+
+const replaceAliasToken = (value: string, cursor: number, nextToken: string) => {
+  const bounds = resolveAliasTokenBounds(value, cursor);
+  const merged = `${value.slice(0, bounds.start)}${nextToken}${value.slice(bounds.end)}`;
+  return merged
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .join(", ");
+};
 
 const mappingsToText = (rule: Extract<MonitoringRenderRule, { type: "value-map" }>) =>
   rule.mappings.map((mapping) => `${mapping.from}=${mapping.to}`).join("\n");
@@ -174,6 +204,7 @@ const cloneRule = (rule: MonitoringRenderRule): MonitoringRenderRule => {
 
 const cloneProfile = (profile: MonitoringRenderProfile): MonitoringRenderProfile => ({
   ...profile,
+  previewRawValue: profile.previewRawValue ?? "",
   attributeAliases: [...profile.attributeAliases],
   scopes: [...profile.scopes],
   rules: profile.rules.map((rule) => cloneRule(rule)),
@@ -184,13 +215,14 @@ const buildInitialProfile = (): MonitoringRenderProfile => ({
   name: "Neues Monitoring-Profil",
   attributeAliases: ["new-attribute"],
   inputFormat: "text",
+  previewRawValue: resolveMonitoringPreviewRawDefault("text"),
   scopes: ["monitoring-page", "database", "properties"],
   rules: [createMonitoringRenderRule("value-map")],
   enabled: true,
 });
 
 export const MonitoringRulesPage = () => {
-  const { settings } = useAppState();
+  const { settings, vault } = useAppState();
   const profiles = settings.monitoringRenderProfiles;
 
   const [selectedId, setSelectedId] = useState<string | null>(profiles[0]?.id ?? null);
@@ -200,7 +232,21 @@ export const MonitoringRulesPage = () => {
   const [aliasesDraft, setAliasesDraft] = useState(
     draft?.attributeAliases.join(", ") ?? "",
   );
-  const [previewValue, setPreviewValue] = useState("59/69");
+  const [previewRawByProfileId, setPreviewRawByProfileId] = useState<Record<string, string>>(
+    () =>
+      Object.fromEntries(
+        profiles.map((profile) => [
+          profile.id,
+          profile.previewRawValue ??
+            resolveMonitoringPreviewRawDefault(profile.inputFormat),
+        ]),
+      ),
+  );
+  const [attributeAliasSuggestions, setAttributeAliasSuggestions] = useState<string[]>([]);
+  const [aliasSuggestionsOpen, setAliasSuggestionsOpen] = useState(false);
+  const [aliasSuggestionCursor, setAliasSuggestionCursor] = useState(0);
+  const [aliasCaretPosition, setAliasCaretPosition] = useState(0);
+  const aliasInputRef = useRef<HTMLInputElement | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
   const [statusError, setStatusError] = useState("");
 
@@ -208,6 +254,66 @@ export const MonitoringRulesPage = () => {
     () => profiles.find((profile) => profile.id === selectedId) ?? null,
     [profiles, selectedId],
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    const rebuildAliasSuggestions = async () => {
+      if (!vault.vaultPath || vault.files.length === 0) {
+        if (!cancelled) {
+          setAttributeAliasSuggestions([]);
+        }
+        return;
+      }
+      const markdownFiles = vault.files.filter((file) =>
+        file.path.toLowerCase().endsWith(".md")
+      );
+      if (markdownFiles.length === 0) {
+        if (!cancelled) {
+          setAttributeAliasSuggestions([]);
+        }
+        return;
+      }
+      const markdownDocuments = await Promise.all(
+        markdownFiles.map(async (file) => {
+          try {
+            return await invoke<string>("read_text_file", { path: file.path });
+          } catch {
+            return "";
+          }
+        }),
+      );
+      if (cancelled) {
+        return;
+      }
+      const suggestionIndex = buildFrontmatterSuggestionIndex(markdownDocuments);
+      setAttributeAliasSuggestions(
+        sortFrontmatterKeySuggestions(suggestionIndex.keyIndex),
+      );
+    };
+    void rebuildAliasSuggestions();
+    return () => {
+      cancelled = true;
+    };
+  }, [vault.files, vault.vaultPath]);
+
+  useEffect(() => {
+    const activeIds = new Set(profiles.map((profile) => profile.id));
+    setPreviewRawByProfileId((current) => {
+      const next: Record<string, string> = {};
+      profiles.forEach((profile) => {
+        next[profile.id] = current[profile.id] ??
+          profile.previewRawValue ??
+          resolveMonitoringPreviewRawDefault(profile.inputFormat);
+      });
+      if (
+        Object.keys(current).length === Object.keys(next).length &&
+        Object.keys(current).every((key) => activeIds.has(key) && current[key] === next[key])
+      ) {
+        return current;
+      }
+      return next;
+    });
+  }, [profiles]);
 
   useEffect(() => {
     if (!selectedProfile && profiles.length > 0) {
@@ -222,19 +328,54 @@ export const MonitoringRulesPage = () => {
     const cloned = cloneProfile(selectedProfile);
     setDraft(cloned);
     setAliasesDraft(cloned.attributeAliases.join(", "));
+    setAliasSuggestionsOpen(false);
+    setAliasSuggestionCursor(0);
+    setAliasCaretPosition(0);
   }, [profiles, selectedProfile]);
 
-  const previewAttribute = draft?.attributeAliases[0] ?? "";
+  const previewAliases = useMemo(() => parseCsv(aliasesDraft), [aliasesDraft]);
+  const previewAttribute =
+    previewAliases[0] ??
+    draft?.attributeAliases[0] ??
+    "";
+  const activePreviewRawValue = useMemo(() => {
+    if (!selectedProfile) {
+      return "";
+    }
+    return previewRawByProfileId[selectedProfile.id] ??
+      selectedProfile.previewRawValue ??
+      resolveMonitoringPreviewRawDefault(selectedProfile.inputFormat);
+  }, [previewRawByProfileId, selectedProfile]);
+
+  const currentAliasToken = useMemo(
+    () => resolveAliasTokenBounds(aliasesDraft, aliasCaretPosition).token,
+    [aliasesDraft, aliasCaretPosition],
+  );
+
+  const filteredAliasSuggestions = useMemo(() => {
+    const query = currentAliasToken.trim().toLowerCase();
+    const ranked = query
+      ? attributeAliasSuggestions.filter((suggestion) =>
+          suggestion.toLowerCase().includes(query))
+      : attributeAliasSuggestions;
+    return ranked.slice(0, 120);
+  }, [attributeAliasSuggestions, currentAliasToken]);
+
+  useEffect(() => {
+    setAliasSuggestionCursor((current) =>
+      Math.min(current, Math.max(0, filteredAliasSuggestions.length - 1)));
+  }, [filteredAliasSuggestions.length]);
+
   const previewResult = useMemo(() => {
     if (!draft || !previewAttribute) {
       return null;
     }
     return renderMonitoringValue({
       attributeKey: previewAttribute,
-      value: previewValue,
+      value: activePreviewRawValue,
       profiles: [draft],
     });
-  }, [draft, previewAttribute, previewValue]);
+  }, [activePreviewRawValue, draft, previewAttribute]);
 
   const persistProfiles = async (nextProfiles: MonitoringRenderProfile[]) => {
     settings.setMonitoringRenderProfiles(nextProfiles);
@@ -255,6 +396,11 @@ export const MonitoringRulesPage = () => {
     if (!saved) {
       return;
     }
+    setPreviewRawByProfileId((current) => ({
+      ...current,
+      [profile.id]: profile.previewRawValue ??
+        resolveMonitoringPreviewRawDefault(profile.inputFormat),
+    }));
     setSelectedId(profile.id);
     setStatusError("");
     setStatusMessage("Profil erstellt.");
@@ -269,6 +415,14 @@ export const MonitoringRulesPage = () => {
     if (!saved) {
       return;
     }
+    setPreviewRawByProfileId((current) => {
+      if (!(selectedId in current)) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[selectedId];
+      return next;
+    });
     setSelectedId(nextProfiles[0]?.id ?? null);
     setStatusError("");
     setStatusMessage("Profil entfernt.");
@@ -293,6 +447,54 @@ export const MonitoringRulesPage = () => {
     }));
   };
 
+  const handleAliasSuggestionSelect = (suggestion: string) => {
+    const cursor = aliasInputRef.current?.selectionStart ?? aliasesDraft.length;
+    const next = replaceAliasToken(aliasesDraft, cursor, suggestion);
+    setAliasesDraft(next);
+    setAliasCaretPosition(next.length);
+    setAliasSuggestionsOpen(false);
+    setAliasSuggestionCursor(0);
+  };
+
+  const handleAliasInputChange = (value: string, caretPosition: number | null) => {
+    setAliasesDraft(value);
+    setAliasSuggestionsOpen(true);
+    setAliasSuggestionCursor(0);
+    setAliasCaretPosition(
+      caretPosition === null ? value.length : caretPosition,
+    );
+  };
+
+  const handleAliasInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      setAliasSuggestionsOpen(false);
+      return;
+    }
+
+    if (!aliasSuggestionsOpen || filteredAliasSuggestions.length === 0) {
+      return;
+    }
+
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const offset = event.key === "ArrowDown" ? 1 : -1;
+      setAliasSuggestionCursor((current) =>
+        (current + offset + filteredAliasSuggestions.length) %
+        filteredAliasSuggestions.length);
+      return;
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const suggestion = filteredAliasSuggestions[aliasSuggestionCursor] ??
+        filteredAliasSuggestions[0];
+      if (!suggestion) {
+        return;
+      }
+      handleAliasSuggestionSelect(suggestion);
+    }
+  };
+
   const handleSaveDraft = async () => {
     if (!draft) {
       return;
@@ -307,6 +509,9 @@ export const MonitoringRulesPage = () => {
       ...cloneProfile(draft),
       name: draft.name.trim() || "Monitoring Profil",
       attributeAliases: aliases,
+      previewRawValue: previewRawByProfileId[draft.id] ??
+        draft.previewRawValue ??
+        resolveMonitoringPreviewRawDefault(draft.inputFormat),
       scopes: draft.scopes.length > 0 ? draft.scopes : ["database"],
       rules: draft.rules.length > 0 ? draft.rules : [createMonitoringRenderRule("value-map")],
     };
@@ -378,49 +583,19 @@ export const MonitoringRulesPage = () => {
         <div className="monitoring-rules-editor">
           {draft ? (
             <>
-              <section className="monitoring-rules-section">
-                <h3>Profil</h3>
-                <div className="monitoring-rules-grid">
-                  <label>
+              <section className="monitoring-rules-section monitoring-rules-profile-section">
+                <div className="monitoring-rules-profile-compact-grid">
+                  <h3 className="monitoring-rules-profile-title">Profil</h3>
+                  <span className="monitoring-rules-profile-label monitoring-rules-profile-label-name">
                     Name
-                    <input
-                      className="text-input"
-                      type="text"
-                      value={draft.name}
-                      onChange={(event) => {
-                        const nextName = event.target.value;
-                        updateDraft((profile) => ({ ...profile, name: nextName }));
-                      }}
-                    />
-                  </label>
-                  <label>
+                  </span>
+                  <span className="monitoring-rules-profile-label monitoring-rules-profile-label-alias">
                     Alias-Attribute (comma-separated)
-                    <input
-                      className="text-input"
-                      type="text"
-                      value={aliasesDraft}
-                      onChange={(event) => {
-                        setAliasesDraft(event.target.value);
-                      }}
-                    />
-                  </label>
-                  <label>
+                  </span>
+                  <span className="monitoring-rules-profile-label monitoring-rules-profile-label-format">
                     Input-Format
-                    <select
-                      value={draft.inputFormat}
-                      onChange={(event) => {
-                        const next = event.target.value as MonitoringInputFormat;
-                        updateDraft((profile) => ({ ...profile, inputFormat: next }));
-                      }}
-                    >
-                      {ALL_INPUT_FORMATS.map((format) => (
-                        <option key={format} value={format}>
-                          {toLabel(format)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="monitoring-rules-enabled-toggle">
+                  </span>
+                  <label className="monitoring-rules-profile-active-toggle">
                     <input
                       type="checkbox"
                       checked={draft.enabled !== false}
@@ -431,10 +606,183 @@ export const MonitoringRulesPage = () => {
                     />
                     Aktiv
                   </label>
-                </div>
 
+                  <div className="monitoring-rules-profile-control monitoring-rules-profile-control-name">
+                    <input
+                      className="text-input"
+                      type="text"
+                      value={draft.name}
+                      onChange={(event) => {
+                        const nextName = event.target.value;
+                        updateDraft((profile) => ({ ...profile, name: nextName }));
+                      }}
+                    />
+                  </div>
+                  <div className="monitoring-rules-profile-control monitoring-rules-profile-control-alias">
+                    <div className="monitoring-rules-alias-combobox">
+                      <input
+                        ref={aliasInputRef}
+                        className="text-input"
+                        type="text"
+                        role="combobox"
+                        aria-autocomplete="list"
+                        aria-expanded={aliasSuggestionsOpen}
+                        aria-controls={
+                          aliasSuggestionsOpen
+                            ? "monitoring-rules-alias-suggestions"
+                            : undefined
+                        }
+                        value={aliasesDraft}
+                        onFocus={(event) => {
+                          setAliasSuggestionsOpen(true);
+                          setAliasCaretPosition(event.currentTarget.selectionStart ?? aliasesDraft.length);
+                        }}
+                        onClick={(event) => {
+                          setAliasSuggestionsOpen(true);
+                          setAliasCaretPosition(event.currentTarget.selectionStart ?? aliasesDraft.length);
+                        }}
+                        onChange={(event) => {
+                          handleAliasInputChange(
+                            event.target.value,
+                            event.target.selectionStart,
+                          );
+                        }}
+                        onKeyUp={(event) => {
+                          setAliasCaretPosition(
+                            event.currentTarget.selectionStart ?? aliasesDraft.length,
+                          );
+                        }}
+                        onKeyDown={handleAliasInputKeyDown}
+                        onBlur={() => {
+                          window.setTimeout(() => {
+                            setAliasSuggestionsOpen(false);
+                          }, 80);
+                        }}
+                      />
+                      {aliasSuggestionsOpen ? (
+                        <ul
+                          id="monitoring-rules-alias-suggestions"
+                          className="frontmatter-suggestions monitoring-rules-alias-suggestions"
+                          role="listbox"
+                          aria-label="Alias Attribut Vorschlaege"
+                        >
+                          {filteredAliasSuggestions.length === 0 ? (
+                            <li className="monitoring-rules-alias-empty">
+                              Keine passenden Attribute
+                            </li>
+                          ) : (
+                            filteredAliasSuggestions.map((suggestion, suggestionIndex) => (
+                              <li key={`monitoring-alias-${suggestion}`}>
+                                <button
+                                  type="button"
+                                  className={`frontmatter-suggestion-option ${
+                                    suggestionIndex === aliasSuggestionCursor ? "active" : ""
+                                  }`}
+                                  role="option"
+                                  aria-selected={suggestionIndex === aliasSuggestionCursor}
+                                  tabIndex={-1}
+                                  onMouseEnter={() => setAliasSuggestionCursor(suggestionIndex)}
+                                  onMouseDown={(event) => {
+                                    event.preventDefault();
+                                    handleAliasSuggestionSelect(suggestion);
+                                  }}
+                                >
+                                  {suggestion}
+                                </button>
+                              </li>
+                            ))
+                          )}
+                        </ul>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="monitoring-rules-profile-control monitoring-rules-profile-control-format">
+                    <select
+                      value={draft.inputFormat}
+                      onChange={(event) => {
+                        const next = event.target.value as MonitoringInputFormat;
+                        const previousFormat = draft.inputFormat;
+                        updateDraft((profile) => ({ ...profile, inputFormat: next }));
+                        if (!selectedId) {
+                          return;
+                        }
+                        const previousDefault = resolveMonitoringPreviewRawDefault(previousFormat);
+                        if (!(selectedId in previewRawByProfileId)) {
+                          setPreviewRawByProfileId((current) => ({
+                            ...current,
+                            [selectedId]: resolveMonitoringPreviewRawDefault(next),
+                          }));
+                          return;
+                        }
+                        setPreviewRawByProfileId((current) => {
+                          const currentRaw = current[selectedId];
+                          if (
+                            typeof currentRaw === "string" &&
+                            currentRaw.trim() !== "" &&
+                            currentRaw !== previousDefault
+                          ) {
+                            return current;
+                          }
+                          return {
+                            ...current,
+                            [selectedId]: resolveMonitoringPreviewRawDefault(next),
+                          };
+                        });
+                      }}
+                    >
+                      {ALL_INPUT_FORMATS.map((format) => (
+                        <option key={format} value={format}>
+                          {toLabel(format)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </section>
+
+              <section className="monitoring-rules-section">
+                <h3>Live-Preview</h3>
+                <div className="monitoring-rules-preview-inputs">
+                  <label>
+                    Attribut-Alias
+                    <input
+                      className="text-input"
+                      type="text"
+                      value={previewAttribute}
+                      readOnly
+                      title="Preview nutzt den ersten Alias des Profils"
+                    />
+                  </label>
+                  <label>
+                    Rohwert
+                    <input
+                      className="text-input"
+                      type="text"
+                      value={activePreviewRawValue}
+                      onChange={(event) => {
+                        if (!selectedId) {
+                          return;
+                        }
+                        const next = event.target.value;
+                        setPreviewRawByProfileId((current) => ({
+                          ...current,
+                          [selectedId]: next,
+                        }));
+                      }}
+                    />
+                  </label>
+                </div>
+                <div className="monitoring-rules-preview-output">
+                  <MonitoringRenderValue
+                    result={previewResult}
+                    fallback={activePreviewRawValue}
+                  />
+                </div>
+              </section>
+
+              <section className="monitoring-rules-section">
+                <h3>Geltungsbereich</h3>
                 <fieldset className="monitoring-rules-scopes">
-                  <legend>Geltungsbereich</legend>
                   <div>
                     {ALL_SCOPES.map((scope) => {
                       const checked = draft.scopes.includes(scope);
@@ -489,7 +837,7 @@ export const MonitoringRulesPage = () => {
                   const rulePreviewResult = previewAttribute
                     ? renderMonitoringValue({
                         attributeKey: previewAttribute,
-                        value: previewValue,
+                        value: activePreviewRawValue,
                         profiles: [rulePreviewProfile],
                       })
                     : null;
@@ -838,7 +1186,7 @@ export const MonitoringRulesPage = () => {
                         <div className="monitoring-rules-rule-preview-value">
                           <MonitoringRenderValue
                             result={rulePreviewResult}
-                            fallback={previewValue}
+                            fallback={activePreviewRawValue}
                           />
                         </div>
                       </div>
@@ -847,36 +1195,6 @@ export const MonitoringRulesPage = () => {
                 })}
               </section>
 
-              <section className="monitoring-rules-section">
-                <h3>Live-Preview</h3>
-                <div className="monitoring-rules-preview-inputs">
-                  <label>
-                    Attribut-Alias
-                    <input
-                      className="text-input"
-                      type="text"
-                      value={previewAttribute}
-                      readOnly
-                      title="Preview nutzt den ersten Alias des Profils"
-                    />
-                  </label>
-                  <label>
-                    Rohwert
-                    <input
-                      className="text-input"
-                      type="text"
-                      value={previewValue}
-                      onChange={(event) => setPreviewValue(event.target.value)}
-                    />
-                  </label>
-                </div>
-                <div className="monitoring-rules-preview-output">
-                  <MonitoringRenderValue
-                    result={previewResult}
-                    fallback={previewValue}
-                  />
-                </div>
-              </section>
             </>
           ) : (
             <div className="database-view-empty">Kein Monitoring-Profil verfuegbar.</div>
