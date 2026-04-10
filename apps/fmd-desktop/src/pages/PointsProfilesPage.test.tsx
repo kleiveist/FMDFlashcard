@@ -26,16 +26,6 @@ const flush = async () => {
   });
 };
 
-const clickButtonByText = async (container: HTMLElement, text: string) => {
-  const button = Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find(
-    (entry) => entry.textContent?.includes(text),
-  );
-  expect(button).toBeTruthy();
-  await act(async () => {
-    button?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
-  });
-};
-
 const createPointsProfilesMock = () => {
   const profiles = [
     {
@@ -111,7 +101,7 @@ describe("PointsProfilesPage", () => {
     vi.clearAllMocks();
   });
 
-  it("shows monitoring counts and expands assigned file lists", async () => {
+  it("shows monitoring counts and opens assigned file lists in a popup", async () => {
     const pointsProfiles = createPointsProfilesMock();
 
     mockUseAppState.mockReturnValue({
@@ -150,8 +140,44 @@ describe("PointsProfilesPage", () => {
     expect(container.textContent).toContain("Exam");
     expect(container.textContent).toContain("Missing profile: MissingProfile");
 
-    await clickButtonByText(container, "Exam");
-    expect(container.textContent).toContain("folder/exam.md");
+    const usageButton = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".points-profile-monitoring-toggle"),
+    ).find((entry) => entry.textContent?.includes("Exam"));
+    expect(usageButton).toBeTruthy();
+
+    await act(async () => {
+      usageButton?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
+
+    expect(document.querySelector(".points-profile-monitoring-popup")).toBeTruthy();
+    expect(document.body.textContent).toContain("folder/exam.md");
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    expect(document.querySelector(".points-profile-monitoring-popup")).toBeNull();
+
+    await act(async () => {
+      usageButton?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
+    const backdrop = document.querySelector<HTMLDivElement>(".anchored-popup-backdrop");
+    expect(backdrop).toBeTruthy();
+    act(() => {
+      backdrop?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+    });
+    expect(document.querySelector(".points-profile-monitoring-popup")).toBeNull();
+
+    await act(async () => {
+      usageButton?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
+    const closeButton = document.querySelector<HTMLButtonElement>(
+      ".points-profile-monitoring-popup .anchored-popup-close",
+    );
+    expect(closeButton).toBeTruthy();
+    act(() => {
+      closeButton?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
+    expect(document.querySelector(".points-profile-monitoring-popup")).toBeNull();
 
     cleanup();
   });

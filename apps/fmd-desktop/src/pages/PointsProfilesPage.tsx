@@ -5,7 +5,8 @@
  */
 
 import { invoke } from "@tauri-apps/api/core";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnchoredPopup } from "../components/AnchoredPopup";
 import { useAppState } from "../components/AppStateProvider";
 import {
   EXAM_POINTS_DEFAULT_DURATION_MINUTES,
@@ -108,7 +109,8 @@ export const PointsProfilesPage = () => {
   const [monitoringState, setMonitoringState] = useState<LoadState>("idle");
   const [monitoringError, setMonitoringError] = useState("");
   const [profileUsages, setProfileUsages] = useState<PointsProfileUsageGroup[]>([]);
-  const [expandedUsageKeys, setExpandedUsageKeys] = useState<Set<string>>(() => new Set());
+  const [activeUsageKey, setActiveUsageKey] = useState<string | null>(null);
+  const usagePopupAnchorRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const selectedProfile = pointsProfiles.selectedProfile;
@@ -131,7 +133,7 @@ export const PointsProfilesPage = () => {
       setProfileUsages([]);
       setMonitoringState("idle");
       setMonitoringError("");
-      setExpandedUsageKeys(() => new Set());
+      setActiveUsageKey(null);
       return;
     }
 
@@ -143,7 +145,7 @@ export const PointsProfilesPage = () => {
       setProfileUsages([]);
       setMonitoringState("idle");
       setMonitoringError("");
-      setExpandedUsageKeys(() => new Set());
+      setActiveUsageKey(null);
       return;
     }
 
@@ -226,15 +228,11 @@ export const PointsProfilesPage = () => {
       setMonitoringError("");
     }
 
-    const validKeys = new Set(nextGroups.map((group) => group.key));
-    setExpandedUsageKeys((previous) => {
-      const next = new Set<string>();
-      previous.forEach((key) => {
-        if (validKeys.has(key)) {
-          next.add(key);
-        }
-      });
-      return next;
+    setActiveUsageKey((previous) => {
+      if (!previous) {
+        return null;
+      }
+      return nextGroups.some((group) => group.key === previous) ? previous : null;
     });
   }, [pointsProfiles.resolveProfileByName, vault.files, vault.vaultPath]);
 
@@ -263,6 +261,14 @@ export const PointsProfilesPage = () => {
       assignedFileCount,
     };
   }, [profileUsages]);
+
+  const activeUsage = useMemo(
+    () =>
+      activeUsageKey
+        ? profileUsages.find((usage) => usage.key === activeUsageKey) ?? null
+        : null,
+    [activeUsageKey, profileUsages],
+  );
 
   const handleCreatePointsProfile = useCallback(async () => {
     const requestedName = newPointsProfileName.trim();
@@ -415,16 +421,13 @@ export const PointsProfilesPage = () => {
     scanProfileUsage,
   ]);
 
-  const toggleUsageExpanded = useCallback((usageKey: string) => {
-    setExpandedUsageKeys((previous) => {
-      const next = new Set(previous);
-      if (next.has(usageKey)) {
-        next.delete(usageKey);
-      } else {
-        next.add(usageKey);
-      }
-      return next;
-    });
+  const handleOpenUsagePopup = useCallback((usageKey: string, anchor: HTMLElement) => {
+    usagePopupAnchorRef.current = anchor;
+    setActiveUsageKey(usageKey);
+  }, []);
+
+  const handleCloseUsagePopup = useCallback(() => {
+    setActiveUsageKey(null);
   }, []);
 
   const normalizedDraftTaskCount = Math.min(
@@ -656,34 +659,67 @@ export const PointsProfilesPage = () => {
           {profileUsages.length > 0 ? (
             <ul className="points-profile-monitoring-list">
               {profileUsages.map((usage) => {
-                const expanded = expandedUsageKeys.has(usage.key);
+                const popupOpen = activeUsageKey === usage.key;
                 return (
                   <li key={usage.key} className="points-profile-monitoring-item">
                     <button
                       type="button"
                       className="points-profile-monitoring-toggle"
-                      onClick={() => toggleUsageExpanded(usage.key)}
-                      aria-expanded={expanded}
+                      onClick={(event) => handleOpenUsagePopup(usage.key, event.currentTarget)}
+                      aria-haspopup="dialog"
+                      aria-expanded={popupOpen}
                     >
                       <span className="points-profile-monitoring-name">
-                        {usage.isMissingProfile ? `Missing profile: ${usage.profileName}` : usage.profileName}
+                        {usage.isMissingProfile
+                          ? `Missing profile: ${usage.profileName}`
+                          : usage.profileName}
                       </span>
                       <span className="points-profile-monitoring-count">
                         {usage.assignedFileCount} file{usage.assignedFileCount === 1 ? "" : "s"}
                       </span>
                     </button>
-                    {expanded ? (
-                      <ul className="points-profile-monitoring-files">
-                        {usage.assignedFiles.map((file) => (
-                          <li key={`${usage.key}:${file}`}>{file}</li>
-                        ))}
-                      </ul>
-                    ) : null}
                   </li>
                 );
               })}
             </ul>
           ) : null}
+
+          <AnchoredPopup
+            isOpen={Boolean(activeUsage)}
+            onClose={handleCloseUsagePopup}
+            anchorRef={usagePopupAnchorRef}
+            closeLayerId="points-profile-monitoring-popup"
+            ariaLabel={
+              activeUsage ? `Profile assignments: ${activeUsage.profileName}` : "Profile assignments"
+            }
+            mode="centered"
+            className="points-profile-monitoring-popup"
+          >
+            {activeUsage ? (
+              <section className="panel points-profile-monitoring-popup-panel">
+                <header className="panel-header">
+                  <div>
+                    <h4>
+                      {activeUsage.isMissingProfile
+                        ? `Missing profile: ${activeUsage.profileName}`
+                        : activeUsage.profileName}
+                    </h4>
+                    <p className="muted">
+                      {activeUsage.assignedFileCount} assigned .md file
+                      {activeUsage.assignedFileCount === 1 ? "" : "s"}.
+                    </p>
+                  </div>
+                </header>
+                <div className="panel-body">
+                  <ul className="points-profile-monitoring-popup-files">
+                    {activeUsage.assignedFiles.map((file) => (
+                      <li key={`${activeUsage.key}:${file}`}>{file}</li>
+                    ))}
+                  </ul>
+                </div>
+              </section>
+            ) : null}
+          </AnchoredPopup>
         </div>
       </section>
     </div>
