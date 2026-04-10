@@ -456,11 +456,12 @@ const normalizeGroupedMaps = (value: unknown): MonitoringGroupedLabelMapEntry[] 
     return [];
   }
   return value
-    .map((entry) => {
+    .map((entry): MonitoringGroupedLabelMapEntry | null => {
       if (!isRecord(entry)) {
         return null;
       }
       const label = String(entry.label ?? "").trim();
+      const hasSymbol = Object.prototype.hasOwnProperty.call(entry, "symbol");
       const symbol = entry.symbol === undefined || entry.symbol === null
         ? null
         : String(entry.symbol).trim() || null;
@@ -472,9 +473,12 @@ const normalizeGroupedMaps = (value: unknown): MonitoringGroupedLabelMapEntry[] 
       if (!label || values.length === 0) {
         return null;
       }
+      if (!hasSymbol) {
+        return { label, values };
+      }
       return { label, values, symbol };
     })
-    .filter((entry): entry is MonitoringGroupedLabelMapEntry => Boolean(entry));
+    .filter((entry): entry is MonitoringGroupedLabelMapEntry => entry !== null);
 };
 
 const normalizeRule = (value: unknown): MonitoringRenderRule | null => {

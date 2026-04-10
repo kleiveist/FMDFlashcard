@@ -4730,7 +4730,7 @@ export const applyInteractionSpacing = (markdown: string) => {
   return normalized.join("\n");
 };
 
-const stringifyPropertyValue = (property: FrontmatterProperty) => {
+const stringifyPropertyValue = (property: FrontmatterProperty): string => {
   if (property.kind === "formula") {
     return formatFormulaPropertySummary(property.value);
   }
@@ -4743,7 +4743,16 @@ const stringifyPropertyValue = (property: FrontmatterProperty) => {
   if (typeof property.value === "boolean") {
     return property.value ? "true" : "false";
   }
-  return property.value ?? "";
+  if (typeof property.value === "string") {
+    return property.value;
+  }
+  if (property.value && typeof property.value === "object") {
+    const normalized = normalizeDatabaseFormulaDefinitionV1(property.value);
+    if (normalized) {
+      return formatFormulaPropertySummary(normalized);
+    }
+  }
+  return "";
 };
 
 const normalizeTags = (value: string[]) => {

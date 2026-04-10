@@ -236,7 +236,7 @@ const toNumericValue = (
 };
 
 const evaluateCount = (values: DatabaseNormalizedFieldValue[]) =>
-  values.reduce((count, value) => {
+  values.reduce<number>((count, value) => {
     const text = toGroupableText(value);
     return text ? count + 1 : count;
   }, 0);
