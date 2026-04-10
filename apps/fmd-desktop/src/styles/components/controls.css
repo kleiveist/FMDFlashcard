@@ -124,24 +124,107 @@
   min-width: 140px;
 }
 
-select.text-input {
-  border-color: var(--ui-control-border-open);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--ui-control-bg) 80%, var(--accent-hover-bg)) 0%,
-    color-mix(in srgb, var(--ui-control-bg) 90%, var(--accent-weak-bg)) 100%
-  );
+:is(
+    select.text-input,
+    .frontmatter-type-select,
+    .database-block-view-select,
+    .database-block-panel select,
+    .formula-attribute-builder-field > select,
+    .monitoring-rules-profile-control select
+  ):not([multiple]):where(:not([size]), [size="0"], [size="1"]) {
+  --ui-select-arrow-color: var(--ui-control-caret);
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-inline-end: calc(var(--ui-control-padding-x) + 1.35rem);
+  background-color: var(--db-control-bg, var(--ui-control-bg));
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--ui-select-arrow-color) 50%),
+    linear-gradient(135deg, var(--ui-select-arrow-color) 50%, transparent 50%);
+  background-repeat: no-repeat;
+  background-size: 0.42rem 0.42rem, 0.42rem 0.42rem;
+  background-position:
+    calc(100% - var(--ui-control-padding-x) - 0.45rem) 50%,
+    calc(100% - var(--ui-control-padding-x) - 0.15rem) 50%;
 }
 
-select.text-input:hover:not(:disabled):not([readonly]):not([aria-readonly="true"]),
-select.text-input:focus-visible,
-select.text-input:open {
-  border-color: var(--ui-control-border-active);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--ui-control-bg-open) 72%, var(--accent-active-bg)) 0%,
-    color-mix(in srgb, var(--ui-control-bg-open) 88%, var(--accent-hover-bg)) 100%
-  );
+:is(
+    select.text-input,
+    .frontmatter-type-select,
+    .database-block-view-select,
+    .database-block-panel select,
+    .formula-attribute-builder-field > select,
+    .monitoring-rules-profile-control select
+  ):not([multiple]):where(:not([size]), [size="0"], [size="1"]):hover:not(:disabled):not([readonly]):not(
+    [aria-readonly="true"]
+  ) {
+  --ui-select-arrow-color: var(--accent-strong);
+  background-color: var(--db-control-hover-bg, var(--ui-control-bg-hover));
+}
+
+:is(
+    select.text-input,
+    .frontmatter-type-select,
+    .database-block-view-select,
+    .database-block-panel select,
+    .formula-attribute-builder-field > select,
+    .monitoring-rules-profile-control select
+  ):not([multiple]):where(:not([size]), [size="0"], [size="1"]):active:not(:disabled):not([readonly]):not(
+    [aria-readonly="true"]
+  ) {
+  --ui-select-arrow-color: var(--accent-strong);
+  background-color: var(--db-control-active-bg, var(--ui-control-bg-active));
+}
+
+:is(
+    select.text-input,
+    .frontmatter-type-select,
+    .database-block-view-select,
+    .database-block-panel select,
+    .formula-attribute-builder-field > select,
+    .monitoring-rules-profile-control select
+  ):not([multiple]):where(:not([size]), [size="0"], [size="1"]):is(:focus-visible, :open):not(
+    :disabled
+  ):not([readonly]):not([aria-readonly="true"]) {
+  --ui-select-arrow-color: var(--accent-strong);
+  background-color: var(--db-control-active-bg, var(--ui-control-bg-open));
+}
+
+:is(
+    select.text-input,
+    .frontmatter-type-select,
+    .database-block-view-select,
+    .database-block-panel select,
+    .formula-attribute-builder-field > select,
+    .monitoring-rules-profile-control select
+  ):not([multiple]):where(:not([size]), [size="0"], [size="1"]):open {
+  background-image:
+    linear-gradient(135deg, transparent 50%, var(--ui-select-arrow-color) 50%),
+    linear-gradient(45deg, var(--ui-select-arrow-color) 50%, transparent 50%);
+}
+
+:is(
+    select.text-input,
+    .frontmatter-type-select,
+    .database-block-view-select,
+    .database-block-panel select,
+    .formula-attribute-builder-field > select,
+    .monitoring-rules-profile-control select
+  ):not([multiple]):where(:not([size]), [size="0"], [size="1"]):is([readonly], [aria-readonly="true"]) {
+  --ui-select-arrow-color: var(--ui-control-text-readonly);
+  background-color: var(--ui-control-bg-readonly);
+}
+
+:is(
+    select.text-input,
+    .frontmatter-type-select,
+    .database-block-view-select,
+    .database-block-panel select,
+    .formula-attribute-builder-field > select,
+    .monitoring-rules-profile-control select
+  ):not([multiple]):where(:not([size]), [size="0"], [size="1"]):disabled {
+  --ui-select-arrow-color: var(--ui-control-text-disabled);
+  background-color: var(--ui-control-bg-disabled);
 }
 
 .hex-input {

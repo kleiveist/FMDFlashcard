@@ -32,10 +32,15 @@ describe("controls.css", () => {
     expect(controlsCss).toContain("--ui-control-bg-open");
   });
 
-  it("applies accent-tinted styling for select controls with text-input class", () => {
+  it("normalizes native select controls to shared input styling and themed indicators", () => {
     expect(controlsCss).toContain("select.text-input");
-    expect(controlsCss).toContain("--accent-hover-bg");
-    expect(controlsCss).toContain("--accent-active-bg");
+    expect(controlsCss).toContain(".monitoring-rules-profile-control select");
+    expect(controlsCss).toContain("appearance: none;");
+    expect(controlsCss).toContain("--ui-select-arrow-color");
+    expect(controlsCss).toContain("padding-inline-end: calc(var(--ui-control-padding-x) + 1.35rem);");
+    expect(controlsCss).toContain(":where(:not([size]), [size=\"0\"], [size=\"1\"])");
+    expect(controlsCss).toContain("background-image:");
+    expect(controlsCss).toContain(":open");
   });
 
   it("includes field-like button system for toolbar/switch controls", () => {
