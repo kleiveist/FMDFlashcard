@@ -44,4 +44,19 @@ describe("ultrawide study container contract", () => {
     expect(contentCss).toContain(".study-ultrawide-preview-task");
     expect(contentCss).toContain(".study-ultrawide-task-pair > .study-ultrawide-preview-task");
   });
+
+  it("keeps exam navigation right-aligned across exam, scoring, and correction panels", () => {
+    expect(contentCss).toMatch(
+      /\.exam-panel-nav\s*\{[\s\S]*?width:\s*100%;[\s\S]*?justify-content:\s*flex-end;[\s\S]*?\}/,
+    );
+    expect(contentCss).toMatch(
+      /:is\(\.exam-panel,\s*\.scoring-panel\)\s+\.exam-task-footer-actions\s*\{[\s\S]*?justify-content:\s*flex-end;[\s\S]*?\}/,
+    );
+    expect(contentCss).toMatch(
+      /:is\(\.exam-panel,\s*\.scoring-panel\)\s+\.exam-task-nav\s*\{[\s\S]*?margin-left:\s*auto;[\s\S]*?justify-content:\s*flex-end;[\s\S]*?\}/,
+    );
+    expect(contentCss).toMatch(
+      /\.correction-panel\s+\.correction-pagination\s*\{[\s\S]*?justify-content:\s*flex-end;[\s\S]*?\}/,
+    );
+  });
 });

@@ -286,6 +286,43 @@ describe("ExamTaskRunner", () => {
     expect(withoutSourceMarkup).not.toContain("Quelle: exam.md");
   });
 
+  it("renders the help button inside the composite card in exam mode", () => {
+    const task = {
+      ...buildTask(),
+      helpText: ["Hint block"],
+    };
+    const markup = renderToStaticMarkup(
+      createElement(ExamTaskRunner, buildProps({ task, helpEnabled: true })),
+    );
+
+    expect(markup).toMatch(
+      /<article class="flashcard-item composite-card">[\s\S]*class="[^"]*help-button[^"]*flashcard-help-button[^"]*"/,
+    );
+    expect(markup).not.toContain("exam-help-actions");
+  });
+
+  it("keeps help in card and removes runner footer when navigation is hidden", () => {
+    const task = {
+      ...buildTask(),
+      helpText: ["Hint block"],
+    };
+    const markup = renderToStaticMarkup(
+      createElement(
+        ExamTaskRunner,
+        buildProps({
+          task,
+          helpEnabled: true,
+          showNavigation: false,
+        }),
+      ),
+    );
+
+    expect(markup).toContain("flashcard-item composite-card");
+    expect(markup).toContain("help-button");
+    expect(markup).not.toContain("exam-task-footer-actions");
+    expect(markup).not.toContain("exam-task-nav");
+  });
+
   it("hides free-text solutions during exam and reveals them after submit", () => {
     const examMarkup = renderToStaticMarkup(
       createElement(ExamTaskRunner, buildProps({ phase: "exam" })),

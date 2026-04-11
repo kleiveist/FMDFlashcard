@@ -2033,15 +2033,21 @@ body.focus-mode .spaced-repetition-sidebar {
 .exam-task-footer-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 10px;
   flex-wrap: wrap;
   margin-top: auto;
+  width: 100%;
 }
 
-.exam-help-actions {
+.exam-panel-nav {
   display: flex;
-  justify-content: flex-start;
+  width: 100%;
+  align-self: stretch;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: auto;
 }
 
 .exam-markdown {
@@ -2290,6 +2296,19 @@ body.focus-mode .spaced-repetition-sidebar {
   flex-wrap: wrap;
   justify-content: flex-end;
   margin-left: auto;
+  flex: 0 0 auto;
+  min-width: 0;
+  width: auto;
+}
+
+:is(.exam-panel, .scoring-panel) .exam-task-footer-actions {
+  width: 100%;
+  justify-content: flex-end;
+}
+
+:is(.exam-panel, .scoring-panel) .exam-task-nav {
+  margin-left: auto;
+  justify-content: flex-end;
 }
 
 .exam-warning {
@@ -2483,7 +2502,9 @@ body.focus-mode .spaced-repetition-sidebar {
   }
 }
 
-.correction-pagination {
+.correction-panel .correction-pagination {
+  width: 100%;
+  margin-left: auto;
   justify-content: flex-end;
 }
 

@@ -26,7 +26,6 @@ import { CompositeCard } from "../../../components/flashcards/CompositeCard";
 import { FlashcardMediaGroup } from "../../../components/flashcards/FlashcardMediaGroup";
 import { evaluateFlashcardPartResult, type CompositePartState, type TrueFalseSelection } from "../../../features/flashcards/logic";
 import type { ExamTask } from "../../../lib/exam";
-import { HelpButton, hasHelpContent } from "../../../components/HelpButton";
 import type { VaultPngAsset } from "../../../lib/tree";
 
 const formatTaskTitle = (index: number, count: number) => `Task ${index} of ${count}`;
@@ -159,7 +158,6 @@ export const ExamTaskRunner = ({
           ? "SCORING"
           : "CORRECTION";
   const inputLocked = phase === "review" || phase === "scoring";
-  const hasHelp = helpEnabled && hasHelpContent(task.helpText);
 
   return (
     <div className="exam-task">
@@ -215,6 +213,8 @@ export const ExamTaskRunner = ({
         revealCorrectness={canRevealOfficialSolution}
         showSolution={canRevealOfficialSolution}
         forceRevealText={canRevealOfficialSolution}
+        helpText={task.helpText}
+        helpEnabled={helpEnabled}
         onOptionSelect={onOptionSelect}
         onTrueFalseSelect={onTrueFalseSelect}
         onClozeInputChange={onClozeInputChange}
@@ -276,38 +276,26 @@ export const ExamTaskRunner = ({
         </div>
       ) : null}
 
-      {hasHelp || showNavigation ? (
+      {showNavigation ? (
         <div className="exam-task-footer-actions">
-          {hasHelp ? (
-            <div className="exam-help-actions">
-              <HelpButton
-                helpText={task.helpText}
-                enabled={helpEnabled}
-                vaultPath={vaultPath}
-                vaultPngAssets={vaultPngAssets}
-              />
-            </div>
-          ) : null}
-          {showNavigation ? (
-            <div className="exam-task-nav">
-              <button
-                type="button"
-                className="ghost small"
-                onClick={onBack}
-                disabled={!canGoBack}
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                className="ghost small"
-                onClick={onNext}
-                disabled={!canGoNext}
-              >
-                Next
-              </button>
-            </div>
-          ) : null}
+          <div className="exam-task-nav">
+            <button
+              type="button"
+              className="ghost small"
+              onClick={onBack}
+              disabled={!canGoBack}
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              className="ghost small"
+              onClick={onNext}
+              disabled={!canGoNext}
+            >
+              Next
+            </button>
+          </div>
         </div>
       ) : null}
     </div>

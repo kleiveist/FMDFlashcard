@@ -156,4 +156,59 @@ describe("ExamManualScoringPanel", () => {
     expect(container.textContent).not.toContain("Quelle: exam.md");
     cleanup();
   });
+
+  it("renders task navigation in panel-wide nav container", () => {
+    const task = {
+      taskIndex: 0,
+      manualIndex: 0,
+      manualCount: 1,
+      maxPoints: 5,
+      partStates: [{}],
+      awardedPoints: 0,
+      task: {
+        id: "task-1",
+        index: 0,
+        rawLines: ["Question"],
+        prompt: "Question",
+        gradingMode: "manual",
+        sourceRange: { startLine: 0, endLine: 0 },
+        cardWrapper: false,
+        cardLines: ["Question"],
+        warnings: [],
+        sourceTitle: "exam.md",
+        card: {
+          kind: "composite",
+          parts: [
+            {
+              kind: "free-text",
+              front: "Question",
+              back: "Answer",
+            },
+          ],
+        },
+      },
+    } as never;
+
+    const { container, cleanup } = render(
+      createElement(ExamManualScoringPanel, {
+        task,
+        finishDisabled: false,
+        canGoBack: false,
+        canGoNext: true,
+        onAwardedPointsChange: vi.fn(),
+        onBack: vi.fn(),
+        onNext: vi.fn(),
+        onFinishScoring: vi.fn(),
+        onReset: vi.fn(),
+      }),
+    );
+
+    expect(container.querySelector(".exam-panel-nav")).toBeTruthy();
+    expect(container.querySelector(".exam-task-footer-actions")).toBeNull();
+    const navButtons = container.querySelectorAll(".exam-panel-nav button.ghost.small");
+    expect(navButtons).toHaveLength(2);
+    expect(navButtons[0]?.textContent).toBe("Previous");
+    expect(navButtons[1]?.textContent).toBe("Next");
+    cleanup();
+  });
 });

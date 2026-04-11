@@ -108,97 +108,97 @@ export const ExamManualScoringPanel = ({
     </header>
 
     {task ? (
-      <article className="scoring-manual-card">
-        <header className="exam-task-header">
-          <div>
-            <p className="eyebrow">
-              TASK {task.manualIndex + 1} OF {task.manualCount}
-            </p>
-            <h3>Manual review</h3>
-            <p className="muted">Max points: {task.maxPoints}</p>
-            {showSourceBadge ? (
-              <span className="exam-task-source-badge">
-                Quelle: {task.task.sourceTitle}
-              </span>
-            ) : null}
-          </div>
-        </header>
-        {task.task.media?.length ? (
-          <FlashcardMediaGroup
-            media={task.task.media}
-            vaultPngAssets={vaultPngAssets}
-            vaultPath={vaultPath}
-          />
-        ) : null}
-        <CompositeCard
-          card={task.task.card}
-          cardIndex={task.taskIndex}
-          submitted
-          submissionLocked
-          vaultPath={vaultPath}
-          vaultPngAssets={vaultPngAssets}
-          partStates={task.partStates}
-          showSubmit={false}
-          showResult={false}
-          revealCorrectness
-          showSolution
-          forceRevealText
-          helpText={task.task.helpText}
-          helpEnabled={helpEnabled}
-          onOptionSelect={noopOptionSelect}
-          onTrueFalseSelect={noopTrueFalseSelect}
-          onClozeInputChange={noopClozeInputChange}
-          onClozeTokenDrop={noopClozeTokenDrop}
-          onClozeTokenRemove={noopClozeTokenRemove}
-          onClozeTokenDragStart={noopClozeTokenDragStart}
-          onBlankDragOver={noopBlankDragOver}
-          onTextInputChange={noopTextInputChange}
-          onTextCheck={noopTextCheck}
-          onSelfGrade={noopSelfGrade}
-          onSubmit={noopSubmit}
-        />
-        <div className="exam-points-row">
-          <span className="label">AWARDED</span>
-          <div className="exam-points-input">
-            <input
-              type="number"
-              min={0}
-              max={task.maxPoints}
-              className="text-input"
-              value={task.awardedPoints ?? ""}
-              onChange={(event) =>
-                onAwardedPointsChange(
-                  task.taskIndex,
-                  event.target.value,
-                  task.maxPoints,
-                )
-              }
-              aria-label="Awarded points"
+      <>
+        <article className="scoring-manual-card">
+          <header className="exam-task-header">
+            <div>
+              <p className="eyebrow">
+                TASK {task.manualIndex + 1} OF {task.manualCount}
+              </p>
+              <h3>Manual review</h3>
+              <p className="muted">Max points: {task.maxPoints}</p>
+              {showSourceBadge ? (
+                <span className="exam-task-source-badge">
+                  Quelle: {task.task.sourceTitle}
+                </span>
+              ) : null}
+            </div>
+          </header>
+          {task.task.media?.length ? (
+            <FlashcardMediaGroup
+              media={task.task.media}
+              vaultPngAssets={vaultPngAssets}
+              vaultPath={vaultPath}
             />
-            <span className="muted">/ {task.maxPoints}</span>
+          ) : null}
+          <CompositeCard
+            card={task.task.card}
+            cardIndex={task.taskIndex}
+            submitted
+            submissionLocked
+            vaultPath={vaultPath}
+            vaultPngAssets={vaultPngAssets}
+            partStates={task.partStates}
+            showSubmit={false}
+            showResult={false}
+            revealCorrectness
+            showSolution
+            forceRevealText
+            helpText={task.task.helpText}
+            helpEnabled={helpEnabled}
+            onOptionSelect={noopOptionSelect}
+            onTrueFalseSelect={noopTrueFalseSelect}
+            onClozeInputChange={noopClozeInputChange}
+            onClozeTokenDrop={noopClozeTokenDrop}
+            onClozeTokenRemove={noopClozeTokenRemove}
+            onClozeTokenDragStart={noopClozeTokenDragStart}
+            onBlankDragOver={noopBlankDragOver}
+            onTextInputChange={noopTextInputChange}
+            onTextCheck={noopTextCheck}
+            onSelfGrade={noopSelfGrade}
+            onSubmit={noopSubmit}
+          />
+          <div className="exam-points-row">
+            <span className="label">AWARDED</span>
+            <div className="exam-points-input">
+              <input
+                type="number"
+                min={0}
+                max={task.maxPoints}
+                className="text-input"
+                value={task.awardedPoints ?? ""}
+                onChange={(event) =>
+                  onAwardedPointsChange(
+                    task.taskIndex,
+                    event.target.value,
+                    task.maxPoints,
+                  )
+                }
+                aria-label="Awarded points"
+              />
+              <span className="muted">/ {task.maxPoints}</span>
+            </div>
           </div>
+        </article>
+        <div className="exam-panel-nav">
+          <button
+            type="button"
+            className="ghost small"
+            onClick={onBack}
+            disabled={!canGoBack}
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            className="ghost small"
+            onClick={onNext}
+            disabled={!canGoNext}
+          >
+            Next
+          </button>
         </div>
-        <div className="exam-task-footer-actions">
-          <div className="exam-task-nav">
-            <button
-              type="button"
-              className="ghost small"
-              onClick={onBack}
-              disabled={!canGoBack}
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              className="ghost small"
-              onClick={onNext}
-              disabled={!canGoNext}
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      </article>
+      </>
     ) : (
       <div className="empty-state">
         No QA tasks with awarded scoring are available for this exam.

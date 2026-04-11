@@ -8,6 +8,7 @@ import { useExamSimulationViewModel } from "./hooks/useExamSimulationViewModel";
 const capturedExamFilePanelProps: Array<Record<string, unknown>> = [];
 const capturedNoteModalProps: Array<Record<string, unknown>> = [];
 const capturedExamResultsPanelProps: Array<Record<string, unknown>> = [];
+const capturedExamTaskRunnerProps: Array<Record<string, unknown>> = [];
 
 vi.mock("./hooks/useExamSimulationViewModel", () => ({
   useExamSimulationViewModel: vi.fn(),
@@ -64,7 +65,10 @@ vi.mock("./components/ExamStatisticsPanel", () => ({
 }));
 
 vi.mock("./components/ExamTaskRunner", () => ({
-  ExamTaskRunner: () => null,
+  ExamTaskRunner: (props: Record<string, unknown>) => {
+    capturedExamTaskRunnerProps.push(props);
+    return null;
+  },
 }));
 
 vi.mock("./components/ExamTimeBar", () => ({
@@ -255,6 +259,7 @@ describe("ExamSimulationPage popup sync", () => {
     capturedExamFilePanelProps.length = 0;
     capturedNoteModalProps.length = 0;
     capturedExamResultsPanelProps.length = 0;
+    capturedExamTaskRunnerProps.length = 0;
   });
 
   it("passes shared mode/profile handlers to sidebar and popup, renders panel header KPIs, and splits run summary tasks", () => {
@@ -438,6 +443,72 @@ describe("ExamSimulationPage popup sync", () => {
     const { cleanup } = render(createElement(ExamSimulationPage));
 
     expect(capturedExamFilePanelProps).toHaveLength(0);
+    cleanup();
+  });
+
+  it("uses panel-wide navigation and passes helpEnabled to active and preview runners", () => {
+    const buildExamTask = (id: string, index: number) =>
+      ({
+        id,
+        sessionTaskId: id,
+        index,
+        rawLines: ["Question"],
+        prompt: "Question",
+        officialAnswer: "Answer",
+        gradingMode: "manual",
+        sourceRange: { startLine: 0, endLine: 0 },
+        cardWrapper: false,
+        cardLines: ["Question"],
+        warnings: [],
+        helpText: ["Hint block"],
+        card: {
+          kind: "composite",
+          parts: [
+            {
+              kind: "free-text",
+              front: "Question",
+              back: "Answer",
+            },
+          ],
+        },
+      }) as never;
+
+    const activeTask = buildExamTask("task-1", 0);
+    const nextTask = buildExamTask("task-2", 1);
+    const viewModel = {
+      ...createViewModel(),
+      stage: "running",
+      examRunning: true,
+      activeTask,
+      activeTaskIndex: 0,
+      activeTaskMaxPoints: 5,
+      activeTaskPartStates: [{}],
+      runTasks: [activeTask, nextTask],
+    };
+    mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
+
+    const { container, cleanup } = render(createElement(ExamSimulationPage));
+
+    expect(capturedExamTaskRunnerProps).toHaveLength(2);
+    const activeRunner = capturedExamTaskRunnerProps.find(
+      (entry) => entry.taskIndex === 0,
+    );
+    const previewRunner = capturedExamTaskRunnerProps.find(
+      (entry) => entry.taskIndex === 1,
+    );
+    expect(activeRunner).toBeTruthy();
+    expect(previewRunner).toBeTruthy();
+    expect(activeRunner?.helpEnabled).toBe(true);
+    expect(previewRunner?.helpEnabled).toBe(true);
+    expect(activeRunner?.showNavigation).toBe(false);
+    expect(previewRunner?.showNavigation).toBe(false);
+    const panelNav = container.querySelector(".exam-panel-nav");
+    expect(panelNav).toBeTruthy();
+    const navButtons = panelNav?.querySelectorAll("button.ghost.small");
+    expect(navButtons).toHaveLength(2);
+    expect(navButtons?.[0]?.textContent).toBe("Previous");
+    expect(navButtons?.[1]?.textContent).toBe("Next");
+
     cleanup();
   });
 
