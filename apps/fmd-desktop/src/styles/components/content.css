@@ -680,6 +680,7 @@ h2 {
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: var(--ui-layout-gap);
   align-items: start;
+  container: study-layout / inline-size;
 }
 
 .flashcard-layout.desktop-rail-layout {
@@ -704,6 +705,7 @@ h2 {
   grid-template-areas: "exam-sidebar exam-main";
   gap: var(--ui-layout-gap);
   align-items: start;
+  container: study-layout / inline-size;
 }
 
 .exam-main {
@@ -722,6 +724,7 @@ h2 {
   gap: var(--ui-space-lg) var(--ui-layout-gap);
   align-items: start;
   align-content: start;
+  container: study-layout / inline-size;
 }
 
 .fast-flashcard-layout.desktop-rail-layout {
@@ -736,6 +739,7 @@ h2 {
   gap: var(--ui-layout-gap);
   align-items: start;
   align-content: start;
+  container: study-layout / inline-size;
 }
 
 .spaced-repetition-layout.desktop-rail-layout {
@@ -2014,6 +2018,18 @@ body.focus-mode .spaced-repetition-sidebar {
   min-width: 0;
 }
 
+.study-ultrawide-task-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.study-ultrawide-preview-task {
+  display: none;
+  min-width: 0;
+}
+
 .exam-task-footer-actions {
   display: flex;
   align-items: center;
@@ -2431,6 +2447,37 @@ body.focus-mode .spaced-repetition-sidebar {
   border-radius: 18px;
   border: 1px solid var(--line-soft);
   background: color-mix(in srgb, var(--panel) 92%, var(--chip-bg));
+}
+
+@container study-layout (min-width: 2400px) {
+  .exam-layout .study-ultrawide-task-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 1fr;
+    gap: clamp(16px, 1.5vw, 28px);
+    align-items: stretch;
+    max-width: min(100%, 1860px);
+    margin-inline: auto;
+  }
+
+  .exam-layout .study-ultrawide-task-pair > * {
+    min-width: 0;
+    align-self: stretch;
+    height: 100%;
+  }
+
+  .exam-layout .study-ultrawide-task-pair > .study-ultrawide-preview-task {
+    display: flex;
+  }
+
+  .exam-layout
+  .study-ultrawide-task-pair
+  > .study-ultrawide-preview-task
+  .exam-task {
+    opacity: 0.9;
+    flex: 1 1 auto;
+    height: 100%;
+  }
 }
 
 .correction-pagination {

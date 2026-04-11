@@ -139,6 +139,7 @@ export const ExamSimulationPage = ({
     correctionCanGoNext,
     correctionQueueLength,
     runTasks,
+    runTaskPoints,
     examTimeLimitMs,
     examTimeRemainingMs,
     examTimeUp,
@@ -390,6 +391,8 @@ export const ExamSimulationPage = ({
   const isRunnerStage = stage === "running" || stage === "review";
   const hasCorrectionCandidates = incorrectTaskResults.length > 0;
   const activePhase = stage === "review" ? "review" : "exam";
+  const nextTask = activeTask ? (runTasks[activeTaskIndex + 1] ?? null) : null;
+  const nextTaskMaxPoints = nextTask ? (runTaskPoints?.[activeTaskIndex + 1] ?? 0) : 0;
   const isExamTimerRunning = stage === "running" && !examTimeUp && examTimerEnabled;
   const viewToggleDisabled = isTableView && !examRunning;
   const timelineVisible = examShowTimeline;
@@ -741,34 +744,69 @@ export const ExamSimulationPage = ({
                   </div>
                 </div>
               ) : activeTask ? (
-                <ExamTaskRunner
-                  task={activeTask}
-                  taskIndex={activeTaskIndex}
-                  taskCount={runTasks.length}
-                  maxPoints={activeTaskMaxPoints}
-                  phase={activePhase}
-                  partStates={activeTaskPartStates}
-                  awardedPoints={activeTaskAwardedPoints}
-                  autoGradeDecision={activeTaskAutoDecision}
-                  onOptionSelect={handleOptionSelect}
-                  onTrueFalseSelect={handleTrueFalseSelect}
-                  onClozeInputChange={handleClozeInputChange}
-                  onClozeTokenDrop={handleClozeTokenDrop}
-                  onClozeTokenRemove={handleClozeTokenRemove}
-                  onClozeTokenDragStart={handleClozeTokenDragStart}
-                  onBlankDragOver={handleClozeBlankDragOver}
-                  onTextInputChange={handleTextInputChange}
-                  onAwardedPointsChange={handleAwardedPointsChange}
-                  onAutoGradeDecision={handleAutoGradeDecision}
-                  onBack={handleTaskBack}
-                  onNext={handleTaskNext}
-                  canGoBack={activeTaskIndex > 0}
-                  canGoNext={activeTaskIndex < runTasks.length - 1}
-                  showSourceBadge={settings.examShowTaskSources}
-                  helpEnabled={settings.examHelpEnabled}
-                  vaultPath={vault.vaultPath}
-                  vaultPngAssets={vault.pngAssets}
-                />
+                <div className="study-ultrawide-task-pair">
+                  <ExamTaskRunner
+                    task={activeTask}
+                    taskIndex={activeTaskIndex}
+                    taskCount={runTasks.length}
+                    maxPoints={activeTaskMaxPoints}
+                    phase={activePhase}
+                    partStates={activeTaskPartStates}
+                    awardedPoints={activeTaskAwardedPoints}
+                    autoGradeDecision={activeTaskAutoDecision}
+                    onOptionSelect={handleOptionSelect}
+                    onTrueFalseSelect={handleTrueFalseSelect}
+                    onClozeInputChange={handleClozeInputChange}
+                    onClozeTokenDrop={handleClozeTokenDrop}
+                    onClozeTokenRemove={handleClozeTokenRemove}
+                    onClozeTokenDragStart={handleClozeTokenDragStart}
+                    onBlankDragOver={handleClozeBlankDragOver}
+                    onTextInputChange={handleTextInputChange}
+                    onAwardedPointsChange={handleAwardedPointsChange}
+                    onAutoGradeDecision={handleAutoGradeDecision}
+                    onBack={handleTaskBack}
+                    onNext={handleTaskNext}
+                    canGoBack={activeTaskIndex > 0}
+                    canGoNext={activeTaskIndex < runTasks.length - 1}
+                    showSourceBadge={settings.examShowTaskSources}
+                    helpEnabled={settings.examHelpEnabled}
+                    vaultPath={vault.vaultPath}
+                    vaultPngAssets={vault.pngAssets}
+                  />
+                  {nextTask ? (
+                    <div className="study-ultrawide-preview-task">
+                      <ExamTaskRunner
+                        task={nextTask}
+                        taskIndex={activeTaskIndex + 1}
+                        taskCount={runTasks.length}
+                        maxPoints={nextTaskMaxPoints}
+                        phase="exam"
+                        partStates={[]}
+                        awardedPoints={null}
+                        autoGradeDecision={undefined}
+                        onOptionSelect={handleOptionSelect}
+                        onTrueFalseSelect={handleTrueFalseSelect}
+                        onClozeInputChange={handleClozeInputChange}
+                        onClozeTokenDrop={handleClozeTokenDrop}
+                        onClozeTokenRemove={handleClozeTokenRemove}
+                        onClozeTokenDragStart={handleClozeTokenDragStart}
+                        onBlankDragOver={handleClozeBlankDragOver}
+                        onTextInputChange={handleTextInputChange}
+                        onAwardedPointsChange={handleAwardedPointsChange}
+                        onAutoGradeDecision={handleAutoGradeDecision}
+                        onBack={handleTaskBack}
+                        onNext={handleTaskNext}
+                        canGoBack={false}
+                        canGoNext={false}
+                        showSourceBadge={settings.examShowTaskSources}
+                        helpEnabled={false}
+                        showNavigation={false}
+                        vaultPath={vault.vaultPath}
+                        vaultPngAssets={vault.pngAssets}
+                      />
+                    </div>
+                  ) : null}
+                </div>
               ) : (
                 <div className="empty-state">No tasks available for this exam.</div>
               )}

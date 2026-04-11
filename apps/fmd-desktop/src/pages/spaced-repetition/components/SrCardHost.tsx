@@ -32,9 +32,11 @@ import type { ClozeDragPayload, FlashcardSelfGrade } from "../../../features/fla
 import type { VaultPngAsset } from "../../../lib/tree";
 
 const EMPTY_CLOZE_RESPONSES: Record<string, string> = {};
+type SrEntry = { card: any; cardIndex: number; sourceMeta?: unknown };
 
 type SrCardHostProps = {
-  filteredFlashcardEntries: { card: any; cardIndex: number; sourceMeta?: unknown }[];
+  filteredFlashcardEntries: SrEntry[];
+  nextPreviewFlashcardEntry?: SrEntry | null;
   renderResultHeaderAction?: (cardIndex: number, submitted: boolean) => ReactNode;
   spacedRepetitionSubmissions: Record<number, boolean>;
   helpEnabled: boolean;
@@ -122,6 +124,7 @@ type SrCardHostProps = {
 
 export const SrCardHost = ({
   filteredFlashcardEntries,
+  nextPreviewFlashcardEntry = null,
   renderResultHeaderAction,
   spacedRepetitionSubmissions,
   helpEnabled,
@@ -159,132 +162,161 @@ export const SrCardHost = ({
   handleSpacedRepetitionPageNext,
   prevShortcutTitle,
   nextShortcutTitle,
-}: SrCardHostProps) => (
-  <div className="panel-body">
-    <div className="flashcard-list">
-      {filteredFlashcardEntries.map(({ card, cardIndex }) => {
-        const submitted = !!spacedRepetitionSubmissions[cardIndex];
-        const resultHeaderAction = renderResultHeaderAction?.(cardIndex, submitted) ?? null;
+}: SrCardHostProps) => {
+  const renderEntry = (
+    entry: SrEntry,
+    options: { preview?: boolean; keyPrefix?: string } = {},
+  ) => {
+    const card = entry.card;
+    const cardIndex = entry.cardIndex;
+    const submitted = !!spacedRepetitionSubmissions[cardIndex];
+    const locked = false;
+    const keyPrefix = options.keyPrefix ?? "flashcard";
+    const entryHelpEnabled = helpEnabled;
+    const entryHelpText = card.helpText;
+    const resultHeaderAction =
+      !renderResultHeaderAction
+        ? null
+        : (renderResultHeaderAction(cardIndex, submitted) ?? null);
 
-        if (card.kind === "composite") {
-          return (
-            <CompositeCard
-              key={`flashcard-${cardIndex}`}
-              card={card}
-              cardIndex={cardIndex}
-              submitted={submitted}
-              vaultPath={vaultPath}
-              vaultPngAssets={vaultPngAssets}
-              helpText={card.helpText}
-              helpEnabled={helpEnabled}
-              resultHeaderAction={resultHeaderAction}
-              partStates={spacedRepetitionCompositeStates?.[cardIndex] ?? []}
-              onOptionSelect={handleCompositeOptionSelect}
-              onTrueFalseSelect={handleCompositeTrueFalseSelect}
-              onClozeInputChange={handleCompositeClozeInputChange}
-              onClozeTokenDrop={handleCompositeClozeTokenDrop}
-              onClozeTokenRemove={handleCompositeClozeTokenRemove}
-              onClozeTokenDragStart={handleClozeTokenDragStart}
-              onBlankDragOver={handleClozeBlankDragOver}
-              onTextInputChange={handleCompositeTextInputChange}
-              onTextCheck={handleCompositeTextCheck}
-              onSelfGrade={handleCompositeSelfGrade}
-              onSubmit={handleSpacedRepetitionSubmit}
-            />
-          );
-        }
+    if (card.kind === "composite") {
+      return (
+        <CompositeCard
+          key={`${keyPrefix}-${cardIndex}`}
+          card={card}
+          cardIndex={cardIndex}
+          submitted={submitted}
+          submissionLocked={locked}
+          vaultPath={vaultPath}
+          vaultPngAssets={vaultPngAssets}
+          helpText={entryHelpText}
+          helpEnabled={entryHelpEnabled}
+          resultHeaderAction={resultHeaderAction}
+          partStates={spacedRepetitionCompositeStates?.[cardIndex] ?? []}
+          onOptionSelect={handleCompositeOptionSelect}
+          onTrueFalseSelect={handleCompositeTrueFalseSelect}
+          onClozeInputChange={handleCompositeClozeInputChange}
+          onClozeTokenDrop={handleCompositeClozeTokenDrop}
+          onClozeTokenRemove={handleCompositeClozeTokenRemove}
+          onClozeTokenDragStart={handleClozeTokenDragStart}
+          onBlankDragOver={handleClozeBlankDragOver}
+          onTextInputChange={handleCompositeTextInputChange}
+          onTextCheck={handleCompositeTextCheck}
+          onSelfGrade={handleCompositeSelfGrade}
+          onSubmit={handleSpacedRepetitionSubmit}
+        />
+      );
+    }
 
-        if (card.kind === "cloze") {
-          return (
-            <ClozeCard
-              key={`flashcard-${cardIndex}`}
-              card={card}
-              cardIndex={cardIndex}
-              submitted={submitted}
-              vaultPath={vaultPath}
-              vaultPngAssets={vaultPngAssets}
-              helpText={card.helpText}
-              helpEnabled={helpEnabled}
-              resultHeaderAction={resultHeaderAction}
-              responses={
-                spacedRepetitionClozeResponses[cardIndex] ?? EMPTY_CLOZE_RESPONSES
-              }
-              onInputChange={handleClozeInputChange}
-              onTokenDrop={handleClozeTokenDrop}
-              onTokenRemove={handleClozeTokenRemove}
-              onTokenDragStart={handleClozeTokenDragStart}
-              onBlankDragOver={handleClozeBlankDragOver}
-              onSubmit={handleSpacedRepetitionSubmit}
-            />
-          );
-        }
+    if (card.kind === "cloze") {
+      return (
+        <ClozeCard
+          key={`${keyPrefix}-${cardIndex}`}
+          card={card}
+          cardIndex={cardIndex}
+          submitted={submitted}
+          submissionLocked={locked}
+          vaultPath={vaultPath}
+          vaultPngAssets={vaultPngAssets}
+          helpText={entryHelpText}
+          helpEnabled={entryHelpEnabled}
+          resultHeaderAction={resultHeaderAction}
+          responses={
+            spacedRepetitionClozeResponses[cardIndex] ?? EMPTY_CLOZE_RESPONSES
+          }
+          onInputChange={handleClozeInputChange}
+          onTokenDrop={handleClozeTokenDrop}
+          onTokenRemove={handleClozeTokenRemove}
+          onTokenDragStart={handleClozeTokenDragStart}
+          onBlankDragOver={handleClozeBlankDragOver}
+          onSubmit={handleSpacedRepetitionSubmit}
+        />
+      );
+    }
 
-        if (card.kind === "true-false") {
-          return (
-            <TrueFalseCard
-              key={`flashcard-${cardIndex}`}
-              card={card}
-              cardIndex={cardIndex}
-              submitted={submitted}
-              vaultPath={vaultPath}
-              vaultPngAssets={vaultPngAssets}
-              helpText={card.helpText}
-              helpEnabled={helpEnabled}
-              resultHeaderAction={resultHeaderAction}
-              selections={spacedRepetitionTrueFalseSelections[cardIndex] ?? {}}
-              onSelect={handleTrueFalseSelect}
-              onSubmit={handleSpacedRepetitionSubmit}
-            />
-          );
-        }
+    if (card.kind === "true-false") {
+      return (
+        <TrueFalseCard
+          key={`${keyPrefix}-${cardIndex}`}
+          card={card}
+          cardIndex={cardIndex}
+          submitted={submitted}
+          submissionLocked={locked}
+          vaultPath={vaultPath}
+          vaultPngAssets={vaultPngAssets}
+          helpText={entryHelpText}
+          helpEnabled={entryHelpEnabled}
+          resultHeaderAction={resultHeaderAction}
+          selections={spacedRepetitionTrueFalseSelections[cardIndex] ?? {}}
+          onSelect={handleTrueFalseSelect}
+          onSubmit={handleSpacedRepetitionSubmit}
+        />
+      );
+    }
 
-        if (card.kind === "free-text") {
-          return (
-            <FreeTextCard
-              key={`flashcard-${cardIndex}`}
-              card={card}
-              cardIndex={cardIndex}
-              submitted={submitted}
-              vaultPath={vaultPath}
-              vaultPngAssets={vaultPngAssets}
-              helpText={card.helpText}
-              helpEnabled={helpEnabled}
-              resultHeaderAction={resultHeaderAction}
-              response={spacedRepetitionTextResponses[cardIndex] ?? ""}
-              revealed={spacedRepetitionTextRevealed[cardIndex] ?? false}
-              selfGrade={spacedRepetitionSelfGrades[cardIndex]}
-              onInputChange={handleTextInputChange}
-              onCheck={handleTextCheck}
-              onSelfGrade={handleSelfGrade}
-            />
-          );
-        }
+    if (card.kind === "free-text") {
+      return (
+        <FreeTextCard
+          key={`${keyPrefix}-${cardIndex}`}
+          card={card}
+          cardIndex={cardIndex}
+          submitted={submitted}
+          submissionLocked={locked}
+          vaultPath={vaultPath}
+          vaultPngAssets={vaultPngAssets}
+          helpText={entryHelpText}
+          helpEnabled={entryHelpEnabled}
+          resultHeaderAction={resultHeaderAction}
+          response={spacedRepetitionTextResponses[cardIndex] ?? ""}
+          revealed={spacedRepetitionTextRevealed[cardIndex] ?? false}
+          selfGrade={spacedRepetitionSelfGrades[cardIndex]}
+          onInputChange={handleTextInputChange}
+          onCheck={handleTextCheck}
+          onSelfGrade={handleSelfGrade}
+        />
+      );
+    }
 
-        return (
-          <MultipleChoiceCard
-            key={`flashcard-${cardIndex}`}
-            card={card}
-            cardIndex={cardIndex}
-            submitted={submitted}
-            vaultPath={vaultPath}
-            vaultPngAssets={vaultPngAssets}
-            helpText={card.helpText}
-            helpEnabled={helpEnabled}
-            resultHeaderAction={resultHeaderAction}
-            selectedKeys={spacedRepetitionSelections[cardIndex] ?? []}
-            onSelect={handleOptionSelect}
-            onSubmit={handleSpacedRepetitionSubmit}
-          />
-        );
-      })}
+    return (
+      <MultipleChoiceCard
+        key={`${keyPrefix}-${cardIndex}`}
+        card={card}
+        cardIndex={cardIndex}
+        submitted={submitted}
+        submissionLocked={locked}
+        vaultPath={vaultPath}
+        vaultPngAssets={vaultPngAssets}
+        helpText={entryHelpText}
+        helpEnabled={entryHelpEnabled}
+        resultHeaderAction={resultHeaderAction}
+        selectedKeys={spacedRepetitionSelections[cardIndex] ?? []}
+        onSelect={handleOptionSelect}
+        onSubmit={handleSpacedRepetitionSubmit}
+      />
+    );
+  };
+
+  return (
+    <div className="panel-body">
+      <div className="flashcard-list">
+        {filteredFlashcardEntries.map((entry) => renderEntry(entry))}
+        {nextPreviewFlashcardEntry ? (
+          <div className="study-ultrawide-preview-pane">
+            {renderEntry(nextPreviewFlashcardEntry, {
+              preview: true,
+              keyPrefix: "sr-next",
+            })}
+          </div>
+        ) : null}
+      </div>
+      <SrReviewActions
+        spacedRepetitionCanGoBack={spacedRepetitionCanGoBack}
+        spacedRepetitionCanGoNext={spacedRepetitionCanGoNext}
+        handleSpacedRepetitionPageBack={handleSpacedRepetitionPageBack}
+        handleSpacedRepetitionPageNext={handleSpacedRepetitionPageNext}
+        prevShortcutTitle={prevShortcutTitle}
+        nextShortcutTitle={nextShortcutTitle}
+      />
     </div>
-    <SrReviewActions
-      spacedRepetitionCanGoBack={spacedRepetitionCanGoBack}
-      spacedRepetitionCanGoNext={spacedRepetitionCanGoNext}
-      handleSpacedRepetitionPageBack={handleSpacedRepetitionPageBack}
-      handleSpacedRepetitionPageNext={handleSpacedRepetitionPageNext}
-      prevShortcutTitle={prevShortcutTitle}
-      nextShortcutTitle={nextShortcutTitle}
-    />
-  </div>
-);
+  );
+};

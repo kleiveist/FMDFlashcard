@@ -73,6 +73,7 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
     statsChartStyle,
     maxBoxCount,
     filteredFlashcardEntries,
+    nextPreviewFlashcardEntry,
     flashcardsPanelCanGoBack,
     flashcardsPanelCanGoNext,
     handleFlashcardsPanelPageBack,
@@ -305,6 +306,7 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
           {isFlashcardsPanelEmpty ? null : (
             <SrCardHost
               filteredFlashcardEntries={filteredFlashcardEntries}
+              nextPreviewFlashcardEntry={nextPreviewFlashcardEntry}
               renderResultHeaderAction={renderSrResultHeaderAction}
               spacedRepetitionSubmissions={spacedRepetition.spacedRepetitionSubmissions}
               helpEnabled={spacedRepetitionHelpEnabled}

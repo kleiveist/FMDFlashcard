@@ -31,11 +31,12 @@ import type { ClozeDragPayload } from "../../../features/flashcards/logic";
 import type { VaultPngAsset } from "../../../lib/tree";
 
 const EMPTY_CLOZE_RESPONSES: Record<string, string> = {};
+type FastEntry = { card: any; cardIndex: number };
 
 type FastCardHostProps = {
   hasScannedCards: boolean;
   hasFilteredCards: boolean;
-  currentEntry: { card: any; cardIndex: number } | null;
+  currentEntry: FastEntry | null;
   isCurrentSubmitted: boolean;
   submissionLocked: boolean;
   resultHeaderAction?: ReactNode;
@@ -43,6 +44,7 @@ type FastCardHostProps = {
   vaultPath?: string | null;
   vaultPngAssets?: VaultPngAsset[] | null;
   fastFlashcards: {
+    flashcardSubmissions: Record<number, boolean>;
     flashcardCompositeStates: Record<number, any[]>;
     flashcardClozeResponses: Record<number, Record<string, string>>;
     flashcardTrueFalseSelections: Record<number, Record<string, any>>;
@@ -56,7 +58,7 @@ type FastCardHostProps = {
     ) => void;
     handleClozeBlankDragOver: (event: DragEvent<HTMLElement>) => void;
   };
-  orderedEntries: { cardIndex: number; card: any }[];
+  orderedEntries: FastEntry[];
   canGoBack: boolean;
   canGoNext: boolean;
   setFastCardPosition: (value: (prev: number) => number) => void;
@@ -154,149 +156,206 @@ export const FastCardHost = ({
   handleCompositeSelfGrade,
   handleFastSubmit,
   handleFastSelfGrade,
-}: FastCardHostProps) => (
-  <div className="panel-body">
-    {!hasScannedCards ? (
-      <div className="empty-state">
-        Select a note from DASHBOARD and start the flashcard scan
+}: FastCardHostProps) => {
+  const nextEntry = (() => {
+    if (currentEntry === null) {
+      return null;
+    }
+    const currentPosition = orderedEntries.findIndex(
+      (entry) => entry.cardIndex === currentEntry.cardIndex,
+    );
+    if (currentPosition < 0) {
+      return null;
+    }
+    return orderedEntries[currentPosition + 1] ?? null;
+  })();
+
+  const renderEntry = (
+    entry: FastEntry,
+    options: {
+      preview?: boolean;
+      keyPrefix?: string;
+    } = {},
+  ) => {
+    const submitted = !!fastFlashcards.flashcardSubmissions[entry.cardIndex];
+    const locked =
+      currentEntry !== null && entry.cardIndex === currentEntry.cardIndex
+        ? submissionLocked
+        : false;
+    const entryHelpEnabled = helpEnabled;
+    const entryHelpText = entry.card.helpText;
+    const entryHeaderAction =
+      currentEntry !== null &&
+      entry.cardIndex === currentEntry.cardIndex &&
+      submitted &&
+      isCurrentSubmitted
+        ? resultHeaderAction
+        : null;
+    const keyPrefix = options.keyPrefix ?? "fast-flashcard";
+
+    if (entry.card.kind === "composite") {
+      return (
+        <CompositeCard
+          key={`${keyPrefix}-${entry.cardIndex}`}
+          card={entry.card}
+          cardIndex={entry.cardIndex}
+          submitted={submitted}
+          submissionLocked={locked}
+          vaultPath={vaultPath}
+          vaultPngAssets={vaultPngAssets}
+          helpText={entryHelpText}
+          helpEnabled={entryHelpEnabled}
+          resultHeaderAction={entryHeaderAction}
+          partStates={fastFlashcards.flashcardCompositeStates[entry.cardIndex] ?? []}
+          onOptionSelect={handleCompositeOptionSelect}
+          onTrueFalseSelect={handleCompositeTrueFalseSelect}
+          onClozeInputChange={handleCompositeClozeInputChange}
+          onClozeTokenDrop={handleCompositeClozeTokenDrop}
+          onClozeTokenRemove={handleCompositeClozeTokenRemove}
+          onClozeTokenDragStart={fastFlashcards.handleClozeTokenDragStart}
+          onBlankDragOver={fastFlashcards.handleClozeBlankDragOver}
+          onTextInputChange={handleCompositeTextInputChange}
+          onTextCheck={handleCompositeTextCheck}
+          onSelfGrade={handleCompositeSelfGrade}
+          onSubmit={handleFastSubmit}
+        />
+      );
+    }
+
+    if (entry.card.kind === "cloze") {
+      return (
+        <ClozeCard
+          key={`${keyPrefix}-${entry.cardIndex}`}
+          card={entry.card}
+          cardIndex={entry.cardIndex}
+          submitted={submitted}
+          submissionLocked={locked}
+          vaultPath={vaultPath}
+          vaultPngAssets={vaultPngAssets}
+          helpText={entryHelpText}
+          helpEnabled={entryHelpEnabled}
+          resultHeaderAction={entryHeaderAction}
+          responses={
+            fastFlashcards.flashcardClozeResponses[entry.cardIndex] ??
+            EMPTY_CLOZE_RESPONSES
+          }
+          onInputChange={handleClozeInputChange}
+          onTokenDrop={handleClozeTokenDrop}
+          onTokenRemove={handleClozeTokenRemove}
+          onTokenDragStart={fastFlashcards.handleClozeTokenDragStart}
+          onBlankDragOver={fastFlashcards.handleClozeBlankDragOver}
+          onSubmit={handleFastSubmit}
+        />
+      );
+    }
+
+    if (entry.card.kind === "true-false") {
+      return (
+        <TrueFalseCard
+          key={`${keyPrefix}-${entry.cardIndex}`}
+          card={entry.card}
+          cardIndex={entry.cardIndex}
+          submitted={submitted}
+          submissionLocked={locked}
+          vaultPath={vaultPath}
+          vaultPngAssets={vaultPngAssets}
+          helpText={entryHelpText}
+          helpEnabled={entryHelpEnabled}
+          resultHeaderAction={entryHeaderAction}
+          selections={fastFlashcards.flashcardTrueFalseSelections[entry.cardIndex] ?? {}}
+          onSelect={handleTrueFalseSelect}
+          onSubmit={handleFastSubmit}
+        />
+      );
+    }
+
+    if (entry.card.kind === "free-text") {
+      return (
+        <FreeTextCard
+          key={`${keyPrefix}-${entry.cardIndex}`}
+          card={entry.card}
+          cardIndex={entry.cardIndex}
+          submitted={submitted}
+          submissionLocked={locked}
+          vaultPath={vaultPath}
+          vaultPngAssets={vaultPngAssets}
+          helpText={entryHelpText}
+          helpEnabled={entryHelpEnabled}
+          resultHeaderAction={entryHeaderAction}
+          response={fastFlashcards.flashcardTextResponses[entry.cardIndex] ?? ""}
+          revealed={fastFlashcards.flashcardTextRevealed[entry.cardIndex] ?? false}
+          selfGrade={fastFlashcards.flashcardSelfGrades[entry.cardIndex]}
+          onInputChange={handleTextInputChange}
+          onCheck={handleTextCheck}
+          onSelfGrade={handleFastSelfGrade}
+        />
+      );
+    }
+
+    return (
+      <MultipleChoiceCard
+        key={`${keyPrefix}-${entry.cardIndex}`}
+        card={entry.card}
+        cardIndex={entry.cardIndex}
+        submitted={submitted}
+        submissionLocked={locked}
+        vaultPath={vaultPath}
+        vaultPngAssets={vaultPngAssets}
+        helpText={entryHelpText}
+        helpEnabled={entryHelpEnabled}
+        resultHeaderAction={entryHeaderAction}
+        selectedKeys={fastFlashcards.flashcardSelections[entry.cardIndex] ?? []}
+        onSelect={handleOptionSelect}
+        onSubmit={handleFastSubmit}
+      />
+    );
+  };
+
+  return (
+    <div className="panel-body">
+      {!hasScannedCards ? (
+        <div className="empty-state">
+          Select a note from DASHBOARD and start the flashcard scan
+        </div>
+      ) : !hasFilteredCards ? (
+        <div className="empty-state">No cards match the selected mode.</div>
+      ) : currentEntry ? (
+        <div className="flashcard-list">
+          {renderEntry(currentEntry)}
+          {nextEntry ? (
+            <div className="study-ultrawide-preview-pane">
+              {renderEntry(nextEntry, {
+                preview: true,
+                keyPrefix: "fast-flashcard-next",
+              })}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <div className="empty-state">No cards available.</div>
+      )}
+      <div className="flashcard-pagination">
+        <button
+          type="button"
+          className="ghost small"
+          onClick={() => setFastCardPosition((prev) => Math.max(0, prev - 1))}
+          disabled={!canGoBack}
+        >
+          Back
+        </button>
+        <button
+          type="button"
+          className="ghost small"
+          onClick={() =>
+            setFastCardPosition((prev) =>
+              Math.min(prev + 1, Math.max(orderedEntries.length - 1, 0)),
+            )
+          }
+          disabled={!canGoNext}
+        >
+          Next
+        </button>
       </div>
-    ) : !hasFilteredCards ? (
-      <div className="empty-state">No cards match the selected mode.</div>
-    ) : currentEntry ? (
-      <div className="flashcard-list">
-        {currentEntry.card.kind === "composite" ? (
-          <CompositeCard
-            key={`fast-flashcard-${currentEntry.cardIndex}`}
-            card={currentEntry.card}
-            cardIndex={currentEntry.cardIndex}
-            submitted={isCurrentSubmitted}
-            submissionLocked={submissionLocked}
-            vaultPath={vaultPath}
-            vaultPngAssets={vaultPngAssets}
-            helpText={currentEntry.card.helpText}
-            helpEnabled={helpEnabled}
-            resultHeaderAction={resultHeaderAction}
-            partStates={
-              fastFlashcards.flashcardCompositeStates[currentEntry.cardIndex] ?? []
-            }
-            onOptionSelect={handleCompositeOptionSelect}
-            onTrueFalseSelect={handleCompositeTrueFalseSelect}
-            onClozeInputChange={handleCompositeClozeInputChange}
-            onClozeTokenDrop={handleCompositeClozeTokenDrop}
-            onClozeTokenRemove={handleCompositeClozeTokenRemove}
-            onClozeTokenDragStart={fastFlashcards.handleClozeTokenDragStart}
-            onBlankDragOver={fastFlashcards.handleClozeBlankDragOver}
-            onTextInputChange={handleCompositeTextInputChange}
-            onTextCheck={handleCompositeTextCheck}
-            onSelfGrade={handleCompositeSelfGrade}
-            onSubmit={handleFastSubmit}
-          />
-        ) : currentEntry.card.kind === "cloze" ? (
-          <ClozeCard
-            key={`fast-flashcard-${currentEntry.cardIndex}`}
-            card={currentEntry.card}
-            cardIndex={currentEntry.cardIndex}
-            submitted={isCurrentSubmitted}
-            submissionLocked={submissionLocked}
-            vaultPath={vaultPath}
-            vaultPngAssets={vaultPngAssets}
-            helpText={currentEntry.card.helpText}
-            helpEnabled={helpEnabled}
-            resultHeaderAction={resultHeaderAction}
-            responses={
-              fastFlashcards.flashcardClozeResponses[currentEntry.cardIndex] ??
-              EMPTY_CLOZE_RESPONSES
-            }
-            onInputChange={handleClozeInputChange}
-            onTokenDrop={handleClozeTokenDrop}
-            onTokenRemove={handleClozeTokenRemove}
-            onTokenDragStart={fastFlashcards.handleClozeTokenDragStart}
-            onBlankDragOver={fastFlashcards.handleClozeBlankDragOver}
-            onSubmit={handleFastSubmit}
-          />
-        ) : currentEntry.card.kind === "true-false" ? (
-          <TrueFalseCard
-            key={`fast-flashcard-${currentEntry.cardIndex}`}
-            card={currentEntry.card}
-            cardIndex={currentEntry.cardIndex}
-            submitted={isCurrentSubmitted}
-            submissionLocked={submissionLocked}
-            vaultPath={vaultPath}
-            vaultPngAssets={vaultPngAssets}
-            helpText={currentEntry.card.helpText}
-            helpEnabled={helpEnabled}
-            resultHeaderAction={resultHeaderAction}
-            selections={
-              fastFlashcards.flashcardTrueFalseSelections[currentEntry.cardIndex] ?? {}
-            }
-            onSelect={handleTrueFalseSelect}
-            onSubmit={handleFastSubmit}
-          />
-        ) : currentEntry.card.kind === "free-text" ? (
-          <FreeTextCard
-            key={`fast-flashcard-${currentEntry.cardIndex}`}
-            card={currentEntry.card}
-            cardIndex={currentEntry.cardIndex}
-            submitted={isCurrentSubmitted}
-            submissionLocked={submissionLocked}
-            vaultPath={vaultPath}
-            vaultPngAssets={vaultPngAssets}
-            helpText={currentEntry.card.helpText}
-            helpEnabled={helpEnabled}
-            resultHeaderAction={resultHeaderAction}
-            response={fastFlashcards.flashcardTextResponses[currentEntry.cardIndex] ?? ""}
-            revealed={
-              fastFlashcards.flashcardTextRevealed[currentEntry.cardIndex] ?? false
-            }
-            selfGrade={fastFlashcards.flashcardSelfGrades[currentEntry.cardIndex]}
-            onInputChange={handleTextInputChange}
-            onCheck={handleTextCheck}
-            onSelfGrade={handleFastSelfGrade}
-          />
-        ) : (
-          <MultipleChoiceCard
-            key={`fast-flashcard-${currentEntry.cardIndex}`}
-            card={currentEntry.card}
-            cardIndex={currentEntry.cardIndex}
-            submitted={isCurrentSubmitted}
-            submissionLocked={submissionLocked}
-            vaultPath={vaultPath}
-            vaultPngAssets={vaultPngAssets}
-            helpText={currentEntry.card.helpText}
-            helpEnabled={helpEnabled}
-            resultHeaderAction={resultHeaderAction}
-            selectedKeys={
-              fastFlashcards.flashcardSelections[currentEntry.cardIndex] ?? []
-            }
-            onSelect={handleOptionSelect}
-            onSubmit={handleFastSubmit}
-          />
-        )}
-      </div>
-    ) : (
-      <div className="empty-state">No cards available.</div>
-    )}
-    <div className="flashcard-pagination">
-      <button
-        type="button"
-        className="ghost small"
-        onClick={() => setFastCardPosition((prev) => Math.max(0, prev - 1))}
-        disabled={!canGoBack}
-      >
-        Back
-      </button>
-      <button
-        type="button"
-        className="ghost small"
-        onClick={() =>
-          setFastCardPosition((prev) =>
-            Math.min(prev + 1, Math.max(orderedEntries.length - 1, 0)),
-          )
-        }
-        disabled={!canGoNext}
-      >
-        Next
-      </button>
     </div>
-  </div>
-);
+  );
+};

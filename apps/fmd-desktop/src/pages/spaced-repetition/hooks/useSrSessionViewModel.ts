@@ -234,6 +234,12 @@ export const useSrSessionViewModel = () => {
       spacedRepetition.spacedRepetitionPageSize,
     ],
   );
+  const nextPreviewFlashcardEntry = useMemo(() => {
+    if (pagedFlashcardEntries.length !== 1) {
+      return null;
+    }
+    return filteredFlashcardEntries[filteredPageStart + 1] ?? null;
+  }, [filteredFlashcardEntries, filteredPageStart, pagedFlashcardEntries]);
   const flashcardsPanelCanGoBack =
     filteredPageCount > 0 && filteredPageIndex > 0;
   const flashcardsPanelCanGoNext =
@@ -857,6 +863,7 @@ export const useSrSessionViewModel = () => {
     statsChartStyle,
     maxBoxCount,
     filteredFlashcardEntries: pagedFlashcardEntries,
+    nextPreviewFlashcardEntry,
     flashcardsPanelCanGoBack,
     flashcardsPanelCanGoNext,
     handleFlashcardsPanelPageBack,

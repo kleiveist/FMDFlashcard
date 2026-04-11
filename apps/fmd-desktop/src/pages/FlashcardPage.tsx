@@ -133,6 +133,160 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
   const nextShortcutTitle = shortcutBindings.next
     ? `Next (${formatBinding(shortcutBindings.next, platform)})`
     : "Next";
+  const nextPreviewEntry = useMemo(() => {
+    if (flashcards.visibleFlashcardEntries.length !== 1) {
+      return null;
+    }
+    const currentEntry = flashcards.visibleFlashcardEntries[0];
+    if (!currentEntry) {
+      return null;
+    }
+    const currentPosition = flashcards.orderedFlashcardEntries.findIndex(
+      (entry) => entry.cardIndex === currentEntry.cardIndex,
+    );
+    if (currentPosition < 0) {
+      return null;
+    }
+    return flashcards.orderedFlashcardEntries[currentPosition + 1] ?? null;
+  }, [flashcards.orderedFlashcardEntries, flashcards.visibleFlashcardEntries]);
+
+  const renderFlashcardEntry = (
+    entry: (typeof flashcards.visibleFlashcardEntries)[number],
+    options: { preview?: boolean; keyPrefix?: string } = {},
+  ) => {
+    const cardIndex = entry.cardIndex;
+    const card = entry.card;
+    const submitted = !!flashcards.flashcardSubmissions[cardIndex];
+    const locked = false;
+    const entryHelpEnabled = helpEnabled;
+    const entryHelpText = card.helpText;
+    const keyPrefix = options.keyPrefix ?? "flashcard";
+    const areaToggleState = submitted ? flashcardAreaToggle.getToggleState(cardIndex) : null;
+    const resultHeaderAction = areaToggleState ? (
+      <FlashcardAreaMenuTrigger
+        enabled={areaToggleState.enabled}
+        pending={areaToggleState.pending}
+        disabledReason={areaToggleState.disabledReason}
+        error={areaToggleState.error}
+        notice={areaToggleState.notice}
+        onToggle={(nextEnabled) => flashcardAreaToggle.toggleCardArea(cardIndex, nextEnabled)}
+      />
+    ) : null;
+
+    if (card.kind === "composite") {
+      return (
+        <CompositeCard
+          key={`${keyPrefix}-${cardIndex}`}
+          card={card}
+          cardIndex={cardIndex}
+          submitted={submitted}
+          submissionLocked={locked}
+          vaultPath={vault.vaultPath}
+          vaultPngAssets={vault.pngAssets}
+          helpText={entryHelpText}
+          helpEnabled={entryHelpEnabled}
+          resultHeaderAction={resultHeaderAction}
+          partStates={flashcards.flashcardCompositeStates[cardIndex] ?? []}
+          onOptionSelect={handleCompositeOptionSelect}
+          onTrueFalseSelect={handleCompositeTrueFalseSelect}
+          onClozeInputChange={handleCompositeClozeInputChange}
+          onClozeTokenDrop={handleCompositeClozeTokenDrop}
+          onClozeTokenRemove={handleCompositeClozeTokenRemove}
+          onClozeTokenDragStart={flashcards.handleClozeTokenDragStart}
+          onBlankDragOver={flashcards.handleClozeBlankDragOver}
+          onTextInputChange={handleCompositeTextInputChange}
+          onTextCheck={handleCompositeTextCheck}
+          onSelfGrade={handleCompositeSelfGrade}
+          onSubmit={flashcards.handleFlashcardSubmit}
+        />
+      );
+    }
+
+    if (card.kind === "cloze") {
+      return (
+        <ClozeCard
+          key={`${keyPrefix}-${cardIndex}`}
+          card={card}
+          cardIndex={cardIndex}
+          submitted={submitted}
+          submissionLocked={locked}
+          vaultPath={vault.vaultPath}
+          vaultPngAssets={vault.pngAssets}
+          helpText={entryHelpText}
+          helpEnabled={entryHelpEnabled}
+          resultHeaderAction={resultHeaderAction}
+          responses={flashcards.flashcardClozeResponses[cardIndex] ?? EMPTY_CLOZE_RESPONSES}
+          onInputChange={handleClozeInputChange}
+          onTokenDrop={handleClozeTokenDrop}
+          onTokenRemove={handleClozeTokenRemove}
+          onTokenDragStart={flashcards.handleClozeTokenDragStart}
+          onBlankDragOver={flashcards.handleClozeBlankDragOver}
+          onSubmit={flashcards.handleFlashcardSubmit}
+        />
+      );
+    }
+
+    if (card.kind === "true-false") {
+      return (
+        <TrueFalseCard
+          key={`${keyPrefix}-${cardIndex}`}
+          card={card}
+          cardIndex={cardIndex}
+          submitted={submitted}
+          submissionLocked={locked}
+          vaultPath={vault.vaultPath}
+          vaultPngAssets={vault.pngAssets}
+          helpText={entryHelpText}
+          helpEnabled={entryHelpEnabled}
+          resultHeaderAction={resultHeaderAction}
+          selections={flashcards.flashcardTrueFalseSelections[cardIndex] ?? {}}
+          onSelect={handleTrueFalseSelect}
+          onSubmit={flashcards.handleFlashcardSubmit}
+        />
+      );
+    }
+
+    if (card.kind === "free-text") {
+      return (
+        <FreeTextCard
+          key={`${keyPrefix}-${cardIndex}`}
+          card={card}
+          cardIndex={cardIndex}
+          submitted={submitted}
+          submissionLocked={locked}
+          vaultPath={vault.vaultPath}
+          vaultPngAssets={vault.pngAssets}
+          helpText={entryHelpText}
+          helpEnabled={entryHelpEnabled}
+          resultHeaderAction={resultHeaderAction}
+          response={flashcards.flashcardTextResponses[cardIndex] ?? ""}
+          revealed={flashcards.flashcardTextRevealed[cardIndex] ?? false}
+          selfGrade={flashcards.flashcardSelfGrades[cardIndex]}
+          onInputChange={handleTextInputChange}
+          onCheck={handleTextCheck}
+          onSelfGrade={handleSelfGrade}
+        />
+      );
+    }
+
+    return (
+      <MultipleChoiceCard
+        key={`${keyPrefix}-${cardIndex}`}
+        card={card}
+        cardIndex={cardIndex}
+        submitted={submitted}
+        submissionLocked={locked}
+        vaultPath={vault.vaultPath}
+        vaultPngAssets={vault.pngAssets}
+        helpText={entryHelpText}
+        helpEnabled={entryHelpEnabled}
+        resultHeaderAction={resultHeaderAction}
+        selectedKeys={flashcards.flashcardSelections[cardIndex] ?? []}
+        onSelect={handleOptionSelect}
+        onSubmit={flashcards.handleFlashcardSubmit}
+      />
+    );
+  };
 
   useEffect(() => {
     document.body.classList.toggle("focus-mode", isFocusMode);
@@ -716,136 +870,15 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
           <div className="empty-state">No cards match the selected mode.</div>
         ) : (
           <div className="flashcard-list">
-            {flashcards.visibleFlashcardEntries.map((entry) => {
-              const cardIndex = entry.cardIndex;
-              const card = entry.card;
-              const submitted = !!flashcards.flashcardSubmissions[cardIndex];
-              const areaToggleState = flashcardAreaToggle.getToggleState(cardIndex);
-              const resultHeaderAction = submitted ? (
-                <FlashcardAreaMenuTrigger
-                  enabled={areaToggleState.enabled}
-                  pending={areaToggleState.pending}
-                  disabledReason={areaToggleState.disabledReason}
-                  error={areaToggleState.error}
-                  notice={areaToggleState.notice}
-                  onToggle={(nextEnabled) =>
-                    flashcardAreaToggle.toggleCardArea(cardIndex, nextEnabled)
-                  }
-                />
-              ) : null;
-
-              if (card.kind === "composite") {
-                return (
-                  <CompositeCard
-                    key={`flashcard-${cardIndex}`}
-                    card={card}
-                    cardIndex={cardIndex}
-                    submitted={submitted}
-                    vaultPath={vault.vaultPath}
-                    vaultPngAssets={vault.pngAssets}
-                    helpText={card.helpText}
-                    helpEnabled={helpEnabled}
-                    resultHeaderAction={resultHeaderAction}
-                    partStates={flashcards.flashcardCompositeStates[cardIndex] ?? []}
-                    onOptionSelect={handleCompositeOptionSelect}
-                    onTrueFalseSelect={handleCompositeTrueFalseSelect}
-                    onClozeInputChange={handleCompositeClozeInputChange}
-                    onClozeTokenDrop={handleCompositeClozeTokenDrop}
-                    onClozeTokenRemove={handleCompositeClozeTokenRemove}
-                    onClozeTokenDragStart={flashcards.handleClozeTokenDragStart}
-                    onBlankDragOver={flashcards.handleClozeBlankDragOver}
-                    onTextInputChange={handleCompositeTextInputChange}
-                    onTextCheck={handleCompositeTextCheck}
-                    onSelfGrade={handleCompositeSelfGrade}
-                    onSubmit={flashcards.handleFlashcardSubmit}
-                  />
-                );
-              }
-
-              if (card.kind === "cloze") {
-                return (
-                  <ClozeCard
-                    key={`flashcard-${cardIndex}`}
-                    card={card}
-                    cardIndex={cardIndex}
-                    submitted={submitted}
-                    vaultPath={vault.vaultPath}
-                    vaultPngAssets={vault.pngAssets}
-                    helpText={card.helpText}
-                    helpEnabled={helpEnabled}
-                    resultHeaderAction={resultHeaderAction}
-                    responses={
-                      flashcards.flashcardClozeResponses[cardIndex] ??
-                      EMPTY_CLOZE_RESPONSES
-                    }
-                    onInputChange={handleClozeInputChange}
-                    onTokenDrop={handleClozeTokenDrop}
-                    onTokenRemove={handleClozeTokenRemove}
-                    onTokenDragStart={flashcards.handleClozeTokenDragStart}
-                    onBlankDragOver={flashcards.handleClozeBlankDragOver}
-                    onSubmit={flashcards.handleFlashcardSubmit}
-                  />
-                );
-              }
-
-              if (card.kind === "true-false") {
-                return (
-                  <TrueFalseCard
-                    key={`flashcard-${cardIndex}`}
-                    card={card}
-                    cardIndex={cardIndex}
-                    submitted={submitted}
-                    vaultPath={vault.vaultPath}
-                    vaultPngAssets={vault.pngAssets}
-                    helpText={card.helpText}
-                    helpEnabled={helpEnabled}
-                    resultHeaderAction={resultHeaderAction}
-                    selections={flashcards.flashcardTrueFalseSelections[cardIndex] ?? {}}
-                    onSelect={handleTrueFalseSelect}
-                    onSubmit={flashcards.handleFlashcardSubmit}
-                  />
-                );
-              }
-
-              if (card.kind === "free-text") {
-                return (
-                  <FreeTextCard
-                    key={`flashcard-${cardIndex}`}
-                    card={card}
-                    cardIndex={cardIndex}
-                    submitted={submitted}
-                    vaultPath={vault.vaultPath}
-                    vaultPngAssets={vault.pngAssets}
-                    helpText={card.helpText}
-                    helpEnabled={helpEnabled}
-                    resultHeaderAction={resultHeaderAction}
-                    response={flashcards.flashcardTextResponses[cardIndex] ?? ""}
-                    revealed={flashcards.flashcardTextRevealed[cardIndex] ?? false}
-                    selfGrade={flashcards.flashcardSelfGrades[cardIndex]}
-                    onInputChange={handleTextInputChange}
-                    onCheck={handleTextCheck}
-                    onSelfGrade={handleSelfGrade}
-                  />
-                );
-              }
-
-              return (
-                <MultipleChoiceCard
-                  key={`flashcard-${cardIndex}`}
-                  card={card}
-                  cardIndex={cardIndex}
-                  submitted={submitted}
-                  vaultPath={vault.vaultPath}
-                  vaultPngAssets={vault.pngAssets}
-                  helpText={card.helpText}
-                  helpEnabled={helpEnabled}
-                  resultHeaderAction={resultHeaderAction}
-                  selectedKeys={flashcards.flashcardSelections[cardIndex] ?? []}
-                  onSelect={handleOptionSelect}
-                  onSubmit={flashcards.handleFlashcardSubmit}
-                />
-              );
-            })}
+            {flashcards.visibleFlashcardEntries.map((entry) => renderFlashcardEntry(entry))}
+            {nextPreviewEntry ? (
+              <div className="study-ultrawide-preview-pane">
+                {renderFlashcardEntry(nextPreviewEntry, {
+                  preview: true,
+                  keyPrefix: "flashcard-next",
+                })}
+              </div>
+            ) : null}
           </div>
         )}
         <div className="flashcard-pagination">
