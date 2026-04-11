@@ -2036,6 +2036,7 @@ body.focus-mode .spaced-repetition-sidebar {
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
+  margin-top: auto;
 }
 
 .exam-help-actions {
@@ -2456,8 +2457,10 @@ body.focus-mode .spaced-repetition-sidebar {
     grid-auto-rows: 1fr;
     gap: clamp(16px, 1.5vw, 28px);
     align-items: stretch;
-    max-width: min(100%, 1860px);
-    margin-inline: auto;
+    justify-items: stretch;
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
   }
 
   .exam-layout .study-ultrawide-task-pair > * {

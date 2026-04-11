@@ -266,6 +266,9 @@
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  margin-top: auto;
+  order: 99;
+  width: 100%;
 }
 
 .flashcard-help-button {
@@ -1043,8 +1046,10 @@ figure.flashcard-media-item {
     grid-auto-rows: 1fr;
     gap: clamp(16px, 1.5vw, 28px);
     align-items: stretch;
-    max-width: min(100%, 1860px);
-    margin-inline: auto;
+    justify-items: stretch;
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
   }
 
   :is(.flashcard-layout, .fast-flashcard-layout, .spaced-repetition-layout) .flashcard-list > :nth-child(odd) {
