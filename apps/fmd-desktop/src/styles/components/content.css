@@ -1662,9 +1662,9 @@ body.focus-mode .spaced-repetition-sidebar {
 }
 
 .exam-selected-slot.is-row-break {
-  width: 56px;
-  min-width: 56px;
-  min-height: 36px;
+  width: 60px;
+  min-width: 60px;
+  min-height: 30px;
   border-radius: 999px;
 }
 
