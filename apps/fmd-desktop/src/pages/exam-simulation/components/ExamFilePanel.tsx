@@ -816,9 +816,7 @@ export const ExamFilePanel = ({
         }
         aria-label={label}
         title={label}
-      >
-        <span aria-hidden="true" />
-      </button>
+      />
     );
   };
 

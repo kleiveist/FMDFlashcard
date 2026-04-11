@@ -1647,12 +1647,12 @@ body.focus-mode .spaced-repetition-sidebar {
 }
 
 .exam-selected-slot {
-  width: 10px;
-  min-width: 10px;
-  min-height: 34px;
+  width: 80px;
+  min-width: 80px;
+  min-height: 40px;
   padding: 0;
   border: 1px dashed var(--ui-border-subtle);
-  border-radius: 6px;
+  border-radius: 12px;
   background: color-mix(in srgb, var(--panel) 76%, var(--block-bg));
   display: inline-flex;
   align-items: center;
@@ -1661,23 +1661,11 @@ body.focus-mode .spaced-repetition-sidebar {
   transition: 0.16s ease;
 }
 
-.exam-selected-slot span {
-  width: 2px;
-  height: 14px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--muted) 80%, transparent);
-}
-
 .exam-selected-slot.is-row-break {
-  width: 28px;
-  min-width: 28px;
-  min-height: 18px;
+  width: 56px;
+  min-width: 56px;
+  min-height: 36px;
   border-radius: 999px;
-}
-
-.exam-selected-slot.is-row-break span {
-  width: 14px;
-  height: 2px;
 }
 
 .exam-selected-slot.is-active {
