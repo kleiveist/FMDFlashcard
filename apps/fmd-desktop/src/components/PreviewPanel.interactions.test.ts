@@ -5191,6 +5191,73 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(formulaValue?.getAttribute("title")).toContain("avg(percent) = 25");
   });
 
+  it("renders formula monitoring progress inline and not in a secondary preview row", async () => {
+    const markdown = [
+      "---",
+      "title: Demo",
+      "percent: 70",
+      "f-%:",
+      "  version: 1",
+      "  operation: avg",
+      "  attributeKeys:",
+      "    - percent",
+      "  source:",
+      "    type: current-folder",
+      "  shortTextRule:",
+      "    maxChars: 32",
+      "    maxTokens: 3",
+      "    requireSingleNumericCore: true",
+      "---",
+      "Body line",
+    ].join("\n");
+    const monitoringProfiles: MonitoringRenderProfile[] = [
+      {
+        id: "profile-f-percent",
+        name: "Formula Percent",
+        attributeAliases: ["f-%"],
+        inputFormat: "numeric-percent",
+        scopes: ["properties", "database", "monitoring-page"],
+        rules: [
+          {
+            id: "rule-f-percent-format",
+            type: "percent-format",
+            decimals: 0,
+            clamp: true,
+          },
+          {
+            id: "rule-f-percent-progress",
+            type: "progress-visual",
+            visualStyle: "bar",
+            min: 0,
+            max: 100,
+          },
+        ],
+        enabled: true,
+      },
+    ];
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      sourceRelativePath: "Course/current.md",
+      vaultFiles: [
+        { path: "/vault/Course/current.md", relative_path: "Course/current.md" },
+        { path: "/vault/Course/other.md", relative_path: "Course/other.md" },
+      ],
+      frontmatterValuesByFile: {
+        "Course/current.md": { percent: 70 },
+        "Course/other.md": { percent: 50 },
+      },
+      monitoringProfiles,
+    });
+    cleanup = localCleanup;
+
+    await flushAsyncInteraction();
+
+    const formulaValue = container.querySelector<HTMLDivElement>(".frontmatter-formula-value");
+    expect(formulaValue).toBeTruthy();
+    expect(formulaValue?.querySelector(".monitoring-render-progress")).toBeTruthy();
+    expect(formulaValue?.textContent ?? "").toContain("%");
+    expect(container.querySelector(".frontmatter-monitoring-preview")).toBeNull();
+  });
+
   it("blocks creating a second cover via manual key input", async () => {
     const onFrontmatterSave = vi.fn().mockResolvedValue(true);
     const markdown = [

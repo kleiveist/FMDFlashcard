@@ -6258,15 +6258,6 @@ textarea.preview-editor {
   fill: var(--accent-border);
 }
 
-.frontmatter-monitoring-preview {
-  margin-top: 4px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--db-muted);
-  font-size: 0.75rem;
-}
-
 .database-block-state {
   margin: 0;
   font-size: 0.76rem;

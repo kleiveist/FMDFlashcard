@@ -7306,6 +7306,19 @@ const FrontmatterPropertiesPanel = ({
                     const formulaTitle = formulaComputedValue === formulaSummary
                       ? formulaSummary
                       : `${formulaSummary} = ${formulaComputedValue}`;
+                    if (monitoringResult) {
+                      return (
+                        <div
+                          className="frontmatter-formula-value"
+                          title={formulaTitle}
+                        >
+                          <MonitoringRenderValue
+                            result={monitoringResult}
+                            fallback={monitoringFallback}
+                          />
+                        </div>
+                      );
+                    }
                     return (
                       <div
                         className="frontmatter-formula-value"
@@ -7785,14 +7798,6 @@ const FrontmatterPropertiesPanel = ({
                       </div>
                     ) : null}
                     {renderValueEditor()}
-                    {monitoringResult ? (
-                      <div className="frontmatter-monitoring-preview">
-                        <MonitoringRenderValue
-                          result={monitoringResult}
-                          fallback={monitoringFallback}
-                        />
-                      </div>
-                    ) : null}
                   </div>
                 </div>
               );
