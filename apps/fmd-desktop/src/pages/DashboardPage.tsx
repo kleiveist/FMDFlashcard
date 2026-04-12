@@ -189,6 +189,9 @@ const DashboardPageInner = (
   const [frontmatterFormulaAttributeKeysByFile, setFrontmatterFormulaAttributeKeysByFile] = useState<
     Record<string, string[]> | null
   >(null);
+  const [frontmatterValuesByFile, setFrontmatterValuesByFile] = useState<
+    Record<string, Record<string, unknown>> | null
+  >(null);
   const frontmatterTaskProfileSummaries = useMemo(
     () =>
       Object.fromEntries(
@@ -479,6 +482,7 @@ const DashboardPageInner = (
           setFrontmatterValueSuggestions({});
           setFrontmatterKeySuggestions([]);
           setFrontmatterFormulaAttributeKeysByFile({});
+          setFrontmatterValuesByFile({});
         }
         return;
       }
@@ -504,6 +508,7 @@ const DashboardPageInner = (
         sortFrontmatterKeySuggestions(suggestionIndex.keyIndex),
       );
       const nextFormulaAttributeKeysByFile: Record<string, string[]> = {};
+      const nextFrontmatterValuesByFile: Record<string, Record<string, unknown>> = {};
       vault.files.forEach((file, index) => {
         const normalizedRelativePath = normalizeRelativePath(file.relative_path).replace(/^\/+/, "");
         if (!/\.md$/i.test(normalizedRelativePath)) {
@@ -516,12 +521,23 @@ const DashboardPageInner = (
         const keys = dedupeCaseInsensitive(
           parsed.properties.map((property) => property.key),
         );
+        const valuesByKey: Record<string, unknown> = {};
+        parsed.properties.forEach((property) => {
+          if (property.kind === "formula") {
+            return;
+          }
+          valuesByKey[property.key] = property.value;
+        });
+        if (Object.keys(valuesByKey).length > 0) {
+          nextFrontmatterValuesByFile[normalizedRelativePath] = valuesByKey;
+        }
         if (keys.length === 0) {
           return;
         }
         nextFormulaAttributeKeysByFile[normalizedRelativePath] = keys;
       });
       setFrontmatterFormulaAttributeKeysByFile(nextFormulaAttributeKeysByFile);
+      setFrontmatterValuesByFile(nextFrontmatterValuesByFile);
     };
     void rebuildSuggestions();
     return () => {
@@ -1376,6 +1392,7 @@ const DashboardPageInner = (
             valueSuggestionsByKey={frontmatterValueSuggestions}
             keySuggestions={frontmatterKeySuggestions}
             formulaAttributeKeysByFile={frontmatterFormulaAttributeKeysByFile ?? undefined}
+            frontmatterValuesByFile={frontmatterValuesByFile ?? undefined}
             markdownTabs={markdownTabs}
             activeMarkdownTabPath={preview.selectedFile?.path ?? null}
             onSelectMarkdownTab={handleSelectMarkdownTab}

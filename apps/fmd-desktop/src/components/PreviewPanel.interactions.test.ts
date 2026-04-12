@@ -331,6 +331,7 @@ const buildHarness = (
     valueSuggestionsByKey?: Record<string, string[]>;
     keySuggestions?: string[];
     formulaAttributeKeysByFile?: Record<string, string[]>;
+    frontmatterValuesByFile?: Record<string, Record<string, unknown>>;
     vaultFiles?: VaultFile[];
     vaultPngAssets?: VaultPngAsset[];
     vaultPath?: string;
@@ -358,6 +359,7 @@ const buildHarness = (
     valueSuggestionsByKey,
     keySuggestions,
     formulaAttributeKeysByFile,
+    frontmatterValuesByFile,
     vaultFiles,
     vaultPngAssets,
     vaultPath = "/vault",
@@ -445,6 +447,7 @@ const buildHarness = (
       valueSuggestionsByKey,
       keySuggestions,
       formulaAttributeKeysByFile,
+      frontmatterValuesByFile,
       markdownTabs,
       activeMarkdownTabPath,
       onSelectMarkdownTab,
@@ -5048,6 +5051,90 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(multiFolderAttributes).toContain("rank");
     expect(multiFolderAttributes).toContain("archived");
     expect(new Set(multiFolderAttributes).size).toBe(multiFolderAttributes.length);
+  });
+
+  it("renders computed current-folder formula values in the properties panel", async () => {
+    const markdown = [
+      "---",
+      "title: Demo",
+      "percent: 10",
+      "f-total:",
+      "  version: 1",
+      "  operation: sum",
+      "  attributeKeys:",
+      "    - percent",
+      "  source:",
+      "    type: current-folder",
+      "  shortTextRule:",
+      "    maxChars: 32",
+      "    maxTokens: 3",
+      "    requireSingleNumericCore: true",
+      "---",
+      "Body line",
+    ].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      sourceRelativePath: "Course/current.md",
+      vaultFiles: [
+        { path: "/vault/Course/current.md", relative_path: "Course/current.md" },
+        { path: "/vault/Course/other.md", relative_path: "Course/other.md" },
+        { path: "/vault/Archive/old.md", relative_path: "Archive/old.md" },
+      ],
+      frontmatterValuesByFile: {
+        "Course/current.md": { percent: 10 },
+        "Course/other.md": { percent: 30 },
+        "Archive/old.md": { percent: 100 },
+      },
+    });
+    cleanup = localCleanup;
+
+    await flushAsyncInteraction();
+
+    const formulaValue = container.querySelector<HTMLDivElement>(".frontmatter-formula-value");
+    expect(formulaValue?.textContent?.trim()).toBe("40");
+    expect(formulaValue?.textContent ?? "").not.toContain("sum(percent)");
+    expect(formulaValue?.getAttribute("title")).toContain("sum(percent) = 40");
+  });
+
+  it("respects explicit-folder scope when computing formula values", async () => {
+    const markdown = [
+      "---",
+      "title: Demo",
+      "percent: 10",
+      "f-average:",
+      "  version: 1",
+      "  operation: avg",
+      "  attributeKeys:",
+      "    - percent",
+      "  source:",
+      "    type: explicit-folder",
+      "    path: Archive",
+      "  shortTextRule:",
+      "    maxChars: 32",
+      "    maxTokens: 3",
+      "    requireSingleNumericCore: true",
+      "---",
+      "Body line",
+    ].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      sourceRelativePath: "Course/current.md",
+      vaultFiles: [
+        { path: "/vault/Course/current.md", relative_path: "Course/current.md" },
+        { path: "/vault/Archive/one.md", relative_path: "Archive/one.md" },
+        { path: "/vault/Archive/two.md", relative_path: "Archive/two.md" },
+      ],
+      frontmatterValuesByFile: {
+        "Course/current.md": { percent: 10 },
+        "Archive/one.md": { percent: 20 },
+        "Archive/two.md": { percent: 30 },
+      },
+    });
+    cleanup = localCleanup;
+
+    await flushAsyncInteraction();
+
+    const formulaValue = container.querySelector<HTMLDivElement>(".frontmatter-formula-value");
+    expect(formulaValue?.textContent?.trim()).toBe("25");
+    expect(formulaValue?.getAttribute("title")).toContain("avg(percent) = 25");
   });
 
   it("blocks creating a second cover via manual key input", async () => {

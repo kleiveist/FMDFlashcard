@@ -75,6 +75,15 @@ import {
   normalizeDateValue,
   normalizeTimeValue,
 } from "../features/preview/database/database-time";
+import { evaluateDatabaseAggregationFormula } from "../features/preview/database/database-formulas";
+import {
+  buildNormalizedRecord,
+  createSystemFieldsForRecord,
+} from "../features/preview/database/database-normalizers";
+import {
+  type DatabaseNormalizedFieldValue,
+  type DatabaseRecord,
+} from "../features/preview/database/database-types";
 import {
   addFrontmatterProperty,
   collectFrontmatterValueSuggestions,
@@ -101,6 +110,7 @@ import {
 import {
   buildDefaultDatabaseFormulaDefinitionV1,
   normalizeDatabaseFormulaDefinitionV1,
+  type DatabaseFormulaGroupedCountEntry,
   type DatabaseFormulaDefinitionV1,
 } from "../features/preview/formula/database-formula-types";
 import {
@@ -1598,6 +1608,7 @@ type PreviewPanelProps = {
   valueSuggestionsByKey?: Record<string, string[]>;
   keySuggestions?: string[];
   formulaAttributeKeysByFile?: Record<string, string[]>;
+  frontmatterValuesByFile?: Record<string, Record<string, unknown>>;
   markdownTabs?: Array<{
     path: string;
     relativePath: string;
@@ -5014,6 +5025,62 @@ const formatFormulaPropertySummary = (value: FrontmatterProperty["value"]) => {
   return `${normalized.operation}(${normalized.attributeKeys.join(", ")})`;
 };
 
+const isFormulaGroupedCountEntry = (value: unknown): value is DatabaseFormulaGroupedCountEntry =>
+  Boolean(value) &&
+  typeof value === "object" &&
+  typeof (value as { value?: unknown }).value === "string" &&
+  typeof (value as { count?: unknown }).count === "number";
+
+const formatFormulaNumericValue = (value: number) => {
+  if (!Number.isFinite(value)) {
+    return "—";
+  }
+  const sanitized = Object.is(value, -0) ? 0 : value;
+  if (Number.isInteger(sanitized)) {
+    return String(sanitized);
+  }
+  return String(Number(sanitized.toFixed(6)));
+};
+
+const formatComputedFormulaValue = (value: DatabaseNormalizedFieldValue) => {
+  if (value === null || typeof value === "undefined") {
+    return "—";
+  }
+  if (typeof value === "number") {
+    return formatFormulaNumericValue(value);
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed || "—";
+  }
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return "—";
+    }
+    const groupedEntries = value.filter((entry) => isFormulaGroupedCountEntry(entry));
+    if (groupedEntries.length === value.length) {
+      return groupedEntries
+        .map((entry) => `${entry.count} × ${entry.value}`)
+        .join(", ");
+    }
+    const entries = value
+      .map((entry) => String(entry).trim())
+      .filter((entry) => entry.length > 0);
+    return entries.length > 0 ? entries.join(", ") : "—";
+  }
+  if (typeof value === "object" && value !== null && "raw" in value) {
+    const raw = String((value as { raw?: unknown }).raw ?? "").trim();
+    return raw || "—";
+  }
+  return String(value);
+};
+
 const resolveWikilinkLabel = (wikilink: string) => {
   const trimmed = wikilink.trim();
   if (!trimmed.startsWith("[[") || !trimmed.endsWith("]]")) {
@@ -5059,6 +5126,7 @@ type FrontmatterPropertiesPanelProps = {
   valueSuggestionsByKey?: Record<string, string[]>;
   keySuggestions?: string[];
   formulaAttributeKeysByFile?: Record<string, string[]>;
+  frontmatterValuesByFile?: Record<string, Record<string, unknown>>;
   monitoringProfiles?: MonitoringRenderProfile[];
 };
 
@@ -5084,6 +5152,7 @@ const FrontmatterPropertiesPanel = ({
   valueSuggestionsByKey = EMPTY_VALUE_SUGGESTIONS,
   keySuggestions = EMPTY_KEY_SUGGESTIONS,
   formulaAttributeKeysByFile,
+  frontmatterValuesByFile,
   monitoringProfiles = [],
 }: FrontmatterPropertiesPanelProps) => {
   const linksDocument = useMemo(
@@ -5350,6 +5419,145 @@ const FrontmatterPropertiesPanel = ({
     });
     return Array.from(folders).sort((left, right) => compareNaturalPath(left, right));
   }, [vaultFiles]);
+  const normalizedSourceRelativePath = useMemo(
+    () => normalizeRelativePath(sourceRelativePath ?? "").replace(/^\/+/, ""),
+    [sourceRelativePath],
+  );
+  const currentFrontmatterValuesByKey = useMemo(() => {
+    const next: Record<string, unknown> = {};
+    properties.forEach((property) => {
+      if (property.kind === "formula") {
+        return;
+      }
+      next[property.key] = property.value;
+    });
+    return next;
+  }, [properties]);
+  const frontmatterValuesByNormalizedFile = useMemo(() => {
+    const next = new Map<string, { relativePath: string; values: Record<string, unknown> }>();
+    Object.entries(frontmatterValuesByFile ?? {}).forEach(([relativePath, values]) => {
+      const normalizedRelativePath = normalizeRelativePath(relativePath).replace(/^\/+/, "");
+      if (
+        !normalizedRelativePath ||
+        !/\.md$/i.test(normalizedRelativePath) ||
+        !values ||
+        typeof values !== "object" ||
+        Array.isArray(values)
+      ) {
+        return;
+      }
+      next.set(normalizedRelativePath.toLowerCase(), {
+        relativePath: normalizedRelativePath,
+        values: values as Record<string, unknown>,
+      });
+    });
+    if (normalizedSourceRelativePath) {
+      next.set(normalizedSourceRelativePath.toLowerCase(), {
+        relativePath: normalizedSourceRelativePath,
+        values: currentFrontmatterValuesByKey,
+      });
+    }
+    return next;
+  }, [
+    currentFrontmatterValuesByKey,
+    frontmatterValuesByFile,
+    normalizedSourceRelativePath,
+  ]);
+  const vaultFilesByNormalizedRelativePath = useMemo(() => {
+    const next = new Map<string, VaultFile>();
+    (vaultFiles ?? []).forEach((file) => {
+      const normalizedRelativePath = normalizeRelativePath(file.relative_path).replace(/^\/+/, "");
+      if (!normalizedRelativePath || next.has(normalizedRelativePath.toLowerCase())) {
+        return;
+      }
+      next.set(normalizedRelativePath.toLowerCase(), file);
+    });
+    return next;
+  }, [vaultFiles]);
+  const formulaEvaluationRecords = useMemo<DatabaseRecord[]>(() => {
+    const next: DatabaseRecord[] = [];
+    frontmatterValuesByNormalizedFile.forEach(({ relativePath, values }, normalizedRelativePath) => {
+      const matchingFile = vaultFilesByNormalizedRelativePath.get(normalizedRelativePath);
+      const resolvedRelativePath = matchingFile
+        ? normalizeRelativePath(matchingFile.relative_path).replace(/^\/+/, "")
+        : relativePath;
+      if (!resolvedRelativePath || !/\.md$/i.test(resolvedRelativePath)) {
+        return;
+      }
+      const filePath = matchingFile?.path ?? resolvedRelativePath;
+      next.push(
+        buildNormalizedRecord({
+          fileId: filePath,
+          filePath,
+          relativePath: resolvedRelativePath,
+          frontmatter: values,
+          systemFields: createSystemFieldsForRecord(resolvedRelativePath, filePath),
+        }),
+      );
+    });
+    if (next.length === 0 && normalizedSourceRelativePath) {
+      const matchingFile = vaultFilesByNormalizedRelativePath.get(
+        normalizedSourceRelativePath.toLowerCase(),
+      );
+      const filePath = matchingFile?.path ?? normalizedSourceRelativePath;
+      next.push(
+        buildNormalizedRecord({
+          fileId: filePath,
+          filePath,
+          relativePath: normalizedSourceRelativePath,
+          frontmatter: currentFrontmatterValuesByKey,
+          systemFields: createSystemFieldsForRecord(
+            normalizedSourceRelativePath,
+            filePath,
+          ),
+        }),
+      );
+    }
+    return next;
+  }, [
+    currentFrontmatterValuesByKey,
+    frontmatterValuesByNormalizedFile,
+    normalizedSourceRelativePath,
+    vaultFilesByNormalizedRelativePath,
+  ]);
+  const currentFormulaRecord = useMemo(() => {
+    if (formulaEvaluationRecords.length === 0) {
+      return null;
+    }
+    const normalizedCurrentRelativePath = normalizedSourceRelativePath.toLowerCase();
+    if (normalizedCurrentRelativePath) {
+      const match = formulaEvaluationRecords.find((record) =>
+        toLower(record.relativePath) === normalizedCurrentRelativePath);
+      if (match) {
+        return match;
+      }
+    }
+    return formulaEvaluationRecords[0] ?? null;
+  }, [formulaEvaluationRecords, normalizedSourceRelativePath]);
+  const computedFormulaValueByKey = useMemo(() => {
+    const next: Record<string, string> = {};
+    gridProperties.forEach((property) => {
+      if (property.kind !== "formula") {
+        return;
+      }
+      const definition = normalizeDatabaseFormulaDefinitionV1(property.value);
+      if (!definition) {
+        next[property.key] = "Inkompatible Legacy-Formel";
+        return;
+      }
+      if (!currentFormulaRecord || formulaEvaluationRecords.length === 0) {
+        next[property.key] = "—";
+        return;
+      }
+      const evaluated = evaluateDatabaseAggregationFormula({
+        definition,
+        records: formulaEvaluationRecords,
+        currentRecord: currentFormulaRecord,
+      });
+      next[property.key] = formatComputedFormulaValue(evaluated);
+    });
+    return next;
+  }, [currentFormulaRecord, formulaEvaluationRecords, gridProperties]);
 
   useEffect(() => {
     setDrafts(initialDrafts);
@@ -7083,12 +7291,21 @@ const FrontmatterPropertiesPanel = ({
 
               const renderValueEditor = () => {
                 switch (property.kind) {
-                  case "formula":
+                  case "formula": {
+                    const formulaSummary = formatFormulaPropertySummary(property.value);
+                    const formulaComputedValue = computedFormulaValueByKey[property.key] ?? "—";
+                    const formulaTitle = formulaComputedValue === formulaSummary
+                      ? formulaSummary
+                      : `${formulaSummary} = ${formulaComputedValue}`;
                     return (
-                      <div className="frontmatter-formula-value" title={formatFormulaPropertySummary(property.value)}>
-                        {formatFormulaPropertySummary(property.value)}
+                      <div
+                        className="frontmatter-formula-value"
+                        title={formulaTitle}
+                      >
+                        {formulaComputedValue}
                       </div>
                     );
+                  }
                   case "boolean":
                     return (
                       <label className="switch">
@@ -8415,6 +8632,7 @@ export const PreviewPanel = ({
   valueSuggestionsByKey,
   keySuggestions,
   formulaAttributeKeysByFile,
+  frontmatterValuesByFile,
   markdownTabs = [],
   activeMarkdownTabPath = null,
   onSelectMarkdownTab,
@@ -11300,6 +11518,7 @@ export const PreviewPanel = ({
                     valueSuggestionsByKey={valueSuggestionsByKey}
                     keySuggestions={keySuggestions}
                     formulaAttributeKeysByFile={formulaAttributeKeysByFile}
+                    frontmatterValuesByFile={frontmatterValuesByFile}
                     monitoringProfiles={monitoringProfiles}
                   />
                 ) : null}
@@ -11367,6 +11586,7 @@ export const PreviewPanel = ({
                       valueSuggestionsByKey={valueSuggestionsByKey}
                       keySuggestions={keySuggestions}
                       formulaAttributeKeysByFile={formulaAttributeKeysByFile}
+                      frontmatterValuesByFile={frontmatterValuesByFile}
                       monitoringProfiles={monitoringProfiles}
                     />
                   ) : null}
@@ -11572,6 +11792,7 @@ export const PreviewPanel = ({
                         valueSuggestionsByKey={valueSuggestionsByKey}
                         keySuggestions={keySuggestions}
                         formulaAttributeKeysByFile={formulaAttributeKeysByFile}
+                        frontmatterValuesByFile={frontmatterValuesByFile}
                       />
                     ) : null}
                     <div ref={markdownViewRef} className="preview-markdown-view-root">
