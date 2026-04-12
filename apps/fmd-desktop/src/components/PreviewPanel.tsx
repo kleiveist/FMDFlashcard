@@ -11802,6 +11802,7 @@ export const PreviewPanel = ({
                         keySuggestions={keySuggestions}
                         formulaAttributeKeysByFile={formulaAttributeKeysByFile}
                         frontmatterValuesByFile={frontmatterValuesByFile}
+                        monitoringProfiles={monitoringProfiles}
                       />
                     ) : null}
                     <div ref={markdownViewRef} className="preview-markdown-view-root">

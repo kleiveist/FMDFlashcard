@@ -139,7 +139,9 @@ export const FormulaAttributeBuilder = ({
       nextSource.path = value.source.path?.trim() ?? "";
     }
     if (nextType === "multi-folder") {
-      nextSource.paths = [...(value.source.paths ?? [])];
+      nextSource.paths = value.source.type === "multi-folder"
+        ? dedupeKeys(value.source.paths ?? [])
+        : [];
     }
     onChange({
       ...value,
