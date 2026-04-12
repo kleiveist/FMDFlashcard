@@ -657,10 +657,34 @@ const toRawText = (value: unknown): string => {
     return String(value);
   }
   if (Array.isArray(value)) {
-    return value.map((entry) => String(entry ?? "")).join(", ");
+    return value
+      .map((entry) => toRawText(entry))
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0)
+      .join(", ");
   }
   if (isRecord(value) && "raw" in value) {
     return String(value.raw ?? "");
+  }
+  if (isRecord(value) && "value" in value) {
+    const candidate = value.value;
+    if (typeof candidate === "string" || typeof candidate === "number" || typeof candidate === "boolean") {
+      return String(candidate);
+    }
+  }
+  if (isRecord(value) && "label" in value && typeof value.label === "string") {
+    return value.label;
+  }
+  if (isRecord(value) && "code" in value && typeof value.code === "string") {
+    return value.code;
+  }
+  if (isRecord(value) && "count" in value && typeof value.count === "number") {
+    const count = Number(value.count);
+    const label = "value" in value ? String(value.value ?? "") : "";
+    return label ? `${count} x ${label}` : String(count);
+  }
+  if (typeof value === "object") {
+    return "";
   }
   return String(value);
 };

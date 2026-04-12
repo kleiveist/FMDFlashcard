@@ -18,6 +18,7 @@ import { createRoot } from "react-dom/client";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { invoke } from "@tauri-apps/api/core";
 import { PreviewPanel, serializeMarkdownFromHtml } from "./PreviewPanel";
+import { type MonitoringRenderProfile } from "../features/monitoring/monitoring-render-rules";
 import { type VaultFile, type VaultPngAsset } from "../lib/tree";
 
 const testEnv = globalThis as typeof globalThis & {
@@ -332,6 +333,7 @@ const buildHarness = (
     keySuggestions?: string[];
     formulaAttributeKeysByFile?: Record<string, string[]>;
     frontmatterValuesByFile?: Record<string, Record<string, unknown>>;
+    monitoringProfiles?: MonitoringRenderProfile[];
     vaultFiles?: VaultFile[];
     vaultPngAssets?: VaultPngAsset[];
     vaultPath?: string;
@@ -360,6 +362,7 @@ const buildHarness = (
     keySuggestions,
     formulaAttributeKeysByFile,
     frontmatterValuesByFile,
+    monitoringProfiles,
     vaultFiles,
     vaultPngAssets,
     vaultPath = "/vault",
@@ -448,6 +451,7 @@ const buildHarness = (
       keySuggestions,
       formulaAttributeKeysByFile,
       frontmatterValuesByFile,
+      monitoringProfiles,
       markdownTabs,
       activeMarkdownTabPath,
       onSelectMarkdownTab,
@@ -3873,6 +3877,56 @@ describe("PreviewPanel edit-safe interactions", () => {
     const nextMarkdown = onFrontmatterSave.mock.calls[0]?.[0] ?? "";
     expect(nextMarkdown).toContain("title: Changed title");
     expect(nextMarkdown).toContain("---\nBody line");
+  });
+
+  it("shows rule-rendered display text in properties and switches to raw value on focus", async () => {
+    const markdown = ["---", "status: 2", "---", "Body line"].join("\n");
+    const monitoringProfiles: MonitoringRenderProfile[] = [
+      {
+        id: "profile-status",
+        name: "Status",
+        attributeAliases: ["status"],
+        inputFormat: "code",
+        scopes: ["properties", "database", "monitoring-page"],
+        rules: [
+          {
+            id: "rule-status-map",
+            type: "value-map",
+            mappings: [{ from: "2", to: "🟢" }],
+            displayMode: "append",
+            separator: " ",
+          },
+        ],
+        enabled: true,
+      },
+    ];
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      monitoringProfiles,
+    });
+    cleanup = localCleanup;
+
+    const input = container.querySelector(
+      'input[aria-label="status value"]',
+    ) as HTMLInputElement | null;
+    expect(input).toBeTruthy();
+    expect(input?.value).toBe("2 🟢");
+
+    act(() => {
+      input?.dispatchEvent(new FocusEvent("focus", { bubbles: true }));
+      input?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(input?.value).toBe("2");
+
+    act(() => {
+      input?.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(input?.value).toBe("2 🟢");
   });
 
   it("opens suggestions on first click without immediate commit", async () => {

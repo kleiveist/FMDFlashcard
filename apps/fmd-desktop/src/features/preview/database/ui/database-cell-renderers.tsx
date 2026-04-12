@@ -140,6 +140,21 @@ const renderFallback = (value: DatabaseNormalizedFieldValue): ReactNode => {
     const raw = String((value as { raw?: unknown }).raw ?? "");
     return raw || <span className="database-cell-empty">—</span>;
   }
+  if (typeof value === "object" && value !== null && "value" in value) {
+    const candidate = (value as { value?: unknown }).value;
+    if (typeof candidate === "number" || typeof candidate === "string") {
+      return String(candidate);
+    }
+  }
+  if (typeof value === "object" && value !== null && "label" in value) {
+    const candidate = (value as { label?: unknown }).label;
+    if (typeof candidate === "string" && candidate.trim().length > 0) {
+      return candidate;
+    }
+  }
+  if (typeof value === "object") {
+    return <span className="database-cell-empty">—</span>;
+  }
   return String(value);
 };
 

@@ -16,6 +16,7 @@ import {
   normalizeFieldValueByType,
   resolveFieldCompatibility,
 } from "./database-normalizers";
+import { normalizeDatabaseFormulaDefinitionV1 } from "../formula/database-formula-types";
 import { applyDatabaseSorts } from "./database-sorts";
 import {
   type DatabaseAttributeMeta,
@@ -253,17 +254,68 @@ const evaluateFormulaFields = (
   records: DatabaseRecord[],
   fieldDefinitions: DatabaseFieldDefinition[],
 ): DatabaseRecord[] => {
+  const formulaKeysFromConfig = new Set(
+    fieldDefinitions
+      .filter((definition) => definition.type === "formula")
+      .map((definition) => toLowerKey(definition.key)),
+  );
+
+  const frontmatterFormulaEvaluatedRecords = records.map((record) => {
+    const nextNormalizedFields: Record<string, DatabaseNormalizedFieldValue> = {
+      ...record.normalizedFields,
+    };
+
+    Object.entries(record.frontmatter).forEach(([key, rawValue]) => {
+      const parsedDefinition = normalizeDatabaseFormulaDefinitionV1(rawValue);
+      const normalizedKey = toLowerKey(key);
+      const isFormulaByKey = normalizedKey.startsWith("f-");
+
+      if (!parsedDefinition && !isFormulaByKey) {
+        return;
+      }
+      if (formulaKeysFromConfig.has(normalizedKey)) {
+        return;
+      }
+
+      if (parsedDefinition) {
+        const evaluated = evaluateDatabaseAggregationFormula({
+          definition: parsedDefinition,
+          records,
+          currentRecord: {
+            ...record,
+            normalizedFields: nextNormalizedFields,
+          },
+          getFieldValue: (targetRecord, candidateKey) =>
+            getCaseInsensitiveFieldValue(targetRecord.normalizedFields, candidateKey),
+        });
+        nextNormalizedFields[key] = normalizeFieldValueByType("formula", evaluated);
+        return;
+      }
+
+      if (typeof rawValue === "string" && rawValue.trim().length > 0) {
+        nextNormalizedFields[key] = LEGACY_DATABASE_FORMULA_INCOMPATIBLE_MESSAGE;
+      } else {
+        nextNormalizedFields[key] = null;
+      }
+    });
+
+    return {
+      ...record,
+      normalizedFields: nextNormalizedFields,
+    };
+  });
+
   if (fieldDefinitions.length === 0) {
-    return records;
+    return frontmatterFormulaEvaluatedRecords;
   }
 
   const formulaDefinitions = fieldDefinitions.filter((definition) => definition.type === "formula");
 
   if (formulaDefinitions.length === 0) {
-    return records;
+    return frontmatterFormulaEvaluatedRecords;
   }
 
-  return records.map((record) => {
+  return frontmatterFormulaEvaluatedRecords.map((record) => {
     const nextNormalizedFields: Record<string, DatabaseNormalizedFieldValue> = {
       ...record.normalizedFields,
     };
@@ -272,7 +324,7 @@ const evaluateFormulaFields = (
       if (definition.formulaDefinition) {
         const evaluated = evaluateDatabaseAggregationFormula({
           definition: definition.formulaDefinition,
-          records,
+          records: frontmatterFormulaEvaluatedRecords,
           currentRecord: {
             ...record,
             normalizedFields: nextNormalizedFields,

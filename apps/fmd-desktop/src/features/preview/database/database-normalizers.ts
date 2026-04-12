@@ -14,7 +14,10 @@ import {
   type DatabaseStatusValue,
   type DatabaseViewCompatibility,
 } from "./database-types";
-import { type DatabaseFormulaGroupedCountEntry } from "../formula/database-formula-types";
+import {
+  normalizeDatabaseFormulaDefinitionV1,
+  type DatabaseFormulaGroupedCountEntry,
+} from "../formula/database-formula-types";
 import {
   isDateTimeValue,
   isDateValue,
@@ -199,6 +202,7 @@ const looksLikeLongText = (value: string) => value.length > 160 || value.include
 const isBooleanLike = (value: unknown): value is boolean => typeof value === "boolean";
 
 const isTagsField = (key: string) => key.trim().toLowerCase() === "tags";
+const isFormulaField = (key: string) => key.trim().toLowerCase().startsWith("f-");
 
 const isLinkField = (value: unknown) => typeof value === "string" && wikilinkPattern.test(value);
 
@@ -222,6 +226,13 @@ const isFormulaGroupedCountEntry = (value: unknown): value is DatabaseFormulaGro
   typeof (value as { count?: unknown }).count === "number";
 
 export const inferFieldType = (key: string, value: unknown): DatabaseFieldType => {
+  if (normalizeDatabaseFormulaDefinitionV1(value)) {
+    return "formula";
+  }
+  if (isFormulaField(key)) {
+    return "formula";
+  }
+
   const monitoringAliasType = resolveMonitoringAliasType(key);
 
   const arrayValue = asArrayOfStrings(value);
@@ -360,6 +371,9 @@ export const normalizeFieldValueByType = (
   }
 
   if (type === "formula") {
+    if (normalizeDatabaseFormulaDefinitionV1(value)) {
+      return null;
+    }
     if (Array.isArray(value)) {
       const groupedEntries = value
         .filter((entry) => isFormulaGroupedCountEntry(entry))

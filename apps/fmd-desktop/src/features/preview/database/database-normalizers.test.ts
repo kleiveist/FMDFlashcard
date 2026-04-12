@@ -61,6 +61,23 @@ describe("database-normalizers", () => {
     expect(inferFieldType("start", "2026-04-03T09:15")).toBe("datetime");
   });
 
+  it("infers formula fields and keeps unresolved formula definitions out of display values", () => {
+    const formulaDefinition = {
+      version: 1,
+      operation: "sum",
+      attributeKeys: ["percent"],
+      source: { type: "current-folder" },
+      shortTextRule: {
+        maxChars: 32,
+        maxTokens: 3,
+        requireSingleNumericCore: true,
+      },
+    };
+
+    expect(inferFieldType("f-%", formulaDefinition)).toBe("formula");
+    expect(normalizeFieldValueByType("formula", formulaDefinition)).toBeNull();
+  });
+
   it("normalizes time values", () => {
     expect(normalizeFieldValueByType("time", "14:30")).toBe("14:30");
   });

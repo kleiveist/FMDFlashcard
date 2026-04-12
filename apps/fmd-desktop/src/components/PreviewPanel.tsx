@@ -6969,12 +6969,17 @@ const FrontmatterPropertiesPanel = ({
                 .toLowerCase()
                 .replace(/[^a-z0-9_-]+/g, "-")}`;
               const isCoverPickerListOpen = isCoverRowActive && isCoverPickerOpen && !rowDisabled;
+              const monitoringSourceValue = property.kind === "formula"
+                ? (computedFormulaValueByKey[property.key] ?? null)
+                : property.value;
               const monitoringResult = renderMonitoringValue({
                 attributeKey: property.key,
-                value: property.value,
+                value: monitoringSourceValue,
                 profiles: monitoringProfiles,
               });
-              const monitoringFallback = stringifyPropertyValue(property).trim();
+              const monitoringFallback = property.kind === "formula"
+                ? String(computedFormulaValueByKey[property.key] ?? "").trim()
+                : stringifyPropertyValue(property).trim();
 
               const commitScalarDraft = async (rawInput: string) => {
                 if (property.kind === "number") {
@@ -7059,7 +7064,11 @@ const FrontmatterPropertiesPanel = ({
                     aria-autocomplete="list"
                     aria-expanded={isDropdownOpen}
                     aria-controls={isDropdownOpen ? suggestionListId : undefined}
-                    value={drafts[property.key] ?? ""}
+                    value={
+                      monitoringResult && editorMode === "idle"
+                        ? (monitoringResult.displayText || monitoringFallback || monitoringResult.rawText || "")
+                        : (drafts[property.key] ?? "")
+                    }
                     readOnly={!isEditorEditing}
                     disabled={rowDisabled}
                     onChange={(event) => {

@@ -171,6 +171,58 @@ describe("database-store", () => {
     expect(legacyField?.legacyFormulaIncompatible).toBe(true);
   });
 
+  it("evaluates frontmatter formula definitions and exposes computed values instead of object strings", () => {
+    const formulaDefinition = {
+      version: 1 as const,
+      operation: "avg" as const,
+      attributeKeys: ["percent"],
+      source: { type: "current-folder" as const },
+      shortTextRule: {
+        maxChars: 32,
+        maxTokens: 3,
+        requireSingleNumericCore: true,
+      },
+    };
+
+    const firstRecord = buildNormalizedRecord({
+      fileId: "Course/one.md",
+      filePath: "/vault/Course/one.md",
+      relativePath: "Course/one.md",
+      frontmatter: {
+        percent: 10,
+        "f-%": formulaDefinition,
+      },
+      systemFields: createSystemFieldsForRecord("Course/one.md", "/vault/Course/one.md"),
+    });
+    const secondRecord = buildNormalizedRecord({
+      fileId: "Course/two.md",
+      filePath: "/vault/Course/two.md",
+      relativePath: "Course/two.md",
+      frontmatter: {
+        percent: 30,
+        "f-%": formulaDefinition,
+      },
+      systemFields: createSystemFieldsForRecord("Course/two.md", "/vault/Course/two.md"),
+    });
+
+    const config = createDefaultDatabaseBlockConfig();
+    config.columns = ["f-%"];
+
+    const snapshot = buildDatabaseStoreSnapshot({
+      records: [firstRecord, secondRecord],
+      config,
+      searchQuery: "",
+    });
+
+    const computedValues = snapshot.visibleRecords
+      .map((record) => record.normalizedFields["f-%"]);
+    expect(computedValues).toEqual([20, 20]);
+    expect(computedValues).not.toContain("[object Object]");
+
+    const formulaAttribute = snapshot.attributeRegistry.find((attribute) => attribute.key === "f-%");
+    expect(formulaAttribute?.type).toBe("formula");
+  });
+
   it("keeps configured unit fields as numeric unit type", () => {
     const record = buildNormalizedRecord({
       fileId: "demo.md",
