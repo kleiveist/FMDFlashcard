@@ -2013,7 +2013,11 @@ body.focus-mode .spaced-repetition-sidebar {
   min-width: 0;
 }
 
-.study-ultrawide-preview-task {
+.study-ultrawide-task-primary {
+  min-width: 0;
+}
+
+.study-ultrawide-task-secondary {
   display: none;
   min-width: 0;
 }
@@ -2476,15 +2480,14 @@ body.focus-mode .spaced-repetition-sidebar {
     height: 100%;
   }
 
-  .exam-layout .study-ultrawide-task-pair > .study-ultrawide-preview-task {
+  .exam-layout .study-ultrawide-task-pair > .study-ultrawide-task-secondary {
     display: flex;
   }
 
   .exam-layout
   .study-ultrawide-task-pair
-  > .study-ultrawide-preview-task
+  > .study-ultrawide-task-secondary
   .exam-task {
-    opacity: 0.9;
     flex: 1 1 auto;
     height: 100%;
   }

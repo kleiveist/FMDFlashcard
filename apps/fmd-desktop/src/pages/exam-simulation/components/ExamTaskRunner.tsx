@@ -21,7 +21,7 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import { type DragEvent, type ReactNode } from "react";
+import { memo, type DragEvent, type ReactNode } from "react";
 import { CompositeCard } from "../../../components/flashcards/CompositeCard";
 import { FlashcardMediaGroup } from "../../../components/flashcards/FlashcardMediaGroup";
 import { evaluateFlashcardPartResult, type CompositePartState, type TrueFalseSelection } from "../../../features/flashcards/logic";
@@ -101,7 +101,7 @@ const noopSelfGrade = (
   _grade: "correct" | "incorrect",
 ) => {};
 
-export const ExamTaskRunner = ({
+const ExamTaskRunnerComponent = ({
   task,
   taskIndex,
   taskCount,
@@ -301,3 +301,7 @@ export const ExamTaskRunner = ({
     </div>
   );
 };
+
+ExamTaskRunnerComponent.displayName = "ExamTaskRunner";
+
+export const ExamTaskRunner = memo(ExamTaskRunnerComponent);

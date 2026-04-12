@@ -165,6 +165,13 @@ const normalizeAwardedPoints = (value: number | null, maxPoints: number) => {
   return clampNumber(Math.floor(value), 0, maxPoints);
 };
 
+const normalizeNavigationStep = (step?: number) => {
+  if (typeof step !== "number" || !Number.isFinite(step)) {
+    return 1;
+  }
+  return Math.max(1, Math.floor(step));
+};
+
 const isAutoGradedTask = (task: ExamTask) =>
   task.gradingMode === "auto";
 
@@ -1368,16 +1375,18 @@ export const useExamSimulationViewModel = () => {
     [stage],
   );
 
-  const handleTaskBack = useCallback(() => {
-    setActiveTaskIndex((prev) => Math.max(0, prev - 1));
+  const handleTaskBack = useCallback((step = 1) => {
+    const resolvedStep = normalizeNavigationStep(step);
+    setActiveTaskIndex((prev) => Math.max(0, prev - resolvedStep));
   }, []);
 
-  const handleTaskNext = useCallback(() => {
+  const handleTaskNext = useCallback((step = 1) => {
     if (runTasks.length === 0) {
       return;
     }
+    const resolvedStep = normalizeNavigationStep(step);
     setActiveTaskIndex((prev) =>
-      Math.min(runTasks.length - 1, prev + 1),
+      Math.min(runTasks.length - 1, prev + resolvedStep),
     );
   }, [runTasks.length]);
 
@@ -2033,6 +2042,18 @@ export const useExamSimulationViewModel = () => {
   const activeTaskAutoDecision = activeTask
     ? autoGradeDecisions[activeTaskIndex]
     : undefined;
+  const getTaskPartStates = useCallback(
+    (taskIndex: number) => partStates[taskIndex] ?? EMPTY_PART_STATES,
+    [partStates],
+  );
+  const getTaskAwardedPoints = useCallback(
+    (taskIndex: number) => awardedPoints[taskIndex] ?? null,
+    [awardedPoints],
+  );
+  const getTaskAutoGradeDecision = useCallback(
+    (taskIndex: number) => autoGradeDecisions[taskIndex],
+    [autoGradeDecisions],
+  );
   const correctionActiveEntry =
     correctionState?.queue[correctionState.activeIndex] ?? null;
   const correctionActiveTask = correctionActiveEntry
@@ -2165,6 +2186,9 @@ export const useExamSimulationViewModel = () => {
     activeTaskPartStates,
     activeTaskAwardedPoints,
     activeTaskAutoDecision,
+    getTaskPartStates,
+    getTaskAwardedPoints,
+    getTaskAutoGradeDecision,
     activeManualTaskEntry,
     manualTaskEntries,
     manualScoringComplete,

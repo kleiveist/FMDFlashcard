@@ -61,6 +61,7 @@ const viewToggleCommand = getShortcutById("toggleViewMode");
 const studyPrevCommand = getShortcutById("studyPrevious");
 const studyNextCommand = getShortcutById("studyNext");
 const studySubmitCommand = getShortcutById("studySubmit");
+const EXAM_ULTRAWIDE_MIN_WIDTH = 2400;
 const STANDARD_RUN_PROFILE_LABEL = "Standard (no profile)";
 type OpenExamFileTarget = {
   path: string;
@@ -122,10 +123,9 @@ export const ExamSimulationPage = ({
     examRunning,
     activeTaskIndex,
     activeTask,
-    activeTaskMaxPoints,
-    activeTaskPartStates,
-    activeTaskAwardedPoints,
-    activeTaskAutoDecision,
+    getTaskPartStates,
+    getTaskAwardedPoints,
+    getTaskAutoGradeDecision,
     activeManualTaskEntry,
     canGoManualScoringBack,
     canGoManualScoringNext,
@@ -200,6 +200,8 @@ export const ExamSimulationPage = ({
   const [isExamTogglesOpen, setIsExamTogglesOpen] = useState(false);
   const consumedLaunchPresetIdRef = useRef<number | null>(null);
   const autoViewModeRef = useRef(false);
+  const examLayoutRef = useRef<HTMLDivElement | null>(null);
+  const [isUltrawideExamLayout, setIsUltrawideExamLayout] = useState(false);
   const isTableView = useLayoutMode() === "table";
   const openExamToggles = useCallback(() => {
     setIsExamTogglesOpen(true);
@@ -391,11 +393,39 @@ export const ExamSimulationPage = ({
   const isRunnerStage = stage === "running" || stage === "review";
   const hasCorrectionCandidates = incorrectTaskResults.length > 0;
   const activePhase = stage === "review" ? "review" : "exam";
-  const nextTask = activeTask ? (runTasks[activeTaskIndex + 1] ?? null) : null;
-  const nextTaskMaxPoints = nextTask ? (runTaskPoints?.[activeTaskIndex + 1] ?? 0) : 0;
+  const isUltrawideTaskPairMode = isRunnerStage && isUltrawideExamLayout;
+  const runnerNavigationStep = isUltrawideTaskPairMode ? 2 : 1;
+  const canGoRunnerBack = activeTaskIndex > 0;
+  const canGoRunnerNext =
+    activeTaskIndex + runnerNavigationStep <= runTasks.length - 1;
+  const visibleRunnerTaskIndices = useMemo(() => {
+    if (!isRunnerStage || !activeTask) {
+      return [] as number[];
+    }
+    const indices = [activeTaskIndex];
+    if (isUltrawideTaskPairMode) {
+      const secondIndex = activeTaskIndex + 1;
+      if (secondIndex < runTasks.length) {
+        indices.push(secondIndex);
+      }
+    }
+    return indices;
+  }, [
+    activeTask,
+    activeTaskIndex,
+    isRunnerStage,
+    isUltrawideTaskPairMode,
+    runTasks.length,
+  ]);
   const isExamTimerRunning = stage === "running" && !examTimeUp && examTimerEnabled;
   const viewToggleDisabled = isTableView && !examRunning;
   const timelineVisible = examShowTimeline;
+  const handleRunnerBack = useCallback(() => {
+    handleTaskBack(runnerNavigationStep);
+  }, [handleTaskBack, runnerNavigationStep]);
+  const handleRunnerNext = useCallback(() => {
+    handleTaskNext(runnerNavigationStep);
+  }, [handleTaskNext, runnerNavigationStep]);
   const renderOverviewToggle = () => (
     <div className="exam-overview-toggle">
       <div className="exam-overview-toggle-header">
@@ -506,6 +536,31 @@ export const ExamSimulationPage = ({
   }, [isViewMode, stage]);
 
   useEffect(() => {
+    const element = examLayoutRef.current;
+    if (!element) {
+      return;
+    }
+
+    const update = () => {
+      const width = element.getBoundingClientRect().width;
+      const nextValue = width >= EXAM_ULTRAWIDE_MIN_WIDTH;
+      setIsUltrawideExamLayout((current) =>
+        current === nextValue ? current : nextValue,
+      );
+    };
+
+    update();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", update);
+      return () => window.removeEventListener("resize", update);
+    }
+
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) {
         return;
@@ -551,8 +606,8 @@ export const ExamSimulationPage = ({
           if (correctionCanGoBack) {
             handleCorrectionTaskBack();
           }
-        } else if (activeTaskIndex > 0) {
-          handleTaskBack();
+        } else if (canGoRunnerBack) {
+          handleRunnerBack();
         }
         return;
       }
@@ -567,8 +622,8 @@ export const ExamSimulationPage = ({
           if (correctionCanGoNext) {
             handleCorrectionTaskNext();
           }
-        } else if (activeTaskIndex < runTasks.length - 1) {
-          handleTaskNext();
+        } else if (canGoRunnerNext) {
+          handleRunnerNext();
         }
         return;
       }
@@ -590,9 +645,9 @@ export const ExamSimulationPage = ({
         }
         return;
       }
-      if (activeTaskIndex < runTasks.length - 1) {
+      if (canGoRunnerNext) {
         event.preventDefault();
-        handleTaskNext();
+        handleRunnerNext();
       }
     };
 
@@ -611,10 +666,11 @@ export const ExamSimulationPage = ({
     handleManualScoringNext,
     handleCorrectionTaskBack,
     handleCorrectionTaskNext,
-    handleTaskBack,
-    handleTaskNext,
+    handleRunnerBack,
+    handleRunnerNext,
     isRunnerStage,
-    runTasks.length,
+    canGoRunnerBack,
+    canGoRunnerNext,
     stage,
     studyBindings,
     viewBinding,
@@ -622,7 +678,7 @@ export const ExamSimulationPage = ({
 
   return (
     <div className="exam-page">
-      <div className="exam-layout">
+      <div className="exam-layout" ref={examLayoutRef}>
         <div className="exam-main">
           {timelineVisible ? (
             <ExamTimeBar
@@ -746,83 +802,68 @@ export const ExamSimulationPage = ({
               ) : activeTask ? (
                 <>
                   <div className="study-ultrawide-task-pair">
-                    <ExamTaskRunner
-                      task={activeTask}
-                      taskIndex={activeTaskIndex}
-                      taskCount={runTasks.length}
-                      maxPoints={activeTaskMaxPoints}
-                      phase={activePhase}
-                      partStates={activeTaskPartStates}
-                      awardedPoints={activeTaskAwardedPoints}
-                      autoGradeDecision={activeTaskAutoDecision}
-                      onOptionSelect={handleOptionSelect}
-                      onTrueFalseSelect={handleTrueFalseSelect}
-                      onClozeInputChange={handleClozeInputChange}
-                      onClozeTokenDrop={handleClozeTokenDrop}
-                      onClozeTokenRemove={handleClozeTokenRemove}
-                      onClozeTokenDragStart={handleClozeTokenDragStart}
-                      onBlankDragOver={handleClozeBlankDragOver}
-                      onTextInputChange={handleTextInputChange}
-                      onAwardedPointsChange={handleAwardedPointsChange}
-                      onAutoGradeDecision={handleAutoGradeDecision}
-                      onBack={handleTaskBack}
-                      onNext={handleTaskNext}
-                      canGoBack={activeTaskIndex > 0}
-                      canGoNext={activeTaskIndex < runTasks.length - 1}
-                      showSourceBadge={settings.examShowTaskSources}
-                      helpEnabled={settings.examHelpEnabled}
-                      showNavigation={false}
-                      vaultPath={vault.vaultPath}
-                      vaultPngAssets={vault.pngAssets}
-                    />
-                    {nextTask ? (
-                      <div className="study-ultrawide-preview-task">
-                        <ExamTaskRunner
-                          task={nextTask}
-                          taskIndex={activeTaskIndex + 1}
-                          taskCount={runTasks.length}
-                          maxPoints={nextTaskMaxPoints}
-                          phase="exam"
-                          partStates={[]}
-                          awardedPoints={null}
-                          autoGradeDecision={undefined}
-                          onOptionSelect={handleOptionSelect}
-                          onTrueFalseSelect={handleTrueFalseSelect}
-                          onClozeInputChange={handleClozeInputChange}
-                          onClozeTokenDrop={handleClozeTokenDrop}
-                          onClozeTokenRemove={handleClozeTokenRemove}
-                          onClozeTokenDragStart={handleClozeTokenDragStart}
-                          onBlankDragOver={handleClozeBlankDragOver}
-                          onTextInputChange={handleTextInputChange}
-                          onAwardedPointsChange={handleAwardedPointsChange}
-                          onAutoGradeDecision={handleAutoGradeDecision}
-                          onBack={handleTaskBack}
-                          onNext={handleTaskNext}
-                          canGoBack={false}
-                          canGoNext={false}
-                          showSourceBadge={settings.examShowTaskSources}
-                          helpEnabled={settings.examHelpEnabled}
-                          showNavigation={false}
-                          vaultPath={vault.vaultPath}
-                          vaultPngAssets={vault.pngAssets}
-                        />
-                      </div>
-                    ) : null}
+                    {visibleRunnerTaskIndices.map((taskIndexInRun, pairPosition) => {
+                      const runnerTask = runTasks[taskIndexInRun];
+                      if (!runnerTask) {
+                        return null;
+                      }
+                      const runnerTaskMaxPoints = runTaskPoints?.[taskIndexInRun] ?? 0;
+                      const taskSlotClassName =
+                        pairPosition === 1
+                          ? "study-ultrawide-task-secondary"
+                          : "study-ultrawide-task-primary";
+                      return (
+                        <div
+                          key={runnerTask.sessionTaskId}
+                          className={taskSlotClassName}
+                        >
+                          <ExamTaskRunner
+                            task={runnerTask}
+                            taskIndex={taskIndexInRun}
+                            taskCount={runTasks.length}
+                            maxPoints={runnerTaskMaxPoints}
+                            phase={activePhase}
+                            partStates={getTaskPartStates(taskIndexInRun)}
+                            awardedPoints={getTaskAwardedPoints(taskIndexInRun)}
+                            autoGradeDecision={getTaskAutoGradeDecision(taskIndexInRun)}
+                            onOptionSelect={handleOptionSelect}
+                            onTrueFalseSelect={handleTrueFalseSelect}
+                            onClozeInputChange={handleClozeInputChange}
+                            onClozeTokenDrop={handleClozeTokenDrop}
+                            onClozeTokenRemove={handleClozeTokenRemove}
+                            onClozeTokenDragStart={handleClozeTokenDragStart}
+                            onBlankDragOver={handleClozeBlankDragOver}
+                            onTextInputChange={handleTextInputChange}
+                            onAwardedPointsChange={handleAwardedPointsChange}
+                            onAutoGradeDecision={handleAutoGradeDecision}
+                            onBack={handleRunnerBack}
+                            onNext={handleRunnerNext}
+                            canGoBack={canGoRunnerBack}
+                            canGoNext={canGoRunnerNext}
+                            showSourceBadge={settings.examShowTaskSources}
+                            helpEnabled={settings.examHelpEnabled}
+                            showNavigation={false}
+                            vaultPath={vault.vaultPath}
+                            vaultPngAssets={vault.pngAssets}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
                   <div className="exam-panel-nav">
                     <button
                       type="button"
                       className="ghost small"
-                      onClick={handleTaskBack}
-                      disabled={activeTaskIndex <= 0}
+                      onClick={handleRunnerBack}
+                      disabled={!canGoRunnerBack}
                     >
                       Previous
                     </button>
                     <button
                       type="button"
                       className="ghost small"
-                      onClick={handleTaskNext}
-                      disabled={activeTaskIndex >= runTasks.length - 1}
+                      onClick={handleRunnerNext}
+                      disabled={!canGoRunnerNext}
                     >
                       Next
                     </button>

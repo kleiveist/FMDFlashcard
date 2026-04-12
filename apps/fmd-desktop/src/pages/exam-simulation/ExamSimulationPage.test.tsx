@@ -128,6 +128,19 @@ const render = (element: ReactElement) => {
   };
 };
 
+const createRect = (width: number) =>
+  ({
+    width,
+    height: 900,
+    top: 0,
+    left: 0,
+    right: width,
+    bottom: 900,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  }) as DOMRect;
+
 const createViewModel = () => {
   const noop = vi.fn();
   return {
@@ -183,6 +196,9 @@ const createViewModel = () => {
     activeTaskPartStates: [],
     activeTaskAwardedPoints: null,
     activeTaskAutoDecision: undefined,
+    getTaskPartStates: () => [],
+    getTaskAwardedPoints: () => null,
+    getTaskAutoGradeDecision: () => undefined,
     activeManualTaskEntry: null,
     canGoManualScoringBack: false,
     canGoManualScoringNext: false,
@@ -446,7 +462,7 @@ describe("ExamSimulationPage popup sync", () => {
     cleanup();
   });
 
-  it("uses panel-wide navigation and passes helpEnabled to active and preview runners", () => {
+  it("keeps single-task runner and step-1 navigation outside ultrawide width", () => {
     const buildExamTask = (id: string, index: number) =>
       ({
         id,
@@ -475,41 +491,224 @@ describe("ExamSimulationPage popup sync", () => {
 
     const activeTask = buildExamTask("task-1", 0);
     const nextTask = buildExamTask("task-2", 1);
+    const handleTaskNext = vi.fn();
+    const handleTaskBack = vi.fn();
     const viewModel = {
       ...createViewModel(),
       stage: "running",
       examRunning: true,
       activeTask,
       activeTaskIndex: 0,
-      activeTaskMaxPoints: 5,
-      activeTaskPartStates: [{}],
+      runTaskPoints: [5, 5],
+      getTaskPartStates: (index: number) => (index === 0 ? ([{}] as never) : ([{}] as never)),
+      getTaskAwardedPoints: () => null,
+      getTaskAutoGradeDecision: () => undefined,
       runTasks: [activeTask, nextTask],
+      handleTaskNext,
+      handleTaskBack,
     };
     mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
 
     const { container, cleanup } = render(createElement(ExamSimulationPage));
 
-    expect(capturedExamTaskRunnerProps).toHaveLength(2);
+    expect(capturedExamTaskRunnerProps).toHaveLength(1);
     const activeRunner = capturedExamTaskRunnerProps.find(
       (entry) => entry.taskIndex === 0,
     );
-    const previewRunner = capturedExamTaskRunnerProps.find(
-      (entry) => entry.taskIndex === 1,
-    );
     expect(activeRunner).toBeTruthy();
-    expect(previewRunner).toBeTruthy();
     expect(activeRunner?.helpEnabled).toBe(true);
-    expect(previewRunner?.helpEnabled).toBe(true);
     expect(activeRunner?.showNavigation).toBe(false);
-    expect(previewRunner?.showNavigation).toBe(false);
+    expect(container.querySelector(".study-ultrawide-task-secondary")).toBeNull();
     const panelNav = container.querySelector(".exam-panel-nav");
     expect(panelNav).toBeTruthy();
     const navButtons = panelNav?.querySelectorAll("button.ghost.small");
     expect(navButtons).toHaveLength(2);
     expect(navButtons?.[0]?.textContent).toBe("Previous");
     expect(navButtons?.[1]?.textContent).toBe("Next");
+    act(() => {
+      navButtons?.[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(handleTaskNext).toHaveBeenCalledWith(1);
 
     cleanup();
+  });
+
+  it("uses ultrawide pair mode with active state on right card and step-2 navigation", () => {
+    const buildExamTask = (id: string, index: number) =>
+      ({
+        id,
+        sessionTaskId: id,
+        index,
+        rawLines: ["Question"],
+        prompt: "Question",
+        officialAnswer: "Answer",
+        gradingMode: "manual",
+        sourceRange: { startLine: 0, endLine: 0 },
+        cardWrapper: false,
+        cardLines: ["Question"],
+        warnings: [],
+        helpText: ["Hint block"],
+        card: {
+          kind: "composite",
+          parts: [
+            {
+              kind: "free-text",
+              front: "Question",
+              back: "Answer",
+            },
+          ],
+        },
+      }) as never;
+
+    const activeTask = buildExamTask("task-1", 0);
+    const nextTask = buildExamTask("task-2", 1);
+    const thirdTask = buildExamTask("task-3", 2);
+    const fourthTask = buildExamTask("task-4", 3);
+    const firstStates = [{}] as never;
+    const secondStates = [{ textResponse: "draft" }] as never;
+    const getTaskPartStates = vi.fn((taskIndex: number) =>
+      taskIndex === 0 ? firstStates : secondStates,
+    );
+    const getTaskAwardedPoints = vi.fn((taskIndex: number) =>
+      taskIndex === 0 ? null : 3,
+    );
+    const getTaskAutoGradeDecision = vi.fn((taskIndex: number) =>
+      taskIndex === 0 ? undefined : true,
+    );
+    const handleTaskNext = vi.fn();
+    const handleTaskBack = vi.fn();
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    const rectSpy = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: HTMLElement) {
+        if (this.classList.contains("exam-layout")) {
+          return createRect(2600);
+        }
+        return originalGetBoundingClientRect.call(this);
+      });
+
+    try {
+      const viewModel = {
+        ...createViewModel(),
+        stage: "running",
+        examRunning: true,
+        activeTask,
+        activeTaskIndex: 0,
+        runTaskPoints: [5, 7, 4, 3],
+        runTasks: [activeTask, nextTask, thirdTask, fourthTask],
+        getTaskPartStates,
+        getTaskAwardedPoints,
+        getTaskAutoGradeDecision,
+        handleTaskNext,
+        handleTaskBack,
+      };
+      mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
+
+      const { container, cleanup } = render(createElement(ExamSimulationPage));
+
+      expect(capturedExamTaskRunnerProps).toHaveLength(2);
+      const firstRunner = capturedExamTaskRunnerProps.find(
+        (entry) => entry.taskIndex === 0,
+      );
+      const secondRunner = capturedExamTaskRunnerProps.find(
+        (entry) => entry.taskIndex === 1,
+      );
+      expect(firstRunner).toBeTruthy();
+      expect(secondRunner).toBeTruthy();
+      expect(firstRunner?.phase).toBe("exam");
+      expect(secondRunner?.phase).toBe("exam");
+      expect(firstRunner?.partStates).toBe(firstStates);
+      expect(secondRunner?.partStates).toBe(secondStates);
+      expect(secondRunner?.awardedPoints).toBe(3);
+      expect(secondRunner?.autoGradeDecision).toBe(true);
+      expect(container.querySelector(".study-ultrawide-task-secondary")).toBeTruthy();
+
+      const navButtons = container.querySelectorAll(".exam-panel-nav button.ghost.small");
+      expect(navButtons).toHaveLength(2);
+      act(() => {
+        navButtons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+      expect(handleTaskNext).toHaveBeenCalledWith(2);
+
+      cleanup();
+    } finally {
+      rectSpy.mockRestore();
+    }
+  });
+
+  it("disables next on the final ultrawide pair to avoid preview-shift paging", () => {
+    const buildExamTask = (id: string, index: number) =>
+      ({
+        id,
+        sessionTaskId: id,
+        index,
+        rawLines: ["Question"],
+        prompt: "Question",
+        officialAnswer: "Answer",
+        gradingMode: "manual",
+        sourceRange: { startLine: 0, endLine: 0 },
+        cardWrapper: false,
+        cardLines: ["Question"],
+        warnings: [],
+        helpText: ["Hint block"],
+        card: {
+          kind: "composite",
+          parts: [
+            {
+              kind: "free-text",
+              front: "Question",
+              back: "Answer",
+            },
+          ],
+        },
+      }) as never;
+
+    const firstTask = buildExamTask("task-1", 0);
+    const secondTask = buildExamTask("task-2", 1);
+    const thirdTask = buildExamTask("task-3", 2);
+    const fourthTask = buildExamTask("task-4", 3);
+    const handleTaskNext = vi.fn();
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    const rectSpy = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockImplementation(function (this: HTMLElement) {
+        if (this.classList.contains("exam-layout")) {
+          return createRect(2600);
+        }
+        return originalGetBoundingClientRect.call(this);
+      });
+
+    try {
+      const viewModel = {
+        ...createViewModel(),
+        stage: "running",
+        examRunning: true,
+        activeTask: thirdTask,
+        activeTaskIndex: 2,
+        runTaskPoints: [5, 7, 4, 3],
+        runTasks: [firstTask, secondTask, thirdTask, fourthTask],
+        handleTaskNext,
+      };
+      mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
+
+      const { container, cleanup } = render(createElement(ExamSimulationPage));
+
+      const runnerTaskIndices = capturedExamTaskRunnerProps.map(
+        (entry) => entry.taskIndex,
+      );
+      expect(runnerTaskIndices).toEqual([2, 3]);
+      const navButtons = container.querySelectorAll(".exam-panel-nav button.ghost.small");
+      expect(navButtons).toHaveLength(2);
+      expect((navButtons[1] as HTMLButtonElement).disabled).toBe(true);
+      act(() => {
+        navButtons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      });
+      expect(handleTaskNext).not.toHaveBeenCalled();
+
+      cleanup();
+    } finally {
+      rectSpy.mockRestore();
+    }
   });
 
   it("opens exam toggles popup from the toolbar settings button", () => {

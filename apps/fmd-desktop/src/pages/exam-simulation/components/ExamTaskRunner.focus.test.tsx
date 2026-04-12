@@ -73,6 +73,38 @@ const buildTask = (): ExamTask => ({
   },
 });
 
+const buildSvgTask = (): ExamTask => ({
+  id: "exam-task-focus-svg",
+  index: 0,
+  rawLines: ["Render SVG"],
+  prompt: "Render SVG",
+  gradingMode: "auto",
+  sourceRange: { startLine: 0, endLine: 0 },
+  cardWrapper: false,
+  cardLines: ["Render SVG"],
+  warnings: [],
+  card: {
+    kind: "composite",
+    parts: [
+      {
+        kind: "free-text",
+        front: [
+          "```svg",
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 40">',
+          '<rect x="1" y="1" width="118" height="38" fill="#fff" stroke="#111"/>',
+          '<text x="10" y="25">Stable SVG</text>',
+          "</svg>",
+          "```",
+        ].join("\n"),
+        back: "Stable SVG",
+      },
+    ],
+    primaryType: "qa",
+    detectedTypes: ["qa"],
+    isMixed: false,
+  },
+});
+
 const cloneTask = (task: ExamTask): ExamTask => ({
   ...task,
   rawLines: [...task.rawLines],
@@ -97,6 +129,11 @@ const noopOptionSelect: ExamTaskRunnerProps["onOptionSelect"] = (...args) => {
   void args;
 };
 const noopTrueFalseSelect: ExamTaskRunnerProps["onTrueFalseSelect"] = (...args) => {
+  void args;
+};
+const noopClozeInputChange: ExamTaskRunnerProps["onClozeInputChange"] = (
+  ...args
+) => {
   void args;
 };
 const noopClozeTokenDrop: ExamTaskRunnerProps["onClozeTokenDrop"] = (...args) => {
@@ -131,6 +168,76 @@ const noopNavigate = (...args: unknown[]) => {
 };
 
 describe("ExamTaskRunner focus stability", () => {
+  it("keeps svg preview subtree identity stable across timer-like host ticks", () => {
+    const task = buildSvgTask();
+    const stablePartStates: CompositePartState[] = [{}];
+
+    const Harness = () => {
+      const [tick, setTick] = useState(0);
+      return createElement(
+        "div",
+        { "data-tick": tick },
+        createElement(
+          "button",
+          {
+            type: "button",
+            "data-testid": "tick",
+            onClick: () => setTick((previous) => previous + 1),
+          },
+          "tick",
+        ),
+        createElement(ExamTaskRunner, {
+          task,
+          taskIndex: 0,
+          taskCount: 1,
+          maxPoints: 5,
+          phase: "exam",
+          partStates: stablePartStates,
+          awardedPoints: null,
+          onOptionSelect: noopOptionSelect,
+          onTrueFalseSelect: noopTrueFalseSelect,
+          onClozeInputChange: noopClozeInputChange,
+          onClozeTokenDrop: noopClozeTokenDrop,
+          onClozeTokenRemove: noopClozeTokenRemove,
+          onClozeTokenDragStart: noopClozeTokenDragStart,
+          onBlankDragOver: noopBlankDragOver,
+          onTextInputChange: noopTextInputChange,
+          onAwardedPointsChange: noopAwardedPointsChange,
+          onAutoGradeDecision: noopAutoGradeDecision,
+          onBack: noopNavigate,
+          onNext: noopNavigate,
+          canGoBack: false,
+          canGoNext: false,
+          showNavigation: false,
+        }),
+      );
+    };
+
+    const { container, cleanup } = render(createElement(Harness));
+    const tickButton = container.querySelector<HTMLButtonElement>(
+      '[data-testid="tick"]',
+    );
+    const svgNodeBeforeTick =
+      container.querySelector<SVGSVGElement>(".svg-preview-surface svg");
+    expect(tickButton).toBeTruthy();
+    expect(svgNodeBeforeTick).toBeTruthy();
+
+    if (!tickButton || !svgNodeBeforeTick) {
+      cleanup();
+      return;
+    }
+
+    act(() => {
+      tickButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      tickButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const svgNodeAfterTicks =
+      container.querySelector<SVGSVGElement>(".svg-preview-surface svg");
+    expect(svgNodeAfterTicks).toBe(svgNodeBeforeTick);
+    cleanup();
+  });
+
   it("keeps active cloze input focused across timer-like parent rerenders", () => {
     const task = buildTask();
 
