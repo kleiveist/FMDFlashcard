@@ -445,6 +445,16 @@ const removeFilterRuleById = (group: DatabaseFilterGroup, ruleId: string): Datab
     .filter((entry) => ("rules" in entry ? true : entry.id !== ruleId)),
 });
 
+const removeFilterRulesByField = (group: DatabaseFilterGroup, key: string): DatabaseFilterGroup => ({
+  ...group,
+  rules: group.rules
+    .map((entry) =>
+      "rules" in entry
+        ? removeFilterRulesByField(entry, key)
+        : entry)
+    .filter((entry) => ("rules" in entry ? true : toLower(entry.field) !== toLower(key))),
+});
+
 const pickKanbanGroupAttribute = (
   attributes: DatabaseAttributeMeta[],
   preferredKey: string | null | undefined,
@@ -2427,6 +2437,125 @@ export const MarkdownHybridDatabaseBlock = ({
     });
   };
 
+  const handleRemoveFormulaField = (key: string) => {
+    const normalizedKey = toLower(key);
+    const nextFields = cloneFieldDefinitions(fieldDefinitionsRef.current)
+      .filter((field) => {
+        if (toLower(field.key) !== normalizedKey) {
+          return true;
+        }
+        return field.origin !== "formula";
+      });
+    if (nextFields.length === fieldDefinitionsRef.current.length) {
+      return;
+    }
+
+    const nextVisibleColumns = getPropertiesForView(propertiesByViewRef.current, viewTypeRef.current)
+      .filter((entry) => toLower(entry) !== normalizedKey);
+    const nextPropertiesByView = buildPropertiesMirror(nextVisibleColumns);
+    const nextFilters = removeFilterRulesByField(activeFiltersRef.current, key);
+    const nextSorts = activeSortsRef.current.filter((rule) => toLower(rule.field) !== normalizedKey);
+    const nextKanbanGroupBy = toLower(kanbanGroupByRef.current ?? "") === normalizedKey
+      ? null
+      : kanbanGroupByRef.current;
+    const nextTimelineStartField = toLower(timelineStartFieldRef.current ?? "") === normalizedKey
+      ? null
+      : timelineStartFieldRef.current;
+    const nextTimelineEndField = toLower(timelineEndFieldRef.current ?? "") === normalizedKey
+      ? null
+      : timelineEndFieldRef.current;
+    const nextProjectStartField = toLower(projectStartFieldRef.current ?? "") === normalizedKey
+      ? DEFAULT_PROJECT_START_FIELD
+      : (projectStartFieldRef.current ?? DEFAULT_PROJECT_START_FIELD);
+    const nextProjectUnitField = toLower(projectUnitFieldRef.current ?? "") === normalizedKey
+      ? DEFAULT_PROJECT_UNIT_FIELD
+      : (projectUnitFieldRef.current ?? DEFAULT_PROJECT_UNIT_FIELD);
+    const nextPieGroupField = toLower(pieGroupFieldRef.current ?? "") === normalizedKey
+      ? null
+      : pieGroupFieldRef.current;
+    const nextPieAggregateField = toLower(pieAggregateFieldRef.current ?? "") === normalizedKey
+      ? null
+      : pieAggregateFieldRef.current;
+
+    const stripRemovedFieldFromView = (view: DatabaseViewSpec): DatabaseViewSpec => ({
+      ...view,
+      groupBy: toLower(view.groupBy ?? "") === normalizedKey ? null : view.groupBy ?? null,
+      timelineStartField: toLower(view.timelineStartField ?? "") === normalizedKey
+        ? null
+        : view.timelineStartField ?? null,
+      timelineEndField: toLower(view.timelineEndField ?? "") === normalizedKey
+        ? null
+        : view.timelineEndField ?? null,
+      projectStartField: toLower(view.projectStartField ?? "") === normalizedKey
+        ? DEFAULT_PROJECT_START_FIELD
+        : view.projectStartField ?? DEFAULT_PROJECT_START_FIELD,
+      projectUnitField: toLower(view.projectUnitField ?? "") === normalizedKey
+        ? DEFAULT_PROJECT_UNIT_FIELD
+        : view.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD,
+      pieGroupField: toLower(view.pieGroupField ?? "") === normalizedKey
+        ? null
+        : view.pieGroupField ?? null,
+      pieAggregateField: toLower(view.pieAggregateField ?? "") === normalizedKey
+        ? null
+        : view.pieAggregateField ?? null,
+    });
+
+    const nextSavedViews = dedupeSavedViewsById(
+      cloneSavedViews(savedViewsRef.current).map((savedView) => ({
+        ...savedView,
+        view: stripRemovedFieldFromView(savedView.view),
+        properties: savedView.properties.filter((entry) => toLower(entry) !== normalizedKey),
+        filters: removeFilterRulesByField(savedView.filters, key),
+        sort: savedView.sort.filter((rule) => toLower(rule.field) !== normalizedKey),
+      })),
+    );
+
+    setFieldDefinitions(nextFields);
+    fieldDefinitionsRef.current = nextFields;
+    setPropertiesByView(nextPropertiesByView);
+    propertiesByViewRef.current = nextPropertiesByView;
+    setActiveFilters(nextFilters);
+    activeFiltersRef.current = nextFilters;
+    setActiveSorts(nextSorts);
+    activeSortsRef.current = nextSorts;
+    setKanbanGroupBy(nextKanbanGroupBy);
+    kanbanGroupByRef.current = nextKanbanGroupBy;
+    setTimelineStartField(nextTimelineStartField);
+    timelineStartFieldRef.current = nextTimelineStartField;
+    setTimelineEndField(nextTimelineEndField);
+    timelineEndFieldRef.current = nextTimelineEndField;
+    setProjectStartField(nextProjectStartField);
+    projectStartFieldRef.current = nextProjectStartField;
+    setProjectUnitField(nextProjectUnitField);
+    projectUnitFieldRef.current = nextProjectUnitField;
+    setPieGroupField(nextPieGroupField);
+    pieGroupFieldRef.current = nextPieGroupField;
+    setPieAggregateField(nextPieAggregateField);
+    pieAggregateFieldRef.current = nextPieAggregateField;
+    setSavedViews(nextSavedViews);
+    savedViewsRef.current = nextSavedViews;
+    if (activeCellEdit && toLower(activeCellEdit.fieldKey) === normalizedKey) {
+      setActiveCellEdit(null);
+    }
+
+    persistConfig({
+      fields: nextFields,
+      savedViews: nextSavedViews,
+      view: {
+        groupBy: nextKanbanGroupBy,
+        timelineStartField: nextTimelineStartField,
+        timelineEndField: nextTimelineEndField,
+        projectStartField: nextProjectStartField,
+        projectUnitField: nextProjectUnitField,
+        pieGroupField: nextPieGroupField,
+        pieAggregateField: nextPieAggregateField,
+      },
+      visibleColumns: nextVisibleColumns,
+      filters: nextFilters,
+      sorts: nextSorts,
+    });
+  };
+
   const handleCreateAttribute = async ({
     key,
     type,
@@ -2658,6 +2787,7 @@ export const MarkdownHybridDatabaseBlock = ({
       onRestoreDefault={handleRestoreDefaultColumns}
       onCreateAttribute={handleCreateAttribute}
       onCreateFormula={handleCreateFormulaField}
+      onRemoveFormula={handleRemoveFormulaField}
       isMutatingFrontmatter={isMutatingFrontmatter}
       onClose={() => setPanels(defaultPanels)}
     />

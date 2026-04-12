@@ -30,6 +30,7 @@ import {
   type FormulaBuilderAttributeOption,
 } from "../../formula/formula-attribute-builder";
 import { FrontmatterPropertyIconView } from "../../frontmatter-property-icons";
+import { TrashIcon } from "../../../../components/icons";
 
 type DatabasePropertiesPanelProps = {
   attributes: DatabaseAttributeMeta[];
@@ -54,6 +55,7 @@ type DatabasePropertiesPanelProps = {
     key: string;
     definition: DatabaseFormulaDefinitionV1;
   }) => void;
+  onRemoveFormula: (key: string) => void;
   isMutatingFrontmatter: boolean;
   onClose: () => void;
 };
@@ -181,6 +183,7 @@ export const DatabasePropertiesPanel = ({
   onRestoreDefault,
   onCreateAttribute,
   onCreateFormula,
+  onRemoveFormula,
   isMutatingFrontmatter,
   onClose,
 }: DatabasePropertiesPanelProps) => {
@@ -429,6 +432,29 @@ export const DatabasePropertiesPanel = ({
                 <span className="database-block-properties-key">{attribute.label || attribute.key}</span>
                 <span className="database-block-properties-type">{resolveDatabaseFieldTypeLabel(attribute.type)}</span>
                 <span className="database-block-properties-origin">{attribute.origin}</span>
+                {attribute.origin === "formula" ? (
+                  <button
+                    type="button"
+                    className="database-block-properties-delete"
+                    draggable={false}
+                    aria-label={`Formel-Property ${attribute.key} entfernen`}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onRemoveFormula(attribute.key);
+                    }}
+                  >
+                    <TrashIcon />
+                  </button>
+                ) : null}
                 {attribute.legacyFormulaIncompatible ? (
                   <span className="database-block-properties-origin">Legacy inkompatibel</span>
                 ) : null}

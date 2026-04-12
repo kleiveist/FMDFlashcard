@@ -42,6 +42,25 @@ const sampleAttribute: DatabaseAttributeMeta = {
   },
 };
 
+const formulaAttribute: DatabaseAttributeMeta = {
+  key: "f-score",
+  label: "f-score",
+  type: "formula",
+  origin: "formula",
+  formula: null,
+  editable: false,
+  sortable: true,
+  filterable: true,
+  aggregatable: true,
+  viewCompatibility: {
+    supportsTable: true,
+    supportsKanbanGrouping: true,
+    supportsTimeline: true,
+    supportsPieGrouping: true,
+    supportsAggregation: true,
+  },
+};
+
 const buildProps = () => ({
   attributes: [sampleAttribute],
   records: [],
@@ -67,6 +86,7 @@ const buildProps = () => ({
   onRestoreDefault: vi.fn(),
   onCreateAttribute: vi.fn(async () => undefined),
   onCreateFormula: vi.fn(),
+  onRemoveFormula: vi.fn(),
   isMutatingFrontmatter: false,
   onClose: vi.fn(),
 });
@@ -166,6 +186,36 @@ describe("DatabasePropertiesPanel", () => {
 
     expect(optionKeys).toContain("f-status");
     expect(optionKeys).not.toContain("status");
+
+    cleanup();
+  });
+
+  it("renders formula delete button and triggers removal without toggling visibility", () => {
+    const props = {
+      ...buildProps(),
+      attributes: [sampleAttribute, formulaAttribute],
+      visibleColumnKeys: ["status", "f-score"],
+    };
+    const { container, cleanup } = render(
+      createElement(DatabasePropertiesPanel, props),
+    );
+
+    const formulaDeleteButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Formel-Property f-score entfernen"]',
+    );
+    const textDeleteButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Formel-Property status entfernen"]',
+    );
+    expect(formulaDeleteButton).toBeTruthy();
+    expect(textDeleteButton).toBeNull();
+
+    act(() => {
+      formulaDeleteButton?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+      formulaDeleteButton?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
+
+    expect(props.onRemoveFormula).toHaveBeenCalledWith("f-score");
+    expect(props.onToggleVisibility).not.toHaveBeenCalled();
 
     cleanup();
   });

@@ -44,6 +44,7 @@ import {
   buildFrontmatterSuggestionIndex,
   buildFrontmatterValueSuggestionMapFromIndex,
   extractWikilinkTarget,
+  parseFrontmatterDocument,
   sortFrontmatterKeySuggestions,
 } from "../features/preview/frontmatter";
 import { deriveMarkdownEditorColors } from "../lib/markdownEditorColors";
@@ -63,6 +64,21 @@ const notePanelStorageKey = "fmd.notePanelCollapsed";
 
 const stripMarkdownExtension = (value: string) =>
   value.replace(/\.md$/i, "");
+
+const dedupeCaseInsensitive = (keys: string[]) => {
+  const seen = new Set<string>();
+  const next: string[] = [];
+  keys.forEach((key) => {
+    const trimmed = key.trim();
+    const normalized = trimmed.toLowerCase();
+    if (!trimmed || seen.has(normalized)) {
+      return;
+    }
+    seen.add(normalized);
+    next.push(trimmed);
+  });
+  return next;
+};
 
 export { shouldApplyPreviewDefaultMode, type DashboardView };
 
@@ -170,6 +186,9 @@ const DashboardPageInner = (
   const [frontmatterKeySuggestions, setFrontmatterKeySuggestions] = useState<string[]>(
     [],
   );
+  const [frontmatterFormulaAttributeKeysByFile, setFrontmatterFormulaAttributeKeysByFile] = useState<
+    Record<string, string[]> | null
+  >(null);
   const frontmatterTaskProfileSummaries = useMemo(
     () =>
       Object.fromEntries(
@@ -459,6 +478,7 @@ const DashboardPageInner = (
         if (!cancelled) {
           setFrontmatterValueSuggestions({});
           setFrontmatterKeySuggestions([]);
+          setFrontmatterFormulaAttributeKeysByFile({});
         }
         return;
       }
@@ -483,6 +503,25 @@ const DashboardPageInner = (
       setFrontmatterKeySuggestions(
         sortFrontmatterKeySuggestions(suggestionIndex.keyIndex),
       );
+      const nextFormulaAttributeKeysByFile: Record<string, string[]> = {};
+      vault.files.forEach((file, index) => {
+        const normalizedRelativePath = normalizeRelativePath(file.relative_path).replace(/^\/+/, "");
+        if (!/\.md$/i.test(normalizedRelativePath)) {
+          return;
+        }
+        const parsed = parseFrontmatterDocument(markdownDocuments[index] ?? "");
+        if (!parsed.hasFrontmatter || parsed.error) {
+          return;
+        }
+        const keys = dedupeCaseInsensitive(
+          parsed.properties.map((property) => property.key),
+        );
+        if (keys.length === 0) {
+          return;
+        }
+        nextFormulaAttributeKeysByFile[normalizedRelativePath] = keys;
+      });
+      setFrontmatterFormulaAttributeKeysByFile(nextFormulaAttributeKeysByFile);
     };
     void rebuildSuggestions();
     return () => {
@@ -1336,6 +1375,7 @@ const DashboardPageInner = (
             taskProfileSummariesByName={frontmatterTaskProfileSummaries}
             valueSuggestionsByKey={frontmatterValueSuggestions}
             keySuggestions={frontmatterKeySuggestions}
+            formulaAttributeKeysByFile={frontmatterFormulaAttributeKeysByFile ?? undefined}
             markdownTabs={markdownTabs}
             activeMarkdownTabPath={preview.selectedFile?.path ?? null}
             onSelectMarkdownTab={handleSelectMarkdownTab}

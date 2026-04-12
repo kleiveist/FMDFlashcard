@@ -1597,6 +1597,7 @@ type PreviewPanelProps = {
   >;
   valueSuggestionsByKey?: Record<string, string[]>;
   keySuggestions?: string[];
+  formulaAttributeKeysByFile?: Record<string, string[]>;
   markdownTabs?: Array<{
     path: string;
     relativePath: string;
@@ -4880,6 +4881,18 @@ const COVER_KEY_NAMES = new Set(["cover", "image", "thumbnail"]);
 const isCoverKeyName = (key: string) => COVER_KEY_NAMES.has(key.trim().toLowerCase());
 const isTaskKeyName = (key: string) => key.trim().toLowerCase() === "task";
 
+const normalizeFormulaFolderPath = (value: string) =>
+  normalizeRelativePath(value.trim()).replace(/^\/+/, "").replace(/\/+$/, "");
+
+const resolveFolderPathFromRelativePath = (value: string) => {
+  const normalized = normalizeRelativePath(value).replace(/^\/+/, "");
+  if (!normalized) {
+    return "";
+  }
+  const slashIndex = normalized.lastIndexOf("/");
+  return slashIndex >= 0 ? normalized.slice(0, slashIndex) : "";
+};
+
 const resolveRelativePathCandidates = (
   target: string,
   sourceRelativePath?: string | null,
@@ -5045,6 +5058,7 @@ type FrontmatterPropertiesPanelProps = {
   >;
   valueSuggestionsByKey?: Record<string, string[]>;
   keySuggestions?: string[];
+  formulaAttributeKeysByFile?: Record<string, string[]>;
   monitoringProfiles?: MonitoringRenderProfile[];
 };
 
@@ -5069,6 +5083,7 @@ const FrontmatterPropertiesPanel = ({
   taskProfileSummariesByName,
   valueSuggestionsByKey = EMPTY_VALUE_SUGGESTIONS,
   keySuggestions = EMPTY_KEY_SUGGESTIONS,
+  formulaAttributeKeysByFile,
   monitoringProfiles = [],
 }: FrontmatterPropertiesPanelProps) => {
   const linksDocument = useMemo(
@@ -5207,23 +5222,130 @@ const FrontmatterPropertiesPanel = ({
     ],
   );
   const isAddFormulaType = addTypeDraft === "formula";
+  const formulaAttributeKeysByNormalizedFile = useMemo(() => {
+    const next = new Map<string, string[]>();
+    if (!formulaAttributeKeysByFile) {
+      return next;
+    }
+    Object.entries(formulaAttributeKeysByFile).forEach(([relativePath, keys]) => {
+      const normalizedRelativePath = normalizeRelativePath(relativePath).replace(/^\/+/, "");
+      if (!normalizedRelativePath || !/\.md$/i.test(normalizedRelativePath)) {
+        return;
+      }
+      const dedupedKeys = dedupeCaseInsensitive(
+        (keys ?? []).map((key) => key.trim()).filter((key) => key.length > 0),
+      );
+      if (dedupedKeys.length === 0) {
+        return;
+      }
+      next.set(normalizedRelativePath.toLowerCase(), dedupedKeys);
+    });
+    return next;
+  }, [formulaAttributeKeysByFile]);
+  const gridPropertiesByNormalizedKey = useMemo(() => {
+    const next = new Map<string, FrontmatterProperty>();
+    gridProperties.forEach((property) => {
+      const normalized = toLower(property.key);
+      if (!normalized || next.has(normalized)) {
+        return;
+      }
+      next.set(normalized, property);
+    });
+    return next;
+  }, [gridProperties]);
+  const suggestionValuesByNormalizedKey = useMemo(() => {
+    const next = new Map<string, string[]>();
+    Object.entries(suggestionValuesByKey).forEach(([key, values]) => {
+      const normalizedKey = toLower(key);
+      if (!normalizedKey) {
+        return;
+      }
+      const existing = next.get(normalizedKey) ?? [];
+      next.set(
+        normalizedKey,
+        normalizeStableSuggestions([...existing, ...(values ?? [])]),
+      );
+    });
+    return next;
+  }, [suggestionValuesByKey]);
+  const selectedFormulaSourceFolders = useMemo(() => {
+    if (addFormulaDefinition.source.type === "explicit-folder") {
+      const normalized = normalizeFormulaFolderPath(addFormulaDefinition.source.path ?? "");
+      return normalized ? [normalized] : [];
+    }
+    if (addFormulaDefinition.source.type === "multi-folder") {
+      return dedupeCaseInsensitive(
+        (addFormulaDefinition.source.paths ?? [])
+          .map((path) => normalizeFormulaFolderPath(path))
+          .filter((path) => path.length > 0),
+      );
+    }
+    return [resolveFolderPathFromRelativePath(sourceRelativePath ?? "")];
+  }, [addFormulaDefinition.source, sourceRelativePath]);
   const formulaBuilderAttributeOptions = useMemo<FormulaBuilderAttributeOption[]>(
-    () =>
-      gridProperties
-        .filter((property) => toLower(property.key) !== toLower(addKeyDraft))
-        .map((property) => ({
-          key: property.key,
-          label: property.key,
-          supportsMath: supportsMathForFrontmatterProperty(property, suggestionValuesByKey),
-        })),
-    [addKeyDraft, gridProperties, suggestionValuesByKey],
+    () => {
+      const nextByNormalizedKey = new Map<string, FormulaBuilderAttributeOption>();
+      const excludedKey = toLower(addKeyDraft);
+      const addOption = (rawKey: string) => {
+        const key = rawKey.trim();
+        const normalizedKey = toLower(key);
+        if (
+          !normalizedKey ||
+          normalizedKey === excludedKey ||
+          nextByNormalizedKey.has(normalizedKey) ||
+          isLinkPropertyKey(key) ||
+          isCoverKeyName(key)
+        ) {
+          return;
+        }
+        const matchingProperty = gridPropertiesByNormalizedKey.get(normalizedKey);
+        const supportsMath = matchingProperty
+          ? supportsMathForFrontmatterProperty(matchingProperty, suggestionValuesByKey)
+          : normalizedKey.startsWith("f-") ||
+            hasShortTextNumericExample(suggestionValuesByNormalizedKey.get(normalizedKey) ?? []);
+        nextByNormalizedKey.set(normalizedKey, {
+          key,
+          label: key,
+          supportsMath,
+        });
+      };
+
+      if (formulaAttributeKeysByFile) {
+        const selectedFolderSet = new Set(selectedFormulaSourceFolders.map((folder) => toLower(folder)));
+        if (selectedFolderSet.size > 0) {
+          formulaAttributeKeysByNormalizedFile.forEach((keys, normalizedRelativePath) => {
+            const folderPath = resolveFolderPathFromRelativePath(normalizedRelativePath);
+            if (!selectedFolderSet.has(toLower(folderPath))) {
+              return;
+            }
+            keys.forEach((key) => addOption(key));
+          });
+        }
+      } else {
+        gridProperties.forEach((property) => {
+          addOption(property.key);
+        });
+      }
+
+      return Array.from(nextByNormalizedKey.values()).sort((left, right) =>
+        left.label.localeCompare(right.label, undefined, { sensitivity: "base" }));
+    },
+    [
+      addKeyDraft,
+      formulaAttributeKeysByFile,
+      formulaAttributeKeysByNormalizedFile,
+      gridProperties,
+      gridPropertiesByNormalizedKey,
+      selectedFormulaSourceFolders,
+      suggestionValuesByKey,
+      suggestionValuesByNormalizedKey,
+    ],
   );
   const formulaFolderSuggestions = useMemo(() => {
     const folders = new Set<string>();
     (vaultFiles ?? []).forEach((file) => {
       const normalizedPath = normalizeRelativePath(file.relative_path).replace(/^\/+/, "");
-      const slashIndex = normalizedPath.lastIndexOf("/");
-      const folder = slashIndex >= 0 ? normalizedPath.slice(0, slashIndex) : "";
+      const folder = resolveFolderPathFromRelativePath(normalizedPath);
       folders.add(folder);
     });
     return Array.from(folders).sort((left, right) => compareNaturalPath(left, right));
@@ -8292,6 +8414,7 @@ export const PreviewPanel = ({
   taskProfileSummariesByName,
   valueSuggestionsByKey,
   keySuggestions,
+  formulaAttributeKeysByFile,
   markdownTabs = [],
   activeMarkdownTabPath = null,
   onSelectMarkdownTab,
@@ -11176,6 +11299,7 @@ export const PreviewPanel = ({
                     taskProfileSummariesByName={taskProfileSummariesByName}
                     valueSuggestionsByKey={valueSuggestionsByKey}
                     keySuggestions={keySuggestions}
+                    formulaAttributeKeysByFile={formulaAttributeKeysByFile}
                     monitoringProfiles={monitoringProfiles}
                   />
                 ) : null}
@@ -11242,6 +11366,7 @@ export const PreviewPanel = ({
                       taskProfileSummariesByName={taskProfileSummariesByName}
                       valueSuggestionsByKey={valueSuggestionsByKey}
                       keySuggestions={keySuggestions}
+                      formulaAttributeKeysByFile={formulaAttributeKeysByFile}
                       monitoringProfiles={monitoringProfiles}
                     />
                   ) : null}
@@ -11446,6 +11571,7 @@ export const PreviewPanel = ({
                         taskProfileSummariesByName={taskProfileSummariesByName}
                         valueSuggestionsByKey={valueSuggestionsByKey}
                         keySuggestions={keySuggestions}
+                        formulaAttributeKeysByFile={formulaAttributeKeysByFile}
                       />
                     ) : null}
                     <div ref={markdownViewRef} className="preview-markdown-view-root">

@@ -330,6 +330,7 @@ const buildHarness = (
     onNavigateWikilink?: (wikilink: string) => void;
     valueSuggestionsByKey?: Record<string, string[]>;
     keySuggestions?: string[];
+    formulaAttributeKeysByFile?: Record<string, string[]>;
     vaultFiles?: VaultFile[];
     vaultPngAssets?: VaultPngAsset[];
     vaultPath?: string;
@@ -356,6 +357,7 @@ const buildHarness = (
     onNavigateWikilink,
     valueSuggestionsByKey,
     keySuggestions,
+    formulaAttributeKeysByFile,
     vaultFiles,
     vaultPngAssets,
     vaultPath = "/vault",
@@ -442,6 +444,7 @@ const buildHarness = (
       onNavigateWikilink,
       valueSuggestionsByKey,
       keySuggestions,
+      formulaAttributeKeysByFile,
       markdownTabs,
       activeMarkdownTabPath,
       onSelectMarkdownTab,
@@ -4932,6 +4935,119 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(suggestionValues).toContain("f-total");
     expect(suggestionValues).not.toContain("status");
     expect(suggestionValues).not.toContain("title");
+  });
+
+  it("updates formula attribute options based on selected source folders", async () => {
+    const markdown = ["---", "title: Demo", "---", "Body line"].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      sourceRelativePath: "Course/current.md",
+      vaultFiles: [
+        { path: "/vault/Course/current.md", relative_path: "Course/current.md" },
+        { path: "/vault/Course/other.md", relative_path: "Course/other.md" },
+        { path: "/vault/Archive/old.md", relative_path: "Archive/old.md" },
+      ],
+      formulaAttributeKeysByFile: {
+        "Course/current.md": ["Status", "points", "link1", "Cover"],
+        "Course/other.md": ["Rank", "POINTS"],
+        "Archive/old.md": ["Archived", "status"],
+      },
+    });
+    cleanup = localCleanup;
+
+    const typeButton = container.querySelector(
+      'button[aria-label="Attribut-Typ"]',
+    ) as HTMLButtonElement | null;
+    expect(typeButton).toBeTruthy();
+
+    act(() => {
+      typeButton?.click();
+    });
+    await flushAsyncInteraction();
+    const formulaOption = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".frontmatter-type-option"),
+    ).find((button) => (button.textContent ?? "").includes("Formel"));
+    act(() => {
+      formulaOption?.click();
+    });
+    await flushAsyncInteraction();
+
+    const readFormulaAttributes = () =>
+      Array.from(
+        container.querySelectorAll<HTMLSpanElement>(
+          "[data-formula-builder-scope='attributes'] .formula-attribute-builder-option-copy",
+        ),
+      )
+        .map((node) => node.textContent?.trim() ?? "")
+        .filter((value) => value.length > 0)
+        .map((value) => value.toLowerCase());
+
+    const sourceSelect = Array.from(
+      container.querySelectorAll<HTMLSelectElement>(".formula-attribute-builder-field > select"),
+    ).find((select) =>
+      Array.from(select.options).some((option) => option.value === "current-folder"),
+    );
+    expect(sourceSelect).toBeTruthy();
+
+    const currentFolderAttributes = readFormulaAttributes();
+    expect(currentFolderAttributes).toContain("status");
+    expect(currentFolderAttributes).toContain("points");
+    expect(currentFolderAttributes).toContain("rank");
+    expect(currentFolderAttributes).not.toContain("archived");
+    expect(currentFolderAttributes).not.toContain("cover");
+    expect(currentFolderAttributes).not.toContain("link1");
+    expect(new Set(currentFolderAttributes).size).toBe(currentFolderAttributes.length);
+
+    act(() => {
+      if (!sourceSelect) {
+        return;
+      }
+      sourceSelect.value = "explicit-folder";
+      sourceSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await flushAsyncInteraction();
+    const archiveSourceOption = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(
+        "[data-formula-builder-scope='explicit-folder'] .formula-attribute-builder-option",
+      ),
+    ).find((button) => (button.textContent ?? "").includes("Archive"));
+    act(() => {
+      archiveSourceOption?.click();
+    });
+    await flushAsyncInteraction();
+
+    const explicitFolderAttributes = readFormulaAttributes();
+    expect(explicitFolderAttributes).toContain("status");
+    expect(explicitFolderAttributes).toContain("archived");
+    expect(explicitFolderAttributes).not.toContain("points");
+    expect(explicitFolderAttributes).not.toContain("rank");
+
+    act(() => {
+      if (!sourceSelect) {
+        return;
+      }
+      sourceSelect.value = "multi-folder";
+      sourceSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await flushAsyncInteraction();
+    const multiFolderOptions = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(
+        "[data-formula-builder-scope='multi-folder'] .formula-attribute-builder-option",
+      ),
+    );
+    const courseSourceOption = multiFolderOptions.find((button) => (button.textContent ?? "").includes("Course"));
+    const archiveSourceMultiOption = multiFolderOptions.find((button) => (button.textContent ?? "").includes("Archive"));
+    act(() => {
+      courseSourceOption?.click();
+      archiveSourceMultiOption?.click();
+    });
+    await flushAsyncInteraction();
+
+    const multiFolderAttributes = readFormulaAttributes();
+    expect(multiFolderAttributes).toContain("status");
+    expect(multiFolderAttributes).toContain("points");
+    expect(multiFolderAttributes).toContain("rank");
+    expect(multiFolderAttributes).toContain("archived");
+    expect(new Set(multiFolderAttributes).size).toBe(multiFolderAttributes.length);
   });
 
   it("blocks creating a second cover via manual key input", async () => {
