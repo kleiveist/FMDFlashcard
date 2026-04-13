@@ -1576,8 +1576,7 @@ type PreviewPanelProps = {
   vaultPngAssets?: VaultPngAsset[];
   vaultPath?: string | null;
   sourceRelativePath?: string | null;
-  activeProfilePath?: string | null;
-  activeProfileId?: string | null;
+  profileRootPath?: string | null;
   canEdit: boolean;
   markdownEditorStyle?: CSSProperties;
   onEditChange: (value: string) => void;
@@ -8628,8 +8627,7 @@ export const PreviewPanel = ({
   vaultPngAssets,
   vaultPath,
   sourceRelativePath,
-  activeProfilePath,
-  activeProfileId,
+  profileRootPath,
   canEdit,
   markdownEditorStyle,
   onEditChange,
@@ -11550,8 +11548,7 @@ export const PreviewPanel = ({
                   vaultPath={vaultPath}
                   sourceHasFrontmatter={editFrontmatter.hasFrontmatter}
                   sourceRelativePath={sourceRelativePath ?? selectedFile?.relative_path}
-                  activeProfilePath={activeProfilePath}
-                  activeProfileId={activeProfileId}
+                  profileRootPath={profileRootPath}
                   onNavigateWikilink={onNavigateWikilink}
                   runnableExamRelativePaths={runnableExamRelativePaths}
                   onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}

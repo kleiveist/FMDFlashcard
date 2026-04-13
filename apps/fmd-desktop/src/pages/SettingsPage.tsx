@@ -378,9 +378,9 @@ export const SettingsPage = () => {
 
   const handleResetExamStatistics = useCallback(async () => {
     setIsResetExamStatsPending(true);
-    await resetExamRunHistory(userVault.activeProfilePath);
+    await resetExamRunHistory(userVault.profileRootPath);
     setIsResetExamStatsPending(false);
-  }, [resetExamRunHistory, userVault.activeProfilePath]);
+  }, [resetExamRunHistory, userVault.profileRootPath]);
 
   const handleExamTimeLimitToggle = useCallback(
     (nextEnabled: boolean) => {

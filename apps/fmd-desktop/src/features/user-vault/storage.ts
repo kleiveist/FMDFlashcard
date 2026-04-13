@@ -239,8 +239,8 @@ const resolveSpacedRepetitionPath = (profilePath: string) =>
 const resolveFastFlashcardPath = (profilePath: string) =>
   joinPath(profilePath, USER_VAULT_FAST_FLASHCARD_FILE);
 
-const resolveExamRunsDir = (profilePath: string) =>
-  joinPath(profilePath, USER_VAULT_EXAM_RUNS_DIR);
+const resolveExamRunsDir = (profileRootPath: string) =>
+  joinPath(profileRootPath, USER_VAULT_EXAM_RUNS_DIR);
 
 const resolveExamPointsProfilesPath = (profilePath: string) =>
   joinPath(profilePath, USER_VAULT_EXAM_POINTS_PROFILES_FILE);
@@ -1240,9 +1240,9 @@ export const saveExamPointsProfileStore = async (
 };
 
 export const loadExamRunStore = async (
-  profilePath: string,
+  profileRootPath: string,
 ): Promise<ExamRunProfileStore> => {
-  const runs = await loadExamRunMarkdownEntries(profilePath);
+  const runs = await loadExamRunMarkdownEntries(profileRootPath);
   return {
     schemaVersion: USER_VAULT_EXAM_RUNS_SCHEMA_VERSION,
     runs,
@@ -1251,14 +1251,14 @@ export const loadExamRunStore = async (
 };
 
 export const saveExamRunStore = async (
-  profilePath: string,
+  profileRootPath: string,
   store: ExamRunProfileStore,
 ) => {
   try {
-    await deleteExamRunMarkdownFiles(profilePath);
+    await deleteExamRunMarkdownFiles(profileRootPath);
     await Promise.all(
       store.runs.map(async (run) => {
-        await writeExamRunMarkdownEntry(profilePath, run);
+        await writeExamRunMarkdownEntry(profileRootPath, run);
       }),
     );
   } catch (error) {
@@ -1270,11 +1270,11 @@ export const saveExamRunStore = async (
 };
 
 export const appendExamRunStore = async (
-  profilePath: string,
+  profileRootPath: string,
   run: ExamRun,
 ): Promise<string | null> => {
   try {
-    const filePath = await writeExamRunMarkdownEntry(profilePath, run);
+    const filePath = await writeExamRunMarkdownEntry(profileRootPath, run);
     return filePath;
   } catch (error) {
     console.warn(
@@ -1286,14 +1286,14 @@ export const appendExamRunStore = async (
 };
 
 export const deleteExamRunStoreEntry = async (
-  profilePath: string,
+  profileRootPath: string,
   runId: string,
   filePath?: string | null,
 ): Promise<boolean> => {
   try {
     let targetPath = filePath ?? "";
     if (!targetPath) {
-      const entries = await loadExamRunMarkdownEntries(profilePath);
+      const entries = await loadExamRunMarkdownEntries(profileRootPath);
       targetPath = entries.find((entry) => entry.id === runId)?.filePath ?? "";
     }
     if (!targetPath) {

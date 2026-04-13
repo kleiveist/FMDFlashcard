@@ -66,10 +66,10 @@ export const subscribeExamRunHistoryReset = (
   };
 };
 
-export const resetExamRunHistory = async (profilePath?: string | null) => {
+export const resetExamRunHistory = async (profileRootPath?: string | null) => {
   try {
-    if (profilePath) {
-      await resetExamRunMarkdownHistory(profilePath);
+    if (profileRootPath) {
+      await resetExamRunMarkdownHistory(profileRootPath);
     } else {
       const storage: ExamRunStorage = { runs: [] };
       await invoke("save_exam_run_data", { storage });
