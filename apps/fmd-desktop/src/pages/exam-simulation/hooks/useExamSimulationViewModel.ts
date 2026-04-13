@@ -206,7 +206,7 @@ export const useExamSimulationViewModel = () => {
     userVault.customRootPath ??
     userVault.autoRootPath ??
     userVault.resolvedPath ??
-    null;
+    (vault.vaultPath ? `${vault.vaultPath.replace(/[\\/]+$/, "")}/.profile` : null);
   const [examRuns, setExamRuns] = useState<ExamRun[]>([]);
   const [examRunsLoaded, setExamRunsLoaded] = useState(false);
   const [examRunDeleteError, setExamRunDeleteError] = useState("");

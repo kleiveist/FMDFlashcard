@@ -381,7 +381,7 @@ export const SettingsPage = () => {
     userVault.customRootPath ??
     userVault.autoRootPath ??
     userVault.resolvedPath ??
-    null;
+    (vault.vaultPath ? `${vault.vaultPath.replace(/[\\/]+$/, "")}/.profile` : null);
 
   const handleResetExamStatistics = useCallback(async () => {
     setIsResetExamStatsPending(true);

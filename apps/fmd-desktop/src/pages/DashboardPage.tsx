@@ -145,7 +145,7 @@ const DashboardPageInner = (
     userVault.customRootPath ??
     userVault.autoRootPath ??
     userVault.resolvedPath ??
-    null;
+    (vault.vaultPath ? normalizeVaultPath(`${vault.vaultPath}/.profile`) : null);
   const examFiles = rawExamFiles ?? [];
   const [isEditing, setIsEditing] = useState(false);
   const [editDraft, setEditDraft] = useState("");
