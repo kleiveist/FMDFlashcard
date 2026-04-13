@@ -21,7 +21,7 @@ import {
   type UserVaultProfileSettings,
 } from "../../lib/userVault";
 import type { FastFlashcardSessionSummary } from "../../lib/fastFlashcard";
-import type { ExamRun } from "../../lib/examRuns";
+import { resolveExamStatusDescriptor, type ExamRun } from "../../lib/examRuns";
 import {
   EXAM_POINTS_PROFILE_SCHEMA_VERSION,
   createEmptyExamPointsProfilesStore,
@@ -86,7 +86,6 @@ const USER_VAULT_PROFILE_FILE = "profile.json";
 const USER_VAULT_SPACED_REPETITION_FILE = "spaced-repetition.json";
 const USER_VAULT_FAST_FLASHCARD_FILE = "fast-flashcard.json";
 const USER_VAULT_EXAM_RUNS_DIR = "exam-runs";
-const USER_VAULT_EXAM_RUNS_FILE = "exam-runs.json";
 const USER_VAULT_EXAM_POINTS_PROFILES_FILE = "exam-points-profiles.json";
 
 const USER_VAULT_PROFILE_SCHEMA_VERSION = USER_VAULT_SCHEMA_VERSION;
@@ -242,9 +241,6 @@ const resolveFastFlashcardPath = (profilePath: string) =>
 
 const resolveExamRunsDir = (profilePath: string) =>
   joinPath(profilePath, USER_VAULT_EXAM_RUNS_DIR);
-
-const resolveExamRunsPath = (profilePath: string) =>
-  joinPath(profilePath, USER_VAULT_EXAM_RUNS_FILE);
 
 const resolveExamPointsProfilesPath = (profilePath: string) =>
   joinPath(profilePath, USER_VAULT_EXAM_POINTS_PROFILES_FILE);
@@ -664,112 +660,6 @@ const normalizeFastFlashcardStore = (value: unknown): FastFlashcardProfileStore 
   };
 };
 
-const normalizeExamRun = (value: unknown): ExamRun | null => {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-  const candidate = value as Partial<ExamRun>;
-  const id = typeof candidate.id === "string" ? candidate.id : "";
-  const startedAt = typeof candidate.startedAt === "string" ? candidate.startedAt : "";
-  const endedAt = typeof candidate.endedAt === "string" ? candidate.endedAt : "";
-  if (!id || !startedAt || !endedAt) {
-    return null;
-  }
-  const rawAssignments = Array.isArray(candidate.pointsProfileAssignments)
-    ? candidate.pointsProfileAssignments
-    : [];
-  const pointsProfileAssignments = rawAssignments
-    .map((entry) => {
-      if (!entry || typeof entry !== "object") {
-        return null;
-      }
-      const record = entry as Record<string, unknown>;
-      const examPath =
-        typeof record.examPath === "string" ? record.examPath : "";
-      const sourceTitle =
-        typeof record.sourceTitle === "string" ? record.sourceTitle : examPath;
-      if (!examPath) {
-        return null;
-      }
-      return {
-        examPath,
-        sourceTitle,
-        requestedName:
-          typeof record.requestedName === "string" ? record.requestedName : null,
-        profileId: typeof record.profileId === "string" ? record.profileId : null,
-        profileName:
-          typeof record.profileName === "string" ? record.profileName : null,
-        profileVersion:
-          typeof record.profileVersion === "number" &&
-          Number.isFinite(record.profileVersion)
-            ? Math.max(0, Math.floor(record.profileVersion))
-            : null,
-        missing: Boolean(record.missing),
-      };
-    })
-    .filter(
-      (entry): entry is NonNullable<typeof entry> =>
-        entry !== null,
-    );
-  const grade =
-    typeof candidate.grade === "string"
-      ? candidate.grade
-      : typeof candidate.grade === "number" && Number.isFinite(candidate.grade)
-        ? String(candidate.grade)
-        : null;
-  return {
-    id,
-    startedAt,
-    endedAt,
-    durationMs:
-      typeof candidate.durationMs === "number" && Number.isFinite(candidate.durationMs)
-        ? candidate.durationMs
-        : 0,
-    userId: typeof candidate.userId === "string" ? candidate.userId : null,
-    userName: typeof candidate.userName === "string" ? candidate.userName : "Unknown",
-    examFilePath:
-      typeof candidate.examFilePath === "string" ? candidate.examFilePath : "",
-    tasksDetected:
-      typeof candidate.tasksDetected === "number" &&
-      Number.isFinite(candidate.tasksDetected)
-        ? candidate.tasksDetected
-        : 0,
-    maxPoints:
-      typeof candidate.maxPoints === "number" && Number.isFinite(candidate.maxPoints)
-        ? candidate.maxPoints
-        : 0,
-    achievedPoints:
-      typeof candidate.achievedPoints === "number" &&
-      Number.isFinite(candidate.achievedPoints)
-        ? candidate.achievedPoints
-        : 0,
-    percent:
-      typeof candidate.percent === "number" && Number.isFinite(candidate.percent)
-        ? candidate.percent
-        : 0,
-    passed: typeof candidate.passed === "boolean" ? candidate.passed : false,
-    grade,
-    gradeScaleId:
-      candidate.gradeScaleId === "standard-1-6"
-        ? candidate.gradeScaleId
-        : "standard-1-6",
-    pointsProfileId:
-      typeof candidate.pointsProfileId === "string"
-        ? candidate.pointsProfileId
-        : null,
-    pointsProfileName:
-      typeof candidate.pointsProfileName === "string"
-        ? candidate.pointsProfileName
-        : null,
-    pointsProfileVersion:
-      typeof candidate.pointsProfileVersion === "number" &&
-      Number.isFinite(candidate.pointsProfileVersion)
-        ? Math.max(0, Math.floor(candidate.pointsProfileVersion))
-        : null,
-    pointsProfileAssignments,
-  };
-};
-
 const normalizeExamRunUserSlug = (value: string) => {
   const sanitized = sanitizeProfileName(value.toLowerCase());
   return sanitized || "user";
@@ -833,13 +723,26 @@ const parseScoreValue = (value: string) => {
   return { achievedPoints: achieved, maxPoints: max };
 };
 
+const resolveExamRunStatusCode = (run: ExamRun) => {
+  if (typeof run.statusValue === "number" && Number.isFinite(run.statusValue)) {
+    return Math.max(0, Math.min(6, Math.floor(run.statusValue)));
+  }
+  if (typeof run.statusValue === "string") {
+    const parsed = Number(run.statusValue);
+    if (Number.isFinite(parsed)) {
+      return Math.max(0, Math.min(6, Math.floor(parsed)));
+    }
+  }
+  return resolveExamStatusDescriptor(run.percent).value;
+};
+
 const buildExamRunFrontmatter = (run: ExamRun) => {
   const userValue = run.userName || "Unknown";
   const examFileValue = run.examFilePath || "";
   const scoreValue = `${run.achievedPoints}/${run.maxPoints}`;
   const percentValue =
     Number.isFinite(run.percent) && !Number.isNaN(run.percent) ? run.percent : 0;
-  const statusValue = run.passed ? "passed" : "failed";
+  const statusValue = resolveExamRunStatusCode(run);
   const durationValue = formatDurationHms(run.durationMs);
   return [
     "---",
@@ -848,7 +751,7 @@ const buildExamRunFrontmatter = (run: ExamRun) => {
     `exam_file: ${formatYamlString(examFileValue)}`,
     `score: ${formatYamlString(scoreValue)}`,
     `percent: ${percentValue}`,
-    `status: ${formatYamlString(statusValue)}`,
+    `status: ${statusValue}`,
     `duration: ${formatYamlString(durationValue)}`,
     `id: ${formatYamlString(run.id)}`,
     "---",
@@ -890,9 +793,18 @@ const parseExamRunFrontmatter = (contents: string, filePath: string): ExamRun | 
   const achievedPoints = scoreParsed?.achievedPoints ?? (scoreNumber ?? 0);
   const maxPoints = scoreParsed?.maxPoints ?? 0;
   const percent = getNumber("percent") ?? (maxPoints > 0 ? (achievedPoints / maxPoints) * 100 : 0);
-  const status = getString("status") ?? "";
-  const passed =
-    status === "passed" ? true : status === "failed" ? false : percent >= 50;
+  const statusValueRaw = map.get("status");
+  const statusValue =
+    typeof statusValueRaw === "number" && Number.isFinite(statusValueRaw)
+      ? Math.max(0, Math.min(6, Math.floor(statusValueRaw)))
+      : typeof statusValueRaw === "string" && statusValueRaw.trim() !== ""
+        ? Number(statusValueRaw.trim())
+        : null;
+  const resolvedStatusValue =
+    statusValue !== null && Number.isFinite(statusValue)
+      ? Math.max(0, Math.min(6, Math.floor(statusValue)))
+      : resolveExamStatusDescriptor(percent).value;
+  const passed = percent >= 50;
   const duration = getString("duration") ?? "";
   const durationMs = duration ? parseDurationHms(duration) : 0;
   const startedAt =
@@ -914,41 +826,13 @@ const parseExamRunFrontmatter = (contents: string, filePath: string): ExamRun | 
     percent,
     passed,
     grade: null,
+    statusValue: resolvedStatusValue,
     gradeScaleId: "standard-1-6",
     pointsProfileId: null,
     pointsProfileName: null,
     pointsProfileVersion: null,
     pointsProfileAssignments: [],
     filePath,
-  };
-};
-
-const migrateExamRunStore = (
-  value: unknown,
-): MigrationResult<ExamRunProfileStore> => {
-  if (!value || typeof value !== "object") {
-    return { store: createEmptyExamRunStore(), didMigrate: true };
-  }
-  const candidate = value as Partial<ExamRunProfileStore>;
-  const storedVersion =
-    typeof candidate.schemaVersion === "number" ? candidate.schemaVersion : 0;
-  const rawRuns = Array.isArray(candidate.runs) ? candidate.runs : [];
-  const runs = rawRuns.map(normalizeExamRun).filter((run) => run !== null) as ExamRun[];
-  const migratedFromAppData =
-    typeof candidate.migratedFromAppData === "boolean"
-      ? candidate.migratedFromAppData
-      : false;
-  const didMigrate =
-    storedVersion !== USER_VAULT_EXAM_RUNS_SCHEMA_VERSION ||
-    rawRuns.length !== runs.length ||
-    typeof candidate.migratedFromAppData !== "boolean";
-  return {
-    store: {
-      schemaVersion: USER_VAULT_EXAM_RUNS_SCHEMA_VERSION,
-      runs,
-      migratedFromAppData,
-    },
-    didMigrate,
   };
 };
 
@@ -1050,72 +934,6 @@ const deleteExamRunMarkdownFiles = async (profilePath: string) => {
 
 export const resetExamRunMarkdownHistory = async (profilePath: string) => {
   await deleteExamRunMarkdownFiles(profilePath);
-};
-
-const migrateExamRunsJsonToMarkdown = async (
-  profilePath: string,
-): Promise<boolean> => {
-  const jsonPath = resolveExamRunsPath(profilePath);
-  const backupPath = buildJsonSiblingPath(jsonPath, ".migrated.bak");
-  const [jsonInfo, backupInfo] = await Promise.all([
-    getPathInfo(jsonPath),
-    getPathInfo(backupPath),
-  ]);
-  if (!jsonInfo.exists || backupInfo.exists) {
-    return false;
-  }
-  const { value, error } = await readJsonFileWithStatus<ExamRunProfileStore>(jsonPath);
-  if (error) {
-    if (error === "parse") {
-      const corruptPath = buildCorruptBackupPath(jsonPath);
-      try {
-        await renameJsonFile(jsonPath, corruptPath);
-      } catch (renameError) {
-        console.warn(
-          "Failed to archive corrupt exam run store",
-          asErrorMessage(renameError, "Unknown error"),
-        );
-      }
-    }
-    return false;
-  }
-  const { store } = migrateExamRunStore(value);
-  if (store.runs.length === 0) {
-    try {
-      await renameJsonFile(jsonPath, backupPath);
-    } catch (renameError) {
-      console.warn(
-        "Failed to archive legacy exam run store",
-        asErrorMessage(renameError, "Unknown error"),
-      );
-    }
-    return true;
-  }
-  const existingRuns = await loadExamRunMarkdownEntries(profilePath);
-  const existingIds = new Set(existingRuns.map((run) => run.id));
-  for (const run of store.runs) {
-    if (existingIds.has(run.id)) {
-      continue;
-    }
-    try {
-      await writeExamRunMarkdownEntry(profilePath, run);
-      existingIds.add(run.id);
-    } catch (error) {
-      console.warn(
-        "Failed to migrate exam run entry",
-        asErrorMessage(error, "Unknown error"),
-      );
-    }
-  }
-  try {
-    await renameJsonFile(jsonPath, backupPath);
-  } catch (renameError) {
-    console.warn(
-      "Failed to archive legacy exam run store",
-      asErrorMessage(renameError, "Unknown error"),
-    );
-  }
-  return true;
 };
 
 const migrateExamPointsProfileStore = (
@@ -1424,14 +1242,6 @@ export const saveExamPointsProfileStore = async (
 export const loadExamRunStore = async (
   profilePath: string,
 ): Promise<ExamRunProfileStore> => {
-  try {
-    await migrateExamRunsJsonToMarkdown(profilePath);
-  } catch (error) {
-    console.warn(
-      "Failed to migrate legacy exam run store",
-      asErrorMessage(error, "Unknown error"),
-    );
-  }
   const runs = await loadExamRunMarkdownEntries(profilePath);
   return {
     schemaVersion: USER_VAULT_EXAM_RUNS_SCHEMA_VERSION,

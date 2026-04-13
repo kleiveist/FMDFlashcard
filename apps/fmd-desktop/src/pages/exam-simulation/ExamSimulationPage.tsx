@@ -791,6 +791,7 @@ export const ExamSimulationPage = ({
                       <ExamStatisticsPanel
                         runs={examRuns}
                         gradeScaleId={settings.examGradeScale}
+                        monitoringProfiles={settings.monitoringRenderProfiles}
                         onDeleteRun={handleDeleteExamRun}
                         deleteError={examRunDeleteError}
                         showTabs={false}
@@ -991,6 +992,7 @@ export const ExamSimulationPage = ({
                       <ExamStatisticsPanel
                         runs={examRuns}
                         gradeScaleId={settings.examGradeScale}
+                        monitoringProfiles={settings.monitoringRenderProfiles}
                         onDeleteRun={handleDeleteExamRun}
                         deleteError={examRunDeleteError}
                         showTabs={false}

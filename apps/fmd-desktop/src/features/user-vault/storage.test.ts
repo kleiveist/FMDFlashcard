@@ -47,9 +47,6 @@ const buildRun = (id: string): ExamRun => ({
 const getProfileFilePath = (profilePath: string) =>
   `${profilePath.replace(/\\/g, "/")}/profile.json`;
 
-const getExamRunsJsonPath = (profilePath: string) =>
-  `${profilePath.replace(/\\/g, "/")}/exam-runs.json`;
-
 const getExamRunsDir = (profilePath: string) =>
   `${profilePath.replace(/\\/g, "/")}/exam-runs`;
 
@@ -215,7 +212,7 @@ describe("exam run markdown storage", () => {
     const contents = files.get(filePath ?? "") ?? "";
     expect(contents).toContain('id: "run-1"');
     expect(contents).toContain('score: "10/20"');
-    expect(contents).toContain('status: "passed"');
+    expect(contents).toContain("status: 5");
     expect(directories.has(getExamRunsDir(profilePath))).toBe(true);
   });
 
@@ -233,7 +230,7 @@ describe("exam run markdown storage", () => {
         "exam_file: \"exam.md\"",
         "score: \"10/20\"",
         "percent: 50",
-        "status: \"passed\"",
+        "status: 5",
         "duration: \"00:10:00\"",
         "id: \"run-1\"",
         "---",
@@ -248,33 +245,7 @@ describe("exam run markdown storage", () => {
     expect(store.runs[0]?.filePath).toBe(runPath);
     expect(store.runs[0]?.maxPoints).toBe(20);
     expect(store.runs[0]?.achievedPoints).toBe(10);
-  });
-
-  it("migrates exam-runs.json into markdown files", async () => {
-    const profilePath = "/profiles/exams";
-    const examRunsDir = getExamRunsDir(profilePath);
-    directories.add(examRunsDir);
-    const jsonPath = getExamRunsJsonPath(profilePath);
-    files.set(
-      jsonPath,
-      JSON.stringify({
-        schemaVersion: 1,
-        runs: [buildRun("run-legacy")],
-        migratedFromAppData: false,
-      }),
-    );
-
-    const store = await loadExamRunStore(profilePath);
-
-    expect(store.runs).toHaveLength(1);
-    const markdownFiles = Array.from(files.keys()).filter((key) =>
-      key.endsWith(".md"),
-    );
-    expect(markdownFiles.length).toBe(1);
-    const backup = Array.from(files.keys()).find((key) =>
-      key.includes(".migrated.bak.json"),
-    );
-    expect(backup).toBeTruthy();
+    expect(store.runs[0]?.statusValue).toBe(5);
   });
 
   it("deletes exam run markdown files by path", async () => {
@@ -291,7 +262,7 @@ describe("exam run markdown storage", () => {
         "exam_file: \"exam.md\"",
         "score: \"10/20\"",
         "percent: 50",
-        "status: \"passed\"",
+        "status: 5",
         "duration: \"00:10:00\"",
         "id: \"run-1\"",
         "---",

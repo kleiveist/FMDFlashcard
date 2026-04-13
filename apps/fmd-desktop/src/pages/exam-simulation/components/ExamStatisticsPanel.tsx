@@ -19,10 +19,16 @@ import {
   type ExamRun,
   type ExamRunStatusFilter,
 } from "../../../lib/examRuns";
+import {
+  formatMonitoringCompactText,
+  renderMonitoringValue,
+  type MonitoringRenderProfile,
+} from "../../../features/monitoring/monitoring-render-rules";
 
 type ExamStatisticsPanelProps = {
   runs: ExamRun[];
   gradeScaleId: ExamGradeScaleId;
+  monitoringProfiles?: MonitoringRenderProfile[];
   onDeleteRun: (runId: string) => void;
   deleteError?: string;
   showTabs?: boolean;
@@ -35,6 +41,7 @@ export type StatsTab = "last" | "history";
 export const ExamStatisticsPanel = ({
   runs,
   gradeScaleId,
+  monitoringProfiles = [],
   onDeleteRun,
   deleteError,
   showTabs = true,
@@ -58,6 +65,22 @@ export const ExamStatisticsPanel = ({
   const lastRun = sortedRuns[0] ?? null;
   const hasRuns = sortedRuns.length > 0;
   const gradeScaleLabel = formatExamGradeScale(gradeScaleId);
+  const resolveStatusLabel = (run: ExamRun) => {
+    const statusValue =
+      run.statusValue ?? resolveExamStatusDescriptor(run.percent).value;
+    const monitoringText = formatMonitoringCompactText(
+      renderMonitoringValue({
+        attributeKey: "status",
+        value: statusValue,
+        profiles: monitoringProfiles,
+      }),
+      statusValue,
+    ).trim();
+    if (monitoringText) {
+      return monitoringText;
+    }
+    return String(statusValue);
+  };
 
   const userOptions = useMemo(() => {
     const options = new Map<string, string>();
@@ -91,7 +114,7 @@ export const ExamStatisticsPanel = ({
       : "—";
     const percentLabel = lastRun ? `${lastRun.percent}%` : "—";
     const statusDescriptor = lastRun ? resolveExamStatusDescriptor(lastRun.percent) : null;
-    const statusLabel = statusDescriptor ? statusDescriptor.token : "—";
+    const statusLabel = lastRun ? resolveStatusLabel(lastRun) : "—";
     const scoreFill =
       lastRun && lastRun.maxPoints > 0
         ? Math.min(1, Math.max(0, lastRun.achievedPoints / lastRun.maxPoints))
@@ -252,9 +275,7 @@ export const ExamStatisticsPanel = ({
                     {run.achievedPoints} / {run.maxPoints}
                   </span>
                   <span className="exam-history-cell">{run.percent}%</span>
-                  <span className="exam-history-cell">
-                    {resolveExamStatusDescriptor(run.percent).token}
-                  </span>
+                  <span className="exam-history-cell">{resolveStatusLabel(run)}</span>
                   <span className="exam-history-cell">
                     {formatExamDuration(run.durationMs)}
                   </span>

@@ -40,6 +40,7 @@ export type ExamRun = {
   correctedPercent?: number | null;
   correctedPassed?: boolean | null;
   correctedGrade?: string | null;
+  statusValue?: string | number;
   filePath?: string;
   gradeScaleId: ExamGradeScaleId;
   pointsProfileId?: string | null;
