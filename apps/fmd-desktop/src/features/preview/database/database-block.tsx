@@ -91,6 +91,8 @@ type DatabaseBlockProps = {
   vaultFiles?: Array<{ path: string; relative_path: string }>;
   sourceRelativePath?: string | null;
   activeProfilePath?: string | null;
+  activeProfileId?: string | null;
+  vaultPath?: string | null;
   onNavigateWikilink?: (wikilink: string) => void;
   runnableExamRelativePaths?: string[];
   onOpenExamFromDatabaseRecord?: (target: { path: string; relativePath: string }) => void;
@@ -614,6 +616,8 @@ export const MarkdownHybridDatabaseBlock = ({
   vaultFiles,
   sourceRelativePath,
   activeProfilePath,
+  activeProfileId,
+  vaultPath,
   onNavigateWikilink,
   runnableExamRelativePaths,
   onOpenExamFromDatabaseRecord,
@@ -945,12 +949,16 @@ export const MarkdownHybridDatabaseBlock = ({
     }
 
     const loadHistoryFiles = async () => {
-      if (!activeProfilePath) {
+      const resolvedProfilePath = activeProfilePath ??
+        (vaultPath && activeProfileId
+          ? joinPath(vaultPath, ".profile", "users", activeProfileId)
+          : null);
+      if (!resolvedProfilePath) {
         setHistoryFiles([]);
         setHistoryWarning("History folder unavailable (no active profile).");
         return;
       }
-      const historyDir = joinPath(activeProfilePath, "exam-runs");
+      const historyDir = joinPath(resolvedProfilePath, "exam-runs");
       try {
         const files = await invoke<string[]>("list_files", { path: historyDir });
         const markdownFiles = (files ?? [])
@@ -981,7 +989,7 @@ export const MarkdownHybridDatabaseBlock = ({
     return () => {
       cancelled = true;
     };
-  }, [activeProfilePath, source.type]);
+  }, [activeProfileId, activeProfilePath, source.type, vaultPath]);
 
   const sourceContext = useMemo<DatabaseSourceResolverContext>(
     () => ({

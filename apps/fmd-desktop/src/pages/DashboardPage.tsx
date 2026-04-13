@@ -1374,6 +1374,7 @@ const DashboardPageInner = (
             vaultPath={vault.vaultPath}
             sourceRelativePath={preview.selectedFile?.relative_path ?? null}
             activeProfilePath={userVault.activeProfilePath}
+            activeProfileId={userVault.activeProfileId}
             canEdit={canEdit}
             markdownEditorStyle={markdownEditorStyle}
             onEditChange={handleEditDraftChange}
