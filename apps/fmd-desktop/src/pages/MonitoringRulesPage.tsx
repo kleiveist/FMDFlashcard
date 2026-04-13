@@ -36,7 +36,17 @@ import {
   normalizeDatabaseFormulaDefinitionV1,
   type DatabaseFormulaDefinitionV1,
 } from "../features/preview/formula/database-formula-types";
-import { parseDatabaseBlockConfigFromRaw } from "../features/preview/database/database-block-parser";
+import {
+  parseDatabaseBlockConfigFromRaw,
+  serializeDatabaseBlockConfig,
+} from "../features/preview/database/database-block-parser";
+import type {
+  DatabaseBlockConfig,
+  DatabaseFilterGroup,
+  DatabasePropertiesByView,
+  DatabaseSortRule,
+  DatabaseViewSpec,
+} from "../features/preview/database/database-types";
 import { MonitoringRenderValue } from "../features/monitoring/MonitoringRenderValue";
 import {
   createMonitoringRenderRule,
@@ -479,6 +489,174 @@ const buildFallbackFormulaDefinition = (formulaKey: string): DatabaseFormulaDefi
     attributeKeys: [fallbackAttributeKey],
     source: { type: "current-folder" },
     shortTextRule: { ...DEFAULT_DATABASE_FORMULA_SHORT_TEXT_RULE },
+  };
+};
+
+const pruneDatabaseFilterGroupByKeys = (
+  group: DatabaseFilterGroup,
+  removalKeys: Set<string>,
+): DatabaseFilterGroup => ({
+  ...group,
+  rules: group.rules.flatMap((entry) => {
+    if ("rules" in entry) {
+      return [pruneDatabaseFilterGroupByKeys(entry, removalKeys)];
+    }
+    return removalKeys.has(normalizeLower(entry.field)) ? [] : [{ ...entry }];
+  }),
+});
+
+const pruneDatabaseSortRulesByKeys = (
+  rules: DatabaseSortRule[],
+  removalKeys: Set<string>,
+) => rules.filter((rule) => !removalKeys.has(normalizeLower(rule.field)));
+
+const pruneDatabaseViewSpecByKeys = (
+  view: DatabaseViewSpec,
+  removalKeys: Set<string>,
+): DatabaseViewSpec => ({
+  ...view,
+  groupBy: removalKeys.has(normalizeLower(view.groupBy ?? "")) ? null : view.groupBy ?? null,
+  timelineStartField: removalKeys.has(normalizeLower(view.timelineStartField ?? ""))
+    ? null
+    : view.timelineStartField ?? null,
+  timelineEndField: removalKeys.has(normalizeLower(view.timelineEndField ?? ""))
+    ? null
+    : view.timelineEndField ?? null,
+  projectStartField: removalKeys.has(normalizeLower(view.projectStartField ?? ""))
+    ? null
+    : view.projectStartField ?? null,
+  projectUnitField: removalKeys.has(normalizeLower(view.projectUnitField ?? ""))
+    ? null
+    : view.projectUnitField ?? null,
+  pieGroupField: removalKeys.has(normalizeLower(view.pieGroupField ?? "")) ? null : view.pieGroupField ?? null,
+  pieAggregateField: removalKeys.has(normalizeLower(view.pieAggregateField ?? ""))
+    ? null
+    : view.pieAggregateField ?? null,
+});
+
+const pruneDatabasePropertiesByViewByKeys = (
+  propertiesByView: DatabasePropertiesByView | undefined,
+  removalKeys: Set<string>,
+): DatabasePropertiesByView | undefined => {
+  if (!propertiesByView) {
+    return propertiesByView;
+  }
+  const filterEntries = (entries: string[] | undefined) =>
+    (entries ?? []).filter((entry) => !removalKeys.has(normalizeLower(entry)));
+  return {
+    ...(propertiesByView.table ? { table: filterEntries(propertiesByView.table) } : {}),
+    ...(propertiesByView.kanban ? { kanban: filterEntries(propertiesByView.kanban) } : {}),
+    ...(propertiesByView.gantt ? { gantt: filterEntries(propertiesByView.gantt) } : {}),
+    ...(propertiesByView.project ? { project: filterEntries(propertiesByView.project) } : {}),
+    ...(propertiesByView.pie ? { pie: filterEntries(propertiesByView.pie) } : {}),
+  };
+};
+
+const pruneFormulaFromDatabaseBlockConfig = (
+  config: DatabaseBlockConfig,
+  formulaKey: string,
+): { changed: boolean; config: DatabaseBlockConfig } => {
+  const removalKeys = new Set<string>([buildFormulaGroupId(formulaKey)]);
+  const originalSignature = stableSerialize(config);
+
+  const nextFields = (config.fields ?? []).filter((field) => {
+    const normalizedKey = normalizeLower(field.key);
+    const normalizedLabel = normalizeLower(field.label ?? "");
+    const shouldRemove =
+      removalKeys.has(normalizedKey) ||
+      (normalizedLabel.length > 0 && removalKeys.has(normalizedLabel));
+    if (shouldRemove) {
+      if (normalizedKey) {
+        removalKeys.add(normalizedKey);
+      }
+      if (normalizedLabel) {
+        removalKeys.add(normalizedLabel);
+      }
+    }
+    return !shouldRemove;
+  });
+
+  const filterFieldKeys = (entries: string[]) =>
+    entries.filter((entry) => !removalKeys.has(normalizeLower(entry)));
+
+  const nextConfig: DatabaseBlockConfig = {
+    ...config,
+    fields: nextFields,
+    columns: filterFieldKeys(config.columns),
+    view: pruneDatabaseViewSpecByKeys(config.view, removalKeys),
+    filters: pruneDatabaseFilterGroupByKeys(config.filters, removalKeys),
+    sort: pruneDatabaseSortRulesByKeys(config.sort, removalKeys),
+    propertiesByView: pruneDatabasePropertiesByViewByKeys(config.propertiesByView, removalKeys),
+    views: {
+      ...config.views,
+      items: config.views.items.map((savedView) => ({
+        ...savedView,
+        view: pruneDatabaseViewSpecByKeys(savedView.view, removalKeys),
+        properties: filterFieldKeys(savedView.properties),
+        filters: pruneDatabaseFilterGroupByKeys(savedView.filters, removalKeys),
+        sort: pruneDatabaseSortRulesByKeys(savedView.sort, removalKeys),
+      })),
+    },
+  };
+
+  const nextSignature = stableSerialize(nextConfig);
+  return {
+    changed: nextSignature !== originalSignature,
+    config: nextConfig,
+  };
+};
+
+const removeFormulaFromDatabaseBlocks = ({
+  markdown,
+  formulaKey,
+}: {
+  markdown: string;
+  formulaKey: string;
+}) => {
+  const lineEnding = markdown.includes("\r\n") ? "\r\n" : "\n";
+  const normalizedMarkdown = markdown.replace(/\r\n?/g, "\n");
+  const lines = normalizedMarkdown.split("\n");
+  const ranges = extractDatabaseBlockLineRanges(lines);
+  if (ranges.length === 0) {
+    return {
+      markdown,
+      changed: false,
+    };
+  }
+
+  const nextLines = [...lines];
+  let changed = false;
+
+  for (let index = ranges.length - 1; index >= 0; index -= 1) {
+    const range = ranges[index];
+    if (!range) {
+      continue;
+    }
+    const blockRaw = nextLines.slice(range.startLine, range.endLine + 1).join("\n");
+    const parsed = parseDatabaseBlockConfigFromRaw(blockRaw);
+    if (!parsed.isClosed || parsed.errors.length > 0) {
+      continue;
+    }
+    const pruned = pruneFormulaFromDatabaseBlockConfig(parsed.config, formulaKey);
+    if (!pruned.changed) {
+      continue;
+    }
+    const serialized = serializeDatabaseBlockConfig(pruned.config);
+    const replacementLines = serialized.split("\n");
+    nextLines.splice(range.startLine, range.endLine - range.startLine + 1, ...replacementLines);
+    changed = true;
+  }
+
+  if (!changed) {
+    return {
+      markdown,
+      changed: false,
+    };
+  }
+
+  return {
+    markdown: nextLines.join("\n").replace(/\n/g, lineEnding),
+    changed: true,
   };
 };
 
@@ -1633,10 +1811,7 @@ export const MonitoringRulesPage = () => {
   };
 
   const handleDeleteFormulaAttribute = async (group: FormulaGroup) => {
-    const frontmatterOccurrences = group.occurrences.filter(
-      (occurrence) => occurrence.source === "frontmatter",
-    );
-    const occurrencesByFile = frontmatterOccurrences.reduce(
+    const occurrencesByFile = group.occurrences.reduce(
       (map, occurrence) => {
         const current = map.get(occurrence.filePath) ?? [];
         current.push(occurrence);
@@ -1649,8 +1824,14 @@ export const MonitoringRulesPage = () => {
     for (const [filePath, occurrences] of occurrencesByFile.entries()) {
       const markdown = await invoke<string>("read_text_file", { path: filePath });
       let nextMarkdown = markdown;
-      const sourceKeys = Array.from(new Set(occurrences.map((entry) => entry.key)));
-      for (const sourceKey of sourceKeys) {
+      const frontmatterSourceKeys = Array.from(
+        new Set(
+          occurrences
+            .filter((entry) => entry.source === "frontmatter")
+            .map((entry) => entry.key),
+        ),
+      );
+      for (const sourceKey of frontmatterSourceKeys) {
         const removeResult = removeFrontmatterProperty({
           markdown: nextMarkdown,
           key: sourceKey,
@@ -1662,6 +1843,17 @@ export const MonitoringRulesPage = () => {
         }
         nextMarkdown = removeResult.markdown;
       }
+
+      const databaseCleanupResult = removeFormulaFromDatabaseBlocks({
+        markdown: nextMarkdown,
+        formulaKey: group.displayKey,
+      });
+      nextMarkdown = databaseCleanupResult.markdown;
+
+      if (nextMarkdown === markdown) {
+        continue;
+      }
+
       preparedWrites.set(filePath, { nextMarkdown });
     }
 

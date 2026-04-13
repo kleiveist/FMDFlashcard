@@ -363,13 +363,7 @@
 }
 
 .monitoring-rules-formula-occurrence-link code {
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--ink-muted) 45%, transparent);
-  text-underline-offset: 2px;
-}
-
-.monitoring-rules-formula-occurrence-link:hover code {
-  text-decoration-color: var(--ink);
+  text-decoration: none;
 }
 
 .monitoring-rules-formula-occurrence-link:focus-visible {

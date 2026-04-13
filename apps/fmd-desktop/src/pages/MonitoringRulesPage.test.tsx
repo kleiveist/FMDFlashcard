@@ -1288,6 +1288,131 @@ describe("MonitoringRulesPage", () => {
     cleanup();
   });
 
+  it("deletes formulas globally from frontmatter and database blocks", async () => {
+    const markdownByPath: Record<string, string> = {
+      "/vault/source-a.md": [
+        buildFormulaMarkdown({ key: "f-status", operation: "count" }),
+        "::::",
+        "fields:",
+        "  - key: f-status",
+        "    label: f-status",
+        "    type: formula",
+        "    origin: formula",
+        "    formulaDefinition:",
+        "      version: 1",
+        "      operation: count",
+        "      attributeKeys:",
+        "        - status",
+        "      source:",
+        "        type: current-folder",
+        "      shortTextRule:",
+        "        maxChars: 32",
+        "        maxTokens: 3",
+        "        requireSingleNumericCore: true",
+        "::::",
+      ].join("\n"),
+    };
+    const writeCalls: Array<{ path?: string; contents?: string }> = [];
+    const persistSettings = vi.fn(async () => true);
+    const setFormulaAttributeRegistry = vi.fn();
+
+    mockInvoke.mockImplementation(async (command, payload) => {
+      if (command === "read_text_file") {
+        const typedPayload = payload as { path?: string };
+        return markdownByPath[typedPayload.path ?? ""] ?? "";
+      }
+      if (command === "write_text_file") {
+        const typedPayload = payload as { path?: string; contents?: string };
+        writeCalls.push(typedPayload);
+        if (typedPayload.path && typeof typedPayload.contents === "string") {
+          markdownByPath[typedPayload.path] = typedPayload.contents;
+        }
+        return null;
+      }
+      return "";
+    });
+    mockUseAppState.mockReturnValue({
+      settings: {
+        monitoringRenderProfiles: [
+          {
+            id: "monitoring-status",
+            name: "Status",
+            attributeAliases: ["status"],
+            inputFormat: "code",
+            previewRawValue: "2",
+            scopes: ["monitoring-page", "database", "properties"],
+            enabled: true,
+            rules: [
+              {
+                id: "rule-status-map",
+                type: "value-map",
+                mappings: [{ from: "2", to: "🟢" }],
+                displayMode: "append",
+                separator: " ",
+              },
+            ],
+          },
+        ],
+        setMonitoringRenderProfiles: vi.fn(),
+        persistSettings,
+        formulaAttributeRegistry: [
+          {
+            key: "f-status",
+            definition: {
+              version: 1,
+              operation: "count",
+              attributeKeys: ["status"],
+              source: { type: "current-folder" },
+              shortTextRule: {
+                maxChars: 32,
+                maxTokens: 3,
+                requireSingleNumericCore: true,
+              },
+            },
+          },
+        ],
+        setFormulaAttributeRegistry,
+      },
+      vault: {
+        vaultPath: "/vault",
+        files: [
+          { path: "/vault/source-a.md", relative_path: "source-a.md" },
+        ],
+      },
+    } as unknown as ReturnType<typeof useAppState>);
+
+    const { container, cleanup } = renderPage();
+    await flush();
+
+    await click(
+      Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "Formelattribute",
+      ) ?? null,
+    );
+    await flush();
+
+    await click(container.querySelector(".monitoring-rules-list-item-delete"));
+    await click(
+      Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "Formel loeschen",
+      ) ?? null,
+    );
+    await flush();
+
+    expect(setFormulaAttributeRegistry).toHaveBeenCalledWith([]);
+    expect(persistSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        formulaAttributeRegistry: [],
+      }),
+    );
+    expect(writeCalls).toHaveLength(1);
+    expect(writeCalls[0]?.contents ?? "").not.toContain("f-status:");
+    expect(writeCalls[0]?.contents ?? "").not.toContain("key: f-status");
+    expect(writeCalls[0]?.contents ?? "").not.toContain("label: f-status");
+
+    cleanup();
+  });
+
   it("opens profile delete popup from active list item and supports close + confirm flows", async () => {
     const persistSettings = vi.fn(async () => true);
     const setMonitoringRenderProfiles = vi.fn();
