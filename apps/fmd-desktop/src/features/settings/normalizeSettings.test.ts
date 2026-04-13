@@ -296,4 +296,57 @@ describe("normalizeSettings", () => {
     expect(normalized.settings.examTaskTypeDefaultTimeSeconds.qa).toBe(70);
     expect(normalized.settings.examTaskTypeDefaultsByUserId).toEqual({});
   });
+
+  it("normalizes and deduplicates formula registry entries case-insensitively", () => {
+    const normalized = normalizeSettings({
+      formula_attribute_registry: [
+        {
+          key: "f-Score",
+          definition: {
+            version: 1,
+            operation: "count",
+            attributeKeys: ["score"],
+            source: { type: "current-folder" },
+            shortTextRule: {
+              maxChars: 32,
+              maxTokens: 3,
+              requireSingleNumericCore: true,
+            },
+          },
+        },
+        {
+          key: "f-score",
+          definition: {
+            version: 1,
+            operation: "sum",
+            attributeKeys: ["score"],
+            source: { type: "current-folder" },
+            shortTextRule: {
+              maxChars: 40,
+              maxTokens: 4,
+              requireSingleNumericCore: true,
+            },
+          },
+        },
+        {
+          key: "not-a-formula",
+          definition: {},
+        },
+      ],
+    } as unknown as AppSettings);
+
+    expect(normalized.settings.formulaAttributeRegistry).toHaveLength(1);
+    expect(normalized.settings.formulaAttributeRegistry[0]).toMatchObject({
+      key: "f-score",
+      definition: {
+        operation: "sum",
+      },
+    });
+  });
+
+  it("keeps backward compatibility when formula registry field is missing", () => {
+    const normalized = normalizeSettings({} as AppSettings);
+
+    expect(normalized.settings.formulaAttributeRegistry).toEqual([]);
+  });
 });

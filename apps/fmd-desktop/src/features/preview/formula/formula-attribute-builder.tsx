@@ -22,6 +22,8 @@ type FormulaAttributeBuilderProps = {
   attributes: FormulaBuilderAttributeOption[];
   disabled?: boolean;
   idPrefix?: string;
+  showOperationField?: boolean;
+  showSourceTypeField?: boolean;
   folderSuggestions?: string[];
   onChange: (
     next:
@@ -81,6 +83,8 @@ export const FormulaAttributeBuilder = ({
   attributes,
   disabled = false,
   idPrefix = "formula-builder",
+  showOperationField = true,
+  showSourceTypeField = true,
   folderSuggestions,
   onChange,
 }: FormulaAttributeBuilderProps) => {
@@ -244,35 +248,39 @@ export const FormulaAttributeBuilder = ({
         )}
       </div>
 
-      <label className="formula-attribute-builder-field">
-        <span>Operation</span>
-        <select
-          value={value.operation}
-          disabled={disabled}
-          onChange={(event) => handleOperationChange(event.target.value as DatabaseFormulaOperation)}
-        >
-          {availableOperations.map((operation) => (
-            <option key={operation} value={operation}>
-              {OPERATION_LABELS[operation]}
-            </option>
-          ))}
-        </select>
-      </label>
+      {showOperationField ? (
+        <label className="formula-attribute-builder-field">
+          <span>Operation</span>
+          <select
+            value={value.operation}
+            disabled={disabled}
+            onChange={(event) => handleOperationChange(event.target.value as DatabaseFormulaOperation)}
+          >
+            {availableOperations.map((operation) => (
+              <option key={operation} value={operation}>
+                {OPERATION_LABELS[operation]}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
 
-      <label className="formula-attribute-builder-field">
-        <span>Quelle</span>
-        <select
-          value={value.source.type}
-          disabled={disabled}
-          onChange={(event) => handleSourceTypeChange(event.target.value as DatabaseFormulaSourceType)}
-        >
-          {(Object.keys(SOURCE_LABELS) as DatabaseFormulaSourceType[]).map((sourceType) => (
-            <option key={sourceType} value={sourceType}>
-              {SOURCE_LABELS[sourceType]}
-            </option>
-          ))}
-        </select>
-      </label>
+      {showSourceTypeField ? (
+        <label className="formula-attribute-builder-field">
+          <span>Quelle</span>
+          <select
+            value={value.source.type}
+            disabled={disabled}
+            onChange={(event) => handleSourceTypeChange(event.target.value as DatabaseFormulaSourceType)}
+          >
+            {(Object.keys(SOURCE_LABELS) as DatabaseFormulaSourceType[]).map((sourceType) => (
+              <option key={sourceType} value={sourceType}>
+                {SOURCE_LABELS[sourceType]}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
 
       {value.source.type === "explicit-folder" ? (
         <div className="formula-attribute-builder-field">

@@ -16,6 +16,7 @@ import {
 import { ModalShell } from "../components/ModalShell";
 import { useAppState } from "../components/AppStateProvider";
 import { TrashIcon } from "../components/icons";
+import type { FormulaRegistryEntry } from "../features/settings/useAppSettings";
 import {
   addFrontmatterProperty,
   buildFrontmatterSuggestionIndex,
@@ -68,6 +69,32 @@ const ALL_RULE_TYPES: MonitoringRenderRule["type"][] = [
   "threshold-symbol",
   "grouped-label-map",
 ];
+
+const FORMULA_OPERATION_OPTIONS: DatabaseFormulaDefinitionV1["operation"][] = [
+  "avg",
+  "sum",
+  "count",
+  "group_count",
+];
+
+const FORMULA_OPERATION_LABELS: Record<DatabaseFormulaDefinitionV1["operation"], string> = {
+  avg: "Durchschnitt",
+  sum: "Summe",
+  count: "Anzahl",
+  group_count: "Gruppieren und Zaehlen",
+};
+
+const FORMULA_SOURCE_TYPE_OPTIONS: DatabaseFormulaDefinitionV1["source"]["type"][] = [
+  "current-folder",
+  "explicit-folder",
+  "multi-folder",
+];
+
+const FORMULA_SOURCE_TYPE_LABELS: Record<DatabaseFormulaDefinitionV1["source"]["type"], string> = {
+  "current-folder": "Aktueller Ordner",
+  "explicit-folder": "Ein Ordner",
+  "multi-folder": "Mehrere Ordner",
+};
 
 const toLabel = (value: string) =>
   value
@@ -379,6 +406,7 @@ type FormulaGroup = {
   definition: DatabaseFormulaDefinitionV1;
   occurrences: FormulaOccurrence[];
   hasConflict: boolean;
+  hasRegistryEntry: boolean;
 };
 
 const isFormulaPropertyKey = (key: string) => normalizeLower(key).startsWith("f-");
@@ -396,21 +424,6 @@ const stableSerialize = (value: unknown): string => {
     return `{${entries.join(",")}}`;
   }
   return JSON.stringify(value);
-};
-
-const resolveFormulaSourceSummary = (definition: DatabaseFormulaDefinitionV1) => {
-  if (definition.source.type === "current-folder") {
-    return "Aktueller Ordner";
-  }
-  if (definition.source.type === "explicit-folder") {
-    const explicitPath = definition.source.path?.trim() ?? "";
-    return explicitPath ? `Ein Ordner: ${explicitPath}` : "Ein Ordner";
-  }
-  const paths = definition.source.paths ?? [];
-  if (paths.length === 0) {
-    return "Mehrere Ordner";
-  }
-  return `Mehrere Ordner: ${paths.join(", ")}`;
 };
 
 const buildFormulaAttributeOptions = (suggestions: string[]): FormulaBuilderAttributeOption[] =>
@@ -449,8 +462,53 @@ const buildNextFormulaKey = (existingGroups: FormulaGroup[]) => {
   return `${base}-${suffix}`;
 };
 
+const normalizeFormulaRegistryEntries = (
+  entries: FormulaRegistryEntry[],
+): FormulaRegistryEntry[] => {
+  const dedupedByKey = new Map<string, FormulaRegistryEntry>();
+  entries.forEach((entry) => {
+    const key = entry.key?.trim() ?? "";
+    if (!isFormulaPropertyKey(key)) {
+      return;
+    }
+    const normalizedDefinition = normalizeDatabaseFormulaDefinitionV1(entry.definition);
+    if (!normalizedDefinition) {
+      return;
+    }
+    dedupedByKey.set(buildFormulaGroupId(key), {
+      key,
+      definition: normalizedDefinition,
+    });
+  });
+  return Array.from(dedupedByKey.values()).sort((left, right) =>
+    left.key.localeCompare(right.key, undefined, { sensitivity: "base" }));
+};
+
+const upsertFormulaRegistryEntry = (
+  entries: FormulaRegistryEntry[],
+  nextEntry: FormulaRegistryEntry,
+) => {
+  const normalizedKey = buildFormulaGroupId(nextEntry.key);
+  const filtered = entries.filter((entry) => buildFormulaGroupId(entry.key) !== normalizedKey);
+  return normalizeFormulaRegistryEntries([
+    ...filtered,
+    nextEntry,
+  ]);
+};
+
+const removeFormulaRegistryEntryByKey = (
+  entries: FormulaRegistryEntry[],
+  key: string,
+) => {
+  const normalizedKey = buildFormulaGroupId(key);
+  return normalizeFormulaRegistryEntries(
+    entries.filter((entry) => buildFormulaGroupId(entry.key) !== normalizedKey),
+  );
+};
+
 const collectFormulaGroups = (
   files: Array<{ filePath: string; fileRelativePath: string; markdown: string }>,
+  registryEntries: FormulaRegistryEntry[],
 ) => {
   const groups = new Map<
     string,
@@ -461,6 +519,7 @@ const collectFormulaGroups = (
       definition: DatabaseFormulaDefinitionV1;
       occurrences: FormulaOccurrence[];
       definitionSignatures: Set<string>;
+      hasRegistryEntry: boolean;
     }
   >();
   files.forEach((file) => {
@@ -499,7 +558,32 @@ const collectFormulaGroups = (
           key: property.key,
         }],
         definitionSignatures: new Set([signature]),
+        hasRegistryEntry: false,
       });
+    });
+  });
+
+  registryEntries.forEach((entry) => {
+    const normalizedDefinition = normalizeDatabaseFormulaDefinitionV1(entry.definition);
+    if (!normalizedDefinition) {
+      return;
+    }
+    const normalizedKey = buildFormulaGroupId(entry.key);
+    const signature = stableSerialize(normalizedDefinition);
+    const current = groups.get(normalizedKey);
+    if (current) {
+      current.hasRegistryEntry = true;
+      current.definitionSignatures.add(signature);
+      return;
+    }
+    groups.set(normalizedKey, {
+      id: normalizedKey,
+      normalizedKey,
+      displayKey: entry.key,
+      definition: normalizedDefinition,
+      occurrences: [],
+      definitionSignatures: new Set([signature]),
+      hasRegistryEntry: true,
     });
   });
 
@@ -514,6 +598,7 @@ const collectFormulaGroups = (
         .sort((left, right) =>
           left.fileRelativePath.localeCompare(right.fileRelativePath, undefined, { sensitivity: "base" })),
       hasConflict: group.definitionSignatures.size > 1,
+      hasRegistryEntry: group.hasRegistryEntry,
     }))
     .sort((left, right) =>
       left.displayKey.localeCompare(right.displayKey, undefined, { sensitivity: "base" }));
@@ -524,6 +609,10 @@ const collectFormulaGroups = (
 export const MonitoringRulesPage = () => {
   const { settings, vault } = useAppState();
   const profiles = settings.monitoringRenderProfiles;
+  const formulaAttributeRegistry = useMemo(
+    () => normalizeFormulaRegistryEntries(settings.formulaAttributeRegistry ?? []),
+    [settings.formulaAttributeRegistry],
+  );
 
   const [selectedId, setSelectedId] = useState<string | null>(profiles[0]?.id ?? null);
   const [draft, setDraft] = useState<MonitoringRenderProfile | null>(
@@ -565,23 +654,25 @@ export const MonitoringRulesPage = () => {
     null,
   );
   const [formulaSavePending, setFormulaSavePending] = useState(false);
+  const [profileDeleteTargetId, setProfileDeleteTargetId] = useState<string | null>(null);
+  const [profileDeletePending, setProfileDeletePending] = useState(false);
+  const [formulaDeleteTargetId, setFormulaDeleteTargetId] = useState<string | null>(null);
+  const [formulaDeletePending, setFormulaDeletePending] = useState(false);
 
   const selectedProfile = useMemo(
     () => profiles.find((profile) => profile.id === selectedId) ?? null,
     [profiles, selectedId],
   );
 
-  const loadFormulaGroups = useCallback(async () => {
-    if (!vault.vaultPath) {
-      setFormulaGroups([]);
-      setFormulaGroupsState("ready");
-      return;
-    }
+  const loadFormulaGroups = useCallback(async (registryOverride?: FormulaRegistryEntry[]) => {
+    const effectiveRegistryEntries = normalizeFormulaRegistryEntries(
+      registryOverride ?? formulaAttributeRegistry,
+    );
     const markdownFiles = vault.files.filter((file) =>
       file.path.toLowerCase().endsWith(".md")
     );
-    if (markdownFiles.length === 0) {
-      setFormulaGroups([]);
+    if (!vault.vaultPath || markdownFiles.length === 0) {
+      setFormulaGroups(collectFormulaGroups([], effectiveRegistryEntries));
       setFormulaGroupsState("ready");
       return;
     }
@@ -604,13 +695,21 @@ export const MonitoringRulesPage = () => {
     const readyFiles = loadedMarkdownByPath.filter(
       (entry): entry is { filePath: string; fileRelativePath: string; markdown: string } => Boolean(entry),
     );
-    setFormulaGroups(collectFormulaGroups(readyFiles));
+    setFormulaGroups(collectFormulaGroups(readyFiles, effectiveRegistryEntries));
     setFormulaGroupsState("ready");
-  }, [vault.files, vault.vaultPath]);
+  }, [formulaAttributeRegistry, vault.files, vault.vaultPath]);
 
   const selectedFormulaGroup = useMemo(
     () => formulaGroups.find((group) => group.id === selectedFormulaGroupId) ?? null,
     [formulaGroups, selectedFormulaGroupId],
+  );
+  const profileDeleteTarget = useMemo(
+    () => profiles.find((profile) => profile.id === profileDeleteTargetId) ?? null,
+    [profiles, profileDeleteTargetId],
+  );
+  const formulaDeleteTarget = useMemo(
+    () => formulaGroups.find((group) => group.id === formulaDeleteTargetId) ?? null,
+    [formulaDeleteTargetId, formulaGroups],
   );
 
   const formulaFolderSuggestions = useMemo(
@@ -752,7 +851,19 @@ export const MonitoringRulesPage = () => {
 
   useEffect(() => {
     setFormulaGroupsState("idle");
-  }, [vault.files, vault.vaultPath]);
+  }, [formulaAttributeRegistry, vault.files, vault.vaultPath]);
+
+  useEffect(() => {
+    if (profileDeleteTargetId && !profiles.some((profile) => profile.id === profileDeleteTargetId)) {
+      setProfileDeleteTargetId(null);
+    }
+  }, [profileDeleteTargetId, profiles]);
+
+  useEffect(() => {
+    if (formulaDeleteTargetId && !formulaGroups.some((group) => group.id === formulaDeleteTargetId)) {
+      setFormulaDeleteTargetId(null);
+    }
+  }, [formulaDeleteTargetId, formulaGroups]);
 
   useEffect(() => {
     if (formulaGroups.length === 0) {
@@ -881,6 +992,18 @@ export const MonitoringRulesPage = () => {
     return true;
   };
 
+  const persistFormulaRegistry = async (nextRegistry: FormulaRegistryEntry[]) => {
+    settings.setFormulaAttributeRegistry(nextRegistry);
+    const saved = await settings.persistSettings({
+      formulaAttributeRegistry: nextRegistry,
+    });
+    if (!saved) {
+      setStatusError("Formel-Registry konnte nicht gespeichert werden.");
+      return false;
+    }
+    return true;
+  };
+
   const handleCreateProfile = async () => {
     const profile = buildInitialProfile();
     const nextProfiles = [...profiles, profile];
@@ -898,24 +1021,27 @@ export const MonitoringRulesPage = () => {
     setStatusMessage("Profil erstellt.");
   };
 
-  const handleDeleteProfile = async () => {
-    if (!selectedId) {
+  const handleDeleteProfile = async (profileId: string) => {
+    if (!profileId) {
       return;
     }
-    const nextProfiles = profiles.filter((profile) => profile.id !== selectedId);
+    const nextProfiles = profiles.filter((profile) => profile.id !== profileId);
     const saved = await persistProfiles(nextProfiles);
     if (!saved) {
       return;
     }
     setPreviewRawByProfileId((current) => {
-      if (!(selectedId in current)) {
+      if (!(profileId in current)) {
         return current;
       }
       const next = { ...current };
-      delete next[selectedId];
+      delete next[profileId];
       return next;
     });
-    setSelectedId(nextProfiles[0]?.id ?? null);
+    setSelectedId((current) =>
+      current === profileId ? (nextProfiles[0]?.id ?? null) : current,
+    );
+    setProfileDeleteTargetId(null);
     setStatusError("");
     setStatusMessage("Profil entfernt.");
   };
@@ -1144,6 +1270,14 @@ export const MonitoringRulesPage = () => {
     setFormulaSavePending(true);
     try {
       const renameRequested = normalizeLower(nextKey) !== selectedFormulaGroup.normalizedKey;
+      const registryWithoutSelected = removeFormulaRegistryEntryByKey(
+        formulaAttributeRegistry,
+        selectedFormulaGroup.displayKey,
+      );
+      const nextRegistry = upsertFormulaRegistryEntry(
+        registryWithoutSelected,
+        { key: nextKey, definition: normalizedDefinition },
+      );
       const occurrencesByFile = selectedFormulaGroup.occurrences.reduce(
         (map, occurrence) => {
           const current = map.get(occurrence.filePath) ?? [];
@@ -1205,6 +1339,11 @@ export const MonitoringRulesPage = () => {
         });
       }
 
+      const savedRegistry = await persistFormulaRegistry(nextRegistry);
+      if (!savedRegistry) {
+        return;
+      }
+
       await Promise.all(
         Array.from(preparedWrites.entries()).map(([filePath, prepared]) =>
           invoke("write_text_file", {
@@ -1213,11 +1352,11 @@ export const MonitoringRulesPage = () => {
           })
         ),
       );
-      await loadFormulaGroups();
+      await loadFormulaGroups(nextRegistry);
       setSelectedFormulaGroupId(buildFormulaGroupId(nextKey));
       setStatusError("");
       setStatusMessage(
-        `Formel ${nextKey} gespeichert (${preparedWrites.size} Datei${preparedWrites.size === 1 ? "" : "en"}).`,
+        `Formel ${nextKey} gespeichert (${preparedWrites.size} Datei${preparedWrites.size === 1 ? "" : "en"} aktualisiert).`,
       );
     } catch (error) {
       setStatusMessage("");
@@ -1230,23 +1369,6 @@ export const MonitoringRulesPage = () => {
   };
 
   const handleCreateFormulaAttribute = async () => {
-    const markdownFiles = vault.files
-      .filter((file) => file.path.toLowerCase().endsWith(".md"))
-      .sort((left, right) => left.relative_path.localeCompare(right.relative_path, undefined, { sensitivity: "base" }));
-    if (markdownFiles.length === 0) {
-      setStatusMessage("");
-      setStatusError("Keine Markdown-Datei verfuegbar, um eine Formel anzulegen.");
-      return;
-    }
-
-    const preferredPath = selectedFormulaGroup?.occurrences[0]?.filePath;
-    const targetFile = markdownFiles.find((file) => file.path === preferredPath) ?? markdownFiles[0];
-    if (!targetFile) {
-      setStatusMessage("");
-      setStatusError("Keine Zieldatei fuer neue Formel gefunden.");
-      return;
-    }
-
     const defaultAttributeKey = attributeAliasSuggestions.find((entry) => !isFormulaPropertyKey(entry))
       ?? draft?.attributeAliases[0]
       ?? "score";
@@ -1260,34 +1382,156 @@ export const MonitoringRulesPage = () => {
     };
 
     try {
-      const markdown = await invoke<string>("read_text_file", { path: targetFile.path });
-      const addResult = addFrontmatterProperty({
-        markdown,
-        key: nextKey,
-        kind: "formula",
-        value: defaultDefinition,
-      });
-      if (addResult.error) {
-        setStatusMessage("");
-        setStatusError(addResult.error);
+      const nextRegistry = upsertFormulaRegistryEntry(
+        formulaAttributeRegistry,
+        {
+          key: nextKey,
+          definition: defaultDefinition,
+        },
+      );
+      const saved = await persistFormulaRegistry(nextRegistry);
+      if (!saved) {
         return;
       }
-      await invoke("write_text_file", {
-        path: targetFile.path,
-        contents: addResult.markdown,
-      });
-      await loadFormulaGroups();
+      await loadFormulaGroups(nextRegistry);
       setSelectedFormulaGroupId(buildFormulaGroupId(nextKey));
       setFormulaKeyDraft(nextKey);
       setFormulaDefinitionDraft(defaultDefinition);
       setStatusError("");
-      setStatusMessage(`Formel ${nextKey} erstellt.`);
+      setStatusMessage(`Formel ${nextKey} erstellt (unzugeordnet).`);
     } catch (error) {
       setStatusMessage("");
       setStatusError(
         `Formel konnte nicht erstellt werden: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
+  };
+
+  const handleDeleteFormulaAttribute = async (group: FormulaGroup) => {
+    const occurrencesByFile = group.occurrences.reduce(
+      (map, occurrence) => {
+        const current = map.get(occurrence.filePath) ?? [];
+        current.push(occurrence);
+        map.set(occurrence.filePath, current);
+        return map;
+      },
+      new Map<string, FormulaOccurrence[]>(),
+    );
+    const preparedWrites = new Map<string, { nextMarkdown: string }>();
+    for (const [filePath, occurrences] of occurrencesByFile.entries()) {
+      const markdown = await invoke<string>("read_text_file", { path: filePath });
+      let nextMarkdown = markdown;
+      const sourceKeys = Array.from(new Set(occurrences.map((entry) => entry.key)));
+      for (const sourceKey of sourceKeys) {
+        const removeResult = removeFrontmatterProperty({
+          markdown: nextMarkdown,
+          key: sourceKey,
+        });
+        if (removeResult.error) {
+          setStatusMessage("");
+          setStatusError(`${occurrences[0]?.fileRelativePath ?? filePath}: ${removeResult.error}`);
+          return;
+        }
+        nextMarkdown = removeResult.markdown;
+      }
+      preparedWrites.set(filePath, { nextMarkdown });
+    }
+
+    const nextRegistry = removeFormulaRegistryEntryByKey(
+      formulaAttributeRegistry,
+      group.displayKey,
+    );
+    const savedRegistry = await persistFormulaRegistry(nextRegistry);
+    if (!savedRegistry) {
+      return;
+    }
+
+    await Promise.all(
+      Array.from(preparedWrites.entries()).map(([filePath, prepared]) =>
+        invoke("write_text_file", {
+          path: filePath,
+          contents: prepared.nextMarkdown,
+        }),
+      ),
+    );
+    await loadFormulaGroups(nextRegistry);
+    setSelectedFormulaGroupId((current) =>
+      current === group.id ? null : current,
+    );
+    setFormulaDeleteTargetId(null);
+    setStatusError("");
+    setStatusMessage(
+      `Formel ${group.displayKey} entfernt (${preparedWrites.size} Datei${preparedWrites.size === 1 ? "" : "en"} bereinigt).`,
+    );
+  };
+
+  const handleConfirmDeleteFormulaAttribute = async () => {
+    if (!formulaDeleteTarget || formulaDeletePending) {
+      return;
+    }
+    setFormulaDeletePending(true);
+    try {
+      await handleDeleteFormulaAttribute(formulaDeleteTarget);
+    } catch (error) {
+      setStatusMessage("");
+      setStatusError(
+        `Formel konnte nicht entfernt werden: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setFormulaDeletePending(false);
+    }
+  };
+
+  const handleConfirmDeleteProfile = async () => {
+    if (!profileDeleteTarget || profileDeletePending) {
+      return;
+    }
+    setProfileDeletePending(true);
+    try {
+      await handleDeleteProfile(profileDeleteTarget.id);
+    } catch (error) {
+      setStatusMessage("");
+      setStatusError(
+        `Profil konnte nicht entfernt werden: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setProfileDeletePending(false);
+    }
+  };
+
+  const handleFormulaOperationChange = (nextOperation: DatabaseFormulaDefinitionV1["operation"]) => {
+    setFormulaDefinitionDraft((current) => {
+      if (!current) {
+        return current;
+      }
+      return {
+        ...current,
+        operation: nextOperation,
+      };
+    });
+  };
+
+  const handleFormulaSourceTypeChange = (nextType: DatabaseFormulaDefinitionV1["source"]["type"]) => {
+    setFormulaDefinitionDraft((current) => {
+      if (!current) {
+        return current;
+      }
+      const nextSource = {
+        type: nextType,
+      } as DatabaseFormulaDefinitionV1["source"];
+      if (nextType === "explicit-folder") {
+        nextSource.path = current.source.path?.trim() ?? "";
+      }
+      if (nextType === "multi-folder") {
+        nextSource.paths = current.source.type === "multi-folder"
+          ? [...(current.source.paths ?? [])]
+          : [];
+      }
+      return {
+        ...current,
+        source: nextSource,
+      };
+    });
   };
 
   return (
@@ -1331,14 +1575,6 @@ export const MonitoringRulesPage = () => {
               </button>
               <button
                 type="button"
-                className="ghost small"
-                disabled={!selectedId || profiles.length <= 1}
-                onClick={() => void handleDeleteProfile()}
-              >
-                Profil loeschen
-              </button>
-              <button
-                type="button"
                 className="primary small"
                 disabled={!draft}
                 onClick={() => void handleSaveDraft()}
@@ -1351,7 +1587,7 @@ export const MonitoringRulesPage = () => {
               <button
                 type="button"
                 className="ghost small"
-                disabled={formulaGroupsState === "loading"}
+                disabled={formulaGroupsState === "loading" || formulaDeletePending}
                 onClick={() => void loadFormulaGroups()}
               >
                 Neu laden
@@ -1359,7 +1595,7 @@ export const MonitoringRulesPage = () => {
               <button
                 type="button"
                 className="ghost small"
-                disabled={formulaGroupsState === "loading" || formulaSavePending}
+                disabled={formulaGroupsState === "loading" || formulaSavePending || formulaDeletePending}
                 onClick={() => void handleCreateFormulaAttribute()}
               >
                 Formel erstellen
@@ -1367,7 +1603,7 @@ export const MonitoringRulesPage = () => {
               <button
                 type="button"
                 className="primary small"
-                disabled={!selectedFormulaGroup || !formulaDefinitionDraft || formulaSavePending}
+                disabled={!selectedFormulaGroup || !formulaDefinitionDraft || formulaSavePending || formulaDeletePending}
                 onClick={() => void handleSaveFormulaAttribute()}
               >
                 Formel speichern
@@ -1383,19 +1619,34 @@ export const MonitoringRulesPage = () => {
         <div className="monitoring-rules-layout">
           <aside className="monitoring-rules-list" aria-label="Attribute rules profile list">
             {profiles.map((profile) => (
-              <button
-                key={profile.id}
-                type="button"
-                className={`monitoring-rules-list-item${profile.id === selectedId ? " is-active" : ""}`}
-                onClick={() => {
-                  setSelectedId(profile.id);
-                  setStatusMessage("");
-                  setStatusError("");
-                }}
-              >
-                <strong>{profile.name}</strong>
-                <span>{profile.attributeAliases.join(", ")}</span>
-              </button>
+              <div key={profile.id} className="monitoring-rules-list-entry">
+                <button
+                  type="button"
+                  className={`monitoring-rules-list-item${profile.id === selectedId ? " is-active" : ""}`}
+                  onClick={() => {
+                    setSelectedId(profile.id);
+                    setStatusMessage("");
+                    setStatusError("");
+                  }}
+                >
+                  <strong>{profile.name}</strong>
+                  <span>{profile.attributeAliases.join(", ")}</span>
+                </button>
+                {profile.id === selectedId ? (
+                  <button
+                    type="button"
+                    className="monitoring-rules-list-item-delete"
+                    aria-label={`Profil ${profile.name} loeschen`}
+                    disabled={profiles.length <= 1}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setProfileDeleteTargetId(profile.id);
+                    }}
+                  >
+                    <TrashIcon />
+                  </button>
+                ) : null}
+              </div>
             ))}
           </aside>
 
@@ -2155,29 +2406,46 @@ export const MonitoringRulesPage = () => {
               <div className="database-view-empty">Formelattribute werden geladen...</div>
             ) : formulaGroups.length === 0 ? (
               <div className="database-view-empty">
-                Keine Formelattribute gefunden. Gesucht werden Frontmatter-Keys mit `f-`.
+                Keine Formelattribute gefunden. Weder Registry-Eintraege noch Frontmatter-Keys mit `f-` verfuegbar.
               </div>
             ) : (
               formulaGroups.map((group) => (
-                <button
-                  key={group.id}
-                  type="button"
-                  className={`monitoring-rules-list-item${group.id === selectedFormulaGroupId ? " is-active" : ""}`}
-                  onClick={() => {
-                    setSelectedFormulaGroupId(group.id);
-                    setStatusMessage("");
-                    setStatusError("");
-                  }}
-                >
-                  <strong>{group.displayKey}</strong>
-                  <span>
-                    {group.occurrences.length} Fundstelle{group.occurrences.length === 1 ? "" : "n"}
-                  </span>
-                  <span>
-                    {toLabel(group.definition.operation)}
-                    {group.hasConflict ? " - Konflikt" : ""}
-                  </span>
-                </button>
+                <div key={group.id} className="monitoring-rules-list-entry">
+                  <button
+                    type="button"
+                    className={`monitoring-rules-list-item${group.id === selectedFormulaGroupId ? " is-active" : ""}`}
+                    onClick={() => {
+                      setSelectedFormulaGroupId(group.id);
+                      setStatusMessage("");
+                      setStatusError("");
+                    }}
+                  >
+                    <strong>{group.displayKey}</strong>
+                    <span>
+                      {group.occurrences.length === 0
+                        ? "Unzugeordnet"
+                        : `${group.occurrences.length} Fundstelle${group.occurrences.length === 1 ? "" : "n"}`}
+                    </span>
+                    <span>
+                      {toLabel(group.definition.operation)}
+                      {group.hasConflict ? " - Konflikt" : ""}
+                    </span>
+                  </button>
+                  {group.id === selectedFormulaGroupId ? (
+                    <button
+                      type="button"
+                      className="monitoring-rules-list-item-delete"
+                      aria-label={`Formel ${group.displayKey} loeschen`}
+                      disabled={formulaDeletePending}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setFormulaDeleteTargetId(group.id);
+                      }}
+                    >
+                      <TrashIcon />
+                    </button>
+                  ) : null}
+                </div>
               ))
             )}
           </aside>
@@ -2204,22 +2472,38 @@ export const MonitoringRulesPage = () => {
                       />
                     </label>
                     <label>
-                      Fundstellen
-                      <input
-                        className="text-input"
-                        type="text"
-                        value={`${selectedFormulaGroup.occurrences.length}`}
-                        readOnly
-                      />
+                      Operation
+                      <select
+                        value={formulaDefinitionDraft.operation}
+                        onChange={(event) =>
+                          handleFormulaOperationChange(
+                            event.target.value as DatabaseFormulaDefinitionV1["operation"],
+                          )
+                        }
+                      >
+                        {FORMULA_OPERATION_OPTIONS.map((operation) => (
+                          <option key={operation} value={operation}>
+                            {FORMULA_OPERATION_LABELS[operation]}
+                          </option>
+                        ))}
+                      </select>
                     </label>
                     <label>
                       Quelle
-                      <input
-                        className="text-input"
-                        type="text"
-                        value={resolveFormulaSourceSummary(formulaDefinitionDraft)}
-                        readOnly
-                      />
+                      <select
+                        value={formulaDefinitionDraft.source.type}
+                        onChange={(event) =>
+                          handleFormulaSourceTypeChange(
+                            event.target.value as DatabaseFormulaDefinitionV1["source"]["type"],
+                          )
+                        }
+                      >
+                        {FORMULA_SOURCE_TYPE_OPTIONS.map((sourceType) => (
+                          <option key={sourceType} value={sourceType}>
+                            {FORMULA_SOURCE_TYPE_LABELS[sourceType]}
+                          </option>
+                        ))}
+                      </select>
                     </label>
                     <label>
                       Zielattribute
@@ -2240,6 +2524,8 @@ export const MonitoringRulesPage = () => {
                       idPrefix={`monitoring-formula-${selectedFormulaGroup.id}`}
                       value={formulaDefinitionDraft}
                       attributes={formulaAttributeOptions}
+                      showOperationField={false}
+                      showSourceTypeField={false}
                       folderSuggestions={formulaFolderSuggestions}
                       onChange={(next) => {
                         setFormulaDefinitionDraft((current) => {
@@ -2266,18 +2552,25 @@ export const MonitoringRulesPage = () => {
                   Diese Formel wird in {selectedFormulaGroup.occurrences.length} Datei
                   {selectedFormulaGroup.occurrences.length === 1 ? "" : "en"} verwendet.
                 </p>
+                {selectedFormulaGroup.occurrences.length === 0 ? (
+                  <p className="muted">
+                    Keine Dateizuordnung. Die Formel ist nur in der Registry gespeichert.
+                  </p>
+                ) : null}
                 {selectedFormulaGroup.hasConflict ? (
                   <p className="monitoring-rules-formula-conflict-text">
                     Konfliktstatus: Uneinheitliche Definitionen vorhanden.
                   </p>
                 ) : null}
-                <ul className="monitoring-rules-formula-occurrence-list">
-                  {selectedFormulaGroup.occurrences.map((occurrence) => (
-                    <li key={`${occurrence.filePath}::${occurrence.key}`}>
-                      <code>{occurrence.fileRelativePath}</code>
-                    </li>
-                  ))}
-                </ul>
+                {selectedFormulaGroup.occurrences.length > 0 ? (
+                  <ul className="monitoring-rules-formula-occurrence-list">
+                    {selectedFormulaGroup.occurrences.map((occurrence) => (
+                      <li key={`${occurrence.filePath}::${occurrence.key}`}>
+                        <code>{occurrence.fileRelativePath}</code>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </>
             ) : (
               <div className="database-view-empty">Keine Fundstellen verfuegbar.</div>
@@ -2285,6 +2578,67 @@ export const MonitoringRulesPage = () => {
           </aside>
         </div>
       )}
+      <ModalShell
+        isOpen={Boolean(profileDeleteTarget)}
+        title="Profil loeschen"
+        onClose={() => setProfileDeleteTargetId(null)}
+        className="monitoring-rules-confirm-modal"
+      >
+        <div className="monitoring-rules-confirm-content">
+          <p>
+            Soll das Profil <strong>{profileDeleteTarget?.name ?? ""}</strong> wirklich geloescht werden?
+          </p>
+          <div className="monitoring-rules-confirm-actions">
+            <button
+              type="button"
+              className="ghost small"
+              onClick={() => setProfileDeleteTargetId(null)}
+            >
+              Abbrechen
+            </button>
+            <button
+              type="button"
+              className="ghost small monitoring-rules-danger-action"
+              disabled={profileDeletePending}
+              onClick={() => void handleConfirmDeleteProfile()}
+            >
+              Profil loeschen
+            </button>
+          </div>
+        </div>
+      </ModalShell>
+      <ModalShell
+        isOpen={Boolean(formulaDeleteTarget)}
+        title="Formel loeschen"
+        onClose={() => setFormulaDeleteTargetId(null)}
+        className="monitoring-rules-confirm-modal"
+      >
+        <div className="monitoring-rules-confirm-content">
+          <p>
+            Soll die Formel <strong>{formulaDeleteTarget?.displayKey ?? ""}</strong> global geloescht werden?
+          </p>
+          <p className="muted">
+            Registry-Eintrag und alle Fundstellen in Markdown-Dateien werden entfernt.
+          </p>
+          <div className="monitoring-rules-confirm-actions">
+            <button
+              type="button"
+              className="ghost small"
+              onClick={() => setFormulaDeleteTargetId(null)}
+            >
+              Abbrechen
+            </button>
+            <button
+              type="button"
+              className="ghost small monitoring-rules-danger-action"
+              disabled={formulaDeletePending}
+              onClick={() => void handleConfirmDeleteFormulaAttribute()}
+            >
+              Formel loeschen
+            </button>
+          </div>
+        </div>
+      </ModalShell>
     </section>
   );
 };

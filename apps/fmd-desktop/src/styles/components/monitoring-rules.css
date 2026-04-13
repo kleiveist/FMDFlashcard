@@ -67,6 +67,10 @@
   padding: 8px;
 }
 
+.monitoring-rules-list-entry {
+  position: relative;
+}
+
 .monitoring-rules-list-item {
   border: 1px solid transparent;
   border-radius: 10px;
@@ -74,10 +78,13 @@
   color: inherit;
   text-align: left;
   padding: 10px;
+  padding-right: 40px;
   display: flex;
   flex-direction: column;
   gap: 4px;
   cursor: pointer;
+  width: 100%;
+  min-height: 78px;
 }
 
 .monitoring-rules-list-item span {
@@ -88,6 +95,47 @@
 .monitoring-rules-list-item.is-active {
   border-color: var(--accent-border);
   background: color-mix(in srgb, var(--accent-weak-bg) 82%, transparent);
+}
+
+.monitoring-rules-list-item-delete {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 26px;
+  height: 26px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 78%, var(--surface));
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.monitoring-rules-list-item-delete svg {
+  width: 14px;
+  height: 14px;
+}
+
+.monitoring-rules-list-item-delete:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--error-border) 65%, var(--line-soft));
+  background: color-mix(in srgb, var(--error-bg) 70%, transparent);
+  color: var(--error-ink);
+}
+
+.monitoring-rules-list-item-delete:focus-visible {
+  outline: var(--ui-focus-outline);
+  outline-offset: var(--ui-focus-offset);
+}
+
+.monitoring-rules-list-item-delete:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
 }
 
 .monitoring-rules-editor {
@@ -262,6 +310,18 @@
   border-radius: 12px;
   padding: 10px;
   background: color-mix(in srgb, var(--surface) 72%, var(--panel));
+}
+
+.monitoring-rules-formula-builder-section
+  .formula-attribute-builder-option-list[data-formula-builder-scope="attributes"] {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  max-height: 240px;
+}
+
+.monitoring-rules-formula-builder-section
+  .formula-attribute-builder-option-list[data-formula-builder-scope="attributes"]
+  li {
+  min-width: 0;
 }
 
 .monitoring-rules-formula-info {
@@ -624,6 +684,35 @@
   min-height: 0;
 }
 
+.monitoring-rules-confirm-modal {
+  width: min(500px, 94vw);
+}
+
+.monitoring-rules-confirm-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.monitoring-rules-confirm-content p {
+  margin: 0;
+}
+
+.monitoring-rules-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.monitoring-rules-danger-action {
+  border-color: color-mix(in srgb, var(--error-border) 58%, var(--line-soft));
+  color: var(--error-ink);
+}
+
+.monitoring-rules-danger-action:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--error-bg) 78%, transparent);
+}
+
 .monitoring-rules-preview-inputs {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -693,5 +782,10 @@
 
   .monitoring-rules-rule-preview-layout {
     grid-template-columns: 1fr;
+  }
+
+  .monitoring-rules-formula-builder-section
+    .formula-attribute-builder-option-list[data-formula-builder-scope="attributes"] {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   }
 }

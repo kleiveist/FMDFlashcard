@@ -74,6 +74,10 @@ import {
   normalizeMonitoringRenderProfiles,
   type MonitoringRenderProfile,
 } from "../monitoring/monitoring-render-rules";
+import {
+  normalizeDatabaseFormulaDefinitionV1,
+  type DatabaseFormulaDefinitionV1,
+} from "../preview/formula/database-formula-types";
 
 type AppLanguage = "de" | "en";
 type EditorGridIntensity = "light" | "medium" | "strong";
@@ -91,6 +95,11 @@ type MarkdownEditorAccentColor = {
 type MarkdownEditorSettings = {
   accentColor?: MarkdownEditorAccentColor | null;
   accentColorHex?: string | null;
+};
+
+export type FormulaRegistryEntry = {
+  key: string;
+  definition: DatabaseFormulaDefinitionV1;
 };
 
 export type ExamAiEvaluation = {
@@ -205,6 +214,7 @@ export type AppSettings = {
   input_debug_redact_content?: boolean | null;
   keyboard_shortcuts?: KeyboardShortcutSettings | null;
   monitoring_render_profiles?: MonitoringRenderProfile[] | null;
+  formula_attribute_registry?: FormulaRegistryEntry[] | null;
 };
 
 type PersistUpdates = {
@@ -275,6 +285,7 @@ type PersistUpdates = {
   inputDebugRedactContent?: boolean;
   keyboardShortcuts?: KeyboardShortcutSettings;
   monitoringRenderProfiles?: MonitoringRenderProfile[];
+  formulaAttributeRegistry?: FormulaRegistryEntry[];
 };
 
 export type SettingsSnapshot = {
@@ -345,6 +356,7 @@ export type SettingsSnapshot = {
   inputDebugRedactContent: boolean;
   keyboardShortcuts: KeyboardShortcutSettings;
   monitoringRenderProfiles: MonitoringRenderProfile[];
+  formulaAttributeRegistry: FormulaRegistryEntry[];
 };
 
 export const DEFAULT_THEME: ThemeMode = "light";
@@ -915,6 +927,44 @@ const normalizeMarkdownAccentSwatches = (value: unknown) => {
   return Array.from(next).slice(0, 20);
 };
 
+const normalizeFormulaRegistryKey = (value: unknown) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed || !trimmed.toLowerCase().startsWith("f-")) {
+    return null;
+  }
+  return trimmed;
+};
+
+const normalizeFormulaAttributeRegistry = (value: unknown): FormulaRegistryEntry[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const nextByKey = new Map<string, FormulaRegistryEntry>();
+  value.forEach((entry) => {
+    if (!entry || typeof entry !== "object") {
+      return;
+    }
+    const candidate = entry as {
+      key?: unknown;
+      definition?: unknown;
+    };
+    const key = normalizeFormulaRegistryKey(candidate.key);
+    const definition = normalizeDatabaseFormulaDefinitionV1(candidate.definition);
+    if (!key || !definition) {
+      return;
+    }
+    nextByKey.set(key.toLowerCase(), {
+      key,
+      definition,
+    });
+  });
+  return Array.from(nextByKey.values()).sort((left, right) =>
+    left.key.localeCompare(right.key, undefined, { sensitivity: "base" }));
+};
+
 const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings => ({
   active_note_path: settings.activeNotePath,
   vault_path: settings.vaultPath,
@@ -984,6 +1034,7 @@ const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings =>
   input_debug_redact_content: settings.inputDebugRedactContent,
   keyboard_shortcuts: settings.keyboardShortcuts,
   monitoring_render_profiles: settings.monitoringRenderProfiles,
+  formula_attribute_registry: settings.formulaAttributeRegistry,
 });
 
 export const normalizeSettings = (
@@ -1326,6 +1377,9 @@ export const normalizeSettings = (
   const storedMonitoringRenderProfiles = normalizeMonitoringRenderProfiles(
     stored.monitoring_render_profiles,
   );
+  const storedFormulaAttributeRegistry = normalizeFormulaAttributeRegistry(
+    stored.formula_attribute_registry,
+  );
 
   return {
     settings: {
@@ -1396,6 +1450,7 @@ export const normalizeSettings = (
       inputDebugRedactContent: storedInputDebugRedactContent,
       keyboardShortcuts: storedKeyboardShortcuts,
       monitoringRenderProfiles: storedMonitoringRenderProfiles,
+      formulaAttributeRegistry: storedFormulaAttributeRegistry,
     },
     needsShowHiddenFoldersMigration,
     needsKeyboardShortcutsMigration,
@@ -1595,6 +1650,9 @@ export const useAppSettings = () => {
     useState<MonitoringRenderProfile[]>(() =>
       normalizeMonitoringRenderProfiles(null),
     );
+  const [formulaAttributeRegistry, setFormulaAttributeRegistryState] = useState<
+    FormulaRegistryEntry[]
+  >(() => normalizeFormulaAttributeRegistry(null));
   const autoSaveReady = useRef(false);
   const autoSaveTimer = useRef<number | null>(null);
   const needsShowHiddenFoldersMigration = useRef(false);
@@ -1800,6 +1858,15 @@ export const useAppSettings = () => {
     (value: MonitoringRenderProfile[]) => {
       setMonitoringRenderProfilesState(
         normalizeMonitoringRenderProfiles(value),
+      );
+    },
+    [],
+  );
+
+  const setFormulaAttributeRegistry = useCallback(
+    (value: FormulaRegistryEntry[]) => {
+      setFormulaAttributeRegistryState(
+        normalizeFormulaAttributeRegistry(value),
       );
     },
     [],
@@ -2031,6 +2098,7 @@ export const useAppSettings = () => {
       inputDebugRedactContent,
       keyboardShortcuts,
       monitoringRenderProfiles,
+      formulaAttributeRegistry,
     }),
     [
       accentColor,
@@ -2064,6 +2132,7 @@ export const useAppSettings = () => {
       inputDebugRedactContent,
       keyboardShortcuts,
       monitoringRenderProfiles,
+      formulaAttributeRegistry,
       flashcardMode,
       flashcardOrder,
       fastFlashcardMode,
@@ -2183,6 +2252,7 @@ export const useAppSettings = () => {
           inputDebugRedactContent: settings.inputDebugRedactContent,
           keyboardShortcuts: settings.keyboardShortcuts,
           monitoringRenderProfiles: settings.monitoringRenderProfiles,
+          formulaAttributeRegistry: settings.formulaAttributeRegistry,
         });
         return true;
       } catch (error) {
@@ -2318,6 +2388,8 @@ export const useAppSettings = () => {
         keyboardShortcuts: updates.keyboardShortcuts ?? keyboardShortcuts,
         monitoringRenderProfiles:
           updates.monitoringRenderProfiles ?? monitoringRenderProfiles,
+        formulaAttributeRegistry:
+          updates.formulaAttributeRegistry ?? formulaAttributeRegistry,
       };
       const saved = await saveSettings(nextSettings);
       if (saved && "activeNotePath" in updates) {
@@ -2361,6 +2433,7 @@ export const useAppSettings = () => {
       examAutoCardsReturnOnCorrect,
       keyboardShortcuts,
       monitoringRenderProfiles,
+      formulaAttributeRegistry,
       flashcardMode,
       flashcardOrder,
       fastFlashcardMode,
@@ -2501,6 +2574,7 @@ export const useAppSettings = () => {
     setInputDebugRedactContentState(normalized.inputDebugRedactContent);
     setKeyboardShortcutsState(normalized.keyboardShortcuts);
     setMonitoringRenderProfilesState(normalized.monitoringRenderProfiles);
+    setFormulaAttributeRegistryState(normalized.formulaAttributeRegistry);
   }, []);
 
   useEffect(() => {
@@ -2710,6 +2784,7 @@ export const useAppSettings = () => {
     flashcardScope,
     keyboardShortcuts,
     monitoringRenderProfiles,
+    formulaAttributeRegistry,
     showHiddenFolders,
     showEmptyFolders,
     language,
@@ -2764,6 +2839,7 @@ export const useAppSettings = () => {
     setKeyboardShortcutBinding,
     resetKeyboardShortcuts,
     setMonitoringRenderProfiles,
+    setFormulaAttributeRegistry,
     setShowHiddenFolders,
     setShowEmptyFolders,
     setUserVaultCustomPath,

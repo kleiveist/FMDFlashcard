@@ -220,6 +220,8 @@ describe("MonitoringRulesPage", () => {
         ],
         setMonitoringRenderProfiles: vi.fn(),
         persistSettings: vi.fn(async () => true),
+        formulaAttributeRegistry: [],
+        setFormulaAttributeRegistry: vi.fn(),
       },
       vault: {
         vaultPath: null,
@@ -548,6 +550,8 @@ describe("MonitoringRulesPage", () => {
         ],
         setMonitoringRenderProfiles: vi.fn(),
         persistSettings: vi.fn(async () => true),
+        formulaAttributeRegistry: [],
+        setFormulaAttributeRegistry: vi.fn(),
       },
       vault: {
         vaultPath: "/vault",
@@ -579,11 +583,89 @@ describe("MonitoringRulesPage", () => {
     cleanup();
   });
 
+  it("lists orphan formulas from registry even without markdown occurrences", async () => {
+    mockInvoke.mockImplementation(async (command) => {
+      if (command === "read_text_file") {
+        return "---\nscore: 42\n---\n# Demo";
+      }
+      return "";
+    });
+    mockUseAppState.mockReturnValue({
+      settings: {
+        monitoringRenderProfiles: [
+          {
+            id: "monitoring-status",
+            name: "Status",
+            attributeAliases: ["status"],
+            inputFormat: "code",
+            previewRawValue: "2",
+            scopes: ["monitoring-page", "database", "properties"],
+            enabled: true,
+            rules: [
+              {
+                id: "rule-status-map",
+                type: "value-map",
+                mappings: [{ from: "2", to: "🟢" }],
+                displayMode: "append",
+                separator: " ",
+              },
+            ],
+          },
+        ],
+        setMonitoringRenderProfiles: vi.fn(),
+        persistSettings: vi.fn(async () => true),
+        formulaAttributeRegistry: [
+          {
+            key: "f-orphan",
+            definition: {
+              version: 1,
+              operation: "count",
+              attributeKeys: ["score"],
+              source: { type: "current-folder" },
+              shortTextRule: {
+                maxChars: 32,
+                maxTokens: 3,
+                requireSingleNumericCore: true,
+              },
+            },
+          },
+        ],
+        setFormulaAttributeRegistry: vi.fn(),
+      },
+      vault: {
+        vaultPath: "/vault",
+        files: [
+          { path: "/vault/source-a.md", relative_path: "source-a.md" },
+        ],
+      },
+    } as unknown as ReturnType<typeof useAppState>);
+
+    const { container, cleanup } = renderPage();
+    await flush();
+
+    await click(
+      Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "Formelattribute",
+      ) ?? null,
+    );
+    await flush();
+
+    const formulaListItems = container.querySelectorAll(".monitoring-rules-list-item");
+    expect(formulaListItems).toHaveLength(1);
+    expect(formulaListItems[0]?.textContent ?? "").toContain("f-orphan");
+    expect(formulaListItems[0]?.textContent ?? "").toContain("Unzugeordnet");
+    expect(container.textContent).toContain("Keine Dateizuordnung");
+
+    cleanup();
+  });
+
   it("creates a new formula from header actions in formula view", async () => {
     const markdownByPath: Record<string, string> = {
       "/vault/source-a.md": "---\nscore: 42\n---\n# Demo",
     };
     const writeCalls: Array<{ path?: string; contents?: string }> = [];
+    const persistSettings = vi.fn(async () => true);
+    const setFormulaAttributeRegistry = vi.fn();
 
     mockInvoke.mockImplementation(async (command, payload) => {
       if (command === "read_text_file") {
@@ -623,7 +705,9 @@ describe("MonitoringRulesPage", () => {
           },
         ],
         setMonitoringRenderProfiles: vi.fn(),
-        persistSettings: vi.fn(async () => true),
+        persistSettings,
+        formulaAttributeRegistry: [],
+        setFormulaAttributeRegistry,
       },
       vault: {
         vaultPath: "/vault",
@@ -650,10 +734,17 @@ describe("MonitoringRulesPage", () => {
     );
     await flush();
 
-    expect(writeCalls).toHaveLength(1);
-    expect(writeCalls[0]?.path).toBe("/vault/source-a.md");
-    expect(writeCalls[0]?.contents ?? "").toContain("f-new-formula:");
+    expect(writeCalls).toHaveLength(0);
+    expect(setFormulaAttributeRegistry).toHaveBeenCalledTimes(1);
+    expect(persistSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        formulaAttributeRegistry: expect.arrayContaining([
+          expect.objectContaining({ key: "f-new-formula" }),
+        ]),
+      }),
+    );
     expect(container.textContent).toContain("f-new-formula");
+    expect(container.textContent).toContain("Unzugeordnet");
 
     cleanup();
   });
@@ -664,6 +755,8 @@ describe("MonitoringRulesPage", () => {
       "/vault/source-b.md": buildFormulaMarkdown({ key: "f-score", operation: "count" }),
     };
     const writeCalls: Array<{ path?: string; contents?: string }> = [];
+    const persistSettings = vi.fn(async () => true);
+    const setFormulaAttributeRegistry = vi.fn();
 
     mockInvoke.mockImplementation(async (command, payload) => {
       if (command === "read_text_file") {
@@ -703,7 +796,9 @@ describe("MonitoringRulesPage", () => {
           },
         ],
         setMonitoringRenderProfiles: vi.fn(),
-        persistSettings: vi.fn(async () => true),
+        persistSettings,
+        formulaAttributeRegistry: [],
+        setFormulaAttributeRegistry,
       },
       vault: {
         vaultPath: "/vault",
@@ -742,6 +837,14 @@ describe("MonitoringRulesPage", () => {
       expect(entry.contents ?? "").toContain("f-score-renamed:");
       expect(entry.contents ?? "").not.toContain("f-score:");
     });
+    expect(setFormulaAttributeRegistry).toHaveBeenCalledTimes(1);
+    expect(persistSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        formulaAttributeRegistry: expect.arrayContaining([
+          expect.objectContaining({ key: "f-score-renamed" }),
+        ]),
+      }),
+    );
 
     cleanup();
   });
@@ -792,6 +895,8 @@ describe("MonitoringRulesPage", () => {
         ],
         setMonitoringRenderProfiles: vi.fn(),
         persistSettings: vi.fn(async () => true),
+        formulaAttributeRegistry: [],
+        setFormulaAttributeRegistry: vi.fn(),
       },
       vault: {
         vaultPath: "/vault",
@@ -825,6 +930,213 @@ describe("MonitoringRulesPage", () => {
     writeCalls.forEach((entry) => {
       expect(entry.contents ?? "").toContain("operation: count");
     });
+
+    cleanup();
+  });
+
+  it("opens formula delete popup from active list item and supports close + confirm flows", async () => {
+    const markdownByPath: Record<string, string> = {
+      "/vault/source-a.md": buildFormulaMarkdown({ key: "f-score", operation: "count" }),
+    };
+    const writeCalls: Array<{ path?: string; contents?: string }> = [];
+    const persistSettings = vi.fn(async () => true);
+    const setFormulaAttributeRegistry = vi.fn();
+
+    mockInvoke.mockImplementation(async (command, payload) => {
+      if (command === "read_text_file") {
+        const typedPayload = payload as { path?: string };
+        return markdownByPath[typedPayload.path ?? ""] ?? "";
+      }
+      if (command === "write_text_file") {
+        const typedPayload = payload as { path?: string; contents?: string };
+        writeCalls.push(typedPayload);
+        if (typedPayload.path && typeof typedPayload.contents === "string") {
+          markdownByPath[typedPayload.path] = typedPayload.contents;
+        }
+        return null;
+      }
+      return "";
+    });
+    mockUseAppState.mockReturnValue({
+      settings: {
+        monitoringRenderProfiles: [
+          {
+            id: "monitoring-status",
+            name: "Status",
+            attributeAliases: ["status"],
+            inputFormat: "code",
+            previewRawValue: "2",
+            scopes: ["monitoring-page", "database", "properties"],
+            enabled: true,
+            rules: [
+              {
+                id: "rule-status-map",
+                type: "value-map",
+                mappings: [{ from: "2", to: "🟢" }],
+                displayMode: "append",
+                separator: " ",
+              },
+            ],
+          },
+        ],
+        setMonitoringRenderProfiles: vi.fn(),
+        persistSettings,
+        formulaAttributeRegistry: [
+          {
+            key: "f-score",
+            definition: {
+              version: 1,
+              operation: "count",
+              attributeKeys: ["score"],
+              source: { type: "current-folder" },
+              shortTextRule: {
+                maxChars: 32,
+                maxTokens: 3,
+                requireSingleNumericCore: true,
+              },
+            },
+          },
+        ],
+        setFormulaAttributeRegistry,
+      },
+      vault: {
+        vaultPath: "/vault",
+        files: [
+          { path: "/vault/source-a.md", relative_path: "source-a.md" },
+        ],
+      },
+    } as unknown as ReturnType<typeof useAppState>);
+
+    const { container, cleanup } = renderPage();
+    await flush();
+
+    await click(
+      Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "Formelattribute",
+      ) ?? null,
+    );
+    await flush();
+
+    await click(container.querySelector(".monitoring-rules-list-item-delete"));
+    expect(container.querySelector("[aria-label='Formel loeschen']")).toBeTruthy();
+    await click(container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"));
+    expect(container.querySelector("[aria-label='Formel loeschen']")).toBeNull();
+
+    await click(container.querySelector(".monitoring-rules-list-item-delete"));
+    await dispatchEscape();
+    expect(container.querySelector("[aria-label='Formel loeschen']")).toBeNull();
+
+    await click(container.querySelector(".monitoring-rules-list-item-delete"));
+    await mouseDown(container.querySelector("[data-testid='mock-modal-backdrop']"));
+    expect(container.querySelector("[aria-label='Formel loeschen']")).toBeNull();
+
+    await click(container.querySelector(".monitoring-rules-list-item-delete"));
+    await click(
+      Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "Formel loeschen",
+      ) ?? null,
+    );
+    await flush();
+
+    expect(setFormulaAttributeRegistry).toHaveBeenCalledWith([]);
+    expect(persistSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        formulaAttributeRegistry: [],
+      }),
+    );
+    expect(writeCalls).toHaveLength(1);
+    expect(writeCalls[0]?.contents ?? "").not.toContain("f-score:");
+
+    cleanup();
+  });
+
+  it("opens profile delete popup from active list item and supports close + confirm flows", async () => {
+    const persistSettings = vi.fn(async () => true);
+    const setMonitoringRenderProfiles = vi.fn();
+
+    mockUseAppState.mockReturnValue({
+      settings: {
+        monitoringRenderProfiles: [
+          {
+            id: "monitoring-status",
+            name: "Status",
+            attributeAliases: ["status"],
+            inputFormat: "code",
+            previewRawValue: "2",
+            scopes: ["monitoring-page", "database", "properties"],
+            enabled: true,
+            rules: [
+              {
+                id: "rule-status-map",
+                type: "value-map",
+                mappings: [{ from: "2", to: "🟢" }],
+                displayMode: "append",
+                separator: " ",
+              },
+            ],
+          },
+          {
+            id: "monitoring-secondary",
+            name: "Secondary",
+            attributeAliases: ["secondary"],
+            inputFormat: "code",
+            previewRawValue: "1",
+            scopes: ["monitoring-page", "database", "properties"],
+            enabled: true,
+            rules: [
+              {
+                id: "rule-secondary-map",
+                type: "value-map",
+                mappings: [{ from: "1", to: "✅" }],
+                displayMode: "append",
+                separator: " ",
+              },
+            ],
+          },
+        ],
+        setMonitoringRenderProfiles,
+        persistSettings,
+        formulaAttributeRegistry: [],
+        setFormulaAttributeRegistry: vi.fn(),
+      },
+      vault: {
+        vaultPath: null,
+        files: [],
+      },
+    } as unknown as ReturnType<typeof useAppState>);
+
+    const { container, cleanup } = renderPage();
+    await flush();
+
+    await click(container.querySelector(".monitoring-rules-list-item-delete"));
+    expect(container.querySelector("[aria-label='Profil loeschen']")).toBeTruthy();
+    await click(container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"));
+    expect(container.querySelector("[aria-label='Profil loeschen']")).toBeNull();
+
+    await click(container.querySelector(".monitoring-rules-list-item-delete"));
+    await dispatchEscape();
+    expect(container.querySelector("[aria-label='Profil loeschen']")).toBeNull();
+
+    await click(container.querySelector(".monitoring-rules-list-item-delete"));
+    await mouseDown(container.querySelector("[data-testid='mock-modal-backdrop']"));
+    expect(container.querySelector("[aria-label='Profil loeschen']")).toBeNull();
+
+    await click(container.querySelector(".monitoring-rules-list-item-delete"));
+    await click(
+      Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "Profil loeschen",
+      ) ?? null,
+    );
+    await flush();
+
+    expect(setMonitoringRenderProfiles).toHaveBeenCalledTimes(1);
+    expect(persistSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        monitoringRenderProfiles: expect.arrayContaining([
+          expect.objectContaining({ id: "monitoring-secondary" }),
+        ]),
+      }),
+    );
 
     cleanup();
   });
