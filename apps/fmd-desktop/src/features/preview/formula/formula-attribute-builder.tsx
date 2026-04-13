@@ -125,13 +125,6 @@ export const FormulaAttributeBuilder = ({
     }));
   }, [availableOperations, onChange, value.operation]);
 
-  const handleAttributeSelectionChange = (nextKeys: string[]) => {
-    emitChange((current) => ({
-      ...current,
-      attributeKeys: dedupeKeys(nextKeys),
-    }));
-  };
-
   const handleToggleAttribute = (key: string) => {
     emitChange((current) => ({
       ...current,

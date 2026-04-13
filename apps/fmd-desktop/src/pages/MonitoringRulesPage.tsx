@@ -42,6 +42,7 @@ import {
 } from "../features/preview/database/database-block-parser";
 import type {
   DatabaseBlockConfig,
+  DatabaseFilterRule,
   DatabaseFilterGroup,
   DatabasePropertiesByView,
   DatabaseSortRule,
@@ -495,15 +496,23 @@ const buildFallbackFormulaDefinition = (formulaKey: string): DatabaseFormulaDefi
 const pruneDatabaseFilterGroupByKeys = (
   group: DatabaseFilterGroup,
   removalKeys: Set<string>,
-): DatabaseFilterGroup => ({
-  ...group,
-  rules: group.rules.flatMap((entry) => {
+): DatabaseFilterGroup => {
+  const nextRules: Array<DatabaseFilterRule | DatabaseFilterGroup> = [];
+  group.rules.forEach((entry) => {
     if ("rules" in entry) {
-      return [pruneDatabaseFilterGroupByKeys(entry, removalKeys)];
+      nextRules.push(pruneDatabaseFilterGroupByKeys(entry, removalKeys));
+      return;
     }
-    return removalKeys.has(normalizeLower(entry.field)) ? [] : [{ ...entry }];
-  }),
-});
+    if (removalKeys.has(normalizeLower(entry.field))) {
+      return;
+    }
+    nextRules.push({ ...entry });
+  });
+  return {
+    ...group,
+    rules: nextRules,
+  };
+};
 
 const pruneDatabaseSortRulesByKeys = (
   rules: DatabaseSortRule[],
