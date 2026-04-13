@@ -201,6 +201,12 @@ export const useExamSimulationViewModel = () => {
     examFilesError,
     selectedExamFileRows,
   } = useAppState();
+  const resolvedProfileRootPath =
+    userVault.profileRootPath ??
+    userVault.customRootPath ??
+    userVault.autoRootPath ??
+    userVault.resolvedPath ??
+    null;
   const [examRuns, setExamRuns] = useState<ExamRun[]>([]);
   const [examRunsLoaded, setExamRunsLoaded] = useState(false);
   const [examRunDeleteError, setExamRunDeleteError] = useState("");
@@ -270,8 +276,8 @@ export const useExamSimulationViewModel = () => {
 
     const loadRuns = async () => {
       try {
-        if (userVault.profileRootPath) {
-          const store = await loadExamRunStore(userVault.profileRootPath);
+        if (resolvedProfileRootPath) {
+          const store = await loadExamRunStore(resolvedProfileRootPath);
           const runs = Array.isArray(store.runs) ? store.runs : [];
           if (cancelled) {
             return;
@@ -301,27 +307,27 @@ export const useExamSimulationViewModel = () => {
     return () => {
       cancelled = true;
     };
-  }, [userVault.profileRootPath, userVault.revision]);
+  }, [resolvedProfileRootPath, userVault.revision]);
 
   useEffect(() => {
     const unsubscribe = subscribeExamRunHistoryReset(() => {
       setExamRuns([]);
-      if (userVault.profileRootPath) {
+      if (resolvedProfileRootPath) {
         setExamRunsMigratedFromLegacy(true);
       }
     });
     return unsubscribe;
-  }, [userVault.profileRootPath]);
+  }, [resolvedProfileRootPath]);
 
   useEffect(() => {
-    if (!examRunsLoaded || userVault.profileRootPath) {
+    if (!examRunsLoaded || resolvedProfileRootPath) {
       return;
     }
     const storage: ExamRunStorage = { runs: examRuns };
     void invoke("save_exam_run_data", { storage }).catch((error) => {
       console.warn("Failed to save exam runs", error);
     });
-  }, [examRuns, examRunsLoaded, userVault.profileRootPath]);
+  }, [examRuns, examRunsLoaded, resolvedProfileRootPath]);
 
   const examFilesByPath = useMemo(
     () => new Map(examFiles.map((file) => [file.path, file])),
@@ -1103,9 +1109,9 @@ export const useExamSimulationViewModel = () => {
       const targetRun = previousRuns.find((run) => run.id === runId) ?? null;
       let success = true;
 
-      if (userVault.profileRootPath) {
+      if (resolvedProfileRootPath) {
         success = await deleteExamRunStoreEntry(
-          userVault.profileRootPath,
+          resolvedProfileRootPath,
           runId,
           targetRun?.filePath ?? null,
         );
@@ -1788,9 +1794,9 @@ export const useExamSimulationViewModel = () => {
       pointsProfileAssignments: profileAssignments,
     };
 
-    if (userVault.profileRootPath) {
+    if (resolvedProfileRootPath) {
       void (async () => {
-        const filePath = await appendExamRunStore(userVault.profileRootPath, run);
+        const filePath = await appendExamRunStore(resolvedProfileRootPath, run);
         if (!filePath) {
           return;
         }

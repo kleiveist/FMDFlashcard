@@ -376,11 +376,18 @@ export const SettingsPage = () => {
     }
   }, [setIsResetHistoryOpen, userVault.activeProfilePath, resetFastFlashcardHistory]);
 
+  const resolvedProfileRootPath =
+    userVault.profileRootPath ??
+    userVault.customRootPath ??
+    userVault.autoRootPath ??
+    userVault.resolvedPath ??
+    null;
+
   const handleResetExamStatistics = useCallback(async () => {
     setIsResetExamStatsPending(true);
-    await resetExamRunHistory(userVault.profileRootPath);
+    await resetExamRunHistory(resolvedProfileRootPath);
     setIsResetExamStatsPending(false);
-  }, [resetExamRunHistory, userVault.profileRootPath]);
+  }, [resetExamRunHistory, resolvedProfileRootPath]);
 
   const handleExamTimeLimitToggle = useCallback(
     (nextEnabled: boolean) => {
