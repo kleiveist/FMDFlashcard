@@ -59,4 +59,21 @@ describe("database-source-resolver", () => {
     expect(manualResult.files).toEqual([]);
     expect(manualResult.warning).toContain("phase 1");
   });
+
+  it("resolves history-folder from provided history files", () => {
+    const result = resolveDatabaseSourceFiles(
+      { type: "history-folder" },
+      {
+        vaultFiles,
+        sourceRelativePath: null,
+        historyFiles: [
+          { path: "/profile/exam-runs/a.md", relativePath: "a.md" },
+        ],
+        historyWarning: null,
+      },
+    );
+
+    expect(result.warning).toBeNull();
+    expect(result.files).toEqual([{ path: "/profile/exam-runs/a.md", relativePath: "a.md" }]);
+  });
 });

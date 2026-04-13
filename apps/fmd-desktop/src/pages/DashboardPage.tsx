@@ -137,6 +137,7 @@ const DashboardPageInner = (
     pointsProfiles,
     preview,
     settings,
+    userVault,
     vault,
   } = useAppState();
   const examFiles = rawExamFiles ?? [];
@@ -1372,6 +1373,7 @@ const DashboardPageInner = (
             vaultPngAssets={vault.pngAssets}
             vaultPath={vault.vaultPath}
             sourceRelativePath={preview.selectedFile?.relative_path ?? null}
+            activeProfilePath={userVault.activeProfilePath}
             canEdit={canEdit}
             markdownEditorStyle={markdownEditorStyle}
             onEditChange={handleEditDraftChange}

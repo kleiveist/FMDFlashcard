@@ -249,6 +249,37 @@ describe("database-block-parser", () => {
     }
   });
 
+  it("accepts history-folder as a source type", () => {
+    const raw = [
+      "::::",
+      "title: History",
+      "source:",
+      "  type: history-folder",
+      "views:",
+      "  activeViewId: view-1",
+      "  items:",
+      "    - id: view-1",
+      "      name: History",
+      "      view:",
+      "        type: table",
+      "      properties:",
+      "        - Dateiname",
+      "      filters:",
+      "        op: and",
+      "        rules: []",
+      "      sort: []",
+      "options:",
+      "  editable: false",
+      "  showSearch: true",
+      "  showToolbar: true",
+      "::::",
+    ].join("\n");
+
+    const parsed = parseDatabaseBlockConfigFromRaw(raw);
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.config.source.type).toBe("history-folder");
+  });
+
   it("returns defaults with parse error when opener is missing", () => {
     const parsed = parseDatabaseBlockConfigFromRaw("title: no marker");
     expect(parsed.isClosed).toBe(false);

@@ -499,6 +499,7 @@ const parseSourceType = (value: unknown): DatabaseSourceType => {
   if (
     normalized === "explicit-folder" ||
     normalized === "multi-folder" ||
+    normalized === "history-folder" ||
     normalized === "tag-query" ||
     normalized === "manual-query" ||
     normalized === "linked-files"

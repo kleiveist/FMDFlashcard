@@ -14,6 +14,8 @@ import {
 export type DatabaseSourceResolverContext = {
   vaultFiles?: VaultFile[];
   sourceRelativePath?: string | null;
+  historyFiles?: Array<{ path: string; relativePath: string }>;
+  historyWarning?: string | null;
 };
 
 const toNormalizedPath = (value: string) =>
@@ -115,6 +117,13 @@ export const resolveDatabaseSourceFiles = (
     return {
       files: [],
       warning: "manual-query is parsed in phase 1 but query execution is not enabled yet.",
+    };
+  }
+
+  if (source.type === "history-folder") {
+    return {
+      files: context.historyFiles ?? [],
+      warning: context.historyWarning ?? null,
     };
   }
 

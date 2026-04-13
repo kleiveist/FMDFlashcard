@@ -70,7 +70,7 @@ import {
   upsertDatabaseRecordField,
 } from "./frontmatter-update";
 import { compareNaturalPath } from "../../../lib/naturalSort";
-import { normalizeRelativePath } from "../../../lib/path";
+import { joinPath, normalizeRelativePath } from "../../../lib/path";
 import { DatabaseFilterPanel } from "./ui/database-filter-panel";
 import { DatabaseGanttPanel } from "./ui/database-gantt-panel";
 import { DatabaseProjectPanel } from "./ui/database-project-panel";
@@ -90,6 +90,7 @@ type DatabaseBlockProps = {
   raw: string;
   vaultFiles?: Array<{ path: string; relative_path: string }>;
   sourceRelativePath?: string | null;
+  activeProfilePath?: string | null;
   onNavigateWikilink?: (wikilink: string) => void;
   runnableExamRelativePaths?: string[];
   onOpenExamFromDatabaseRecord?: (target: { path: string; relativePath: string }) => void;
@@ -612,6 +613,7 @@ export const MarkdownHybridDatabaseBlock = ({
   raw,
   vaultFiles,
   sourceRelativePath,
+  activeProfilePath,
   onNavigateWikilink,
   runnableExamRelativePaths,
   onOpenExamFromDatabaseRecord,
@@ -722,6 +724,8 @@ export const MarkdownHybridDatabaseBlock = ({
   );
   const [pendingRecordMutations, setPendingRecordMutations] = useState<string[]>([]);
   const [records, setRecords] = useState<DatabaseRecord[]>([]);
+  const [historyFiles, setHistoryFiles] = useState<Array<{ path: string; relativePath: string }>>([]);
+  const [historyWarning, setHistoryWarning] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [operationState, setOperationState] = useState<string | null>(null);
@@ -930,12 +934,63 @@ export const MarkdownHybridDatabaseBlock = ({
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (source.type !== "history-folder") {
+      setHistoryFiles([]);
+      setHistoryWarning(null);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const loadHistoryFiles = async () => {
+      if (!activeProfilePath) {
+        setHistoryFiles([]);
+        setHistoryWarning("History folder unavailable (no active profile).");
+        return;
+      }
+      const historyDir = joinPath(activeProfilePath, "exam-runs");
+      try {
+        const files = await invoke<string[]>("list_files", { path: historyDir });
+        const markdownFiles = (files ?? [])
+          .filter((entry) => entry.toLowerCase().endsWith(".md"))
+          .map((filePath) => {
+            const normalized = filePath.replace(/\\/g, "/");
+            const fileName = normalized.split("/").pop() ?? normalized;
+            return {
+              path: filePath,
+              relativePath: fileName,
+            };
+          });
+        if (!cancelled) {
+          setHistoryFiles(markdownFiles);
+          setHistoryWarning(markdownFiles.length === 0 ? "History folder is empty." : null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          const message = error instanceof Error ? error.message : "History folder not found.";
+          setHistoryFiles([]);
+          setHistoryWarning(message);
+        }
+      }
+    };
+
+    void loadHistoryFiles();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeProfilePath, source.type]);
+
   const sourceContext = useMemo<DatabaseSourceResolverContext>(
     () => ({
       vaultFiles,
       sourceRelativePath,
+      historyFiles,
+      historyWarning,
     }),
-    [sourceRelativePath, vaultFiles],
+    [sourceRelativePath, vaultFiles, historyFiles, historyWarning],
   );
 
   const sourceResolution = useMemo(
@@ -1015,15 +1070,20 @@ export const MarkdownHybridDatabaseBlock = ({
     let cancelled = false;
 
     const buildVaultAttributeIndex = async () => {
-      const candidateFiles = (vaultFiles?.length ?? 0) > 0
-        ? (vaultFiles ?? []).map((file) => ({
-          path: file.path,
-          relativePath: file.relative_path,
-        }))
-        : sourceResolution.files.map((file) => ({
+      const candidateFiles = source.type === "history-folder"
+        ? sourceResolution.files.map((file) => ({
           path: file.path,
           relativePath: file.relativePath,
-        }));
+        }))
+        : (vaultFiles?.length ?? 0) > 0
+          ? (vaultFiles ?? []).map((file) => ({
+            path: file.path,
+            relativePath: file.relative_path,
+          }))
+          : sourceResolution.files.map((file) => ({
+            path: file.path,
+            relativePath: file.relativePath,
+          }));
 
       const availableFiles = candidateFiles
         .filter((file) => {

@@ -21,6 +21,7 @@ const sourceTypeOptions: Array<{ value: DatabaseSourceType; label: string }> = [
   { value: "current-folder", label: "Aktueller Ordner" },
   { value: "explicit-folder", label: "Ein Ordner" },
   { value: "multi-folder", label: "Mehrere Ordner" },
+  { value: "history-folder", label: "History" },
   { value: "tag-query", label: "Tag Query (Stub)" },
   { value: "manual-query", label: "Manual Query (Stub)" },
 ];
@@ -52,6 +53,11 @@ const buildNextSourceForType = (type: DatabaseSourceType, availableFolders: stri
     return {
       type,
       paths: [],
+    };
+  }
+  if (type === "history-folder") {
+    return {
+      type,
     };
   }
   if (type === "tag-query") {
@@ -188,6 +194,9 @@ export const DatabaseSourcePanel = ({
       ) : null}
       {source.type === "manual-query" ? (
         <p className="database-block-state">Manual Query wird in dieser Phase nur als Stub validiert.</p>
+      ) : null}
+      {source.type === "history-folder" ? (
+        <p className="database-block-state">History verwendet die Exam-Runs des aktiven Profils.</p>
       ) : null}
     </aside>
   );

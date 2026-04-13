@@ -18,6 +18,7 @@ export type DatabaseSourceType =
   | "current-folder"
   | "explicit-folder"
   | "multi-folder"
+  | "history-folder"
   | "tag-query"
   | "manual-query"
   | "linked-files";
