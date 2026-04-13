@@ -81,7 +81,7 @@ const createMockState = () => {
       setActiveSettingsPage: noop,
     },
     spacedRepetition: {},
-    userVault: { activeProfilePath: null },
+    userVault: { activeProfilePath: null, profileRootPath: null },
     vault: {
       vaultPath: "/vault",
       listState: "idle",

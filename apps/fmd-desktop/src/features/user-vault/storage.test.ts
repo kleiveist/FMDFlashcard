@@ -203,22 +203,22 @@ describe("loadProfileSettings", () => {
 
 describe("exam run markdown storage", () => {
   it("writes a markdown file for new runs", async () => {
-    const profilePath = "/profiles/exams";
+    const profileRootPath = "/profiles/exams";
     const run = buildRun("run-1");
 
-    const filePath = await appendExamRunStore(profilePath, run);
+    const filePath = await appendExamRunStore(profileRootPath, run);
 
     expect(filePath).toBeTruthy();
     const contents = files.get(filePath ?? "") ?? "";
     expect(contents).toContain('id: "run-1"');
     expect(contents).toContain('score: "10/20"');
     expect(contents).toContain("status: 5");
-    expect(directories.has(getExamRunsDir(profilePath))).toBe(true);
+    expect(directories.has(getExamRunsDir(profileRootPath))).toBe(true);
   });
 
   it("loads runs from markdown files", async () => {
-    const profilePath = "/profiles/exams";
-    const examRunsDir = getExamRunsDir(profilePath);
+    const profileRootPath = "/profiles/exams";
+    const examRunsDir = getExamRunsDir(profileRootPath);
     directories.add(examRunsDir);
     const runPath = `${examRunsDir}/user_2024-01-01T10-10-00_run-run-1.md`;
     files.set(
@@ -238,7 +238,7 @@ describe("exam run markdown storage", () => {
       ].join("\n"),
     );
 
-    const store = await loadExamRunStore(profilePath);
+    const store = await loadExamRunStore(profileRootPath);
 
     expect(store.runs).toHaveLength(1);
     expect(store.runs[0]?.id).toBe("run-1");
@@ -249,8 +249,8 @@ describe("exam run markdown storage", () => {
   });
 
   it("deletes exam run markdown files by path", async () => {
-    const profilePath = "/profiles/exams";
-    const examRunsDir = getExamRunsDir(profilePath);
+    const profileRootPath = "/profiles/exams";
+    const examRunsDir = getExamRunsDir(profileRootPath);
     directories.add(examRunsDir);
     const runPath = `${examRunsDir}/user_2024-01-01T10-10-00_run-run-1.md`;
     files.set(
@@ -270,7 +270,7 @@ describe("exam run markdown storage", () => {
       ].join("\n"),
     );
 
-    const success = await deleteExamRunStoreEntry(profilePath, "run-1", runPath);
+    const success = await deleteExamRunStoreEntry(profileRootPath, "run-1", runPath);
 
     expect(success).toBe(true);
     expect(files.has(runPath)).toBe(false);

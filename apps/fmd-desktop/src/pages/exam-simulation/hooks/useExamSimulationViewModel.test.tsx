@@ -267,6 +267,7 @@ const createMockAppState = ({
     },
     userVault: {
       activeProfilePath: null,
+      profileRootPath: null,
       revision: 0,
     },
     vault: {

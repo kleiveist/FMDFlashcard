@@ -446,6 +446,7 @@ const createMockAppState = () => ({
   userVault: {
     mode: "auto",
     resolvedPath: "/user-vault",
+    profileRootPath: "/user-vault",
     status: "ready",
   },
   vault: {
