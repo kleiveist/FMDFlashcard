@@ -13,6 +13,7 @@ import {
 type DatabaseSourcePanelProps = {
   source: DatabaseSourceSpec;
   availableFolders: string[];
+  historyFolderPath?: string | null;
   onChange: (next: DatabaseSourceSpec) => void;
   onClose: () => void;
 };
@@ -78,6 +79,7 @@ const buildNextSourceForType = (type: DatabaseSourceType, availableFolders: stri
 export const DatabaseSourcePanel = ({
   source,
   availableFolders,
+  historyFolderPath = null,
   onChange,
   onClose,
 }: DatabaseSourcePanelProps) => {
@@ -196,7 +198,13 @@ export const DatabaseSourcePanel = ({
         <p className="database-block-state">Manual Query wird in dieser Phase nur als Stub validiert.</p>
       ) : null}
       {source.type === "history-folder" ? (
-        <p className="database-block-state">History verwendet die Exam-Runs des aktiven Profils.</p>
+        <>
+          <p className="database-block-state">History verwendet die Exam-Runs des aktiven Profils.</p>
+          <p className="database-block-state">Quelle: {historyFolderPath ?? "nicht gesetzt"}</p>
+          {!historyFolderPath ? (
+            <p className="database-block-state is-error">Kein Profile-Root gefunden.</p>
+          ) : null}
+        </>
       ) : null}
     </aside>
   );

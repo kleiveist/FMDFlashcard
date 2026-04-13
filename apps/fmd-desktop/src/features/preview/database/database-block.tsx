@@ -965,11 +965,12 @@ export const MarkdownHybridDatabaseBlock = ({
           });
         if (!cancelled) {
           setHistoryFiles(markdownFiles);
-          setHistoryWarning(markdownFiles.length === 0 ? "History folder is empty." : null);
+          setHistoryWarning(markdownFiles.length === 0 ? `History folder is empty: ${historyDir}` : null);
         }
       } catch (error) {
         if (!cancelled) {
-          const message = error instanceof Error ? error.message : "History folder not found.";
+          const baseMessage = error instanceof Error ? error.message : "History folder not found.";
+          const message = `${baseMessage} (${historyDir})`;
           setHistoryFiles([]);
           setHistoryWarning(message);
         }
@@ -2729,6 +2730,10 @@ export const MarkdownHybridDatabaseBlock = ({
     });
     return Array.from(folders).sort((left, right) => compareNaturalPath(left, right));
   }, [vaultFiles]);
+  const historyFolderPath = useMemo(
+    () => profileRootPath ? joinPath(profileRootPath, "exam-runs") : null,
+    [profileRootPath],
+  );
 
   const filterValueSuggestionsByField = useMemo(() => {
     const next: Record<string, DatabaseVaultAttributeIndex["suggestions"]> = {};
@@ -2828,6 +2833,7 @@ export const MarkdownHybridDatabaseBlock = ({
     <DatabaseSourcePanel
       source={source}
       availableFolders={availableFolders}
+      historyFolderPath={source.type === "history-folder" ? historyFolderPath : null}
       onChange={handleSourceChange}
       onClose={() => setPanels(defaultPanels)}
     />
