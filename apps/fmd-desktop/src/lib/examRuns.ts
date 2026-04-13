@@ -7,8 +7,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import {
-  createEmptyExamRunStore,
-  saveExamRunStore,
+  resetExamRunMarkdownHistory,
 } from "../features/user-vault/storage";
 
 export type ExamGradeScaleId = "standard-1-6";
@@ -41,6 +40,7 @@ export type ExamRun = {
   correctedPercent?: number | null;
   correctedPassed?: boolean | null;
   correctedGrade?: string | null;
+  filePath?: string;
   gradeScaleId: ExamGradeScaleId;
   pointsProfileId?: string | null;
   pointsProfileName?: string | null;
@@ -68,10 +68,7 @@ export const subscribeExamRunHistoryReset = (
 export const resetExamRunHistory = async (profilePath?: string | null) => {
   try {
     if (profilePath) {
-      await saveExamRunStore(profilePath, {
-        ...createEmptyExamRunStore(),
-        migratedFromAppData: true,
-      });
+      await resetExamRunMarkdownHistory(profilePath);
     } else {
       const storage: ExamRunStorage = { runs: [] };
       await invoke("save_exam_run_data", { storage });

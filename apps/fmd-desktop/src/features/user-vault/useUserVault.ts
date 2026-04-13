@@ -28,9 +28,11 @@ import {
   createEmptySpacedRepetitionStore,
   createUserVaultProfile,
   ensureProfileRoot,
+  getOsUsername,
   loadProfileData,
   loadUserVaultMeta,
   listUserVaultProfiles,
+  migrateDefaultProfileFolders,
   migrateLegacyProfileRoot,
   saveExamRunStore,
   saveFastFlashcardStore,
@@ -266,6 +268,7 @@ export const useUserVault = ({
         }
 
         try {
+          await migrateDefaultProfileFolders(resolvedRoot);
           const [listedProfiles, meta] = await Promise.all([
             listUserVaultProfiles(resolvedRoot),
             loadUserVaultMeta(resolvedRoot),
@@ -273,7 +276,12 @@ export const useUserVault = ({
           let nextProfiles = listedProfiles;
           if (nextProfiles.length === 0) {
             try {
-              const created = await createUserVaultProfile(resolvedRoot, "default");
+              const osUsername = await getOsUsername();
+              const profileName = osUsername.trim() || "user";
+              const created = await createUserVaultProfile(
+                resolvedRoot,
+                profileName.toLowerCase(),
+              );
               nextProfiles = [created];
               logUserVaultEvent("profile.auto_created", {
                 reason,

@@ -8,6 +8,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { asErrorMessage } from "../../lib/errors";
 import { joinPath } from "../../lib/path";
+import { parseFrontmatterDocument } from "../preview/frontmatter";
 import {
   LEGACY_PROFILE_ROOT_DIR,
   PROFILE_ROOT_DIR,
@@ -84,6 +85,7 @@ const USER_VAULT_USERS_DIR = "users";
 const USER_VAULT_PROFILE_FILE = "profile.json";
 const USER_VAULT_SPACED_REPETITION_FILE = "spaced-repetition.json";
 const USER_VAULT_FAST_FLASHCARD_FILE = "fast-flashcard.json";
+const USER_VAULT_EXAM_RUNS_DIR = "exam-runs";
 const USER_VAULT_EXAM_RUNS_FILE = "exam-runs.json";
 const USER_VAULT_EXAM_POINTS_PROFILES_FILE = "exam-points-profiles.json";
 
@@ -195,9 +197,35 @@ const ensureDirectory = async (path: string) => {
   await invoke("ensure_directory", { path });
 };
 
+const getPathInfo = async (path: string): Promise<PathInfo> => {
+  return invoke<PathInfo>("get_path_info", { path });
+};
+
 const listDirectories = async (path: string) => {
   const entries = await invoke<string[]>("list_directories", { path });
   return entries ?? [];
+};
+
+const listFiles = async (path: string) => {
+  const entries = await invoke<string[]>("list_files", { path });
+  return entries ?? [];
+};
+
+const deleteFile = async (path: string) => {
+  await invoke("delete_file", { path });
+};
+
+const renameDirectory = async (from: string, to: string) => {
+  await invoke("rename_directory", { from, to });
+};
+
+export const getOsUsername = async () => {
+  try {
+    const name = await invoke<string>("get_os_username");
+    return typeof name === "string" ? name : "";
+  } catch {
+    return "";
+  }
 };
 
 const resolveUserVaultMetaPath = (userVaultPath: string) =>
@@ -211,6 +239,9 @@ const resolveSpacedRepetitionPath = (profilePath: string) =>
 
 const resolveFastFlashcardPath = (profilePath: string) =>
   joinPath(profilePath, USER_VAULT_FAST_FLASHCARD_FILE);
+
+const resolveExamRunsDir = (profilePath: string) =>
+  joinPath(profilePath, USER_VAULT_EXAM_RUNS_DIR);
 
 const resolveExamRunsPath = (profilePath: string) =>
   joinPath(profilePath, USER_VAULT_EXAM_RUNS_FILE);
@@ -285,6 +316,100 @@ export const listUserVaultProfiles = async (
     }
   });
   return Array.from(merged.values()).sort((a, b) => a.id.localeCompare(b.id));
+};
+
+const DEFAULT_PROFILE_ID_PATTERN = /^(\d{4}-\d{2}-\d{2})_default(?:-\d+)?$/i;
+
+const resolveParentPath = (value: string) => {
+  const trimmed = value.replace(/[\\/]+$/, "");
+  const parts = trimmed.split(/[\\/]/);
+  parts.pop();
+  return parts.join("/") || "/";
+};
+
+const resolveProfileUsername = (value: string, fallback: string) => {
+  const sanitized = sanitizeProfileName(value.toLowerCase());
+  if (sanitized && sanitized !== "default") {
+    return sanitized;
+  }
+  return fallback || "user";
+};
+
+export const migrateDefaultProfileFolders = async (
+  profileRoot: string,
+): Promise<void> => {
+  const { usersRoot, profilesRoot } = resolveUserEntriesRootPaths(profileRoot);
+  const [usersFolder, profilesFolder, directFolder] = await Promise.all([
+    listUserEntriesSafe(usersRoot),
+    listUserEntriesSafe(profilesRoot),
+    listUserEntriesSafe(
+      profileRoot,
+      new Set([USER_VAULT_USERS_DIR, USER_VAULT_PROFILES_DIR]),
+    ),
+  ]);
+  const entries = [...usersFolder, ...profilesFolder, ...directFolder];
+  if (entries.length === 0) {
+    return;
+  }
+  const osUsername = await getOsUsername();
+  const fallbackUsername = sanitizeProfileName(osUsername.toLowerCase()) || "user";
+  const meta = await loadUserVaultMeta(profileRoot);
+  let nextActive = meta.activeProfileId;
+
+  for (const entry of entries) {
+    const currentId = resolveProfileIdFromPath(entry.path);
+    if (!DEFAULT_PROFILE_ID_PATTERN.test(currentId)) {
+      continue;
+    }
+    const metaPath = resolveProfileMetaPath(entry.path);
+    const storedProfile = await readJsonFile<Record<string, unknown> | null>(metaPath, null);
+    const storedMeta = (storedProfile as UserVaultProfileMeta | null) ?? null;
+    const normalizedMeta = normalizeProfileMeta(currentId, storedMeta);
+    const parsed = parseProfileId(currentId);
+    const dateStamp = parsed.dateStamp || normalizedMeta.createdAt.slice(0, 10);
+    const username = resolveProfileUsername(normalizedMeta.name, fallbackUsername);
+    const baseId = `${dateStamp}_${username}`;
+    if (baseId === currentId) {
+      continue;
+    }
+    const parentPath = resolveParentPath(entry.path);
+    let candidate = baseId;
+    let suffix = 1;
+    while (true) {
+      const targetPath = joinPath(parentPath, candidate);
+      const info = await getPathInfo(targetPath);
+      if (!info.exists) {
+        break;
+      }
+      candidate = `${baseId}-${suffix}`;
+      suffix += 1;
+    }
+    const targetPath = joinPath(parentPath, candidate);
+    try {
+      await renameDirectory(entry.path, targetPath);
+    } catch (error) {
+      console.warn(
+        "Failed to rename default profile folder",
+        asErrorMessage(error, "Unknown error"),
+      );
+      continue;
+    }
+    const base = storedProfile && typeof storedProfile === "object" ? storedProfile : {};
+    await writeJsonFile(resolveProfileMetaPath(targetPath), {
+      ...base,
+      schemaVersion: USER_VAULT_PROFILE_SCHEMA_VERSION,
+      id: candidate,
+      name: username,
+      createdAt: normalizedMeta.createdAt,
+    });
+    if (nextActive === currentId || nextActive === normalizedMeta.id) {
+      nextActive = candidate;
+    }
+  }
+
+  if (nextActive !== meta.activeProfileId) {
+    await setActiveProfileId(profileRoot, nextActive ?? null);
+  }
 };
 
 export type ProfileRootMigrationResult = {
@@ -645,6 +770,159 @@ const normalizeExamRun = (value: unknown): ExamRun | null => {
   };
 };
 
+const normalizeExamRunUserSlug = (value: string) => {
+  const sanitized = sanitizeProfileName(value.toLowerCase());
+  return sanitized || "user";
+};
+
+const formatRunTimestampForFilename = (value: string) => {
+  const parsed = Date.parse(value);
+  const date = Number.isNaN(parsed) ? new Date() : new Date(parsed);
+  const pad = (input: number) => String(input).padStart(2, "0");
+  const year = date.getUTCFullYear();
+  const month = pad(date.getUTCMonth() + 1);
+  const day = pad(date.getUTCDate());
+  const hour = pad(date.getUTCHours());
+  const minute = pad(date.getUTCMinutes());
+  const second = pad(date.getUTCSeconds());
+  return `${year}-${month}-${day}T${hour}-${minute}-${second}`;
+};
+
+const formatDurationHms = (durationMs: number) => {
+  const totalSeconds = Math.max(0, Math.floor(durationMs / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
+    2,
+    "0",
+  )}:${String(seconds).padStart(2, "0")}`;
+};
+
+const parseDurationHms = (value: string) => {
+  const parts = value.split(":").map((entry) => Number(entry));
+  if (parts.some((entry) => Number.isNaN(entry))) {
+    return 0;
+  }
+  if (parts.length === 3) {
+    const [hours, minutes, seconds] = parts;
+    return Math.max(0, hours) * 3600000 + Math.max(0, minutes) * 60000 + Math.max(0, seconds) * 1000;
+  }
+  if (parts.length === 2) {
+    const [minutes, seconds] = parts;
+    return Math.max(0, minutes) * 60000 + Math.max(0, seconds) * 1000;
+  }
+  if (parts.length === 1) {
+    return Math.max(0, parts[0]) * 1000;
+  }
+  return 0;
+};
+
+const formatYamlString = (value: string) => JSON.stringify(value);
+
+const parseScoreValue = (value: string) => {
+  const match = value.trim().match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
+  if (!match) {
+    return null;
+  }
+  const achieved = Number(match[1]);
+  const max = Number(match[2]);
+  if (!Number.isFinite(achieved) || !Number.isFinite(max)) {
+    return null;
+  }
+  return { achievedPoints: achieved, maxPoints: max };
+};
+
+const buildExamRunFrontmatter = (run: ExamRun) => {
+  const userValue = run.userName || "Unknown";
+  const examFileValue = run.examFilePath || "";
+  const scoreValue = `${run.achievedPoints}/${run.maxPoints}`;
+  const percentValue =
+    Number.isFinite(run.percent) && !Number.isNaN(run.percent) ? run.percent : 0;
+  const statusValue = run.passed ? "passed" : "failed";
+  const durationValue = formatDurationHms(run.durationMs);
+  return [
+    "---",
+    `date: ${run.endedAt}`,
+    `user: ${formatYamlString(userValue)}`,
+    `exam_file: ${formatYamlString(examFileValue)}`,
+    `score: ${formatYamlString(scoreValue)}`,
+    `percent: ${percentValue}`,
+    `status: ${formatYamlString(statusValue)}`,
+    `duration: ${formatYamlString(durationValue)}`,
+    `id: ${formatYamlString(run.id)}`,
+    "---",
+    "",
+  ].join("\n");
+};
+
+const parseExamRunFrontmatter = (contents: string, filePath: string): ExamRun | null => {
+  const doc = parseFrontmatterDocument(contents);
+  if (doc.error || !doc.hasFrontmatter) {
+    return null;
+  }
+  const map = new Map(
+    doc.properties.map((property) => [property.key.toLowerCase(), property.value]),
+  );
+  const getString = (key: string) => {
+    const value = map.get(key);
+    return typeof value === "string" ? value : null;
+  };
+  const getNumber = (key: string) => {
+    const value = map.get(key);
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  };
+
+  const id = getString("id") ?? "";
+  const endedAt = getString("date") ?? "";
+  const examFilePath = getString("exam_file") ?? "";
+  if (!id || !endedAt || !examFilePath) {
+    return null;
+  }
+  const endedAtValue = Date.parse(endedAt);
+  if (Number.isNaN(endedAtValue)) {
+    return null;
+  }
+  const userName = getString("user") ?? "Unknown";
+  const scoreRaw = getString("score");
+  const scoreParsed = scoreRaw ? parseScoreValue(scoreRaw) : null;
+  const scoreNumber = getNumber("score");
+  const achievedPoints = scoreParsed?.achievedPoints ?? (scoreNumber ?? 0);
+  const maxPoints = scoreParsed?.maxPoints ?? 0;
+  const percent = getNumber("percent") ?? (maxPoints > 0 ? (achievedPoints / maxPoints) * 100 : 0);
+  const status = getString("status") ?? "";
+  const passed =
+    status === "passed" ? true : status === "failed" ? false : percent >= 50;
+  const duration = getString("duration") ?? "";
+  const durationMs = duration ? parseDurationHms(duration) : 0;
+  const startedAt =
+    durationMs > 0
+      ? new Date(Math.max(0, endedAtValue - durationMs)).toISOString()
+      : new Date(endedAtValue).toISOString();
+
+  return {
+    id,
+    startedAt,
+    endedAt: new Date(endedAtValue).toISOString(),
+    durationMs,
+    userId: null,
+    userName,
+    examFilePath,
+    tasksDetected: 0,
+    maxPoints,
+    achievedPoints,
+    percent,
+    passed,
+    grade: null,
+    gradeScaleId: "standard-1-6",
+    pointsProfileId: null,
+    pointsProfileName: null,
+    pointsProfileVersion: null,
+    pointsProfileAssignments: [],
+    filePath,
+  };
+};
+
 const migrateExamRunStore = (
   value: unknown,
 ): MigrationResult<ExamRunProfileStore> => {
@@ -672,6 +950,172 @@ const migrateExamRunStore = (
     },
     didMigrate,
   };
+};
+
+const buildExamRunFileName = (run: ExamRun) => {
+  const userSlug = normalizeExamRunUserSlug(run.userName || "user");
+  const runIdSlug = sanitizeProfileName(run.id.toLowerCase()) || "run";
+  const timestamp = formatRunTimestampForFilename(run.endedAt || new Date().toISOString());
+  return `${userSlug}_${timestamp}_run-${runIdSlug}.md`;
+};
+
+const resolveUniqueExamRunPath = async (
+  profilePath: string,
+  run: ExamRun,
+): Promise<string> => {
+  const dir = resolveExamRunsDir(profilePath);
+  await ensureDirectory(dir);
+  const baseName = buildExamRunFileName(run);
+  let candidate = baseName;
+  let suffix = 1;
+  while (true) {
+    const candidatePath = joinPath(dir, candidate);
+    const info = await getPathInfo(candidatePath);
+    if (!info.exists) {
+      return candidatePath;
+    }
+    candidate = baseName.replace(/\.md$/i, `-${suffix}.md`);
+    suffix += 1;
+  }
+};
+
+const loadExamRunMarkdownEntries = async (
+  profilePath: string,
+): Promise<ExamRun[]> => {
+  const dir = resolveExamRunsDir(profilePath);
+  let files: string[] = [];
+  try {
+    files = await listFiles(dir);
+  } catch (error) {
+    const message = asErrorMessage(error, "Failed to list exam runs.");
+    if (!isMissingPathError(message)) {
+      console.warn("Failed to list exam run files", message);
+    }
+    return [];
+  }
+  const markdownFiles = files.filter((entry) => entry.toLowerCase().endsWith(".md"));
+  const entries = await Promise.all(
+    markdownFiles.map(async (filePath) => {
+      try {
+        const contents = await invoke<string>("read_text_file", { path: filePath });
+        return parseExamRunFrontmatter(contents, filePath);
+      } catch (error) {
+        console.warn(
+          "Failed to read exam run markdown",
+          asErrorMessage(error, "Unknown error"),
+        );
+        return null;
+      }
+    }),
+  );
+  return entries.filter((entry): entry is ExamRun => entry !== null);
+};
+
+const writeExamRunMarkdownEntry = async (
+  profilePath: string,
+  run: ExamRun,
+): Promise<string> => {
+  const filePath = await resolveUniqueExamRunPath(profilePath, run);
+  const contents = buildExamRunFrontmatter(run);
+  await invoke("write_text_file", { path: filePath, contents });
+  return filePath;
+};
+
+const deleteExamRunMarkdownFiles = async (profilePath: string) => {
+  const dir = resolveExamRunsDir(profilePath);
+  let files: string[] = [];
+  try {
+    files = await listFiles(dir);
+  } catch (error) {
+    const message = asErrorMessage(error, "Failed to list exam runs.");
+    if (!isMissingPathError(message)) {
+      console.warn("Failed to list exam run files", message);
+    }
+    return;
+  }
+  const markdownFiles = files.filter((entry) => entry.toLowerCase().endsWith(".md"));
+  await Promise.all(
+    markdownFiles.map(async (filePath) => {
+      try {
+        await deleteFile(filePath);
+      } catch (error) {
+        console.warn(
+          "Failed to delete exam run markdown",
+          asErrorMessage(error, "Unknown error"),
+        );
+      }
+    }),
+  );
+};
+
+export const resetExamRunMarkdownHistory = async (profilePath: string) => {
+  await deleteExamRunMarkdownFiles(profilePath);
+};
+
+const migrateExamRunsJsonToMarkdown = async (
+  profilePath: string,
+): Promise<boolean> => {
+  const jsonPath = resolveExamRunsPath(profilePath);
+  const backupPath = buildJsonSiblingPath(jsonPath, ".migrated.bak");
+  const [jsonInfo, backupInfo] = await Promise.all([
+    getPathInfo(jsonPath),
+    getPathInfo(backupPath),
+  ]);
+  if (!jsonInfo.exists || backupInfo.exists) {
+    return false;
+  }
+  const { value, error } = await readJsonFileWithStatus<ExamRunProfileStore>(jsonPath);
+  if (error) {
+    if (error === "parse") {
+      const corruptPath = buildCorruptBackupPath(jsonPath);
+      try {
+        await renameJsonFile(jsonPath, corruptPath);
+      } catch (renameError) {
+        console.warn(
+          "Failed to archive corrupt exam run store",
+          asErrorMessage(renameError, "Unknown error"),
+        );
+      }
+    }
+    return false;
+  }
+  const { store } = migrateExamRunStore(value);
+  if (store.runs.length === 0) {
+    try {
+      await renameJsonFile(jsonPath, backupPath);
+    } catch (renameError) {
+      console.warn(
+        "Failed to archive legacy exam run store",
+        asErrorMessage(renameError, "Unknown error"),
+      );
+    }
+    return true;
+  }
+  const existingRuns = await loadExamRunMarkdownEntries(profilePath);
+  const existingIds = new Set(existingRuns.map((run) => run.id));
+  for (const run of store.runs) {
+    if (existingIds.has(run.id)) {
+      continue;
+    }
+    try {
+      await writeExamRunMarkdownEntry(profilePath, run);
+      existingIds.add(run.id);
+    } catch (error) {
+      console.warn(
+        "Failed to migrate exam run entry",
+        asErrorMessage(error, "Unknown error"),
+      );
+    }
+  }
+  try {
+    await renameJsonFile(jsonPath, backupPath);
+  } catch (renameError) {
+    console.warn(
+      "Failed to archive legacy exam run store",
+      asErrorMessage(renameError, "Unknown error"),
+    );
+  }
+  return true;
 };
 
 const migrateExamPointsProfileStore = (
@@ -980,43 +1424,20 @@ export const saveExamPointsProfileStore = async (
 export const loadExamRunStore = async (
   profilePath: string,
 ): Promise<ExamRunProfileStore> => {
-  const path = resolveExamRunsPath(profilePath);
-  const { value, error } = await readJsonFileWithStatus<ExamRunProfileStore>(path);
-  if (error) {
-    if (error === "parse") {
-      const backupPath = buildCorruptBackupPath(path);
-      try {
-        await renameJsonFile(path, backupPath);
-      } catch (renameError) {
-        console.warn(
-          "Failed to archive corrupt exam run store",
-          asErrorMessage(renameError, "Unknown error"),
-        );
-      }
-    }
-    const empty = createEmptyExamRunStore();
-    try {
-      await writeJsonFileAtomic(path, empty);
-    } catch (writeError) {
-      console.warn(
-        "Failed to recover exam run store",
-        asErrorMessage(writeError, "Unknown error"),
-      );
-    }
-    return empty;
+  try {
+    await migrateExamRunsJsonToMarkdown(profilePath);
+  } catch (error) {
+    console.warn(
+      "Failed to migrate legacy exam run store",
+      asErrorMessage(error, "Unknown error"),
+    );
   }
-  const { store, didMigrate } = migrateExamRunStore(value);
-  if (didMigrate) {
-    try {
-      await writeJsonFileAtomic(path, store);
-    } catch (writeError) {
-      console.warn(
-        "Failed to migrate exam run store",
-        asErrorMessage(writeError, "Unknown error"),
-      );
-    }
-  }
-  return store;
+  const runs = await loadExamRunMarkdownEntries(profilePath);
+  return {
+    schemaVersion: USER_VAULT_EXAM_RUNS_SCHEMA_VERSION,
+    runs,
+    migratedFromAppData: false,
+  };
 };
 
 export const saveExamRunStore = async (
@@ -1024,10 +1445,12 @@ export const saveExamRunStore = async (
   store: ExamRunProfileStore,
 ) => {
   try {
-    await writeJsonFileAtomic(resolveExamRunsPath(profilePath), {
-      ...store,
-      schemaVersion: USER_VAULT_EXAM_RUNS_SCHEMA_VERSION,
-    });
+    await deleteExamRunMarkdownFiles(profilePath);
+    await Promise.all(
+      store.runs.map(async (run) => {
+        await writeExamRunMarkdownEntry(profilePath, run);
+      }),
+    );
   } catch (error) {
     console.error(
       "Failed to save exam run user vault data",
@@ -1039,99 +1462,34 @@ export const saveExamRunStore = async (
 export const appendExamRunStore = async (
   profilePath: string,
   run: ExamRun,
-): Promise<boolean> => {
-  const path = resolveExamRunsPath(profilePath);
+): Promise<string | null> => {
   try {
-    const { value, error } = await readJsonFileWithStatus<ExamRunProfileStore>(
-      path,
-    );
-    let store: ExamRunProfileStore;
-    let needsWrite = false;
-
-    if (error) {
-      if (error === "parse") {
-        const backupPath = buildCorruptBackupPath(path);
-        try {
-          await renameJsonFile(path, backupPath);
-        } catch (renameError) {
-          console.warn(
-            "Failed to archive corrupt exam run store",
-            asErrorMessage(renameError, "Unknown error"),
-          );
-        }
-      }
-      store = createEmptyExamRunStore();
-      needsWrite = true;
-    } else {
-      const migrated = migrateExamRunStore(value);
-      store = migrated.store;
-      needsWrite = migrated.didMigrate;
-    }
-
-    if (store.runs.some((entry) => entry.id === run.id)) {
-      if (needsWrite) {
-        await writeJsonFileAtomic(path, store);
-      }
-      return true;
-    }
-
-    const nextStore: ExamRunProfileStore = {
-      ...store,
-      schemaVersion: USER_VAULT_EXAM_RUNS_SCHEMA_VERSION,
-      runs: [...store.runs, run],
-    };
-    await writeJsonFileAtomic(path, nextStore);
-    return true;
+    const filePath = await writeExamRunMarkdownEntry(profilePath, run);
+    return filePath;
   } catch (error) {
     console.warn(
       "Failed to append exam run store",
       asErrorMessage(error, "Unknown error"),
     );
-    return false;
+    return null;
   }
 };
 
 export const deleteExamRunStoreEntry = async (
   profilePath: string,
   runId: string,
+  filePath?: string | null,
 ): Promise<boolean> => {
-  const path = resolveExamRunsPath(profilePath);
   try {
-    const { value, error } = await readJsonFileWithStatus<ExamRunProfileStore>(path);
-    let store: ExamRunProfileStore;
-    let needsWrite = false;
-
-    if (error) {
-      if (error === "parse") {
-        const backupPath = buildCorruptBackupPath(path);
-        try {
-          await renameJsonFile(path, backupPath);
-        } catch (renameError) {
-          console.warn(
-            "Failed to archive corrupt exam run store",
-            asErrorMessage(renameError, "Unknown error"),
-          );
-        }
-      }
-      store = createEmptyExamRunStore();
-      needsWrite = true;
-    } else {
-      const migrated = migrateExamRunStore(value);
-      store = migrated.store;
-      needsWrite = migrated.didMigrate;
+    let targetPath = filePath ?? "";
+    if (!targetPath) {
+      const entries = await loadExamRunMarkdownEntries(profilePath);
+      targetPath = entries.find((entry) => entry.id === runId)?.filePath ?? "";
     }
-
-    const nextRuns = store.runs.filter((entry) => entry.id !== runId);
-    if (!needsWrite && nextRuns.length === store.runs.length) {
+    if (!targetPath) {
       return true;
     }
-
-    const nextStore: ExamRunProfileStore = {
-      ...store,
-      schemaVersion: USER_VAULT_EXAM_RUNS_SCHEMA_VERSION,
-      runs: nextRuns,
-    };
-    await writeJsonFileAtomic(path, nextStore);
+    await deleteFile(targetPath);
     return true;
   } catch (error) {
     console.warn(

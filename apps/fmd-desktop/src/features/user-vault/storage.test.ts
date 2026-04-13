@@ -9,7 +9,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
 import {
   appendExamRunStore,
+  deleteExamRunStoreEntry,
   ensureProfileRoot,
+  loadExamRunStore,
   loadProfileSettings,
 } from "./storage";
 import type { ExamRun } from "../../lib/examRuns";
@@ -45,8 +47,11 @@ const buildRun = (id: string): ExamRun => ({
 const getProfileFilePath = (profilePath: string) =>
   `${profilePath.replace(/\\/g, "/")}/profile.json`;
 
-const getExamRunsPath = (profilePath: string) =>
+const getExamRunsJsonPath = (profilePath: string) =>
   `${profilePath.replace(/\\/g, "/")}/exam-runs.json`;
+
+const getExamRunsDir = (profilePath: string) =>
+  `${profilePath.replace(/\\/g, "/")}/exam-runs`;
 
 beforeEach(() => {
   files.clear();
@@ -89,6 +94,14 @@ beforeEach(() => {
       directories.add(path);
       return null;
     }
+    if (command === "list_files") {
+      const path = normalizePath(String((args as { path?: string })?.path ?? ""));
+      if (!directories.has(path)) {
+        return [];
+      }
+      const prefix = path ? `${path}/` : "";
+      return Array.from(files.keys()).filter((entry) => entry.startsWith(prefix));
+    }
     if (command === "list_directories") {
       const path = normalizePath(String((args as { path?: string })?.path ?? ""));
       if (!directories.has(path)) {
@@ -107,6 +120,26 @@ beforeEach(() => {
         }
       });
       return Array.from(entries);
+    }
+    if (command === "read_text_file") {
+      const path = String((args as { path?: string })?.path ?? "");
+      if (!files.has(path)) {
+        throw new Error("File not found.");
+      }
+      return files.get(path) ?? "";
+    }
+    if (command === "write_text_file") {
+      const { path, contents } = args as { path: string; contents: string };
+      files.set(path, contents);
+      return null;
+    }
+    if (command === "delete_file") {
+      const path = String((args as { path?: string })?.path ?? "");
+      if (!files.has(path)) {
+        throw new Error("File not found.");
+      }
+      files.delete(path);
+      return null;
     }
     throw new Error(`Unknown command: ${String(command)}`);
   });
@@ -171,58 +204,104 @@ describe("loadProfileSettings", () => {
   });
 });
 
-describe("appendExamRunStore", () => {
-  it("appends runs without overwriting existing history", async () => {
+describe("exam run markdown storage", () => {
+  it("writes a markdown file for new runs", async () => {
     const profilePath = "/profiles/exams";
-    const examRunsPath = getExamRunsPath(profilePath);
-    const firstRun = buildRun("run-1");
-    const secondRun = buildRun("run-2");
+    const run = buildRun("run-1");
 
+    const filePath = await appendExamRunStore(profilePath, run);
+
+    expect(filePath).toBeTruthy();
+    const contents = files.get(filePath ?? "") ?? "";
+    expect(contents).toContain('id: "run-1"');
+    expect(contents).toContain('score: "10/20"');
+    expect(contents).toContain('status: "passed"');
+    expect(directories.has(getExamRunsDir(profilePath))).toBe(true);
+  });
+
+  it("loads runs from markdown files", async () => {
+    const profilePath = "/profiles/exams";
+    const examRunsDir = getExamRunsDir(profilePath);
+    directories.add(examRunsDir);
+    const runPath = `${examRunsDir}/user_2024-01-01T10-10-00_run-run-1.md`;
     files.set(
-      examRunsPath,
+      runPath,
+      [
+        "---",
+        "date: 2024-01-01T10:10:00.000Z",
+        "user: \"User\"",
+        "exam_file: \"exam.md\"",
+        "score: \"10/20\"",
+        "percent: 50",
+        "status: \"passed\"",
+        "duration: \"00:10:00\"",
+        "id: \"run-1\"",
+        "---",
+        "",
+      ].join("\n"),
+    );
+
+    const store = await loadExamRunStore(profilePath);
+
+    expect(store.runs).toHaveLength(1);
+    expect(store.runs[0]?.id).toBe("run-1");
+    expect(store.runs[0]?.filePath).toBe(runPath);
+    expect(store.runs[0]?.maxPoints).toBe(20);
+    expect(store.runs[0]?.achievedPoints).toBe(10);
+  });
+
+  it("migrates exam-runs.json into markdown files", async () => {
+    const profilePath = "/profiles/exams";
+    const examRunsDir = getExamRunsDir(profilePath);
+    directories.add(examRunsDir);
+    const jsonPath = getExamRunsJsonPath(profilePath);
+    files.set(
+      jsonPath,
       JSON.stringify({
         schemaVersion: 1,
-        runs: [firstRun],
+        runs: [buildRun("run-legacy")],
         migratedFromAppData: false,
       }),
     );
 
-    await appendExamRunStore(profilePath, secondRun);
+    const store = await loadExamRunStore(profilePath);
 
-    const stored = JSON.parse(files.get(examRunsPath) ?? "{}");
-    expect(stored.runs).toHaveLength(2);
-    expect(stored.runs[0].id).toBe("run-1");
-    expect(stored.runs[1].id).toBe("run-2");
-  });
-
-  it("creates a new store when exam-runs.json is missing", async () => {
-    const profilePath = "/profiles/missing";
-    const examRunsPath = getExamRunsPath(profilePath);
-    const run = buildRun("run-missing");
-
-    await appendExamRunStore(profilePath, run);
-
-    const stored = JSON.parse(files.get(examRunsPath) ?? "{}");
-    expect(stored.runs).toHaveLength(1);
-    expect(stored.runs[0].id).toBe("run-missing");
-  });
-
-  it("recovers from corrupt JSON by archiving and creating a fresh store", async () => {
-    const profilePath = "/profiles/corrupt";
-    const examRunsPath = getExamRunsPath(profilePath);
-    const run = buildRun("run-corrupt");
-
-    files.set(examRunsPath, "{not json");
-
-    await appendExamRunStore(profilePath, run);
-
-    const stored = JSON.parse(files.get(examRunsPath) ?? "{}");
-    expect(stored.runs).toHaveLength(1);
-    expect(stored.runs[0].id).toBe("run-corrupt");
-
-    const corruptBackup = Array.from(files.keys()).find((key) =>
-      key.includes(".corrupt."),
+    expect(store.runs).toHaveLength(1);
+    const markdownFiles = Array.from(files.keys()).filter((key) =>
+      key.endsWith(".md"),
     );
-    expect(corruptBackup).toBeTruthy();
+    expect(markdownFiles.length).toBe(1);
+    const backup = Array.from(files.keys()).find((key) =>
+      key.includes(".migrated.bak.json"),
+    );
+    expect(backup).toBeTruthy();
+  });
+
+  it("deletes exam run markdown files by path", async () => {
+    const profilePath = "/profiles/exams";
+    const examRunsDir = getExamRunsDir(profilePath);
+    directories.add(examRunsDir);
+    const runPath = `${examRunsDir}/user_2024-01-01T10-10-00_run-run-1.md`;
+    files.set(
+      runPath,
+      [
+        "---",
+        "date: 2024-01-01T10:10:00.000Z",
+        "user: \"User\"",
+        "exam_file: \"exam.md\"",
+        "score: \"10/20\"",
+        "percent: 50",
+        "status: \"passed\"",
+        "duration: \"00:10:00\"",
+        "id: \"run-1\"",
+        "---",
+        "",
+      ].join("\n"),
+    );
+
+    const success = await deleteExamRunStoreEntry(profilePath, "run-1", runPath);
+
+    expect(success).toBe(true);
+    expect(files.has(runPath)).toBe(false);
   });
 });

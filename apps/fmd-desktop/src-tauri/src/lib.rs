@@ -935,6 +935,27 @@ fn list_directories(path: String) -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
+fn list_files(path: String) -> Result<Vec<String>, String> {
+    let path = PathBuf::from(path);
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    if !path.is_dir() {
+        return Err("Path is not a directory.".to_string());
+    }
+    let mut entries = Vec::new();
+    for entry in fs::read_dir(path).map_err(|err| err.to_string())? {
+        let entry = entry.map_err(|err| err.to_string())?;
+        let file_type = entry.file_type().map_err(|err| err.to_string())?;
+        if file_type.is_file() {
+            entries.push(entry.path().to_string_lossy().to_string());
+        }
+    }
+    entries.sort_by(|left, right| natural_compare_text(left, right));
+    Ok(entries)
+}
+
+#[tauri::command]
 fn ensure_directory(path: String) -> Result<(), String> {
     let path = PathBuf::from(path);
     if path.exists() && !path.is_dir() {
@@ -1091,6 +1112,21 @@ fn write_text_file_atomic(path: String, contents: String) -> Result<(), String> 
 }
 
 #[tauri::command]
+fn delete_file(path: String) -> Result<(), String> {
+    let path = PathBuf::from(path);
+    if !path.exists() {
+        return Err("File not found.".to_string());
+    }
+    if !path.is_file() {
+        return Err("Path is not a file.".to_string());
+    }
+    if !is_markdown(&path) {
+        return Err("Only markdown files are supported.".to_string());
+    }
+    fs::remove_file(&path).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
 fn delete_markdown_file(
     vault_path: String,
     relative_path: String,
@@ -1213,6 +1249,34 @@ fn move_directory(
         }
     }
     fs::rename(&from_full, &to_full).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn rename_directory(from: String, to: String) -> Result<(), String> {
+    let from = PathBuf::from(from);
+    let to = PathBuf::from(to);
+    if !from.exists() {
+        return Err("Folder not found.".to_string());
+    }
+    if !from.is_dir() {
+        return Err("Source path is not a directory.".to_string());
+    }
+    if to.exists() {
+        return Err("Target path already exists.".to_string());
+    }
+    if let Some(parent) = to.parent() {
+        fs::create_dir_all(parent).map_err(|err| err.to_string())?;
+    }
+    fs::rename(&from, &to).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn get_os_username() -> Result<String, String> {
+    let value = std::env::var("USER")
+        .or_else(|_| std::env::var("LOGNAME"))
+        .or_else(|_| std::env::var("USERNAME"))
+        .unwrap_or_default();
+    Ok(value)
 }
 
 #[tauri::command]
@@ -1359,6 +1423,7 @@ pub fn run() {
             list_vault_entries,
             get_path_info,
             list_directories,
+            list_files,
             ensure_directory,
             read_json_file,
             write_json_file,
@@ -1367,9 +1432,12 @@ pub fn run() {
             read_text_file,
             write_text_file,
             write_text_file_atomic,
+            delete_file,
             delete_markdown_file,
             move_markdown_file,
             move_directory,
+            rename_directory,
+            get_os_username,
             create_markdown_file,
             create_directory,
             delete_directory

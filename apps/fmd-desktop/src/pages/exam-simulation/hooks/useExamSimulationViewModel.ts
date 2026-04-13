@@ -90,7 +90,6 @@ import {
   appendExamRunStore,
   deleteExamRunStoreEntry,
   loadExamRunStore,
-  saveExamRunStore,
 } from "../../../features/user-vault/storage";
 import { upsertExamResultStatsFrontmatter } from "../../../features/exam-results/frontmatterStats";
 import type {
@@ -273,23 +272,12 @@ export const useExamSimulationViewModel = () => {
       try {
         if (userVault.activeProfilePath) {
           const store = await loadExamRunStore(userVault.activeProfilePath);
-          let runs = Array.isArray(store.runs) ? store.runs : [];
-          let migrated = store.migratedFromAppData;
-          if (!migrated && runs.length === 0) {
-            const legacy = await invoke<ExamRunStorage>("load_exam_run_data");
-            runs = Array.isArray(legacy?.runs) ? legacy.runs : [];
-            migrated = true;
-            await saveExamRunStore(userVault.activeProfilePath, {
-              ...store,
-              runs,
-              migratedFromAppData: migrated,
-            });
-          }
+          const runs = Array.isArray(store.runs) ? store.runs : [];
           if (cancelled) {
             return;
           }
           setExamRuns(sortExamRunsByDateDesc(runs));
-          setExamRunsMigratedFromLegacy(migrated);
+          setExamRunsMigratedFromLegacy(false);
           return;
         }
         const storage = await invoke<ExamRunStorage>("load_exam_run_data");
@@ -1112,10 +1100,15 @@ export const useExamSimulationViewModel = () => {
       }
 
       const nextRuns = previousRuns.filter((run) => run.id !== runId);
+      const targetRun = previousRuns.find((run) => run.id === runId) ?? null;
       let success = true;
 
       if (userVault.activeProfilePath) {
-        success = await deleteExamRunStoreEntry(userVault.activeProfilePath, runId);
+        success = await deleteExamRunStoreEntry(
+          userVault.activeProfilePath,
+          runId,
+          targetRun?.filePath ?? null,
+        );
       } else {
         try {
           const storage: ExamRunStorage = { runs: nextRuns };
@@ -1796,7 +1789,19 @@ export const useExamSimulationViewModel = () => {
     };
 
     if (userVault.activeProfilePath) {
-      void appendExamRunStore(userVault.activeProfilePath, run);
+      void (async () => {
+        const filePath = await appendExamRunStore(userVault.activeProfilePath, run);
+        if (!filePath) {
+          return;
+        }
+        setExamRuns((prev) =>
+          sortExamRunsByDateDesc(
+            prev.map((entry) =>
+              entry.id === run.id ? { ...entry, filePath } : entry,
+            ),
+          ),
+        );
+      })();
     }
     setExamRuns((prev) => sortExamRunsByDateDesc([run, ...prev]));
     if (activeExamFiles.length === 1) {
