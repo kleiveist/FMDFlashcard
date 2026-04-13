@@ -350,6 +350,34 @@
   font-size: 0.78rem;
 }
 
+.monitoring-rules-formula-occurrence-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.monitoring-rules-formula-occurrence-link code {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--ink-muted) 45%, transparent);
+  text-underline-offset: 2px;
+}
+
+.monitoring-rules-formula-occurrence-link:hover code {
+  text-decoration-color: var(--ink);
+}
+
+.monitoring-rules-formula-occurrence-link:focus-visible {
+  outline: 2px solid var(--accent-border);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
 .monitoring-rules-formula-conflict-warning {
   border: 1px solid color-mix(in srgb, var(--warning-border, var(--line-soft)) 70%, var(--line-soft));
   border-radius: 10px;

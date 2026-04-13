@@ -16,6 +16,8 @@ import {
 import { ModalShell } from "../components/ModalShell";
 import { useAppState } from "../components/AppStateProvider";
 import { TrashIcon } from "../components/icons";
+import { extractDatabaseBlockLineRanges } from "../lib/databaseBlockSyntax";
+import { joinPath } from "../lib/path";
 import type { FormulaRegistryEntry } from "../features/settings/useAppSettings";
 import {
   addFrontmatterProperty,
@@ -34,6 +36,7 @@ import {
   normalizeDatabaseFormulaDefinitionV1,
   type DatabaseFormulaDefinitionV1,
 } from "../features/preview/formula/database-formula-types";
+import { parseDatabaseBlockConfigFromRaw } from "../features/preview/database/database-block-parser";
 import { MonitoringRenderValue } from "../features/monitoring/MonitoringRenderValue";
 import {
   createMonitoringRenderRule,
@@ -397,6 +400,7 @@ type FormulaOccurrence = {
   filePath: string;
   fileRelativePath: string;
   key: string;
+  source: "frontmatter" | "database-block";
 };
 
 type FormulaGroup = {
@@ -412,6 +416,9 @@ type FormulaGroup = {
 const isFormulaPropertyKey = (key: string) => normalizeLower(key).startsWith("f-");
 
 const buildFormulaGroupId = (key: string) => normalizeLower(key);
+
+const FRONTMATTER_BLOCK_PATTERN =
+  /^(?:\uFEFF)?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
 
 const stableSerialize = (value: unknown): string => {
   if (Array.isArray(value)) {
@@ -460,6 +467,117 @@ const buildNextFormulaKey = (existingGroups: FormulaGroup[]) => {
     suffix += 1;
   }
   return `${base}-${suffix}`;
+};
+
+const buildFallbackFormulaDefinition = (formulaKey: string): DatabaseFormulaDefinitionV1 => {
+  const fallbackAttributeKey = formulaKey
+    .replace(/^f-/i, "")
+    .trim() || "score";
+  return {
+    version: 1,
+    operation: "count",
+    attributeKeys: [fallbackAttributeKey],
+    source: { type: "current-folder" },
+    shortTextRule: { ...DEFAULT_DATABASE_FORMULA_SHORT_TEXT_RULE },
+  };
+};
+
+const extractFormulaKeysFromFrontmatter = (markdown: string) => {
+  const match = markdown.match(FRONTMATTER_BLOCK_PATTERN);
+  if (!match) {
+    return [] as string[];
+  }
+  const rawYaml = match[1] ?? "";
+  const lines = rawYaml.split(/\r?\n/);
+  const keysByNormalized = new Map<string, string>();
+  lines.forEach((line) => {
+    if (!line || /^\s/.test(line)) {
+      return;
+    }
+    const separatorIndex = line.indexOf(":");
+    if (separatorIndex <= 0) {
+      return;
+    }
+    const key = line.slice(0, separatorIndex).trim();
+    if (!isFormulaPropertyKey(key)) {
+      return;
+    }
+    const normalizedKey = buildFormulaGroupId(key);
+    if (!keysByNormalized.has(normalizedKey)) {
+      keysByNormalized.set(normalizedKey, key);
+    }
+  });
+  return Array.from(keysByNormalized.values());
+};
+
+const extractFormulaDefinitionsFromDatabaseBlocks = (markdown: string) => {
+  const normalized = markdown.replace(/\r\n?/g, "\n");
+  const lines = normalized.split("\n");
+  const ranges = extractDatabaseBlockLineRanges(lines);
+  const definitionsByNormalized = new Map<string, DatabaseFormulaDefinitionV1>();
+  const keysByNormalized = new Map<string, string>();
+  const registerFormulaKey = (candidate: unknown): string | null => {
+    if (typeof candidate !== "string") {
+      return null;
+    }
+    const key = candidate.trim();
+    if (!isFormulaPropertyKey(key)) {
+      return null;
+    }
+    const normalizedKey = buildFormulaGroupId(key);
+    if (!keysByNormalized.has(normalizedKey)) {
+      keysByNormalized.set(normalizedKey, key);
+    }
+    return normalizedKey;
+  };
+
+  ranges.forEach((range) => {
+    const blockRaw = lines.slice(range.startLine, range.endLine + 1).join("\n");
+    const parsedBlock = parseDatabaseBlockConfigFromRaw(blockRaw);
+    parsedBlock.config.columns.forEach((columnKey) => {
+      registerFormulaKey(columnKey);
+    });
+    const savedViewItems = parsedBlock.config.views?.items ?? [];
+    savedViewItems.forEach((viewItem) => {
+      (viewItem.properties ?? []).forEach((propertyKey) => {
+        registerFormulaKey(propertyKey);
+      });
+    });
+    const propertiesByView = parsedBlock.config.propertiesByView;
+    if (propertiesByView) {
+      Object.values(propertiesByView).forEach((propertyKeys) => {
+        (propertyKeys ?? []).forEach((propertyKey) => {
+          registerFormulaKey(propertyKey);
+        });
+      });
+    }
+    const fields = parsedBlock.config.fields ?? [];
+    fields.forEach((field) => {
+      const candidateKeys = [field.key, field.label]
+        .map((value) => (typeof value === "string" ? value.trim() : ""))
+        .filter((value, index, all) => value.length > 0 && all.indexOf(value) === index);
+      const normalizedCandidates = candidateKeys
+        .map((candidateKey) => registerFormulaKey(candidateKey))
+        .filter((candidate): candidate is string => Boolean(candidate));
+      if (normalizedCandidates.length === 0) {
+        return;
+      }
+      const normalizedDefinition = normalizeDatabaseFormulaDefinitionV1(field.formulaDefinition);
+      if (!normalizedDefinition) {
+        return;
+      }
+      normalizedCandidates.forEach((normalizedKey) => {
+        if (!definitionsByNormalized.has(normalizedKey)) {
+          definitionsByNormalized.set(normalizedKey, normalizedDefinition);
+        }
+      });
+    });
+  });
+
+  return {
+    definitionsByNormalized,
+    keysByNormalized,
+  };
 };
 
 const normalizeFormulaRegistryEntries = (
@@ -523,39 +641,82 @@ const collectFormulaGroups = (
     }
   >();
   files.forEach((file) => {
+    const formulaKeysByNormalized = new Map<string, string>();
+    const formulaOccurrenceSourceByNormalized = new Map<string, FormulaOccurrence["source"]>();
+    extractFormulaKeysFromFrontmatter(file.markdown).forEach((formulaKey) => {
+      const normalizedKey = buildFormulaGroupId(formulaKey);
+      formulaKeysByNormalized.set(normalizedKey, formulaKey);
+      formulaOccurrenceSourceByNormalized.set(normalizedKey, "frontmatter");
+    });
+    const databaseBlockFormula = extractFormulaDefinitionsFromDatabaseBlocks(file.markdown);
+    databaseBlockFormula.keysByNormalized.forEach((formulaKey, normalizedKey) => {
+      if (!formulaKeysByNormalized.has(normalizedKey)) {
+        formulaKeysByNormalized.set(normalizedKey, formulaKey);
+      }
+      if (!formulaOccurrenceSourceByNormalized.has(normalizedKey)) {
+        formulaOccurrenceSourceByNormalized.set(normalizedKey, "database-block");
+      }
+    });
+
     const parsed = parseFrontmatterDocument(file.markdown);
-    if (!parsed.hasFrontmatter || parsed.error) {
-      return;
+    const parsedDefinitionsByNormalized = new Map<string, DatabaseFormulaDefinitionV1>();
+    if (parsed.hasFrontmatter) {
+      parsed.properties.forEach((property) => {
+        if (!isFormulaPropertyKey(property.key)) {
+          return;
+        }
+        const normalizedKey = buildFormulaGroupId(property.key);
+        if (!formulaKeysByNormalized.has(normalizedKey)) {
+          formulaKeysByNormalized.set(normalizedKey, property.key);
+        }
+        const normalizedDefinition = normalizeDatabaseFormulaDefinitionV1(property.value);
+        if (!normalizedDefinition) {
+          return;
+        }
+        parsedDefinitionsByNormalized.set(normalizedKey, normalizedDefinition);
+      });
     }
-    parsed.properties.forEach((property) => {
-      if (!isFormulaPropertyKey(property.key)) {
-        return;
+    databaseBlockFormula.definitionsByNormalized.forEach((definition, normalizedKey) => {
+      if (!parsedDefinitionsByNormalized.has(normalizedKey)) {
+        parsedDefinitionsByNormalized.set(normalizedKey, definition);
       }
-      const normalizedDefinition = normalizeDatabaseFormulaDefinitionV1(property.value);
-      if (!normalizedDefinition) {
-        return;
-      }
-      const normalizedKey = buildFormulaGroupId(property.key);
-      const signature = stableSerialize(normalizedDefinition);
+    });
+
+    formulaKeysByNormalized.forEach((displayKey, normalizedKey) => {
+      const resolvedDefinition = parsedDefinitionsByNormalized.get(normalizedKey) ??
+        buildFallbackFormulaDefinition(displayKey);
+      const occurrenceSource =
+        formulaOccurrenceSourceByNormalized.get(normalizedKey) ?? "frontmatter";
+      const signature = stableSerialize(resolvedDefinition);
       const current = groups.get(normalizedKey);
       if (current) {
-        current.occurrences.push({
-          filePath: file.filePath,
-          fileRelativePath: file.fileRelativePath,
-          key: property.key,
-        });
+        const hasOccurrence = current.occurrences.some(
+          (occurrence) =>
+            occurrence.filePath === file.filePath &&
+            buildFormulaGroupId(occurrence.key) === normalizedKey &&
+            occurrence.source === occurrenceSource,
+        );
+        if (!hasOccurrence) {
+          current.occurrences.push({
+            filePath: file.filePath,
+            fileRelativePath: file.fileRelativePath,
+            key: displayKey,
+            source: occurrenceSource,
+          });
+        }
         current.definitionSignatures.add(signature);
         return;
       }
       groups.set(normalizedKey, {
         id: normalizedKey,
         normalizedKey,
-        displayKey: property.key,
-        definition: normalizedDefinition,
+        displayKey,
+        definition: resolvedDefinition,
         occurrences: [{
           filePath: file.filePath,
           fileRelativePath: file.fileRelativePath,
-          key: property.key,
+          key: displayKey,
+          source: occurrenceSource,
         }],
         definitionSignatures: new Set([signature]),
         hasRegistryEntry: false,
@@ -607,7 +768,8 @@ const collectFormulaGroups = (
 };
 
 export const MonitoringRulesPage = () => {
-  const { settings, vault } = useAppState();
+  const appState = useAppState();
+  const { settings, vault, actions } = appState;
   const profiles = settings.monitoringRenderProfiles;
   const formulaAttributeRegistry = useMemo(
     () => normalizeFormulaRegistryEntries(settings.formulaAttributeRegistry ?? []),
@@ -668,10 +830,50 @@ export const MonitoringRulesPage = () => {
     const effectiveRegistryEntries = normalizeFormulaRegistryEntries(
       registryOverride ?? formulaAttributeRegistry,
     );
-    const markdownFiles = vault.files.filter((file) =>
-      file.path.toLowerCase().endsWith(".md")
-    );
-    if (!vault.vaultPath || markdownFiles.length === 0) {
+    const toPathKey = (value: string) => value.replace(/\\/g, "/").toLowerCase();
+    const markdownFilesByPath = new Map<
+      string,
+      { path: string; relativePath: string }
+    >();
+    vault.files.forEach((file) => {
+      if (!file.path.toLowerCase().endsWith(".md")) {
+        return;
+      }
+      markdownFilesByPath.set(toPathKey(file.path), {
+        path: file.path,
+        relativePath: file.relative_path,
+      });
+    });
+    if (vault.vaultPath) {
+      const historyDir = joinPath(vault.vaultPath, ".profile", "exam-runs");
+      try {
+        const historyEntries = await invoke<string[]>("list_files", { path: historyDir });
+        if (Array.isArray(historyEntries)) {
+          const normalizedHistoryDir = historyDir.replace(/\\/g, "/");
+          historyEntries.forEach((entryPath) => {
+            if (!entryPath.toLowerCase().endsWith(".md")) {
+              return;
+            }
+            const entryPathKey = toPathKey(entryPath);
+            if (markdownFilesByPath.has(entryPathKey)) {
+              return;
+            }
+            const normalizedEntryPath = entryPath.replace(/\\/g, "/");
+            const relativeWithinHistory = normalizedEntryPath.startsWith(`${normalizedHistoryDir}/`)
+              ? normalizedEntryPath.slice(normalizedHistoryDir.length + 1)
+              : (normalizedEntryPath.split("/").pop() ?? normalizedEntryPath);
+            markdownFilesByPath.set(entryPathKey, {
+              path: entryPath,
+              relativePath: `.profile/exam-runs/${relativeWithinHistory}`,
+            });
+          });
+        }
+      } catch {
+        // Ignore missing/unreadable history directory for formula discovery.
+      }
+    }
+    const markdownFiles = Array.from(markdownFilesByPath.values());
+    if (markdownFiles.length === 0) {
       setFormulaGroups(collectFormulaGroups([], effectiveRegistryEntries));
       setFormulaGroupsState("ready");
       return;
@@ -684,7 +886,7 @@ export const MonitoringRulesPage = () => {
           const markdown = await invoke<string>("read_text_file", { path: file.path });
           return {
             filePath: file.path,
-            fileRelativePath: file.relative_path,
+            fileRelativePath: file.relativePath,
             markdown,
           };
         } catch {
@@ -710,6 +912,26 @@ export const MonitoringRulesPage = () => {
   const formulaDeleteTarget = useMemo(
     () => formulaGroups.find((group) => group.id === formulaDeleteTargetId) ?? null,
     [formulaDeleteTargetId, formulaGroups],
+  );
+
+  const handleOpenFormulaOccurrence = useCallback(
+    (
+      occurrence: FormulaOccurrence,
+      options?: {
+        openInNewTab?: boolean;
+      },
+    ) => {
+      const normalizedOccurrencePath = occurrence.filePath.replace(/\\/g, "/").toLowerCase();
+      const file = vault.files.find((candidate) =>
+        candidate.path === occurrence.filePath ||
+        candidate.path.replace(/\\/g, "/").toLowerCase() === normalizedOccurrencePath
+      ) ?? {
+        path: occurrence.filePath,
+        relative_path: occurrence.fileRelativePath,
+      };
+      actions?.handleSelectFile?.(file, options);
+    },
+    [actions, vault.files],
   );
 
   const formulaFolderSuggestions = useMemo(
@@ -1278,7 +1500,10 @@ export const MonitoringRulesPage = () => {
         registryWithoutSelected,
         { key: nextKey, definition: normalizedDefinition },
       );
-      const occurrencesByFile = selectedFormulaGroup.occurrences.reduce(
+      const frontmatterOccurrences = selectedFormulaGroup.occurrences.filter(
+        (occurrence) => occurrence.source === "frontmatter",
+      );
+      const occurrencesByFile = frontmatterOccurrences.reduce(
         (map, occurrence) => {
           const current = map.get(occurrence.filePath) ?? [];
           current.push(occurrence);
@@ -1408,7 +1633,10 @@ export const MonitoringRulesPage = () => {
   };
 
   const handleDeleteFormulaAttribute = async (group: FormulaGroup) => {
-    const occurrencesByFile = group.occurrences.reduce(
+    const frontmatterOccurrences = group.occurrences.filter(
+      (occurrence) => occurrence.source === "frontmatter",
+    );
+    const occurrencesByFile = frontmatterOccurrences.reduce(
       (map, occurrence) => {
         const current = map.get(occurrence.filePath) ?? [];
         current.push(occurrence);
@@ -2565,8 +2793,29 @@ export const MonitoringRulesPage = () => {
                 {selectedFormulaGroup.occurrences.length > 0 ? (
                   <ul className="monitoring-rules-formula-occurrence-list">
                     {selectedFormulaGroup.occurrences.map((occurrence) => (
-                      <li key={`${occurrence.filePath}::${occurrence.key}`}>
-                        <code>{occurrence.fileRelativePath}</code>
+                      <li key={`${occurrence.filePath}::${occurrence.key}::${occurrence.source}`}>
+                        <button
+                          type="button"
+                          className="monitoring-rules-formula-occurrence-link"
+                          title={`${occurrence.fileRelativePath} oeffnen`}
+                          aria-label={`${occurrence.fileRelativePath} oeffnen`}
+                          onClick={(event) => {
+                            handleOpenFormulaOccurrence(occurrence, {
+                              openInNewTab: event.metaKey || event.ctrlKey,
+                            });
+                          }}
+                          onAuxClick={(event) => {
+                            if (event.button !== 1) {
+                              return;
+                            }
+                            handleOpenFormulaOccurrence(occurrence, { openInNewTab: true });
+                          }}
+                        >
+                          <code>
+                            {occurrence.fileRelativePath}
+                            {occurrence.source === "database-block" ? " (DB-Block)" : ""}
+                          </code>
+                        </button>
                       </li>
                     ))}
                   </ul>

@@ -583,6 +583,244 @@ describe("MonitoringRulesPage", () => {
     cleanup();
   });
 
+  it("shows f-* formula keys even when definition is not a valid formula object", async () => {
+    const markdownByPath: Record<string, string> = {
+      "/vault/source-a.md": [
+        "---",
+        "score: 42",
+        "f-score: true",
+        "---",
+        "# Demo",
+      ].join("\n"),
+    };
+
+    mockInvoke.mockImplementation(async (command, payload) => {
+      if (command === "read_text_file") {
+        const typedPayload = payload as { path?: string };
+        return markdownByPath[typedPayload.path ?? ""] ?? "";
+      }
+      return "";
+    });
+    mockUseAppState.mockReturnValue({
+      settings: {
+        monitoringRenderProfiles: [
+          {
+            id: "monitoring-status",
+            name: "Status",
+            attributeAliases: ["status"],
+            inputFormat: "code",
+            previewRawValue: "2",
+            scopes: ["monitoring-page", "database", "properties"],
+            enabled: true,
+            rules: [
+              {
+                id: "rule-status-map",
+                type: "value-map",
+                mappings: [{ from: "2", to: "🟢" }],
+                displayMode: "append",
+                separator: " ",
+              },
+            ],
+          },
+        ],
+        setMonitoringRenderProfiles: vi.fn(),
+        persistSettings: vi.fn(async () => true),
+        formulaAttributeRegistry: [],
+        setFormulaAttributeRegistry: vi.fn(),
+      },
+      vault: {
+        vaultPath: "/vault",
+        files: [
+          { path: "/vault/source-a.md", relative_path: "source-a.md" },
+        ],
+      },
+    } as unknown as ReturnType<typeof useAppState>);
+
+    const { container, cleanup } = renderPage();
+    await flush();
+
+    await click(
+      Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "Formelattribute",
+      ) ?? null,
+    );
+    await flush();
+
+    const formulaListItems = container.querySelectorAll(".monitoring-rules-list-item");
+    expect(formulaListItems).toHaveLength(1);
+    expect(formulaListItems[0]?.textContent ?? "").toContain("f-score");
+    expect(formulaListItems[0]?.textContent ?? "").toContain("1 Fundstelle");
+
+    cleanup();
+  });
+
+  it("shows f-* formula keys from database block field labels", async () => {
+    const markdownByPath: Record<string, string> = {
+      "/vault/source-a.md": [
+        "---",
+        "score: 42",
+        "---",
+        "::::",
+        "fields:",
+        "  - key: percent",
+        "    label: f-percent",
+        "    type: formula",
+        "    origin: formula",
+        "    formulaDefinition:",
+        "      version: 1",
+        "      operation: count",
+        "      attributeKeys:",
+        "        - score",
+        "      source:",
+        "        type: current-folder",
+        "      shortTextRule:",
+        "        maxChars: 32",
+        "        maxTokens: 3",
+        "        requireSingleNumericCore: true",
+        "::::",
+      ].join("\n"),
+    };
+
+    mockInvoke.mockImplementation(async (command, payload) => {
+      if (command === "read_text_file") {
+        const typedPayload = payload as { path?: string };
+        return markdownByPath[typedPayload.path ?? ""] ?? "";
+      }
+      return "";
+    });
+    mockUseAppState.mockReturnValue({
+      settings: {
+        monitoringRenderProfiles: [
+          {
+            id: "monitoring-status",
+            name: "Status",
+            attributeAliases: ["status"],
+            inputFormat: "code",
+            previewRawValue: "2",
+            scopes: ["monitoring-page", "database", "properties"],
+            enabled: true,
+            rules: [
+              {
+                id: "rule-status-map",
+                type: "value-map",
+                mappings: [{ from: "2", to: "🟢" }],
+                displayMode: "append",
+                separator: " ",
+              },
+            ],
+          },
+        ],
+        setMonitoringRenderProfiles: vi.fn(),
+        persistSettings: vi.fn(async () => true),
+        formulaAttributeRegistry: [],
+        setFormulaAttributeRegistry: vi.fn(),
+      },
+      vault: {
+        vaultPath: "/vault",
+        files: [
+          { path: "/vault/source-a.md", relative_path: "source-a.md" },
+        ],
+      },
+    } as unknown as ReturnType<typeof useAppState>);
+
+    const { container, cleanup } = renderPage();
+    await flush();
+
+    await click(
+      Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "Formelattribute",
+      ) ?? null,
+    );
+    await flush();
+
+    const formulaListItems = container.querySelectorAll(".monitoring-rules-list-item");
+    expect(formulaListItems).toHaveLength(1);
+    expect(formulaListItems[0]?.textContent ?? "").toContain("f-percent");
+    expect(formulaListItems[0]?.textContent ?? "").toContain("1 Fundstelle");
+    expect(container.textContent).toContain("(DB-Block)");
+
+    cleanup();
+  });
+
+  it("opens a formula occurrence file when clicking the reference path", async () => {
+    const markdownByPath: Record<string, string> = {
+      "/vault/source-a.md": buildFormulaMarkdown({ key: "f-score", operation: "count" }),
+    };
+    const handleSelectFile = vi.fn();
+
+    mockInvoke.mockImplementation(async (command, payload) => {
+      if (command === "read_text_file") {
+        const typedPayload = payload as { path?: string };
+        return markdownByPath[typedPayload.path ?? ""] ?? "";
+      }
+      return "";
+    });
+    mockUseAppState.mockReturnValue({
+      actions: {
+        handleSelectFile,
+      },
+      settings: {
+        monitoringRenderProfiles: [
+          {
+            id: "monitoring-status",
+            name: "Status",
+            attributeAliases: ["status"],
+            inputFormat: "code",
+            previewRawValue: "2",
+            scopes: ["monitoring-page", "database", "properties"],
+            enabled: true,
+            rules: [
+              {
+                id: "rule-status-map",
+                type: "value-map",
+                mappings: [{ from: "2", to: "🟢" }],
+                displayMode: "append",
+                separator: " ",
+              },
+            ],
+          },
+        ],
+        setMonitoringRenderProfiles: vi.fn(),
+        persistSettings: vi.fn(async () => true),
+        formulaAttributeRegistry: [],
+        setFormulaAttributeRegistry: vi.fn(),
+      },
+      vault: {
+        vaultPath: "/vault",
+        files: [
+          { path: "/vault/source-a.md", relative_path: "source-a.md" },
+        ],
+      },
+    } as unknown as ReturnType<typeof useAppState>);
+
+    const { container, cleanup } = renderPage();
+    await flush();
+
+    await click(
+      Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "Formelattribute",
+      ) ?? null,
+    );
+    await flush();
+
+    const referenceButton = container.querySelector<HTMLButtonElement>(
+      ".monitoring-rules-formula-occurrence-link",
+    );
+    await click(referenceButton);
+
+    expect(handleSelectFile).toHaveBeenCalledWith(
+      {
+        path: "/vault/source-a.md",
+        relative_path: "source-a.md",
+      },
+      {
+        openInNewTab: false,
+      },
+    );
+
+    cleanup();
+  });
+
   it("lists orphan formulas from registry even without markdown occurrences", async () => {
     mockInvoke.mockImplementation(async (command) => {
       if (command === "read_text_file") {
