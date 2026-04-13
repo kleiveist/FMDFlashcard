@@ -116,6 +116,22 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const asString = (value: unknown, fallback = "") =>
   typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
 
+const asOptionalBoolean = (value: unknown): boolean | undefined => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") {
+      return true;
+    }
+    if (normalized === "false") {
+      return false;
+    }
+  }
+  return undefined;
+};
+
 const asStringArray = (value: unknown) => {
   if (!Array.isArray(value)) {
     return [];
@@ -523,12 +539,14 @@ const parseSourceSpec = (value: unknown): DatabaseSourceSpec => {
   const type = parseSourceType(value.type);
   const path = asString(value.path);
   const paths = asStringArray(value.paths);
+  const includeHistory = asOptionalBoolean(value.includeHistory);
   const tags = asStringArray(value.tags);
   const query = asString(value.query);
   return {
     type,
     ...(path ? { path } : {}),
     ...(paths.length > 0 ? { paths } : {}),
+    ...(type === "multi-folder" && typeof includeHistory === "boolean" ? { includeHistory } : {}),
     ...(tags.length > 0 ? { tags } : {}),
     ...(query ? { query } : {}),
   };
@@ -1146,6 +1164,9 @@ export const serializeDatabaseBlockConfig = (config: DatabaseBlockConfig) => {
     config.source.paths.forEach((path) => {
       lines.push(`    - ${formatYamlScalar(path)}`);
     });
+  }
+  if (config.source.type === "multi-folder" && config.source.includeHistory === true) {
+    lines.push("  includeHistory: true");
   }
   if (config.source.tags && config.source.tags.length > 0) {
     lines.push("  tags:");

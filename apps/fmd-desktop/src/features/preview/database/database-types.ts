@@ -111,6 +111,7 @@ export type DatabaseSourceSpec = {
   type: DatabaseSourceType;
   path?: string;
   paths?: string[];
+  includeHistory?: boolean;
   tags?: string[];
   query?: string;
 };

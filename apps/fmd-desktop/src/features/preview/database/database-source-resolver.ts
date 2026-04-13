@@ -50,6 +50,20 @@ const mapToResolutionFiles = (files: VaultFile[]) =>
     relativePath: normalizeRelativePath(file.relative_path),
   }));
 
+const dedupeResolutionFilesByPath = (files: Array<{ path: string; relativePath: string }>) => {
+  const seen = new Set<string>();
+  const next: Array<{ path: string; relativePath: string }> = [];
+  files.forEach((file) => {
+    const key = file.path;
+    if (seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    next.push(file);
+  });
+  return next;
+};
+
 const resolveCurrentFolderFiles = (
   files: VaultFile[],
   sourceRelativePath: string | null | undefined,
@@ -100,9 +114,23 @@ export const resolveDatabaseSourceFiles = (
   }
 
   if (source.type === "multi-folder") {
+    const includeHistory = source.includeHistory === true;
+    const resolvedVaultFiles = mapToResolutionFiles(resolveMultiFolderFiles(vaultFiles, source.paths));
+    if (!includeHistory) {
+      return {
+        files: resolvedVaultFiles,
+        warning: null,
+      };
+    }
+
+    const hasExplicitFolderSelection = (source.paths ?? []).length > 0;
+    const scopedVaultFiles = hasExplicitFolderSelection ? resolvedVaultFiles : [];
     return {
-      files: mapToResolutionFiles(resolveMultiFolderFiles(vaultFiles, source.paths)),
-      warning: null,
+      files: dedupeResolutionFilesByPath([
+        ...scopedVaultFiles,
+        ...(context.historyFiles ?? []),
+      ]),
+      warning: context.historyWarning ?? null,
     };
   }
 

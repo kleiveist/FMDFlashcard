@@ -936,7 +936,9 @@ export const MarkdownHybridDatabaseBlock = ({
 
   useEffect(() => {
     let cancelled = false;
-    if (source.type !== "history-folder") {
+    const shouldLoadHistoryFiles = source.type === "history-folder" ||
+      (source.type === "multi-folder" && source.includeHistory === true);
+    if (!shouldLoadHistoryFiles) {
       setHistoryFiles([]);
       setHistoryWarning(null);
       return () => {
@@ -982,7 +984,7 @@ export const MarkdownHybridDatabaseBlock = ({
     return () => {
       cancelled = true;
     };
-  }, [source.type, vaultPath]);
+  }, [source.type, source.includeHistory, vaultPath]);
 
   const sourceContext = useMemo<DatabaseSourceResolverContext>(
     () => ({
@@ -2833,7 +2835,7 @@ export const MarkdownHybridDatabaseBlock = ({
     <DatabaseSourcePanel
       source={source}
       availableFolders={availableFolders}
-      historyFolderPath={source.type === "history-folder" ? historyFolderPath : null}
+      historyFolderPath={historyFolderPath}
       onChange={handleSourceChange}
       onClose={() => setPanels(defaultPanels)}
     />

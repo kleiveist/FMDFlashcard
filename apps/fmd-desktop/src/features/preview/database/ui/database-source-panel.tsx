@@ -43,6 +43,12 @@ const dedupeFoldersCaseInsensitive = (paths: string[]) => {
   return ordered;
 };
 
+const buildMultiFolderSource = (paths: string[], includeHistory: boolean): DatabaseSourceSpec => ({
+  type: "multi-folder",
+  paths,
+  ...(includeHistory ? { includeHistory: true } : {}),
+});
+
 const buildNextSourceForType = (type: DatabaseSourceType, availableFolders: string[]): DatabaseSourceSpec => {
   if (type === "explicit-folder") {
     return {
@@ -51,10 +57,7 @@ const buildNextSourceForType = (type: DatabaseSourceType, availableFolders: stri
     };
   }
   if (type === "multi-folder") {
-    return {
-      type,
-      paths: [],
-    };
+    return buildMultiFolderSource([], false);
   }
   if (type === "history-folder") {
     return {
@@ -106,6 +109,7 @@ export const DatabaseSourcePanel = ({
   }, [availableFolders, query]);
 
   const selectedMulti = new Set((source.paths ?? []).map((path) => path.toLowerCase()));
+  const includeHistoryInMulti = source.type === "multi-folder" && source.includeHistory === true;
 
   return (
     <aside
@@ -169,6 +173,7 @@ export const DatabaseSourcePanel = ({
           {folderOptions.map((folder) => {
             const checked = selectedMulti.has(folder.toLowerCase());
             const nextPaths = source.paths ?? [];
+            const includeHistory = source.includeHistory === true;
             return (
               <label key={folder || "__root"} className="database-block-source-item">
                 <input
@@ -178,17 +183,39 @@ export const DatabaseSourcePanel = ({
                     const updated = event.target.checked
                       ? [...nextPaths, folder]
                       : nextPaths.filter((entry) => entry.toLowerCase() !== folder.toLowerCase());
-                    onChange({
-                      type: "multi-folder",
-                      paths: dedupeFoldersCaseInsensitive(updated),
-                    });
+                    onChange(buildMultiFolderSource(
+                      dedupeFoldersCaseInsensitive(updated),
+                      includeHistory,
+                    ));
                   }}
                 />
                 <span>{folder || "(Vault Root)"}</span>
               </label>
             );
           })}
+          <label className="database-block-source-item">
+            <input
+              type="checkbox"
+              checked={includeHistoryInMulti}
+              onChange={(event) =>
+                onChange(buildMultiFolderSource(
+                  dedupeFoldersCaseInsensitive(source.paths ?? []),
+                  event.target.checked,
+                ))}
+            />
+            <span>History (Exam-Runs)</span>
+          </label>
         </div>
+      ) : null}
+
+      {source.type === "multi-folder" && source.includeHistory === true ? (
+        <>
+          <p className="database-block-state">History verwendet die Exam-Runs des aktuellen Vaults.</p>
+          <p className="database-block-state">Quelle: {historyFolderPath ?? "nicht gesetzt"}</p>
+          {!historyFolderPath ? (
+            <p className="database-block-state is-error">Kein Vault-Pfad gefunden.</p>
+          ) : null}
+        </>
       ) : null}
 
       {source.type === "tag-query" ? (

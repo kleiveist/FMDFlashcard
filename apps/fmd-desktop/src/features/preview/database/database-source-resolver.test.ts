@@ -44,6 +44,67 @@ describe("database-source-resolver", () => {
     ]);
   });
 
+  it("adds history files to multi-folder source when includeHistory is enabled", () => {
+    const result = resolveDatabaseSourceFiles(
+      { type: "multi-folder", paths: ["A"], includeHistory: true },
+      {
+        vaultFiles,
+        sourceRelativePath: null,
+        historyFiles: [
+          { path: "/vault/A/two.md", relativePath: "A/two.md" },
+          { path: "/profile/exam-runs/history-1.md", relativePath: "history-1.md" },
+        ],
+        historyWarning: null,
+      },
+    );
+
+    expect(result.warning).toBeNull();
+    expect(result.files.map((file) => file.path)).toEqual([
+      "/vault/A/one.md",
+      "/vault/A/two.md",
+      "/profile/exam-runs/history-1.md",
+    ]);
+  });
+
+  it("returns history-only files for multi-folder when includeHistory is enabled without folders", () => {
+    const result = resolveDatabaseSourceFiles(
+      { type: "multi-folder", paths: [], includeHistory: true },
+      {
+        vaultFiles,
+        sourceRelativePath: null,
+        historyFiles: [
+          { path: "/profile/exam-runs/history-1.md", relativePath: "history-1.md" },
+          { path: "/profile/exam-runs/history-2.md", relativePath: "history-2.md" },
+        ],
+        historyWarning: null,
+      },
+    );
+
+    expect(result.warning).toBeNull();
+    expect(result.files).toEqual([
+      { path: "/profile/exam-runs/history-1.md", relativePath: "history-1.md" },
+      { path: "/profile/exam-runs/history-2.md", relativePath: "history-2.md" },
+    ]);
+  });
+
+  it("forwards history warnings for multi-folder when includeHistory is enabled", () => {
+    const result = resolveDatabaseSourceFiles(
+      { type: "multi-folder", includeHistory: true, paths: ["A"] },
+      {
+        vaultFiles,
+        sourceRelativePath: null,
+        historyFiles: [],
+        historyWarning: "History folder unavailable (no vault path).",
+      },
+    );
+
+    expect(result.warning).toBe("History folder unavailable (no vault path).");
+    expect(result.files.map((file) => file.relativePath)).toEqual([
+      "A/one.md",
+      "A/two.md",
+    ]);
+  });
+
   it("returns warning stubs for tag-query and manual-query in phase 1", () => {
     const tagResult = resolveDatabaseSourceFiles(
       { type: "tag-query", tags: ["Exam"] },

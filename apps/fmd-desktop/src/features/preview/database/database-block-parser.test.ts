@@ -280,6 +280,75 @@ describe("database-block-parser", () => {
     expect(parsed.config.source.type).toBe("history-folder");
   });
 
+  it("parses and roundtrips includeHistory for multi-folder sources", () => {
+    const raw = [
+      "::::",
+      "title: Multi + History",
+      "source:",
+      "  type: multi-folder",
+      "  paths:",
+      "    - alpha",
+      "    - beta",
+      "  includeHistory: true",
+      "views:",
+      "  activeViewId: view-1",
+      "  items:",
+      "    - id: view-1",
+      "      name: Main",
+      "      view:",
+      "        type: table",
+      "      properties:",
+      "        - Dateiname",
+      "      filters:",
+      "        op: and",
+      "        rules: []",
+      "      sort: []",
+      "options:",
+      "  editable: false",
+      "  showSearch: true",
+      "  showToolbar: true",
+      "::::",
+    ].join("\n");
+
+    const parsed = parseDatabaseBlockConfigFromRaw(raw);
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.config.source).toEqual({
+      type: "multi-folder",
+      paths: ["alpha", "beta"],
+      includeHistory: true,
+    });
+
+    const serialized = serializeDatabaseBlockConfig(parsed.config);
+    expect(serialized).toContain("  includeHistory: true");
+
+    const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
+    expect(reparsed.errors).toEqual([]);
+    expect(reparsed.config.source).toEqual({
+      type: "multi-folder",
+      paths: ["alpha", "beta"],
+      includeHistory: true,
+    });
+  });
+
+  it("does not serialize includeHistory when false", () => {
+    const config = createDefaultDatabaseBlockConfig();
+    config.source = {
+      type: "multi-folder",
+      paths: ["alpha"],
+      includeHistory: false,
+    };
+
+    const serialized = serializeDatabaseBlockConfig(config);
+    expect(serialized).not.toContain("includeHistory");
+
+    const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
+    expect(reparsed.errors).toEqual([]);
+    expect(reparsed.config.source).toEqual({
+      type: "multi-folder",
+      paths: ["alpha"],
+    });
+  });
+
   it("returns defaults with parse error when opener is missing", () => {
     const parsed = parseDatabaseBlockConfigFromRaw("title: no marker");
     expect(parsed.isClosed).toBe(false);
