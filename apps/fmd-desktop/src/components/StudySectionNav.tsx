@@ -27,11 +27,13 @@ import {
   SettingsIcon,
 } from "./icons";
 import type { DashboardView } from "../pages/dashboardPreviewMode";
-import type { StudySectionKey } from "../lib/studySections";
+import type { StudyMainMode, StudySectionKey } from "../lib/studySections";
 
 type StudySectionNavProps = {
   activeTab: StudySectionKey;
+  activeMainMode: StudyMainMode;
   activeDashboardView: DashboardView;
+  onMainModeSelect: (mode: StudyMainMode) => void;
   onSectionSelect: (tab: StudySectionKey) => void;
   onDashboardViewSelect: (view: DashboardView) => void;
   isMobileNavOpen: boolean;
@@ -111,6 +113,12 @@ const SECONDARY_NAV_ITEMS: Record<PrimaryGroupKey, SecondaryNavItem[]> = {
   ],
   monitoring: [
     {
+      id: "monitoring-rules",
+      label: "Attribute Rules",
+      icon: GaugeIcon,
+      target: { type: "section", key: "monitoring-rules" },
+    },
+    {
       id: "card-monitoring",
       label: "Card Monitoring",
       icon: GridEventIcon,
@@ -122,28 +130,17 @@ const SECONDARY_NAV_ITEMS: Record<PrimaryGroupKey, SecondaryNavItem[]> = {
       icon: CheckIcon,
       target: { type: "section", key: "points-profiles" },
     },
-    {
-      id: "monitoring-rules",
-      label: "Attribute Rules",
-      icon: GaugeIcon,
-      target: { type: "section", key: "monitoring-rules" },
-    },
   ],
 };
 
-const getPrimaryGroupForTab = (tab: StudySectionKey): PrimaryGroupKey => {
+const getPrimaryGroupForTab = (
+  tab: StudySectionKey,
+  mainMode: StudyMainMode,
+): PrimaryGroupKey => {
   if (tab === "dashboard") {
     return "editor";
   }
-  if (
-    tab === "exam" ||
-    tab === "flashcard" ||
-    tab === "fast-flashcard" ||
-    tab === "spaced-repetition"
-  ) {
-    return "study";
-  }
-  return "monitoring";
+  return mainMode === "monitoring" ? "monitoring" : "study";
 };
 
 const useIconOnlyOverflow = (enabled: boolean, measurementSeed: string) => {
@@ -209,7 +206,9 @@ const useIconOnlyOverflow = (enabled: boolean, measurementSeed: string) => {
 
 export const StudySectionNav = ({
   activeTab,
+  activeMainMode,
   activeDashboardView,
+  onMainModeSelect,
   onSectionSelect,
   onDashboardViewSelect,
   isMobileNavOpen,
@@ -223,8 +222,8 @@ export const StudySectionNav = ({
   settingsActionLabel = "Settings",
 }: StudySectionNavProps) => {
   const derivedPrimaryGroup = useMemo(
-    () => getPrimaryGroupForTab(activeTab),
-    [activeTab],
+    () => getPrimaryGroupForTab(activeTab, activeMainMode),
+    [activeMainMode, activeTab],
   );
   const [activePrimaryGroup, setActivePrimaryGroup] =
     useState<PrimaryGroupKey>(derivedPrimaryGroup);
@@ -263,6 +262,9 @@ export const StudySectionNav = ({
   const handlePrimarySelect = (group: PrimaryGroupKey) => {
     setActivePrimaryGroup(group);
     setIsSecondaryVisible(true);
+    if (group === "study" || group === "monitoring") {
+      onMainModeSelect(group);
+    }
   };
 
   const handleSecondarySelect = (item: SecondaryNavItem) => {

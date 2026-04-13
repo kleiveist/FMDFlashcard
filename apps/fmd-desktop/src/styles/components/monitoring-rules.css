@@ -4,6 +4,9 @@
 
 .monitoring-rules-panel {
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .monitoring-rules-header-actions {
@@ -13,12 +16,39 @@
   flex-wrap: wrap;
 }
 
+.monitoring-rules-view-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 88%, var(--surface));
+}
+
+.monitoring-rules-panel > .monitoring-rules-view-switch {
+  align-self: flex-start;
+}
+
+.monitoring-rules-view-switch .ghost.small {
+  border-radius: 999px;
+}
+
+.monitoring-rules-view-switch .ghost.small.active {
+  border-color: var(--accent-border);
+  background: color-mix(in srgb, var(--accent-weak-bg) 78%, transparent);
+}
+
 .monitoring-rules-layout {
   display: grid;
   grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
   gap: var(--ui-layout-gap);
   min-height: 0;
   align-items: start;
+}
+
+.monitoring-rules-layout--formula {
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(220px, 320px);
 }
 
 .monitoring-rules-list {
@@ -31,6 +61,10 @@
   padding: 8px;
   max-height: 68vh;
   overflow-y: auto;
+}
+
+.monitoring-rules-list .database-view-empty {
+  padding: 8px;
 }
 
 .monitoring-rules-list-item {
@@ -208,6 +242,67 @@
 .monitoring-rules-rule-fields select,
 .monitoring-rules-preview-inputs input {
   min-height: var(--ui-control-height-compact);
+}
+
+.monitoring-rules-formula-meta-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.monitoring-rules-formula-builder-section {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--panel) 86%, var(--accent-weak-bg)) 0%,
+      var(--panel) 100%
+    );
+}
+
+.monitoring-rules-formula-builder-shell {
+  border: 1px solid color-mix(in srgb, var(--accent-border) 42%, var(--line-soft));
+  border-radius: 12px;
+  padding: 10px;
+  background: color-mix(in srgb, var(--surface) 72%, var(--panel));
+}
+
+.monitoring-rules-formula-info {
+  max-height: 68vh;
+  overflow: auto;
+}
+
+.monitoring-rules-formula-occurrence-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.monitoring-rules-formula-occurrence-list li {
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: color-mix(in srgb, var(--panel) 88%, var(--surface));
+}
+
+.monitoring-rules-formula-occurrence-list code {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+
+.monitoring-rules-formula-conflict-warning {
+  border: 1px solid color-mix(in srgb, var(--warning-border, var(--line-soft)) 70%, var(--line-soft));
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--warning-bg, var(--panel)) 78%, transparent);
+  color: var(--warning-ink, var(--ink));
+  font-size: 0.86rem;
+}
+
+.monitoring-rules-formula-conflict-text {
+  margin: 0;
+  color: var(--warning-ink, var(--ink));
+  font-size: 0.84rem;
 }
 
 .monitoring-rules-rule-fields textarea {
@@ -549,8 +644,16 @@
     grid-template-columns: 1fr;
   }
 
+  .monitoring-rules-layout--formula {
+    grid-template-columns: 1fr;
+  }
+
   .monitoring-rules-list {
     max-height: 280px;
+  }
+
+  .monitoring-rules-formula-info {
+    max-height: none;
   }
 }
 

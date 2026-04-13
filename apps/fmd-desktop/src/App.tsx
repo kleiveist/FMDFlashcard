@@ -70,7 +70,12 @@ import { SpacedRepetitionPage } from "./pages/SpacedRepetitionPage";
 import { PointsProfilesPage } from "./pages/PointsProfilesPage";
 import { MonitoringRulesPage } from "./pages/MonitoringRulesPage";
 import { DEFAULT_HELP_TOPIC_ID } from "./pages/help/helpContent";
-import type { StudySectionKey } from "./lib/studySections";
+import {
+  isMonitoringModeSection,
+  isStudyModeSection,
+  type StudyMainMode,
+  type StudySectionKey,
+} from "./lib/studySections";
 import { SMART_QUERY } from "./lib/breakpoints";
 
 type WalletGateId = "custom-path" | "profile" | "sync-provider";
@@ -107,6 +112,7 @@ const AppContent = () => {
     redactContent: settings.inputDebugRedactContent,
   });
   const [activeTab, setActiveTab] = useState<StudySectionKey>("dashboard");
+  const [activeMainMode, setActiveMainMode] = useState<StudyMainMode>("study");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [dashboardView, setDashboardView] = useState<DashboardView>("markdown");
   const [examLaunchPreset, setExamLaunchPreset] = useState<ExamLaunchPreset | null>(
@@ -359,6 +365,11 @@ const AppContent = () => {
           `tab-change:${activeTab}->${tab}`,
         );
       }
+      if (isStudyModeSection(tab)) {
+        setActiveMainMode("study");
+      } else if (isMonitoringModeSection(tab)) {
+        setActiveMainMode("monitoring");
+      }
       setActiveTab(tab);
       setIsMobileNavOpen(false);
       return true;
@@ -397,6 +408,26 @@ const AppContent = () => {
       handleTabChange,
       spacedRepetition,
     ],
+  );
+  const handleMainModeSelect = useCallback(
+    (mode: StudyMainMode) => {
+      if (mode === "study") {
+        if (isStudyModeSection(activeTab)) {
+          setActiveMainMode("study");
+          setIsMobileNavOpen(false);
+          return;
+        }
+        void handleStudySectionSelect("exam");
+        return;
+      }
+      if (isMonitoringModeSection(activeTab)) {
+        setActiveMainMode("monitoring");
+        setIsMobileNavOpen(false);
+        return;
+      }
+      void handleTabChange("monitoring-rules");
+    },
+    [activeTab, handleStudySectionSelect, handleTabChange],
   );
   const handleDashboardViewSelect = useCallback(
     (nextView: DashboardView) => {
@@ -664,12 +695,15 @@ const AppContent = () => {
         isMobileNavOpen ? "nav-open" : ""
       }`}
       data-active-tab={activeTab}
+      data-main-mode={activeMainMode}
       data-study-subview={dashboardView}
     >
       {showStudySectionNav ? (
         <StudySectionNav
           activeTab={activeTab}
+          activeMainMode={activeMainMode}
           activeDashboardView={dashboardView}
+          onMainModeSelect={handleMainModeSelect}
           onSectionSelect={handleStudySectionSelect}
           onDashboardViewSelect={handleDashboardViewSelect}
           isMobileNavOpen={isMobileNavOpen}
@@ -685,6 +719,8 @@ const AppContent = () => {
       ) : null}
       <SidebarNav
         activeTab={activeTab}
+        activeMainMode={activeMainMode}
+        onMainModeSelect={handleMainModeSelect}
         onTabChange={handleSidebarTabChange}
         onSelectVaultFile={handleSidebarVaultFileSelect}
         vaultView={dashboardView}

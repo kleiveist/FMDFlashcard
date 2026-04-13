@@ -124,15 +124,35 @@ vi.mock("./components/SidebarNav", () => ({
 
 vi.mock("./components/StudySectionNav", () => ({
   StudySectionNav: ({
+    onMainModeSelect,
     onSectionSelect,
     onDashboardViewSelect,
   }: {
+    onMainModeSelect: (mode: "study" | "monitoring") => void;
     onSectionSelect: (tab: string) => void;
     onDashboardViewSelect: (view: "markdown" | "exam") => void;
   }) =>
     React.createElement(
       React.Fragment,
       null,
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          "data-testid": "study-nav-main-study",
+          onClick: () => onMainModeSelect("study"),
+        },
+        "StudyNav: main study",
+      ),
+      React.createElement(
+        "button",
+        {
+          type: "button",
+          "data-testid": "study-nav-main-monitoring",
+          onClick: () => onMainModeSelect("monitoring"),
+        },
+        "StudyNav: main monitoring",
+      ),
       React.createElement(
         "button",
         {
@@ -312,6 +332,15 @@ vi.mock("./pages/PointsProfilesPage", () => ({
       "div",
       { "data-testid": "mock-points-profiles-page" },
       "Points Profiles",
+    ),
+}));
+
+vi.mock("./pages/MonitoringRulesPage", () => ({
+  MonitoringRulesPage: () =>
+    React.createElement(
+      "div",
+      { "data-testid": "mock-monitoring-rules-page" },
+      "Attribute Rules",
     ),
 }));
 
@@ -836,6 +865,21 @@ describe("App dashboard leave guard integration", () => {
     expect(latestDashboardProps?.markdownTabs).toEqual([
       { path: "/vault/target.md", relativePath: "target.md" },
     ]);
+
+    cleanup();
+  });
+
+  it("opens monitoring rules as default page for monitoring mode and exam for study mode", async () => {
+    dashboardGuard.canLeave = true;
+    const { container, cleanup } = renderApp();
+
+    await clickTestId(container, "study-nav-main-monitoring");
+    expect(container.querySelector('[data-testid="mock-monitoring-rules-page"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="mock-exam-simulation-page"]')).toBeNull();
+
+    await clickTestId(container, "study-nav-main-study");
+    expect(container.querySelector('[data-testid="mock-exam-simulation-page"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="mock-monitoring-rules-page"]')).toBeNull();
 
     cleanup();
   });

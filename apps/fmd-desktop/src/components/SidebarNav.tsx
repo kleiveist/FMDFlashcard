@@ -22,7 +22,6 @@
  */
 
 import {
-  Fragment,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   useCallback,
@@ -47,13 +46,22 @@ import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
 import { useVaultPathInfo } from "../features/vault/useVaultPathInfo";
 import type { PreviewFileOpenOptions } from "../features/preview/usePreview";
 import type { DashboardView } from "../pages/DashboardPage";
-import { CARD_SECTION_KEYS, CARD_SECTIONS, type StudySectionKey } from "../lib/studySections";
+import {
+  MONITORING_MODE_SECTIONS,
+  STUDY_MODE_SECTIONS,
+  isMonitoringModeSection,
+  isStudyModeSection,
+  type StudyMainMode,
+  type StudySectionKey,
+} from "../lib/studySections";
 import type { VaultFile } from "../lib/tree";
 
-type ToolbarMode = "cards" | "vault";
+type ToolbarMode = StudyMainMode | "vault";
 
 type SidebarNavProps = {
   activeTab: StudySectionKey;
+  activeMainMode: StudyMainMode;
+  onMainModeSelect: (mode: StudyMainMode) => void;
   onTabChange: (tab: StudySectionKey) => void;
   onSelectVaultFile?: (file: VaultFile, options?: PreviewFileOpenOptions) => void;
   vaultView: DashboardView;
@@ -63,7 +71,6 @@ type SidebarNavProps = {
   onOpenUserManager: () => void;
   onMobileNavClose: () => void;
 };
-const SIDEBAR_MONITORING_DIVIDER_BEFORE: StudySectionKey = "card-monitoring";
 
 const buildUserInitials = (value: string) => {
   const parts = value
@@ -81,6 +88,8 @@ const buildUserInitials = (value: string) => {
 
 export const SidebarNav = ({
   activeTab,
+  activeMainMode,
+  onMainModeSelect,
   onTabChange,
   onSelectVaultFile,
   vaultView,
@@ -92,7 +101,7 @@ export const SidebarNav = ({
 }: SidebarNavProps) => {
   const { actions, preview, settings, spacedRepetition, vault } = useAppState();
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>(() =>
-    activeTab === "dashboard" ? "vault" : "cards",
+    activeTab === "dashboard" ? "vault" : activeMainMode,
   );
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
     () => new Set(),
@@ -146,7 +155,8 @@ export const SidebarNav = ({
       vault.files.length === 1 ? "" : "en"
       }`;
   }, [vault.files.length, vault.vaultPath]);
-  const isCardsTab = CARD_SECTION_KEYS.includes(activeTab);
+  const isStudyTab = isStudyModeSection(activeTab);
+  const isMonitoringTab = isMonitoringModeSection(activeTab);
   const isDashboard = activeTab === "dashboard";
   const isMarkdownView = isDashboard && vaultView === "markdown";
   const isExamView = isDashboard && vaultView === "exam";
@@ -191,10 +201,14 @@ export const SidebarNav = ({
       setToolbarMode("vault");
       return;
     }
-    if (isCardsTab && toolbarMode !== "cards") {
-      setToolbarMode("cards");
+    if (isStudyTab && toolbarMode !== "study") {
+      setToolbarMode("study");
+      return;
     }
-  }, [isCardsTab, isDashboard, toolbarMode]);
+    if (isMonitoringTab && toolbarMode !== "monitoring") {
+      setToolbarMode("monitoring");
+    }
+  }, [isDashboard, isMonitoringTab, isStudyTab, toolbarMode]);
 
   const updateVaultMenuMaxHeight = useCallback(() => {
     const layoutElement = vaultLayoutRef.current;
@@ -389,6 +403,12 @@ export const SidebarNav = ({
     [activeUserId, spacedRepetition],
   );
 
+  const activeModeSections = toolbarMode === "study"
+    ? STUDY_MODE_SECTIONS
+    : toolbarMode === "monitoring"
+      ? MONITORING_MODE_SECTIONS
+      : null;
+
   return (
     <aside
       id="app-sidebar"
@@ -490,18 +510,30 @@ export const SidebarNav = ({
           <button
             type="button"
             className={`nav-icon sidebar-icon-button ${
-              toolbarMode === "cards" ? "active" : ""
+              toolbarMode === "study" ? "active" : ""
             }`}
             onClick={() => {
-              setToolbarMode("cards");
-              if (!isCardsTab) {
-                onTabChange("exam");
-              }
+              setToolbarMode("study");
+              onMainModeSelect("study");
             }}
             aria-label="Study flashcards"
             title="Study"
           >
             <CardsIcon />
+          </button>
+          <button
+            type="button"
+            className={`nav-icon sidebar-icon-button ${
+              toolbarMode === "monitoring" ? "active" : ""
+            }`}
+            onClick={() => {
+              setToolbarMode("monitoring");
+              onMainModeSelect("monitoring");
+            }}
+            aria-label="Monitoring tools"
+            title="Monitoring"
+          >
+            <CheckIcon />
           </button>
           <button
             type="button"
@@ -535,23 +567,19 @@ export const SidebarNav = ({
       </div>
       <div className="sidebar-main" ref={vaultLayoutRef}>
         <div className="sidebar-main-content">
-          {toolbarMode === "cards" ? (
+          {activeModeSections ? (
             <nav className="nav">
-              {CARD_SECTIONS.map((section) => {
+              {activeModeSections.map((section) => {
                 const isActive = activeTab === section.key;
                 return (
-                  <Fragment key={section.key}>
-                    {section.key === SIDEBAR_MONITORING_DIVIDER_BEFORE ? (
-                      <div className="nav-group-divider" aria-hidden="true" />
-                    ) : null}
-                    <button
-                      type="button"
-                      className={`nav-item ${isActive ? "active" : ""}`}
-                      onClick={() => onTabChange(section.key)}
-                    >
-                      {section.label}
-                    </button>
-                  </Fragment>
+                  <button
+                    key={section.key}
+                    type="button"
+                    className={`nav-item ${isActive ? "active" : ""}`}
+                    onClick={() => onTabChange(section.key)}
+                  >
+                    {section.label}
+                  </button>
                 );
               })}
             </nav>

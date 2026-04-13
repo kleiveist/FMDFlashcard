@@ -12,6 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SidebarNav } from "./SidebarNav";
 import { useAppState } from "./AppStateProvider";
 import { useVaultPathInfo } from "../features/vault/useVaultPathInfo";
+import type { StudyMainMode, StudySectionKey } from "../lib/studySections";
 
 vi.mock("./AppStateProvider", () => ({
   useAppState: vi.fn(),
@@ -28,6 +29,9 @@ type RenderOptions = {
   activeUserId?: string | null;
   activeUserName?: string | null;
   setActiveUser?: (userId: string) => void;
+  activeTab?: StudySectionKey;
+  activeMainMode?: StudyMainMode;
+  onMainModeSelect?: (mode: StudyMainMode) => void;
 };
 
 const mockUseAppState = vi.mocked(useAppState);
@@ -81,6 +85,7 @@ const createMockAppState = ({
 
 const renderSidebar = (options: RenderOptions = {}) => {
   const onOpenUserManager = vi.fn();
+  const onMainModeSelect = options.onMainModeSelect ?? vi.fn();
   mockUseAppState.mockReturnValue(createMockAppState(options));
   mockUseVaultPathInfo.mockReturnValue({});
 
@@ -91,7 +96,9 @@ const renderSidebar = (options: RenderOptions = {}) => {
   act(() => {
     root.render(
       <SidebarNav
-        activeTab="exam"
+        activeTab={options.activeTab ?? "exam"}
+        activeMainMode={options.activeMainMode ?? "study"}
+        onMainModeSelect={onMainModeSelect}
         onTabChange={vi.fn()}
         vaultView="markdown"
         onVaultViewChange={vi.fn()}
@@ -106,6 +113,7 @@ const renderSidebar = (options: RenderOptions = {}) => {
   return {
     container,
     onOpenUserManager,
+    onMainModeSelect,
     cleanup: () => {
       act(() => {
         root.unmount();
@@ -207,6 +215,39 @@ describe("SidebarNav active user switcher", () => {
 
     expect(onOpenUserManager).toHaveBeenCalledTimes(1);
     expect(container.querySelector("#sidebar-active-user-menu")).toBeNull();
+    cleanup();
+  });
+
+  it("exposes monitoring mode icon and renders monitoring-only sections when active", () => {
+    const onMainModeSelect = vi.fn();
+    const { container, cleanup } = renderSidebar({
+      activeTab: "monitoring-rules",
+      activeMainMode: "monitoring",
+      onMainModeSelect,
+    });
+
+    const monitoringIcon = container.querySelector<HTMLButtonElement>(
+      'button.sidebar-icon-button[aria-label="Monitoring tools"]',
+    );
+    expect(monitoringIcon).toBeTruthy();
+
+    act(() => {
+      monitoringIcon?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onMainModeSelect).toHaveBeenCalledWith("monitoring");
+
+    const navButtons = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".sidebar-main-content .nav .nav-item"),
+      (button) => button.textContent?.trim() ?? "",
+    );
+    expect(navButtons).toEqual([
+      "Attribute Rules",
+      "Card Monitoring",
+      "Points Profiles",
+    ]);
+    expect(navButtons).not.toContain("Exam");
+    expect(navButtons).not.toContain("Flashcard");
+
     cleanup();
   });
 });

@@ -4,12 +4,14 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { StudySectionNav } from "./StudySectionNav";
-import type { StudySectionKey } from "../lib/studySections";
+import type { StudyMainMode, StudySectionKey } from "../lib/studySections";
 import type { DashboardView } from "../pages/dashboardPreviewMode";
 
 type RenderOptions = {
   activeTab?: StudySectionKey;
+  activeMainMode?: StudyMainMode;
   activeDashboardView?: DashboardView;
+  onMainModeSelect?: (mode: StudyMainMode) => void;
   onSectionSelect?: (tab: StudySectionKey) => void;
   onDashboardViewSelect?: (view: DashboardView) => void;
   showSettingsAction?: boolean;
@@ -32,7 +34,9 @@ const clickButtonByExactText = async (container: HTMLElement, label: string) => 
 
 const renderStudySectionNav = ({
   activeTab = "dashboard",
+  activeMainMode = "study",
   activeDashboardView = "markdown",
+  onMainModeSelect = vi.fn(),
   onSectionSelect = vi.fn(),
   onDashboardViewSelect = vi.fn(),
   showSettingsAction = false,
@@ -47,7 +51,9 @@ const renderStudySectionNav = ({
     root.render(
       <StudySectionNav
         activeTab={activeTab}
+        activeMainMode={activeMainMode}
         activeDashboardView={activeDashboardView}
+        onMainModeSelect={onMainModeSelect}
         onSectionSelect={onSectionSelect}
         onDashboardViewSelect={onDashboardViewSelect}
         isMobileNavOpen={false}
@@ -63,6 +69,7 @@ const renderStudySectionNav = ({
 
   return {
     container,
+    onMainModeSelect,
     onSectionSelect,
     onDashboardViewSelect,
     cleanup: () => {
@@ -122,19 +129,39 @@ describe("StudySectionNav", () => {
 
   it("routes study and monitoring submenu clicks to section tabs", async () => {
     const onSectionSelect = vi.fn();
+    const onMainModeSelect = vi.fn();
     const { container, cleanup } = renderStudySectionNav({
+      onMainModeSelect,
       onSectionSelect,
     });
 
     await clickButtonByExactText(container, "Study");
     await clickButtonByExactText(container, "Flashcard");
     await clickButtonByExactText(container, "Monitoring");
-    await clickButtonByExactText(container, "Points Profiles");
     await clickButtonByExactText(container, "Attribute Rules");
+    await clickButtonByExactText(container, "Points Profiles");
 
+    expect(onMainModeSelect).toHaveBeenNthCalledWith(1, "study");
+    expect(onMainModeSelect).toHaveBeenNthCalledWith(2, "monitoring");
     expect(onSectionSelect).toHaveBeenNthCalledWith(1, "flashcard");
-    expect(onSectionSelect).toHaveBeenNthCalledWith(2, "points-profiles");
-    expect(onSectionSelect).toHaveBeenNthCalledWith(3, "monitoring-rules");
+    expect(onSectionSelect).toHaveBeenNthCalledWith(2, "monitoring-rules");
+    expect(onSectionSelect).toHaveBeenNthCalledWith(3, "points-profiles");
+
+    cleanup();
+  });
+
+  it("shows Attribute Rules as first monitoring sub-item", async () => {
+    const { container, cleanup } = renderStudySectionNav();
+
+    await clickButtonByExactText(container, "Monitoring");
+    const secondaryButtons = Array.from(
+      container.querySelectorAll<HTMLButtonElement>("button.study-section-secondary-tab"),
+    ).map((button) => button.textContent?.trim() ?? "");
+    expect(secondaryButtons.slice(0, 3)).toEqual([
+      "Attribute Rules",
+      "Card Monitoring",
+      "Points Profiles",
+    ]);
 
     cleanup();
   });

@@ -163,6 +163,31 @@ const renderPage = () => {
   };
 };
 
+const buildFormulaMarkdown = ({
+  key = "f-score",
+  operation = "count",
+}: {
+  key?: string;
+  operation?: "count" | "sum" | "avg" | "group_count";
+}) =>
+  [
+    "---",
+    "score: 42",
+    `${key}:`,
+    "  version: 1",
+    `  operation: ${operation}`,
+    "  attributeKeys:",
+    "    - score",
+    "  source:",
+    "    type: current-folder",
+    "  shortTextRule:",
+    "    maxChars: 32",
+    "    maxTokens: 3",
+    "    requireSingleNumericCore: true",
+    "---",
+    "# Demo",
+  ].join("\n");
+
 describe("MonitoringRulesPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -464,6 +489,342 @@ describe("MonitoringRulesPage", () => {
       (button) => button.textContent ?? "",
     );
     expect(after).toEqual(before);
+
+    cleanup();
+  });
+
+  it("positions the formula view switch above the Attribute Rules heading", async () => {
+    const { container, cleanup } = renderPage();
+    await flush();
+
+    const switchElement = container.querySelector(".monitoring-rules-view-switch");
+    const heading = container.querySelector("h2");
+    expect(switchElement).toBeTruthy();
+    expect(heading).toBeTruthy();
+    const switchBeforeHeading = Boolean(
+      switchElement &&
+      heading &&
+      (switchElement.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING),
+    );
+    expect(switchBeforeHeading).toBe(true);
+
+    cleanup();
+  });
+
+  it("shows grouped formulas across files and renders their references", async () => {
+    const markdownByPath: Record<string, string> = {
+      "/vault/source-a.md": buildFormulaMarkdown({ key: "f-score", operation: "count" }),
+      "/vault/source-b.md": buildFormulaMarkdown({ key: "f-score", operation: "count" }),
+    };
+
+    mockInvoke.mockImplementation(async (command, payload) => {
+      if (command === "read_text_file") {
+        const typedPayload = payload as { path?: string };
+        return markdownByPath[typedPayload.path ?? ""] ?? "";
+      }
+      return "";
+    });
+    mockUseAppState.mockReturnValue({
+      settings: {
+        monitoringRenderProfiles: [
+          {
+            id: "monitoring-status",
+            name: "Status",
+            attributeAliases: ["status"],
+            inputFormat: "code",
+            previewRawValue: "2",
+            scopes: ["monitoring-page", "database", "properties"],
+            enabled: true,
+            rules: [
+              {
+                id: "rule-status-map",
+                type: "value-map",
+                mappings: [{ from: "2", to: "🟢" }],
+                displayMode: "append",
+                separator: " ",
+              },
+            ],
+          },
+        ],
+        setMonitoringRenderProfiles: vi.fn(),
+        persistSettings: vi.fn(async () => true),
+      },
+      vault: {
+        vaultPath: "/vault",
+        files: [
+          { path: "/vault/source-a.md", relative_path: "source-a.md" },
+          { path: "/vault/source-b.md", relative_path: "source-b.md" },
+        ],
+      },
+    } as unknown as ReturnType<typeof useAppState>);
+
+    const { container, cleanup } = renderPage();
+    await flush();
+
+    await click(
+      Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "Formelattribute",
+      ) ?? null,
+    );
+    await flush();
+
+    const formulaListItems = container.querySelectorAll(".monitoring-rules-list-item");
+    expect(formulaListItems).toHaveLength(1);
+    expect(formulaListItems[0]?.textContent ?? "").toContain("f-score");
+    expect(formulaListItems[0]?.textContent ?? "").toContain("2 Fundstellen");
+    expect(container.textContent).toContain("source-a.md");
+    expect(container.textContent).toContain("source-b.md");
+    expect(container.textContent).toContain("Formeldefinition");
+
+    cleanup();
+  });
+
+  it("creates a new formula from header actions in formula view", async () => {
+    const markdownByPath: Record<string, string> = {
+      "/vault/source-a.md": "---\nscore: 42\n---\n# Demo",
+    };
+    const writeCalls: Array<{ path?: string; contents?: string }> = [];
+
+    mockInvoke.mockImplementation(async (command, payload) => {
+      if (command === "read_text_file") {
+        const typedPayload = payload as { path?: string };
+        return markdownByPath[typedPayload.path ?? ""] ?? "";
+      }
+      if (command === "write_text_file") {
+        const typedPayload = payload as { path?: string; contents?: string };
+        writeCalls.push(typedPayload);
+        if (typedPayload.path && typeof typedPayload.contents === "string") {
+          markdownByPath[typedPayload.path] = typedPayload.contents;
+        }
+        return null;
+      }
+      return "";
+    });
+    mockUseAppState.mockReturnValue({
+      settings: {
+        monitoringRenderProfiles: [
+          {
+            id: "monitoring-status",
+            name: "Status",
+            attributeAliases: ["status"],
+            inputFormat: "code",
+            previewRawValue: "2",
+            scopes: ["monitoring-page", "database", "properties"],
+            enabled: true,
+            rules: [
+              {
+                id: "rule-status-map",
+                type: "value-map",
+                mappings: [{ from: "2", to: "🟢" }],
+                displayMode: "append",
+                separator: " ",
+              },
+            ],
+          },
+        ],
+        setMonitoringRenderProfiles: vi.fn(),
+        persistSettings: vi.fn(async () => true),
+      },
+      vault: {
+        vaultPath: "/vault",
+        files: [
+          { path: "/vault/source-a.md", relative_path: "source-a.md" },
+        ],
+      },
+    } as unknown as ReturnType<typeof useAppState>);
+
+    const { container, cleanup } = renderPage();
+    await flush();
+
+    await click(
+      Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "Formelattribute",
+      ) ?? null,
+    );
+    await flush();
+
+    await click(
+      Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "Formel erstellen",
+      ) ?? null,
+    );
+    await flush();
+
+    expect(writeCalls).toHaveLength(1);
+    expect(writeCalls[0]?.path).toBe("/vault/source-a.md");
+    expect(writeCalls[0]?.contents ?? "").toContain("f-new-formula:");
+    expect(container.textContent).toContain("f-new-formula");
+
+    cleanup();
+  });
+
+  it("renames and persists grouped formulas across all source files", async () => {
+    const markdownByPath: Record<string, string> = {
+      "/vault/source-a.md": buildFormulaMarkdown({ key: "f-score", operation: "count" }),
+      "/vault/source-b.md": buildFormulaMarkdown({ key: "f-score", operation: "count" }),
+    };
+    const writeCalls: Array<{ path?: string; contents?: string }> = [];
+
+    mockInvoke.mockImplementation(async (command, payload) => {
+      if (command === "read_text_file") {
+        const typedPayload = payload as { path?: string };
+        return markdownByPath[typedPayload.path ?? ""] ?? "";
+      }
+      if (command === "write_text_file") {
+        const typedPayload = payload as { path?: string; contents?: string };
+        writeCalls.push(typedPayload);
+        if (typedPayload.path && typeof typedPayload.contents === "string") {
+          markdownByPath[typedPayload.path] = typedPayload.contents;
+        }
+        return null;
+      }
+      return "";
+    });
+    mockUseAppState.mockReturnValue({
+      settings: {
+        monitoringRenderProfiles: [
+          {
+            id: "monitoring-status",
+            name: "Status",
+            attributeAliases: ["status"],
+            inputFormat: "code",
+            previewRawValue: "2",
+            scopes: ["monitoring-page", "database", "properties"],
+            enabled: true,
+            rules: [
+              {
+                id: "rule-status-map",
+                type: "value-map",
+                mappings: [{ from: "2", to: "🟢" }],
+                displayMode: "append",
+                separator: " ",
+              },
+            ],
+          },
+        ],
+        setMonitoringRenderProfiles: vi.fn(),
+        persistSettings: vi.fn(async () => true),
+      },
+      vault: {
+        vaultPath: "/vault",
+        files: [
+          { path: "/vault/source-a.md", relative_path: "source-a.md" },
+          { path: "/vault/source-b.md", relative_path: "source-b.md" },
+        ],
+      },
+    } as unknown as ReturnType<typeof useAppState>);
+
+    const { container, cleanup } = renderPage();
+    await flush();
+
+    await click(
+      Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "Formelattribute",
+      ) ?? null,
+    );
+    await flush();
+
+    await changeInput(
+      Array.from(container.querySelectorAll<HTMLInputElement>(".monitoring-rules-formula-meta-grid .text-input"))[0] ?? null,
+      "f-score-renamed",
+    );
+    await click(
+      Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "Formel speichern",
+      ) ?? null,
+    );
+    await flush();
+
+    expect(writeCalls).toHaveLength(2);
+    const writePaths = writeCalls.map((entry) => entry.path).sort();
+    expect(writePaths).toEqual(["/vault/source-a.md", "/vault/source-b.md"]);
+    writeCalls.forEach((entry) => {
+      expect(entry.contents ?? "").toContain("f-score-renamed:");
+      expect(entry.contents ?? "").not.toContain("f-score:");
+    });
+
+    cleanup();
+  });
+
+  it("shows conflicts and saves by globally overwriting all grouped occurrences", async () => {
+    const markdownByPath: Record<string, string> = {
+      "/vault/source-a.md": buildFormulaMarkdown({ key: "f-score", operation: "count" }),
+      "/vault/source-b.md": buildFormulaMarkdown({ key: "f-score", operation: "sum" }),
+    };
+    const writeCalls: Array<{ path?: string; contents?: string }> = [];
+
+    mockInvoke.mockImplementation(async (command, payload) => {
+      if (command === "read_text_file") {
+        const typedPayload = payload as { path?: string };
+        return markdownByPath[typedPayload.path ?? ""] ?? "";
+      }
+      if (command === "write_text_file") {
+        const typedPayload = payload as { path?: string; contents?: string };
+        writeCalls.push(typedPayload);
+        if (typedPayload.path && typeof typedPayload.contents === "string") {
+          markdownByPath[typedPayload.path] = typedPayload.contents;
+        }
+        return null;
+      }
+      return "";
+    });
+    mockUseAppState.mockReturnValue({
+      settings: {
+        monitoringRenderProfiles: [
+          {
+            id: "monitoring-status",
+            name: "Status",
+            attributeAliases: ["status"],
+            inputFormat: "code",
+            previewRawValue: "2",
+            scopes: ["monitoring-page", "database", "properties"],
+            enabled: true,
+            rules: [
+              {
+                id: "rule-status-map",
+                type: "value-map",
+                mappings: [{ from: "2", to: "🟢" }],
+                displayMode: "append",
+                separator: " ",
+              },
+            ],
+          },
+        ],
+        setMonitoringRenderProfiles: vi.fn(),
+        persistSettings: vi.fn(async () => true),
+      },
+      vault: {
+        vaultPath: "/vault",
+        files: [
+          { path: "/vault/source-a.md", relative_path: "source-a.md" },
+          { path: "/vault/source-b.md", relative_path: "source-b.md" },
+        ],
+      },
+    } as unknown as ReturnType<typeof useAppState>);
+
+    const { container, cleanup } = renderPage();
+    await flush();
+
+    await click(
+      Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "Formelattribute",
+      ) ?? null,
+    );
+    await flush();
+
+    expect(container.textContent).toContain("Abweichende Definitionen gefunden");
+
+    await click(
+      Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "Formel speichern",
+      ) ?? null,
+    );
+    await flush();
+
+    expect(writeCalls).toHaveLength(2);
+    writeCalls.forEach((entry) => {
+      expect(entry.contents ?? "").toContain("operation: count");
+    });
 
     cleanup();
   });

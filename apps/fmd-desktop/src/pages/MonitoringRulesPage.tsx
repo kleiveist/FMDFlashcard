@@ -5,14 +5,34 @@
  */
 
 import { invoke } from "@tauri-apps/api/core";
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import { ModalShell } from "../components/ModalShell";
 import { useAppState } from "../components/AppStateProvider";
 import { TrashIcon } from "../components/icons";
 import {
+  addFrontmatterProperty,
   buildFrontmatterSuggestionIndex,
+  parseFrontmatterDocument,
+  removeFrontmatterProperty,
   sortFrontmatterKeySuggestions,
+  updateFrontmatterProperty,
 } from "../features/preview/frontmatter";
+import {
+  FormulaAttributeBuilder,
+  type FormulaBuilderAttributeOption,
+} from "../features/preview/formula/formula-attribute-builder";
+import {
+  DEFAULT_DATABASE_FORMULA_SHORT_TEXT_RULE,
+  normalizeDatabaseFormulaDefinitionV1,
+  type DatabaseFormulaDefinitionV1,
+} from "../features/preview/formula/database-formula-types";
 import { MonitoringRenderValue } from "../features/monitoring/MonitoringRenderValue";
 import {
   createMonitoringRenderRule,
@@ -344,6 +364,163 @@ const buildInitialProfile = (): MonitoringRenderProfile => ({
   enabled: true,
 });
 
+type MonitoringRulesSubview = "attribute-pools" | "formula-attributes";
+
+type FormulaOccurrence = {
+  filePath: string;
+  fileRelativePath: string;
+  key: string;
+};
+
+type FormulaGroup = {
+  id: string;
+  normalizedKey: string;
+  displayKey: string;
+  definition: DatabaseFormulaDefinitionV1;
+  occurrences: FormulaOccurrence[];
+  hasConflict: boolean;
+};
+
+const isFormulaPropertyKey = (key: string) => normalizeLower(key).startsWith("f-");
+
+const buildFormulaGroupId = (key: string) => normalizeLower(key);
+
+const stableSerialize = (value: unknown): string => {
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => stableSerialize(entry)).join(",")}]`;
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, entryValue]) => `${JSON.stringify(key)}:${stableSerialize(entryValue)}`);
+    return `{${entries.join(",")}}`;
+  }
+  return JSON.stringify(value);
+};
+
+const resolveFormulaSourceSummary = (definition: DatabaseFormulaDefinitionV1) => {
+  if (definition.source.type === "current-folder") {
+    return "Aktueller Ordner";
+  }
+  if (definition.source.type === "explicit-folder") {
+    const explicitPath = definition.source.path?.trim() ?? "";
+    return explicitPath ? `Ein Ordner: ${explicitPath}` : "Ein Ordner";
+  }
+  const paths = definition.source.paths ?? [];
+  if (paths.length === 0) {
+    return "Mehrere Ordner";
+  }
+  return `Mehrere Ordner: ${paths.join(", ")}`;
+};
+
+const buildFormulaAttributeOptions = (suggestions: string[]): FormulaBuilderAttributeOption[] =>
+  suggestions
+    .filter((suggestion) => !isFormulaPropertyKey(suggestion))
+    .map((suggestion) => ({
+      key: suggestion,
+      label: suggestion,
+      supportsMath: true,
+    }));
+
+const collectFolderSuggestions = (
+  files: Array<{ relative_path: string }>,
+) =>
+  dedupeAliases(
+    files.map((file) => {
+      const normalized = file.relative_path.replace(/\\/g, "/");
+      const separatorIndex = normalized.lastIndexOf("/");
+      if (separatorIndex <= 0) {
+        return "";
+      }
+      return normalized.slice(0, separatorIndex).trim();
+    }),
+  );
+
+const buildNextFormulaKey = (existingGroups: FormulaGroup[]) => {
+  const base = "f-new-formula";
+  const existing = new Set(existingGroups.map((group) => group.normalizedKey));
+  if (!existing.has(base)) {
+    return base;
+  }
+  let suffix = 2;
+  while (existing.has(`${base}-${suffix}`)) {
+    suffix += 1;
+  }
+  return `${base}-${suffix}`;
+};
+
+const collectFormulaGroups = (
+  files: Array<{ filePath: string; fileRelativePath: string; markdown: string }>,
+) => {
+  const groups = new Map<
+    string,
+    {
+      id: string;
+      normalizedKey: string;
+      displayKey: string;
+      definition: DatabaseFormulaDefinitionV1;
+      occurrences: FormulaOccurrence[];
+      definitionSignatures: Set<string>;
+    }
+  >();
+  files.forEach((file) => {
+    const parsed = parseFrontmatterDocument(file.markdown);
+    if (!parsed.hasFrontmatter || parsed.error) {
+      return;
+    }
+    parsed.properties.forEach((property) => {
+      if (!isFormulaPropertyKey(property.key)) {
+        return;
+      }
+      const normalizedDefinition = normalizeDatabaseFormulaDefinitionV1(property.value);
+      if (!normalizedDefinition) {
+        return;
+      }
+      const normalizedKey = buildFormulaGroupId(property.key);
+      const signature = stableSerialize(normalizedDefinition);
+      const current = groups.get(normalizedKey);
+      if (current) {
+        current.occurrences.push({
+          filePath: file.filePath,
+          fileRelativePath: file.fileRelativePath,
+          key: property.key,
+        });
+        current.definitionSignatures.add(signature);
+        return;
+      }
+      groups.set(normalizedKey, {
+        id: normalizedKey,
+        normalizedKey,
+        displayKey: property.key,
+        definition: normalizedDefinition,
+        occurrences: [{
+          filePath: file.filePath,
+          fileRelativePath: file.fileRelativePath,
+          key: property.key,
+        }],
+        definitionSignatures: new Set([signature]),
+      });
+    });
+  });
+
+  const nextGroups: FormulaGroup[] = Array.from(groups.values())
+    .map((group) => ({
+      id: group.id,
+      normalizedKey: group.normalizedKey,
+      displayKey: group.displayKey,
+      definition: group.definition,
+      occurrences: group.occurrences
+        .slice()
+        .sort((left, right) =>
+          left.fileRelativePath.localeCompare(right.fileRelativePath, undefined, { sensitivity: "base" })),
+      hasConflict: group.definitionSignatures.size > 1,
+    }))
+    .sort((left, right) =>
+      left.displayKey.localeCompare(right.displayKey, undefined, { sensitivity: "base" }));
+
+  return nextGroups;
+};
+
 export const MonitoringRulesPage = () => {
   const { settings, vault } = useAppState();
   const profiles = settings.monitoringRenderProfiles;
@@ -377,10 +554,73 @@ export const MonitoringRulesPage = () => {
   const [isRuleEditorOpen, setIsRuleEditorOpen] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
   const [statusError, setStatusError] = useState("");
+  const [activeSubview, setActiveSubview] = useState<MonitoringRulesSubview>("attribute-pools");
+  const [formulaGroups, setFormulaGroups] = useState<FormulaGroup[]>([]);
+  const [formulaGroupsState, setFormulaGroupsState] = useState<"idle" | "loading" | "ready">(
+    "idle",
+  );
+  const [selectedFormulaGroupId, setSelectedFormulaGroupId] = useState<string | null>(null);
+  const [formulaKeyDraft, setFormulaKeyDraft] = useState("");
+  const [formulaDefinitionDraft, setFormulaDefinitionDraft] = useState<DatabaseFormulaDefinitionV1 | null>(
+    null,
+  );
+  const [formulaSavePending, setFormulaSavePending] = useState(false);
 
   const selectedProfile = useMemo(
     () => profiles.find((profile) => profile.id === selectedId) ?? null,
     [profiles, selectedId],
+  );
+
+  const loadFormulaGroups = useCallback(async () => {
+    if (!vault.vaultPath) {
+      setFormulaGroups([]);
+      setFormulaGroupsState("ready");
+      return;
+    }
+    const markdownFiles = vault.files.filter((file) =>
+      file.path.toLowerCase().endsWith(".md")
+    );
+    if (markdownFiles.length === 0) {
+      setFormulaGroups([]);
+      setFormulaGroupsState("ready");
+      return;
+    }
+
+    setFormulaGroupsState("loading");
+    const loadedMarkdownByPath = await Promise.all(
+      markdownFiles.map(async (file) => {
+        try {
+          const markdown = await invoke<string>("read_text_file", { path: file.path });
+          return {
+            filePath: file.path,
+            fileRelativePath: file.relative_path,
+            markdown,
+          };
+        } catch {
+          return null;
+        }
+      }),
+    );
+    const readyFiles = loadedMarkdownByPath.filter(
+      (entry): entry is { filePath: string; fileRelativePath: string; markdown: string } => Boolean(entry),
+    );
+    setFormulaGroups(collectFormulaGroups(readyFiles));
+    setFormulaGroupsState("ready");
+  }, [vault.files, vault.vaultPath]);
+
+  const selectedFormulaGroup = useMemo(
+    () => formulaGroups.find((group) => group.id === selectedFormulaGroupId) ?? null,
+    [formulaGroups, selectedFormulaGroupId],
+  );
+
+  const formulaFolderSuggestions = useMemo(
+    () => collectFolderSuggestions(vault.files),
+    [vault.files],
+  );
+
+  const formulaAttributeOptions = useMemo(
+    () => buildFormulaAttributeOptions(attributeAliasSuggestions),
+    [attributeAliasSuggestions],
   );
 
   useEffect(() => {
@@ -502,6 +742,41 @@ export const MonitoringRulesPage = () => {
     }
     setSelectedRuleId(draft.rules[0]?.id ?? null);
   }, [draft, selectedRuleId, isRuleEditorOpen]);
+
+  useEffect(() => {
+    if (activeSubview !== "formula-attributes" || formulaGroupsState !== "idle") {
+      return;
+    }
+    void loadFormulaGroups();
+  }, [activeSubview, formulaGroupsState, loadFormulaGroups]);
+
+  useEffect(() => {
+    setFormulaGroupsState("idle");
+  }, [vault.files, vault.vaultPath]);
+
+  useEffect(() => {
+    if (formulaGroups.length === 0) {
+      setSelectedFormulaGroupId(null);
+      setFormulaKeyDraft("");
+      setFormulaDefinitionDraft(null);
+      return;
+    }
+    setSelectedFormulaGroupId((current) =>
+      formulaGroups.some((group) => group.id === current)
+        ? current
+        : formulaGroups[0]?.id ?? null,
+    );
+  }, [formulaGroups]);
+
+  useEffect(() => {
+    if (!selectedFormulaGroup) {
+      setFormulaKeyDraft("");
+      setFormulaDefinitionDraft(null);
+      return;
+    }
+    setFormulaKeyDraft(selectedFormulaGroup.displayKey);
+    setFormulaDefinitionDraft(selectedFormulaGroup.definition);
+  }, [selectedFormulaGroup]);
 
   const previewAliases = useMemo(() => parseCsv(aliasesDraft), [aliasesDraft]);
   const availableRuleAliases = useMemo(
@@ -844,8 +1119,203 @@ export const MonitoringRulesPage = () => {
     setStatusMessage("Profil gespeichert.");
   };
 
+  const handleSaveFormulaAttribute = async () => {
+    if (!selectedFormulaGroup || !formulaDefinitionDraft) {
+      return;
+    }
+    const nextKey = formulaKeyDraft.trim();
+    if (!nextKey) {
+      setStatusMessage("");
+      setStatusError("Formelname darf nicht leer sein.");
+      return;
+    }
+    if (!isFormulaPropertyKey(nextKey)) {
+      setStatusMessage("");
+      setStatusError("Formelname muss mit f- beginnen.");
+      return;
+    }
+    const normalizedDefinition = normalizeDatabaseFormulaDefinitionV1(formulaDefinitionDraft);
+    if (!normalizedDefinition) {
+      setStatusMessage("");
+      setStatusError("Formeldefinition ist unvollstaendig oder ungueltig.");
+      return;
+    }
+
+    setFormulaSavePending(true);
+    try {
+      const renameRequested = normalizeLower(nextKey) !== selectedFormulaGroup.normalizedKey;
+      const occurrencesByFile = selectedFormulaGroup.occurrences.reduce(
+        (map, occurrence) => {
+          const current = map.get(occurrence.filePath) ?? [];
+          current.push(occurrence);
+          map.set(occurrence.filePath, current);
+          return map;
+        },
+        new Map<string, FormulaOccurrence[]>(),
+      );
+
+      const preparedWrites = new Map<string, { nextMarkdown: string }>();
+      for (const [filePath, occurrences] of occurrencesByFile.entries()) {
+        const markdown = await invoke<string>("read_text_file", { path: filePath });
+        let nextMarkdown = markdown;
+        const sourceKeys = Array.from(new Set(occurrences.map((entry) => entry.key)));
+        if (renameRequested) {
+          const addResult = addFrontmatterProperty({
+            markdown: nextMarkdown,
+            key: nextKey,
+            kind: "formula",
+            value: normalizedDefinition,
+          });
+          if (addResult.error) {
+            setStatusMessage("");
+            setStatusError(`${occurrences[0]?.fileRelativePath ?? filePath}: ${addResult.error}`);
+            return;
+          }
+          nextMarkdown = addResult.markdown;
+          for (const sourceKey of sourceKeys) {
+            const removeResult = removeFrontmatterProperty({
+              markdown: nextMarkdown,
+              key: sourceKey,
+            });
+            if (removeResult.error) {
+              setStatusMessage("");
+              setStatusError(`${occurrences[0]?.fileRelativePath ?? filePath}: ${removeResult.error}`);
+              return;
+            }
+            nextMarkdown = removeResult.markdown;
+          }
+        } else {
+          for (const sourceKey of sourceKeys) {
+            const updateResult = updateFrontmatterProperty({
+              markdown: nextMarkdown,
+              key: sourceKey,
+              kind: "formula",
+              value: normalizedDefinition,
+            });
+            if (updateResult.error) {
+              setStatusMessage("");
+              setStatusError(`${occurrences[0]?.fileRelativePath ?? filePath}: ${updateResult.error}`);
+              return;
+            }
+            nextMarkdown = updateResult.markdown;
+          }
+        }
+        preparedWrites.set(filePath, {
+          nextMarkdown,
+        });
+      }
+
+      await Promise.all(
+        Array.from(preparedWrites.entries()).map(([filePath, prepared]) =>
+          invoke("write_text_file", {
+            path: filePath,
+            contents: prepared.nextMarkdown,
+          })
+        ),
+      );
+      await loadFormulaGroups();
+      setSelectedFormulaGroupId(buildFormulaGroupId(nextKey));
+      setStatusError("");
+      setStatusMessage(
+        `Formel ${nextKey} gespeichert (${preparedWrites.size} Datei${preparedWrites.size === 1 ? "" : "en"}).`,
+      );
+    } catch (error) {
+      setStatusMessage("");
+      setStatusError(
+        `Formel konnte nicht gespeichert werden: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
+      setFormulaSavePending(false);
+    }
+  };
+
+  const handleCreateFormulaAttribute = async () => {
+    const markdownFiles = vault.files
+      .filter((file) => file.path.toLowerCase().endsWith(".md"))
+      .sort((left, right) => left.relative_path.localeCompare(right.relative_path, undefined, { sensitivity: "base" }));
+    if (markdownFiles.length === 0) {
+      setStatusMessage("");
+      setStatusError("Keine Markdown-Datei verfuegbar, um eine Formel anzulegen.");
+      return;
+    }
+
+    const preferredPath = selectedFormulaGroup?.occurrences[0]?.filePath;
+    const targetFile = markdownFiles.find((file) => file.path === preferredPath) ?? markdownFiles[0];
+    if (!targetFile) {
+      setStatusMessage("");
+      setStatusError("Keine Zieldatei fuer neue Formel gefunden.");
+      return;
+    }
+
+    const defaultAttributeKey = attributeAliasSuggestions.find((entry) => !isFormulaPropertyKey(entry))
+      ?? draft?.attributeAliases[0]
+      ?? "score";
+    const nextKey = buildNextFormulaKey(formulaGroups);
+    const defaultDefinition: DatabaseFormulaDefinitionV1 = {
+      version: 1,
+      operation: "count",
+      attributeKeys: [defaultAttributeKey],
+      source: { type: "current-folder" },
+      shortTextRule: { ...DEFAULT_DATABASE_FORMULA_SHORT_TEXT_RULE },
+    };
+
+    try {
+      const markdown = await invoke<string>("read_text_file", { path: targetFile.path });
+      const addResult = addFrontmatterProperty({
+        markdown,
+        key: nextKey,
+        kind: "formula",
+        value: defaultDefinition,
+      });
+      if (addResult.error) {
+        setStatusMessage("");
+        setStatusError(addResult.error);
+        return;
+      }
+      await invoke("write_text_file", {
+        path: targetFile.path,
+        contents: addResult.markdown,
+      });
+      await loadFormulaGroups();
+      setSelectedFormulaGroupId(buildFormulaGroupId(nextKey));
+      setFormulaKeyDraft(nextKey);
+      setFormulaDefinitionDraft(defaultDefinition);
+      setStatusError("");
+      setStatusMessage(`Formel ${nextKey} erstellt.`);
+    } catch (error) {
+      setStatusMessage("");
+      setStatusError(
+        `Formel konnte nicht erstellt werden: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  };
+
   return (
     <section className="panel monitoring-rules-panel">
+      <div
+        className="monitoring-rules-view-switch"
+        role="tablist"
+        aria-label="Attribute Rules Ansicht"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeSubview === "attribute-pools"}
+          className={`ghost small ${activeSubview === "attribute-pools" ? "active" : ""}`}
+          onClick={() => setActiveSubview("attribute-pools")}
+        >
+          Attributpools
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeSubview === "formula-attributes"}
+          className={`ghost small ${activeSubview === "formula-attributes" ? "active" : ""}`}
+          onClick={() => setActiveSubview("formula-attributes")}
+        >
+          Formelattribute
+        </button>
+      </div>
       <div className="panel-header">
         <div>
           <h2>Attribute Rules</h2>
@@ -854,53 +1324,84 @@ export const MonitoringRulesPage = () => {
           </p>
         </div>
         <div className="monitoring-rules-header-actions">
-          <button type="button" className="ghost small" onClick={() => void handleCreateProfile()}>
-            Neues Profil
-          </button>
-          <button
-            type="button"
-            className="ghost small"
-            disabled={!selectedId || profiles.length <= 1}
-            onClick={() => void handleDeleteProfile()}
-          >
-            Profil loeschen
-          </button>
-          <button
-            type="button"
-            className="primary small"
-            disabled={!draft}
-            onClick={() => void handleSaveDraft()}
-          >
-            Speichern
-          </button>
+          {activeSubview === "attribute-pools" ? (
+            <>
+              <button type="button" className="ghost small" onClick={() => void handleCreateProfile()}>
+                Neues Profil
+              </button>
+              <button
+                type="button"
+                className="ghost small"
+                disabled={!selectedId || profiles.length <= 1}
+                onClick={() => void handleDeleteProfile()}
+              >
+                Profil loeschen
+              </button>
+              <button
+                type="button"
+                className="primary small"
+                disabled={!draft}
+                onClick={() => void handleSaveDraft()}
+              >
+                Speichern
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="ghost small"
+                disabled={formulaGroupsState === "loading"}
+                onClick={() => void loadFormulaGroups()}
+              >
+                Neu laden
+              </button>
+              <button
+                type="button"
+                className="ghost small"
+                disabled={formulaGroupsState === "loading" || formulaSavePending}
+                onClick={() => void handleCreateFormulaAttribute()}
+              >
+                Formel erstellen
+              </button>
+              <button
+                type="button"
+                className="primary small"
+                disabled={!selectedFormulaGroup || !formulaDefinitionDraft || formulaSavePending}
+                onClick={() => void handleSaveFormulaAttribute()}
+              >
+                Formel speichern
+              </button>
+            </>
+          )}
         </div>
       </div>
-
       {statusError ? <div className="error">{statusError}</div> : null}
       {statusMessage ? <p className="muted">{statusMessage}</p> : null}
 
-      <div className="monitoring-rules-layout">
-        <aside className="monitoring-rules-list" aria-label="Attribute rules profile list">
-          {profiles.map((profile) => (
-            <button
-              key={profile.id}
-              type="button"
-              className={`monitoring-rules-list-item${profile.id === selectedId ? " is-active" : ""}`}
-              onClick={() => {
-                setSelectedId(profile.id);
-                setStatusMessage("");
-                setStatusError("");
-              }}
-            >
-              <strong>{profile.name}</strong>
-              <span>{profile.attributeAliases.join(", ")}</span>
-            </button>
-          ))}
-        </aside>
+      {activeSubview === "attribute-pools" ? (
+        <div className="monitoring-rules-layout">
+          <aside className="monitoring-rules-list" aria-label="Attribute rules profile list">
+            {profiles.map((profile) => (
+              <button
+                key={profile.id}
+                type="button"
+                className={`monitoring-rules-list-item${profile.id === selectedId ? " is-active" : ""}`}
+                onClick={() => {
+                  setSelectedId(profile.id);
+                  setStatusMessage("");
+                  setStatusError("");
+                }}
+              >
+                <strong>{profile.name}</strong>
+                <span>{profile.attributeAliases.join(", ")}</span>
+              </button>
+            ))}
+          </aside>
 
-        <div className="monitoring-rules-editor">
-          {draft ? (
-            <>
+          <div className="monitoring-rules-editor">
+            {draft ? (
+              <>
               <section className="monitoring-rules-section monitoring-rules-profile-section">
                 <div className="monitoring-rules-profile-compact-grid">
                   <h3 className="monitoring-rules-profile-title">Profil</h3>
@@ -1641,12 +2142,149 @@ export const MonitoringRulesPage = () => {
                 </ModalShell>
               ) : null}
 
-            </>
-          ) : (
-            <div className="database-view-empty">Kein Monitoring-Profil verfuegbar.</div>
-          )}
+              </>
+            ) : (
+              <div className="database-view-empty">Kein Monitoring-Profil verfuegbar.</div>
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="monitoring-rules-layout monitoring-rules-layout--formula">
+          <aside className="monitoring-rules-list" aria-label="Formula attributes list">
+            {formulaGroupsState === "loading" ? (
+              <div className="database-view-empty">Formelattribute werden geladen...</div>
+            ) : formulaGroups.length === 0 ? (
+              <div className="database-view-empty">
+                Keine Formelattribute gefunden. Gesucht werden Frontmatter-Keys mit `f-`.
+              </div>
+            ) : (
+              formulaGroups.map((group) => (
+                <button
+                  key={group.id}
+                  type="button"
+                  className={`monitoring-rules-list-item${group.id === selectedFormulaGroupId ? " is-active" : ""}`}
+                  onClick={() => {
+                    setSelectedFormulaGroupId(group.id);
+                    setStatusMessage("");
+                    setStatusError("");
+                  }}
+                >
+                  <strong>{group.displayKey}</strong>
+                  <span>
+                    {group.occurrences.length} Fundstelle{group.occurrences.length === 1 ? "" : "n"}
+                  </span>
+                  <span>
+                    {toLabel(group.definition.operation)}
+                    {group.hasConflict ? " - Konflikt" : ""}
+                  </span>
+                </button>
+              ))
+            )}
+          </aside>
+
+          <div className="monitoring-rules-editor">
+            {selectedFormulaGroup && formulaDefinitionDraft ? (
+              <>
+                {selectedFormulaGroup.hasConflict ? (
+                  <div className="monitoring-rules-formula-conflict-warning" role="status">
+                    Abweichende Definitionen gefunden. Speichern ueberschreibt alle Fundstellen mit der aktuellen
+                    Definition.
+                  </div>
+                ) : null}
+                <section className="monitoring-rules-section">
+                  <h3>Formel-Metadaten</h3>
+                  <div className="monitoring-rules-grid monitoring-rules-formula-meta-grid">
+                    <label>
+                      Name
+                      <input
+                        className="text-input"
+                        type="text"
+                        value={formulaKeyDraft}
+                        onChange={(event) => setFormulaKeyDraft(event.target.value)}
+                      />
+                    </label>
+                    <label>
+                      Fundstellen
+                      <input
+                        className="text-input"
+                        type="text"
+                        value={`${selectedFormulaGroup.occurrences.length}`}
+                        readOnly
+                      />
+                    </label>
+                    <label>
+                      Quelle
+                      <input
+                        className="text-input"
+                        type="text"
+                        value={resolveFormulaSourceSummary(formulaDefinitionDraft)}
+                        readOnly
+                      />
+                    </label>
+                    <label>
+                      Zielattribute
+                      <input
+                        className="text-input"
+                        type="text"
+                        value={formulaDefinitionDraft.attributeKeys.join(", ")}
+                        readOnly
+                      />
+                    </label>
+                  </div>
+                </section>
+
+                <section className="monitoring-rules-section monitoring-rules-formula-builder-section">
+                  <h3>Formeldefinition</h3>
+                  <div className="monitoring-rules-formula-builder-shell">
+                    <FormulaAttributeBuilder
+                      idPrefix={`monitoring-formula-${selectedFormulaGroup.id}`}
+                      value={formulaDefinitionDraft}
+                      attributes={formulaAttributeOptions}
+                      folderSuggestions={formulaFolderSuggestions}
+                      onChange={(next) => {
+                        setFormulaDefinitionDraft((current) => {
+                          if (!current) {
+                            return current;
+                          }
+                          return typeof next === "function" ? next(current) : next;
+                        });
+                      }}
+                    />
+                  </div>
+                </section>
+              </>
+            ) : (
+              <div className="database-view-empty">Kein Formelattribut ausgewaehlt.</div>
+            )}
+          </div>
+
+          <aside className="monitoring-rules-section monitoring-rules-formula-info" aria-label="Formula references">
+            {selectedFormulaGroup ? (
+              <>
+                <h3>Fundstellen</h3>
+                <p className="muted">
+                  Diese Formel wird in {selectedFormulaGroup.occurrences.length} Datei
+                  {selectedFormulaGroup.occurrences.length === 1 ? "" : "en"} verwendet.
+                </p>
+                {selectedFormulaGroup.hasConflict ? (
+                  <p className="monitoring-rules-formula-conflict-text">
+                    Konfliktstatus: Uneinheitliche Definitionen vorhanden.
+                  </p>
+                ) : null}
+                <ul className="monitoring-rules-formula-occurrence-list">
+                  {selectedFormulaGroup.occurrences.map((occurrence) => (
+                    <li key={`${occurrence.filePath}::${occurrence.key}`}>
+                      <code>{occurrence.fileRelativePath}</code>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <div className="database-view-empty">Keine Fundstellen verfuegbar.</div>
+            )}
+          </aside>
+        </div>
+      )}
     </section>
   );
 };
