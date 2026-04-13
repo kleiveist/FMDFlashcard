@@ -23,7 +23,11 @@ type FormulaAttributeBuilderProps = {
   disabled?: boolean;
   idPrefix?: string;
   folderSuggestions?: string[];
-  onChange: (next: DatabaseFormulaDefinitionV1) => void;
+  onChange: (
+    next:
+      | DatabaseFormulaDefinitionV1
+      | ((current: DatabaseFormulaDefinitionV1) => DatabaseFormulaDefinitionV1)
+  ) => void;
 };
 
 const OPERATION_LABELS: Record<DatabaseFormulaOperation, string> = {
@@ -80,6 +84,10 @@ export const FormulaAttributeBuilder = ({
   folderSuggestions,
   onChange,
 }: FormulaAttributeBuilderProps) => {
+  const emitChange = (resolveNext: (current: DatabaseFormulaDefinitionV1) => DatabaseFormulaDefinitionV1) => {
+    onChange((current) => resolveNext(current));
+  };
+
   const supportsMathByKey = useMemo(() => {
     const map = new Map<string, boolean>();
     attributes.forEach((attribute) => {
@@ -107,56 +115,61 @@ export const FormulaAttributeBuilder = ({
     if (availableOperations.includes(value.operation)) {
       return;
     }
-    onChange({
-      ...value,
+    onChange((current) => ({
+      ...current,
       operation: "count",
-    });
-  }, [availableOperations, onChange, value]);
+    }));
+  }, [availableOperations, onChange, value.operation]);
 
   const handleAttributeSelectionChange = (nextKeys: string[]) => {
-    onChange({
-      ...value,
+    emitChange((current) => ({
+      ...current,
       attributeKeys: dedupeKeys(nextKeys),
-    });
+    }));
   };
 
   const handleToggleAttribute = (key: string) => {
-    handleAttributeSelectionChange(toggleCaseInsensitiveKey(value.attributeKeys, key));
+    emitChange((current) => ({
+      ...current,
+      attributeKeys: dedupeKeys(toggleCaseInsensitiveKey(current.attributeKeys, key)),
+    }));
   };
 
   const handleOperationChange = (nextOperation: DatabaseFormulaOperation) => {
-    onChange({
-      ...value,
+    emitChange((current) => ({
+      ...current,
       operation: nextOperation,
-    });
+    }));
   };
 
   const handleSourceTypeChange = (nextType: DatabaseFormulaSourceType) => {
-    const nextSource = {
-      type: nextType,
-    } as DatabaseFormulaDefinitionV1["source"];
-    if (nextType === "explicit-folder") {
-      nextSource.path = value.source.path?.trim() ?? "";
-    }
-    if (nextType === "multi-folder") {
-      nextSource.paths = value.source.type === "multi-folder"
-        ? dedupeKeys(value.source.paths ?? [])
-        : [];
-    }
-    onChange({
-      ...value,
-      source: nextSource,
+    emitChange((current) => {
+      const nextSource = {
+        type: nextType,
+      } as DatabaseFormulaDefinitionV1["source"];
+      if (nextType === "explicit-folder") {
+        nextSource.path = current.source.path?.trim() ?? "";
+      }
+      if (nextType === "multi-folder") {
+        nextSource.paths = current.source.type === "multi-folder"
+          ? dedupeKeys(current.source.paths ?? [])
+          : [];
+      }
+      return {
+        ...current,
+        source: nextSource,
+      };
     });
   };
 
   const handleExplicitFolderChange = (nextPath: string) => {
-    onChange({
-      ...value,
+    emitChange((current) => ({
+      ...current,
       source: {
         type: "explicit-folder",
         path: nextPath,
       },
-    });
+    }));
   };
 
   const handleMultiFolderChange = (nextValue: string) => {
@@ -164,23 +177,26 @@ export const FormulaAttributeBuilder = ({
       .split(",")
       .map((path) => path.trim())
       .filter((path) => path.length > 0);
-    onChange({
-      ...value,
+    emitChange((current) => ({
+      ...current,
       source: {
         type: "multi-folder",
         paths: dedupeKeys(paths),
       },
-    });
+    }));
   };
 
   const handleToggleMultiFolder = (path: string) => {
-    onChange({
-      ...value,
+    emitChange((current) => ({
+      ...current,
       source: {
         type: "multi-folder",
-        paths: toggleCaseInsensitiveKey(value.source.paths ?? [], path),
+        paths: toggleCaseInsensitiveKey(
+          current.source.type === "multi-folder" ? current.source.paths ?? [] : [],
+          path,
+        ),
       },
-    });
+    }));
   };
 
   const explicitSourcePath = value.source.type === "explicit-folder"
