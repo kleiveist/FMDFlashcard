@@ -89,8 +89,8 @@ import { type MonitoringRenderProfile } from "../../monitoring/monitoring-render
 type DatabaseBlockProps = {
   raw: string;
   vaultFiles?: Array<{ path: string; relative_path: string }>;
+  vaultPath?: string | null;
   sourceRelativePath?: string | null;
-  profileRootPath?: string | null;
   onNavigateWikilink?: (wikilink: string) => void;
   runnableExamRelativePaths?: string[];
   onOpenExamFromDatabaseRecord?: (target: { path: string; relativePath: string }) => void;
@@ -612,8 +612,8 @@ const pickProjectNumericAttribute = (
 export const MarkdownHybridDatabaseBlock = ({
   raw,
   vaultFiles,
+  vaultPath,
   sourceRelativePath,
-  profileRootPath,
   onNavigateWikilink,
   runnableExamRelativePaths,
   onOpenExamFromDatabaseRecord,
@@ -945,12 +945,12 @@ export const MarkdownHybridDatabaseBlock = ({
     }
 
     const loadHistoryFiles = async () => {
-      if (!profileRootPath) {
+      if (!vaultPath) {
         setHistoryFiles([]);
-        setHistoryWarning("History folder unavailable (no profile root).");
+        setHistoryWarning("History folder unavailable (no vault path).");
         return;
       }
-      const historyDir = joinPath(profileRootPath, "exam-runs");
+      const historyDir = joinPath(vaultPath, ".profile", "exam-runs");
       try {
         const files = await invoke<string[]>("list_files", { path: historyDir });
         const markdownFiles = (files ?? [])
@@ -982,7 +982,7 @@ export const MarkdownHybridDatabaseBlock = ({
     return () => {
       cancelled = true;
     };
-  }, [profileRootPath, source.type]);
+  }, [source.type, vaultPath]);
 
   const sourceContext = useMemo<DatabaseSourceResolverContext>(
     () => ({
@@ -2731,8 +2731,8 @@ export const MarkdownHybridDatabaseBlock = ({
     return Array.from(folders).sort((left, right) => compareNaturalPath(left, right));
   }, [vaultFiles]);
   const historyFolderPath = useMemo(
-    () => profileRootPath ? joinPath(profileRootPath, "exam-runs") : null,
-    [profileRootPath],
+    () => vaultPath ? joinPath(vaultPath, ".profile", "exam-runs") : null,
+    [vaultPath],
   );
 
   const filterValueSuggestionsByField = useMemo(() => {

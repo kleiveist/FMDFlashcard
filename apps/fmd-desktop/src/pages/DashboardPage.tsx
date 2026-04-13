@@ -137,15 +137,8 @@ const DashboardPageInner = (
     pointsProfiles,
     preview,
     settings,
-    userVault,
     vault,
   } = useAppState();
-  const resolvedProfileRootPath =
-    userVault.profileRootPath ??
-    userVault.customRootPath ??
-    userVault.autoRootPath ??
-    userVault.resolvedPath ??
-    (vault.vaultPath ? normalizeVaultPath(`${vault.vaultPath}/.profile`) : null);
   const examFiles = rawExamFiles ?? [];
   const [isEditing, setIsEditing] = useState(false);
   const [editDraft, setEditDraft] = useState("");
@@ -1379,7 +1372,6 @@ const DashboardPageInner = (
             vaultPngAssets={vault.pngAssets}
             vaultPath={vault.vaultPath}
             sourceRelativePath={preview.selectedFile?.relative_path ?? null}
-            profileRootPath={resolvedProfileRootPath}
             canEdit={canEdit}
             markdownEditorStyle={markdownEditorStyle}
             onEditChange={handleEditDraftChange}

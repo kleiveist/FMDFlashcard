@@ -199,10 +199,10 @@ export const DatabaseSourcePanel = ({
       ) : null}
       {source.type === "history-folder" ? (
         <>
-          <p className="database-block-state">History verwendet die Exam-Runs des aktiven Profils.</p>
+          <p className="database-block-state">History verwendet die Exam-Runs des aktuellen Vaults.</p>
           <p className="database-block-state">Quelle: {historyFolderPath ?? "nicht gesetzt"}</p>
           {!historyFolderPath ? (
-            <p className="database-block-state is-error">Kein Profile-Root gefunden.</p>
+            <p className="database-block-state is-error">Kein Vault-Pfad gefunden.</p>
           ) : null}
         </>
       ) : null}

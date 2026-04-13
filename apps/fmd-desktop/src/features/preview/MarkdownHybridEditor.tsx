@@ -342,7 +342,6 @@ type MarkdownHybridEditorProps = {
   vaultPath?: string | null;
   sourceHasFrontmatter?: boolean;
   sourceRelativePath?: string | null;
-  profileRootPath?: string | null;
   onNavigateWikilink?: (wikilink: string) => void;
   runnableExamRelativePaths?: string[];
   onOpenExamFromDatabaseRecord?: (target: { path: string; relativePath: string }) => void;
@@ -3276,7 +3275,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   vaultPath,
   sourceHasFrontmatter = false,
   sourceRelativePath,
-  profileRootPath,
   onNavigateWikilink,
   runnableExamRelativePaths,
   onOpenExamFromDatabaseRecord,
@@ -9987,8 +9985,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           <MarkdownHybridDatabaseBlock
             raw={block.raw}
             vaultFiles={vaultFiles}
+            vaultPath={vaultPath}
             sourceRelativePath={sourceRelativePath}
-            profileRootPath={profileRootPath}
             onNavigateWikilink={onNavigateWikilink}
             runnableExamRelativePaths={runnableExamRelativePaths}
             onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
@@ -10537,8 +10535,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                   <MarkdownHybridDatabaseBlock
                     raw={block.raw}
                     vaultFiles={vaultFiles}
+                    vaultPath={vaultPath}
                     sourceRelativePath={sourceRelativePath}
-                    profileRootPath={profileRootPath}
                     onNavigateWikilink={onNavigateWikilink}
                     runnableExamRelativePaths={runnableExamRelativePaths}
                     onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
