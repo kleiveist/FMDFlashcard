@@ -50,22 +50,22 @@ describe("parseProfileId", () => {
 });
 
 describe("resolveActiveProfileRoot", () => {
-  it("resolves auto mode to vault/profile", () => {
+  it("resolves auto mode to vault/.profile", () => {
     expect(resolveActiveProfileRoot("auto", "/vault/main", null)).toBe(
-      "/vault/main/profile",
+      "/vault/main/.profile",
     );
     expect(resolveActiveProfileRoot("auto", "C:\\Vault\\Main", null)).toBe(
-      "C:\\Vault\\Main\\profile",
+      "C:\\Vault\\Main\\.profile",
     );
   });
 
   it("normalizes custom path to a profile subfolder", () => {
     expect(
       resolveActiveProfileRoot("custom", "/vault/main", "  /data/user "),
-    ).toBe("/data/user/profile");
+    ).toBe("/data/user/.profile");
     expect(
       resolveActiveProfileRoot("custom", "/vault/main", "C:\\Vault\\Portable\\"),
-    ).toBe("C:\\Vault\\Portable\\profile");
+    ).toBe("C:\\Vault\\Portable\\.profile");
   });
 
   it("keeps custom path when it already points to profile", () => {
@@ -88,7 +88,7 @@ describe("resolveActiveProfileRoot", () => {
 
   it("ignores custom path when mode is auto", () => {
     expect(resolveActiveProfileRoot("auto", "/vault/main", "/custom/root")).toBe(
-      "/vault/main/profile",
+      "/vault/main/.profile",
     );
   });
 });
@@ -96,13 +96,13 @@ describe("resolveActiveProfileRoot", () => {
 describe("resolveCustomProfileRootPath", () => {
   it("appends profile when selecting a parent folder", () => {
     expect(resolveCustomProfileRootPath("/workspace/IUFS")).toBe(
-      "/workspace/IUFS/profile",
+      "/workspace/IUFS/.profile",
     );
     expect(resolveCustomProfileRootPath("D:\\workspace\\IUFS\\")).toBe(
-      "D:\\workspace\\IUFS\\profile",
+      "D:\\workspace\\IUFS\\.profile",
     );
     expect(resolveCustomProfileRootPath("X:\\workspace\\IUFS\\SE1")).toBe(
-      "X:\\workspace\\IUFS\\SE1\\profile",
+      "X:\\workspace\\IUFS\\SE1\\.profile",
     );
   });
 

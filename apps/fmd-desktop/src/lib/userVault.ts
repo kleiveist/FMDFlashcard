@@ -47,7 +47,7 @@ export type UserVaultExportPayload =
     };
 
 export const USER_VAULT_SCHEMA_VERSION = 1;
-export const PROFILE_ROOT_DIR = "profile";
+export const PROFILE_ROOT_DIR = ".profile";
 export const LEGACY_PROFILE_ROOT_DIR = "user";
 
 const INVALID_PROFILE_CHARS = /[<>:"/\\|?*\u0000-\u001F]/g;
@@ -97,7 +97,7 @@ export const resolveCustomProfileRootPath = (customPath: string | null) => {
   const normalized = trimmed.replace(/[\\/]+$/, "");
   const parts = normalized.split(/[\\/]/);
   const last = (parts[parts.length - 1] ?? "").toLowerCase();
-  if (last === PROFILE_ROOT_DIR) {
+  if (last === PROFILE_ROOT_DIR || last === "profile") {
     return normalized;
   }
   return joinPath(normalized, PROFILE_ROOT_DIR);

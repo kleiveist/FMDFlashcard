@@ -33,7 +33,6 @@ import {
   loadUserVaultMeta,
   listUserVaultProfiles,
   migrateDefaultProfileFolders,
-  migrateLegacyProfileRoot,
   saveExamRunStore,
   saveFastFlashcardStore,
   saveProfileSettings,
@@ -159,19 +158,7 @@ export const useUserVault = ({
         let nextMigrationWarning: string | null = null;
 
         if (effectiveVaultPath) {
-          const migration = await migrateLegacyProfileRoot(effectiveVaultPath);
-          if (migration.conflict) {
-            nextMigrationWarning =
-              "Both /user and /profile exist in this vault. Choose which profile root to use.";
-          } else if (migration.error) {
-            nextMigrationWarning = migration.error;
-          }
-          if (migration.moved) {
-            logUserVaultEvent("profile.migrated", {
-              vaultPath: effectiveVaultPath,
-              reason,
-            });
-          }
+          nextMigrationWarning = null;
         }
 
         const commit = (next: {

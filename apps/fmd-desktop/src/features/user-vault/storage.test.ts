@@ -144,34 +144,34 @@ beforeEach(() => {
 
 describe("ensureProfileRoot", () => {
   it("creates a missing profile root and initializes user-vault.json", async () => {
-    const profileRoot = "/vault/profile";
+    const profileRoot = "/vault/.profile";
 
     const result = await ensureProfileRoot(profileRoot);
 
     expect(result).toEqual({ ok: true, reason: "" });
-    expect(directories.has("/vault/profile")).toBe(true);
-    const meta = JSON.parse(files.get("/vault/profile/user-vault.json") ?? "{}");
+    expect(directories.has("/vault/.profile")).toBe(true);
+    const meta = JSON.parse(files.get("/vault/.profile/user-vault.json") ?? "{}");
     expect(meta.schemaVersion).toBe(1);
     expect(meta.activeProfileId).toBeNull();
   });
 
   it("rewrites invalid user-vault.json metadata", async () => {
-    const profileRoot = "/vault/profile";
+    const profileRoot = "/vault/.profile";
     directories.add(profileRoot);
-    files.set("/vault/profile/user-vault.json", "{broken");
+    files.set("/vault/.profile/user-vault.json", "{broken");
 
     const result = await ensureProfileRoot(profileRoot);
 
     expect(result).toEqual({ ok: true, reason: "" });
-    const meta = JSON.parse(files.get("/vault/profile/user-vault.json") ?? "{}");
+    const meta = JSON.parse(files.get("/vault/.profile/user-vault.json") ?? "{}");
     expect(meta.schemaVersion).toBe(1);
     expect(meta.activeProfileId).toBeNull();
   });
 
   it("returns an error when the profile root points to a file", async () => {
-    files.set("/vault/profile", "{}");
+    files.set("/vault/.profile", "{}");
 
-    const result = await ensureProfileRoot("/vault/profile");
+    const result = await ensureProfileRoot("/vault/.profile");
 
     expect(result.ok).toBe(false);
     expect(result.reason).toBe("Profile root is not a directory.");
