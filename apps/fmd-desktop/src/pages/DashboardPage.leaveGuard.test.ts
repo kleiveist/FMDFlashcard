@@ -156,6 +156,11 @@ const mockUseAppState = vi.mocked(useAppState);
 const mockUseMediaQuery = vi.mocked(useMediaQuery);
 const invokeMock = vi.mocked(invoke);
 
+type DashboardMarkdownTab = {
+  path: string;
+  relativePath: string;
+};
+
 const createExamControls = (
   overrides: Partial<ExamEditorControlsState> = {},
 ): ExamEditorControlsState => ({
@@ -284,10 +289,12 @@ const renderDashboard = ({
   initialVaultView = "exam",
   appState,
   onOpenPointsProfilesPage,
+  persistedMarkdownTabsRef,
 }: {
   initialVaultView?: "exam" | "markdown";
   appState?: ReturnType<typeof createMockAppState>;
   onOpenPointsProfilesPage?: () => void;
+  persistedMarkdownTabsRef?: { current: DashboardMarkdownTab[] };
 } = {}) => {
   const fallbackHandleSelectFile = vi.fn();
   const resolvedAppState =
@@ -301,13 +308,101 @@ const renderDashboard = ({
   document.body.appendChild(container);
   const root = createRoot(container);
 
-  act(() => {
-    root.render(
+  const DashboardHarness = () => {
+    const latestAppState = useAppState();
+    const [markdownTabs, setMarkdownTabs] = React.useState<DashboardMarkdownTab[]>(
+      () => persistedMarkdownTabsRef?.current ?? [],
+    );
+    const previousSelectedMarkdownPathRef = React.useRef<string | null>(null);
+
+    React.useEffect(() => {
+      if (!persistedMarkdownTabsRef) {
+        return;
+      }
+      persistedMarkdownTabsRef.current = markdownTabs;
+    }, [markdownTabs, persistedMarkdownTabsRef]);
+
+    React.useEffect(() => {
+      if (!latestAppState.vault.vaultPath) {
+        previousSelectedMarkdownPathRef.current = null;
+        return;
+      }
+      const selected = latestAppState.preview.selectedFile;
+      if (!selected) {
+        previousSelectedMarkdownPathRef.current = null;
+        return;
+      }
+      const selectedPath = selected.path;
+      const selectedRelativePath = selected.relative_path;
+      const previousSelectedPath = previousSelectedMarkdownPathRef.current;
+      previousSelectedMarkdownPathRef.current = selectedPath;
+      const shouldOpenInNewTab =
+        latestAppState.preview.selectedFileOpenInNewTab ||
+        latestAppState.settings.markdownEditorOpenInNewTabByDefault;
+
+      setMarkdownTabs((previous) => {
+        const existingIndex = previous.findIndex((tab) => tab.path === selectedPath);
+        if (existingIndex >= 0) {
+          const existing = previous[existingIndex];
+          if (existing?.relativePath === selectedRelativePath) {
+            return previous;
+          }
+          const next = previous.slice();
+          next[existingIndex] = {
+            path: selectedPath,
+            relativePath: selectedRelativePath,
+          };
+          return next;
+        }
+        const nextTab: DashboardMarkdownTab = {
+          path: selectedPath,
+          relativePath: selectedRelativePath,
+        };
+        if (previous.length === 0) {
+          return [nextTab];
+        }
+        if (shouldOpenInNewTab) {
+          return [...previous, nextTab];
+        }
+        const replaceIndex = previousSelectedPath
+          ? previous.findIndex((tab) => tab.path === previousSelectedPath)
+          : -1;
+        const fallbackReplaceIndex = replaceIndex >= 0 ? replaceIndex : previous.length - 1;
+        const next = previous.slice();
+        next[fallbackReplaceIndex] = nextTab;
+        return next;
+      });
+    }, [
+      latestAppState.preview.selectedFile,
+      latestAppState.preview.selectedFileOpenInNewTab,
+      latestAppState.settings.markdownEditorOpenInNewTabByDefault,
+      latestAppState.vault.vaultPath,
+    ]);
+
+    React.useEffect(() => {
+      if (!latestAppState.vault.vaultPath) {
+        setMarkdownTabs([]);
+        return;
+      }
+      const validPathSet = new Set(latestAppState.vault.files.map((file) => file.path));
+      setMarkdownTabs((previous) => {
+        const next = previous.filter((tab) => validPathSet.has(tab.path));
+        return next.length === previous.length ? previous : next;
+      });
+    }, [latestAppState.vault.files, latestAppState.vault.vaultPath]);
+
+    return (
       React.createElement(DashboardPage, {
         initialVaultView,
         onOpenPointsProfilesPage,
-      }),
+        markdownTabs,
+        onMarkdownTabsChange: setMarkdownTabs,
+      })
     );
+  };
+
+  act(() => {
+    root.render(React.createElement(DashboardHarness));
   });
 
   return {
@@ -315,12 +410,7 @@ const renderDashboard = ({
     handleSelectFile: resolvedAppState.actions.handleSelectFile as ReturnType<typeof vi.fn>,
     rerender: () => {
       act(() => {
-        root.render(
-          React.createElement(DashboardPage, {
-            initialVaultView,
-            onOpenPointsProfilesPage,
-          }),
-        );
+        root.render(React.createElement(DashboardHarness));
       });
     },
     cleanup: () => {
@@ -642,6 +732,61 @@ describe("DashboardPage exam leave guard", () => {
     ]);
 
     cleanup();
+  });
+
+  it("keeps markdown tabs after dashboard remount when session is persisted above the page", async () => {
+    const sessionRef = { current: [] as DashboardMarkdownTab[] };
+    const handleSelectFile = vi.fn();
+    const firstState = createMockAppState({
+      handleSelectFile,
+      selectedFile: { path: "/vault/source.md", relative_path: "source.md" },
+      selectedFileOpenInNewTab: false,
+      markdownEditorOpenInNewTabByDefault: false,
+    });
+    const firstRender = renderDashboard({
+      initialVaultView: "markdown",
+      appState: firstState,
+      persistedMarkdownTabsRef: sessionRef,
+    });
+
+    mockUseAppState.mockReturnValue(
+      createMockAppState({
+        handleSelectFile,
+        selectedFile: { path: "/vault/target.md", relative_path: "target.md" },
+        selectedFileOpenInNewTab: true,
+        markdownEditorOpenInNewTabByDefault: false,
+      }),
+    );
+    firstRender.rerender();
+
+    let latestProps = getLatestPreviewPanelProps();
+    expect(latestProps?.markdownTabs).toEqual([
+      { path: "/vault/source.md", relativePath: "source.md" },
+      { path: "/vault/target.md", relativePath: "target.md" },
+    ]);
+    firstRender.cleanup();
+
+    const secondState = createMockAppState({
+      handleSelectFile,
+      selectedFile: null,
+      selectedFileOpenInNewTab: false,
+      markdownEditorOpenInNewTabByDefault: false,
+    });
+    const secondRender = renderDashboard({
+      initialVaultView: "markdown",
+      appState: secondState,
+      persistedMarkdownTabsRef: sessionRef,
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    latestProps = getLatestPreviewPanelProps();
+    expect(latestProps?.markdownTabs).toEqual([
+      { path: "/vault/source.md", relativePath: "source.md" },
+      { path: "/vault/target.md", relativePath: "target.md" },
+    ]);
+    secondRender.cleanup();
   });
 
   it("does not write markdown files while the selected file is still loading", async () => {

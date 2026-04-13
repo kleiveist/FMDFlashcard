@@ -81,6 +81,11 @@ type ExamLaunchPreset = {
   combinationMode: "nested";
 };
 
+type MarkdownEditorTab = {
+  path: string;
+  relativePath: string;
+};
+
 const AppContent = () => {
   const {
     actions,
@@ -123,6 +128,7 @@ const AppContent = () => {
   const [isUserRegistryModalOpen, setIsUserRegistryModalOpen] = useState(false);
   const [openGateId, setOpenGateId] = useState<WalletGateId | null>(null);
   const [dismissedGateId, setDismissedGateId] = useState<WalletGateId | null>(null);
+  const [dashboardMarkdownTabs, setDashboardMarkdownTabs] = useState<MarkdownEditorTab[]>([]);
   const isDashboard = activeTab === "dashboard";
   const platform = getShortcutPlatform();
   const layoutMode = useLayoutMode();
@@ -243,6 +249,77 @@ const AppContent = () => {
       vault.vaultPath,
     ],
   );
+
+  const previousSelectedMarkdownPathRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!vault.vaultPath) {
+      previousSelectedMarkdownPathRef.current = null;
+      return;
+    }
+    const selected = preview.selectedFile;
+    if (!selected) {
+      previousSelectedMarkdownPathRef.current = null;
+      return;
+    }
+    const selectedPath = selected.path;
+    const selectedRelativePath = selected.relative_path;
+    const previousSelectedPath = previousSelectedMarkdownPathRef.current;
+    previousSelectedMarkdownPathRef.current = selectedPath;
+    const shouldOpenInNewTab =
+      preview.selectedFileOpenInNewTab ||
+      settings.markdownEditorOpenInNewTabByDefault;
+
+    setDashboardMarkdownTabs((previous) => {
+      const existingIndex = previous.findIndex((tab) => tab.path === selectedPath);
+      if (existingIndex >= 0) {
+        const existing = previous[existingIndex];
+        if (existing?.relativePath === selectedRelativePath) {
+          return previous;
+        }
+        const next = previous.slice();
+        next[existingIndex] = {
+          path: selectedPath,
+          relativePath: selectedRelativePath,
+        };
+        return next;
+      }
+      const nextTab: MarkdownEditorTab = {
+        path: selectedPath,
+        relativePath: selectedRelativePath,
+      };
+      if (previous.length === 0) {
+        return [nextTab];
+      }
+      if (shouldOpenInNewTab) {
+        return [...previous, nextTab];
+      }
+      const replaceIndex = previousSelectedPath
+        ? previous.findIndex((tab) => tab.path === previousSelectedPath)
+        : -1;
+      const fallbackReplaceIndex = replaceIndex >= 0 ? replaceIndex : previous.length - 1;
+      const next = previous.slice();
+      next[fallbackReplaceIndex] = nextTab;
+      return next;
+    });
+  }, [
+    preview.selectedFile,
+    preview.selectedFileOpenInNewTab,
+    settings.markdownEditorOpenInNewTabByDefault,
+    vault.vaultPath,
+  ]);
+
+  useEffect(() => {
+    if (!vault.vaultPath) {
+      setDashboardMarkdownTabs([]);
+      return;
+    }
+    const validPathSet = new Set(vault.files.map((file) => file.path));
+    setDashboardMarkdownTabs((previous) => {
+      const next = previous.filter((tab) => validPathSet.has(tab.path));
+      return next.length === previous.length ? previous : next;
+    });
+  }, [vault.files, vault.vaultPath]);
+
   const requestDashboardViewChange = useCallback(
     (nextView: DashboardView) => {
       if (activeTab === "dashboard" && dashboardRef.current) {
@@ -654,6 +731,8 @@ const AppContent = () => {
             ref={dashboardRef}
             initialVaultView={dashboardView}
             onVaultViewChange={setDashboardView}
+            markdownTabs={dashboardMarkdownTabs}
+            onMarkdownTabsChange={setDashboardMarkdownTabs}
             onOpenPointsProfilesPage={handleOpenPointsProfilesFromDashboard}
             onOpenExamFromDatabaseRecord={handleOpenExamFromDatabaseRecord}
             isNoteModalOpen={isNoteModalOpen}

@@ -24,6 +24,10 @@ const appStateHolder = vi.hoisted(() => ({
   value: null as unknown,
 }));
 
+const capturedDashboardPageProps = vi.hoisted(
+  () => [] as Array<Record<string, unknown>>,
+);
+
 vi.mock("./components/AppStateProvider", async () => {
   const ReactModule = await import("react");
   return {
@@ -182,9 +186,10 @@ vi.mock("./pages/DashboardPage", async () => {
   const DashboardPage = ReactModule.forwardRef((
     props: {
       onOpenExamFromDatabaseRecord?: (target: { path: string; relativePath: string }) => void;
-    },
+    } & Record<string, unknown>,
     ref,
   ) => {
+    capturedDashboardPageProps.push(props);
     ReactModule.useImperativeHandle(ref, () => ({
       requestVaultViewChange: (nextView: "markdown" | "exam") => {
         dashboardViewRequests.values.push(nextView);
@@ -427,6 +432,7 @@ const createMockAppState = () => ({
   },
   preview: {
     selectedFile: null,
+    selectedFileOpenInNewTab: false,
   },
   settings: {
     inputDebugEnabled: false,
@@ -434,6 +440,7 @@ const createMockAppState = () => ({
     keyboardShortcuts: { bindings: {} },
     cursorAccessoryEnabled: false,
     recentVaults: [],
+    markdownEditorOpenInNewTabByDefault: false,
   },
   settingsNav: {
     setActiveSettingsPage: vi.fn(),
@@ -450,6 +457,7 @@ const createMockAppState = () => ({
     status: "ready",
   },
   vault: {
+    files: [],
     vaultPath: "/vault",
     listState: "idle",
   },
@@ -466,6 +474,9 @@ const getSetSelectedExamFilesSpy = () =>
     }
   ).actions.handleSetSelectedExamFiles;
 
+const getLatestDashboardPageProps = () =>
+  capturedDashboardPageProps[capturedDashboardPageProps.length - 1];
+
 const renderApp = () => {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -475,6 +486,11 @@ const renderApp = () => {
   });
   return {
     container,
+    rerender: () => {
+      act(() => {
+        root.render(React.createElement(App));
+      });
+    },
     cleanup: () => {
       act(() => {
         root.unmount();
@@ -501,6 +517,7 @@ describe("App dashboard leave guard integration", () => {
     cardMonitoringGuard.canLeave = true;
     cardMonitoringGuard.requests = 0;
     appStateHolder.value = createMockAppState();
+    capturedDashboardPageProps.length = 0;
   });
 
   it("blocks tab switches when Dashboard denies leave for sidebar and study nav", async () => {
@@ -684,6 +701,141 @@ describe("App dashboard leave guard integration", () => {
       { openInNewTab: true },
     );
     expect(container.querySelector('[data-testid="mock-dashboard-page"]')).toBeTruthy();
+
+    cleanup();
+  });
+
+  it("keeps dashboard markdown tabs across section switches until app close", async () => {
+    dashboardGuard.canLeave = true;
+    const { container, rerender, cleanup } = renderApp();
+    const appState = appStateHolder.value as {
+      preview: {
+        selectedFile: { path: string; relative_path: string } | null;
+        selectedFileOpenInNewTab: boolean;
+      };
+      vault: {
+        files: Array<{ path: string; relative_path: string }>;
+      };
+    };
+
+    appState.vault.files = [
+      { path: "/vault/source.md", relative_path: "source.md" },
+      { path: "/vault/target.md", relative_path: "target.md" },
+    ];
+    appState.preview.selectedFile = {
+      path: "/vault/source.md",
+      relative_path: "source.md",
+    };
+    appState.preview.selectedFileOpenInNewTab = false;
+    rerender();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    let latestDashboardProps = getLatestDashboardPageProps() as {
+      markdownTabs?: Array<{ path: string; relativePath: string }>;
+    } | undefined;
+    expect(latestDashboardProps?.markdownTabs).toEqual([
+      { path: "/vault/source.md", relativePath: "source.md" },
+    ]);
+
+    appState.preview.selectedFile = {
+      path: "/vault/target.md",
+      relative_path: "target.md",
+    };
+    appState.preview.selectedFileOpenInNewTab = true;
+    rerender();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    latestDashboardProps = getLatestDashboardPageProps() as {
+      markdownTabs?: Array<{ path: string; relativePath: string }>;
+    } | undefined;
+    expect(latestDashboardProps?.markdownTabs).toEqual([
+      { path: "/vault/source.md", relativePath: "source.md" },
+      { path: "/vault/target.md", relativePath: "target.md" },
+    ]);
+
+    await clickTestId(container, "study-nav-switch-exam");
+    expect(container.querySelector('[data-testid="mock-exam-simulation-page"]')).toBeTruthy();
+
+    await clickTestId(container, "study-nav-open-editor-markdown");
+    expect(container.querySelector('[data-testid="mock-dashboard-page"]')).toBeTruthy();
+
+    latestDashboardProps = getLatestDashboardPageProps() as {
+      markdownTabs?: Array<{ path: string; relativePath: string }>;
+    } | undefined;
+    expect(latestDashboardProps?.markdownTabs).toEqual([
+      { path: "/vault/source.md", relativePath: "source.md" },
+      { path: "/vault/target.md", relativePath: "target.md" },
+    ]);
+
+    cleanup();
+  });
+
+  it("filters persisted dashboard markdown tabs to valid files on vault change", async () => {
+    dashboardGuard.canLeave = true;
+    const { rerender, cleanup } = renderApp();
+    const appState = appStateHolder.value as {
+      preview: {
+        selectedFile: { path: string; relative_path: string } | null;
+        selectedFileOpenInNewTab: boolean;
+      };
+      vault: {
+        files: Array<{ path: string; relative_path: string }>;
+        vaultPath: string | null;
+      };
+    };
+
+    appState.vault.vaultPath = "/vault";
+    appState.vault.files = [
+      { path: "/vault/source.md", relative_path: "source.md" },
+      { path: "/vault/target.md", relative_path: "target.md" },
+    ];
+    appState.preview.selectedFile = {
+      path: "/vault/source.md",
+      relative_path: "source.md",
+    };
+    appState.preview.selectedFileOpenInNewTab = false;
+    rerender();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    appState.preview.selectedFile = {
+      path: "/vault/target.md",
+      relative_path: "target.md",
+    };
+    appState.preview.selectedFileOpenInNewTab = true;
+    rerender();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    let latestDashboardProps = getLatestDashboardPageProps() as {
+      markdownTabs?: Array<{ path: string; relativePath: string }>;
+    } | undefined;
+    expect(latestDashboardProps?.markdownTabs).toEqual([
+      { path: "/vault/source.md", relativePath: "source.md" },
+      { path: "/vault/target.md", relativePath: "target.md" },
+    ]);
+
+    appState.vault.vaultPath = "/vault-next";
+    appState.vault.files = [
+      { path: "/vault/target.md", relative_path: "target.md" },
+    ];
+    rerender();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    latestDashboardProps = getLatestDashboardPageProps() as {
+      markdownTabs?: Array<{ path: string; relativePath: string }>;
+    } | undefined;
+    expect(latestDashboardProps?.markdownTabs).toEqual([
+      { path: "/vault/target.md", relativePath: "target.md" },
+    ]);
 
     cleanup();
   });

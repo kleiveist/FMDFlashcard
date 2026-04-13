@@ -95,6 +95,8 @@ type PendingExamLeaveAction =
 type DashboardPageProps = {
   initialVaultView?: DashboardView;
   onVaultViewChange?: (nextView: DashboardView) => void;
+  markdownTabs?: MarkdownEditorTab[];
+  onMarkdownTabsChange?: (nextTabs: MarkdownEditorTab[]) => void;
   isNoteModalOpen?: boolean;
   noteModalEnabled?: boolean;
   onNoteModalClose?: () => void;
@@ -117,6 +119,8 @@ const DashboardPageInner = (
   {
     initialVaultView = "markdown",
     onVaultViewChange,
+    markdownTabs = [],
+    onMarkdownTabsChange = () => {},
     isNoteModalOpen = false,
     noteModalEnabled = false,
     onNoteModalClose,
@@ -149,7 +153,6 @@ const DashboardPageInner = (
   const [isHybridBlockDirty, setIsHybridBlockDirty] = useState(false);
   const [documentMode, setDocumentMode] = useState<MarkdownDocumentMode>("edit");
   const [pendingWriteFilePath, setPendingWriteFilePath] = useState<string | null>(null);
-  const [markdownTabs, setMarkdownTabs] = useState<MarkdownEditorTab[]>([]);
   const [vaultView, setVaultView] = useState<DashboardView>(initialVaultView);
   const [examControls, setExamControls] = useState<ExamEditorControlsState | null>(
     null,
@@ -158,7 +161,6 @@ const DashboardPageInner = (
   const [pendingExamLeaveAction, setPendingExamLeaveAction] =
     useState<PendingExamLeaveAction | null>(null);
   const [isExamLeaveSavePending, setIsExamLeaveSavePending] = useState(false);
-  const previousSelectedMarkdownPathRef = useRef<string | null>(null);
   const isDesktopViewport = useMediaQuery(DESKTOP_QUERY, false);
   const [examPanelsCollapsed, setExamPanelsCollapsed] = useState(() => {
     if (typeof window === "undefined") {
@@ -332,70 +334,6 @@ const DashboardPageInner = (
     },
     [vault.vaultPath],
   );
-
-  useEffect(() => {
-    const selected = preview.selectedFile;
-    if (!selected) {
-      previousSelectedMarkdownPathRef.current = null;
-      return;
-    }
-    const selectedPath = selected.path;
-    const selectedRelativePath = selected.relative_path;
-    const previousSelectedPath = previousSelectedMarkdownPathRef.current;
-    previousSelectedMarkdownPathRef.current = selectedPath;
-    const shouldOpenInNewTab =
-      preview.selectedFileOpenInNewTab ||
-      settings.markdownEditorOpenInNewTabByDefault;
-
-    setMarkdownTabs((previous) => {
-      const existingIndex = previous.findIndex((tab) => tab.path === selectedPath);
-      if (existingIndex >= 0) {
-        const existing = previous[existingIndex];
-        if (existing?.relativePath === selectedRelativePath) {
-          return previous;
-        }
-        const next = previous.slice();
-        next[existingIndex] = {
-          path: selectedPath,
-          relativePath: selectedRelativePath,
-        };
-        return next;
-      }
-      const nextTab: MarkdownEditorTab = {
-        path: selectedPath,
-        relativePath: selectedRelativePath,
-      };
-      if (previous.length === 0) {
-        return [nextTab];
-      }
-      if (shouldOpenInNewTab) {
-        return [...previous, nextTab];
-      }
-      const replaceIndex = previousSelectedPath
-        ? previous.findIndex((tab) => tab.path === previousSelectedPath)
-        : -1;
-      const fallbackReplaceIndex = replaceIndex >= 0 ? replaceIndex : previous.length - 1;
-      const next = previous.slice();
-      next[fallbackReplaceIndex] = nextTab;
-      return next;
-    });
-  }, [
-    preview.selectedFile,
-    preview.selectedFileOpenInNewTab,
-    settings.markdownEditorOpenInNewTabByDefault,
-  ]);
-
-  useEffect(() => {
-    if (!vault.vaultPath) {
-      setMarkdownTabs([]);
-      return;
-    }
-    const validPathSet = new Set(vault.files.map((file) => file.path));
-    setMarkdownTabs((previous) => {
-      const next = previous.filter((tab) => validPathSet.has(tab.path));
-      return next.length === previous.length ? previous : next;
-    });
-  }, [vault.files, vault.vaultPath]);
 
   useEffect(() => {
     setIsEditing(false);
@@ -902,7 +840,7 @@ const DashboardPageInner = (
 
       void (async () => {
         await runDashboardNavigationGuard("file-select", async () => {
-          setMarkdownTabs(remainingTabs);
+          onMarkdownTabsChange(remainingTabs);
           if (activePath !== path) {
             return;
           }
@@ -922,6 +860,7 @@ const DashboardPageInner = (
     [
       actions,
       markdownTabs,
+      onMarkdownTabsChange,
       preview,
       resolveMarkdownFileByPath,
       runDashboardNavigationGuard,
@@ -933,30 +872,30 @@ const DashboardPageInner = (
       if (!sourcePath || !targetPath || sourcePath === targetPath) {
         return;
       }
-      setMarkdownTabs((previous) => {
-        const sourceIndex = previous.findIndex((tab) => tab.path === sourcePath);
-        const targetIndex = previous.findIndex((tab) => tab.path === targetPath);
-        if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
-          return previous;
-        }
-        const next = previous.slice();
-        const [movedTab] = next.splice(sourceIndex, 1);
-        if (!movedTab) {
-          return previous;
-        }
-        const adjustedTargetIndex = next.findIndex((tab) => tab.path === targetPath);
-        if (adjustedTargetIndex < 0) {
-          return previous;
-        }
-        const insertIndex = position === "before"
-          ? adjustedTargetIndex
-          : adjustedTargetIndex + 1;
-        next.splice(insertIndex, 0, movedTab);
-        const orderChanged = next.some((tab, index) => tab.path !== previous[index]?.path);
-        return orderChanged ? next : previous;
-      });
+      const sourceIndex = markdownTabs.findIndex((tab) => tab.path === sourcePath);
+      const targetIndex = markdownTabs.findIndex((tab) => tab.path === targetPath);
+      if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) {
+        return;
+      }
+      const next = markdownTabs.slice();
+      const [movedTab] = next.splice(sourceIndex, 1);
+      if (!movedTab) {
+        return;
+      }
+      const adjustedTargetIndex = next.findIndex((tab) => tab.path === targetPath);
+      if (adjustedTargetIndex < 0) {
+        return;
+      }
+      const insertIndex = position === "before"
+        ? adjustedTargetIndex
+        : adjustedTargetIndex + 1;
+      next.splice(insertIndex, 0, movedTab);
+      const orderChanged = next.some((tab, index) => tab.path !== markdownTabs[index]?.path);
+      if (orderChanged) {
+        onMarkdownTabsChange(next);
+      }
     },
-    [],
+    [markdownTabs, onMarkdownTabsChange],
   );
 
   const handleFrontmatterSave = useCallback(
