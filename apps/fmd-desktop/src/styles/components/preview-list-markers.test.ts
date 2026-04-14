@@ -12,6 +12,11 @@ import { readFileSync } from "node:fs";
 const previewCss = readFileSync(new URL("./preview.css", import.meta.url), "utf8");
 
 describe("preview.css list marker variants", () => {
+  it("keeps the base preview surface background neutral", () => {
+    expect(previewCss).toContain("background-color: var(--md-surface-bg);");
+    expect(previewCss).not.toContain("background-color: var(--md-question-bg, var(--md-surface-bg));");
+  });
+
   it("defines nested unordered and ordered marker cycles for global markdown surfaces", () => {
     expect(previewCss).toContain(".md-preview ul ul");
     expect(previewCss).toContain("list-style-type: circle;");

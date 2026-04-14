@@ -1430,7 +1430,7 @@
 .preview {
   margin: 0;
   padding: var(--ui-space-lg);
-  background-color: var(--md-question-bg, var(--md-surface-bg));
+  background-color: var(--md-surface-bg);
   color: var(--preview-ink);
   border-radius: var(--ui-radius-panel);
   flex: 1;
