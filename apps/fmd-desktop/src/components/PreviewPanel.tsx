@@ -41,6 +41,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
@@ -3276,6 +3277,17 @@ const decodeDatabaseBlockRaw = (value: string | null | undefined) => {
   }
 };
 
+const resolveDatabaseBlockIndex = (value: string | null | undefined) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null;
+  }
+  return parsed;
+};
+
 const normalizeCloseCodeFenceMarker = (
   value: string | null,
   openMarker: string,
@@ -4309,18 +4321,20 @@ export const buildEditableMarkdownHtml = (
 
   clone.querySelectorAll(".frontmatter-panel").forEach((panel) => panel.remove());
   clone.querySelectorAll(".frontmatter-cover-panel").forEach((panel) => panel.remove());
+  let databaseBlockIndex = 0;
   clone.querySelectorAll<HTMLElement>(".preview-markdown-view-block-database-block").forEach((block) => {
     const encodedRaw = block.getAttribute("data-md-database-block-raw");
     if (!encodedRaw) {
       return;
     }
-    const replacement = block.ownerDocument.createElement("div");
-    replacement.className = "md-database-block-raw";
-    replacement.setAttribute("data-md-database-block-raw", encodedRaw);
-    replacement.setAttribute("data-md-inline-line", "true");
-    replacement.style.whiteSpace = "pre-wrap";
-    replacement.textContent = decodeDatabaseBlockRaw(encodedRaw);
-    block.replaceWith(replacement);
+    const parsedIndex = resolveDatabaseBlockIndex(
+      block.getAttribute("data-md-database-block-index"),
+    );
+    const nextIndex = parsedIndex ?? databaseBlockIndex;
+    databaseBlockIndex = Math.max(databaseBlockIndex, nextIndex + 1);
+    block.setAttribute("data-md-database-block-index", String(nextIndex));
+    block.setAttribute("data-md-inline-line", "true");
+    block.setAttribute("contenteditable", "false");
   });
   clone.querySelectorAll(".md-code-copy-button").forEach((button) => button.remove());
   clone.querySelectorAll<HTMLElement>("pre").forEach((codeBlock) => {
@@ -8698,6 +8712,7 @@ export const PreviewPanel = ({
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
   const markdownEditorScrollRef = useRef<HTMLDivElement | null>(null);
   const markdownEditorRef = useRef<HTMLDivElement | null>(null);
+  const markdownEditorDatabaseIslandsRef = useRef<Map<HTMLElement, Root>>(new Map());
   const legacyMarkdownLinkPickerRef = useRef<HTMLDivElement | null>(null);
   const legacyMarkdownLinkPickerSearchInputRef = useRef<HTMLInputElement | null>(null);
   const markdownTabStripRef = useRef<HTMLDivElement | null>(null);
@@ -9049,6 +9064,13 @@ export const PreviewPanel = ({
     [cancelEditableHighlightIdle, clearEditableHighlightDebounce],
   );
 
+  const unmountMarkdownEditorDatabaseIslands = useCallback(() => {
+    markdownEditorDatabaseIslandsRef.current.forEach((root) => {
+      root.unmount();
+    });
+    markdownEditorDatabaseIslandsRef.current.clear();
+  }, []);
+
   const syncMarkdownDraftFromEditor = useCallback(() => {
     if (!markdownEditorRef.current) {
       return "";
@@ -9074,7 +9096,7 @@ export const PreviewPanel = ({
       serializeMarkdownFromHtml(editor),
     );
     const normalizedBody = normalizeMarkdownViewEditBodyForPersist(
-      normalizeLooseNestedUnorderedListMarkersForRender(currentBody),
+      normalizeLooseNestedUnorderedListMarkersForMarkdownView(currentBody),
     );
     if (normalizedBody === currentBody) {
       return;
@@ -9545,6 +9567,7 @@ export const PreviewPanel = ({
 
   useLayoutEffect(() => {
     if (!isEditing || isCodeMode) {
+      unmountMarkdownEditorDatabaseIslands();
       markdownEditorReadyRef.current = false;
       activeMarkdownInlineLineRef.current = null;
       pendingLegacyUnorderedListAutocorrectRef.current = false;
@@ -9560,7 +9583,14 @@ export const PreviewPanel = ({
     markdownEditorRef.current.innerHTML = markdownEditorHtmlRef.current ?? "";
     markdownEditorReadyRef.current = true;
     syncActiveMarkdownHeading();
-  }, [isCodeMode, isEditing, syncActiveMarkdownHeading]);
+  }, [isCodeMode, isEditing, syncActiveMarkdownHeading, unmountMarkdownEditorDatabaseIslands]);
+
+  useEffect(
+    () => () => {
+      unmountMarkdownEditorDatabaseIslands();
+    },
+    [unmountMarkdownEditorDatabaseIslands],
+  );
 
   useEffect(() => {
     if (!isEditing || isCodeMode) {
@@ -10205,7 +10235,11 @@ export const PreviewPanel = ({
   const handleMarkdownEditorBlur = useCallback(
     (event: FocusEvent<HTMLDivElement>) => {
       const nextFocus = event.relatedTarget;
+      const editor = markdownEditorRef.current;
       if (nextFocus instanceof Node && legacyMarkdownLinkPickerRef.current?.contains(nextFocus)) {
+        return;
+      }
+      if (nextFocus instanceof Node && editor?.contains(nextFocus)) {
         return;
       }
       syncMarkdownDraftFromEditor();
@@ -10741,6 +10775,56 @@ export const PreviewPanel = ({
     },
     [canEditMarkdownViewDatabaseBlock, onFrontmatterSave, preview],
   );
+  const commitMarkdownEditorDatabaseBlock = useCallback(
+    async (databaseBlockIndex: number, nextRaw: string) => {
+      if (!canEditMarkdownViewDatabaseBlock) {
+        return;
+      }
+      if (databaseBlockIndex < 0) {
+        return;
+      }
+      const editor = markdownEditorRef.current;
+      if (!editor) {
+        return;
+      }
+      const sourceBody = normalizeMarkdownViewEditBodyForPersist(
+        serializeMarkdownFromHtml(editor),
+      );
+      const sourceBlocks = parseMarkdownBlocks(sourceBody);
+      const sourceDatabaseBlocks = sourceBlocks.filter(
+        (block) => block.kind === "database-block",
+      );
+      const sourceBlock = sourceDatabaseBlocks[databaseBlockIndex];
+      if (!sourceBlock) {
+        return;
+      }
+      const nextBody = normalizeMarkdownViewEditBodyForPersist(
+        replaceMarkdownBlock(sourceBody, sourceBlock, nextRaw),
+      );
+      const nextMarkdown = composeMarkdownWithBody(editDraft, nextBody, {
+        bodyMayContainFrontmatter: false,
+      });
+      const host = editor.querySelector<HTMLElement>(
+        `.preview-markdown-view-block-database-block[data-md-database-block-index="${databaseBlockIndex}"]`,
+      );
+      if (host) {
+        host.setAttribute("data-md-database-block-raw", encodeDatabaseBlockRaw(nextRaw));
+      }
+      if (nextMarkdown !== editDraft) {
+        pendingLegacyUnorderedListAutocorrectRef.current = true;
+        onEditChange(nextMarkdown);
+      }
+      if (!onFrontmatterSave) {
+        return;
+      }
+      try {
+        await onFrontmatterSave(nextMarkdown);
+      } catch {
+        // Keep the merged draft in place so users can retry save manually.
+      }
+    },
+    [canEditMarkdownViewDatabaseBlock, editDraft, onEditChange, onFrontmatterSave],
+  );
   const hasVisiblePreviewContent = isCodeMode
     ? preview.length > 0
     : markdownSource.length > 0;
@@ -10805,7 +10889,7 @@ export const PreviewPanel = ({
       previousEditorMode === "markdown" &&
       editorMode === "code"
     ) {
-      const normalizedBody = normalizeLooseNestedUnorderedListMarkersForRender(markdownEditBody);
+      const normalizedBody = normalizeLooseNestedUnorderedListMarkersForMarkdownView(markdownEditBody);
       const nextValue = composeMarkdownWithBody(
         editDraft,
         normalizeMarkdownViewEditBodyForPersist(normalizedBody),
@@ -10819,6 +10903,84 @@ export const PreviewPanel = ({
     }
     previousEditorModeRef.current = editorMode;
   }, [editDraft, editorMode, isEditing, markdownEditBody, onEditChange]);
+  useEffect(() => {
+    if (!isEditing || isCodeMode || !showMarkdownEditor) {
+      unmountMarkdownEditorDatabaseIslands();
+      return;
+    }
+    const editor = markdownEditorRef.current;
+    if (!editor) {
+      return;
+    }
+
+    const hosts = Array.from(
+      editor.querySelectorAll<HTMLElement>(
+        ".preview-markdown-view-block-database-block[data-md-database-block-raw]",
+      ),
+    );
+    const hostSet = new Set(hosts);
+
+    markdownEditorDatabaseIslandsRef.current.forEach((root, host) => {
+      if (hostSet.has(host) && editor.contains(host)) {
+        return;
+      }
+      root.unmount();
+      markdownEditorDatabaseIslandsRef.current.delete(host);
+    });
+
+    let fallbackIndex = 0;
+    hosts.forEach((host) => {
+      const encodedRaw = host.getAttribute("data-md-database-block-raw");
+      if (!encodedRaw) {
+        return;
+      }
+      const resolvedIndex = resolveDatabaseBlockIndex(
+        host.getAttribute("data-md-database-block-index"),
+      ) ?? fallbackIndex;
+      fallbackIndex = Math.max(fallbackIndex, resolvedIndex + 1);
+      host.setAttribute("data-md-database-block-index", String(resolvedIndex));
+      host.setAttribute("data-md-inline-line", "true");
+      host.setAttribute("contenteditable", "false");
+
+      let root = markdownEditorDatabaseIslandsRef.current.get(host);
+      if (!root) {
+        root = createRoot(host);
+        markdownEditorDatabaseIslandsRef.current.set(host, root);
+      }
+
+      root.render(
+        <MarkdownHybridDatabaseBlock
+          raw={decodeDatabaseBlockRaw(encodedRaw)}
+          vaultFiles={vaultFiles}
+          vaultPath={vaultPath}
+          sourceRelativePath={sourceRelativePath ?? selectedFile?.relative_path}
+          onNavigateWikilink={onNavigateWikilink}
+          runnableExamRelativePaths={runnableExamRelativePaths}
+          onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
+          monitoringProfiles={monitoringProfiles}
+          onCommitRaw={(nextRaw) => {
+            void commitMarkdownEditorDatabaseBlock(resolvedIndex, nextRaw);
+          }}
+          allowCellEditing={canEditMarkdownViewDatabaseBlock}
+        />,
+      );
+    });
+  }, [
+    canEditMarkdownViewDatabaseBlock,
+    commitMarkdownEditorDatabaseBlock,
+    isCodeMode,
+    isEditing,
+    monitoringProfiles,
+    onNavigateWikilink,
+    onOpenExamFromDatabaseRecord,
+    runnableExamRelativePaths,
+    selectedFile?.relative_path,
+    showMarkdownEditor,
+    sourceRelativePath,
+    unmountMarkdownEditorDatabaseIslands,
+    vaultFiles,
+    vaultPath,
+  ]);
   const shouldAutoManageRawCodeEditSession = Boolean(
     isCodeMode &&
       canEdit &&
@@ -10854,6 +11016,7 @@ export const PreviewPanel = ({
             className={wrapperClassName}
             data-md-block-kind={block.kind}
             data-md-database-block-raw={encodeDatabaseBlockRaw(block.raw)}
+            data-md-database-block-index={databaseBlockIndex >= 0 ? databaseBlockIndex : undefined}
             data-md-card-group-id={cardGroupId ?? undefined}
             data-md-card-group-role={cardGroupRole ?? undefined}
           >

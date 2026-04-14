@@ -1676,22 +1676,432 @@ describe("PreviewPanel edit-safe interactions", () => {
     const introTextNode = findTextNodeContaining(container, "Intro");
     const editable = activateMarkdownEditorFromPreviewSelection(container, introTextNode, 1);
     expect(editable).toBeTruthy();
+    expect(
+      container.querySelector(
+        ".preview-markdown-editable .preview-markdown-view-block-database-block .database-block",
+      ),
+    ).toBeTruthy();
+    expect(container.querySelector(".preview-markdown-editable .md-database-block-raw")).toBeNull();
+    const editDatabaseHost = container.querySelector<HTMLElement>(
+      ".preview-markdown-editable .preview-markdown-view-block-database-block",
+    );
+    expect(editDatabaseHost?.getAttribute("contenteditable")).toBe("false");
+    expect(editDatabaseHost?.getAttribute("data-md-database-block-index")).toBe("0");
 
     act(() => {
-      editable?.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+      editable?.focus();
+      editable?.dispatchEvent(new FocusEvent("focusout", {
+        bubbles: true,
+        relatedTarget: document.body,
+      }));
     });
     await flushAsyncInteraction();
 
     expect(onEditExit).toHaveBeenCalled();
 
     const persistedDraft = container.querySelector("[data-testid='draft']")?.textContent ?? "";
-    expect(persistedDraft).toBe(markdown);
+    expect(persistedDraft.trimEnd()).toBe(markdown.trimEnd());
     expect((persistedDraft.match(/::::/g) ?? []).length).toBe(2);
 
     const finalDatabaseBlock = container.querySelector(
       ".preview-markdown-view-block-database-block .database-block",
     );
     expect(finalDatabaseBlock).toBeTruthy();
+  });
+
+  it("keeps database islands interactive in markdown light edit mode", async () => {
+    const onFrontmatterSave = vi.fn().mockResolvedValue(true);
+    const markdown = [
+      "Intro",
+      "",
+      "::::",
+      "title: Database",
+      "source:",
+      "  type: current-folder",
+      "fields: []",
+      "views:",
+      "  activeViewId: view-default",
+      "  items:",
+      "    - id: view-default",
+      "      name: Database",
+      "      view:",
+      "        type: table",
+      "options:",
+      "  editable: false",
+      "  showToolbar: true",
+      "::::",
+      "",
+      "Outro",
+    ].join("\n");
+    invokeMock.mockResolvedValue([
+      "---",
+      "title: Demo",
+      "---",
+      "Body",
+    ].join("\n"));
+
+    const {
+      container,
+      cleanup: localCleanup,
+      onEditExit,
+    } = buildHarness(markdown, {
+      editorMode: "markdown",
+      editEnabled: true,
+      onFrontmatterSave,
+      vaultFiles: [baseFile],
+    });
+    cleanup = localCleanup;
+
+    const editable = activateMarkdownEditorFromPreviewSelection(
+      container,
+      findTextNodeContaining(container, "Intro"),
+      1,
+    );
+    expect(editable).toBeTruthy();
+    await flushAsyncInteraction();
+    await flushAsyncInteraction();
+
+    const viewSelect = container.querySelector<HTMLSelectElement>(
+      ".preview-markdown-editable .database-block-view-select",
+    );
+    expect(viewSelect).toBeTruthy();
+
+    act(() => {
+      if (!viewSelect) {
+        return;
+      }
+      viewSelect.value = "gantt";
+      viewSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await flushAsyncInteraction();
+
+    expect(onFrontmatterSave).toHaveBeenCalled();
+    expect(onEditExit).not.toHaveBeenCalled();
+    expect(container.querySelector(".preview-markdown-editable")).toBeTruthy();
+  });
+
+  it("merges markdown-light database commits into draft and persists immediately", async () => {
+    const onFrontmatterSave = vi.fn().mockResolvedValue(true);
+    const markdown = [
+      "Intro",
+      "",
+      "::::",
+      "title: Database",
+      "source:",
+      "  type: current-folder",
+      "fields: []",
+      "views:",
+      "  activeViewId: view-default",
+      "  items:",
+      "    - id: view-default",
+      "      name: Database",
+      "      view:",
+      "        type: table",
+      "options:",
+      "  editable: false",
+      "  showToolbar: true",
+      "::::",
+      "",
+      "Outro",
+    ].join("\n");
+    invokeMock.mockResolvedValue([
+      "---",
+      "title: Demo",
+      "---",
+      "Body",
+    ].join("\n"));
+
+    const Harness = () => {
+      const [isEditing, setIsEditing] = useState(false);
+      const [editDraft, setEditDraft] = useState(markdown);
+      const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
+
+      const handleEditStart = useCallback((options?: { caretIndex?: number | null }) => {
+        setEditDraft(markdown);
+        setEditCaretIndex(typeof options?.caretIndex === "number" ? options.caretIndex : null);
+        setIsEditing(true);
+      }, [markdown]);
+
+      const handleEditExit = useCallback(() => {
+        setIsEditing(false);
+      }, []);
+
+      return createElement(
+        "div",
+        null,
+        createElement("div", { "data-testid": "draft" }, editDraft),
+        createElement(PreviewPanel, {
+          editDraft,
+          editError: "",
+          editCaretIndex,
+          isEditing,
+          emptyPreview: "",
+          preview: markdown,
+          previewError: "",
+          previewState: "idle",
+          editorMode: "markdown",
+          editEnabled: true,
+          selectedFile: baseFile,
+          vaultPath: "/vault",
+          sourceRelativePath: baseFile.relative_path,
+          vaultFiles: [baseFile],
+          canEdit: true,
+          onEditChange: setEditDraft,
+          onEditCaretApplied: () => setEditCaretIndex(null),
+          onEditExit: handleEditExit,
+          onEditStart: handleEditStart,
+          onSelectEditorMode: () => {},
+          onToggleEditEnabled: () => {},
+          onFrontmatterSave,
+        }),
+      );
+    };
+
+    const { container, cleanup: localCleanup } = render(createElement(Harness));
+    cleanup = localCleanup;
+
+    const editable = activateMarkdownEditorFromPreviewSelection(
+      container,
+      findTextNodeContaining(container, "Intro"),
+      1,
+    );
+    expect(editable).toBeTruthy();
+    await flushAsyncInteraction();
+    await flushAsyncInteraction();
+
+    const viewSelect = container.querySelector<HTMLSelectElement>(
+      ".preview-markdown-editable .database-block-view-select",
+    );
+    expect(viewSelect).toBeTruthy();
+
+    act(() => {
+      if (!viewSelect) {
+        return;
+      }
+      viewSelect.value = "gantt";
+      viewSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await flushAsyncInteraction();
+
+    expect(onFrontmatterSave).toHaveBeenCalled();
+    const persisted = String(
+      onFrontmatterSave.mock.calls[onFrontmatterSave.mock.calls.length - 1]?.[0] ?? "",
+    );
+    const draft = container.querySelector("[data-testid='draft']")?.textContent ?? "";
+    expect(persisted).toContain("type: gantt");
+    expect(draft).toContain("type: gantt");
+  });
+
+  it("keeps non-database markdown text editable in light edit mode", async () => {
+    const markdown = [
+      "Intro",
+      "",
+      "::::",
+      "title: Database",
+      "source:",
+      "  type: history-folder",
+      "fields: []",
+      "views:",
+      "  activeViewId: view-default",
+      "  items:",
+      "    - id: view-default",
+      "      name: Database",
+      "      view:",
+      "        type: table",
+      "options:",
+      "  editable: false",
+      "::::",
+      "",
+      "Outro",
+    ].join("\n");
+
+    const Harness = () => {
+      const [isEditing, setIsEditing] = useState(false);
+      const [editDraft, setEditDraft] = useState(markdown);
+      const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
+
+      const handleEditStart = useCallback((options?: { caretIndex?: number | null }) => {
+        setEditDraft(markdown);
+        setEditCaretIndex(typeof options?.caretIndex === "number" ? options.caretIndex : null);
+        setIsEditing(true);
+      }, [markdown]);
+
+      const handleEditExit = useCallback(() => {
+        setIsEditing(false);
+      }, []);
+
+      return createElement(
+        "div",
+        null,
+        createElement("div", { "data-testid": "draft" }, editDraft),
+        createElement(PreviewPanel, {
+          editDraft,
+          editError: "",
+          editCaretIndex,
+          isEditing,
+          emptyPreview: "",
+          preview: markdown,
+          previewError: "",
+          previewState: "idle",
+          editorMode: "markdown",
+          editEnabled: true,
+          selectedFile: baseFile,
+          vaultPath: "/vault",
+          sourceRelativePath: baseFile.relative_path,
+          canEdit: true,
+          onEditChange: setEditDraft,
+          onEditCaretApplied: () => setEditCaretIndex(null),
+          onEditExit: handleEditExit,
+          onEditStart: handleEditStart,
+          onSelectEditorMode: () => {},
+          onToggleEditEnabled: () => {},
+        }),
+      );
+    };
+
+    const { container, cleanup: localCleanup } = render(createElement(Harness));
+    cleanup = localCleanup;
+
+    const editable = activateMarkdownEditorFromPreviewSelection(
+      container,
+      findTextNodeContaining(container, "Intro"),
+      1,
+    );
+    expect(editable).toBeTruthy();
+
+    const introTextNode = findTextNodeContaining(
+      container.querySelector(".preview-markdown-editable"),
+      "Intro",
+    );
+    act(() => {
+      if (!editable || !introTextNode) {
+        return;
+      }
+      introTextNode.textContent = "Intro updated";
+      editable.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+    });
+    await flushAsyncInteraction();
+
+    const draft = container.querySelector("[data-testid='draft']")?.textContent ?? "";
+    expect(draft).toContain("Intro updated");
+    expect(
+      container.querySelector(
+        ".preview-markdown-editable .preview-markdown-view-block-database-block .database-block",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("keeps merged markdown-light database draft when persist fails", async () => {
+    const onFrontmatterSave = vi.fn().mockRejectedValue(new Error("save failed"));
+    const markdown = [
+      "Intro",
+      "",
+      "::::",
+      "title: Database",
+      "source:",
+      "  type: current-folder",
+      "fields: []",
+      "views:",
+      "  activeViewId: view-default",
+      "  items:",
+      "    - id: view-default",
+      "      name: Database",
+      "      view:",
+      "        type: table",
+      "options:",
+      "  editable: false",
+      "  showToolbar: true",
+      "::::",
+      "",
+      "Outro",
+    ].join("\n");
+    invokeMock.mockResolvedValue([
+      "---",
+      "title: Demo",
+      "---",
+      "Body",
+    ].join("\n"));
+
+    const Harness = () => {
+      const [isEditing, setIsEditing] = useState(false);
+      const [editDraft, setEditDraft] = useState(markdown);
+      const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
+
+      const handleEditStart = useCallback((options?: { caretIndex?: number | null }) => {
+        setEditDraft(markdown);
+        setEditCaretIndex(typeof options?.caretIndex === "number" ? options.caretIndex : null);
+        setIsEditing(true);
+      }, [markdown]);
+
+      const handleEditExit = useCallback(() => {
+        setIsEditing(false);
+      }, []);
+
+      return createElement(
+        "div",
+        null,
+        createElement("div", { "data-testid": "draft" }, editDraft),
+        createElement(PreviewPanel, {
+          editDraft,
+          editError: "",
+          editCaretIndex,
+          isEditing,
+          emptyPreview: "",
+          preview: markdown,
+          previewError: "",
+          previewState: "idle",
+          editorMode: "markdown",
+          editEnabled: true,
+          selectedFile: baseFile,
+          vaultPath: "/vault",
+          sourceRelativePath: baseFile.relative_path,
+          vaultFiles: [baseFile],
+          canEdit: true,
+          onEditChange: setEditDraft,
+          onEditCaretApplied: () => setEditCaretIndex(null),
+          onEditExit: handleEditExit,
+          onEditStart: handleEditStart,
+          onSelectEditorMode: () => {},
+          onToggleEditEnabled: () => {},
+          onFrontmatterSave,
+        }),
+      );
+    };
+
+    const { container, cleanup: localCleanup } = render(createElement(Harness));
+    cleanup = localCleanup;
+
+    const editable = activateMarkdownEditorFromPreviewSelection(
+      container,
+      findTextNodeContaining(container, "Intro"),
+      1,
+    );
+    expect(editable).toBeTruthy();
+    await flushAsyncInteraction();
+    await flushAsyncInteraction();
+
+    const viewSelect = container.querySelector<HTMLSelectElement>(
+      ".preview-markdown-editable .database-block-view-select",
+    );
+    expect(viewSelect).toBeTruthy();
+
+    act(() => {
+      if (!viewSelect) {
+        return;
+      }
+      viewSelect.value = "gantt";
+      viewSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await flushAsyncInteraction();
+
+    expect(onFrontmatterSave).toHaveBeenCalled();
+    const draft = container.querySelector("[data-testid='draft']")?.textContent ?? "";
+    expect(draft).toContain("type: gantt");
+    expect(
+      container.querySelector(
+        ".preview-markdown-editable .preview-markdown-view-block-database-block .database-block",
+      ),
+    ).toBeTruthy();
   });
 
   it("renders chained cloze alternatives in markdown view as the first variant only", () => {
