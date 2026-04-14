@@ -9,6 +9,7 @@ import {
   type DatabaseFormulaGroupedCountEntry,
   type DatabaseFormulaShortTextRule,
 } from "../formula/database-formula-types";
+import { resolveFormulaSourceRecords } from "../formula/formula-source-resolver";
 import {
   type DatabaseNormalizedFieldValue,
   type DatabaseRecord,
@@ -20,6 +21,7 @@ type EvaluateDatabaseAggregationFormulaParams = {
   definition: DatabaseFormulaDefinitionV1;
   records: DatabaseRecord[];
   currentRecord: DatabaseRecord;
+  historyRecords?: DatabaseRecord[];
   getFieldValue?: (record: DatabaseRecord, key: string) => DatabaseNormalizedFieldValue;
 };
 
@@ -27,53 +29,6 @@ const numericPattern = /^[-+]?(?:\d+(?:[.,]\d+)?|\.\d+)$/;
 const numericCorePattern = /[-+]?(?:\d+(?:[.,]\d+)?|\.\d+)/g;
 
 const toLower = (value: string) => value.trim().toLowerCase();
-
-const toNormalizedPath = (value: string) =>
-  value.trim().replace(/\\+/g, "/").replace(/^\/+/, "").replace(/\/+$/, "");
-
-const fileBelongsToFolder = (relativePath: string, folder: string) => {
-  const normalizedFilePath = toNormalizedPath(relativePath);
-  const normalizedFolder = toNormalizedPath(folder);
-  if (!normalizedFolder) {
-    return true;
-  }
-  return normalizedFilePath === normalizedFolder || normalizedFilePath.startsWith(`${normalizedFolder}/`);
-};
-
-const resolveFormulaSourceRecords = ({
-  definition,
-  records,
-  currentRecord,
-}: {
-  definition: DatabaseFormulaDefinitionV1;
-  records: DatabaseRecord[];
-  currentRecord: DatabaseRecord;
-}) => {
-  if (definition.source.type === "current-folder") {
-    return records.filter((record) => fileBelongsToFolder(record.relativePath, currentRecord.folder));
-  }
-
-  if (definition.source.type === "explicit-folder") {
-    const folderPath = definition.source.path?.trim() ?? "";
-    if (!folderPath) {
-      return records;
-    }
-    return records.filter((record) => fileBelongsToFolder(record.relativePath, folderPath));
-  }
-
-  if (definition.source.type === "multi-folder") {
-    const folders = (definition.source.paths ?? [])
-      .map((path) => path.trim())
-      .filter((path) => path.length > 0);
-    if (folders.length === 0) {
-      return records;
-    }
-    return records.filter((record) =>
-      folders.some((path) => fileBelongsToFolder(record.relativePath, path)));
-  }
-
-  return records;
-};
 
 const defaultGetFieldValue = (
   record: DatabaseRecord,
@@ -311,12 +266,14 @@ export const evaluateDatabaseAggregationFormula = ({
   definition,
   records,
   currentRecord,
+  historyRecords,
   getFieldValue,
 }: EvaluateDatabaseAggregationFormulaParams): DatabaseNormalizedFieldValue => {
   const scopedRecords = resolveFormulaSourceRecords({
-    definition,
+    source: definition.source,
     records,
     currentRecord,
+    historyRecords,
   });
 
   const readValue = getFieldValue ?? defaultGetFieldValue;

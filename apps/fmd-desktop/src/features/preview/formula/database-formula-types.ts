@@ -6,7 +6,7 @@
 
 export type DatabaseFormulaOperation = "avg" | "sum" | "count" | "group_count";
 
-export type DatabaseFormulaSourceType = "current-folder" | "explicit-folder" | "multi-folder";
+export type DatabaseFormulaSourceType = "current-folder" | "explicit-folder" | "multi-folder" | "history";
 
 export type DatabaseFormulaSourceSpec = {
   type: DatabaseFormulaSourceType;
@@ -50,8 +50,16 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const normalizeSourceType = (value: unknown): DatabaseFormulaSourceType | null => {
   const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
-  if (normalized === "current-folder" || normalized === "explicit-folder" || normalized === "multi-folder") {
+  if (
+    normalized === "current-folder" ||
+    normalized === "explicit-folder" ||
+    normalized === "multi-folder" ||
+    normalized === "history"
+  ) {
     return normalized;
+  }
+  if (normalized === "history-folder") {
+    return "history";
   }
   return null;
 };

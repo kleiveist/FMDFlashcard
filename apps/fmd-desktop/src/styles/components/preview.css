@@ -1411,6 +1411,16 @@
   color: var(--muted);
 }
 
+.formula-attribute-builder-state {
+  margin: 2px 0 0;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.formula-attribute-builder-state.is-error {
+  color: var(--danger, #c0392b);
+}
+
 .frontmatter-error-actions {
   display: flex;
   align-items: center;

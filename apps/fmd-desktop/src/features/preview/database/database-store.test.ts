@@ -223,6 +223,73 @@ describe("database-store", () => {
     expect(formulaAttribute?.type).toBe("formula");
   });
 
+  it("evaluates configured formula fields against history records when source is history", () => {
+    const record = buildNormalizedRecord({
+      fileId: "Course/current.md",
+      filePath: "/vault/Course/current.md",
+      relativePath: "Course/current.md",
+      frontmatter: {
+        percent: 10,
+      },
+      systemFields: createSystemFieldsForRecord("Course/current.md", "/vault/Course/current.md"),
+    });
+    const historyFirst = buildNormalizedRecord({
+      fileId: "/vault/.profile/exam-runs/run-a.md",
+      filePath: "/vault/.profile/exam-runs/run-a.md",
+      relativePath: ".profile/exam-runs/run-a.md",
+      frontmatter: {
+        percent: 20,
+      },
+      systemFields: createSystemFieldsForRecord(
+        ".profile/exam-runs/run-a.md",
+        "/vault/.profile/exam-runs/run-a.md",
+      ),
+    });
+    const historySecond = buildNormalizedRecord({
+      fileId: "/vault/.profile/exam-runs/run-b.md",
+      filePath: "/vault/.profile/exam-runs/run-b.md",
+      relativePath: ".profile/exam-runs/run-b.md",
+      frontmatter: {
+        percent: 40,
+      },
+      systemFields: createSystemFieldsForRecord(
+        ".profile/exam-runs/run-b.md",
+        "/vault/.profile/exam-runs/run-b.md",
+      ),
+    });
+
+    const config = createDefaultDatabaseBlockConfig();
+    config.fields = [
+      {
+        key: "f-history-avg",
+        label: "History Avg",
+        type: "formula",
+        origin: "formula",
+        formulaDefinition: {
+          version: 1,
+          operation: "avg",
+          attributeKeys: ["percent"],
+          source: { type: "history" },
+          shortTextRule: {
+            maxChars: 32,
+            maxTokens: 3,
+            requireSingleNumericCore: true,
+          },
+        },
+      },
+    ];
+    config.columns = ["f-history-avg"];
+
+    const snapshot = buildDatabaseStoreSnapshot({
+      records: [record],
+      historyRecords: [historyFirst, historySecond],
+      config,
+      searchQuery: "",
+    });
+
+    expect(snapshot.visibleRecords[0]?.normalizedFields["f-history-avg"]).toBe(30);
+  });
+
   it("keeps configured unit fields as numeric unit type", () => {
     const record = buildNormalizedRecord({
       fileId: "demo.md",

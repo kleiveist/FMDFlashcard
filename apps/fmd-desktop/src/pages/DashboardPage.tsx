@@ -47,6 +47,7 @@ import {
   parseFrontmatterDocument,
   sortFrontmatterKeySuggestions,
 } from "../features/preview/frontmatter";
+import { loadFormulaHistoryFiles } from "../features/preview/formula/formula-history-source";
 import { deriveMarkdownEditorColors } from "../lib/markdownEditorColors";
 import { normalizeRelativePath, normalizeVaultPath } from "../lib/path";
 import { compareNaturalPath } from "../lib/naturalSort";
@@ -194,6 +195,8 @@ const DashboardPageInner = (
   const [frontmatterValuesByFile, setFrontmatterValuesByFile] = useState<
     Record<string, Record<string, unknown>> | null
   >(null);
+  const [frontmatterFormulaHistoryFolderPath, setFrontmatterFormulaHistoryFolderPath] = useState<string | null>(null);
+  const [frontmatterFormulaHistoryWarning, setFrontmatterFormulaHistoryWarning] = useState<string | null>(null);
   const frontmatterTaskProfileSummaries = useMemo(
     () =>
       Object.fromEntries(
@@ -422,15 +425,18 @@ const DashboardPageInner = (
   useEffect(() => {
     let cancelled = false;
     const rebuildSuggestions = async () => {
-      if (!vault.vaultPath || vault.files.length === 0) {
+      if (!vault.vaultPath) {
         if (!cancelled) {
           setFrontmatterValueSuggestions({});
           setFrontmatterKeySuggestions([]);
           setFrontmatterFormulaAttributeKeysByFile({});
           setFrontmatterValuesByFile({});
+          setFrontmatterFormulaHistoryFolderPath(null);
+          setFrontmatterFormulaHistoryWarning("History folder unavailable (no vault path).");
         }
         return;
       }
+
       const markdownDocuments = await Promise.all(
         vault.files.map(async (file) => {
           try {
@@ -481,6 +487,65 @@ const DashboardPageInner = (
         }
         nextFormulaAttributeKeysByFile[normalizedRelativePath] = keys;
       });
+
+      const historyResult = await loadFormulaHistoryFiles({ vaultPath: vault.vaultPath });
+      if (cancelled) {
+        return;
+      }
+      setFrontmatterFormulaHistoryFolderPath(historyResult.historyFolderPath);
+      setFrontmatterFormulaHistoryWarning(historyResult.warning);
+
+      const historyMarkdownDocuments = await Promise.all(
+        historyResult.files.map(async (file) => {
+          try {
+            return await invoke<string>("read_text_file", {
+              path: file.path,
+            });
+          } catch (error) {
+            console.warn("Failed to read history markdown file for formula suggestions", {
+              path: file.path,
+              error,
+            });
+            return "";
+          }
+        }),
+      );
+      if (cancelled) {
+        return;
+      }
+      historyResult.files.forEach((file, index) => {
+        const normalizedRelativePath = normalizeRelativePath(file.relativePath).replace(/^\/+/, "");
+        if (!normalizedRelativePath || !/\.md$/i.test(normalizedRelativePath)) {
+          return;
+        }
+        const parsed = parseFrontmatterDocument(historyMarkdownDocuments[index] ?? "");
+        if (!parsed.hasFrontmatter || parsed.error) {
+          if (parsed.error) {
+            console.warn("Failed to parse history markdown frontmatter for formula suggestions", {
+              path: file.path,
+              error: parsed.error,
+            });
+          }
+          return;
+        }
+        const keys = dedupeCaseInsensitive(
+          parsed.properties.map((property) => property.key),
+        );
+        const valuesByKey: Record<string, unknown> = {};
+        parsed.properties.forEach((property) => {
+          if (property.kind === "formula") {
+            return;
+          }
+          valuesByKey[property.key] = property.value;
+        });
+        if (Object.keys(valuesByKey).length > 0) {
+          nextFrontmatterValuesByFile[normalizedRelativePath] = valuesByKey;
+        }
+        if (keys.length > 0) {
+          nextFormulaAttributeKeysByFile[normalizedRelativePath] = keys;
+        }
+      });
+
       setFrontmatterFormulaAttributeKeysByFile(nextFormulaAttributeKeysByFile);
       setFrontmatterValuesByFile(nextFrontmatterValuesByFile);
     };
@@ -1339,6 +1404,8 @@ const DashboardPageInner = (
             keySuggestions={frontmatterKeySuggestions}
             formulaAttributeKeysByFile={frontmatterFormulaAttributeKeysByFile ?? undefined}
             frontmatterValuesByFile={frontmatterValuesByFile ?? undefined}
+            formulaHistoryFolderPath={frontmatterFormulaHistoryFolderPath}
+            formulaHistoryWarning={frontmatterFormulaHistoryWarning}
             markdownTabs={markdownTabs}
             activeMarkdownTabPath={preview.selectedFile?.path ?? null}
             onSelectMarkdownTab={handleSelectMarkdownTab}

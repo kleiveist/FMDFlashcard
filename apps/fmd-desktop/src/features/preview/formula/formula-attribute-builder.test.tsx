@@ -37,12 +37,28 @@ const buildValue = (
   ...overrides,
 });
 
+const resolveLatestOnChangeValue = (
+  onChange: ReturnType<typeof vi.fn>,
+  current: DatabaseFormulaDefinitionV1,
+) => {
+  const latestCall = onChange.mock.calls[onChange.mock.calls.length - 1];
+  const latestArg = latestCall?.[0] as
+    | DatabaseFormulaDefinitionV1
+    | ((value: DatabaseFormulaDefinitionV1) => DatabaseFormulaDefinitionV1)
+    | undefined;
+  if (typeof latestArg === "function") {
+    return latestArg(current);
+  }
+  return latestArg;
+};
+
 describe("FormulaAttributeBuilder", () => {
   it("renders attribute checkboxes and toggles multi selection", () => {
     const onChange = vi.fn();
+    const initialValue = buildValue();
     const { container, cleanup } = render(
       createElement(FormulaAttributeBuilder, {
-        value: buildValue(),
+        value: initialValue,
         attributes: [
           { key: "Status", label: "Status", supportsMath: true },
           { key: "Punkte", label: "Punkte", supportsMath: true },
@@ -62,9 +78,7 @@ describe("FormulaAttributeBuilder", () => {
       optionButtons[1]?.click();
     });
 
-    const latestValue = onChange.mock.calls[onChange.mock.calls.length - 1]?.[0] as
-      | DatabaseFormulaDefinitionV1
-      | undefined;
+    const latestValue = resolveLatestOnChangeValue(onChange, initialValue);
     expect(latestValue?.attributeKeys).toEqual(["Status", "Punkte"]);
 
     cleanup();
@@ -72,14 +86,15 @@ describe("FormulaAttributeBuilder", () => {
 
   it("uses single folder selection for explicit-folder source", () => {
     const onChange = vi.fn();
+    const initialValue = buildValue({
+      source: {
+        type: "explicit-folder",
+        path: "alpha",
+      },
+    });
     const { container, cleanup } = render(
       createElement(FormulaAttributeBuilder, {
-        value: buildValue({
-          source: {
-            type: "explicit-folder",
-            path: "alpha",
-          },
-        }),
+        value: initialValue,
         attributes: [{ key: "Status", label: "Status", supportsMath: true }],
         folderSuggestions: ["alpha", "beta"],
         onChange,
@@ -95,9 +110,7 @@ describe("FormulaAttributeBuilder", () => {
       radioButtons[1]?.click();
     });
 
-    const latestValue = onChange.mock.calls[onChange.mock.calls.length - 1]?.[0] as
-      | DatabaseFormulaDefinitionV1
-      | undefined;
+    const latestValue = resolveLatestOnChangeValue(onChange, initialValue);
     expect(latestValue?.source).toEqual({
       type: "explicit-folder",
       path: "beta",
@@ -108,14 +121,15 @@ describe("FormulaAttributeBuilder", () => {
 
   it("uses checkbox multi select for multi-folder source", () => {
     const onChange = vi.fn();
+    const initialValue = buildValue({
+      source: {
+        type: "multi-folder",
+        paths: ["alpha"],
+      },
+    });
     const { container, cleanup } = render(
       createElement(FormulaAttributeBuilder, {
-        value: buildValue({
-          source: {
-            type: "multi-folder",
-            paths: ["alpha"],
-          },
-        }),
+        value: initialValue,
         attributes: [{ key: "Status", label: "Status", supportsMath: true }],
         folderSuggestions: ["alpha", "beta"],
         onChange,
@@ -133,9 +147,7 @@ describe("FormulaAttributeBuilder", () => {
       checkboxButtons[1]?.click();
     });
 
-    const latestValue = onChange.mock.calls[onChange.mock.calls.length - 1]?.[0] as
-      | DatabaseFormulaDefinitionV1
-      | undefined;
+    const latestValue = resolveLatestOnChangeValue(onChange, initialValue);
     expect(latestValue?.source).toEqual({
       type: "multi-folder",
       paths: ["alpha", "beta"],
@@ -165,6 +177,40 @@ describe("FormulaAttributeBuilder", () => {
       ".formula-attribute-builder-field input[placeholder='z.B. Projekte/Sprint']",
     );
     expect(fallbackInput).toBeTruthy();
+
+    cleanup();
+  });
+
+  it("renders history as source option and shows history context details", () => {
+    const onChange = vi.fn();
+    const { container, cleanup } = render(
+      createElement(FormulaAttributeBuilder, {
+        value: buildValue({
+          source: {
+            type: "history",
+          },
+        }),
+        attributes: [{ key: "Status", label: "Status", supportsMath: true }],
+        historyFolderPath: "/vault/.profile/exam-runs",
+        historyWarning: null,
+        onChange,
+      }),
+    );
+
+    const sourceSelect = Array.from(
+      container.querySelectorAll<HTMLSelectElement>(".formula-attribute-builder-field > select"),
+    ).find((select) =>
+      Array.from(select.options).some((option) => option.value === "history"),
+    );
+    expect(sourceSelect).toBeTruthy();
+    expect(Array.from(sourceSelect?.options ?? []).map((option) => option.value)).toEqual([
+      "current-folder",
+      "explicit-folder",
+      "multi-folder",
+      "history",
+    ]);
+    expect(container.textContent).toContain("History verwendet die Exam-Runs des aktuellen Vaults.");
+    expect(container.textContent).toContain("Quelle: /vault/.profile/exam-runs");
 
     cleanup();
   });

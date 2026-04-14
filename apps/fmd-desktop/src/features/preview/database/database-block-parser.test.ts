@@ -198,6 +198,58 @@ describe("database-block-parser", () => {
     expect(reparsed.config.fields?.[0]?.formulaDefinition).toEqual(config.fields[0]?.formulaDefinition);
   });
 
+  it("normalizes legacy formula source history-folder to history during parse/serialize", () => {
+    const raw = [
+      "::::",
+      "title: Legacy Formula Source",
+      "source:",
+      "  type: current-folder",
+      "fields:",
+      "  - key: f-history",
+      "    label: f-history",
+      "    type: formula",
+      "    origin: formula",
+      "    formulaDefinition:",
+      "      version: 1",
+      "      operation: count",
+      "      attributeKeys:",
+      "        - status",
+      "      source:",
+      "        type: history-folder",
+      "      shortTextRule:",
+      "        maxChars: 32",
+      "        maxTokens: 3",
+      "        requireSingleNumericCore: true",
+      "views:",
+      "  activeViewId: view-default",
+      "  items:",
+      "    - id: view-default",
+      "      name: Legacy Formula Source",
+      "      view:",
+      "        type: table",
+      "      properties:",
+      "        - f-history",
+      "      filters:",
+      "        id: filter-default",
+      "        op: and",
+      "        rules: []",
+      "      sort: []",
+      "options:",
+      "  editable: true",
+      "  showSearch: true",
+      "  showToolbar: true",
+      "::::",
+    ].join("\n");
+
+    const parsed = parseDatabaseBlockConfigFromRaw(raw);
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.config.fields?.[0]?.formulaDefinition?.source.type).toBe("history");
+
+    const serialized = serializeDatabaseBlockConfig(parsed.config);
+    expect(serialized).toContain("        type: history");
+    expect(serialized).not.toContain("history-folder");
+  });
+
   it("preserves nested filter groups in a saved view during serialize/parse roundtrip", () => {
     const config = createDefaultDatabaseBlockConfig();
     config.views = {

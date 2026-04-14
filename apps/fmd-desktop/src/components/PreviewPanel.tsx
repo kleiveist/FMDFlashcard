@@ -114,6 +114,7 @@ import {
   type DatabaseFormulaGroupedCountEntry,
   type DatabaseFormulaDefinitionV1,
 } from "../features/preview/formula/database-formula-types";
+import { normalizeFormulaSourceForPersist } from "../features/preview/formula/formula-source-registry";
 import {
   FormulaAttributeBuilder,
   type FormulaBuilderAttributeOption,
@@ -1610,6 +1611,8 @@ type PreviewPanelProps = {
   keySuggestions?: string[];
   formulaAttributeKeysByFile?: Record<string, string[]>;
   frontmatterValuesByFile?: Record<string, Record<string, unknown>>;
+  formulaHistoryFolderPath?: string | null;
+  formulaHistoryWarning?: string | null;
   markdownTabs?: Array<{
     path: string;
     relativePath: string;
@@ -4957,6 +4960,11 @@ const resolveFolderPathFromRelativePath = (value: string) => {
   return slashIndex >= 0 ? normalized.slice(0, slashIndex) : "";
 };
 
+const historyFormulaRelativePrefix = ".profile/exam-runs/";
+
+const isHistoryFormulaRelativePath = (value: string) =>
+  normalizeRelativePath(value).replace(/^\/+/, "").toLowerCase().startsWith(historyFormulaRelativePrefix);
+
 const resolveRelativePathCandidates = (
   target: string,
   sourceRelativePath?: string | null,
@@ -5180,6 +5188,8 @@ type FrontmatterPropertiesPanelProps = {
   keySuggestions?: string[];
   formulaAttributeKeysByFile?: Record<string, string[]>;
   frontmatterValuesByFile?: Record<string, Record<string, unknown>>;
+  formulaHistoryFolderPath?: string | null;
+  formulaHistoryWarning?: string | null;
   monitoringProfiles?: MonitoringRenderProfile[];
 };
 
@@ -5206,6 +5216,8 @@ const FrontmatterPropertiesPanel = ({
   keySuggestions = EMPTY_KEY_SUGGESTIONS,
   formulaAttributeKeysByFile,
   frontmatterValuesByFile,
+  formulaHistoryFolderPath = null,
+  formulaHistoryWarning = null,
   monitoringProfiles = [],
 }: FrontmatterPropertiesPanelProps) => {
   const linksDocument = useMemo(
@@ -5391,6 +5403,9 @@ const FrontmatterPropertiesPanel = ({
     return next;
   }, [suggestionValuesByKey]);
   const selectedFormulaSourceFolders = useMemo(() => {
+    if (addFormulaDefinition.source.type === "history") {
+      return [];
+    }
     if (addFormulaDefinition.source.type === "explicit-folder") {
       const normalized = normalizeFormulaFolderPath(addFormulaDefinition.source.path ?? "");
       return normalized ? [normalized] : [];
@@ -5433,15 +5448,24 @@ const FrontmatterPropertiesPanel = ({
       };
 
       if (formulaAttributeKeysByFile) {
-        const selectedFolderSet = new Set(selectedFormulaSourceFolders.map((folder) => toLower(folder)));
-        if (selectedFolderSet.size > 0) {
+        if (addFormulaDefinition.source.type === "history") {
           formulaAttributeKeysByNormalizedFile.forEach((keys, normalizedRelativePath) => {
-            const folderPath = resolveFolderPathFromRelativePath(normalizedRelativePath);
-            if (!selectedFolderSet.has(toLower(folderPath))) {
+            if (!isHistoryFormulaRelativePath(normalizedRelativePath)) {
               return;
             }
             keys.forEach((key) => addOption(key));
           });
+        } else {
+          const selectedFolderSet = new Set(selectedFormulaSourceFolders.map((folder) => toLower(folder)));
+          if (selectedFolderSet.size > 0) {
+            formulaAttributeKeysByNormalizedFile.forEach((keys, normalizedRelativePath) => {
+              const folderPath = resolveFolderPathFromRelativePath(normalizedRelativePath);
+              if (!selectedFolderSet.has(toLower(folderPath))) {
+                return;
+              }
+              keys.forEach((key) => addOption(key));
+            });
+          }
         }
       } else {
         gridProperties.forEach((property) => {
@@ -5458,6 +5482,7 @@ const FrontmatterPropertiesPanel = ({
       formulaAttributeKeysByNormalizedFile,
       gridProperties,
       gridPropertiesByNormalizedKey,
+      addFormulaDefinition.source.type,
       selectedFormulaSourceFolders,
       suggestionValuesByKey,
       suggestionValuesByNormalizedKey,
@@ -5573,6 +5598,10 @@ const FrontmatterPropertiesPanel = ({
     normalizedSourceRelativePath,
     vaultFilesByNormalizedRelativePath,
   ]);
+  const historyFormulaEvaluationRecords = useMemo(
+    () => formulaEvaluationRecords.filter((record) => isHistoryFormulaRelativePath(record.relativePath)),
+    [formulaEvaluationRecords],
+  );
   const currentFormulaRecord = useMemo(() => {
     if (formulaEvaluationRecords.length === 0) {
       return null;
@@ -5606,11 +5635,12 @@ const FrontmatterPropertiesPanel = ({
         definition,
         records: formulaEvaluationRecords,
         currentRecord: currentFormulaRecord,
+        historyRecords: historyFormulaEvaluationRecords,
       });
       next[property.key] = formatComputedFormulaValue(evaluated);
     });
     return next;
-  }, [currentFormulaRecord, formulaEvaluationRecords, gridProperties]);
+  }, [currentFormulaRecord, formulaEvaluationRecords, gridProperties, historyFormulaEvaluationRecords]);
 
   useEffect(() => {
     setDrafts(initialDrafts);
@@ -6218,21 +6248,7 @@ const FrontmatterPropertiesPanel = ({
     }
 
     const normalizedFormulaSource = addTypeDraft === "formula"
-      ? (() => {
-          if (addFormulaDefinition.source.type === "explicit-folder") {
-            return {
-              type: "explicit-folder" as const,
-              path: addFormulaDefinition.source.path?.trim() ?? "",
-            };
-          }
-          if (addFormulaDefinition.source.type === "multi-folder") {
-            return {
-              type: "multi-folder" as const,
-              paths: dedupeCaseInsensitive(addFormulaDefinition.source.paths ?? []),
-            };
-          }
-          return { type: "current-folder" as const };
-        })()
+      ? normalizeFormulaSourceForPersist(addFormulaDefinition.source)
       : null;
 
     if (
@@ -8098,6 +8114,8 @@ const FrontmatterPropertiesPanel = ({
                   value={addFormulaDefinition}
                   attributes={formulaBuilderAttributeOptions}
                   folderSuggestions={formulaFolderSuggestions}
+                  historyFolderPath={formulaHistoryFolderPath}
+                  historyWarning={formulaHistoryWarning}
                   disabled={controlsDisabled}
                   onChange={setAddFormulaDefinition}
                 />
@@ -8700,6 +8718,8 @@ export const PreviewPanel = ({
   keySuggestions,
   formulaAttributeKeysByFile,
   frontmatterValuesByFile,
+  formulaHistoryFolderPath,
+  formulaHistoryWarning,
   markdownTabs = [],
   activeMarkdownTabPath = null,
   onSelectMarkdownTab,
@@ -11737,6 +11757,8 @@ export const PreviewPanel = ({
                     keySuggestions={keySuggestions}
                     formulaAttributeKeysByFile={formulaAttributeKeysByFile}
                     frontmatterValuesByFile={frontmatterValuesByFile}
+                    formulaHistoryFolderPath={formulaHistoryFolderPath}
+                    formulaHistoryWarning={formulaHistoryWarning}
                     monitoringProfiles={monitoringProfiles}
                   />
                 ) : null}
@@ -11805,6 +11827,8 @@ export const PreviewPanel = ({
                       keySuggestions={keySuggestions}
                       formulaAttributeKeysByFile={formulaAttributeKeysByFile}
                       frontmatterValuesByFile={frontmatterValuesByFile}
+                      formulaHistoryFolderPath={formulaHistoryFolderPath}
+                      formulaHistoryWarning={formulaHistoryWarning}
                       monitoringProfiles={monitoringProfiles}
                     />
                   ) : null}
@@ -12011,6 +12035,8 @@ export const PreviewPanel = ({
                         keySuggestions={keySuggestions}
                         formulaAttributeKeysByFile={formulaAttributeKeysByFile}
                         frontmatterValuesByFile={frontmatterValuesByFile}
+                        formulaHistoryFolderPath={formulaHistoryFolderPath}
+                        formulaHistoryWarning={formulaHistoryWarning}
                         monitoringProfiles={monitoringProfiles}
                       />
                     ) : null}

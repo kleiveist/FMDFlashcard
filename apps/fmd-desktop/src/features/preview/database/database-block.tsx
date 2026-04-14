@@ -65,12 +65,16 @@ import {
 } from "./database-types";
 import { type DatabaseFormulaDefinitionV1 } from "../formula/database-formula-types";
 import {
+  loadFormulaHistoryFiles,
+  resolveFormulaHistoryFolderPath,
+} from "../formula/formula-history-source";
+import {
   bulkUpsertDatabaseAttribute,
   coerceDatabaseRecordFieldValue,
   upsertDatabaseRecordField,
 } from "./frontmatter-update";
 import { compareNaturalPath } from "../../../lib/naturalSort";
-import { joinPath, normalizeRelativePath } from "../../../lib/path";
+import { normalizeRelativePath } from "../../../lib/path";
 import { DatabaseFilterPanel } from "./ui/database-filter-panel";
 import { DatabaseGanttPanel } from "./ui/database-gantt-panel";
 import { DatabaseProjectPanel } from "./ui/database-project-panel";
@@ -725,6 +729,7 @@ export const MarkdownHybridDatabaseBlock = ({
   const [pendingRecordMutations, setPendingRecordMutations] = useState<string[]>([]);
   const [records, setRecords] = useState<DatabaseRecord[]>([]);
   const [historyFiles, setHistoryFiles] = useState<Array<{ path: string; relativePath: string }>>([]);
+  const [historyRecords, setHistoryRecords] = useState<DatabaseRecord[]>([]);
   const [historyWarning, setHistoryWarning] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -936,47 +941,14 @@ export const MarkdownHybridDatabaseBlock = ({
 
   useEffect(() => {
     let cancelled = false;
-    const shouldLoadHistoryFiles = source.type === "history-folder" ||
-      (source.type === "multi-folder" && source.includeHistory === true);
-    if (!shouldLoadHistoryFiles) {
-      setHistoryFiles([]);
-      setHistoryWarning(null);
-      return () => {
-        cancelled = true;
-      };
-    }
 
     const loadHistoryFiles = async () => {
-      if (!vaultPath) {
-        setHistoryFiles([]);
-        setHistoryWarning("History folder unavailable (no vault path).");
+      const result = await loadFormulaHistoryFiles({ vaultPath });
+      if (cancelled) {
         return;
       }
-      const historyDir = joinPath(vaultPath, ".profile", "exam-runs");
-      try {
-        const files = await invoke<string[]>("list_files", { path: historyDir });
-        const markdownFiles = (files ?? [])
-          .filter((entry) => entry.toLowerCase().endsWith(".md"))
-          .map((filePath) => {
-            const normalized = filePath.replace(/\\/g, "/");
-            const fileName = normalized.split("/").pop() ?? normalized;
-            return {
-              path: filePath,
-              relativePath: fileName,
-            };
-          });
-        if (!cancelled) {
-          setHistoryFiles(markdownFiles);
-          setHistoryWarning(markdownFiles.length === 0 ? `History folder is empty: ${historyDir}` : null);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          const baseMessage = error instanceof Error ? error.message : "History folder not found.";
-          const message = `${baseMessage} (${historyDir})`;
-          setHistoryFiles([]);
-          setHistoryWarning(message);
-        }
-      }
+      setHistoryFiles(result.files);
+      setHistoryWarning(result.warning);
     };
 
     void loadHistoryFiles();
@@ -984,7 +956,64 @@ export const MarkdownHybridDatabaseBlock = ({
     return () => {
       cancelled = true;
     };
-  }, [source.type, source.includeHistory, vaultPath]);
+  }, [reloadToken, vaultPath]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadHistoryRecords = async () => {
+      if (historyFiles.length === 0) {
+        setHistoryRecords([]);
+        return;
+      }
+
+      const loaded = await Promise.all(
+        historyFiles.map(async (file) => {
+          try {
+            const markdown = await invoke<string>("read_text_file", { path: file.path });
+            const parsed = parseFrontmatterDocument(markdown);
+            if (!parsed.hasFrontmatter || parsed.error) {
+              if (parsed.error) {
+                console.warn("Failed to parse history markdown frontmatter", {
+                  path: file.path,
+                  error: parsed.error,
+                });
+              }
+              return null;
+            }
+            const frontmatter: Record<string, unknown> = {};
+            parsed.properties.forEach((property) => {
+              frontmatter[property.key] = property.value;
+            });
+            return buildNormalizedRecord({
+              fileId: file.path,
+              filePath: file.path,
+              relativePath: file.relativePath,
+              frontmatter,
+              systemFields: createSystemFieldsForRecord(file.relativePath, file.path),
+            });
+          } catch (error) {
+            console.warn("Failed to read history markdown file", {
+              path: file.path,
+              error,
+            });
+            return null;
+          }
+        }),
+      );
+
+      if (cancelled) {
+        return;
+      }
+      setHistoryRecords(loaded.filter((entry): entry is DatabaseRecord => entry !== null));
+    };
+
+    void loadHistoryRecords();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [historyFiles]);
 
   const sourceContext = useMemo<DatabaseSourceResolverContext>(
     () => ({
@@ -1362,6 +1391,7 @@ export const MarkdownHybridDatabaseBlock = ({
   const store = useMemo(
     () => buildDatabaseStoreSnapshot({
       records,
+      historyRecords,
       config: {
         ...parsed.config,
         title: activeViewName,
@@ -1403,6 +1433,7 @@ export const MarkdownHybridDatabaseBlock = ({
       activeFilters,
       activeSorts,
       fieldDefinitions,
+      historyRecords,
       loadError,
       loading,
       parsed.config,
@@ -2733,7 +2764,7 @@ export const MarkdownHybridDatabaseBlock = ({
     return Array.from(folders).sort((left, right) => compareNaturalPath(left, right));
   }, [vaultFiles]);
   const historyFolderPath = useMemo(
-    () => vaultPath ? joinPath(vaultPath, ".profile", "exam-runs") : null,
+    () => resolveFormulaHistoryFolderPath(vaultPath),
     [vaultPath],
   );
 
@@ -2848,6 +2879,8 @@ export const MarkdownHybridDatabaseBlock = ({
       visibleColumnKeys={visibleColumnKeys}
       kanbanShowCover={kanbanShowCover}
       availableFolders={availableFolders}
+      historyFolderPath={historyFolderPath}
+      historyWarning={historyWarning}
       onKanbanShowCoverChange={handleKanbanShowCoverChange}
       onToggleVisibility={handleToggleVisibility}
       onReorderVisibleColumns={handleReorderVisibleColumns}

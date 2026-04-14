@@ -31,6 +31,7 @@ import {
 
 type BuildDatabaseStoreSnapshotParams = {
   records: DatabaseRecord[];
+  historyRecords?: DatabaseRecord[];
   config: DatabaseBlockConfig;
   searchQuery: string;
   activeFilters?: DatabaseFilterGroup;
@@ -253,6 +254,7 @@ const getCaseInsensitiveFieldValue = (
 const evaluateFormulaFields = (
   records: DatabaseRecord[],
   fieldDefinitions: DatabaseFieldDefinition[],
+  historyRecords?: DatabaseRecord[],
 ): DatabaseRecord[] => {
   const formulaKeysFromConfig = new Set(
     fieldDefinitions
@@ -285,6 +287,7 @@ const evaluateFormulaFields = (
             ...record,
             normalizedFields: nextNormalizedFields,
           },
+          historyRecords,
           getFieldValue: (targetRecord, candidateKey) =>
             getCaseInsensitiveFieldValue(targetRecord.normalizedFields, candidateKey),
         });
@@ -329,6 +332,7 @@ const evaluateFormulaFields = (
             ...record,
             normalizedFields: nextNormalizedFields,
           },
+          historyRecords,
           getFieldValue: (targetRecord, key) =>
             getCaseInsensitiveFieldValue(targetRecord.normalizedFields, key),
         });
@@ -365,7 +369,11 @@ export const buildDatabaseStoreSnapshot = (
   const mergedAttributes = mergeConfiguredFieldDefinitions(inferredAttributes, configuredFields);
   const attributeRegistry = sortAttributeRegistry(mergedAttributes, preferredOrder);
 
-  const normalizedRecords = evaluateFormulaFields(params.records, configuredFields);
+  const normalizedRecords = evaluateFormulaFields(
+    params.records,
+    configuredFields,
+    params.historyRecords,
+  );
 
   const activeFilters = params.activeFilters
     ? cloneFilterGroup(params.activeFilters)

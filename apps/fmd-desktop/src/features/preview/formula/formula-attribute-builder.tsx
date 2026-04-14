@@ -10,6 +10,13 @@ import {
   type DatabaseFormulaOperation,
   type DatabaseFormulaSourceType,
 } from "./database-formula-types";
+import {
+  buildFormulaSourceForType,
+  FORMULA_HISTORY_DESCRIPTION,
+  FORMULA_HISTORY_SOURCE_PREFIX,
+  FORMULA_SOURCE_LABELS,
+  FORMULA_SOURCE_OPTIONS,
+} from "./formula-source-registry";
 
 export type FormulaBuilderAttributeOption = {
   key: string;
@@ -25,6 +32,8 @@ type FormulaAttributeBuilderProps = {
   showOperationField?: boolean;
   showSourceTypeField?: boolean;
   folderSuggestions?: string[];
+  historyFolderPath?: string | null;
+  historyWarning?: string | null;
   onChange: (
     next:
       | DatabaseFormulaDefinitionV1
@@ -37,12 +46,6 @@ const OPERATION_LABELS: Record<DatabaseFormulaOperation, string> = {
   sum: "Summe",
   count: "Anzahl",
   group_count: "Gruppieren und Zaehlen",
-};
-
-const SOURCE_LABELS: Record<DatabaseFormulaSourceType, string> = {
-  "current-folder": "Aktueller Ordner",
-  "explicit-folder": "Ein Ordner",
-  "multi-folder": "Mehrere Ordner",
 };
 
 const toLower = (value: string) => value.trim().toLowerCase();
@@ -86,6 +89,8 @@ export const FormulaAttributeBuilder = ({
   showOperationField = true,
   showSourceTypeField = true,
   folderSuggestions,
+  historyFolderPath = null,
+  historyWarning = null,
   onChange,
 }: FormulaAttributeBuilderProps) => {
   const emitChange = (resolveNext: (current: DatabaseFormulaDefinitionV1) => DatabaseFormulaDefinitionV1) => {
@@ -141,20 +146,9 @@ export const FormulaAttributeBuilder = ({
 
   const handleSourceTypeChange = (nextType: DatabaseFormulaSourceType) => {
     emitChange((current) => {
-      const nextSource = {
-        type: nextType,
-      } as DatabaseFormulaDefinitionV1["source"];
-      if (nextType === "explicit-folder") {
-        nextSource.path = current.source.path?.trim() ?? "";
-      }
-      if (nextType === "multi-folder") {
-        nextSource.paths = current.source.type === "multi-folder"
-          ? dedupeKeys(current.source.paths ?? [])
-          : [];
-      }
       return {
         ...current,
-        source: nextSource,
+        source: buildFormulaSourceForType(nextType, current.source),
       };
     });
   };
@@ -266,9 +260,9 @@ export const FormulaAttributeBuilder = ({
             disabled={disabled}
             onChange={(event) => handleSourceTypeChange(event.target.value as DatabaseFormulaSourceType)}
           >
-            {(Object.keys(SOURCE_LABELS) as DatabaseFormulaSourceType[]).map((sourceType) => (
+            {FORMULA_SOURCE_OPTIONS.map((sourceType) => (
               <option key={sourceType} value={sourceType}>
-                {SOURCE_LABELS[sourceType]}
+                {FORMULA_SOURCE_LABELS[sourceType]}
               </option>
             ))}
           </select>
@@ -358,6 +352,20 @@ export const FormulaAttributeBuilder = ({
             placeholder="z.B. Projekte, Archiv/2026"
           />
         </div>
+      ) : null}
+
+      {value.source.type === "history" ? (
+        <>
+          <p className="formula-attribute-builder-state">{FORMULA_HISTORY_DESCRIPTION}</p>
+          <p className="formula-attribute-builder-state">
+            {FORMULA_HISTORY_SOURCE_PREFIX} {historyFolderPath ?? "nicht gesetzt"}
+          </p>
+          {historyWarning ? (
+            <p className="formula-attribute-builder-state is-error">{historyWarning}</p>
+          ) : !historyFolderPath ? (
+            <p className="formula-attribute-builder-state is-error">Kein Vault-Pfad gefunden.</p>
+          ) : null}
+        </>
       ) : null}
 
       <p className="formula-attribute-builder-hint">

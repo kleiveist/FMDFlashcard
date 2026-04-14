@@ -136,6 +136,28 @@ describe("database-formulas", () => {
     expect(multiFolderCount).toBe(3);
   });
 
+  it("filters by history formula source when history records are provided", () => {
+    const records = [
+      createRecord({ id: "1", relativePath: "alpha/one.md", fields: { Status: 1 } }),
+    ];
+    const historyRecords = [
+      createRecord({ id: "h1", relativePath: ".profile/exam-runs/run-a.md", fields: { Status: 2 } }),
+      createRecord({ id: "h2", relativePath: ".profile/exam-runs/run-b.md", fields: { Status: 4 } }),
+    ];
+
+    const historySum = evaluateDatabaseAggregationFormula({
+      definition: baseFormula({
+        operation: "sum",
+        source: { type: "history" },
+      }),
+      records,
+      currentRecord: records[0]!,
+      historyRecords,
+    });
+
+    expect(historySum).toBe(6);
+  });
+
   it("rejects long/unstructured text for math but keeps count/group_count", () => {
     const records = [
       createRecord({

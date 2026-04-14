@@ -5700,6 +5700,45 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(formulaValue?.getAttribute("title")).toContain("avg(percent) = 25");
   });
 
+  it("uses history source records when computing formula values", async () => {
+    const markdown = [
+      "---",
+      "title: Demo",
+      "percent: 10",
+      "f-history-average:",
+      "  version: 1",
+      "  operation: avg",
+      "  attributeKeys:",
+      "    - percent",
+      "  source:",
+      "    type: history",
+      "  shortTextRule:",
+      "    maxChars: 32",
+      "    maxTokens: 3",
+      "    requireSingleNumericCore: true",
+      "---",
+      "Body line",
+    ].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown, {
+      sourceRelativePath: "Course/current.md",
+      vaultFiles: [
+        { path: "/vault/Course/current.md", relative_path: "Course/current.md" },
+      ],
+      frontmatterValuesByFile: {
+        "Course/current.md": { percent: 10 },
+        ".profile/exam-runs/run-a.md": { percent: 20 },
+        ".profile/exam-runs/run-b.md": { percent: 40 },
+      },
+    });
+    cleanup = localCleanup;
+
+    await flushAsyncInteraction();
+
+    const formulaValue = container.querySelector<HTMLDivElement>(".frontmatter-formula-value");
+    expect(formulaValue?.textContent?.trim()).toBe("30");
+    expect(formulaValue?.getAttribute("title")).toContain("avg(percent) = 30");
+  });
+
   it("renders formula monitoring progress inline and not in a secondary preview row", async () => {
     const markdown = [
       "---",

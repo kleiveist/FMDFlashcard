@@ -766,6 +766,80 @@ describe("MonitoringRulesPage", () => {
     cleanup();
   });
 
+  it("shows history as formula source option in formula metadata editor", async () => {
+    const markdownByPath: Record<string, string> = {
+      "/vault/source-a.md": buildFormulaMarkdown({ key: "f-score", operation: "count" }),
+    };
+
+    mockInvoke.mockImplementation(async (command, payload) => {
+      if (command === "read_text_file") {
+        const typedPayload = payload as { path?: string };
+        return markdownByPath[typedPayload.path ?? ""] ?? "";
+      }
+      if (command === "list_files") {
+        return [];
+      }
+      return "";
+    });
+    mockUseAppState.mockReturnValue({
+      settings: {
+        monitoringRenderProfiles: [
+          {
+            id: "monitoring-status",
+            name: "Status",
+            attributeAliases: ["status"],
+            inputFormat: "code",
+            previewRawValue: "2",
+            scopes: ["monitoring-page", "database", "properties"],
+            enabled: true,
+            rules: [
+              {
+                id: "rule-status-map",
+                type: "value-map",
+                mappings: [{ from: "2", to: "🟢" }],
+                displayMode: "append",
+                separator: " ",
+              },
+            ],
+          },
+        ],
+        setMonitoringRenderProfiles: vi.fn(),
+        persistSettings: vi.fn(async () => true),
+        formulaAttributeRegistry: [],
+        setFormulaAttributeRegistry: vi.fn(),
+      },
+      vault: {
+        vaultPath: "/vault",
+        files: [
+          { path: "/vault/source-a.md", relative_path: "source-a.md" },
+        ],
+      },
+    } as unknown as ReturnType<typeof useAppState>);
+
+    const { container, cleanup } = renderPage();
+    await flush();
+
+    await click(
+      Array.from(container.querySelectorAll("button")).find(
+        (button) => button.textContent?.trim() === "Formelattribute",
+      ) ?? null,
+    );
+    await flush();
+
+    const sourceSelect = Array.from(container.querySelectorAll<HTMLSelectElement>("select")).find((select) =>
+      Array.from(select.options).some((option) => option.value === "current-folder"),
+    );
+    expect(sourceSelect).toBeTruthy();
+    expect(Array.from(sourceSelect?.options ?? []).map((option) => option.value)).toEqual([
+      "current-folder",
+      "explicit-folder",
+      "multi-folder",
+      "history",
+    ]);
+
+    cleanup();
+  });
+
   it("opens a formula occurrence file when clicking the reference path", async () => {
     const markdownByPath: Record<string, string> = {
       "/vault/source-a.md": buildFormulaMarkdown({ key: "f-score", operation: "count" }),

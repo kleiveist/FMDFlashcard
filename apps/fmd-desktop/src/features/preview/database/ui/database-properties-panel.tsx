@@ -25,6 +25,7 @@ import {
   buildDefaultDatabaseFormulaDefinitionV1,
   type DatabaseFormulaDefinitionV1,
 } from "../../formula/database-formula-types";
+import { normalizeFormulaSourceForPersist } from "../../formula/formula-source-registry";
 import {
   FormulaAttributeBuilder,
   type FormulaBuilderAttributeOption,
@@ -40,6 +41,8 @@ type DatabasePropertiesPanelProps = {
   visibleColumnKeys: string[];
   kanbanShowCover: boolean;
   availableFolders?: string[];
+  historyFolderPath?: string | null;
+  historyWarning?: string | null;
   onKanbanShowCoverChange: (next: boolean) => void;
   onToggleVisibility: (key: string, visible: boolean) => void;
   onReorderVisibleColumns: (fromKey: string, toKey: string) => void;
@@ -176,6 +179,8 @@ export const DatabasePropertiesPanel = ({
   visibleColumnKeys,
   kanbanShowCover,
   availableFolders,
+  historyFolderPath = null,
+  historyWarning = null,
   onKanbanShowCoverChange,
   onToggleVisibility,
   onReorderVisibleColumns,
@@ -314,21 +319,7 @@ export const DatabasePropertiesPanel = ({
         return;
       }
 
-      const normalizedSource = (() => {
-        if (formulaDefinition.source.type === "explicit-folder") {
-          return {
-            type: "explicit-folder" as const,
-            path: formulaDefinition.source.path?.trim() ?? "",
-          };
-        }
-        if (formulaDefinition.source.type === "multi-folder") {
-          return {
-            type: "multi-folder" as const,
-            paths: dedupeCaseInsensitive(formulaDefinition.source.paths ?? []),
-          };
-        }
-        return { type: "current-folder" as const };
-      })();
+      const normalizedSource = normalizeFormulaSourceForPersist(formulaDefinition.source);
 
       if (normalizedSource.type === "explicit-folder" && !normalizedSource.path) {
         setCreateError("Bitte einen Ordner fuer die Formelquelle angeben.");
@@ -509,6 +500,8 @@ export const DatabasePropertiesPanel = ({
             value={formulaDefinition}
             attributes={formulaAttributeOptions}
             folderSuggestions={availableFolders}
+            historyFolderPath={historyFolderPath}
+            historyWarning={historyWarning}
             onChange={setFormulaDefinition}
           />
         ) : (

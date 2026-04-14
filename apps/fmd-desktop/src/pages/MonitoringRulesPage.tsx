@@ -17,7 +17,6 @@ import { ModalShell } from "../components/ModalShell";
 import { useAppState } from "../components/AppStateProvider";
 import { TrashIcon } from "../components/icons";
 import { extractDatabaseBlockLineRanges } from "../lib/databaseBlockSyntax";
-import { joinPath } from "../lib/path";
 import type { FormulaRegistryEntry } from "../features/settings/useAppSettings";
 import {
   addFrontmatterProperty,
@@ -36,6 +35,12 @@ import {
   normalizeDatabaseFormulaDefinitionV1,
   type DatabaseFormulaDefinitionV1,
 } from "../features/preview/formula/database-formula-types";
+import { loadFormulaHistoryFiles } from "../features/preview/formula/formula-history-source";
+import {
+  buildFormulaSourceForType,
+  FORMULA_SOURCE_LABELS,
+  FORMULA_SOURCE_OPTIONS,
+} from "../features/preview/formula/formula-source-registry";
 import {
   parseDatabaseBlockConfigFromRaw,
   serializeDatabaseBlockConfig,
@@ -96,18 +101,6 @@ const FORMULA_OPERATION_LABELS: Record<DatabaseFormulaDefinitionV1["operation"],
   sum: "Summe",
   count: "Anzahl",
   group_count: "Gruppieren und Zaehlen",
-};
-
-const FORMULA_SOURCE_TYPE_OPTIONS: DatabaseFormulaDefinitionV1["source"]["type"][] = [
-  "current-folder",
-  "explicit-folder",
-  "multi-folder",
-];
-
-const FORMULA_SOURCE_TYPE_LABELS: Record<DatabaseFormulaDefinitionV1["source"]["type"], string> = {
-  "current-folder": "Aktueller Ordner",
-  "explicit-folder": "Ein Ordner",
-  "multi-folder": "Mehrere Ordner",
 };
 
 const toLabel = (value: string) =>
@@ -1007,6 +1000,8 @@ export const MonitoringRulesPage = () => {
   const [profileDeletePending, setProfileDeletePending] = useState(false);
   const [formulaDeleteTargetId, setFormulaDeleteTargetId] = useState<string | null>(null);
   const [formulaDeletePending, setFormulaDeletePending] = useState(false);
+  const [formulaHistoryFolderPath, setFormulaHistoryFolderPath] = useState<string | null>(null);
+  const [formulaHistoryWarning, setFormulaHistoryWarning] = useState<string | null>(null);
 
   const selectedProfile = useMemo(
     () => profiles.find((profile) => profile.id === selectedId) ?? null,
@@ -1031,34 +1026,19 @@ export const MonitoringRulesPage = () => {
         relativePath: file.relative_path,
       });
     });
-    if (vault.vaultPath) {
-      const historyDir = joinPath(vault.vaultPath, ".profile", "exam-runs");
-      try {
-        const historyEntries = await invoke<string[]>("list_files", { path: historyDir });
-        if (Array.isArray(historyEntries)) {
-          const normalizedHistoryDir = historyDir.replace(/\\/g, "/");
-          historyEntries.forEach((entryPath) => {
-            if (!entryPath.toLowerCase().endsWith(".md")) {
-              return;
-            }
-            const entryPathKey = toPathKey(entryPath);
-            if (markdownFilesByPath.has(entryPathKey)) {
-              return;
-            }
-            const normalizedEntryPath = entryPath.replace(/\\/g, "/");
-            const relativeWithinHistory = normalizedEntryPath.startsWith(`${normalizedHistoryDir}/`)
-              ? normalizedEntryPath.slice(normalizedHistoryDir.length + 1)
-              : (normalizedEntryPath.split("/").pop() ?? normalizedEntryPath);
-            markdownFilesByPath.set(entryPathKey, {
-              path: entryPath,
-              relativePath: `.profile/exam-runs/${relativeWithinHistory}`,
-            });
-          });
-        }
-      } catch {
-        // Ignore missing/unreadable history directory for formula discovery.
+    const historyResult = await loadFormulaHistoryFiles({ vaultPath: vault.vaultPath });
+    setFormulaHistoryFolderPath(historyResult.historyFolderPath);
+    setFormulaHistoryWarning(historyResult.warning);
+    historyResult.files.forEach((entry) => {
+      const entryPathKey = toPathKey(entry.path);
+      if (markdownFilesByPath.has(entryPathKey)) {
+        return;
       }
-    }
+      markdownFilesByPath.set(entryPathKey, {
+        path: entry.path,
+        relativePath: entry.relativePath,
+      });
+    });
     const markdownFiles = Array.from(markdownFilesByPath.values());
     if (markdownFiles.length === 0) {
       setFormulaGroups(collectFormulaGroups([], effectiveRegistryEntries));
@@ -1945,20 +1925,9 @@ export const MonitoringRulesPage = () => {
       if (!current) {
         return current;
       }
-      const nextSource = {
-        type: nextType,
-      } as DatabaseFormulaDefinitionV1["source"];
-      if (nextType === "explicit-folder") {
-        nextSource.path = current.source.path?.trim() ?? "";
-      }
-      if (nextType === "multi-folder") {
-        nextSource.paths = current.source.type === "multi-folder"
-          ? [...(current.source.paths ?? [])]
-          : [];
-      }
       return {
         ...current,
-        source: nextSource,
+        source: buildFormulaSourceForType(nextType, current.source),
       };
     });
   };
@@ -2924,9 +2893,9 @@ export const MonitoringRulesPage = () => {
                           )
                         }
                       >
-                        {FORMULA_SOURCE_TYPE_OPTIONS.map((sourceType) => (
+                        {FORMULA_SOURCE_OPTIONS.map((sourceType) => (
                           <option key={sourceType} value={sourceType}>
-                            {FORMULA_SOURCE_TYPE_LABELS[sourceType]}
+                            {FORMULA_SOURCE_LABELS[sourceType]}
                           </option>
                         ))}
                       </select>
@@ -2953,6 +2922,8 @@ export const MonitoringRulesPage = () => {
                       showOperationField={false}
                       showSourceTypeField={false}
                       folderSuggestions={formulaFolderSuggestions}
+                      historyFolderPath={formulaHistoryFolderPath}
+                      historyWarning={formulaHistoryWarning}
                       onChange={(next) => {
                         setFormulaDefinitionDraft((current) => {
                           if (!current) {
