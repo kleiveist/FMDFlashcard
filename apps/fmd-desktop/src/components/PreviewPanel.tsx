@@ -6261,7 +6261,7 @@ const FrontmatterPropertiesPanel = ({
 
     if (
       normalizedFormulaSource?.type === "multi-folder" &&
-      normalizedFormulaSource.paths.length === 0
+      (normalizedFormulaSource.paths ?? []).length === 0
     ) {
       setAddError("Bitte mindestens einen Ordner fuer die Formelquelle angeben.");
       return;

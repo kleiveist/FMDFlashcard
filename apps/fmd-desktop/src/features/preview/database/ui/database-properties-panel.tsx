@@ -326,7 +326,7 @@ export const DatabasePropertiesPanel = ({
         return;
       }
 
-      if (normalizedSource.type === "multi-folder" && normalizedSource.paths.length === 0) {
+      if (normalizedSource.type === "multi-folder" && (normalizedSource.paths ?? []).length === 0) {
         setCreateError("Bitte mindestens einen Ordner fuer die Formelquelle angeben.");
         return;
       }
