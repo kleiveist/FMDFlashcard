@@ -284,7 +284,7 @@ describe("monitoring-render-rules", () => {
           id: "threshold-1",
           type: "threshold-symbol",
           thresholds: [{ op: ">=", value: 90, symbol: "⭐" }],
-          appendToText: true,
+          displayMode: "append",
           separator: " ",
         },
       ],
@@ -326,9 +326,54 @@ describe("monitoring-render-rules", () => {
     });
 
     expect(thresholdResult?.displayText).toBe("95% ⭐");
-    expect(thresholdResult?.badge).toBe("⭐");
+    expect(thresholdResult?.symbol).toBe("⭐");
+    expect(thresholdResult?.badge).toBeNull();
     expect(groupedResult?.displayText).toBe("Bestanden ✅");
     expect(groupedResult?.symbol).toBe("✅");
+  });
+
+  it("renders exactly one threshold symbol in replace mode for dot and comma decimals", () => {
+    const profile = createProfile({
+      id: "threshold-replace",
+      name: "Threshold Replace",
+      attributeAliases: ["status"],
+      inputFormat: "code",
+      rules: [
+        {
+          id: "threshold-rule",
+          type: "threshold-symbol",
+          thresholds: [
+            { op: "<=", value: 0, symbol: "⚪" },
+            { op: "<=", value: 1, symbol: "💎" },
+            { op: "<=", value: 2, symbol: "🟢" },
+            { op: "<=", value: 3, symbol: "🟡" },
+            { op: "<=", value: 4, symbol: "🟠" },
+            { op: "<=", value: 5, symbol: "🔴" },
+            { op: "<=", value: 6, symbol: "⚫" },
+          ],
+          displayMode: "replace",
+          separator: " ",
+        },
+      ],
+    });
+
+    const fromDot = renderMonitoringValue({
+      attributeKey: "status",
+      value: "2.55",
+      profiles: [profile],
+    });
+    const fromComma = renderMonitoringValue({
+      attributeKey: "status",
+      value: "2,55",
+      profiles: [profile],
+    });
+
+    expect(fromDot?.displayText).toBe("🟡");
+    expect(fromComma?.displayText).toBe("🟡");
+    expect(fromDot?.symbol).toBe("🟡");
+    expect(fromComma?.symbol).toBe("🟡");
+    expect(fromDot?.badge).toBeNull();
+    expect(fromComma?.badge).toBeNull();
   });
 
   it("falls back to raw value when rule parsing does not match", () => {

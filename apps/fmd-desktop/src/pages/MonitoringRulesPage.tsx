@@ -2654,25 +2654,22 @@ export const MonitoringRulesPage = () => {
 
                     {activeRule.type === "threshold-symbol" ? (
                       <div className="monitoring-rules-rule-fields">
-                        <label className="monitoring-rules-enabled-toggle monitoring-rules-enabled-toggle-switch">
-                          <span className="monitoring-rules-enabled-toggle-text">
-                            Symbol an Text anhaengen
-                          </span>
-                          <span className="switch">
-                            <input
-                              type="checkbox"
-                              checked={activeRule.appendToText !== false}
-                              onChange={(event) => {
-                                const next = event.target.checked;
-                                updateRule(activeRule.id, (current) =>
-                                  current.type === "threshold-symbol"
-                                    ? { ...current, appendToText: next }
-                                    : current,
-                                );
-                              }}
-                            />
-                            <span className="slider" />
-                          </span>
+                        <label>
+                          Display-Modus
+                          <select
+                            value={activeRule.displayMode ?? "append"}
+                            onChange={(event) => {
+                              const next = event.target.value === "replace" ? "replace" : "append";
+                              updateRule(activeRule.id, (current) =>
+                                current.type === "threshold-symbol"
+                                  ? { ...current, displayMode: next }
+                                  : current,
+                              );
+                            }}
+                          >
+                            <option value="append">Append</option>
+                            <option value="replace">Replace</option>
+                          </select>
                         </label>
                         <label>
                           Separator

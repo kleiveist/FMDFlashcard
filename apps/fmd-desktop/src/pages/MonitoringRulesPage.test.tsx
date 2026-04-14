@@ -356,6 +356,30 @@ describe("MonitoringRulesPage", () => {
     cleanup();
   });
 
+  it("supports append/replace display mode for threshold symbol rules", async () => {
+    const { container, cleanup } = renderPage();
+    await flush();
+
+    await click(container.querySelector(".monitoring-rules-rule-button"));
+    const modalPanel = container.querySelector("[data-testid='mock-modal-panel']");
+
+    await changeSelect(
+      modalPanel?.querySelector<HTMLSelectElement>(".monitoring-rules-rule-head select") ?? null,
+      "threshold-symbol",
+    );
+
+    const displayModeSelect = modalPanel?.querySelector<HTMLSelectElement>(
+      ".monitoring-rules-rule-fields select",
+    );
+    expect(displayModeSelect).toBeTruthy();
+    expect(displayModeSelect?.value).toBe("append");
+
+    await changeSelect(displayModeSelect ?? null, "replace");
+    expect(displayModeSelect?.value).toBe("replace");
+
+    cleanup();
+  });
+
   it("uses unified progress visual type and exposes style variants", async () => {
     const { container, cleanup } = renderPage();
     await flush();

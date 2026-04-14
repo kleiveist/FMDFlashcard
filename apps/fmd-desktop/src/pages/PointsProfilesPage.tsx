@@ -455,7 +455,6 @@ export const PointsProfilesPage = () => {
             <header className="panel-header">
               <div>
                 <h3>Points Profiles</h3>
-                <p className="muted">Create and select profile presets.</p>
               </div>
             </header>
             <div className="panel-body">
@@ -529,7 +528,6 @@ export const PointsProfilesPage = () => {
             <header className="panel-header">
               <div>
                 <h3>Profile Editor</h3>
-                <p className="muted">Configure scoring rules for task order.</p>
               </div>
               <button
                 type="button"

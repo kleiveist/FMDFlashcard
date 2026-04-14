@@ -75,6 +75,7 @@ export type MonitoringRenderRule =
       id: string;
       type: "threshold-symbol";
       thresholds: MonitoringThresholdRuleEntry[];
+      displayMode?: "append" | "replace";
       appendToText?: boolean;
       separator?: string;
     } & MonitoringRulePreviewContext
@@ -212,7 +213,7 @@ export const createMonitoringRenderRule = (
       id: createRuleId("rule"),
       type,
       thresholds: [],
-      appendToText: true,
+      displayMode: "append",
       separator: " ",
     };
   }
@@ -553,11 +554,15 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
     };
   }
   if (type === "threshold-symbol") {
+    const displayMode =
+      value.displayMode === "replace" || value.appendToText === false
+        ? "replace"
+        : "append";
     return {
       id,
       type,
       thresholds: normalizeThresholds(value.thresholds),
-      appendToText: value.appendToText !== false,
+      displayMode,
       separator: String(value.separator ?? " "),
       ...previewContext,
     };
@@ -981,8 +986,10 @@ export const renderMonitoringValue = ({
       if (!match) {
         return;
       }
-      badge = match.symbol;
-      if (rule.appendToText !== false) {
+      symbol = match.symbol;
+      if ((rule.displayMode ?? "append") === "replace") {
+        displayText = match.symbol;
+      } else {
         displayText = `${displayText}${rule.separator ?? " "}${match.symbol}`.trim();
       }
       return;

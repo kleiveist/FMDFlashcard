@@ -1718,8 +1718,8 @@
   min-width: 0;
   padding: var(--ui-space-lg);
   border-radius: var(--ui-radius-panel);
-  border: 1px solid var(--md-question-border, var(--md-editor-border));
-  background-color: var(--md-question-bg, var(--md-editor-bg));
+  border: 1px solid var(--md-editor-border);
+  background-color: var(--md-editor-bg);
   color: var(--preview-ink);
   font-family: var(--mono);
   font-size: 0.85rem;
@@ -1896,19 +1896,19 @@ textarea.preview-editor {
 
 .markdown-hybrid-block.is-active {
   border-color: color-mix(in srgb, var(--accent-border) 70%, var(--line-soft));
-  background: color-mix(in srgb, var(--accent-soft) 14%, transparent);
+  background: color-mix(in srgb, var(--accent-soft) 8%, transparent);
 }
 
 .markdown-hybrid-block.is-range-selected {
   border-color: color-mix(in srgb, var(--accent-border) 48%, var(--line-soft));
-  background: color-mix(in srgb, var(--accent-soft) 10%, transparent);
+  background: color-mix(in srgb, var(--accent-soft) 6%, transparent);
   box-shadow: inset 0 0 0 1px
     color-mix(in srgb, var(--accent-border) 18%, transparent);
 }
 
 .markdown-hybrid-block.is-active.is-range-selected {
   border-color: color-mix(in srgb, var(--accent-border) 78%, var(--line-soft));
-  background: color-mix(in srgb, var(--accent-soft) 16%, transparent);
+  background: color-mix(in srgb, var(--accent-soft) 10%, transparent);
 }
 
 .markdown-hybrid-block.is-dragging {
@@ -3938,6 +3938,8 @@ textarea.preview-editor {
 
 .markdown-hybrid-block-editor-shell {
   position: relative;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--md-editor-bg) 96%, transparent);
 }
 
 .markdown-hybrid-block-editor-overlay {
@@ -3945,7 +3947,7 @@ textarea.preview-editor {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  color: inherit;
+  color: var(--preview-ink);
   font: inherit;
   line-height: inherit;
   white-space: pre-wrap;
