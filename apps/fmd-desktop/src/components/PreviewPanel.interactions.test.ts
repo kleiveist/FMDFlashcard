@@ -1595,6 +1595,105 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect((nextMarkdown.match(/::::/g) ?? []).length).toBe(2);
   });
 
+  it("keeps database blocks stable after entering and leaving markdown edit mode", async () => {
+    const markdown = [
+      "Intro",
+      "",
+      "::::",
+      "title: Database",
+      "source:",
+      "  type: history-folder",
+      "fields: []",
+      "views:",
+      "  activeViewId: view-default",
+      "  items:",
+      "    - id: view-default",
+      "      name: Database",
+      "      view:",
+      "        type: table",
+      "options:",
+      "  editable: false",
+      "::::",
+      "",
+      "Outro",
+    ].join("\n");
+
+    const onEditExit = vi.fn();
+
+    const Harness = () => {
+      const [isEditing, setIsEditing] = useState(false);
+      const [editDraft, setEditDraft] = useState(markdown);
+      const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
+
+      const handleEditStart = useCallback((options?: { caretIndex?: number | null }) => {
+        setEditDraft(markdown);
+        setEditCaretIndex(typeof options?.caretIndex === "number" ? options.caretIndex : null);
+        setIsEditing(true);
+      }, [markdown]);
+
+      const handleEditExit = useCallback(() => {
+        setIsEditing(false);
+        onEditExit();
+      }, [onEditExit]);
+
+      return createElement(
+        "div",
+        null,
+        createElement("div", { "data-testid": "draft" }, editDraft),
+        createElement(PreviewPanel, {
+          editDraft,
+          editError: "",
+          editCaretIndex,
+          isEditing,
+          emptyPreview: "",
+          preview: markdown,
+          previewError: "",
+          previewState: "idle",
+          editorMode: "markdown",
+          editEnabled: true,
+          selectedFile: baseFile,
+          vaultPath: "/vault",
+          sourceRelativePath: baseFile.relative_path,
+          canEdit: true,
+          onEditChange: setEditDraft,
+          onEditCaretApplied: () => setEditCaretIndex(null),
+          onEditExit: handleEditExit,
+          onEditStart: handleEditStart,
+          onSelectEditorMode: () => {},
+          onToggleEditEnabled: () => {},
+        }),
+      );
+    };
+
+    const { container, cleanup: localCleanup } = render(createElement(Harness));
+    cleanup = localCleanup;
+
+    const initialDatabaseBlock = container.querySelector(
+      ".preview-markdown-view-block-database-block .database-block",
+    );
+    expect(initialDatabaseBlock).toBeTruthy();
+
+    const introTextNode = findTextNodeContaining(container, "Intro");
+    const editable = activateMarkdownEditorFromPreviewSelection(container, introTextNode, 1);
+    expect(editable).toBeTruthy();
+
+    act(() => {
+      editable?.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+    });
+    await flushAsyncInteraction();
+
+    expect(onEditExit).toHaveBeenCalled();
+
+    const persistedDraft = container.querySelector("[data-testid='draft']")?.textContent ?? "";
+    expect(persistedDraft).toBe(markdown);
+    expect((persistedDraft.match(/::::/g) ?? []).length).toBe(2);
+
+    const finalDatabaseBlock = container.querySelector(
+      ".preview-markdown-view-block-database-block .database-block",
+    );
+    expect(finalDatabaseBlock).toBeTruthy();
+  });
+
   it("renders chained cloze alternatives in markdown view as the first variant only", () => {
     const markdown = "Konzept: %Spezifikation%%Anforderungen%%Vorgaben%.";
     const { container, cleanup: localCleanup } = buildHarness(markdown);

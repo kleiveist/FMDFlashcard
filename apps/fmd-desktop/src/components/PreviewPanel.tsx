@@ -3258,6 +3258,24 @@ const normalizeOpenCodeFenceMarker = (value: string | null) => {
   return trimmedStart;
 };
 
+const encodeDatabaseBlockRaw = (value: string) => {
+  if (!value) {
+    return "";
+  }
+  return encodeURIComponent(value);
+};
+
+const decodeDatabaseBlockRaw = (value: string | null | undefined) => {
+  if (typeof value !== "string" || value.length === 0) {
+    return "";
+  }
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
 const normalizeCloseCodeFenceMarker = (
   value: string | null,
   openMarker: string,
@@ -3404,6 +3422,14 @@ const serializeMarkdownNode = (
 
   const element = node as HTMLElement;
   const tag = element.tagName.toLowerCase();
+  const databaseBlockRaw = decodeDatabaseBlockRaw(
+    element.getAttribute("data-md-database-block-raw"),
+  );
+  if (databaseBlockRaw) {
+    return context.inContentEditable
+      ? `${databaseBlockRaw}\n`
+      : `${databaseBlockRaw}\n\n`;
+  }
   const hasClassName = (name: string) => element.classList.contains(name);
   const isInlineMarkerElement = hasClassName("md-inline-marker");
   const isHeadingMarkerElement = hasClassName("md-heading-marker");
@@ -4283,6 +4309,19 @@ export const buildEditableMarkdownHtml = (
 
   clone.querySelectorAll(".frontmatter-panel").forEach((panel) => panel.remove());
   clone.querySelectorAll(".frontmatter-cover-panel").forEach((panel) => panel.remove());
+  clone.querySelectorAll<HTMLElement>(".preview-markdown-view-block-database-block").forEach((block) => {
+    const encodedRaw = block.getAttribute("data-md-database-block-raw");
+    if (!encodedRaw) {
+      return;
+    }
+    const replacement = block.ownerDocument.createElement("div");
+    replacement.className = "md-database-block-raw";
+    replacement.setAttribute("data-md-database-block-raw", encodedRaw);
+    replacement.setAttribute("data-md-inline-line", "true");
+    replacement.style.whiteSpace = "pre-wrap";
+    replacement.textContent = decodeDatabaseBlockRaw(encodedRaw);
+    block.replaceWith(replacement);
+  });
   clone.querySelectorAll(".md-code-copy-button").forEach((button) => button.remove());
   clone.querySelectorAll<HTMLElement>("pre").forEach((codeBlock) => {
     let wrapper = codeBlock.parentElement;
@@ -10814,6 +10853,7 @@ export const PreviewPanel = ({
             key={keyPrefix}
             className={wrapperClassName}
             data-md-block-kind={block.kind}
+            data-md-database-block-raw={encodeDatabaseBlockRaw(block.raw)}
             data-md-card-group-id={cardGroupId ?? undefined}
             data-md-card-group-role={cardGroupRole ?? undefined}
           >
