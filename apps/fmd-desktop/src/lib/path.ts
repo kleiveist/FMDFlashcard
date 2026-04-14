@@ -48,6 +48,46 @@ export const normalizeVaultPath = (value: string) => {
   return normalized;
 };
 
+export const isWindowsAbsolutePath = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+  return /^[A-Za-z]:[\\/]/.test(trimmed) || /^\\\\[^\\]/.test(trimmed);
+};
+
+const resolvePlatformHint = () => {
+  if (typeof navigator !== "undefined") {
+    const nav = navigator as Navigator & {
+      userAgentData?: { platform?: string };
+    };
+    return nav.userAgentData?.platform ?? nav.platform ?? nav.userAgent ?? "";
+  }
+  return "";
+};
+
+export const isWindowsRuntime = (platformHint?: string) => {
+  const normalized = (platformHint ?? resolvePlatformHint()).trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  return (
+    normalized.includes("win32") ||
+    normalized.includes("windows") ||
+    normalized.startsWith("win")
+  );
+};
+
+export const isPathCompatibleWithCurrentOs = (path: string, platformHint?: string) => {
+  if (!path.trim()) {
+    return false;
+  }
+  if (isWindowsAbsolutePath(path) && !isWindowsRuntime(platformHint)) {
+    return false;
+  }
+  return true;
+};
+
 export const joinPath = (root: string, ...segments: string[]) => {
   const separator = root.includes("\\") ? "\\" : "/";
   const normalizedRoot = root.replace(/[\\/]+$/, "");

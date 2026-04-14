@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { asErrorMessage } from "../../lib/errors";
-import { joinPath } from "../../lib/path";
+import { isPathCompatibleWithCurrentOs, joinPath } from "../../lib/path";
 import {
   USER_VAULT_SCHEMA_VERSION,
   PROFILE_ROOT_DIR,
@@ -86,6 +86,9 @@ const ensureJsonExtension = (path: string) =>
 const resolveCustomPath = (value: string | null | undefined) => {
   return resolveCustomProfileRootPath(value ?? null);
 };
+
+const INCOMPATIBLE_CUSTOM_PATH_ERROR =
+  "Windows paths are not supported on this operating system.";
 
 export const useUserVault = ({
   vaultPath,
@@ -228,6 +231,27 @@ export const useUserVault = ({
             resolvedRoot: null,
             activeProfileId: null,
             reason: message,
+          };
+        }
+
+        if (!isPathCompatibleWithCurrentOs(resolvedRoot)) {
+          commit({
+            status: "error",
+            error: INCOMPATIBLE_CUSTOM_PATH_ERROR,
+            profileRootPath: null,
+            profiles: [],
+            activeProfileId: null,
+          });
+          logUserVaultEvent("profile.incompatible_path", {
+            reason,
+            mode: effectiveMode,
+            profileRoot: resolvedRoot,
+          });
+          return {
+            ok: false,
+            resolvedRoot: null,
+            activeProfileId: null,
+            reason: INCOMPATIBLE_CUSTOM_PATH_ERROR,
           };
         }
 
@@ -397,6 +421,11 @@ export const useUserVault = ({
     (value: string | null) => {
       const normalized = resolveCustomPath(value);
       if ((customRootPath ?? null) === (normalized ?? null)) {
+        return;
+      }
+      if (normalized && !isPathCompatibleWithCurrentOs(normalized)) {
+        setError(INCOMPATIBLE_CUSTOM_PATH_ERROR);
+        setStatus("error");
         return;
       }
       setCustomPath(normalized);

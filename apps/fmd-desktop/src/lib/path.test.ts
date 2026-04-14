@@ -16,7 +16,12 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { isHiddenPath, normalizeRelativePath } from "./path";
+import {
+  isHiddenPath,
+  isPathCompatibleWithCurrentOs,
+  isWindowsAbsolutePath,
+  normalizeRelativePath,
+} from "./path";
 import { filterHiddenFiles, type VaultFile } from "./tree";
 
 describe("normalizeRelativePath", () => {
@@ -33,6 +38,31 @@ describe("isHiddenPath", () => {
     expect(isHiddenPath("visible/.hidden/file.md")).toBe(true);
     expect(isHiddenPath("visible/file.md")).toBe(false);
     expect(isHiddenPath("")).toBe(false);
+  });
+});
+
+describe("isWindowsAbsolutePath", () => {
+  it("detects drive-letter and UNC paths", () => {
+    expect(isWindowsAbsolutePath("D:\\education\\IUFS")).toBe(true);
+    expect(isWindowsAbsolutePath("C:/vault/main")).toBe(true);
+    expect(isWindowsAbsolutePath("\\\\server\\share\\vault")).toBe(true);
+    expect(isWindowsAbsolutePath("/home/user/vault")).toBe(false);
+  });
+});
+
+describe("isPathCompatibleWithCurrentOs", () => {
+  it("blocks Windows paths on non-Windows platforms", () => {
+    expect(isPathCompatibleWithCurrentOs("D:\\education\\IUFS", "linux")).toBe(false);
+    expect(isPathCompatibleWithCurrentOs("C:/vault/main", "darwin")).toBe(false);
+  });
+
+  it("allows Windows paths on Windows platforms", () => {
+    expect(isPathCompatibleWithCurrentOs("D:\\education\\IUFS", "win32")).toBe(true);
+    expect(isPathCompatibleWithCurrentOs("C:/vault/main", "Windows")).toBe(true);
+  });
+
+  it("keeps unix-like paths valid on unix-like platforms", () => {
+    expect(isPathCompatibleWithCurrentOs("/home/user/.profile", "linux")).toBe(true);
   });
 });
 
