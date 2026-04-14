@@ -189,6 +189,8 @@ const createMockAppState = ({
   previewMarkdown = "# demo",
   previewState = "idle",
   markdownViewEditEnabled = false,
+  editorMode = "markdown",
+  markdownEditorAccentEnabled = false,
 }: {
   handleSelectFile: ReturnType<typeof vi.fn>;
   selectedFile?: { path: string; relative_path: string } | null;
@@ -198,6 +200,8 @@ const createMockAppState = ({
   previewMarkdown?: string;
   previewState?: "idle" | "loading" | "error";
   markdownViewEditEnabled?: boolean;
+  editorMode?: "code" | "markdown" | "hybrid";
+  markdownEditorAccentEnabled?: boolean;
 }) =>
   ({
     actions: {
@@ -218,7 +222,7 @@ const createMockAppState = ({
       preview: previewMarkdown,
       previewState,
       previewError: "",
-      editorMode: "markdown",
+      editorMode,
       editEnabled: false,
       setEditorModeWithDefaults: vi.fn(),
       setEditEnabled: vi.fn(),
@@ -227,7 +231,7 @@ const createMockAppState = ({
     },
     settings: {
       markdownViewEditEnabled,
-      markdownEditorAccentEnabled: false,
+      markdownEditorAccentEnabled,
       accentColor: "#33aa77",
       theme: "light",
       markdownEditorAccentDarkHex: "#33aa77",
@@ -535,6 +539,52 @@ describe("DashboardPage exam leave guard", () => {
       cleanup();
     },
   );
+
+  it("passes markdown editor style only in hybrid mode with editor accent backgrounds enabled", () => {
+    const handleSelectFile = vi.fn();
+
+    const noHybridState = createMockAppState({
+      handleSelectFile,
+      editorMode: "markdown",
+      markdownEditorAccentEnabled: true,
+    });
+    const noHybridRender = renderDashboard({
+      initialVaultView: "markdown",
+      appState: noHybridState,
+    });
+    let latestProps = getLatestPreviewPanelProps();
+    expect(latestProps?.markdownEditorStyle).toBeUndefined();
+    noHybridRender.cleanup();
+
+    const hybridDisabledState = createMockAppState({
+      handleSelectFile,
+      editorMode: "hybrid",
+      markdownEditorAccentEnabled: false,
+    });
+    const hybridDisabledRender = renderDashboard({
+      initialVaultView: "markdown",
+      appState: hybridDisabledState,
+    });
+    latestProps = getLatestPreviewPanelProps();
+    expect(latestProps?.markdownEditorStyle).toBeUndefined();
+    hybridDisabledRender.cleanup();
+
+    const hybridEnabledState = createMockAppState({
+      handleSelectFile,
+      editorMode: "hybrid",
+      markdownEditorAccentEnabled: true,
+    });
+    const hybridEnabledRender = renderDashboard({
+      initialVaultView: "markdown",
+      appState: hybridEnabledState,
+    });
+    latestProps = getLatestPreviewPanelProps();
+    expect(latestProps?.markdownEditorStyle).toMatchObject({
+      "--md-editor-bg": expect.any(String),
+      "--md-surface-bg": expect.any(String),
+    });
+    hybridEnabledRender.cleanup();
+  });
 
   it("uses inline note panel in desktop markdown view without overlay rail", () => {
     mockUseMediaQuery.mockReturnValue(true);

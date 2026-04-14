@@ -2875,6 +2875,7 @@ export const MarkdownHybridTableBlock = ({
         <textarea
           ref={cellTextareaRef}
           className="markdown-hybrid-table-cell-editor"
+          data-input-scope="editor"
           data-md-block-control="true"
           value={value}
           rows={Math.max(1, value.split("\n").length)}
@@ -3351,6 +3352,7 @@ export const MarkdownHybridTableBlock = ({
           <textarea
             ref={codeTextareaRef}
             className="markdown-hybrid-table-code-editor"
+            data-input-scope="editor"
             data-md-block-control="true"
             value={codeDraft}
             rows={Math.max(3, codeDraft.split("\n").length)}

@@ -86,7 +86,7 @@ describe("edge.css", () => {
     );
   });
 
-  it("uses visible focus outline for fields without restoring hard borders", () => {
+  it("uses visible focus outline for text inputs without restoring hard borders", () => {
     const focusMatch = edgeCss.match(
       /:root\[data-design-mode="edge"\]\s*:is\(([\s\S]*?)\):focus-visible\s*\{([\s\S]*?)\}/,
     );
@@ -98,7 +98,6 @@ describe("edge.css", () => {
       ".text-input",
       ".hex-input",
       ".inline-rename-input",
-      ".preview-editor",
     ]) {
       expect(focusSelectors).toContain(selector);
     }
@@ -108,6 +107,15 @@ describe("edge.css", () => {
     expect(focusBody).toContain("outline-offset: 1px;");
     expect(focusBody).toContain("border-color: transparent;");
     expect(focusBody).toContain("box-shadow: none;");
+  });
+
+  it("keeps preview editor focus styling neutral in edge mode", () => {
+    expect(edgeCss).toContain(
+      ':root[data-design-mode="edge"] .preview-editor:focus-visible {',
+    );
+    expect(edgeCss).toContain("outline: none;");
+    expect(edgeCss).toContain("border-color: var(--md-editor-focus-border);");
+    expect(edgeCss).toContain("box-shadow: none;");
   });
 
   it("covers user-highlighted edge classes", () => {

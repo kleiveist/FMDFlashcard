@@ -32,6 +32,33 @@ describe("deriveMarkdownEditorColors", () => {
     expect(vars["--md-grid-line-accent-medium"]).toBe("rgba(51, 102, 153, 0.12)");
   });
 
+  it("adds editor surface background vars only when explicitly enabled", () => {
+    const disabledVars = deriveMarkdownEditorColors({
+      accentHex: "#336699",
+      themeMode: "light",
+    });
+    expect(disabledVars["--md-surface-bg"]).toBeUndefined();
+    expect(disabledVars["--md-editor-bg"]).toBeUndefined();
+
+    const enabledVars = deriveMarkdownEditorColors({
+      accentHex: "#336699",
+      themeMode: "light",
+      includeSurfaceBackgrounds: true,
+    });
+    expect(enabledVars["--md-surface-bg"]).toBe(
+      "color-mix(in srgb, var(--preview-bg) 92%, #336699 8%)",
+    );
+    expect(enabledVars["--md-editor-bg"]).toBe(
+      "color-mix(in srgb, var(--preview-bg) 92%, #336699 8%)",
+    );
+    expect(enabledVars["--md-table-bg"]).toBe(
+      "color-mix(in srgb, var(--preview-bg) 90%, #336699 10%)",
+    );
+    expect(enabledVars["--md-table-head-bg"]).toBe(
+      "color-mix(in srgb, var(--panel-warm) 86%, #336699 14%)",
+    );
+  });
+
   it("falls back to the default accent for invalid hex values", () => {
     const vars = deriveMarkdownEditorColors({
       accentHex: "bad-value",

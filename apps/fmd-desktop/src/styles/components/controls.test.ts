@@ -13,10 +13,19 @@ const controlsCss = readFileSync(new URL("./controls.css", import.meta.url), "ut
 describe("controls.css", () => {
   it("defines a shared text-control baseline", () => {
     expect(controlsCss).toContain(
-      ':where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]), select, textarea)',
+      'input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]):not([data-input-scope="editor"])',
     );
+    expect(controlsCss).toContain('select:not([data-input-scope="editor"])');
+    expect(controlsCss).toContain('textarea:not([data-input-scope="editor"])');
     expect(controlsCss).toContain("border: 1px solid var(--ui-control-border);");
     expect(controlsCss).toContain("background: var(--ui-control-bg);");
+  });
+
+  it("excludes editor-scoped controls from global hover and focus states", () => {
+    expect(controlsCss).toMatch(/textarea:not\(\[data-input-scope="editor"\]\)[\s\S]*\):hover/);
+    expect(controlsCss).toMatch(/textarea:not\(\[data-input-scope="editor"\]\)[\s\S]*\):active/);
+    expect(controlsCss).toMatch(/textarea:not\(\[data-input-scope="editor"\]\)[\s\S]*\):focus-visible/);
+    expect(controlsCss).not.toContain("textarea):focus-visible");
   });
 
   it("covers readonly and disabled control states", () => {

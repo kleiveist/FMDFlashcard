@@ -281,9 +281,6 @@ const DashboardPageInner = (
     isDraftSyncedToSelectedFile &&
     editDraft !== preview.preview;
   const markdownEditorAccentHex = useMemo(() => {
-    if (!settings.markdownEditorAccentEnabled) {
-      return settings.accentColor;
-    }
     const accentValue =
       settings.theme === "dark"
         ? settings.markdownEditorAccentDarkHex
@@ -292,18 +289,28 @@ const DashboardPageInner = (
     return isValidHex(normalized) ? normalized : settings.accentColor;
   }, [
     settings.accentColor,
-    settings.markdownEditorAccentEnabled,
     settings.markdownEditorAccentDarkHex,
     settings.markdownEditorAccentLightHex,
     settings.theme,
   ]);
+  const shouldApplyExtendedEditorBackgrounds =
+    preview.editorMode === "hybrid" && settings.markdownEditorAccentEnabled;
   const markdownEditorStyle = useMemo(
-    () =>
-      deriveMarkdownEditorColors({
+    () => {
+      if (!shouldApplyExtendedEditorBackgrounds) {
+        return undefined;
+      }
+      return deriveMarkdownEditorColors({
         accentHex: markdownEditorAccentHex,
         themeMode: settings.theme,
-      }) as CSSProperties,
-    [markdownEditorAccentHex, settings.theme],
+        includeSurfaceBackgrounds: true,
+      }) as CSSProperties;
+    },
+    [
+      markdownEditorAccentHex,
+      settings.theme,
+      shouldApplyExtendedEditorBackgrounds,
+    ],
   );
   const handleExamControlsReady = useCallback(
     (controls: ExamEditorControlsState | null) => {

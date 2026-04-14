@@ -7354,6 +7354,52 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
+  it("marks active block and math textareas with editor input scope", () => {
+    const paragraphHarness = () => {
+      const [markdown, setMarkdown] = useState("Alpha");
+      return (
+        <MarkdownHybridEditor
+          historyKey="editor-input-scope-block"
+          markdown={markdown}
+          mode="edit"
+          onChange={setMarkdown}
+          renderPreview={(value) => <div>{value}</div>}
+        />
+      );
+    };
+
+    const blockRender = render(createElement(paragraphHarness));
+    const blockTextarea = activateBlockEditor(blockRender.container, 0);
+    expect(blockTextarea).toBeTruthy();
+    expect(blockTextarea?.dataset.inputScope).toBe("editor");
+    blockRender.cleanup();
+
+    const mathHarness = () => {
+      const [markdown, setMarkdown] = useState(["$$", "x + y", "$$"].join("\n"));
+      return (
+        <MarkdownHybridEditor
+          historyKey="editor-input-scope-math"
+          markdown={markdown}
+          mode="edit"
+          onChange={setMarkdown}
+          renderPreview={(value) => <div>{value}</div>}
+        />
+      );
+    };
+
+    const mathRender = render(createElement(mathHarness));
+    const mathBlock = mathRender.container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block[data-md-block-index='0']",
+    );
+    dispatchMouseDown(mathBlock);
+    const mathTextarea = mathRender.container.querySelector<HTMLTextAreaElement>(
+      ".markdown-hybrid-math-editor",
+    );
+    expect(mathTextarea).toBeTruthy();
+    expect(mathTextarea?.dataset.inputScope).toBe("editor");
+    mathRender.cleanup();
+  });
+
   it("renders tables as interactive blocks and commits cell edits", () => {
     let latestMarkdown = [
       "| A | B |",
@@ -7389,6 +7435,7 @@ describe("MarkdownHybridEditor", () => {
 
     const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
     expect(textarea).toBeTruthy();
+    expect(textarea?.dataset.inputScope).toBe("editor");
     applyTextInput(textarea, "Renamed");
     act(() => {
       textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
@@ -8492,6 +8539,7 @@ describe("MarkdownHybridEditor", () => {
 
     const codeEditor = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-code-editor");
     expect(codeEditor).toBeTruthy();
+    expect(codeEditor?.dataset.inputScope).toBe("editor");
     applyTextInput(
       codeEditor,
       ["A | B", "--- | ---", "1 | 2"].join("\n"),

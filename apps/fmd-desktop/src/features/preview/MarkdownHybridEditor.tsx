@@ -10294,6 +10294,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                     <textarea
                       ref={textareaRef}
                       className="markdown-hybrid-block-editor markdown-hybrid-block-editor-syntax-overlay"
+                      data-input-scope="editor"
                       value={activeDraft}
                       rows={1}
                       onChange={(event) =>
@@ -10572,6 +10573,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                           <textarea
                             ref={textareaRef}
                             className="markdown-hybrid-block-editor markdown-hybrid-math-editor"
+                            data-input-scope="editor"
                             value={activeDraft}
                             rows={Math.max(3, activeDraft.split("\n").length)}
                             onChange={(event) =>
@@ -10623,6 +10625,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                             ? " markdown-hybrid-code-fence-editor"
                             : ""
                         }`}
+                        data-input-scope="editor"
                         style={
                           useSyncedSvgCodeFenceEditorHeight
                             ? { height: `${syncedSvgCodeFenceHeight}px` }

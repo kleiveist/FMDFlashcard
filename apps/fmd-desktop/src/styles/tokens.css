@@ -194,7 +194,7 @@
   --md-code-token-operator: #495f70;
   --md-surface-bg: var(--preview-bg);
   --md-table-bg: var(--preview-bg);
-  --md-table-head-bg: var(--accent-weak-bg);
+  --md-table-head-bg: var(--panel-warm);
   --md-link: var(--accent);
   --md-link-hover: var(--accent-strong);
   --md-blockquote-border: var(--accent);
@@ -202,7 +202,7 @@
   --md-editor-bg: var(--md-surface-bg);
   --md-editor-border: var(--line-soft);
   --md-editor-border-hover: var(--line);
-  --md-editor-focus-border: var(--accent-border);
+  --md-editor-focus-border: var(--line);
   --md-editor-focus-glow: transparent;
   --md-editor-selection-bg: var(--md-selection-bg);
   --md-editor-caret: var(--md-link);
@@ -632,10 +632,10 @@
     --ui-button-field-open-border: color-mix(in srgb, var(--accent-border) 84%, var(--ui-border-subtle));
     --ui-button-field-disabled-border: color-mix(in srgb, var(--ui-border-subtle) 88%, transparent);
     --ui-button-field-disabled-text: color-mix(in srgb, var(--muted) 80%, var(--line-soft));
-    --md-surface-bg: color-mix(in srgb, var(--preview-bg) 94%, var(--md-link) 6%);
-    --md-table-bg: color-mix(in srgb, var(--preview-bg) 94%, var(--md-link) 6%);
-    --md-table-head-bg: color-mix(in srgb, var(--preview-bg) 88%, var(--md-link) 12%);
-    --md-editor-focus-glow: color-mix(in srgb, var(--md-link) 22%, transparent);
+    --md-surface-bg: var(--preview-bg);
+    --md-table-bg: var(--preview-bg);
+    --md-table-head-bg: var(--panel-warm);
+    --md-editor-focus-glow: transparent;
     --md-grid-line-accent-light: color-mix(
       in srgb,
       var(--md-link) 3%,
@@ -746,6 +746,6 @@
   --md-blockquote-border: var(--line);
   --md-selection-bg: var(--line-soft);
   --md-editor-focus-border: var(--line);
-  --md-editor-focus-glow: var(--line-soft);
+  --md-editor-focus-glow: transparent;
   --md-grid-line-color: var(--md-grid-line-neutral);
 }

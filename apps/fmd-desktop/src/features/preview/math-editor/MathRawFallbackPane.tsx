@@ -25,6 +25,7 @@ export const MathRawFallbackPane = ({
           ) : null}
           <textarea
             className="markdown-hybrid-structural-math-raw-textarea"
+            data-input-scope="editor"
             value={value}
             onChange={(event) => onChange(event.currentTarget.value)}
             aria-label="Raw LaTeX editor"

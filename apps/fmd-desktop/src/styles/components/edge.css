@@ -140,12 +140,17 @@
 :root[data-design-mode="edge"] :is(
     .text-input,
     .hex-input,
-    .inline-rename-input,
-    .preview-editor
+    .inline-rename-input
   ):focus-visible {
   outline: var(--ui-focus-outline);
   outline-offset: 1px;
   border-color: transparent;
+  box-shadow: none;
+}
+
+:root[data-design-mode="edge"] .preview-editor:focus-visible {
+  outline: none;
+  border-color: var(--md-editor-focus-border);
   box-shadow: none;
 }
 
