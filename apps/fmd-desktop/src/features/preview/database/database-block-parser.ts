@@ -19,6 +19,9 @@ import {
   type DatabaseGanttZoom,
   type DatabasePropertiesByView,
   type DatabaseProjectMissingPlacement,
+  type DatabaseProjectBarFillConfig,
+  type DatabaseProjectBarFillMapping,
+  type DatabaseProjectBarFillMode,
   type DatabaseTimelineMode,
   type DatabaseSortRule,
   type DatabaseSourceSpec,
@@ -622,9 +625,92 @@ const parsePositiveInteger = (value: unknown, fallback: number) => {
   return Number.isInteger(numeric) && numeric >= 1 ? numeric : fallback;
 };
 
+const parseFiniteNumber = (value: unknown): number | null => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().replace(",", ".");
+    if (!normalized) {
+      return null;
+    }
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
 const parseProjectMissingPlacement = (value: unknown): DatabaseProjectMissingPlacement => {
   const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
   return normalized === "hide-unplaced" ? "hide-unplaced" : "show-unplaced";
+};
+
+const parseProjectBarFillMode = (value: unknown): DatabaseProjectBarFillMode => {
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return normalized === "text-code" ? "text-code" : "numeric";
+};
+
+const normalizeProjectBarFillMappings = (
+  value: unknown,
+): DatabaseProjectBarFillMapping[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((entry) => {
+      if (!isRecord(entry)) {
+        return null;
+      }
+      const from = asString(entry.from);
+      const to = parseFiniteNumber(entry.to);
+      if (!from || to === null) {
+        return null;
+      }
+      return {
+        from,
+        to,
+      };
+    })
+    .filter((entry): entry is DatabaseProjectBarFillMapping => Boolean(entry));
+};
+
+const normalizeProjectBarFillConfigs = (
+  value: unknown,
+): DatabaseProjectBarFillConfig[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const byRecordId = new Map<string, DatabaseProjectBarFillConfig>();
+  value.forEach((entry) => {
+    if (!isRecord(entry)) {
+      return;
+    }
+    const recordId = asString(entry.recordId);
+    const attributeKey = asString(entry.attributeKey);
+    if (!recordId || !attributeKey) {
+      return;
+    }
+    const mode = parseProjectBarFillMode(entry.mode);
+    if (mode === "text-code") {
+      byRecordId.set(recordId, {
+        recordId,
+        attributeKey,
+        mode,
+        mappings: normalizeProjectBarFillMappings(entry.mappings),
+      });
+      return;
+    }
+    const min = parseFiniteNumber(entry.min);
+    const max = parseFiniteNumber(entry.max);
+    const hasValidRange = min !== null && max !== null && max > min;
+    byRecordId.set(recordId, {
+      recordId,
+      attributeKey,
+      mode,
+      ...(hasValidRange ? { min, max } : {}),
+    });
+  });
+  return Array.from(byRecordId.values());
 };
 
 const parseGanttZoom = (value: unknown): DatabaseGanttZoom => {
@@ -664,6 +750,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
       blockResolution: DEFAULT_PROJECT_BLOCK_RESOLUTION,
       defaultUnits: DEFAULT_PROJECT_DEFAULT_UNITS,
       projectMissingPlacement: DEFAULT_PROJECT_MISSING_PLACEMENT,
+      projectBarFillConfigs: [],
     };
   }
   if (!isRecord(value)) {
@@ -678,6 +765,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
       blockResolution: DEFAULT_PROJECT_BLOCK_RESOLUTION,
       defaultUnits: DEFAULT_PROJECT_DEFAULT_UNITS,
       projectMissingPlacement: DEFAULT_PROJECT_MISSING_PLACEMENT,
+      projectBarFillConfigs: [],
     };
   }
   const type = parseViewType(value.type);
@@ -696,6 +784,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
     blockResolution: parsePositiveInteger(value.blockResolution, DEFAULT_PROJECT_BLOCK_RESOLUTION),
     defaultUnits: parsePositiveInteger(value.defaultUnits, DEFAULT_PROJECT_DEFAULT_UNITS),
     projectMissingPlacement: parseProjectMissingPlacement(value.projectMissingPlacement),
+    projectBarFillConfigs: normalizeProjectBarFillConfigs(value.projectBarFillConfigs),
     pieGroupField: asString(value.pieGroupField) || null,
     pieAggregate:
       pieAggregateRaw === "sum" || pieAggregateRaw === "avg"
@@ -715,7 +804,18 @@ const cloneFilterGroup = (group: DatabaseFilterGroup): DatabaseFilterGroup => ({
 
 const cloneSortRules = (rules: DatabaseSortRule[]) => rules.map((rule) => ({ ...rule }));
 
-const cloneViewSpec = (view: DatabaseViewSpec): DatabaseViewSpec => ({ ...view });
+const cloneProjectBarFillConfigs = (
+  configs: DatabaseProjectBarFillConfig[] | undefined,
+): DatabaseProjectBarFillConfig[] =>
+  (configs ?? []).map((entry) => ({
+    ...entry,
+    mappings: (entry.mappings ?? []).map((mapping) => ({ ...mapping })),
+  }));
+
+const cloneViewSpec = (view: DatabaseViewSpec): DatabaseViewSpec => ({
+  ...view,
+  projectBarFillConfigs: cloneProjectBarFillConfigs(view.projectBarFillConfigs),
+});
 
 const cloneSavedViewConfig = (view: DatabaseSavedViewConfig): DatabaseSavedViewConfig => ({
   ...view,
@@ -1100,6 +1200,85 @@ function writeViewSpecYaml(
     }
     if (view.projectMissingPlacement) {
       lines.push(`${indentText}projectMissingPlacement: ${formatYamlScalar(view.projectMissingPlacement)}`);
+    }
+    const projectBarFillConfigs = (view.projectBarFillConfigs ?? [])
+      .map((entry) => {
+        const recordId = asString(entry.recordId);
+        const attributeKey = asString(entry.attributeKey);
+        if (!recordId || !attributeKey) {
+          return null;
+        }
+        if (entry.mode === "text-code") {
+          const mappings = (entry.mappings ?? [])
+            .map((mapping) => {
+              const from = asString(mapping.from);
+              const to = parseFiniteNumber(mapping.to);
+              if (!from || to === null) {
+                return null;
+              }
+              return {
+                from,
+                to,
+              };
+            })
+            .filter((mapping): mapping is DatabaseProjectBarFillMapping => Boolean(mapping));
+          return {
+            recordId,
+            attributeKey,
+            mode: "text-code" as const,
+            mappings,
+          };
+        }
+        const min = parseFiniteNumber(entry.min);
+        const max = parseFiniteNumber(entry.max);
+        const hasValidRange = min !== null && max !== null && max > min;
+        return {
+          recordId,
+          attributeKey,
+          mode: "numeric" as const,
+          ...(hasValidRange ? { min, max } : {}),
+        };
+      })
+      .filter((entry): entry is (
+        | {
+          recordId: string;
+          attributeKey: string;
+          mode: "numeric";
+          min?: number;
+          max?: number;
+        }
+        | {
+          recordId: string;
+          attributeKey: string;
+          mode: "text-code";
+          mappings: DatabaseProjectBarFillMapping[];
+        }
+      ) => Boolean(entry));
+    if (projectBarFillConfigs.length > 0) {
+      lines.push(`${indentText}projectBarFillConfigs:`);
+      projectBarFillConfigs.forEach((entry) => {
+        lines.push(`${indentText}  - recordId: ${formatYamlScalar(entry.recordId)}`);
+        lines.push(`${indentText}    attributeKey: ${formatYamlScalar(entry.attributeKey)}`);
+        lines.push(`${indentText}    mode: ${formatYamlScalar(entry.mode)}`);
+        if (entry.mode === "text-code") {
+          if (entry.mappings.length === 0) {
+            lines.push(`${indentText}    mappings: []`);
+          } else {
+            lines.push(`${indentText}    mappings:`);
+            entry.mappings.forEach((mapping) => {
+              lines.push(`${indentText}      - from: ${formatYamlScalar(mapping.from)}`);
+              lines.push(`${indentText}        to: ${formatYamlScalar(mapping.to)}`);
+            });
+          }
+          return;
+        }
+        if (typeof entry.min === "number" && Number.isFinite(entry.min)) {
+          lines.push(`${indentText}    min: ${formatYamlScalar(entry.min)}`);
+        }
+        if (typeof entry.max === "number" && Number.isFinite(entry.max)) {
+          lines.push(`${indentText}    max: ${formatYamlScalar(entry.max)}`);
+        }
+      });
     }
   }
   if (view.pieGroupField) {

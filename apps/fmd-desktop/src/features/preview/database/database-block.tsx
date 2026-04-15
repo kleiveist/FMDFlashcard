@@ -54,6 +54,9 @@ import {
   type DatabaseNormalizedFieldValue,
   type DatabasePropertiesByView,
   type DatabaseProjectMissingPlacement,
+  type DatabaseProjectBarFillConfig,
+  type DatabaseProjectBarFillMapping,
+  type DatabaseProjectBarFillMode,
   type DatabaseRecord,
   type DatabaseSavedViewConfig,
   type DatabaseSourceSpec,
@@ -149,6 +152,82 @@ const cloneSourceSpec = (source: DatabaseSourceSpec): DatabaseSourceSpec => ({
 const cloneFieldDefinitions = (fields: DatabaseFieldDefinition[]) =>
   fields.map((field) => ({ ...field }));
 
+const asFiniteNumber = (value: unknown): number | null => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().replace(",", ".");
+    if (!normalized) {
+      return null;
+    }
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const normalizeProjectBarFillMode = (value: unknown): DatabaseProjectBarFillMode =>
+  value === "text-code" ? "text-code" : "numeric";
+
+const normalizeProjectBarFillMappings = (
+  mappings: DatabaseProjectBarFillMapping[] | undefined,
+): DatabaseProjectBarFillMapping[] =>
+  (mappings ?? [])
+    .map((entry) => {
+      const from = entry.from.trim();
+      const to = asFiniteNumber(entry.to);
+      if (!from || to === null) {
+        return null;
+      }
+      return {
+        from,
+        to,
+      };
+    })
+    .filter((entry): entry is DatabaseProjectBarFillMapping => Boolean(entry));
+
+const cloneProjectBarFillConfigs = (
+  configs: DatabaseProjectBarFillConfig[] | undefined,
+): DatabaseProjectBarFillConfig[] =>
+  (configs ?? []).map((entry) => ({
+    ...entry,
+    mappings: (entry.mappings ?? []).map((mapping) => ({ ...mapping })),
+  }));
+
+const normalizeProjectBarFillConfigs = (
+  configs: DatabaseProjectBarFillConfig[] | undefined,
+): DatabaseProjectBarFillConfig[] => {
+  const byRecordId = new Map<string, DatabaseProjectBarFillConfig>();
+  (configs ?? []).forEach((entry) => {
+    const recordId = entry.recordId.trim();
+    const attributeKey = entry.attributeKey.trim();
+    if (!recordId || !attributeKey) {
+      return;
+    }
+    const mode = normalizeProjectBarFillMode(entry.mode);
+    if (mode === "text-code") {
+      byRecordId.set(recordId, {
+        recordId,
+        attributeKey,
+        mode,
+        mappings: normalizeProjectBarFillMappings(entry.mappings),
+      });
+      return;
+    }
+    const min = asFiniteNumber(entry.min);
+    const max = asFiniteNumber(entry.max);
+    const hasValidRange = min !== null && max !== null && max > min;
+    byRecordId.set(recordId, {
+      recordId,
+      attributeKey,
+      mode,
+      ...(hasValidRange ? { min, max } : {}),
+    });
+  });
+  return Array.from(byRecordId.values());
+};
+
 const ensureFieldDefinition = (
   fields: DatabaseFieldDefinition[],
   field: DatabaseFieldDefinition,
@@ -200,7 +279,10 @@ const getPropertiesForView = (
 
 const cloneSavedView = (savedView: DatabaseSavedViewConfig): DatabaseSavedViewConfig => ({
   ...savedView,
-  view: { ...savedView.view },
+  view: {
+    ...savedView.view,
+    projectBarFillConfigs: cloneProjectBarFillConfigs(savedView.view.projectBarFillConfigs),
+  },
   properties: dedupeCaseInsensitive(savedView.properties),
   filters: cloneFilterGroup(savedView.filters),
   sort: cloneSortRules(savedView.sort),
@@ -699,6 +781,11 @@ export const MarkdownHybridDatabaseBlock = ({
   const [projectMissingPlacement, setProjectMissingPlacement] = useState<DatabaseProjectMissingPlacement>(
     parsedActiveSavedView.view.projectMissingPlacement ?? DEFAULT_PROJECT_MISSING_PLACEMENT,
   );
+  const [projectBarFillConfigs, setProjectBarFillConfigs] = useState<DatabaseProjectBarFillConfig[]>(
+    normalizeProjectBarFillConfigs(
+      cloneProjectBarFillConfigs(parsedActiveSavedView.view.projectBarFillConfigs),
+    ),
+  );
   const [pieGroupField, setPieGroupField] = useState<string | null>(
     parsedActiveSavedView.view.pieGroupField ?? null,
   );
@@ -762,6 +849,7 @@ export const MarkdownHybridDatabaseBlock = ({
   const projectBlockResolutionRef = useRef<number>(projectBlockResolution);
   const projectDefaultUnitsRef = useRef<number>(projectDefaultUnits);
   const projectMissingPlacementRef = useRef<DatabaseProjectMissingPlacement>(projectMissingPlacement);
+  const projectBarFillConfigsRef = useRef<DatabaseProjectBarFillConfig[]>(projectBarFillConfigs);
   const pieGroupFieldRef = useRef<string | null>(pieGroupField);
   const pieAggregateRef = useRef<"count" | "sum" | "avg">(pieAggregate);
   const pieAggregateFieldRef = useRef<string | null>(pieAggregateField);
@@ -835,6 +923,11 @@ export const MarkdownHybridDatabaseBlock = ({
       asPositiveInteger(parsedActiveSavedView.view.defaultUnits) ?? DEFAULT_PROJECT_DEFAULT_UNITS,
     );
     setProjectMissingPlacement(parsedActiveSavedView.view.projectMissingPlacement ?? DEFAULT_PROJECT_MISSING_PLACEMENT);
+    setProjectBarFillConfigs(
+      normalizeProjectBarFillConfigs(
+        cloneProjectBarFillConfigs(parsedActiveSavedView.view.projectBarFillConfigs),
+      ),
+    );
     setPieGroupField(parsedActiveSavedView.view.pieGroupField ?? null);
     setPieAggregate(parsedActiveSavedView.view.pieAggregate ?? "count");
     setPieAggregateField(parsedActiveSavedView.view.pieAggregateField ?? null);
@@ -865,6 +958,7 @@ export const MarkdownHybridDatabaseBlock = ({
     projectBlockResolutionRef.current = projectBlockResolution;
     projectDefaultUnitsRef.current = projectDefaultUnits;
     projectMissingPlacementRef.current = projectMissingPlacement;
+    projectBarFillConfigsRef.current = projectBarFillConfigs;
     pieGroupFieldRef.current = pieGroupField;
     pieAggregateRef.current = pieAggregate;
     pieAggregateFieldRef.current = pieAggregateField;
@@ -890,6 +984,7 @@ export const MarkdownHybridDatabaseBlock = ({
     projectBlockResolution,
     projectDefaultUnits,
     projectMissingPlacement,
+    projectBarFillConfigs,
     projectStartField,
     projectUnitField,
     propertiesByView,
@@ -1344,6 +1439,11 @@ export const MarkdownHybridDatabaseBlock = ({
       projectMissingPlacement: next.view?.projectMissingPlacement ??
         projectMissingPlacementRef.current ??
         DEFAULT_PROJECT_MISSING_PLACEMENT,
+      projectBarFillConfigs: normalizeProjectBarFillConfigs(
+        cloneProjectBarFillConfigs(
+          next.view?.projectBarFillConfigs ?? projectBarFillConfigsRef.current,
+        ),
+      ),
       pieGroupField: next.view?.pieGroupField ?? pieGroupFieldRef.current ?? null,
       pieAggregate: next.view?.pieAggregate ?? pieAggregateRef.current ?? "count",
       pieAggregateField: next.view?.pieAggregateField ?? pieAggregateFieldRef.current ?? null,
@@ -1412,6 +1512,7 @@ export const MarkdownHybridDatabaseBlock = ({
           blockResolution: projectBlockResolution,
           defaultUnits: projectDefaultUnits,
           projectMissingPlacement,
+          projectBarFillConfigs,
           pieGroupField,
           pieAggregate,
           pieAggregateField,
@@ -1455,6 +1556,7 @@ export const MarkdownHybridDatabaseBlock = ({
       projectBlockResolution,
       projectDefaultUnits,
       projectMissingPlacement,
+      projectBarFillConfigs,
       pieGroupField,
       pieAggregate,
       pieAggregateField,
@@ -1548,6 +1650,11 @@ export const MarkdownHybridDatabaseBlock = ({
     const nextMissingPlacement = nextView.projectMissingPlacement ?? DEFAULT_PROJECT_MISSING_PLACEMENT;
     setProjectMissingPlacement(nextMissingPlacement);
     projectMissingPlacementRef.current = nextMissingPlacement;
+    const nextProjectBarFillConfigs = normalizeProjectBarFillConfigs(
+      cloneProjectBarFillConfigs(nextView.projectBarFillConfigs),
+    );
+    setProjectBarFillConfigs(nextProjectBarFillConfigs);
+    projectBarFillConfigsRef.current = nextProjectBarFillConfigs;
     setPieGroupField(nextView.pieGroupField ?? null);
     pieGroupFieldRef.current = nextView.pieGroupField ?? null;
     setPieAggregate(nextView.pieAggregate ?? "count");
@@ -1601,6 +1708,9 @@ export const MarkdownHybridDatabaseBlock = ({
       blockResolution: projectBlockResolutionRef.current ?? DEFAULT_PROJECT_BLOCK_RESOLUTION,
       defaultUnits: projectDefaultUnitsRef.current ?? DEFAULT_PROJECT_DEFAULT_UNITS,
       projectMissingPlacement: projectMissingPlacementRef.current ?? DEFAULT_PROJECT_MISSING_PLACEMENT,
+      projectBarFillConfigs: normalizeProjectBarFillConfigs(
+        cloneProjectBarFillConfigs(projectBarFillConfigsRef.current),
+      ),
       pieGroupField: pieGroupFieldRef.current ?? null,
       pieAggregate: pieAggregateRef.current ?? "count",
       pieAggregateField: pieAggregateFieldRef.current ?? null,
@@ -1757,6 +1867,45 @@ export const MarkdownHybridDatabaseBlock = ({
       });
     }
   };
+
+  const handleProjectBarFillConfigChange = useCallback((
+    recordId: string,
+    config: DatabaseProjectBarFillConfig | null,
+  ) => {
+    const normalizedRecordId = recordId.trim();
+    if (!normalizedRecordId) {
+      return;
+    }
+    const current = normalizeProjectBarFillConfigs(
+      cloneProjectBarFillConfigs(projectBarFillConfigsRef.current),
+    );
+    const nextWithoutTarget = current.filter((entry) => entry.recordId !== normalizedRecordId);
+    let nextConfigs = nextWithoutTarget;
+    if (config) {
+      const normalizedCandidate = normalizeProjectBarFillConfigs(
+        cloneProjectBarFillConfigs([
+          {
+            ...config,
+            recordId: normalizedRecordId,
+          },
+        ]),
+      )[0];
+      if (normalizedCandidate) {
+        nextConfigs = [
+          ...nextWithoutTarget,
+          normalizedCandidate,
+        ];
+      }
+    }
+
+    setProjectBarFillConfigs(nextConfigs);
+    projectBarFillConfigsRef.current = nextConfigs;
+    persistConfig({
+      view: {
+        projectBarFillConfigs: nextConfigs,
+      },
+    });
+  }, [persistConfig]);
 
   const handlePieOptionsChange = (next: {
     groupField?: string | null;
@@ -2564,6 +2713,10 @@ export const MarkdownHybridDatabaseBlock = ({
     const nextProjectUnitField = toLower(projectUnitFieldRef.current ?? "") === normalizedKey
       ? DEFAULT_PROJECT_UNIT_FIELD
       : (projectUnitFieldRef.current ?? DEFAULT_PROJECT_UNIT_FIELD);
+    const nextProjectBarFillConfigs = normalizeProjectBarFillConfigs(
+      cloneProjectBarFillConfigs(projectBarFillConfigsRef.current).filter((entry) =>
+        toLower(entry.attributeKey) !== normalizedKey),
+    );
     const nextPieGroupField = toLower(pieGroupFieldRef.current ?? "") === normalizedKey
       ? null
       : pieGroupFieldRef.current;
@@ -2586,6 +2739,10 @@ export const MarkdownHybridDatabaseBlock = ({
       projectUnitField: toLower(view.projectUnitField ?? "") === normalizedKey
         ? DEFAULT_PROJECT_UNIT_FIELD
         : view.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD,
+      projectBarFillConfigs: normalizeProjectBarFillConfigs(
+        cloneProjectBarFillConfigs(view.projectBarFillConfigs).filter((entry) =>
+          toLower(entry.attributeKey) !== normalizedKey),
+      ),
       pieGroupField: toLower(view.pieGroupField ?? "") === normalizedKey
         ? null
         : view.pieGroupField ?? null,
@@ -2622,6 +2779,8 @@ export const MarkdownHybridDatabaseBlock = ({
     projectStartFieldRef.current = nextProjectStartField;
     setProjectUnitField(nextProjectUnitField);
     projectUnitFieldRef.current = nextProjectUnitField;
+    setProjectBarFillConfigs(nextProjectBarFillConfigs);
+    projectBarFillConfigsRef.current = nextProjectBarFillConfigs;
     setPieGroupField(nextPieGroupField);
     pieGroupFieldRef.current = nextPieGroupField;
     setPieAggregateField(nextPieAggregateField);
@@ -2641,6 +2800,7 @@ export const MarkdownHybridDatabaseBlock = ({
         timelineEndField: nextTimelineEndField,
         projectStartField: nextProjectStartField,
         projectUnitField: nextProjectUnitField,
+        projectBarFillConfigs: nextProjectBarFillConfigs,
         pieGroupField: nextPieGroupField,
         pieAggregateField: nextPieAggregateField,
       },
@@ -3121,15 +3281,18 @@ export const MarkdownHybridDatabaseBlock = ({
         ) : viewType === "project" ? (
           <DatabaseProjectView
             records={store.visibleRecords}
+            attributes={store.attributeRegistry}
             startField={projectStartAttribute?.key ?? projectStartField ?? DEFAULT_PROJECT_START_FIELD}
             unitField={projectUnitAttribute?.key ?? projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD}
             resolution={projectBlockResolution}
             defaultUnits={projectDefaultUnits}
             missingPlacement={projectMissingPlacement}
+            barFillConfigs={projectBarFillConfigs}
             visibleProperties={visibleColumns}
             monitoringProfiles={monitoringProfiles}
             editable={allowCellEditing}
             pendingRecordIds={pendingRecordMutations}
+            onChangeBarFillConfig={handleProjectBarFillConfigChange}
             onCommitPlacement={handleCommitProjectPlacement}
             onOpenRecord={openRecord}
             onOpenExamFromRecord={openExamFromRecord}

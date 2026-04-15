@@ -40,9 +40,15 @@ const createDragDataTransfer = () => {
   };
 };
 
-const createPointerLikeEvent = (type: string, clientX: number) => {
+const createPointerLikeEvent = (
+  type: string,
+  clientX: number,
+  options?: { ctrlKey?: boolean; metaKey?: boolean },
+) => {
   const event = new Event(type, { bubbles: true, cancelable: true });
   Object.defineProperty(event, "clientX", { value: clientX });
+  Object.defineProperty(event, "ctrlKey", { value: Boolean(options?.ctrlKey) });
+  Object.defineProperty(event, "metaKey", { value: Boolean(options?.metaKey) });
   return event;
 };
 
@@ -149,6 +155,53 @@ const priorityAttribute: DatabaseAttributeMeta = {
     supportsTimeline: false,
     supportsPieGrouping: true,
     supportsAggregation: true,
+  },
+};
+
+const fillRecord = createRecord("fill", {
+  unitsstart: 1,
+  units: 5,
+  FortschrittFormel: 11,
+  StatusCode: "text2",
+});
+
+const progressFormulaAttribute: DatabaseAttributeMeta = {
+  key: "FortschrittFormel",
+  label: "FortschrittFormel",
+  type: "formula",
+  origin: "formula",
+  formulaDefinition: null,
+  formula: null,
+  editable: false,
+  sortable: true,
+  filterable: true,
+  aggregatable: true,
+  viewCompatibility: {
+    supportsTable: true,
+    supportsKanbanGrouping: true,
+    supportsTimeline: false,
+    supportsPieGrouping: true,
+    supportsAggregation: true,
+  },
+};
+
+const statusCodeAttribute: DatabaseAttributeMeta = {
+  key: "StatusCode",
+  label: "StatusCode",
+  type: "text",
+  origin: "frontmatter",
+  formulaDefinition: null,
+  formula: null,
+  editable: true,
+  sortable: true,
+  filterable: true,
+  aggregatable: false,
+  viewCompatibility: {
+    supportsTable: true,
+    supportsKanbanGrouping: true,
+    supportsTimeline: false,
+    supportsPieGrouping: true,
+    supportsAggregation: false,
   },
 };
 
@@ -385,6 +438,215 @@ describe("DatabaseProjectView", () => {
     });
     expect(onOpenExamFromRecord).toHaveBeenCalledTimes(1);
     expect(onOpenExamFromRecord.mock.calls[0]?.[0]?.fileId).toBe("placed");
+
+    cleanup();
+  });
+
+  it("renders numeric bar fill from configured attribute and falls back to neutral on invalid range", () => {
+    const { container, cleanup } = render(
+      createElement(DatabaseProjectView, {
+        records: [fillRecord],
+        attributes: [progressFormulaAttribute],
+        startField: "unitsstart",
+        unitField: "units",
+        resolution: 100,
+        defaultUnits: 1,
+        missingPlacement: "show-unplaced",
+        barFillConfigs: [
+          {
+            recordId: "fill",
+            attributeKey: "FortschrittFormel",
+            mode: "numeric",
+            min: 0,
+            max: 100,
+          },
+        ],
+        visibleProperties: [],
+      }),
+    );
+
+    const fill = container.querySelector<HTMLElement>(".database-project-bar-fill");
+    expect(fill?.style.width).toBe("11%");
+    expect(container.querySelector(".database-project-bar.is-neutral")).toBeNull();
+    cleanup();
+
+    const invalid = render(
+      createElement(DatabaseProjectView, {
+        records: [fillRecord],
+        attributes: [progressFormulaAttribute],
+        startField: "unitsstart",
+        unitField: "units",
+        resolution: 100,
+        defaultUnits: 1,
+        missingPlacement: "show-unplaced",
+        barFillConfigs: [
+          {
+            recordId: "fill",
+            attributeKey: "FortschrittFormel",
+            mode: "numeric",
+            min: 100,
+            max: 100,
+          },
+        ],
+        visibleProperties: [],
+      }),
+    );
+
+    expect(invalid.container.querySelector(".database-project-bar.is-neutral")).toBeTruthy();
+    const invalidFill = invalid.container.querySelector<HTMLElement>(".database-project-bar-fill");
+    expect(invalidFill?.style.width).toBe("0%");
+    invalid.cleanup();
+  });
+
+  it("renders text/code bar mapping and keeps unmatched values neutral", () => {
+    const mapped = render(
+      createElement(DatabaseProjectView, {
+        records: [fillRecord],
+        attributes: [statusCodeAttribute],
+        startField: "unitsstart",
+        unitField: "units",
+        resolution: 100,
+        defaultUnits: 1,
+        missingPlacement: "show-unplaced",
+        barFillConfigs: [
+          {
+            recordId: "fill",
+            attributeKey: "StatusCode",
+            mode: "text-code",
+            mappings: [
+              { from: "text1", to: 10 },
+              { from: "text2", to: 20 },
+              { from: "text3", to: 100 },
+            ],
+          },
+        ],
+        visibleProperties: [],
+      }),
+    );
+
+    const mappedFill = mapped.container.querySelector<HTMLElement>(".database-project-bar-fill");
+    expect(mappedFill?.style.width).toBe("20%");
+    mapped.cleanup();
+
+    const unmatched = render(
+      createElement(DatabaseProjectView, {
+        records: [fillRecord],
+        attributes: [statusCodeAttribute],
+        startField: "unitsstart",
+        unitField: "units",
+        resolution: 100,
+        defaultUnits: 1,
+        missingPlacement: "show-unplaced",
+        barFillConfigs: [
+          {
+            recordId: "fill",
+            attributeKey: "StatusCode",
+            mode: "text-code",
+            mappings: [{ from: "text1", to: 10 }],
+          },
+        ],
+        visibleProperties: [],
+      }),
+    );
+
+    expect(unmatched.container.querySelector(".database-project-bar.is-neutral")).toBeTruthy();
+    unmatched.cleanup();
+  });
+
+  it("opens bar config on cmd/ctrl click even when drag editing is disabled", () => {
+    const onChangeBarFillConfig = vi.fn();
+    const { container, cleanup } = render(
+      createElement(DatabaseProjectView, {
+        records: [fillRecord],
+        attributes: [statusCodeAttribute],
+        startField: "unitsstart",
+        unitField: "units",
+        resolution: 100,
+        defaultUnits: 1,
+        missingPlacement: "show-unplaced",
+        visibleProperties: [],
+        editable: false,
+        onChangeBarFillConfig,
+      }),
+    );
+
+    const bar = container.querySelector<HTMLElement>(".database-project-bar");
+    act(() => {
+      bar?.dispatchEvent(createPointerLikeEvent("pointerdown", 64, { metaKey: true }));
+    });
+
+    expect(document.querySelector(".database-project-bar-config")).toBeTruthy();
+    cleanup();
+  });
+
+  it("opens bar config on ctrl click and persists text/code mapping", () => {
+    const onChangeBarFillConfig = vi.fn();
+    const onCommitPlacement = vi.fn();
+    const { container, cleanup } = render(
+      createElement(DatabaseProjectView, {
+        records: [fillRecord],
+        attributes: [statusCodeAttribute],
+        startField: "unitsstart",
+        unitField: "units",
+        resolution: 100,
+        defaultUnits: 1,
+        missingPlacement: "show-unplaced",
+        visibleProperties: [],
+        editable: true,
+        onChangeBarFillConfig,
+        onCommitPlacement,
+      }),
+    );
+
+    const bar = container.querySelector<HTMLElement>(".database-project-bar");
+    act(() => {
+      bar?.dispatchEvent(createPointerLikeEvent("pointerdown", 64, { ctrlKey: true }));
+    });
+
+    const popup = document.querySelector<HTMLElement>(".database-project-bar-config");
+    expect(popup).toBeTruthy();
+    const selects = popup?.querySelectorAll("select") ?? [];
+    const modeSelect = selects[1] as HTMLSelectElement | undefined;
+    act(() => {
+      if (!modeSelect) {
+        return;
+      }
+      modeSelect.value = "text-code";
+      modeSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    const mappingInputs = popup?.querySelectorAll<HTMLInputElement>(".database-project-bar-config-mapping-row input") ?? [];
+    act(() => {
+      const source = mappingInputs[0];
+      const target = mappingInputs[1];
+      if (source) {
+        source.value = "text2";
+        source.dispatchEvent(new Event("input", { bubbles: true }));
+        source.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      if (target) {
+        target.value = "20";
+        target.dispatchEvent(new Event("input", { bubbles: true }));
+        target.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+
+    const saveButton = Array.from(popup?.querySelectorAll("button") ?? [])
+      .find((button) => (button.textContent ?? "").includes("Speichern"));
+    act(() => {
+      saveButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onCommitPlacement).not.toHaveBeenCalled();
+    expect(onChangeBarFillConfig).toHaveBeenCalledTimes(1);
+    expect(onChangeBarFillConfig.mock.calls[0]?.[0]).toBe("fill");
+    expect(onChangeBarFillConfig.mock.calls[0]?.[1]).toMatchObject({
+      recordId: "fill",
+      attributeKey: "StatusCode",
+      mode: "text-code",
+      mappings: [{ from: "text2", to: 20 }],
+    });
+    expect(document.querySelector(".database-project-bar-config")).toBeNull();
 
     cleanup();
   });

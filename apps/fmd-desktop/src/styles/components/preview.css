@@ -7144,8 +7144,22 @@ textarea.preview-editor {
   min-inline-size: 8px;
   block-size: 12px;
   border-radius: var(--db-radius-pill);
-  background: color-mix(in srgb, var(--accent-border) 82%, var(--accent-soft));
+  background: color-mix(in srgb, var(--db-border) 72%, transparent);
+  overflow: hidden;
   cursor: grab;
+}
+
+.database-project-bar.is-neutral {
+  background: color-mix(in srgb, var(--db-border) 78%, transparent);
+}
+
+.database-project-bar-fill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  background: color-mix(in srgb, var(--accent-border) 84%, var(--accent-soft));
+  border-radius: inherit;
+  pointer-events: none;
 }
 
 .database-project-bar:active {
@@ -7159,6 +7173,7 @@ textarea.preview-editor {
   border-radius: 999px;
   background: color-mix(in srgb, var(--db-surface-base) 82%, var(--accent-border));
   cursor: ew-resize;
+  z-index: 1;
 }
 
 .database-project-bar-handle.is-start {
@@ -7167,6 +7182,89 @@ textarea.preview-editor {
 
 .database-project-bar-handle.is-end {
   inset-inline-end: -4px;
+}
+
+.database-project-bar-config-popup {
+  width: min(460px, calc(100vw - 24px));
+}
+
+.database-project-bar-config-popup .anchored-popup-body {
+  border: 1px solid var(--db-panel-border, var(--line-soft));
+  border-radius: var(--db-radius-table);
+  background: var(--db-panel-bg, var(--panel));
+  box-shadow: var(--db-panel-shadow, var(--shadow-soft));
+  color: var(--db-text, var(--ink));
+  padding: 10px;
+}
+
+.database-project-bar-config {
+  display: grid;
+  gap: 10px;
+}
+
+.database-project-bar-config-header h5 {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.database-project-bar-config-header p {
+  margin: 2px 0 0;
+  font-size: 0.72rem;
+  color: var(--db-muted);
+}
+
+.database-project-bar-config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.database-project-bar-config-grid label,
+.database-project-bar-config-mappings {
+  display: grid;
+  gap: 4px;
+  font-size: 0.74rem;
+  color: var(--db-muted);
+}
+
+.database-project-bar-config-grid select,
+.database-project-bar-config-grid input,
+.database-project-bar-config-mapping-row input {
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-radius-control);
+  background: var(--db-surface-raised);
+  color: var(--db-text);
+  min-height: calc(var(--db-control-height) - 8px);
+  padding: 0 8px;
+}
+
+.database-project-bar-config-mapping-head {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 6px;
+  font-size: 0.7rem;
+}
+
+.database-project-bar-config-mapping-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.database-project-bar-config-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .database-project-bar-config-grid,
+  .database-project-bar-config-mapping-head,
+  .database-project-bar-config-mapping-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .database-gantt-view:focus-visible,

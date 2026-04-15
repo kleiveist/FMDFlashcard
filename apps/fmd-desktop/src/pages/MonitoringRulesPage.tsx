@@ -530,6 +530,12 @@ const pruneDatabaseViewSpecByKeys = (
   projectUnitField: removalKeys.has(normalizeLower(view.projectUnitField ?? ""))
     ? null
     : view.projectUnitField ?? null,
+  projectBarFillConfigs: (view.projectBarFillConfigs ?? [])
+    .filter((entry) => !removalKeys.has(normalizeLower(entry.attributeKey ?? "")))
+    .map((entry) => ({
+      ...entry,
+      mappings: (entry.mappings ?? []).map((mapping) => ({ ...mapping })),
+    })),
   pieGroupField: removalKeys.has(normalizeLower(view.pieGroupField ?? "")) ? null : view.pieGroupField ?? null,
   pieAggregateField: removalKeys.has(normalizeLower(view.pieAggregateField ?? ""))
     ? null

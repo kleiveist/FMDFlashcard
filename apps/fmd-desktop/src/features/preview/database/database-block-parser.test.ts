@@ -117,6 +117,25 @@ describe("database-block-parser", () => {
             blockResolution: 200,
             defaultUnits: 2,
             projectMissingPlacement: "hide-unplaced",
+            projectBarFillConfigs: [
+              {
+                recordId: "/vault/record-a.md",
+                attributeKey: "progress",
+                mode: "numeric",
+                min: 0,
+                max: 100,
+              },
+              {
+                recordId: "/vault/record-b.md",
+                attributeKey: "statuscode",
+                mode: "text-code",
+                mappings: [
+                  { from: "text1", to: 10 },
+                  { from: "text2", to: 20 },
+                  { from: "text3", to: 100 },
+                ],
+              },
+            ],
           },
           properties: ["unitsstart", "units", "status"],
           filters: {
@@ -146,6 +165,10 @@ describe("database-block-parser", () => {
     expect(serialized).toContain("name: Main");
     expect(serialized).toContain("type: project");
     expect(serialized).toContain("projectMissingPlacement: hide-unplaced");
+    expect(serialized).toContain("projectBarFillConfigs:");
+    expect(serialized).toContain("attributeKey: progress");
+    expect(serialized).toContain("mode: text-code");
+    expect(serialized).toContain("mappings:");
     expect(serialized).toContain("      properties:");
     expect(serialized).not.toContain("\nview:\n");
     expect(serialized).not.toContain("\ncolumns:");
@@ -158,8 +181,95 @@ describe("database-block-parser", () => {
     expect(reparsed.config.title).toBe("Main");
     expect(reparsed.config.views.activeViewId).toBe("view-main");
     expect(reparsed.config.view.type).toBe("project");
+    expect(reparsed.config.view.projectBarFillConfigs).toHaveLength(2);
+    expect(reparsed.config.view.projectBarFillConfigs?.[0]).toMatchObject({
+      recordId: "/vault/record-a.md",
+      attributeKey: "progress",
+      mode: "numeric",
+      min: 0,
+      max: 100,
+    });
+    expect(reparsed.config.view.projectBarFillConfigs?.[1]).toMatchObject({
+      recordId: "/vault/record-b.md",
+      attributeKey: "statuscode",
+      mode: "text-code",
+      mappings: [
+        { from: "text1", to: 10 },
+        { from: "text2", to: 20 },
+        { from: "text3", to: 100 },
+      ],
+    });
     expect(reparsed.config.columns).toEqual(["unitsstart", "units", "status"]);
     expect(reparsed.config.sort[0]?.field).toBe("unitsstart");
+  });
+
+  it("normalizes invalid project bar fill configs during parse/serialize", () => {
+    const raw = [
+      "::::",
+      "title: Project Fill",
+      "views:",
+      "  activeViewId: view-main",
+      "  items:",
+      "    - id: view-main",
+      "      name: Main",
+      "      view:",
+      "        type: project",
+      "        projectBarFillConfigs:",
+      "          - recordId: /vault/a.md",
+      "            attributeKey: progress",
+      "            mode: numeric",
+      "            min: 20",
+      "            max: 10",
+      "          - recordId: /vault/b.md",
+      "            attributeKey: statuscode",
+      "            mode: text-code",
+      "            mappings:",
+      "              - from: text1",
+      "                to: 10",
+      "              - from: \"\"",
+      "                to: 30",
+      "              - from: text3",
+      "                to: nope",
+      "          - recordId: /vault/c.md",
+      "            mode: numeric",
+      "            min: 0",
+      "            max: 100",
+      "      properties:",
+      "        - Dateiname",
+      "      filters:",
+      "        op: and",
+      "        rules: []",
+      "      sort: []",
+      "options:",
+      "  editable: true",
+      "  showSearch: true",
+      "  showToolbar: true",
+      "::::",
+    ].join("\n");
+
+    const parsed = parseDatabaseBlockConfigFromRaw(raw);
+    expect(parsed.errors).toEqual([]);
+    const configs = parsed.config.view.projectBarFillConfigs ?? [];
+    expect(configs).toHaveLength(2);
+    expect(configs[0]).toMatchObject({
+      recordId: "/vault/a.md",
+      attributeKey: "progress",
+      mode: "numeric",
+    });
+    expect(configs[0]).not.toHaveProperty("min");
+    expect(configs[0]).not.toHaveProperty("max");
+    expect(configs[1]).toMatchObject({
+      recordId: "/vault/b.md",
+      attributeKey: "statuscode",
+      mode: "text-code",
+      mappings: [{ from: "text1", to: 10 }],
+    });
+
+    const serialized = serializeDatabaseBlockConfig(parsed.config);
+    expect(serialized).toContain("projectBarFillConfigs:");
+    expect(serialized).toContain("recordId: /vault/b.md");
+    expect(serialized).toContain("from: text1");
+    expect(serialized).not.toContain("to: nope");
   });
 
   it("roundtrips structured formula definitions in fields", () => {

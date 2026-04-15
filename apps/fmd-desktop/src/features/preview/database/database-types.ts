@@ -13,6 +13,21 @@ export type DatabaseViewType = "table" | "kanban" | "gantt" | "pie" | "project";
 export type DatabaseTimelineMode = "date" | "time" | "datetime";
 export type DatabaseGanttZoom = "year" | "quarter" | "month" | "week" | "day" | "hour" | "minute";
 export type DatabaseProjectMissingPlacement = "show-unplaced" | "hide-unplaced";
+export type DatabaseProjectBarFillMode = "numeric" | "text-code";
+
+export type DatabaseProjectBarFillMapping = {
+  from: string;
+  to: number;
+};
+
+export type DatabaseProjectBarFillConfig = {
+  recordId: string;
+  attributeKey: string;
+  mode: DatabaseProjectBarFillMode;
+  min?: number;
+  max?: number;
+  mappings?: DatabaseProjectBarFillMapping[];
+};
 
 export type DatabaseSourceType =
   | "current-folder"
@@ -132,6 +147,7 @@ export type DatabaseViewSpec = {
   blockResolution?: number;
   defaultUnits?: number;
   projectMissingPlacement?: DatabaseProjectMissingPlacement;
+  projectBarFillConfigs?: DatabaseProjectBarFillConfig[];
   pieGroupField?: string | null;
   pieAggregate?: "count" | "sum" | "avg";
   pieAggregateField?: string | null;
