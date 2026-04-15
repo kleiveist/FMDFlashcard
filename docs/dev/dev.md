@@ -11,6 +11,9 @@
 - 📝 [Architecture overview](architecture.md)
 - 📝 [Developer ↔ Codex Workflow](codex-workflow.md)
 
+## 📁 Info
+- 🗂️ [Overview](info/info.md)
+
 ## 📁 Assets
 - 🗂️ [Overview](assets/assets.md)
 
