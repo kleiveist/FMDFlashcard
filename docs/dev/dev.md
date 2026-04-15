@@ -11,8 +11,8 @@
 - 📝 [Architecture overview](architecture.md)
 - 📝 [Developer ↔ Codex Workflow](codex-workflow.md)
 
-## 📁 Info
-- 🗂️ [Overview](info/info.md)
+## 📁 Package Inventory
+- 🗂️ [Overview](info/package-inventory-and-security-analysis.md)
 
 ## 📁 Assets
 - 🗂️ [Overview](assets/assets.md)
