@@ -104,6 +104,8 @@ const getRecordValueByField = (record: DatabaseRecord, field: string) => {
 };
 
 const isExamFieldKey = (key: string) => toLower(key) === "exam";
+const isInertFormulaAttribute = (attribute: DatabaseAttributeMeta) =>
+  attribute.type === "formula" && toLower(attribute.key).startsWith("f-");
 
 const isExamCellEligible = (record: DatabaseRecord, field: string) =>
   getRecordValueByField(record, field) === true;
@@ -302,108 +304,109 @@ export const DatabaseTableView = ({
                 }}
                 data-md-block-control="true"
               >
-                {columns.map((column) => (
-                  <span
-                    key={`${record.fileId}:${column.key}`}
-                    className={`database-table-cell${
-                      activeEditCell &&
-                      activeEditCell.recordId === record.fileId &&
-                      toLower(activeEditCell.fieldKey) === toLower(column.key)
-                        ? " is-editing"
-                        : ""
-                    }${
-                      pendingByKey.has(buildMutationKey(record.fileId, column.key))
-                        ? " is-pending"
-                        : ""
-                    }`}
-                    role="cell"
-                    onDoubleClick={() => {
-                      if (!editable || !column.editable) {
-                        return;
-                      }
-                      onStartCellEdit(record, column);
-                    }}
-                  >
-                    {activeEditCell &&
+                {columns.map((column) => {
+                  const isInertFormulaCell = isInertFormulaAttribute(column);
+                  const isEditingCell = !isInertFormulaCell &&
+                    activeEditCell !== null &&
                     activeEditCell.recordId === record.fileId &&
-                    toLower(activeEditCell.fieldKey) === toLower(column.key) ? (
-                      column.type === "boolean" ? (
-                        <label className="database-table-cell-boolean-editor">
-                          <input
-                            type="checkbox"
-                            checked={Boolean(activeEditCell.draftValue)}
-                            onChange={(event) => {
-                              onEditCellDraftChange(event.target.checked);
-                              onCommitCellEdit(record, column, event.target.checked);
-                            }}
-                            onKeyDown={(event) => handleEditorKeyDown(event, record, column)}
-                            disabled={pendingByKey.has(buildMutationKey(record.fileId, column.key))}
-                            autoFocus
-                            data-md-block-control="true"
+                    toLower(activeEditCell.fieldKey) === toLower(column.key);
+
+                  return (
+                    <span
+                      key={`${record.fileId}:${column.key}`}
+                      className={`database-table-cell${isEditingCell ? " is-editing" : ""}${
+                        pendingByKey.has(buildMutationKey(record.fileId, column.key))
+                          ? " is-pending"
+                          : ""
+                      }${isInertFormulaCell ? " is-inert" : ""}`}
+                      role="cell"
+                      aria-readonly={isInertFormulaCell ? "true" : undefined}
+                      onDoubleClick={() => {
+                        if (isInertFormulaCell || !editable || !column.editable) {
+                          return;
+                        }
+                        onStartCellEdit(record, column);
+                      }}
+                    >
+                      {isEditingCell && activeEditCell ? (
+                        column.type === "boolean" ? (
+                          <label className="database-table-cell-boolean-editor">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(activeEditCell.draftValue)}
+                              onChange={(event) => {
+                                onEditCellDraftChange(event.target.checked);
+                                onCommitCellEdit(record, column, event.target.checked);
+                              }}
+                              onKeyDown={(event) => handleEditorKeyDown(event, record, column)}
+                              disabled={pendingByKey.has(buildMutationKey(record.fileId, column.key))}
+                              autoFocus
+                              data-md-block-control="true"
+                            />
+                          </label>
+                        ) : (
+                          <>
+                            <input
+                              type={resolveEditorInputType(column.type)}
+                              value={typeof activeEditCell.draftValue === "string" ? activeEditCell.draftValue : ""}
+                              className="database-table-cell-editor"
+                              onChange={(event) => onEditCellDraftChange(event.target.value)}
+                              onBlur={() => onCommitCellEdit(record, column)}
+                              onKeyDown={(event) => handleEditorKeyDown(event, record, column)}
+                              list={column.type === "select" || column.type === "status"
+                                ? `database-cell-options-${toLower(column.key).replace(/[^a-z0-9_-]/g, "-")}`
+                                : undefined}
+                              disabled={pendingByKey.has(buildMutationKey(record.fileId, column.key))}
+                              autoFocus
+                              data-md-block-control="true"
+                            />
+                            {(column.type === "select" || column.type === "status") ? (
+                              <datalist id={`database-cell-options-${toLower(column.key).replace(/[^a-z0-9_-]/g, "-")}`}>
+                                {(valueOptionsByField.get(toLower(column.key)) ?? []).map((optionValue) => (
+                                  <option key={optionValue} value={optionValue} />
+                                ))}
+                              </datalist>
+                            ) : null}
+                          </>
+                        )
+                      ) : OPEN_RECORD_COLUMN_KEYS.has(column.key.trim().toLowerCase()) ? (
+                        <button
+                          type="button"
+                          className="database-table-open-record"
+                          onClick={() => onOpenRecord(record)}
+                          title="Datei oeffnen"
+                          data-md-block-control="true"
+                        >
+                          <DatabaseCellRenderer
+                            attribute={column}
+                            value={getRecordValueByField(record, column.key)}
+                            monitoringProfiles={monitoringProfiles}
                           />
-                        </label>
+                        </button>
+                      ) : isExamFieldKey(column.key) ? (
+                        isExamCellEligible(record, column.key) && onOpenExamFromRecord ? (
+                          <button
+                            type="button"
+                            className="database-exam-action"
+                            onClick={() => onOpenExamFromRecord(record)}
+                            title="Exam starten"
+                            data-md-block-control="true"
+                          >
+                            Exam
+                          </button>
+                        ) : (
+                          <span className="database-cell-empty">—</span>
+                        )
                       ) : (
-                        <>
-                          <input
-                            type={resolveEditorInputType(column.type)}
-                            value={typeof activeEditCell.draftValue === "string" ? activeEditCell.draftValue : ""}
-                            className="database-table-cell-editor"
-                            onChange={(event) => onEditCellDraftChange(event.target.value)}
-                            onBlur={() => onCommitCellEdit(record, column)}
-                            onKeyDown={(event) => handleEditorKeyDown(event, record, column)}
-                            list={column.type === "select" || column.type === "status"
-                              ? `database-cell-options-${toLower(column.key).replace(/[^a-z0-9_-]/g, "-")}`
-                              : undefined}
-                            disabled={pendingByKey.has(buildMutationKey(record.fileId, column.key))}
-                            autoFocus
-                            data-md-block-control="true"
-                          />
-                          {(column.type === "select" || column.type === "status") ? (
-                            <datalist id={`database-cell-options-${toLower(column.key).replace(/[^a-z0-9_-]/g, "-")}`}>
-                              {(valueOptionsByField.get(toLower(column.key)) ?? []).map((optionValue) => (
-                                <option key={optionValue} value={optionValue} />
-                              ))}
-                            </datalist>
-                          ) : null}
-                        </>
-                      )
-                    ) : OPEN_RECORD_COLUMN_KEYS.has(column.key.trim().toLowerCase()) ? (
-                      <button
-                        type="button"
-                        className="database-table-open-record"
-                        onClick={() => onOpenRecord(record)}
-                        title="Datei oeffnen"
-                        data-md-block-control="true"
-                      >
                         <DatabaseCellRenderer
                           attribute={column}
                           value={getRecordValueByField(record, column.key)}
                           monitoringProfiles={monitoringProfiles}
                         />
-                      </button>
-                    ) : isExamFieldKey(column.key) ? (
-                      isExamCellEligible(record, column.key) && onOpenExamFromRecord ? (
-                        <button
-                          type="button"
-                          className="database-exam-action"
-                          onClick={() => onOpenExamFromRecord(record)}
-                          title="Exam starten"
-                          data-md-block-control="true"
-                        >
-                          Exam
-                        </button>
-                      ) : (
-                        <span className="database-cell-empty">—</span>
-                      )
-                    ) : (
-                      <DatabaseCellRenderer
-                        attribute={column}
-                        value={getRecordValueByField(record, column.key)}
-                        monitoringProfiles={monitoringProfiles}
-                      />
-                    )}
-                  </span>
-                ))}
+                      )}
+                    </span>
+                  );
+                })}
               </div>
             );
           })}

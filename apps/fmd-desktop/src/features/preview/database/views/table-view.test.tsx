@@ -74,6 +74,19 @@ const examAttribute: DatabaseAttributeMeta = {
   viewCompatibility: compatibility,
 };
 
+const formulaAttribute: DatabaseAttributeMeta = {
+  key: "f-%",
+  label: "f-%",
+  type: "formula",
+  origin: "frontmatter",
+  formula: null,
+  editable: false,
+  sortable: true,
+  filterable: true,
+  aggregatable: false,
+  viewCompatibility: compatibility,
+};
+
 const record: DatabaseRecord = {
   fileId: "docs/a.md",
   filePath: "/vault/docs/a.md",
@@ -160,6 +173,38 @@ describe("DatabaseTableView", () => {
     })));
 
     const cell = container.querySelector(".database-table-cell");
+    act(() => {
+      cell?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    });
+
+    expect(onStartCellEdit).not.toHaveBeenCalled();
+
+    cleanup();
+  });
+
+  it("marks f-formula cells as inert and blocks inline editing on double click", () => {
+    const onStartCellEdit = vi.fn();
+    const formulaRecord: DatabaseRecord = {
+      ...record,
+      frontmatter: {
+        ...record.frontmatter,
+        "f-%": 20,
+      },
+      normalizedFields: {
+        ...record.normalizedFields,
+        "f-%": 20,
+      },
+    };
+    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
+      columns: [formulaAttribute],
+      records: [formulaRecord],
+      onStartCellEdit,
+    })));
+
+    const cell = container.querySelector<HTMLElement>(".database-table-cell");
+    expect(cell?.classList.contains("is-inert")).toBe(true);
+    expect(cell?.getAttribute("aria-readonly")).toBe("true");
+
     act(() => {
       cell?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
     });

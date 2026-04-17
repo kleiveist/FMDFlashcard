@@ -43,6 +43,8 @@ type BuildDatabaseStoreSnapshotParams = {
 };
 
 const toLowerKey = (key: string) => key.trim().toLowerCase();
+const isInertFormulaAttribute = (key: string, type: DatabaseAttributeMeta["type"]) =>
+  type === "formula" && toLowerKey(key).startsWith("f-");
 
 const dedupeByCaseInsensitiveKey = (keys: string[]) => {
   const seen = new Set<string>();
@@ -82,7 +84,7 @@ const buildAttributeMeta = (
     formulaDefinition: null,
     formula: null,
     legacyFormulaIncompatible: false,
-    editable: origin === "frontmatter",
+    editable: origin === "frontmatter" && !isInertFormulaAttribute(key, type),
     sortable: true,
     filterable: true,
     aggregatable: resolveFieldCompatibility(type).supportsAggregation,
@@ -138,7 +140,8 @@ const mergeConfiguredFieldDefinitions = (
           definition.formula &&
           !definition.formulaDefinition,
       ),
-      editable: definition.origin === "frontmatter",
+      editable: definition.origin === "frontmatter" &&
+        !isInertFormulaAttribute(definition.key, definition.type),
       sortable: true,
       filterable: true,
       aggregatable: compatibility.supportsAggregation,

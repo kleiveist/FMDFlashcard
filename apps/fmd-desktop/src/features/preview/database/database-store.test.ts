@@ -221,6 +221,7 @@ describe("database-store", () => {
 
     const formulaAttribute = snapshot.attributeRegistry.find((attribute) => attribute.key === "f-%");
     expect(formulaAttribute?.type).toBe("formula");
+    expect(formulaAttribute?.editable).toBe(false);
   });
 
   it("evaluates configured formula fields against history records when source is history", () => {

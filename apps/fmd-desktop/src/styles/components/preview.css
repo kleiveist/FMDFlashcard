@@ -6038,6 +6038,11 @@ textarea.preview-editor {
   opacity: 0.7;
 }
 
+.database-table-cell.is-inert {
+  pointer-events: none;
+  user-select: none;
+}
+
 .database-table-cell-editor {
   inline-size: 100%;
   min-inline-size: 0;
