@@ -1112,6 +1112,52 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(hybridButton?.getAttribute("aria-pressed")).toBe("false");
   });
 
+  it("keeps external modal-like inputs editable in code mode without focus snapback", async () => {
+    const { container, cleanup: localCleanup, onEditExit } = buildHarness("Code focus", {
+      editorMode: "code",
+      editEnabled: true,
+    });
+    cleanup = localCleanup;
+    await flushAsyncInteraction();
+
+    const rawEditor = container.querySelector<HTMLTextAreaElement>("textarea.preview-editor");
+    expect(rawEditor).toBeTruthy();
+    if (!rawEditor) {
+      throw new Error("Expected raw editor to be rendered in code mode.");
+    }
+
+    const externalInput = document.createElement("input");
+    externalInput.type = "text";
+    document.body.appendChild(externalInput);
+
+    try {
+      await act(async () => {
+        rawEditor.focus();
+      });
+
+      await act(async () => {
+        rawEditor.dispatchEvent(new FocusEvent("blur", {
+          bubbles: true,
+          relatedTarget: externalInput,
+        }));
+        externalInput.focus();
+      });
+      await flushAsyncInteraction();
+      await flushAsyncInteraction();
+
+      expect(onEditExit).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(externalInput);
+
+      await act(async () => {
+        externalInput.value = "new file.md";
+        externalInput.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      expect(externalInput.value).toBe("new file.md");
+    } finally {
+      externalInput.remove();
+    }
+  });
+
   it("keeps root mode/edit attributes in sync for code and markdown", async () => {
     const { container, cleanup: localCleanup } = buildHarness("Mode attributes", {
       editorMode: "code",

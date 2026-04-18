@@ -29,6 +29,7 @@ type RenderOptions = {
   activeUserId?: string | null;
   activeUserName?: string | null;
   setActiveUser?: (userId: string) => void;
+  recentVaults?: string[];
   activeTab?: StudySectionKey;
   activeMainMode?: StudyMainMode;
   onMainModeSelect?: (mode: StudyMainMode) => void;
@@ -47,6 +48,7 @@ const createMockAppState = ({
   activeUserId = "alice",
   activeUserName = "Alice Doe",
   setActiveUser = vi.fn(),
+  recentVaults = [],
 }: RenderOptions = {}) =>
   ({
     actions: {
@@ -61,7 +63,14 @@ const createMockAppState = ({
       selectedFile: null,
     },
     settings: {
-      recentVaults: [],
+      recentVaults: recentVaults.map((path) => ({
+        id: `vault:${path}`,
+        path,
+        status: "available",
+        lastOpenedAt: "2026-01-01T00:00:00.000Z",
+        lastSeenAt: "2026-01-01T00:00:00.000Z",
+        lastError: null,
+      })),
       showEmptyFolders: false,
       showHiddenFolders: false,
     },
@@ -125,6 +134,13 @@ const renderSidebar = (options: RenderOptions = {}) => {
 
 const openUserMenu = (container: HTMLElement) => {
   const trigger = container.querySelector<HTMLButtonElement>(".sidebar-active-user-trigger");
+  act(() => {
+    trigger?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+};
+
+const openVaultMenu = (container: HTMLElement) => {
+  const trigger = container.querySelector<HTMLButtonElement>(".vault-status-main");
   act(() => {
     trigger?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   });
@@ -216,6 +232,88 @@ describe("SidebarNav active user switcher", () => {
     expect(onOpenUserManager).toHaveBeenCalledTimes(1);
     expect(container.querySelector("#sidebar-active-user-menu")).toBeNull();
     cleanup();
+  });
+
+  it("sets a minimum vault menu height for at least three rows and clamps to available space", () => {
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function mockRect() {
+      const element = this as HTMLElement;
+      if (element.classList.contains("sidebar-layout")) {
+        return {
+          x: 0,
+          y: 0,
+          width: 320,
+          height: 640,
+          top: 0,
+          right: 320,
+          bottom: 640,
+          left: 0,
+          toJSON: () => ({}),
+        } as DOMRect;
+      }
+      if (element.classList.contains("vault-status")) {
+        return {
+          x: 0,
+          y: 420,
+          width: 320,
+          height: 120,
+          top: 420,
+          right: 320,
+          bottom: 540,
+          left: 0,
+          toJSON: () => ({}),
+        } as DOMRect;
+      }
+      if (element.classList.contains("vault-status-menu-row")) {
+        return {
+          x: 0,
+          y: 0,
+          width: 260,
+          height: 34,
+          top: 0,
+          right: 260,
+          bottom: 34,
+          left: 0,
+          toJSON: () => ({}),
+        } as DOMRect;
+      }
+      if (element.classList.contains("vault-status-menu-footer")) {
+        return {
+          x: 0,
+          y: 0,
+          width: 260,
+          height: 52,
+          top: 0,
+          right: 260,
+          bottom: 52,
+          left: 0,
+          toJSON: () => ({}),
+        } as DOMRect;
+      }
+      return originalGetBoundingClientRect.call(this);
+    };
+
+    try {
+      const { container, cleanup } = renderSidebar({
+        recentVaults: ["/vaults/one", "/vaults/two", "/vaults/three", "/vaults/four"],
+      });
+
+      openVaultMenu(container);
+      const menu = container.querySelector<HTMLElement>("#vault-recents-menu");
+      expect(menu).toBeTruthy();
+      const maxHeight = Number.parseFloat(
+        menu?.style.getPropertyValue("--vault-menu-max-height") ?? "0",
+      );
+      const minHeight = Number.parseFloat(
+        menu?.style.getPropertyValue("--vault-menu-min-height") ?? "0",
+      );
+      expect(maxHeight).toBeGreaterThan(0);
+      expect(minHeight).toBeGreaterThan(0);
+      expect(minHeight).toBeLessThanOrEqual(maxHeight);
+      cleanup();
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    }
   });
 
   it("exposes monitoring mode icon and renders monitoring-only sections when active", () => {

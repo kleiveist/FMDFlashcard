@@ -7002,7 +7002,7 @@ textarea.preview-editor {
   border: 1px solid var(--db-border);
   border-radius: var(--db-radius-table);
   background: var(--db-surface-raised);
-  overflow: visible;
+  overflow: hidden;
   position: relative;
 }
 
@@ -7016,8 +7016,10 @@ textarea.preview-editor {
 }
 
 .database-project-grid-scroll {
-  overflow: visible;
+  overflow-x: auto;
+  overflow-y: auto;
   min-height: 220px;
+  max-inline-size: 100%;
 }
 
 .database-project-grid {

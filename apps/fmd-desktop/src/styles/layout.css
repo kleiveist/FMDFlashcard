@@ -648,7 +648,7 @@
   flex-direction: column;
   gap: 6px;
   flex: 0 1 auto;
-  min-height: 0;
+  min-height: var(--vault-menu-min-height, 0px);
   max-height: var(--vault-menu-max-height, 240px);
   overflow: hidden;
   z-index: 80;

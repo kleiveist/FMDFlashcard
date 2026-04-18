@@ -246,7 +246,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     setDesignMode,
     settingsLoaded,
     vaultPath: storedVaultPath,
-    recentVaults,
+    recentVaults: allRecentVaults = [],
+    currentSystemId = null,
     flashcardMode,
     flashcardOrder,
     flashcardPageSize,
@@ -267,6 +268,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     solutionRevealEnabled,
     statsResetMode,
   } = settings;
+  const recentVaults = settings.currentSystemRecentVaults ?? allRecentVaults;
   const vault = useVault({ persistSettings, showHiddenFolders });
   const userVault = useUserVault({
     vaultPath: vault.vaultPath,
@@ -537,6 +539,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         ...current,
         ...updates,
         id: current.id,
+        systemId: updates.systemId ?? current.systemId ?? currentSystemId,
         lastOpenedAt: updates.lastOpenedAt ?? current.lastOpenedAt,
         status: updates.status ?? current.status,
         lastSeenAt:
@@ -550,6 +553,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       });
       const unchanged =
         current.path === nextEntry.path &&
+        (current.systemId ?? null) === (nextEntry.systemId ?? null) &&
         current.lastOpenedAt === nextEntry.lastOpenedAt &&
         current.status === nextEntry.status &&
         current.lastSeenAt === nextEntry.lastSeenAt &&
@@ -575,7 +579,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       await persistRecentVaultRegistry(next);
       return nextEntry;
     },
-    [persistRecentVaultRegistry, recentVaults],
+    [currentSystemId, persistRecentVaultRegistry, recentVaults],
   );
 
   const markRecentVaultAvailable = useCallback(
@@ -590,7 +594,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
           (entry) => normalizeVaultPath(entry.path) === normalizedPath,
         ) ?? null;
       const nextEntry = createRecentVaultEntry(path, {
-        id: existing?.id ?? buildRecentVaultId(path),
+        id: existing?.id ?? buildRecentVaultId(path, currentSystemId),
+        systemId: currentSystemId,
         lastOpenedAt: now,
         status: "available",
         lastSeenAt: now,
@@ -608,7 +613,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       await persistRecentVaultRegistry(next);
       return nextEntry;
     },
-    [persistRecentVaultRegistry, recentVaults],
+    [currentSystemId, persistRecentVaultRegistry, recentVaults],
   );
 
   const markRecentVaultMissingByPath = useCallback(
@@ -628,7 +633,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         });
       }
       const nextEntry = createRecentVaultEntry(path, {
-        id: buildRecentVaultId(path),
+        id: buildRecentVaultId(path, currentSystemId),
+        systemId: currentSystemId,
         status: "missing",
         lastSeenAt: null,
         lastError,
@@ -637,7 +643,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       await persistRecentVaultRegistry(next);
       return nextEntry;
     },
-    [persistRecentVaultRegistry, recentVaults, updateRecentVaultEntry],
+    [currentSystemId, persistRecentVaultRegistry, recentVaults, updateRecentVaultEntry],
   );
 
   const inspectVaultPath = useCallback(async (path: string) => {
@@ -682,6 +688,15 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     let cancelled = false;
 
     const restoreVault = async () => {
+      const normalizedStoredVaultPath = normalizeVaultPath(storedVaultPath);
+      const hasCurrentSystemVault =
+        normalizedStoredVaultPath &&
+        recentVaults.some(
+          (entry) => normalizeVaultPath(entry.path) === normalizedStoredVaultPath,
+        );
+      if (!hasCurrentSystemVault) {
+        return;
+      }
       const results = await loadVault(storedVaultPath, {
         persist: false,
         clearOnFailure: false,
@@ -704,6 +719,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   }, [
     loadVault,
     markRecentVaultMissingByPath,
+    recentVaults,
     settingsLoaded,
     storedVaultPath,
   ]);

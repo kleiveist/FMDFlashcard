@@ -9,8 +9,11 @@ import { describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS,
   DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS,
+  filterRecentVaultsForSystem,
+  mergeRecentVaultsForSystem,
   normalizeSettings,
   type AppSettings,
+  type RecentVaultEntry,
 } from "./useAppSettings";
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -105,6 +108,109 @@ describe("normalizeSettings", () => {
       status: "missing",
       lastError: "Path does not exist.",
     });
+  });
+
+  it("keeps entries with the same path when they belong to different systems", () => {
+    const stored = {
+      recent_vaults: [
+        {
+          path: "/vaults/shared",
+          systemId: "linux-a",
+          last_opened_at: "2025-01-01T00:00:00.000Z",
+        },
+        {
+          path: "/vaults/shared",
+          systemId: "windows-b",
+          last_opened_at: "2025-01-02T00:00:00.000Z",
+        },
+      ],
+    } as unknown as AppSettings;
+    const { settings } = normalizeSettings(stored);
+
+    expect(settings.recentVaults).toHaveLength(2);
+    expect(settings.recentVaults[0]?.systemId).toBe("linux-a");
+    expect(settings.recentVaults[1]?.systemId).toBe("windows-b");
+  });
+
+  it("filters legacy entries without system id out of current system vault list", () => {
+    const entries: RecentVaultEntry[] = [
+      {
+        id: "vault:/legacy",
+        path: "/legacy",
+        systemId: null,
+        lastOpenedAt: "2025-01-01T00:00:00.000Z",
+        status: "available",
+        lastSeenAt: "2025-01-01T00:00:00.000Z",
+        lastError: null,
+      },
+      {
+        id: "vault:linux-a:/local",
+        path: "/local",
+        systemId: "linux-a",
+        lastOpenedAt: "2025-01-02T00:00:00.000Z",
+        status: "available",
+        lastSeenAt: "2025-01-02T00:00:00.000Z",
+        lastError: null,
+      },
+    ];
+
+    const filtered = filterRecentVaultsForSystem(entries, "linux-a");
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]?.path).toBe("/local");
+  });
+
+  it("merges current-system updates while preserving foreign and legacy slices", () => {
+    const allEntries: RecentVaultEntry[] = [
+      {
+        id: "vault:linux-a:/old",
+        path: "/old",
+        systemId: "linux-a",
+        lastOpenedAt: "2025-01-01T00:00:00.000Z",
+        status: "available",
+        lastSeenAt: "2025-01-01T00:00:00.000Z",
+        lastError: null,
+      },
+      {
+        id: "vault:windows-b:/foreign",
+        path: "/foreign",
+        systemId: "windows-b",
+        lastOpenedAt: "2025-01-01T00:00:00.000Z",
+        status: "missing",
+        lastSeenAt: null,
+        lastError: "missing",
+      },
+      {
+        id: "vault:/legacy",
+        path: "/legacy",
+        systemId: null,
+        lastOpenedAt: "2025-01-01T00:00:00.000Z",
+        status: "available",
+        lastSeenAt: "2025-01-01T00:00:00.000Z",
+        lastError: null,
+      },
+    ];
+    const nextLinuxSlice: RecentVaultEntry[] = [
+      {
+        id: "vault:linux-a:/new",
+        path: "/new",
+        systemId: "linux-a",
+        lastOpenedAt: "2025-01-03T00:00:00.000Z",
+        status: "available",
+        lastSeenAt: "2025-01-03T00:00:00.000Z",
+        lastError: null,
+      },
+    ];
+
+    const merged = mergeRecentVaultsForSystem(
+      allEntries,
+      nextLinuxSlice,
+      "linux-a",
+    );
+
+    expect(merged.find((entry) => entry.path === "/new")?.systemId).toBe("linux-a");
+    expect(merged.find((entry) => entry.path === "/old")).toBeUndefined();
+    expect(merged.find((entry) => entry.path === "/foreign")?.systemId).toBe("windows-b");
+    expect(merged.find((entry) => entry.path === "/legacy")?.systemId ?? null).toBeNull();
   });
 
   it("applies defaults for auto-time flags and per-type exam seconds", () => {

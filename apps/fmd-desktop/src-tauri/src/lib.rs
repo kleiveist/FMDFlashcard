@@ -58,6 +58,7 @@ struct KeyboardShortcutSettings {
 struct RecentVaultEntry {
     id: Option<String>,
     path: String,
+    system_id: Option<String>,
     last_opened_at: Option<String>,
     status: Option<String>,
     last_seen_at: Option<String>,
@@ -1280,6 +1281,41 @@ fn get_os_username() -> Result<String, String> {
 }
 
 #[tauri::command]
+fn get_system_identity() -> Result<String, String> {
+    let os = std::env::consts::OS.to_lowercase();
+    let arch = std::env::consts::ARCH.to_lowercase();
+    let host = std::env::var("COMPUTERNAME")
+        .or_else(|_| std::env::var("HOSTNAME"))
+        .unwrap_or_default()
+        .trim()
+        .to_lowercase();
+    let user = std::env::var("USER")
+        .or_else(|_| std::env::var("LOGNAME"))
+        .or_else(|_| std::env::var("USERNAME"))
+        .unwrap_or_default()
+        .trim()
+        .to_lowercase();
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .unwrap_or_default()
+        .trim()
+        .to_lowercase();
+
+    let mut parts = vec![format!("os={os}"), format!("arch={arch}")];
+    if !host.is_empty() {
+        parts.push(format!("host={host}"));
+    }
+    if !user.is_empty() {
+        parts.push(format!("user={user}"));
+    }
+    if !home.is_empty() {
+        parts.push(format!("home={home}"));
+    }
+
+    Ok(parts.join("|"))
+}
+
+#[tauri::command]
 fn create_markdown_file(
     vault_path: String,
     relative_path: String,
@@ -1438,6 +1474,7 @@ pub fn run() {
             move_directory,
             rename_directory,
             get_os_username,
+            get_system_identity,
             create_markdown_file,
             create_directory,
             delete_directory

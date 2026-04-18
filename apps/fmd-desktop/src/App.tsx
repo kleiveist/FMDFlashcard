@@ -242,7 +242,9 @@ const AppContent = () => {
   const profileSetupVaultSelection = useMemo(
     () => ({
       activeVaultPath: vault.vaultPath,
-      recentVaultPaths: settings.recentVaults.map((entry) => entry.path),
+      recentVaultPaths: (
+        settings.currentSystemRecentVaults ?? settings.recentVaults
+      ).map((entry) => entry.path),
       onSelectVault: actions.handleSwitchVault,
       onPickVault: actions.handlePickVault,
       isVaultBusy: vault.listState === "loading",
@@ -250,6 +252,7 @@ const AppContent = () => {
     [
       actions.handlePickVault,
       actions.handleSwitchVault,
+      settings.currentSystemRecentVaults,
       settings.recentVaults,
       vault.listState,
       vault.vaultPath,

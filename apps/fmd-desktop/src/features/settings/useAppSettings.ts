@@ -22,7 +22,7 @@
  * - Hook darf nur innerhalb von React-Komponenten genutzt werden.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { DEFAULT_ACCENT, isValidHex, normalizeHex } from "../../lib/color";
 import {
@@ -112,6 +112,7 @@ export type VaultRegistryStatus = "available" | "missing";
 export type RecentVaultEntry = {
   id: string;
   path: string;
+  systemId?: string | null;
   lastOpenedAt: string;
   status: VaultRegistryStatus;
   lastSeenAt: string | null;
@@ -478,13 +479,35 @@ const DEFAULT_EXAM_AI_EVALUATION: ExamAiEvaluation = {
 const DEFAULT_EXAM_GRADE_SCALE: ExamGradeScale = "standard-1-6";
 const DEFAULT_INPUT_DEBUG_ENABLED = false;
 const DEFAULT_INPUT_DEBUG_REDACT_CONTENT = true;
+const LEGACY_RECENT_VAULT_SYSTEM_KEY = "__legacy__";
 
 const normalizeVaultRegistryStatus = (value: unknown): VaultRegistryStatus =>
   value === "missing" ? "missing" : "available";
 
-export const buildRecentVaultId = (path: string) => {
+export const normalizeRecentVaultSystemId = (value: unknown) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+};
+
+const resolveRecentVaultSystemKey = (systemId: unknown) =>
+  normalizeRecentVaultSystemId(systemId) ?? LEGACY_RECENT_VAULT_SYSTEM_KEY;
+
+const buildRecentVaultPathSystemKey = (path: string, systemId: unknown) => {
+  const normalizedPath = normalizeVaultPath(path.trim());
+  if (!normalizedPath) {
+    return null;
+  }
+  return `${resolveRecentVaultSystemKey(systemId)}::${normalizedPath}`;
+};
+
+export const buildRecentVaultId = (path: string, systemId?: string | null) => {
   const normalized = normalizeVaultPath(path.trim());
-  return normalized ? `vault:${normalized}` : `vault:${path.trim()}`;
+  const scope = normalizeRecentVaultSystemId(systemId);
+  const id = normalized ? normalized : path.trim();
+  return scope ? `vault:${scope}:${id}` : `vault:${id}`;
 };
 
 type RecentVaultEntryOverrides = Partial<RecentVaultEntry> & {
@@ -496,6 +519,7 @@ export const createRecentVaultEntry = (
   overrides: RecentVaultEntryOverrides = {},
 ): RecentVaultEntry => {
   const trimmedPath = path.trim();
+  const systemId = normalizeRecentVaultSystemId(overrides.systemId);
   const now = new Date().toISOString();
   const status = normalizeVaultRegistryStatus(overrides.status);
   const lastOpenedAt =
@@ -522,8 +546,9 @@ export const createRecentVaultEntry = (
     id:
       typeof overrides.id === "string" && overrides.id.trim()
         ? overrides.id
-        : buildRecentVaultId(trimmedPath),
+        : buildRecentVaultId(trimmedPath, systemId),
     path: trimmedPath,
+    systemId,
     lastOpenedAt,
     status,
     lastSeenAt,
@@ -825,8 +850,7 @@ const normalizeRecentVaults = (value: unknown): RecentVaultEntry[] => {
     return [];
   }
   const entries: RecentVaultEntry[] = [];
-  const seenIds = new Set<string>();
-  const seenPaths = new Set<string>();
+  const seenPathSystemKeys = new Set<string>();
   value.forEach((entry) => {
     if (!entry || typeof entry !== "object") {
       return;
@@ -843,6 +867,8 @@ const normalizeRecentVaults = (value: unknown): RecentVaultEntry[] => {
       last_error?: unknown;
       lastOpenedAt?: unknown;
       last_opened_at?: unknown;
+      systemId?: unknown;
+      system_id?: unknown;
     };
     if (typeof candidate.path !== "string") {
       return;
@@ -851,23 +877,22 @@ const normalizeRecentVaults = (value: unknown): RecentVaultEntry[] => {
     if (!trimmedPath) {
       return;
     }
-    const normalized = normalizeVaultPath(trimmedPath);
-    if (!normalized || seenPaths.has(normalized)) {
+    const systemId = normalizeRecentVaultSystemId(
+      candidate.systemId ?? candidate.system_id,
+    );
+    const pathSystemKey = buildRecentVaultPathSystemKey(trimmedPath, systemId);
+    if (!pathSystemKey || seenPathSystemKeys.has(pathSystemKey)) {
       return;
     }
+    seenPathSystemKeys.add(pathSystemKey);
     const rawId =
       typeof candidate.id === "string" && candidate.id.trim()
         ? candidate.id
-        : typeof candidate.vaultId === "string" && candidate.vaultId.trim()
+      : typeof candidate.vaultId === "string" && candidate.vaultId.trim()
           ? candidate.vaultId
-          : typeof candidate.vault_id === "string" && candidate.vault_id.trim()
+        : typeof candidate.vault_id === "string" && candidate.vault_id.trim()
             ? candidate.vault_id
-            : buildRecentVaultId(trimmedPath);
-    if (seenIds.has(rawId)) {
-      return;
-    }
-    seenIds.add(rawId);
-    seenPaths.add(normalized);
+            : buildRecentVaultId(trimmedPath, systemId);
     const lastOpenedAt =
       typeof candidate.lastOpenedAt === "string"
         ? candidate.lastOpenedAt
@@ -892,6 +917,7 @@ const normalizeRecentVaults = (value: unknown): RecentVaultEntry[] => {
     entries.push(
       createRecentVaultEntry(trimmedPath, {
         id: rawId,
+        systemId,
         lastOpenedAt,
         status,
         lastSeenAt,
@@ -899,7 +925,65 @@ const normalizeRecentVaults = (value: unknown): RecentVaultEntry[] => {
       }),
     );
   });
-  return entries.slice(0, MAX_RECENT_VAULTS);
+  return entries;
+};
+
+export const filterRecentVaultsForSystem = (
+  entries: RecentVaultEntry[],
+  systemId: string | null,
+) => {
+  const normalizedSystemId = normalizeRecentVaultSystemId(systemId);
+  if (!normalizedSystemId) {
+    return [];
+  }
+  return entries.filter(
+    (entry) => normalizeRecentVaultSystemId(entry.systemId) === normalizedSystemId,
+  );
+};
+
+export const mergeRecentVaultsForSystem = (
+  allEntries: RecentVaultEntry[],
+  nextSystemEntries: RecentVaultEntry[],
+  systemId: string | null,
+): RecentVaultEntry[] => {
+  const normalizedSystemId = normalizeRecentVaultSystemId(systemId);
+  if (!normalizedSystemId) {
+    return allEntries;
+  }
+  const preserved = allEntries.filter(
+    (entry) => normalizeRecentVaultSystemId(entry.systemId) !== normalizedSystemId,
+  );
+  const seenPathSystemKeys = new Set<string>();
+  const deduped = nextSystemEntries.reduce<RecentVaultEntry[]>((acc, entry) => {
+    const pathSystemKey = buildRecentVaultPathSystemKey(entry.path, normalizedSystemId);
+    if (!pathSystemKey) {
+      return acc;
+    }
+    if (seenPathSystemKeys.has(pathSystemKey)) {
+      return acc;
+    }
+    seenPathSystemKeys.add(pathSystemKey);
+    acc.push(
+      createRecentVaultEntry(entry.path, {
+        ...entry,
+        systemId: normalizedSystemId,
+        id:
+          typeof entry.id === "string" && entry.id.trim()
+            ? entry.id
+            : buildRecentVaultId(entry.path, normalizedSystemId),
+      }),
+    );
+    return acc;
+  }, []);
+  return [...deduped.slice(0, MAX_RECENT_VAULTS), ...preserved];
+};
+
+const buildFallbackSystemIdentity = () => {
+  const platform =
+    typeof navigator !== "undefined" && navigator.platform
+      ? navigator.platform
+      : "unknown-platform";
+  return `fallback:${platform.toLowerCase()}`;
 };
 
 const normalizeMarkdownAccentHex = (value: unknown) => {
@@ -1494,6 +1578,9 @@ export const useAppSettings = () => {
   const [examEditorShowMoveButtons, setExamEditorShowMoveButtonsState] =
     useState(DEFAULT_EXAM_EDITOR_SHOW_MOVE_BUTTONS);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [currentSystemId, setCurrentSystemId] = useState<string>(
+    buildFallbackSystemIdentity,
+  );
   const [userVaultProfilePath, setUserVaultProfilePath] = useState<string | null>(
     null,
   );
@@ -1504,6 +1591,10 @@ export const useAppSettings = () => {
   const [activeNotePath, setActiveNotePath] = useState<string | null>(null);
   const [vaultPath, setVaultPath] = useState<string | null>(null);
   const [recentVaults, setRecentVaults] = useState<RecentVaultEntry[]>([]);
+  const currentSystemRecentVaults = useMemo(
+    () => filterRecentVaultsForSystem(recentVaults, currentSystemId),
+    [currentSystemId, recentVaults],
+  );
   const [userVaultMode, setUserVaultModeState] = useState<UserVaultMode>(
     DEFAULT_USER_VAULT_MODE,
   );
@@ -2268,10 +2359,17 @@ export const useAppSettings = () => {
       if (!settingsLoaded) {
         return false;
       }
+      const nextRecentVaults = "recentVaults" in updates
+        ? mergeRecentVaultsForSystem(
+          recentVaults,
+          updates.recentVaults ?? [],
+          currentSystemId,
+        )
+        : recentVaults;
       const nextSettings = {
         activeNotePath: updates.activeNotePath ?? activeNotePath,
         vaultPath: updates.vaultPath ?? vaultPath,
-        recentVaults: updates.recentVaults ?? recentVaults,
+        recentVaults: nextRecentVaults,
         userVaultMode: updates.userVaultMode ?? userVaultMode,
         userVaultCustomPath: updates.userVaultCustomPath ?? userVaultCustomPath,
         userVaultLastPath: updates.userVaultLastPath ?? userVaultLastPath,
@@ -2452,6 +2550,7 @@ export const useAppSettings = () => {
       showHiddenFolders,
       showEmptyFolders,
       settingsLoaded,
+      currentSystemId,
       solutionRevealEnabled,
       examShowTimeline,
       examHelpEnabled,
@@ -2580,19 +2679,34 @@ export const useAppSettings = () => {
   useEffect(() => {
     let cancelled = false;
 
+    const resolveSystemIdentity = async () => {
+      try {
+        const value = await invoke<string>("get_system_identity");
+        return normalizeRecentVaultSystemId(value) ?? buildFallbackSystemIdentity();
+      } catch {
+        return buildFallbackSystemIdentity();
+      }
+    };
+
     const restoreSettings = async () => {
+      const systemIdentityPromise = resolveSystemIdentity();
       try {
         const settings = await invoke<AppSettings>("load_app_settings");
+        const nextSystemId = await systemIdentityPromise;
         if (cancelled) {
           return;
         }
+        setCurrentSystemId(nextSystemId);
         applyStoredSettings(settings);
         setSettingsLoaded(true);
       } catch (error) {
-        if (!cancelled) {
-          console.error("Failed to load settings", error);
-          setSettingsLoaded(true);
+        const nextSystemId = await systemIdentityPromise;
+        if (cancelled) {
+          return;
         }
+        setCurrentSystemId(nextSystemId);
+        console.error("Failed to load settings", error);
+        setSettingsLoaded(true);
       }
     };
 
@@ -2882,6 +2996,8 @@ export const useAppSettings = () => {
     userVaultSelectedCustomPath,
     vaultPath,
     recentVaults,
+    currentSystemId,
+    currentSystemRecentVaults,
     rightToolbarCollapsed,
   };
 };

@@ -130,6 +130,7 @@ import {
   FrontmatterPropertyIconView,
 } from "../features/preview/frontmatter-property-icons";
 import { normalizeRelativePath } from "../lib/path";
+import { isEditableTarget } from "../lib/shortcuts/bindings";
 import { compareNaturalPath } from "../lib/naturalSort";
 import {
   normalizeMarkdownPipeTables,
@@ -9721,6 +9722,17 @@ export const PreviewPanel = ({
     };
   }, [closeLegacyMarkdownLinkPicker, legacyMarkdownLinkPickerState]);
 
+  const shouldKeepExternalEditableFocus = useCallback(() => {
+    if (typeof document === "undefined") {
+      return false;
+    }
+    const activeElement = document.activeElement;
+    if (!isEditableTarget(activeElement)) {
+      return false;
+    }
+    return activeElement !== editorRef.current;
+  }, []);
+
   useLayoutEffect(() => {
     if (isEditing) {
       if (isCodeMode) {
@@ -9744,6 +9756,9 @@ export const PreviewPanel = ({
     const desiredIndex = editCaretIndex;
     const nextIndex = Math.max(0, Math.min(desiredIndex, editor.value.length));
     const handle = window.requestAnimationFrame(() => {
+      if (shouldKeepExternalEditableFocus()) {
+        return;
+      }
       editor.focus();
       editor.setSelectionRange(nextIndex, nextIndex);
       lastCaretIndexRef.current = nextIndex;
@@ -9752,7 +9767,7 @@ export const PreviewPanel = ({
       onEditCaretApplied();
     });
     return () => window.cancelAnimationFrame(handle);
-  }, [editCaretIndex, isCodeMode, isEditing, onEditCaretApplied]);
+  }, [editCaretIndex, isCodeMode, isEditing, onEditCaretApplied, shouldKeepExternalEditableFocus]);
 
   useEffect(() => {
     if (!isCodeMode || !resolvedEditEnabled || !isEditing || !editorRef.current) {
@@ -9766,6 +9781,9 @@ export const PreviewPanel = ({
       ? Math.max(0, Math.min(lastCaretIndexRef.current, editor.value.length))
       : editor.value.length;
     const handle = window.requestAnimationFrame(() => {
+      if (shouldKeepExternalEditableFocus()) {
+        return;
+      }
       try {
         editor.focus({ preventScroll: true });
       } catch {
@@ -9775,7 +9793,7 @@ export const PreviewPanel = ({
       lastCaretIndexRef.current = nextIndex;
     });
     return () => window.cancelAnimationFrame(handle);
-  }, [editCaretIndex, isCodeMode, isEditing, resolvedEditEnabled]);
+  }, [editCaretIndex, isCodeMode, isEditing, resolvedEditEnabled, shouldKeepExternalEditableFocus]);
 
   useEffect(() => {
     if (!isEditing || isCodeMode || !markdownEditorRef.current) {
@@ -10245,6 +10263,14 @@ export const PreviewPanel = ({
       }
       if (suppressRawEditorBlurExitRef.current) {
         suppressRawEditorBlurExitRef.current = false;
+        return;
+      }
+      const nextFocus = event.relatedTarget;
+      if (
+        nextFocus instanceof HTMLElement &&
+        isEditableTarget(nextFocus) &&
+        nextFocus !== event.currentTarget
+      ) {
         return;
       }
       onEditExit();
@@ -11480,6 +11506,9 @@ export const PreviewPanel = ({
       if (isEditing) {
         return;
       }
+      if (shouldKeepExternalEditableFocus()) {
+        return;
+      }
       const fallbackCaretIndex = typeof lastCaretIndexRef.current === "number"
         ? Math.max(0, Math.min(lastCaretIndexRef.current, preview.length))
         : preview.length;
@@ -11499,6 +11528,7 @@ export const PreviewPanel = ({
     onEditExit,
     onEditStart,
     preview.length,
+    shouldKeepExternalEditableFocus,
     shouldAutoManageRawCodeEditSession,
   ]);
 

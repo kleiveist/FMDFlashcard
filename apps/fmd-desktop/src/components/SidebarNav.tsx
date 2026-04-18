@@ -109,6 +109,7 @@ export const SidebarNav = ({
   const [isVaultMenuOpen, setIsVaultMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [vaultMenuMaxHeight, setVaultMenuMaxHeight] = useState<number | null>(null);
+  const [vaultMenuMinHeight, setVaultMenuMinHeight] = useState<number | null>(null);
   const vaultLayoutRef = useRef<HTMLDivElement | null>(null);
   const vaultStatusRef = useRef<HTMLDivElement | null>(null);
   const vaultMenuRef = useRef<HTMLDivElement | null>(null);
@@ -138,7 +139,8 @@ export const SidebarNav = ({
     () => normalizeVaultPath(vault.vaultPath ?? ""),
     [vault.vaultPath],
   );
-  const recentVaults = settings.recentVaults ?? [];
+  const recentVaults =
+    settings.currentSystemRecentVaults ?? settings.recentVaults ?? [];
   const recentVaultPaths = useMemo(
     () => recentVaults.map((entry) => entry.path),
     [recentVaults],
@@ -213,7 +215,8 @@ export const SidebarNav = ({
   const updateVaultMenuMaxHeight = useCallback(() => {
     const layoutElement = vaultLayoutRef.current;
     const statusElement = vaultStatusRef.current;
-    if (!layoutElement || !statusElement) {
+    const menuElement = vaultMenuRef.current;
+    if (!layoutElement || !statusElement || !menuElement) {
       return;
     }
     const layoutRect = layoutElement.getBoundingClientRect();
@@ -221,7 +224,29 @@ export const SidebarNav = ({
     const gap = 8;
     const safeOffset = 4;
     const available = statusRect.top - layoutRect.top - gap - safeOffset;
-    setVaultMenuMaxHeight(Math.max(0, Math.floor(available)));
+    const maxHeight = Math.max(0, Math.floor(available));
+    const footerElement = menuElement.querySelector<HTMLElement>(".vault-status-menu-footer");
+    const rowElement = menuElement.querySelector<HTMLElement>(".vault-status-menu-row");
+    const emptyElement = menuElement.querySelector<HTMLElement>(".vault-status-menu-empty");
+    const menuStyle = window.getComputedStyle(menuElement);
+    const menuGap = Number.parseFloat(menuStyle.rowGap || menuStyle.gap || "0") || 0;
+    const menuPaddingTop = Number.parseFloat(menuStyle.paddingTop || "0") || 0;
+    const menuPaddingBottom = Number.parseFloat(menuStyle.paddingBottom || "0") || 0;
+    const rowHeight =
+      rowElement?.getBoundingClientRect().height ??
+      emptyElement?.getBoundingClientRect().height ??
+      36;
+    const footerHeight = footerElement?.getBoundingClientRect().height ?? 48;
+    const rowCount = menuElement.querySelectorAll(".vault-status-menu-row").length;
+    const minVisibleRows = Math.max(1, Math.min(3, rowCount || 1));
+    const minScrollHeight =
+      rowHeight * minVisibleRows + menuGap * Math.max(0, minVisibleRows - 1);
+    const minimumMenuHeight = Math.ceil(
+      menuPaddingTop + menuPaddingBottom + minScrollHeight + menuGap + footerHeight,
+    );
+
+    setVaultMenuMaxHeight(maxHeight);
+    setVaultMenuMinHeight(Math.min(maxHeight, minimumMenuHeight));
   }, []);
 
   useEffect(() => {
@@ -247,6 +272,7 @@ export const SidebarNav = ({
   useEffect(() => {
     if (!isVaultMenuOpen) {
       setVaultMenuMaxHeight(null);
+      setVaultMenuMinHeight(null);
       return;
     }
     updateVaultMenuMaxHeight();
@@ -254,7 +280,7 @@ export const SidebarNav = ({
     return () => {
       window.removeEventListener("resize", updateVaultMenuMaxHeight);
     };
-  }, [isVaultMenuOpen, updateVaultMenuMaxHeight]);
+  }, [isVaultMenuOpen, recentVaults.length, updateVaultMenuMaxHeight]);
 
   useEffect(() => {
     if (!isVaultMenuOpen) {
@@ -617,7 +643,10 @@ export const SidebarNav = ({
             aria-label="Recent vaults"
             style={
               vaultMenuMaxHeight !== null
-                ? ({ "--vault-menu-max-height": `${vaultMenuMaxHeight}px` } as CSSProperties)
+                ? ({
+                  "--vault-menu-max-height": `${vaultMenuMaxHeight}px`,
+                  "--vault-menu-min-height": `${vaultMenuMinHeight ?? 0}px`,
+                } as CSSProperties)
                 : undefined
             }
           >
@@ -633,7 +662,7 @@ export const SidebarNav = ({
                   const isActive =
                     normalizeVaultPath(entry.path) === activeVaultKey;
                   return (
-                    <div className="vault-status-menu-row" key={entry.path}>
+                    <div className="vault-status-menu-row" key={entry.id}>
                       <button
                         type="button"
                         className="vault-status-menu-item"

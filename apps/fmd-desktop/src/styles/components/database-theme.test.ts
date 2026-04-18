@@ -93,12 +93,15 @@ describe("database theme contracts", () => {
     expect(previewCss).not.toContain(".database-project-unplaced-hint");
   });
 
-  it("keeps project/gantt scroll ownership on outer host and exposes sidebar toggle controls", () => {
+  it("keeps gantt host passive but constrains project scrolling to the local host", () => {
     expect(previewCss).toMatch(
       /\.database-gantt-grid-scroll\s*\{[\s\S]*?overflow:\s*visible;[\s\S]*?\}/,
     );
     expect(previewCss).toMatch(
-      /\.database-project-grid-scroll\s*\{[\s\S]*?overflow:\s*visible;[\s\S]*?\}/,
+      /\.database-project-view\s*\{[\s\S]*?overflow:\s*hidden;[\s\S]*?\}/,
+    );
+    expect(previewCss).toMatch(
+      /\.database-project-grid-scroll\s*\{[\s\S]*?overflow-x:\s*auto;[\s\S]*?overflow-y:\s*auto;[\s\S]*?\}/,
     );
     expect(previewCss).toMatch(
       /\.database-gantt-mobile-controls\s*\{[\s\S]*?display:\s*flex;[\s\S]*?\}/,

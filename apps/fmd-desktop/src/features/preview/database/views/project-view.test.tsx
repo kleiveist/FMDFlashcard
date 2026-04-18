@@ -368,11 +368,19 @@ describe("DatabaseProjectView", () => {
       }),
     );
 
-    Object.defineProperty(container, "scrollWidth", { configurable: true, value: 1200 });
-    Object.defineProperty(container, "clientWidth", { configurable: true, value: 640 });
-    container.style.overflowX = "auto";
+    const scrollHost = container.querySelector<HTMLElement>(".database-project-grid-scroll");
+    expect(scrollHost).toBeTruthy();
+    if (!scrollHost) {
+      cleanup();
+      throw new Error("Expected project grid scroll host to be rendered.");
+    }
+
+    Object.defineProperty(scrollHost, "scrollWidth", { configurable: true, value: 1200 });
+    Object.defineProperty(scrollHost, "clientWidth", { configurable: true, value: 640 });
+    scrollHost.style.overflowX = "auto";
+    scrollHost.style.overflowY = "auto";
     const scrollBy = vi.fn();
-    Object.defineProperty(container, "scrollBy", { configurable: true, value: scrollBy });
+    Object.defineProperty(scrollHost, "scrollBy", { configurable: true, value: scrollBy });
 
     const root = container.querySelector<HTMLElement>(".database-project-view");
     root?.focus();
