@@ -4,7 +4,8 @@
  * Kanban visualization for grouped database records.
  */
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { type MouseEvent as ReactMouseEvent } from "react";
 import {
   type DatabaseAttributeMeta,
   type DatabaseFieldType,
@@ -211,7 +212,11 @@ export const DatabaseKanbanView = ({
   onOpenRecord,
   onOpenExamFromRecord,
 }: DatabaseKanbanViewProps) => {
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const pendingIds = useMemo(() => new Set(pendingRecordIds), [pendingRecordIds]);
+  const [touchSelectedRecordId, setTouchSelectedRecordId] = useState<string | null>(null);
+  const [touchSourceGroupKey, setTouchSourceGroupKey] = useState<string | null>(null);
+  const [lastSelectedRecordIdByGroup, setLastSelectedRecordIdByGroup] = useState<Record<string, string>>({});
   const recordsById = useMemo(
     () => new Map(records.map((record) => [record.fileId, record])),
     [records],
@@ -241,6 +246,158 @@ export const DatabaseKanbanView = ({
       .sort((left, right) =>
         left.label.localeCompare(right.label, undefined, { sensitivity: "base" }));
   }, [groupAttribute, monitoringProfiles, orderByGroup, records]);
+  const clearTouchSelection = () => {
+    setTouchSelectedRecordId(null);
+    setTouchSourceGroupKey(null);
+  };
+
+  const selectTouchSourceRecord = (record: DatabaseRecord, groupKey: string) => {
+    if (pendingIds.has(record.fileId)) {
+      return;
+    }
+    if (touchSelectedRecordId === record.fileId && touchSourceGroupKey === groupKey) {
+      clearTouchSelection();
+      return;
+    }
+    setTouchSelectedRecordId(record.fileId);
+    setTouchSourceGroupKey(groupKey);
+    setLastSelectedRecordIdByGroup((previous) => ({
+      ...previous,
+      [groupKey]: record.fileId,
+    }));
+  };
+
+  const moveTouchSelectionToGroup = (targetGroupKey: string) => {
+    if (!groupAttribute || !touchSelectedRecordId) {
+      return;
+    }
+    const record = recordsById.get(touchSelectedRecordId);
+    if (!record || pendingIds.has(record.fileId)) {
+      clearTouchSelection();
+      return;
+    }
+    const previousGroupValue = stringifyRawGroupValue(
+      getRecordValueByField(record, groupAttribute.key),
+    );
+    if (previousGroupValue === targetGroupKey) {
+      clearTouchSelection();
+      return;
+    }
+    onMoveRecord(record, targetGroupKey === EMPTY_GROUP_LABEL ? "" : targetGroupKey, {
+      previousGroupKey: previousGroupValue,
+      nextGroupKey: targetGroupKey,
+    });
+    clearTouchSelection();
+  };
+
+  const resolveBodySelectionCandidate = (groupKey: string, groupRecords: DatabaseRecord[]) => {
+    const preferredRecordId = lastSelectedRecordIdByGroup[groupKey];
+    if (preferredRecordId) {
+      const preferred = groupRecords.find((entry) => entry.fileId === preferredRecordId);
+      if (preferred && !pendingIds.has(preferred.fileId)) {
+        return preferred;
+      }
+    }
+    return groupRecords.find((entry) => !pendingIds.has(entry.fileId)) ?? null;
+  };
+
+  const handleColumnTap = (
+    groupKey: string,
+    groupRecords: DatabaseRecord[],
+  ) => {
+    if (touchSelectedRecordId) {
+      moveTouchSelectionToGroup(groupKey);
+      return;
+    }
+    const candidate = resolveBodySelectionCandidate(groupKey, groupRecords);
+    if (!candidate) {
+      return;
+    }
+    selectTouchSourceRecord(candidate, groupKey);
+  };
+
+  const handleCardTap = (
+    event: ReactMouseEvent<HTMLElement>,
+    groupKey: string,
+    record: DatabaseRecord,
+  ) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("[data-md-block-control='true']")) {
+      return;
+    }
+    event.stopPropagation();
+    if (touchSelectedRecordId && touchSourceGroupKey && touchSourceGroupKey !== groupKey) {
+      moveTouchSelectionToGroup(groupKey);
+      return;
+    }
+    selectTouchSourceRecord(record, groupKey);
+  };
+
+  const handleBodyTap = (
+    event: ReactMouseEvent<HTMLDivElement>,
+    groupKey: string,
+    groupRecords: DatabaseRecord[],
+  ) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("[data-md-block-control='true']")) {
+      return;
+    }
+    event.stopPropagation();
+    handleColumnTap(groupKey, groupRecords);
+  };
+
+  useEffect(() => {
+    if (!groupAttribute || !touchSelectedRecordId) {
+      return;
+    }
+    const selectedRecord = recordsById.get(touchSelectedRecordId);
+    if (!selectedRecord || pendingIds.has(selectedRecord.fileId)) {
+      clearTouchSelection();
+      return;
+    }
+    const nextGroupKey = stringifyRawGroupValue(
+      getRecordValueByField(selectedRecord, groupAttribute.key),
+    );
+    if (touchSourceGroupKey !== nextGroupKey) {
+      setTouchSourceGroupKey(nextGroupKey);
+    }
+  }, [
+    groupAttribute,
+    pendingIds,
+    recordsById,
+    touchSelectedRecordId,
+    touchSourceGroupKey,
+  ]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") {
+        return;
+      }
+      clearTouchSelection();
+    };
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+      const hostDatabaseBlock = rootRef.current?.closest(".database-block");
+      const targetDatabaseBlock = target.closest(".database-block");
+      if (hostDatabaseBlock && targetDatabaseBlock === hostDatabaseBlock) {
+        return;
+      }
+      if (!hostDatabaseBlock && rootRef.current?.contains(target)) {
+        return;
+      }
+      clearTouchSelection();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, []);
 
   if (!groupAttribute || !groupAttribute.viewCompatibility.supportsKanbanGrouping) {
     return (
@@ -251,11 +408,22 @@ export const DatabaseKanbanView = ({
   }
 
   return (
-    <div className="database-kanban-view">
+    <div className="database-kanban-view" ref={rootRef}>
       {grouped.map((group) => (
         <section
           key={group.key}
-          className="database-kanban-column"
+          className={`database-kanban-column${
+            touchSelectedRecordId && touchSourceGroupKey === group.key
+              ? " is-touch-source"
+              : ""
+          }`}
+          onClick={(event) => {
+            const target = event.target as HTMLElement | null;
+            if (target?.closest("[data-md-block-control='true']")) {
+              return;
+            }
+            handleColumnTap(group.key, group.records);
+          }}
           onDragOver={(event) => {
             event.preventDefault();
             setDropEffectSafe(event, "move");
@@ -281,6 +449,7 @@ export const DatabaseKanbanView = ({
               endInternalDrag(DRAG_CHANNELS.DATABASE_RECORD);
               return;
             }
+            clearTouchSelection();
             onMoveRecord(record, group.key === EMPTY_GROUP_LABEL ? "" : group.key, {
               previousGroupKey: previousGroupValue,
               nextGroupKey: group.key,
@@ -292,7 +461,14 @@ export const DatabaseKanbanView = ({
             <h6>{group.label}</h6>
             <span>{group.records.length}</span>
           </header>
-          <div className="database-kanban-column-body">
+          <div
+            className={`database-kanban-column-body${
+              touchSelectedRecordId && touchSourceGroupKey === group.key
+                ? " is-touch-source"
+                : ""
+            }`}
+            onClick={(event) => handleBodyTap(event, group.key, group.records)}
+          >
             {group.records.map((record, index) => {
               const coverSource = showCover ? resolveCoverSource(record, attributes) : null;
               const metaRows = visibleProperties
@@ -344,9 +520,12 @@ export const DatabaseKanbanView = ({
                 <article
                   key={record.fileId}
                   className={`database-kanban-card${pendingIds.has(record.fileId) ? " is-pending" : ""}${
+                    touchSelectedRecordId === record.fileId ? " is-touch-selected" : ""
+                  }${
                     coverSource ? " has-cover" : ""
                   }`}
                   draggable={!pendingIds.has(record.fileId)}
+                  onClick={(event) => handleCardTap(event, group.key, record)}
                   onDragStart={(event) => {
                     startInternalDrag(event, {
                       channel: DRAG_CHANNELS.DATABASE_RECORD,

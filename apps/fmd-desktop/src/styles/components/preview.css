@@ -7297,6 +7297,11 @@ textarea.preview-editor {
   padding: 8px;
 }
 
+.database-kanban-column.is-touch-source {
+  border-color: var(--db-control-active-border);
+  background: color-mix(in srgb, var(--db-control-active-bg) 45%, var(--db-surface-raised));
+}
+
 .database-kanban-column-header {
   display: flex;
   align-items: center;
@@ -7317,6 +7322,17 @@ textarea.preview-editor {
 .database-kanban-column-body {
   display: grid;
   gap: 6px;
+  flex: 1 1 auto;
+  min-block-size: 76px;
+  align-content: start;
+  border-radius: calc(var(--db-radius-control) - 2px);
+  padding: 2px;
+}
+
+.database-kanban-column-body.is-touch-source {
+  outline: 2px solid var(--db-accent-focus);
+  outline-offset: 1px;
+  background: color-mix(in srgb, var(--db-control-active-bg) 30%, transparent);
 }
 
 .database-kanban-card {
@@ -7326,6 +7342,11 @@ textarea.preview-editor {
   border-radius: var(--db-radius-control);
   background: color-mix(in srgb, var(--db-surface-base) 86%, transparent);
   padding: 6px 8px;
+}
+
+.database-kanban-card.is-touch-selected {
+  border-color: var(--db-control-active-border);
+  background: color-mix(in srgb, var(--db-control-active-bg) 50%, var(--db-surface-base));
 }
 
 .database-kanban-card-cover {
@@ -7366,8 +7387,11 @@ textarea.preview-editor {
 }
 
 .database-kanban-card-order-actions .database-block-toolbar-button {
-  min-width: 24px;
-  padding: 2px 6px;
+  inline-size: 24px;
+  min-inline-size: 24px;
+  block-size: 17px;
+  min-block-size: 17px;
+  padding: 0;
   line-height: 1;
 }
 

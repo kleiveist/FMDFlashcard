@@ -167,6 +167,22 @@ const createDragEvent = (type: string, dataTransfer: DataTransfer) => {
   return event;
 };
 
+const clickElement = (target: Element | null) => {
+  act(() => {
+    target?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+};
+
+const findColumnByLabel = (container: HTMLElement, label: string) =>
+  Array.from(container.querySelectorAll<HTMLElement>(".database-kanban-column"))
+    .find((column) => column.textContent?.includes(label));
+
+const findCardByTitle = (container: HTMLElement, title: string) => {
+  const titleButton = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-kanban-card-title"))
+    .find((button) => button.textContent?.trim() === title);
+  return titleButton?.closest(".database-kanban-card") as HTMLElement | null;
+};
+
 describe("DatabaseKanbanView", () => {
   it("groups records by the selected attribute", () => {
     const { container, cleanup } = render(
@@ -287,6 +303,249 @@ describe("DatabaseKanbanView", () => {
       previousGroupKey: "Open",
       nextGroupKey: "Done",
     });
+
+    cleanup();
+  });
+
+  it("marks tapped cards and source columns as active touch selection", () => {
+    const { container, cleanup } = render(
+      createElement(DatabaseKanbanView, {
+        records: [recordA, recordB],
+        groupAttribute,
+        attributes: [groupAttribute],
+        visibleProperties: [],
+        showCover: false,
+        pendingRecordIds: [],
+        onMoveRecord: vi.fn(),
+        onReorderRecordWithinGroup: vi.fn(),
+        onOpenRecord: vi.fn(),
+      }),
+    );
+
+    const sourceCard = findCardByTitle(container, "a");
+    const sourceColumn = findColumnByLabel(container, "Open");
+
+    clickElement(sourceCard);
+
+    expect(sourceCard?.classList.contains("is-touch-selected")).toBe(true);
+    expect(sourceColumn?.classList.contains("is-touch-source")).toBe(true);
+    expect(sourceColumn?.querySelector(".database-kanban-column-body")?.classList.contains("is-touch-source")).toBe(true);
+
+    cleanup();
+  });
+
+  it("uses the first non-pending card when tapping a column body without prior selection", () => {
+    const openRecordZ: DatabaseRecord = {
+      ...recordA,
+      fileId: "z.md",
+      filePath: "/vault/z.md",
+      relativePath: "z.md",
+      fileName: "z.md",
+      systemFields: {
+        Dateiname: "z",
+      },
+      normalizedFields: {
+        status: {
+          raw: "Open",
+        },
+      },
+    };
+
+    const { container, cleanup } = render(
+      createElement(DatabaseKanbanView, {
+        records: [openRecordZ, recordA, recordB],
+        groupAttribute,
+        attributes: [groupAttribute],
+        visibleProperties: [],
+        showCover: false,
+        pendingRecordIds: ["z.md"],
+        onMoveRecord: vi.fn(),
+        onReorderRecordWithinGroup: vi.fn(),
+        onOpenRecord: vi.fn(),
+      }),
+    );
+
+    const openColumn = findColumnByLabel(container, "Open");
+    const openBody = openColumn?.querySelector(".database-kanban-column-body") ?? null;
+
+    clickElement(openBody);
+
+    expect(findCardByTitle(container, "a")?.classList.contains("is-touch-selected")).toBe(true);
+    expect(findCardByTitle(container, "z")?.classList.contains("is-touch-selected")).toBe(false);
+
+    cleanup();
+  });
+
+  it("reuses the last selected card when tapping the same column body again", () => {
+    const openRecordZ: DatabaseRecord = {
+      ...recordA,
+      fileId: "z.md",
+      filePath: "/vault/z.md",
+      relativePath: "z.md",
+      fileName: "z.md",
+      systemFields: {
+        Dateiname: "z",
+      },
+      normalizedFields: {
+        status: {
+          raw: "Open",
+        },
+      },
+    };
+
+    const { container, cleanup } = render(
+      createElement(DatabaseKanbanView, {
+        records: [openRecordZ, recordA, recordB],
+        groupAttribute,
+        attributes: [groupAttribute],
+        visibleProperties: [],
+        showCover: false,
+        pendingRecordIds: [],
+        onMoveRecord: vi.fn(),
+        onReorderRecordWithinGroup: vi.fn(),
+        onOpenRecord: vi.fn(),
+      }),
+    );
+
+    const openColumn = findColumnByLabel(container, "Open");
+    const openBody = openColumn?.querySelector(".database-kanban-column-body") ?? null;
+    const cardA = findCardByTitle(container, "a");
+
+    clickElement(cardA);
+    clickElement(cardA);
+    clickElement(openBody);
+
+    expect(findCardByTitle(container, "a")?.classList.contains("is-touch-selected")).toBe(true);
+    expect(findCardByTitle(container, "z")?.classList.contains("is-touch-selected")).toBe(false);
+
+    cleanup();
+  });
+
+  it("moves selected cards by tapping a different column", () => {
+    const onMoveRecord = vi.fn();
+    const { container, cleanup } = render(
+      createElement(DatabaseKanbanView, {
+        records: [recordA, recordB],
+        groupAttribute,
+        attributes: [groupAttribute],
+        visibleProperties: [],
+        showCover: false,
+        pendingRecordIds: [],
+        onMoveRecord,
+        onReorderRecordWithinGroup: vi.fn(),
+        onOpenRecord: vi.fn(),
+      }),
+    );
+
+    const sourceCard = findCardByTitle(container, "a");
+    const targetColumn = findColumnByLabel(container, "Done");
+
+    clickElement(sourceCard);
+    clickElement(targetColumn ?? null);
+
+    expect(onMoveRecord).toHaveBeenCalledTimes(1);
+    expect(onMoveRecord.mock.calls[0]?.[0]?.fileId).toBe("a.md");
+    expect(onMoveRecord.mock.calls[0]?.[1]).toBe("Done");
+    expect(onMoveRecord.mock.calls[0]?.[2]).toEqual({
+      previousGroupKey: "Open",
+      nextGroupKey: "Done",
+    });
+    expect(container.querySelector(".database-kanban-card.is-touch-selected")).toBeNull();
+
+    cleanup();
+  });
+
+  it("clears touch source selection when tapping the same source again", () => {
+    const { container, cleanup } = render(
+      createElement(DatabaseKanbanView, {
+        records: [recordA, recordB],
+        groupAttribute,
+        attributes: [groupAttribute],
+        visibleProperties: [],
+        showCover: false,
+        pendingRecordIds: [],
+        onMoveRecord: vi.fn(),
+        onReorderRecordWithinGroup: vi.fn(),
+        onOpenRecord: vi.fn(),
+      }),
+    );
+
+    const sourceCard = findCardByTitle(container, "a");
+
+    clickElement(sourceCard);
+    expect(sourceCard?.classList.contains("is-touch-selected")).toBe(true);
+
+    clickElement(sourceCard);
+    expect(sourceCard?.classList.contains("is-touch-selected")).toBe(false);
+    expect(container.querySelector(".database-kanban-column.is-touch-source")).toBeNull();
+
+    cleanup();
+  });
+
+  it("clears touch source selection on Escape and outside pointer down", () => {
+    const { container, cleanup } = render(
+      createElement(DatabaseKanbanView, {
+        records: [recordA, recordB],
+        groupAttribute,
+        attributes: [groupAttribute],
+        visibleProperties: [],
+        showCover: false,
+        pendingRecordIds: [],
+        onMoveRecord: vi.fn(),
+        onReorderRecordWithinGroup: vi.fn(),
+        onOpenRecord: vi.fn(),
+      }),
+    );
+
+    const sourceCard = findCardByTitle(container, "a");
+    clickElement(sourceCard);
+    expect(container.querySelector(".database-kanban-card.is-touch-selected")).toBeTruthy();
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    expect(container.querySelector(".database-kanban-card.is-touch-selected")).toBeNull();
+
+    clickElement(sourceCard);
+    expect(container.querySelector(".database-kanban-card.is-touch-selected")).toBeTruthy();
+
+    const outside = document.createElement("div");
+    document.body.appendChild(outside);
+    act(() => {
+      outside.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    });
+    expect(container.querySelector(".database-kanban-card.is-touch-selected")).toBeNull();
+    outside.remove();
+
+    cleanup();
+  });
+
+  it("keeps title button behavior and does not treat title clicks as touch source selection", () => {
+    const onMoveRecord = vi.fn();
+    const onOpenRecord = vi.fn();
+    const { container, cleanup } = render(
+      createElement(DatabaseKanbanView, {
+        records: [recordA, recordB],
+        groupAttribute,
+        attributes: [groupAttribute],
+        visibleProperties: [],
+        showCover: false,
+        pendingRecordIds: [],
+        onMoveRecord,
+        onReorderRecordWithinGroup: vi.fn(),
+        onOpenRecord,
+      }),
+    );
+
+    const titleButton = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-kanban-card-title"))
+      .find((button) => button.textContent?.trim() === "a");
+
+    clickElement(titleButton ?? null);
+
+    expect(onOpenRecord).toHaveBeenCalledTimes(1);
+    expect(onOpenRecord.mock.calls[0]?.[0]?.fileId).toBe("a.md");
+    expect(onMoveRecord).not.toHaveBeenCalled();
+    expect(container.querySelector(".database-kanban-card.is-touch-selected")).toBeNull();
 
     cleanup();
   });

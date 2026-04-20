@@ -57,6 +57,15 @@ describe("database theme contracts", () => {
     );
   });
 
+  it("defines compact kanban order controls and visible touch selection states", () => {
+    expect(previewCss).toMatch(
+      /\.database-kanban-card-order-actions\s+\.database-block-toolbar-button\s*\{[\s\S]*?inline-size:\s*24px;[\s\S]*?min-inline-size:\s*24px;[\s\S]*?block-size:\s*17px;[\s\S]*?min-block-size:\s*17px;[\s\S]*?\}/,
+    );
+    expect(previewCss).toContain(".database-kanban-column.is-touch-source");
+    expect(previewCss).toContain(".database-kanban-column-body.is-touch-source");
+    expect(previewCss).toContain(".database-kanban-card.is-touch-selected");
+  });
+
   it("keeps non-edge dropdown and panel backgrounds opaque", () => {
     expect(previewCss).toContain("--db-panel-bg: var(--panel);");
     expect(previewCss).toMatch(
