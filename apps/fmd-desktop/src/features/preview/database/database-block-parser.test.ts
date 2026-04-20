@@ -566,13 +566,9 @@ describe("database-block-parser", () => {
     if (firstNested && "rules" in firstNested && secondNested && "rules" in secondNested) {
       expect(firstNested.id).toBe(secondNested.id);
       expect(
-        firstNested.rules
-          .filter((entry): entry is { id: string } => "id" in entry)
-          .map((entry) => entry.id),
+        firstNested.rules.map((entry) => entry.id),
       ).toEqual(
-        secondNested.rules
-          .filter((entry): entry is { id: string } => "id" in entry)
-          .map((entry) => entry.id),
+        secondNested.rules.map((entry) => entry.id),
       );
     }
   });
