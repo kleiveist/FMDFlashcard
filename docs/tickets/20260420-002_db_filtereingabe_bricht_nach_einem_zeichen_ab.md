@@ -3,29 +3,29 @@
 <!-- AUTO-GENERATED:backlink END -->
 # Ticket 20260420-002
 
-- Ticket-ID: `20260420-002`
-- Original-Referenz: `DB-002`
-- Bereich: Datenbank / Filtereingaben
-- Priorität: Hoch
-- Titel: Texteingabe bricht nach einem Buchstaben ab
+- Ticket ID: `20260420-002`
+- Original Reference: `DB-002`
+- Area: Database / Filter Inputs
+- Priority: High
+- Title: Text input stops after one character
 
-## Beschreibung
-Beim Schreiben in Eingabefelder innerhalb der Filterbedingungen kann nur ein einzelner Buchstabe eingegeben werden. Danach endet die Eingabe oder der Fokus geht verloren.
+## Description
+When typing in input fields inside filter conditions, only one character can be entered. After that, input stops or focus is lost.
 
-## Reproduktion
-1. Datenbankansicht öffnen.
-2. Filterfeld öffnen.
-3. Ein Texteingabefeld innerhalb einer Filterbedingung aktivieren.
-4. Mehrere Zeichen hintereinander eingeben.
-5. Beobachten, dass die Eingabe nach dem ersten Zeichen abbricht oder der Fokus verloren geht.
+## Reproduction
+1. Open the database view.
+2. Open the filter panel.
+3. Activate a text input field inside a filter condition.
+4. Type multiple characters in sequence.
+5. Observe that input stops after the first character or focus is lost.
 
-## Ist-Zustand
-Kontinuierliches Schreiben ist nicht möglich.
+## Current State
+Continuous typing is not possible.
 
-## Soll-Zustand
-Texteingaben funktionieren normal fortlaufend, ohne Fokusverlust oder Unterbrechung nach einem Zeichen.
+## Target State
+Text input works continuously without focus loss or interruption after one character.
 
-## Akzeptanzkriterien
-- In Filtertexteingaben können beliebig viele Zeichen fortlaufend eingegeben werden.
-- Der Fokus bleibt im aktiven Eingabefeld, solange der Nutzer nicht aktiv wechselt.
-- Eingabeabbrüche nach dem ersten Zeichen treten nicht mehr auf.
+## Acceptance Criteria
+- Any number of characters can be entered continuously in filter text inputs.
+- Focus stays in the active input field until the user intentionally changes it.
+- Input no longer stops after the first character.

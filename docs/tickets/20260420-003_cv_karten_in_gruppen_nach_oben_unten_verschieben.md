@@ -3,28 +3,28 @@
 <!-- AUTO-GENERATED:backlink END -->
 # Ticket 20260420-003
 
-- Ticket-ID: `20260420-003`
-- Original-Referenz: `CV-001`
-- Bereich: Canvas / Karten-Gruppen
-- Priorität: Mittel
-- Titel: Karten innerhalb von Gruppen nach oben und unten verschieben
+- Ticket ID: `20260420-003`
+- Original Reference: `CV-001`
+- Area: Canvas / Card Groups
+- Priority: Medium
+- Title: Move cards within groups up and down
 
-## Beschreibung
-In der Canvas-Ansicht fehlt derzeit eine Funktion, um Karten innerhalb einer Gruppe in ihrer Reihenfolge zu verschieben.
+## Description
+In the canvas view, there is currently no function to reorder cards within a group.
 
-## Reproduktion
-1. Canvas-Ansicht öffnen.
-2. Eine Gruppe mit mehreren Karten öffnen oder erstellen.
-3. Versuchen, die Reihenfolge einer Karte innerhalb der Gruppe zu ändern.
-4. Beobachten, dass keine Aktion zum Verschieben nach oben/unten verfügbar ist.
+## Reproduction
+1. Open the canvas view.
+2. Open or create a group with multiple cards.
+3. Try to change the order of a card within the group.
+4. Observe that no action is available to move it up or down.
 
-## Ist-Zustand
-Aktuell fehlt eine Funktion zur Umordnung innerhalb einer Gruppe.
+## Current State
+A function to reorder cards within a group is missing.
 
-## Soll-Zustand
-Karten in Gruppen sind per Aktion nach oben und unten verschiebbar.
+## Target State
+Cards inside groups can be moved up and down through dedicated actions.
 
-## Akzeptanzkriterien
-- Für Karten innerhalb einer Gruppe gibt es Aktionen zum Verschieben nach oben und nach unten.
-- Die Reihenfolge wird nach der Aktion korrekt aktualisiert.
-- Die neue Reihenfolge bleibt nach Neuladen der Ansicht erhalten.
+## Acceptance Criteria
+- Cards within a group have actions to move up and move down.
+- The order is updated correctly after the action.
+- The new order persists after reloading the view.

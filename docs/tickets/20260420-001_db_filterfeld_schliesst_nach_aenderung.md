@@ -3,28 +3,28 @@
 <!-- AUTO-GENERATED:backlink END -->
 # Ticket 20260420-001
 
-- Ticket-ID: `20260420-001`
-- Original-Referenz: `DB-001`
-- Bereich: Datenbank / Filter
-- Priorität: Hoch
-- Titel: Filterfeld schließt sich nach jeder Änderung
+- Ticket ID: `20260420-001`
+- Original Reference: `DB-001`
+- Area: Database / Filter
+- Priority: High
+- Title: Filter panel closes after every change
 
-## Beschreibung
-Sobald in den Filterbedingungen eine Einstellung geändert wird, schließt sich das Filterfeld sofort. Dadurch wird die Bearbeitung mehrerer Bedingungen hintereinander unnötig unterbrochen.
+## Description
+As soon as a setting in the filter conditions is changed, the filter panel closes immediately. This interrupts editing multiple conditions in sequence.
 
-## Reproduktion
-1. Datenbankansicht öffnen.
-2. Filterfeld öffnen.
-3. Eine Filterbedingung hinzufügen oder eine bestehende Bedingung ändern.
-4. Beobachten, dass sich das Filterfeld direkt nach der Änderung schließt.
+## Reproduction
+1. Open the database view.
+2. Open the filter panel.
+3. Add a filter condition or change an existing condition.
+4. Observe that the filter panel closes right after the change.
 
-## Ist-Zustand
-Nach jeder Anpassung muss das Filterfeld erneut geöffnet werden.
+## Current State
+After each adjustment, the filter panel must be opened again.
 
-## Soll-Zustand
-Das Filterfeld bleibt offen, bis der Nutzer es bewusst schließt, z. B. per Klick außerhalb, per `X` oder per `Escape`.
+## Target State
+The filter panel stays open until the user intentionally closes it, for example by clicking outside, using `X`, or pressing `Escape`.
 
-## Akzeptanzkriterien
-- Das Filterfeld bleibt nach Änderungen an Filterbedingungen geöffnet.
-- Mehrere Filteränderungen können in einer Sitzung ohne erneutes Öffnen vorgenommen werden.
-- Schließen ist weiterhin gezielt möglich über Klick außerhalb, `X` und `Escape`.
+## Acceptance Criteria
+- The filter panel remains open after changes to filter conditions.
+- Multiple filter changes can be made in one session without reopening the panel.
+- Closing still works intentionally via outside click, `X`, and `Escape`.

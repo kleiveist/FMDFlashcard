@@ -3,28 +3,28 @@
 <!-- AUTO-GENERATED:backlink END -->
 # Ticket 20260420-004
 
-- Ticket-ID: `20260420-004`
-- Original-Referenz: `CV-002`
-- Bereich: Canvas / Filter & Sortierung
-- Priorität: Mittel
-- Titel: Filterung und Sortierung um Systemfelder erweitern
+- Ticket ID: `20260420-004`
+- Original Reference: `CV-002`
+- Area: Canvas / Filter & Sorting
+- Priority: Medium
+- Title: Extend filtering and sorting with system fields
 
-## Beschreibung
-Die Filterung in Canvas umfasst derzeit offenbar nur Attribute. Gewünscht ist zusätzlich die Einbeziehung systemrelevanter Felder.
+## Description
+Filtering in canvas currently appears to cover only attributes. System-relevant fields should also be included.
 
-## Reproduktion
-1. Canvas-Ansicht öffnen.
-2. Filter- oder Sortierfunktion öffnen.
-3. Verfügbare Felder für Filterung und Sortierung prüfen.
-4. Beobachten, dass nur Attribut-Felder verfügbar sind und Systemfelder fehlen.
+## Reproduction
+1. Open the canvas view.
+2. Open the filter or sorting function.
+3. Check available fields for filtering and sorting.
+4. Observe that only attribute fields are available and system fields are missing.
 
-## Ist-Zustand
-Nur attributbasierte Filterung ist möglich.
+## Current State
+Only attribute-based filtering is possible.
 
-## Soll-Zustand
-Filter und Sortierungen sind auch auf systemrelevante Felder anwendbar, z. B. Datennamen, Erstellungsdatum und weitere Systemfelder.
+## Target State
+Filtering and sorting can also use system-relevant fields, such as data name, creation date, and other system fields.
 
-## Akzeptanzkriterien
-- Systemfelder erscheinen als auswählbare Optionen in Filterung und Sortierung.
-- Filterung nach mindestens Datennamen und Erstellungsdatum funktioniert.
-- Sortierung nach denselben Systemfeldern ist möglich.
+## Acceptance Criteria
+- System fields appear as selectable options in filtering and sorting.
+- Filtering works for at least data name and creation date.
+- Sorting is possible for the same system fields.
