@@ -235,6 +235,51 @@ describe("DatabaseKanbanView", () => {
     cleanup();
   });
 
+  it("falls back to internal drag session when dataTransfer payload is empty", () => {
+    const onMoveRecord = vi.fn();
+    const { container, cleanup } = render(
+      createElement(DatabaseKanbanView, {
+        records: [recordA, recordB],
+        groupAttribute,
+        attributes: [groupAttribute],
+        visibleProperties: [],
+        showCover: false,
+        pendingRecordIds: [],
+        onMoveRecord,
+        onOpenRecord: vi.fn(),
+      }),
+    );
+
+    const sourceCard = Array.from(container.querySelectorAll(".database-kanban-card"))
+      .find((card) => card.textContent?.includes("a"));
+    const targetColumn = Array.from(container.querySelectorAll(".database-kanban-column"))
+      .find((column) => column.textContent?.includes("Done"));
+
+    const dataTransfer = {
+      effectAllowed: "move",
+      dropEffect: "move",
+      setData: vi.fn(),
+      getData: vi.fn(() => ""),
+      clearData: vi.fn(),
+      files: [] as unknown as FileList,
+      items: [] as unknown as DataTransferItemList,
+      types: [],
+      setDragImage: vi.fn(),
+    } as unknown as DataTransfer;
+
+    act(() => {
+      sourceCard?.dispatchEvent(createDragEvent("dragstart", dataTransfer));
+      targetColumn?.dispatchEvent(createDragEvent("dragover", dataTransfer));
+      targetColumn?.dispatchEvent(createDragEvent("drop", dataTransfer));
+    });
+
+    expect(onMoveRecord).toHaveBeenCalledTimes(1);
+    expect(onMoveRecord.mock.calls[0]?.[0]?.fileId).toBe("a.md");
+    expect(onMoveRecord.mock.calls[0]?.[1]).toBe("Done");
+
+    cleanup();
+  });
+
   it("renders cover and hover-only property meta when cover mode is enabled", () => {
     const { container, cleanup } = render(
       createElement(DatabaseKanbanView, {

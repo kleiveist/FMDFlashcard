@@ -8,8 +8,13 @@
 
 import { act, createElement, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ExamFilePanel } from "./ExamFilePanel";
+import {
+  __resetInternalDragSessionsForTest,
+  DRAG_CHANNELS,
+  startInternalDrag,
+} from "../../../lib/dragDrop";
 
 const render = (element: ReactElement) => {
   const container = document.createElement("div");
@@ -78,6 +83,10 @@ const setChipRect = (chip: HTMLButtonElement, left: number, width = 100) => {
       }) as DOMRect,
   });
 };
+
+beforeEach(() => {
+  __resetInternalDragSessionsForTest();
+});
 
 describe("ExamFilePanel", () => {
   it("renders selectable Standard (no profile) option", () => {
@@ -1031,6 +1040,101 @@ describe("ExamFilePanel", () => {
     expect(container.querySelector(".exam-selected-chip.drop-before")).toBeNull();
     expect(container.querySelector(".exam-selected-chip.drop-after")).toBeNull();
     expect(container.querySelector(".exam-selected-chip.is-dragging")).toBeNull();
+    cleanup();
+  });
+
+  it("supports fallback drag session reorder when browser drag payload is unavailable", () => {
+    const onMoveSelectedFile = vi.fn();
+    const reorderFiles = [
+      {
+        path: "/vault/a.md",
+        relative_path: "folder/A.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+      {
+        path: "/vault/d.md",
+        relative_path: "folder/D.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+      {
+        path: "/vault/e.md",
+        relative_path: "folder/E.md",
+        status: "valid" as const,
+        taskCount: 5,
+        hasExamBlock: true,
+        error: null,
+      },
+    ];
+    const { container, cleanup } = render(
+      createElement(ExamFilePanel, {
+        files: reorderFiles,
+        listState: "idle",
+        listError: "",
+        selectedPaths: ["/vault/a.md", "/vault/d.md", "/vault/e.md"],
+        vaultPath: "/vault",
+        selectedProfileId: "profile-1",
+        profileOptions: runProfileOptions,
+        onProfileChange: vi.fn(),
+        onToggleFile: vi.fn(),
+        onSetSelectedPaths: vi.fn(),
+        onClearSelection: vi.fn(),
+        onMoveSelectedFile,
+      }),
+    );
+
+    const chips = Array.from(
+      container.querySelectorAll<HTMLButtonElement>("button.exam-selected-chip"),
+    );
+    setChipRect(chips[0]!, 100, 100);
+
+    const restrictedDataTransfer = {
+      effectAllowed: "all",
+      dropEffect: "none",
+      files: [],
+      items: [],
+      types: [],
+      setData: vi.fn(() => {
+        throw new Error("blocked");
+      }),
+      getData: vi.fn(() => ""),
+      clearData: vi.fn(),
+      setDragImage: vi.fn(),
+    } as unknown as DataTransfer;
+
+    startInternalDrag(
+      { dataTransfer: restrictedDataTransfer },
+      {
+        channel: DRAG_CHANNELS.EXAM_SELECTED_FILE,
+        payload: "/vault/e.md",
+        plainTextFallback: "/vault/e.md",
+        effectAllowed: "move",
+      },
+    );
+
+    act(() => {
+      chips[0]?.dispatchEvent(
+        new MouseEvent("dragover", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 190,
+        }),
+      );
+      chips[0]?.dispatchEvent(
+        new MouseEvent("drop", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 190,
+        }),
+      );
+    });
+
+    expect(onMoveSelectedFile).toHaveBeenCalledWith("/vault/e.md", "/vault/d.md");
     cleanup();
   });
 

@@ -15,6 +15,15 @@ import { AlertIcon, CheckIcon } from "../../../components/icons";
 import type { ExamBlueprint, ExamTaskBlueprint, CardType } from "../../../features/exam-editor/types";
 import type { ExamEditorSelection } from "../types";
 import { serializeCardTypeLabel } from "../../../features/exam-editor/serializer";
+import {
+  DRAG_CHANNELS,
+  endInternalDrag,
+  hasDragType,
+  readInternalDrag,
+  readInternalDragText,
+  setDropEffectSafe,
+  startInternalDrag,
+} from "../../../lib/dragDrop";
 
 const CARD_TYPES: CardType[] = ["qa", "tf", "m1", "m2", "cl", "cd", "cld"];
 
@@ -67,9 +76,20 @@ const AUTO_SCROLL_EDGE = 48;
 const AUTO_SCROLL_SPEED = 18;
 
 const resolveDropType = (event: DragEvent<HTMLElement>) => {
-  const value =
-    event.dataTransfer.getData("application/x-fmd-card-type") ||
-    event.dataTransfer.getData("text/plain");
+  const internalValue = readInternalDragText(event, {
+    channel: DRAG_CHANNELS.EXAM_CARD_TYPE,
+  }).trim();
+  if (CARD_TYPES.includes(internalValue as CardType)) {
+    return internalValue as CardType;
+  }
+  let value = "";
+  try {
+    value =
+      event.dataTransfer.getData("application/x-fmd-card-type") ||
+      event.dataTransfer.getData("text/plain");
+  } catch {
+    value = "";
+  }
   if (!value) {
     return null;
   }
@@ -77,11 +97,16 @@ const resolveDropType = (event: DragEvent<HTMLElement>) => {
 };
 
 const allowDrop = (event: DragEvent<HTMLElement>) => {
-  if (!event.dataTransfer.types.includes("application/x-fmd-card-type")) {
+  const hasLegacyType = hasDragType(event, "application/x-fmd-card-type");
+  const internalType = readInternalDragText(event, {
+    channel: DRAG_CHANNELS.EXAM_CARD_TYPE,
+  }).trim();
+  const hasInternalType = CARD_TYPES.includes(internalType as CardType);
+  if (!hasLegacyType && !hasInternalType) {
     return;
   }
   event.preventDefault();
-  event.dataTransfer.dropEffect = "copy";
+  setDropEffectSafe(event, "copy");
 };
 
 export const ExamCanvas = ({
@@ -151,6 +176,35 @@ export const ExamCanvas = ({
     setDragPayload(null);
     setTaskDropTarget(null);
     setCardDropTarget(null);
+    endInternalDrag(DRAG_CHANNELS.EXAM_TASK);
+    endInternalDrag(DRAG_CHANNELS.EXAM_CARD);
+  };
+
+  const resolveActiveDragPayload = (event: DragEvent<HTMLElement>) => {
+    if (dragPayload) {
+      return dragPayload;
+    }
+    const taskPayload = readInternalDrag<{ taskId: string }>(event, {
+      channel: DRAG_CHANNELS.EXAM_TASK,
+    });
+    if (taskPayload && typeof taskPayload.taskId === "string") {
+      return { kind: "task", taskId: taskPayload.taskId } satisfies DragPayload;
+    }
+    const cardPayload = readInternalDrag<{ taskId: string; cardId: string }>(event, {
+      channel: DRAG_CHANNELS.EXAM_CARD,
+    });
+    if (
+      cardPayload &&
+      typeof cardPayload.taskId === "string" &&
+      typeof cardPayload.cardId === "string"
+    ) {
+      return {
+        kind: "card",
+        taskId: cardPayload.taskId,
+        cardId: cardPayload.cardId,
+      } satisfies DragPayload;
+    }
+    return null;
   };
 
   const handleAutoScroll = (clientY: number) => {
@@ -199,6 +253,7 @@ export const ExamCanvas = ({
     }
     event.preventDefault();
     onCanvasDrop(cardType);
+    endInternalDrag(DRAG_CHANNELS.EXAM_CARD_TYPE);
   };
 
   const getDropPosition = (event: DragEvent<HTMLElement>) => {
@@ -213,8 +268,17 @@ export const ExamCanvas = ({
       event.preventDefault();
       return;
     }
-    event.dataTransfer.setData(TASK_DRAG_TYPE, taskId);
-    event.dataTransfer.effectAllowed = "move";
+    startInternalDrag(event, {
+      channel: DRAG_CHANNELS.EXAM_TASK,
+      payload: { taskId },
+      plainTextFallback: taskId,
+      effectAllowed: "move",
+    });
+    try {
+      event.dataTransfer.setData(TASK_DRAG_TYPE, taskId);
+    } catch {
+      // ignore restricted dataTransfer implementations
+    }
     setDragPayload({ kind: "task", taskId });
   };
 
@@ -228,11 +292,20 @@ export const ExamCanvas = ({
       event.preventDefault();
       return;
     }
-    event.dataTransfer.setData(
-      CARD_DRAG_TYPE,
-      JSON.stringify({ taskId, cardId }),
-    );
-    event.dataTransfer.effectAllowed = "move";
+    startInternalDrag(event, {
+      channel: DRAG_CHANNELS.EXAM_CARD,
+      payload: { taskId, cardId },
+      plainTextFallback: `${taskId}:${cardId}`,
+      effectAllowed: "move",
+    });
+    try {
+      event.dataTransfer.setData(
+        CARD_DRAG_TYPE,
+        JSON.stringify({ taskId, cardId }),
+      );
+    } catch {
+      // ignore restricted dataTransfer implementations
+    }
     setDragPayload({ kind: "card", taskId, cardId });
   };
 
@@ -250,26 +323,28 @@ export const ExamCanvas = ({
     taskId: string,
     isEmpty: boolean,
   ) => {
-    if (event.dataTransfer.types.includes("application/x-fmd-card-type")) {
+    const cardType = resolveDropType(event);
+    if (cardType) {
       event.preventDefault();
-      event.dataTransfer.dropEffect = "copy";
+      setDropEffectSafe(event, "copy");
       handleAutoScroll(event.clientY);
       return;
     }
-    if (!dragPayload) {
+    const activeDragPayload = resolveActiveDragPayload(event);
+    if (!activeDragPayload) {
       return;
     }
-    if (dragPayload.kind === "task") {
+    if (activeDragPayload.kind === "task") {
       event.preventDefault();
-      event.dataTransfer.dropEffect = "move";
+      setDropEffectSafe(event, "move");
       const position = getDropPosition(event);
       setTaskDropTarget({ taskId, position });
       handleAutoScroll(event.clientY);
       return;
     }
-    if (dragPayload.kind === "card" && isEmpty) {
+    if (activeDragPayload.kind === "card" && isEmpty) {
       event.preventDefault();
-      event.dataTransfer.dropEffect = "move";
+      setDropEffectSafe(event, "move");
       setCardDropTarget({ taskId, cardId: null, position: "after" });
       handleAutoScroll(event.clientY);
     }
@@ -281,17 +356,19 @@ export const ExamCanvas = ({
       event.preventDefault();
       event.stopPropagation();
       onTaskDrop(taskId, cardType);
+      endInternalDrag(DRAG_CHANNELS.EXAM_CARD_TYPE);
       clearDragState();
       return;
     }
-    if (!dragPayload) {
+    const activeDragPayload = resolveActiveDragPayload(event);
+    if (!activeDragPayload) {
       return;
     }
-    if (dragPayload.kind === "card") {
+    if (activeDragPayload.kind === "card") {
       event.preventDefault();
       event.stopPropagation();
       const sourceTask = orderedTasks.find(
-        (task) => task.id === dragPayload.taskId,
+        (task) => task.id === activeDragPayload.taskId,
       );
       const targetTask = orderedTasks.find((task) => task.id === taskId);
       if (!sourceTask || !targetTask) {
@@ -303,34 +380,34 @@ export const ExamCanvas = ({
         return;
       }
       const sourceIndex = sourceTask.cards.findIndex(
-        (card) => card.id === dragPayload.cardId,
+        (card) => card.id === activeDragPayload.cardId,
       );
       if (sourceIndex === -1) {
         clearDragState();
         return;
       }
-      if (dragPayload.taskId === taskId) {
+      if (activeDragPayload.taskId === taskId) {
         clearDragState();
         return;
       }
       onMoveCardAcrossTasks(
-        dragPayload.taskId,
+        activeDragPayload.taskId,
         taskId,
         sourceIndex,
         0,
       );
-      onSelectCard(taskId, dragPayload.cardId);
+      onSelectCard(taskId, activeDragPayload.cardId);
       clearDragState();
       return;
     }
-    if (dragPayload.kind !== "task") {
+    if (activeDragPayload.kind !== "task") {
       return;
     }
     event.preventDefault();
     event.stopPropagation();
     const position = getDropPosition(event);
     const sourceIndex = orderedTasks.findIndex(
-      (task) => task.id === dragPayload.taskId,
+      (task) => task.id === activeDragPayload.taskId,
     );
     const targetIndex = orderedTasks.findIndex((task) => task.id === taskId);
     if (sourceIndex === -1 || targetIndex === -1) {
@@ -352,11 +429,12 @@ export const ExamCanvas = ({
     taskId: string,
     cardId: string,
   ) => {
-    if (!dragPayload || dragPayload.kind !== "card") {
+    const activeDragPayload = resolveActiveDragPayload(event);
+    if (!activeDragPayload || activeDragPayload.kind !== "card") {
       return;
     }
     event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
+    setDropEffectSafe(event, "move");
     const position = getDropPosition(event);
     setCardDropTarget({ taskId, cardId, position });
     handleAutoScroll(event.clientY);
@@ -366,14 +444,15 @@ export const ExamCanvas = ({
     event: DragEvent<HTMLDivElement>,
     taskId: string,
   ) => {
-    if (!dragPayload || dragPayload.kind !== "card") {
+    const activeDragPayload = resolveActiveDragPayload(event);
+    if (!activeDragPayload || activeDragPayload.kind !== "card") {
       return;
     }
     if (event.target !== event.currentTarget) {
       return;
     }
     event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
+    setDropEffectSafe(event, "move");
     setCardDropTarget({ taskId, cardId: null, position: "after" });
     handleAutoScroll(event.clientY);
   };
@@ -383,13 +462,14 @@ export const ExamCanvas = ({
     taskId: string,
     cardId: string,
   ) => {
-    if (!dragPayload || dragPayload.kind !== "card") {
+    const activeDragPayload = resolveActiveDragPayload(event);
+    if (!activeDragPayload || activeDragPayload.kind !== "card") {
       return;
     }
     event.preventDefault();
     event.stopPropagation();
     const sourceTask = orderedTasks.find(
-      (entry) => entry.id === dragPayload.taskId,
+      (entry) => entry.id === activeDragPayload.taskId,
     );
     const targetTask = orderedTasks.find((entry) => entry.id === taskId);
     if (!sourceTask || !targetTask) {
@@ -397,7 +477,7 @@ export const ExamCanvas = ({
       return;
     }
     const sourceIndex = sourceTask.cards.findIndex(
-      (card) => card.id === dragPayload.cardId,
+      (card) => card.id === activeDragPayload.cardId,
     );
     const targetIndex = targetTask.cards.findIndex((card) => card.id === cardId);
     if (sourceIndex === -1 || targetIndex === -1) {
@@ -406,7 +486,7 @@ export const ExamCanvas = ({
     }
     const position = getDropPosition(event);
     let insertIndex = position === "after" ? targetIndex + 1 : targetIndex;
-    const sameTask = dragPayload.taskId === taskId;
+    const sameTask = activeDragPayload.taskId === taskId;
     if (sameTask && sourceIndex < insertIndex) {
       insertIndex -= 1;
     }
@@ -415,13 +495,13 @@ export const ExamCanvas = ({
         onReorderCard(taskId, sourceIndex, insertIndex);
       } else {
         onMoveCardAcrossTasks(
-          dragPayload.taskId,
+          activeDragPayload.taskId,
           taskId,
           sourceIndex,
           insertIndex,
         );
       }
-      onSelectCard(taskId, dragPayload.cardId);
+      onSelectCard(taskId, activeDragPayload.cardId);
     }
     clearDragState();
   };
@@ -430,7 +510,8 @@ export const ExamCanvas = ({
     event: DragEvent<HTMLDivElement>,
     taskId: string,
   ) => {
-    if (!dragPayload || dragPayload.kind !== "card") {
+    const activeDragPayload = resolveActiveDragPayload(event);
+    if (!activeDragPayload || activeDragPayload.kind !== "card") {
       return;
     }
     if (event.target !== event.currentTarget) {
@@ -439,7 +520,7 @@ export const ExamCanvas = ({
     event.preventDefault();
     event.stopPropagation();
     const sourceTask = orderedTasks.find(
-      (entry) => entry.id === dragPayload.taskId,
+      (entry) => entry.id === activeDragPayload.taskId,
     );
     const targetTask = orderedTasks.find((entry) => entry.id === taskId);
     if (!sourceTask || !targetTask) {
@@ -447,26 +528,26 @@ export const ExamCanvas = ({
       return;
     }
     const sourceIndex = sourceTask.cards.findIndex(
-      (card) => card.id === dragPayload.cardId,
+      (card) => card.id === activeDragPayload.cardId,
     );
     if (sourceIndex === -1) {
       clearDragState();
       return;
     }
-    if (dragPayload.taskId === taskId) {
+    if (activeDragPayload.taskId === taskId) {
       const insertIndex = Math.max(0, targetTask.cards.length - 1);
       if (insertIndex !== sourceIndex) {
         onReorderCard(taskId, sourceIndex, insertIndex);
       }
     } else {
       onMoveCardAcrossTasks(
-        dragPayload.taskId,
+        activeDragPayload.taskId,
         taskId,
         sourceIndex,
         targetTask.cards.length,
       );
     }
-    onSelectCard(taskId, dragPayload.cardId);
+    onSelectCard(taskId, activeDragPayload.cardId);
     clearDragState();
   };
 

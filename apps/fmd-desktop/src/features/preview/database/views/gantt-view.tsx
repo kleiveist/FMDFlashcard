@@ -30,6 +30,13 @@ import {
   renderMonitoringValue,
   type MonitoringRenderProfile,
 } from "../../../monitoring/monitoring-render-rules";
+import {
+  DRAG_CHANNELS,
+  endInternalDrag,
+  readInternalDragText,
+  setDropEffectSafe,
+  startInternalDrag,
+} from "../../../../lib/dragDrop";
 
 type DatabaseGanttViewProps = {
   records: DatabaseRecord[];
@@ -743,8 +750,15 @@ export const DatabaseGanttView = ({
                       title={record.relativePath}
                       draggable={editable}
                       onDragStart={(event) => {
-                        event.dataTransfer.effectAllowed = "move";
-                        event.dataTransfer.setData("text/plain", record.fileId);
+                        startInternalDrag(event, {
+                          channel: DRAG_CHANNELS.DATABASE_RECORD,
+                          payload: record.fileId,
+                          plainTextFallback: record.fileId,
+                          effectAllowed: "move",
+                        });
+                      }}
+                      onDragEnd={() => {
+                        endInternalDrag(DRAG_CHANNELS.DATABASE_RECORD);
                       }}
                       data-md-block-control="true"
                     >
@@ -763,15 +777,18 @@ export const DatabaseGanttView = ({
                       return;
                     }
                     event.preventDefault();
-                    event.dataTransfer.dropEffect = "move";
+                    setDropEffectSafe(event, "move");
                   }}
                   onDrop={(event) => {
                     if (!editable || !onCommitRange) {
                       return;
                     }
-                    const droppedRecordId = event.dataTransfer.getData("text/plain");
+                    const droppedRecordId = readInternalDragText(event, {
+                      channel: DRAG_CHANNELS.DATABASE_RECORD,
+                    });
                     const droppedRecord = recordById.get(droppedRecordId);
                     if (!droppedRecord) {
+                      endInternalDrag(DRAG_CHANNELS.DATABASE_RECORD);
                       return;
                     }
                     const rect = event.currentTarget.getBoundingClientRect();
@@ -783,6 +800,7 @@ export const DatabaseGanttView = ({
                       startTimestamp,
                       endTimestamp: Math.max(startTimestamp, endTimestamp),
                     });
+                    endInternalDrag(DRAG_CHANNELS.DATABASE_RECORD);
                   }}
                 >
                   {hasRange ? (

@@ -130,6 +130,14 @@ import {
   FrontmatterPropertyIconView,
 } from "../features/preview/frontmatter-property-icons";
 import { normalizeRelativePath } from "../lib/path";
+import {
+  DRAG_CHANNELS,
+  endInternalDrag,
+  readInternalDragText,
+  setDragImageSafe,
+  setDropEffectSafe,
+  startInternalDrag,
+} from "../lib/dragDrop";
 import { isEditableTarget } from "../lib/shortcuts/bindings";
 import { compareNaturalPath } from "../lib/naturalSort";
 import {
@@ -7742,10 +7750,13 @@ const FrontmatterPropertiesPanel = ({
                     setIsCoverPickerOpen(false);
                   }}
                   onDragOver={(event) => {
-                    if (controlsDisabled || !dragPropertyKey) {
+                    const sourceKey = dragPropertyKey || readInternalDragText(event, {
+                      channel: DRAG_CHANNELS.PREVIEW_FRONTMATTER_PROPERTY,
+                    });
+                    if (controlsDisabled || !sourceKey) {
                       return;
                     }
-                    if (dragPropertyKey === property.key) {
+                    if (sourceKey === property.key) {
                       setDropHint(null);
                       return;
                     }
@@ -7757,14 +7768,18 @@ const FrontmatterPropertiesPanel = ({
                     });
                   }}
                   onDrop={(event) => {
-                    if (controlsDisabled || !dragPropertyKey) {
+                    const fromKey = dragPropertyKey || readInternalDragText(event, {
+                      channel: DRAG_CHANNELS.PREVIEW_FRONTMATTER_PROPERTY,
+                    });
+                    if (controlsDisabled || !fromKey) {
+                      endInternalDrag(DRAG_CHANNELS.PREVIEW_FRONTMATTER_PROPERTY);
                       return;
                     }
                     event.preventDefault();
                     const position = resolveDropPosition(event);
-                    const fromKey = dragPropertyKey;
                     setDragPropertyKey(null);
                     setDropHint(null);
+                    endInternalDrag(DRAG_CHANNELS.PREVIEW_FRONTMATTER_PROPERTY);
                     void commitReorder({
                       fromKey,
                       toKey: property.key,
@@ -7781,18 +7796,17 @@ const FrontmatterPropertiesPanel = ({
                         return;
                       }
                       setDragPropertyKey(property.key);
-                      if (event.dataTransfer) {
-                        event.dataTransfer.effectAllowed = "move";
-                        try {
-                          event.dataTransfer.setData("text/plain", property.key);
-                        } catch {
-                          // ignore dataTransfer limitations in certain runtimes
-                        }
-                      }
+                      startInternalDrag(event, {
+                        channel: DRAG_CHANNELS.PREVIEW_FRONTMATTER_PROPERTY,
+                        payload: property.key,
+                        plainTextFallback: property.key,
+                        effectAllowed: "move",
+                      });
                     }}
                     onDragEnd={() => {
                       setDragPropertyKey(null);
                       setDropHint(null);
+                      endInternalDrag(DRAG_CHANNELS.PREVIEW_FRONTMATTER_PROPERTY);
                     }}
                   >
                     <span className="frontmatter-grip" aria-hidden="true">
@@ -11280,39 +11294,37 @@ export const PreviewPanel = ({
       }
       setDragMarkdownTabPath(path);
       setMarkdownTabDropHint(null);
-      if (!event.dataTransfer) {
-        return;
-      }
-      event.dataTransfer.effectAllowed = "move";
-      try {
-        event.dataTransfer.setData("text/plain", path);
-      } catch {
-        // Ignore dataTransfer limitations in certain runtimes.
-      }
+      startInternalDrag(event, {
+        channel: DRAG_CHANNELS.PREVIEW_MARKDOWN_TAB,
+        payload: path,
+        plainTextFallback: path,
+        effectAllowed: "move",
+      });
       clearMarkdownTabDragPreview();
       const preview = createMarkdownTabDragPreviewElement(label);
       if (!preview) {
         return;
       }
       markdownTabDragPreviewRef.current = preview;
-      event.dataTransfer.setDragImage(preview, 18, 12);
+      setDragImageSafe(event, preview, 18, 12);
     },
     [clearMarkdownTabDragPreview, isMarkdownTabReorderEnabled],
   );
 
   const handleMarkdownTabDragOver = useCallback(
     (event: DragEvent<HTMLDivElement>, targetPath: string) => {
-      if (!isMarkdownTabReorderEnabled || !dragMarkdownTabPath) {
+      const sourcePath = dragMarkdownTabPath || readInternalDragText(event, {
+        channel: DRAG_CHANNELS.PREVIEW_MARKDOWN_TAB,
+      });
+      if (!isMarkdownTabReorderEnabled || !sourcePath) {
         return;
       }
-      if (dragMarkdownTabPath === targetPath) {
+      if (sourcePath === targetPath) {
         setMarkdownTabDropHint(null);
         return;
       }
       event.preventDefault();
-      if (event.dataTransfer) {
-        event.dataTransfer.dropEffect = "move";
-      }
+      setDropEffectSafe(event, "move");
       const position = resolveMarkdownTabDropPosition(event);
       setMarkdownTabDropHint((current) => {
         if (current?.path === targetPath && current.position === position) {
@@ -11347,14 +11359,18 @@ export const PreviewPanel = ({
 
   const handleMarkdownTabDrop = useCallback(
     (event: DragEvent<HTMLDivElement>, targetPath: string) => {
-      if (!isMarkdownTabReorderEnabled || !dragMarkdownTabPath) {
+      const sourcePath = dragMarkdownTabPath || readInternalDragText(event, {
+        channel: DRAG_CHANNELS.PREVIEW_MARKDOWN_TAB,
+      });
+      if (!isMarkdownTabReorderEnabled || !sourcePath) {
+        endInternalDrag(DRAG_CHANNELS.PREVIEW_MARKDOWN_TAB);
         return;
       }
       event.preventDefault();
-      const sourcePath = dragMarkdownTabPath;
       setDragMarkdownTabPath(null);
       setMarkdownTabDropHint(null);
       clearMarkdownTabDragPreview();
+      endInternalDrag(DRAG_CHANNELS.PREVIEW_MARKDOWN_TAB);
       if (sourcePath === targetPath) {
         return;
       }
@@ -11374,6 +11390,7 @@ export const PreviewPanel = ({
     setDragMarkdownTabPath(null);
     setMarkdownTabDropHint(null);
     clearMarkdownTabDragPreview();
+    endInternalDrag(DRAG_CHANNELS.PREVIEW_MARKDOWN_TAB);
   }, [clearMarkdownTabDragPreview]);
 
   const markdownTabDisplayInfos = useMemo(

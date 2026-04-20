@@ -16,6 +16,13 @@ import {
   renderMonitoringValue,
   type MonitoringRenderProfile,
 } from "../../../monitoring/monitoring-render-rules";
+import {
+  DRAG_CHANNELS,
+  endInternalDrag,
+  readInternalDragText,
+  setDropEffectSafe,
+  startInternalDrag,
+} from "../../../../lib/dragDrop";
 
 type DatabaseKanbanViewProps = {
   records: DatabaseRecord[];
@@ -211,25 +218,31 @@ export const DatabaseKanbanView = ({
           className="database-kanban-column"
           onDragOver={(event) => {
             event.preventDefault();
-            event.dataTransfer.dropEffect = "move";
+            setDropEffectSafe(event, "move");
           }}
           onDrop={(event) => {
             event.preventDefault();
-            const recordId = event.dataTransfer.getData("text/plain");
+            const recordId = readInternalDragText(event, {
+              channel: DRAG_CHANNELS.DATABASE_RECORD,
+            });
             if (!recordId) {
+              endInternalDrag(DRAG_CHANNELS.DATABASE_RECORD);
               return;
             }
             const record = recordsById.get(recordId);
             if (!record) {
+              endInternalDrag(DRAG_CHANNELS.DATABASE_RECORD);
               return;
             }
             const previousGroupValue = stringifyRawGroupValue(
               getRecordValueByField(record, groupAttribute.key),
             );
             if (previousGroupValue === group.key) {
+              endInternalDrag(DRAG_CHANNELS.DATABASE_RECORD);
               return;
             }
             onMoveRecord(record, group.key === EMPTY_GROUP_LABEL ? "" : group.key);
+            endInternalDrag(DRAG_CHANNELS.DATABASE_RECORD);
           }}
         >
           <header className="database-kanban-column-header">
@@ -292,8 +305,15 @@ export const DatabaseKanbanView = ({
                   }`}
                   draggable={!pendingIds.has(record.fileId)}
                   onDragStart={(event) => {
-                    event.dataTransfer.effectAllowed = "move";
-                    event.dataTransfer.setData("text/plain", record.fileId);
+                    startInternalDrag(event, {
+                      channel: DRAG_CHANNELS.DATABASE_RECORD,
+                      payload: record.fileId,
+                      plainTextFallback: record.fileId,
+                      effectAllowed: "move",
+                    });
+                  }}
+                  onDragEnd={() => {
+                    endInternalDrag(DRAG_CHANNELS.DATABASE_RECORD);
                   }}
                 >
                   {coverSource ? (

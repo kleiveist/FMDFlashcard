@@ -47,6 +47,14 @@ import {
   type MathToken,
 } from "../../lib/markdownMath";
 import { normalizeRelativePath } from "../../lib/path";
+import {
+  DRAG_CHANNELS,
+  endInternalDrag,
+  readInternalDrag,
+  setDragImageSafe,
+  setDropEffectSafe,
+  startInternalDrag,
+} from "../../lib/dragDrop";
 import { type VaultFile, type VaultPngAsset } from "../../lib/tree";
 import {
   normalizeCardBlockSource,
@@ -3458,6 +3466,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     dragPreviewPointerRef.current = null;
     removeDragImageElement();
     clearBlockReorderDragSession();
+    endInternalDrag(DRAG_CHANNELS.MARKDOWN_BLOCK);
   }, [clearBlockReorderDragSession, removeDragImageElement]);
 
   const scheduleDragPreviewPointerUpdate = useCallback((clientX: number, clientY: number) => {
@@ -8871,16 +8880,20 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         itemCount: previewPayload.itemCount,
       });
       scheduleDragPreviewPointerUpdate(event.clientX, event.clientY);
+      startInternalDrag(event, {
+        channel: DRAG_CHANNELS.MARKDOWN_BLOCK,
+        payload: index,
+        plainTextFallback: String(index),
+        effectAllowed: "move",
+      });
       try {
-        event.dataTransfer.effectAllowed = "move";
         event.dataTransfer.setData(INTERNAL_BLOCK_REORDER_DRAG_MIME, String(index));
-        event.dataTransfer.setData("text/plain", String(index));
-        const dragImageElement = createDragImageElement();
-        if (dragImageElement) {
-          event.dataTransfer.setDragImage(dragImageElement, 0, 0);
-        }
       } catch {
         // ignore restricted dataTransfer implementations
+      }
+      const dragImageElement = createDragImageElement();
+      if (dragImageElement) {
+        setDragImageSafe(event, dragImageElement, 0, 0);
       }
     },
     [
@@ -8931,14 +8944,30 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   );
 
   const handleDragHandleDragEnd = useCallback(() => {
+    endInternalDrag(DRAG_CHANNELS.MARKDOWN_BLOCK);
     clearBlockReorderDragVisualState();
   }, [clearBlockReorderDragVisualState]);
 
   const handleBlockDragOver = useCallback(
     (index: number) => (event: DragEvent<HTMLDivElement>) => {
       const activeDraggedBlockIndex = resolveActiveDraggedBlockIndex();
-      if (disabled || activeDraggedBlockIndex === null) {
+      const fallbackDraggedBlockIndex = activeDraggedBlockIndex === null
+        ? readInternalDrag<number>(event, {
+          channel: DRAG_CHANNELS.MARKDOWN_BLOCK,
+        })
+        : null;
+      const resolvedDraggedBlockIndex =
+        activeDraggedBlockIndex ??
+        (typeof fallbackDraggedBlockIndex === "number" &&
+            Number.isFinite(fallbackDraggedBlockIndex)
+          ? fallbackDraggedBlockIndex
+          : null);
+      if (disabled || resolvedDraggedBlockIndex === null) {
         return;
+      }
+      if (activeDraggedBlockIndex === null) {
+        startBlockReorderDragSession(resolvedDraggedBlockIndex);
+        setDraggedBlockIndex(resolvedDraggedBlockIndex);
       }
       event.preventDefault();
       scheduleDragPreviewPointerUpdate(event.clientX, event.clientY);
@@ -8949,20 +8978,37 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       if (dropIndicatorIndex !== nextDropIndex) {
         setDropIndicatorIndex(nextDropIndex);
       }
-      try {
-        event.dataTransfer.dropEffect = "move";
-      } catch {
-        // ignore
-      }
+      setDropEffectSafe(event, "move");
     },
-    [disabled, dropIndicatorIndex, resolveActiveDraggedBlockIndex, scheduleDragPreviewPointerUpdate],
+    [
+      disabled,
+      dropIndicatorIndex,
+      resolveActiveDraggedBlockIndex,
+      scheduleDragPreviewPointerUpdate,
+      startBlockReorderDragSession,
+    ],
   );
 
   const handleBlockDrop = useCallback(
     (index: number) => (event: DragEvent<HTMLDivElement>) => {
       const activeDraggedBlockIndex = resolveActiveDraggedBlockIndex();
-      if (disabled || activeDraggedBlockIndex === null) {
+      const fallbackDraggedBlockIndex = activeDraggedBlockIndex === null
+        ? readInternalDrag<number>(event, {
+          channel: DRAG_CHANNELS.MARKDOWN_BLOCK,
+        })
+        : null;
+      const resolvedDraggedBlockIndex =
+        activeDraggedBlockIndex ??
+        (typeof fallbackDraggedBlockIndex === "number" &&
+            Number.isFinite(fallbackDraggedBlockIndex)
+          ? fallbackDraggedBlockIndex
+          : null);
+      if (disabled || resolvedDraggedBlockIndex === null) {
         return;
+      }
+      if (activeDraggedBlockIndex === null) {
+        startBlockReorderDragSession(resolvedDraggedBlockIndex);
+        setDraggedBlockIndex(resolvedDraggedBlockIndex);
       }
       const nextDropIndex = dropIndicatorIndex ??
         (() => {
@@ -8970,7 +9016,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           return event.clientY < rect.top + rect.height / 2 ? index : index + 1;
         })();
       event.preventDefault();
-      reorderBlockByDrop(activeDraggedBlockIndex, nextDropIndex);
+      reorderBlockByDrop(resolvedDraggedBlockIndex, nextDropIndex);
       clearBlockReorderDragVisualState();
     },
     [
@@ -8979,14 +9025,30 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       dropIndicatorIndex,
       reorderBlockByDrop,
       resolveActiveDraggedBlockIndex,
+      startBlockReorderDragSession,
     ],
   );
 
   const handleContentLayerDragOver = useCallback(
     (event: DragEvent<HTMLDivElement>) => {
       const activeDraggedBlockIndex = resolveActiveDraggedBlockIndex();
-      if (disabled || activeDraggedBlockIndex === null) {
+      const fallbackDraggedBlockIndex = activeDraggedBlockIndex === null
+        ? readInternalDrag<number>(event, {
+          channel: DRAG_CHANNELS.MARKDOWN_BLOCK,
+        })
+        : null;
+      const resolvedDraggedBlockIndex =
+        activeDraggedBlockIndex ??
+        (typeof fallbackDraggedBlockIndex === "number" &&
+            Number.isFinite(fallbackDraggedBlockIndex)
+          ? fallbackDraggedBlockIndex
+          : null);
+      if (disabled || resolvedDraggedBlockIndex === null) {
         return;
+      }
+      if (activeDraggedBlockIndex === null) {
+        startBlockReorderDragSession(resolvedDraggedBlockIndex);
+        setDraggedBlockIndex(resolvedDraggedBlockIndex);
       }
       if (event.target instanceof HTMLElement) {
         const targetBlock = event.target.closest(".markdown-hybrid-block[data-md-block-index]");
@@ -9019,11 +9081,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       if (dropIndicatorIndex !== nextDropIndex) {
         setDropIndicatorIndex(nextDropIndex);
       }
-      try {
-        event.dataTransfer.dropEffect = "move";
-      } catch {
-        // ignore
-      }
+      setDropEffectSafe(event, "move");
     },
     [
       blocks.length,
@@ -9031,14 +9089,30 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       dropIndicatorIndex,
       resolveActiveDraggedBlockIndex,
       scheduleDragPreviewPointerUpdate,
+      startBlockReorderDragSession,
     ],
   );
 
   const handleContentLayerDrop = useCallback(
     (event: DragEvent<HTMLDivElement>) => {
       const activeDraggedBlockIndex = resolveActiveDraggedBlockIndex();
-      if (disabled || activeDraggedBlockIndex === null) {
+      const fallbackDraggedBlockIndex = activeDraggedBlockIndex === null
+        ? readInternalDrag<number>(event, {
+          channel: DRAG_CHANNELS.MARKDOWN_BLOCK,
+        })
+        : null;
+      const resolvedDraggedBlockIndex =
+        activeDraggedBlockIndex ??
+        (typeof fallbackDraggedBlockIndex === "number" &&
+            Number.isFinite(fallbackDraggedBlockIndex)
+          ? fallbackDraggedBlockIndex
+          : null);
+      if (disabled || resolvedDraggedBlockIndex === null) {
         return;
+      }
+      if (activeDraggedBlockIndex === null) {
+        startBlockReorderDragSession(resolvedDraggedBlockIndex);
+        setDraggedBlockIndex(resolvedDraggedBlockIndex);
       }
       if (event.target instanceof HTMLElement) {
         const targetBlock = event.target.closest(".markdown-hybrid-block[data-md-block-index]");
@@ -9070,7 +9144,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         }
       }
       event.preventDefault();
-      reorderBlockByDrop(activeDraggedBlockIndex, nextDropIndex);
+      reorderBlockByDrop(resolvedDraggedBlockIndex, nextDropIndex);
       clearBlockReorderDragVisualState();
     },
     [
@@ -9080,6 +9154,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       dropIndicatorIndex,
       reorderBlockByDrop,
       resolveActiveDraggedBlockIndex,
+      startBlockReorderDragSession,
     ],
   );
 

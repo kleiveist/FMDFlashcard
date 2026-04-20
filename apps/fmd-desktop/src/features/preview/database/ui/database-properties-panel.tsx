@@ -32,6 +32,13 @@ import {
 } from "../../formula/formula-attribute-builder";
 import { FrontmatterPropertyIconView } from "../../frontmatter-property-icons";
 import { TrashIcon } from "../../../../components/icons";
+import {
+  DRAG_CHANNELS,
+  endInternalDrag,
+  readInternalDragText,
+  setDropEffectSafe,
+  startInternalDrag,
+} from "../../../../lib/dragDrop";
 
 type DatabasePropertiesPanelProps = {
   attributes: DatabaseAttributeMeta[];
@@ -276,17 +283,25 @@ export const DatabasePropertiesPanel = ({
   }, [viewType]);
 
   const handleDragStart = (event: DragEvent<HTMLLIElement>, key: string) => {
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", key);
+    startInternalDrag(event, {
+      channel: DRAG_CHANNELS.DATABASE_VISIBLE_COLUMN,
+      payload: key,
+      plainTextFallback: key,
+      effectAllowed: "move",
+    });
   };
 
   const handleDrop = (event: DragEvent<HTMLLIElement>, targetKey: string) => {
-    const sourceKey = event.dataTransfer.getData("text/plain");
+    const sourceKey = readInternalDragText(event, {
+      channel: DRAG_CHANNELS.DATABASE_VISIBLE_COLUMN,
+    });
     if (!sourceKey || sourceKey === targetKey) {
+      endInternalDrag(DRAG_CHANNELS.DATABASE_VISIBLE_COLUMN);
       return;
     }
     event.preventDefault();
     onReorderVisibleColumns(sourceKey, targetKey);
+    endInternalDrag(DRAG_CHANNELS.DATABASE_VISIBLE_COLUMN);
   };
 
   const resetCreateDraft = () => {
@@ -407,9 +422,12 @@ export const DatabasePropertiesPanel = ({
               onDragStart={(event) => handleDragStart(event, attribute.key)}
               onDragOver={(event) => {
                 event.preventDefault();
-                event.dataTransfer.dropEffect = "move";
+                setDropEffectSafe(event, "move");
               }}
               onDrop={(event) => handleDrop(event, attribute.key)}
+              onDragEnd={() => {
+                endInternalDrag(DRAG_CHANNELS.DATABASE_VISIBLE_COLUMN);
+              }}
             >
               <label>
                 <input

@@ -20,6 +20,13 @@ import { createPortal } from "react-dom";
 import { Tooltip } from "../../../components/Tooltip";
 import type { ExamCombinationMode } from "../../../lib/examMixedSession";
 import { compareNaturalPath } from "../../../lib/naturalSort";
+import {
+  DRAG_CHANNELS,
+  endInternalDrag,
+  readInternalDragText,
+  setDropEffectSafe,
+  startInternalDrag,
+} from "../../../lib/dragDrop";
 import type { LoadState } from "../../../lib/types";
 import { useMediaQuery } from "../../../lib/useMediaQuery";
 import {
@@ -504,21 +511,21 @@ export const ExamFilePanel = ({
     setMoveSourcePath(path);
     setDropHint(null);
     setSlotDropHint(null);
-    if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = "move";
-      try {
-        event.dataTransfer.setData("text/plain", path);
-      } catch {
-        // ignore dataTransfer limitations in certain runtimes
-      }
-    }
+    startInternalDrag(event, {
+      channel: DRAG_CHANNELS.EXAM_SELECTED_FILE,
+      payload: path,
+      plainTextFallback: path,
+      effectAllowed: "move",
+    });
   };
 
   const handleSelectedChipDragOver = (
     event: ReactDragEvent<HTMLButtonElement>,
     path: string,
   ) => {
-    const sourcePath = dragSourcePath ?? moveSourcePath;
+    const sourcePath = dragSourcePath ??
+      moveSourcePath ??
+      readInternalDragText(event, { channel: DRAG_CHANNELS.EXAM_SELECTED_FILE });
     if (!sourcePath) {
       return;
     }
@@ -529,9 +536,7 @@ export const ExamFilePanel = ({
       return;
     }
     event.preventDefault();
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = "move";
-    }
+    setDropEffectSafe(event, "move");
     const position = resolveChipDropPosition(event);
     setDropHint((current) =>
       current?.path === path && current.position === position ? current : { path, position },
@@ -566,8 +571,11 @@ export const ExamFilePanel = ({
     event: ReactDragEvent<HTMLButtonElement>,
     path: string,
   ) => {
-    const sourcePath = dragSourcePath ?? moveSourcePath;
+    const sourcePath = dragSourcePath ??
+      moveSourcePath ??
+      readInternalDragText(event, { channel: DRAG_CHANNELS.EXAM_SELECTED_FILE });
     if (!sourcePath) {
+      endInternalDrag(DRAG_CHANNELS.EXAM_SELECTED_FILE);
       return;
     }
     event.preventDefault();
@@ -585,6 +593,7 @@ export const ExamFilePanel = ({
     setSlotDropHint(null);
     setDragSourcePath(null);
     setMoveSourcePath(null);
+    endInternalDrag(DRAG_CHANNELS.EXAM_SELECTED_FILE);
   };
 
   const handleSelectedChipDragEnd = () => {
@@ -592,6 +601,7 @@ export const ExamFilePanel = ({
     setSlotDropHint(null);
     setDragSourcePath(null);
     setMoveSourcePath(null);
+    endInternalDrag(DRAG_CHANNELS.EXAM_SELECTED_FILE);
   };
 
   const handleSlotPlaceTap = (target: ExamSelectionPlacementTarget) => {
@@ -609,14 +619,14 @@ export const ExamFilePanel = ({
     event: ReactDragEvent<HTMLButtonElement>,
     target: ExamSelectionPlacementTarget,
   ) => {
-    const sourcePath = dragSourcePath ?? moveSourcePath;
+    const sourcePath = dragSourcePath ??
+      moveSourcePath ??
+      readInternalDragText(event, { channel: DRAG_CHANNELS.EXAM_SELECTED_FILE });
     if (!sourcePath) {
       return;
     }
     event.preventDefault();
-    if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = "move";
-    }
+    setDropEffectSafe(event, "move");
     setSlotDropHint((current) =>
       current?.rowIndex === target.rowIndex && current.slotIndex === target.slotIndex
         ? current
@@ -628,8 +638,11 @@ export const ExamFilePanel = ({
     event: ReactDragEvent<HTMLButtonElement>,
     target: ExamSelectionPlacementTarget,
   ) => {
-    const sourcePath = dragSourcePath ?? moveSourcePath;
+    const sourcePath = dragSourcePath ??
+      moveSourcePath ??
+      readInternalDragText(event, { channel: DRAG_CHANNELS.EXAM_SELECTED_FILE });
     if (!sourcePath) {
+      endInternalDrag(DRAG_CHANNELS.EXAM_SELECTED_FILE);
       return;
     }
     event.preventDefault();
@@ -638,6 +651,7 @@ export const ExamFilePanel = ({
     setDragSourcePath(null);
     setDropHint(null);
     setSlotDropHint(null);
+    endInternalDrag(DRAG_CHANNELS.EXAM_SELECTED_FILE);
   };
 
   const renderFileRowEntries = (entries: ExamFileEntry[]) =>

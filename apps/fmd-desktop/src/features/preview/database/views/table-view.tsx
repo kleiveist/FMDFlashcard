@@ -18,6 +18,13 @@ import {
   type DatabaseSortRule,
 } from "../database-types";
 import { type MonitoringRenderProfile } from "../../../monitoring/monitoring-render-rules";
+import {
+  DRAG_CHANNELS,
+  endInternalDrag,
+  readInternalDragText,
+  setDropEffectSafe,
+  startInternalDrag,
+} from "../../../../lib/dragDrop";
 
 type DatabaseTableViewProps = {
   records: DatabaseRecord[];
@@ -179,16 +186,22 @@ export const DatabaseTableView = ({
   };
 
   const handleHeaderDragStart = (event: DragEvent<HTMLDivElement>, columnKey: string) => {
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", columnKey);
+    startInternalDrag(event, {
+      channel: DRAG_CHANNELS.DATABASE_COLUMN,
+      payload: columnKey,
+      plainTextFallback: columnKey,
+      effectAllowed: "move",
+    });
     setDraggedColumnKey(columnKey);
     setDropTargetColumnKey(null);
   };
 
   const handleHeaderDragOver = (event: DragEvent<HTMLDivElement>, targetColumnKey: string) => {
     event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    const sourceKey = event.dataTransfer.getData("text/plain");
+    setDropEffectSafe(event, "move");
+    const sourceKey = readInternalDragText(event, {
+      channel: DRAG_CHANNELS.DATABASE_COLUMN,
+    });
     if (!sourceKey || toLower(sourceKey) === toLower(targetColumnKey)) {
       if (dropTargetColumnKey !== null) {
         setDropTargetColumnKey(null);
@@ -202,20 +215,25 @@ export const DatabaseTableView = ({
 
   const handleHeaderDrop = (event: DragEvent<HTMLDivElement>, targetColumnKey: string) => {
     event.preventDefault();
-    const sourceKey = event.dataTransfer.getData("text/plain");
+    const sourceKey = readInternalDragText(event, {
+      channel: DRAG_CHANNELS.DATABASE_COLUMN,
+    });
     if (!sourceKey || toLower(sourceKey) === toLower(targetColumnKey)) {
       setDraggedColumnKey(null);
       setDropTargetColumnKey(null);
+      endInternalDrag(DRAG_CHANNELS.DATABASE_COLUMN);
       return;
     }
     onReorderColumns(sourceKey, targetColumnKey);
     setDraggedColumnKey(null);
     setDropTargetColumnKey(null);
+    endInternalDrag(DRAG_CHANNELS.DATABASE_COLUMN);
   };
 
   const handleHeaderDragEnd = () => {
     setDraggedColumnKey(null);
     setDropTargetColumnKey(null);
+    endInternalDrag(DRAG_CHANNELS.DATABASE_COLUMN);
   };
 
   const handleEditorKeyDown = (

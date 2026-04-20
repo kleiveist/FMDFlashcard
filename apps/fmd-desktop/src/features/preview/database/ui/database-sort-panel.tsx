@@ -12,6 +12,13 @@ import {
   type DatabaseViewType,
 } from "../database-types";
 import { DatabaseAttributeTypeahead } from "./database-attribute-typeahead";
+import {
+  DRAG_CHANNELS,
+  endInternalDrag,
+  readInternalDragText,
+  setDropEffectSafe,
+  startInternalDrag,
+} from "../../../../lib/dragDrop";
 
 type DatabaseSortPanelProps = {
   attributes: DatabaseAttributeMeta[];
@@ -62,13 +69,20 @@ export const DatabaseSortPanel = ({
   };
 
   const handleDragStart = (event: DragEvent<HTMLDivElement>, ruleId: string) => {
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", ruleId);
+    startInternalDrag(event, {
+      channel: DRAG_CHANNELS.DATABASE_SORT_RULE,
+      payload: ruleId,
+      plainTextFallback: ruleId,
+      effectAllowed: "move",
+    });
   };
 
   const handleDrop = (event: DragEvent<HTMLDivElement>, targetRuleId: string) => {
-    const sourceRuleId = event.dataTransfer.getData("text/plain");
+    const sourceRuleId = readInternalDragText(event, {
+      channel: DRAG_CHANNELS.DATABASE_SORT_RULE,
+    });
     if (!sourceRuleId || sourceRuleId === targetRuleId) {
+      endInternalDrag(DRAG_CHANNELS.DATABASE_SORT_RULE);
       return;
     }
     event.preventDefault();
@@ -76,16 +90,19 @@ export const DatabaseSortPanel = ({
     const sourceIndex = sortRules.findIndex((rule) => rule.id === sourceRuleId);
     const targetIndex = sortRules.findIndex((rule) => rule.id === targetRuleId);
     if (sourceIndex < 0 || targetIndex < 0) {
+      endInternalDrag(DRAG_CHANNELS.DATABASE_SORT_RULE);
       return;
     }
 
     const nextRules = [...sortRules];
     const [moved] = nextRules.splice(sourceIndex, 1);
     if (!moved) {
+      endInternalDrag(DRAG_CHANNELS.DATABASE_SORT_RULE);
       return;
     }
     nextRules.splice(targetIndex, 0, moved);
     onChange(nextRules);
+    endInternalDrag(DRAG_CHANNELS.DATABASE_SORT_RULE);
   };
 
   const hasSuggestionSource = attributeSuggestions.length > 0;
@@ -121,9 +138,12 @@ export const DatabaseSortPanel = ({
               onDragStart={(event) => handleDragStart(event, rule.id)}
               onDragOver={(event) => {
                 event.preventDefault();
-                event.dataTransfer.dropEffect = "move";
+                setDropEffectSafe(event, "move");
               }}
               onDrop={(event) => handleDrop(event, rule.id)}
+              onDragEnd={() => {
+                endInternalDrag(DRAG_CHANNELS.DATABASE_SORT_RULE);
+              }}
             >
               <DatabaseAttributeTypeahead
                 value={rule.field}

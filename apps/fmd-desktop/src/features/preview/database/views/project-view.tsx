@@ -26,6 +26,13 @@ import {
   type MonitoringRenderProfile,
 } from "../../../monitoring/monitoring-render-rules";
 import { AnchoredPopup } from "../../../../components/AnchoredPopup";
+import {
+  DRAG_CHANNELS,
+  endInternalDrag,
+  readInternalDragText,
+  setDropEffectSafe,
+  startInternalDrag,
+} from "../../../../lib/dragDrop";
 
 type DatabaseProjectViewProps = {
   records: DatabaseRecord[];
@@ -834,8 +841,15 @@ export const DatabaseProjectView = ({
                       title={record.relativePath}
                       draggable={editable}
                       onDragStart={(event) => {
-                        event.dataTransfer.effectAllowed = "move";
-                        event.dataTransfer.setData("text/plain", record.fileId);
+                        startInternalDrag(event, {
+                          channel: DRAG_CHANNELS.DATABASE_RECORD,
+                          payload: record.fileId,
+                          plainTextFallback: record.fileId,
+                          effectAllowed: "move",
+                        });
+                      }}
+                      onDragEnd={() => {
+                        endInternalDrag(DRAG_CHANNELS.DATABASE_RECORD);
                       }}
                       data-md-block-control="true"
                     >
@@ -855,15 +869,18 @@ export const DatabaseProjectView = ({
                       return;
                     }
                     event.preventDefault();
-                    event.dataTransfer.dropEffect = "move";
+                    setDropEffectSafe(event, "move");
                   }}
                   onDrop={(event) => {
                     if (!editable || !onCommitPlacement) {
                       return;
                     }
-                    const droppedRecordId = event.dataTransfer.getData("text/plain");
+                    const droppedRecordId = readInternalDragText(event, {
+                      channel: DRAG_CHANNELS.DATABASE_RECORD,
+                    });
                     const droppedRecord = recordById.get(droppedRecordId);
                     if (!droppedRecord) {
+                      endInternalDrag(DRAG_CHANNELS.DATABASE_RECORD);
                       return;
                     }
                     const existing = entryByRecordId.get(droppedRecordId);
@@ -884,6 +901,7 @@ export const DatabaseProjectView = ({
                       startSlot,
                       units: clamp(nextUnits, 1, Math.max(1, resolution - startSlot)),
                     });
+                    endInternalDrag(DRAG_CHANNELS.DATABASE_RECORD);
                   }}
                 >
                   {hasPlacement ? (

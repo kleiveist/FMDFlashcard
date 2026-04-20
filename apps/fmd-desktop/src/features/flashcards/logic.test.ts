@@ -16,9 +16,12 @@
  * - Nur fuer Testlauf; keine Produktivnutzung.
  */
 
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Flashcard } from "../../lib/flashcards";
+import { __resetInternalDragSessionsForTest } from "../../lib/dragDrop";
 import {
+  getClozeDragPayload,
+  handleClozeTokenDragStart,
   calculateFlashcardStats,
   evaluateFlashcardResult,
   type CompositePartState,
@@ -37,6 +40,10 @@ const buildCompositeCard = (): Flashcard => ({
       correctKeys: ["a"],
     },
   ],
+});
+
+beforeEach(() => {
+  __resetInternalDragSessionsForTest();
 });
 
 describe("evaluateFlashcardResult", () => {
@@ -195,5 +202,37 @@ describe("evaluateFlashcardResult pending QA handling", () => {
     );
 
     expect(result).toBe("incorrect");
+  });
+});
+
+describe("cloze drag payload handling", () => {
+  it("recovers payload from internal fallback when dataTransfer access is restricted", () => {
+    const dataTransfer = {
+      effectAllowed: "all",
+      dropEffect: "none",
+      setData: vi.fn(() => {
+        throw new Error("blocked");
+      }),
+      getData: vi.fn(() => ""),
+      clearData: vi.fn(),
+      files: [] as unknown as FileList,
+      items: [] as unknown as DataTransferItemList,
+      types: [],
+      setDragImage: vi.fn(),
+    } as unknown as DataTransfer;
+
+    const event = { dataTransfer } as unknown as Parameters<typeof handleClozeTokenDragStart>[0];
+    handleClozeTokenDragStart(event, {
+      cardIndex: 3,
+      tokenId: "token-fallback",
+      partIndex: 2,
+    });
+
+    const payload = getClozeDragPayload(event);
+    expect(payload).toEqual({
+      cardIndex: 3,
+      tokenId: "token-fallback",
+      partIndex: 2,
+    });
   });
 });

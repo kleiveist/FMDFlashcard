@@ -41,6 +41,13 @@ import { InlineRenameLabel } from "./InlineRenameLabel";
 import { VaultCreateModal } from "./VaultCreateModal";
 import { VaultDeleteModal } from "./VaultDeleteModal";
 import { asErrorMessage } from "../lib/errors";
+import {
+  DRAG_CHANNELS,
+  endInternalDrag,
+  readInternalDrag,
+  setDropEffectSafe,
+  startInternalDrag,
+} from "../lib/dragDrop";
 import { isHiddenPath, normalizeRelativePath, vaultBaseName } from "../lib/path";
 import {
   buildTree,
@@ -65,6 +72,42 @@ type DeleteShortcutEvent = {
   key: string;
   currentTarget: { contains?: (node: Node | null) => boolean } | null;
   target: unknown;
+};
+
+type VaultTreeDragPayload =
+  | {
+      kind: "file";
+      file: VaultFile;
+    }
+  | {
+      kind: "dir";
+      path: string;
+      name: string;
+    };
+
+const asVaultTreeDragPayload = (value: unknown): VaultTreeDragPayload | null => {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const candidate = value as Partial<VaultTreeDragPayload>;
+  if (candidate.kind === "file" && candidate.file && typeof candidate.file === "object") {
+    return {
+      kind: "file",
+      file: candidate.file as VaultFile,
+    };
+  }
+  if (
+    candidate.kind === "dir" &&
+    typeof candidate.path === "string" &&
+    typeof candidate.name === "string"
+  ) {
+    return {
+      kind: "dir",
+      path: candidate.path,
+      name: candidate.name,
+    };
+  }
+  return null;
 };
 
 export const shouldHandleVaultDeleteShortcut = (
@@ -1262,8 +1305,12 @@ export const VaultTree = ({
       setSelectedNode({ kind: "file", file });
       setMoveError("");
       setStatusMessage("");
-      event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", file.relative_path);
+      startInternalDrag(event, {
+        channel: DRAG_CHANNELS.VAULT_TREE,
+        payload: { kind: "file", file } satisfies VaultTreeDragPayload,
+        plainTextFallback: file.relative_path,
+        effectAllowed: "move",
+      });
     },
     [vaultPath],
   );
@@ -1281,8 +1328,16 @@ export const VaultTree = ({
       setSelectedNode({ kind: "dir", path: normalized });
       setMoveError("");
       setStatusMessage("");
-      event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", normalized);
+      startInternalDrag(event, {
+        channel: DRAG_CHANNELS.VAULT_TREE,
+        payload: {
+          kind: "dir",
+          path: normalized,
+          name: getFileName(normalized),
+        } satisfies VaultTreeDragPayload,
+        plainTextFallback: normalized,
+        effectAllowed: "move",
+      });
     },
     [vaultPath],
   );
@@ -1295,25 +1350,32 @@ export const VaultTree = ({
 
   const handleDragEnd = useCallback(() => {
     clearDragState();
+    endInternalDrag(DRAG_CHANNELS.VAULT_TREE);
   }, [clearDragState]);
 
   const handleFolderDragOver = useCallback(
     (event: DragEvent<HTMLElement>, path: string) => {
-      if (!draggedNode) {
+      const fallbackPayload = !draggedNode
+        ? asVaultTreeDragPayload(readInternalDrag<unknown>(event, {
+          channel: DRAG_CHANNELS.VAULT_TREE,
+        }))
+        : null;
+      const activeDraggedNode = draggedNode ?? fallbackPayload;
+      if (!activeDraggedNode) {
         return;
       }
       const moveInfo =
-        draggedNode.kind === "file"
-          ? getFileMoveInfo(draggedNode.file, path)
-          : getDirMoveInfo(draggedNode.path, path);
+        activeDraggedNode.kind === "file"
+          ? getFileMoveInfo(activeDraggedNode.file, path)
+          : getDirMoveInfo(activeDraggedNode.path, path);
       if (!moveInfo.allowed) {
         setDragOverPath(path);
         setDragOverState("invalid");
-        event.dataTransfer.dropEffect = "none";
+        setDropEffectSafe(event, "none");
         return;
       }
       event.preventDefault();
-      event.dataTransfer.dropEffect = "move";
+      setDropEffectSafe(event, "move");
       setDragOverPath(path);
       setDragOverState("valid");
     },
@@ -1332,8 +1394,11 @@ export const VaultTree = ({
   const handleFolderDrop = useCallback(
     async (event: DragEvent<HTMLElement>, path: string) => {
       event.preventDefault();
-      const activeNode = draggedNode;
+      const activeNode = draggedNode ?? asVaultTreeDragPayload(readInternalDrag<unknown>(event, {
+        channel: DRAG_CHANNELS.VAULT_TREE,
+      }));
       if (!activeNode) {
+        endInternalDrag(DRAG_CHANNELS.VAULT_TREE);
         return;
       }
       const moveInfo =
@@ -1357,6 +1422,7 @@ export const VaultTree = ({
                 ? "Cannot move the vault root folder."
                 : defaultMessage;
         setMoveError(reasonMessage);
+        endInternalDrag(DRAG_CHANNELS.VAULT_TREE);
         return;
       }
       if (activeNode.kind === "file") {
@@ -1364,6 +1430,7 @@ export const VaultTree = ({
       } else {
         await handleMoveDirectory(activeNode.path, path);
       }
+      endInternalDrag(DRAG_CHANNELS.VAULT_TREE);
     },
     [clearDragState, draggedNode, getDirMoveInfo, getFileMoveInfo, handleMoveDirectory, handleMoveFile],
   );

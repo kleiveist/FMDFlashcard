@@ -37,6 +37,7 @@ import { validatePointsProfile } from "../../../features/exam-points/validatePoi
 import { resolveExamTaskFrontmatterValue } from "../../../features/exam-points/frontmatterTask";
 import type { MissingExamSetting } from "../../../features/settings/validateExamSettings";
 import { asErrorMessage } from "../../../lib/errors";
+import { DRAG_CHANNELS, endInternalDrag } from "../../../lib/dragDrop";
 import {
   applyTaskAreaToggle,
   resolveTaskMutationScope,
@@ -1293,33 +1294,37 @@ export const useExamSimulationViewModel = () => {
       dragBlankIds: Set<string>,
     ) => {
       event.preventDefault();
-      if (stage !== "running") {
-        return;
-      }
-      const payload = getClozeDragPayload(event);
-      if (!payload || payload.cardIndex !== taskIndex || payload.partIndex !== partIndex) {
-        return;
-      }
-      if (payload.tokenId === blankId) {
-        return;
-      }
-      if (!validTokenIds.has(payload.tokenId)) {
-        return;
-      }
+      try {
+        if (stage !== "running") {
+          return;
+        }
+        const payload = getClozeDragPayload(event);
+        if (!payload || payload.cardIndex !== taskIndex || payload.partIndex !== partIndex) {
+          return;
+        }
+        if (payload.tokenId === blankId) {
+          return;
+        }
+        if (!validTokenIds.has(payload.tokenId)) {
+          return;
+        }
 
-      updatePartState(taskIndex, partIndex, (current) => {
-        const responses = { ...(current.clozeResponses ?? {}) };
-        const existingBlankId = Object.entries(responses).find(
-          ([key, value]) => value === payload.tokenId && key !== blankId,
-        )?.[0];
-        if (existingBlankId) {
-          delete responses[existingBlankId];
-        }
-        if (dragBlankIds.has(blankId)) {
-          responses[blankId] = payload.tokenId;
-        }
-        return { ...current, clozeResponses: responses };
-      });
+        updatePartState(taskIndex, partIndex, (current) => {
+          const responses = { ...(current.clozeResponses ?? {}) };
+          const existingBlankId = Object.entries(responses).find(
+            ([key, value]) => value === payload.tokenId && key !== blankId,
+          )?.[0];
+          if (existingBlankId) {
+            delete responses[existingBlankId];
+          }
+          if (dragBlankIds.has(blankId)) {
+            responses[blankId] = payload.tokenId;
+          }
+          return { ...current, clozeResponses: responses };
+        });
+      } finally {
+        endInternalDrag(DRAG_CHANNELS.CLOZE_TOKEN);
+      }
     },
     [stage, updatePartState],
   );
@@ -1650,27 +1655,31 @@ export const useExamSimulationViewModel = () => {
       dragBlankIds: Set<string>,
     ) => {
       event.preventDefault();
-      const payload = getClozeDragPayload(event);
-      if (!payload || payload.partIndex !== partIndex) {
-        return;
-      }
-      if (payload.tokenId === blankId || !validTokenIds.has(payload.tokenId)) {
-        return;
-      }
+      try {
+        const payload = getClozeDragPayload(event);
+        if (!payload || payload.partIndex !== partIndex) {
+          return;
+        }
+        if (payload.tokenId === blankId || !validTokenIds.has(payload.tokenId)) {
+          return;
+        }
 
-      updateCorrectionPartState(sessionTaskId, partIndex, (current) => {
-        const responses = { ...(current.clozeResponses ?? {}) };
-        const existingBlankId = Object.entries(responses).find(
-          ([key, value]) => value === payload.tokenId && key !== blankId,
-        )?.[0];
-        if (existingBlankId) {
-          delete responses[existingBlankId];
-        }
-        if (dragBlankIds.has(blankId)) {
-          responses[blankId] = payload.tokenId;
-        }
-        return { ...current, clozeResponses: responses };
-      });
+        updateCorrectionPartState(sessionTaskId, partIndex, (current) => {
+          const responses = { ...(current.clozeResponses ?? {}) };
+          const existingBlankId = Object.entries(responses).find(
+            ([key, value]) => value === payload.tokenId && key !== blankId,
+          )?.[0];
+          if (existingBlankId) {
+            delete responses[existingBlankId];
+          }
+          if (dragBlankIds.has(blankId)) {
+            responses[blankId] = payload.tokenId;
+          }
+          return { ...current, clozeResponses: responses };
+        });
+      } finally {
+        endInternalDrag(DRAG_CHANNELS.CLOZE_TOKEN);
+      }
     },
     [updateCorrectionPartState],
   );

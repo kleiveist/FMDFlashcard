@@ -5,6 +5,7 @@
 import type { DragEvent } from "react";
 import type { CardType } from "../../../features/exam-editor/types";
 import { serializeCardTypeLabel } from "../../../features/exam-editor/serializer";
+import { DRAG_CHANNELS, endInternalDrag, startInternalDrag } from "../../../lib/dragDrop";
 
 const CARD_TYPES: CardType[] = ["qa", "tf", "m1", "m2", "cl", "cd", "cld"];
 
@@ -23,9 +24,17 @@ type CardPaletteProps = {
 };
 
 const handleDragStart = (event: DragEvent<HTMLButtonElement>, type: CardType) => {
-  event.dataTransfer.setData("application/x-fmd-card-type", type);
-  event.dataTransfer.setData("text/plain", type);
-  event.dataTransfer.effectAllowed = "copy";
+  startInternalDrag(event, {
+    channel: DRAG_CHANNELS.EXAM_CARD_TYPE,
+    payload: type,
+    plainTextFallback: type,
+    effectAllowed: "copy",
+  });
+  try {
+    event.dataTransfer.setData("application/x-fmd-card-type", type);
+  } catch {
+    // ignore restricted dataTransfer implementations
+  }
 };
 
 export const CardPalette = ({ onQuickAdd }: CardPaletteProps) => (
@@ -39,6 +48,7 @@ export const CardPalette = ({ onQuickAdd }: CardPaletteProps) => (
             className="card-palette-item"
             draggable
             onDragStart={(event) => handleDragStart(event, type)}
+            onDragEnd={() => endInternalDrag(DRAG_CHANNELS.EXAM_CARD_TYPE)}
             onClick={() => onQuickAdd(type)}
             aria-label={`Add ${serializeCardTypeLabel(type)} card`}
             title={CARD_DESCRIPTIONS[type]}

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, createElement, useState, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MarkdownHybridEditor } from "./MarkdownHybridEditor";
 import {
   ADVANCED_INSERT_TEMPLATE_CATALOG,
@@ -9,9 +9,18 @@ import {
 } from "./insertTemplates";
 import { parseFrontmatterDocument } from "./frontmatter";
 import { ExamMarkdown } from "../../pages/exam-simulation/components/ExamMarkdown";
+import {
+  __resetInternalDragSessionsForTest,
+  DRAG_CHANNELS,
+  startInternalDrag,
+} from "../../lib/dragDrop";
 
 const INTERNAL_BLOCK_CLIPBOARD_MIME = "application/x-fmd-markdown-hybrid-blocks+json";
 const INTERNAL_BLOCK_REORDER_DRAG_MIME = "application/x-fmd-markdown-hybrid-block-reorder";
+
+beforeEach(() => {
+  __resetInternalDragSessionsForTest();
+});
 
 const render = (element: ReactElement) => {
   const container = document.createElement("div");
@@ -1912,6 +1921,73 @@ describe("MarkdownHybridEditor", () => {
       expect(container.querySelector(".markdown-hybrid-drag-preview")).toBeNull();
       expect(container.querySelector(".markdown-hybrid-block.is-dragging")).toBeNull();
 
+      cleanup();
+    });
+  });
+
+  it("reorders markdown blocks from internal fallback session when dataTransfer payload is unavailable", () => {
+    withImmediateRaf(() => {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("# One\n# Two\n# Three");
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="drag-handle-reorder-fallback-session"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const lastBlock = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-index='2']",
+      );
+      expect(lastBlock).toBeTruthy();
+
+      const dataTransfer = {
+        effectAllowed: "all",
+        dropEffect: "none",
+        files: [],
+        items: [],
+        types: [],
+        setData: vi.fn(() => {
+          throw new Error("blocked");
+        }),
+        getData: () => "",
+        clearData: () => undefined,
+        setDragImage: () => undefined,
+      } as unknown as DataTransfer;
+
+      startInternalDrag(
+        { dataTransfer },
+        {
+          channel: DRAG_CHANNELS.MARKDOWN_BLOCK,
+          payload: 0,
+          plainTextFallback: "0",
+          effectAllowed: "move",
+        },
+      );
+
+      const dragOverEvent = dispatchDragEvent(lastBlock, "dragover", {
+        dataTransfer,
+        clientX: 100,
+        clientY: 120,
+      });
+      expect(dragOverEvent.defaultPrevented).toBe(true);
+
+      dispatchDragEvent(lastBlock, "drop", {
+        dataTransfer,
+        clientX: 100,
+        clientY: 120,
+      });
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toBe("# Two\n# Three\n# One");
       cleanup();
     });
   });

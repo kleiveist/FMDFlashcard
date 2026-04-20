@@ -37,6 +37,7 @@ import {
   type FlashcardSelfGrade,
   type TrueFalseSelection,
 } from "../flashcards/logic";
+import { DRAG_CHANNELS, endInternalDrag } from "../../lib/dragDrop";
 import type {
   FlashcardOrder,
   FlashcardScope,
@@ -1379,36 +1380,40 @@ export const useSpacedRepetition = ({
       dragBlankIds: Set<string>,
     ) => {
       event.preventDefault();
-      if (spacedRepetitionSubmissions[cardIndex]) {
-        return;
-      }
-      const payload = getClozeDragPayload(event);
-      if (!payload || payload.cardIndex !== cardIndex) {
-        return;
-      }
-      if (payload.tokenId === blankId) {
-        return;
-      }
-      if (!validTokenIds.has(payload.tokenId)) {
-        return;
-      }
+      try {
+        if (spacedRepetitionSubmissions[cardIndex]) {
+          return;
+        }
+        const payload = getClozeDragPayload(event);
+        if (!payload || payload.cardIndex !== cardIndex) {
+          return;
+        }
+        if (payload.tokenId === blankId) {
+          return;
+        }
+        if (!validTokenIds.has(payload.tokenId)) {
+          return;
+        }
 
-      updateActiveSpacedRepetitionSession((session) => {
-        const current = { ...(session.clozeResponses[cardIndex] ?? {}) };
-        const existingBlankId = Object.entries(current).find(
-          ([key, value]) => value === payload.tokenId && key !== blankId,
-        )?.[0];
-        if (existingBlankId) {
-          delete current[existingBlankId];
-        }
-        if (dragBlankIds.has(blankId)) {
-          current[blankId] = payload.tokenId;
-        }
-        return {
-          ...session,
-          clozeResponses: { ...session.clozeResponses, [cardIndex]: current },
-        };
-      });
+        updateActiveSpacedRepetitionSession((session) => {
+          const current = { ...(session.clozeResponses[cardIndex] ?? {}) };
+          const existingBlankId = Object.entries(current).find(
+            ([key, value]) => value === payload.tokenId && key !== blankId,
+          )?.[0];
+          if (existingBlankId) {
+            delete current[existingBlankId];
+          }
+          if (dragBlankIds.has(blankId)) {
+            current[blankId] = payload.tokenId;
+          }
+          return {
+            ...session,
+            clozeResponses: { ...session.clozeResponses, [cardIndex]: current },
+          };
+        });
+      } finally {
+        endInternalDrag(DRAG_CHANNELS.CLOZE_TOKEN);
+      }
     },
     [spacedRepetitionSubmissions, updateActiveSpacedRepetitionSession],
   );
@@ -1423,33 +1428,37 @@ export const useSpacedRepetition = ({
       dragBlankIds: Set<string>,
     ) => {
       event.preventDefault();
-      if (spacedRepetitionSubmissions[cardIndex]) {
-        return;
-      }
-      const payload = getClozeDragPayload(event);
-      if (!payload || payload.cardIndex !== cardIndex || payload.partIndex !== partIndex) {
-        return;
-      }
-      if (payload.tokenId === blankId) {
-        return;
-      }
-      if (!validTokenIds.has(payload.tokenId)) {
-        return;
-      }
+      try {
+        if (spacedRepetitionSubmissions[cardIndex]) {
+          return;
+        }
+        const payload = getClozeDragPayload(event);
+        if (!payload || payload.cardIndex !== cardIndex || payload.partIndex !== partIndex) {
+          return;
+        }
+        if (payload.tokenId === blankId) {
+          return;
+        }
+        if (!validTokenIds.has(payload.tokenId)) {
+          return;
+        }
 
-      updateCompositePartState(cardIndex, partIndex, (current) => {
-        const responses = { ...(current.clozeResponses ?? {}) };
-        const existingBlankId = Object.entries(responses).find(
-          ([key, value]) => value === payload.tokenId && key !== blankId,
-        )?.[0];
-        if (existingBlankId) {
-          delete responses[existingBlankId];
-        }
-        if (dragBlankIds.has(blankId)) {
-          responses[blankId] = payload.tokenId;
-        }
-        return { ...current, clozeResponses: responses };
-      });
+        updateCompositePartState(cardIndex, partIndex, (current) => {
+          const responses = { ...(current.clozeResponses ?? {}) };
+          const existingBlankId = Object.entries(responses).find(
+            ([key, value]) => value === payload.tokenId && key !== blankId,
+          )?.[0];
+          if (existingBlankId) {
+            delete responses[existingBlankId];
+          }
+          if (dragBlankIds.has(blankId)) {
+            responses[blankId] = payload.tokenId;
+          }
+          return { ...current, clozeResponses: responses };
+        });
+      } finally {
+        endInternalDrag(DRAG_CHANNELS.CLOZE_TOKEN);
+      }
     },
     [spacedRepetitionSubmissions, updateCompositePartState],
   );

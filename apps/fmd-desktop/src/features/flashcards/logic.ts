@@ -25,6 +25,12 @@ import {
   type FlashcardPart,
   type Flashcard,
 } from "../../lib/flashcards";
+import {
+  DRAG_CHANNELS,
+  readInternalDrag,
+  setDropEffectSafe,
+  startInternalDrag,
+} from "../../lib/dragDrop";
 
 export type TrueFalseSelection = "wahr" | "falsch";
 export type FlashcardResult = "correct" | "incorrect" | "neutral" | "pending";
@@ -59,11 +65,33 @@ export const setClozeDragPayload = (
   event: DragEvent<HTMLElement>,
   payload: ClozeDragPayload,
 ) => {
-  event.dataTransfer.setData(CLOZE_TOKEN_DRAG_TYPE, JSON.stringify(payload));
-  event.dataTransfer.effectAllowed = "move";
+  startInternalDrag(event, {
+    channel: DRAG_CHANNELS.CLOZE_TOKEN,
+    payload,
+    plainTextFallback: payload.tokenId,
+    effectAllowed: "move",
+  });
 };
 
 export const getClozeDragPayload = (event: DragEvent<HTMLElement>) => {
+  const internalPayload = readInternalDrag<ClozeDragPayload>(event, {
+    channel: DRAG_CHANNELS.CLOZE_TOKEN,
+  });
+  if (internalPayload && typeof internalPayload === "object") {
+    const parsed = internalPayload as ClozeDragPayload;
+    if (typeof parsed.cardIndex === "number" && typeof parsed.tokenId === "string") {
+      if (
+        "partIndex" in parsed &&
+        typeof parsed.partIndex !== "number" &&
+        parsed.partIndex !== undefined
+      ) {
+        return null;
+      }
+      return parsed;
+    }
+  }
+
+  // Backward compatibility for synthetic/runtime paths that only expose legacy MIME data.
   const raw = event.dataTransfer.getData(CLOZE_TOKEN_DRAG_TYPE);
   if (!raw) {
     return null;
@@ -90,13 +118,12 @@ export const handleClozeTokenDragStart = (
   event: DragEvent<HTMLElement>,
   payload: ClozeDragPayload,
 ) => {
-  event.dataTransfer.clearData();
   setClozeDragPayload(event, payload);
 };
 
 export const handleClozeBlankDragOver = (event: DragEvent<HTMLElement>) => {
   event.preventDefault();
-  event.dataTransfer.dropEffect = "move";
+  setDropEffectSafe(event, "move");
 };
 
 export const shuffleFlashcards = <T,>(cards: T[]) => {
