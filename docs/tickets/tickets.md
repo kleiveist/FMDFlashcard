@@ -11,5 +11,6 @@
 - 📝 [Ticket 20260420-003](20260420-003_cv_karten_in_gruppen_nach_oben_unten_verschieben.md)
 - 📝 [Ticket 20260420-004](20260420-004_cv_filter_sortierung_systemfelder.md)
 - 📝 [Ticket 20260420-005](20260420-005_pie_count_kreis_vergroessern.md)
+- 📝 [Ticket 20260420-006](20260420-006_mc_composite_scoring_and_correction.md)
 
 <!-- AUTO-GENERATED:docs-index END -->

@@ -56,7 +56,6 @@ import {
 } from "../../../lib/examRuns";
 import {
   findExamTaskWrapper,
-  resolveFlashcardPartAutoCardType,
   unwrapExamTask,
   wrapExamTask,
 } from "../../../lib/exam/autoCards";
@@ -93,6 +92,7 @@ import {
   loadExamRunStore,
 } from "../../../features/user-vault/storage";
 import { upsertExamResultStatsFrontmatter } from "../../../features/exam-results/frontmatterStats";
+import { resolveAutoTaskAwardedPoints } from "../autoScoring";
 import type {
   ExamCorrectionState,
   ExamManualTaskEntry,
@@ -1424,61 +1424,14 @@ export const useExamSimulationViewModel = () => {
           const isCorrect = isTaskCorrect(task, currentTaskPartStates);
           const overrideDecision = taskAutoGradeDecisions[index];
           const decidedCorrect = overrideDecision ?? isCorrect;
-          const taskTypePointsSource = resolveTaskTypePointsSourceMap(
-            activeExamSettings.pointsProfile,
-          );
-          const autoAwarded = (() => {
-            if (typeof overrideDecision === "boolean") {
-              return overrideDecision ? maxPoints : 0;
-            }
-            if (!taskTypePointsSource) {
-              if (!activeExamSettings.pointsProfile) {
-                const summed = task.card.parts.reduce((sum, part, partIndex) => {
-                  const result = evaluateFlashcardPartResult(
-                    part,
-                    currentTaskPartStates[partIndex] ?? {},
-                  );
-                  if (result !== "correct") {
-                    return sum;
-                  }
-                  const type = resolveFlashcardPartAutoCardType(part);
-                  if (!type) {
-                    return sum;
-                  }
-                  return (
-                    sum +
-                    Math.max(
-                      0,
-                      Math.floor(settings.examTaskTypeDefaultPoints[type] ?? 0),
-                    )
-                  );
-                }, 0);
-                return clampNumber(summed, 0, maxPoints);
-              }
-              return isCorrect ? maxPoints : 0;
-            }
-            const summed = task.card.parts.reduce((sum, part, partIndex) => {
-              const result = evaluateFlashcardPartResult(
-                part,
-                currentTaskPartStates[partIndex] ?? {},
-              );
-              if (result !== "correct") {
-                return sum;
-              }
-              const type = resolveFlashcardPartAutoCardType(part);
-              if (!type) {
-                return sum;
-              }
-              return (
-                sum +
-                Math.max(
-                  0,
-                  Math.floor(taskTypePointsSource[type]?.points ?? 0),
-                )
-              );
-            }, 0);
-            return clampNumber(summed, 0, maxPoints);
-          })();
+          const autoAwarded = resolveAutoTaskAwardedPoints({
+            task,
+            partStates: currentTaskPartStates,
+            maxPoints,
+            overrideDecision,
+            pointsProfile: activeExamSettings.pointsProfile,
+            defaultTypePoints: settings.examTaskTypeDefaultPoints,
+          });
           return {
             index: index + 1,
             sessionTaskId: task.sessionTaskId,
@@ -1528,7 +1481,6 @@ export const useExamSimulationViewModel = () => {
     },
     [
       activeExamSettings,
-      resolveTaskTypePointsSourceMap,
       runTaskPoints,
       runTasks,
       settings.examTaskTypeDefaultPoints,
