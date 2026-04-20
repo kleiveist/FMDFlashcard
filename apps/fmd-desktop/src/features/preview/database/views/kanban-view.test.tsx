@@ -410,6 +410,35 @@ describe("DatabaseKanbanView", () => {
     cleanup();
   });
 
+  it("keeps the selected card when tapping the same source column body", () => {
+    const onMoveRecord = vi.fn();
+    const { container, cleanup } = render(
+      createElement(DatabaseKanbanView, {
+        records: [recordA, recordB],
+        groupAttribute,
+        attributes: [groupAttribute],
+        visibleProperties: [],
+        showCover: false,
+        pendingRecordIds: [],
+        onMoveRecord,
+        onReorderRecordWithinGroup: vi.fn(),
+        onOpenRecord: vi.fn(),
+      }),
+    );
+
+    const sourceCard = findCardByTitle(container, "a");
+    const openColumn = findColumnByLabel(container, "Open");
+    const openBody = openColumn?.querySelector(".database-kanban-column-body") ?? null;
+
+    clickElement(sourceCard);
+    clickElement(openBody);
+
+    expect(onMoveRecord).not.toHaveBeenCalled();
+    expect(sourceCard?.classList.contains("is-touch-selected")).toBe(true);
+
+    cleanup();
+  });
+
   it("moves selected cards by tapping a different column", () => {
     const onMoveRecord = vi.fn();
     const { container, cleanup } = render(

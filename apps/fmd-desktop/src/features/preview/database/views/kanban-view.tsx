@@ -216,6 +216,8 @@ export const DatabaseKanbanView = ({
   const pendingIds = useMemo(() => new Set(pendingRecordIds), [pendingRecordIds]);
   const [touchSelectedRecordId, setTouchSelectedRecordId] = useState<string | null>(null);
   const [touchSourceGroupKey, setTouchSourceGroupKey] = useState<string | null>(null);
+  const touchSelectedRecordIdRef = useRef<string | null>(null);
+  const touchSourceGroupKeyRef = useRef<string | null>(null);
   const recordsById = useMemo(
     () => new Map(records.map((record) => [record.fileId, record])),
     [records],
@@ -246,6 +248,8 @@ export const DatabaseKanbanView = ({
         left.label.localeCompare(right.label, undefined, { sensitivity: "base" }));
   }, [groupAttribute, monitoringProfiles, orderByGroup, records]);
   const clearTouchSelection = () => {
+    touchSelectedRecordIdRef.current = null;
+    touchSourceGroupKeyRef.current = null;
     setTouchSelectedRecordId(null);
     setTouchSourceGroupKey(null);
   };
@@ -254,19 +258,24 @@ export const DatabaseKanbanView = ({
     if (pendingIds.has(record.fileId)) {
       return;
     }
-    if (touchSelectedRecordId === record.fileId && touchSourceGroupKey === groupKey) {
+    if (
+      touchSelectedRecordIdRef.current === record.fileId &&
+      touchSourceGroupKeyRef.current === groupKey
+    ) {
       clearTouchSelection();
       return;
     }
+    touchSelectedRecordIdRef.current = record.fileId;
+    touchSourceGroupKeyRef.current = groupKey;
     setTouchSelectedRecordId(record.fileId);
     setTouchSourceGroupKey(groupKey);
   };
 
   const moveTouchSelectionToGroup = (targetGroupKey: string) => {
-    if (!groupAttribute || !touchSelectedRecordId) {
+    if (!groupAttribute || !touchSelectedRecordIdRef.current) {
       return;
     }
-    const record = recordsById.get(touchSelectedRecordId);
+    const record = recordsById.get(touchSelectedRecordIdRef.current);
     if (!record || pendingIds.has(record.fileId)) {
       clearTouchSelection();
       return;
@@ -275,7 +284,7 @@ export const DatabaseKanbanView = ({
       getRecordValueByField(record, groupAttribute.key),
     );
     if (previousGroupValue === targetGroupKey) {
-      clearTouchSelection();
+      // Keep selection when tapping within the same column body/section.
       return;
     }
     onMoveRecord(record, targetGroupKey === EMPTY_GROUP_LABEL ? "" : targetGroupKey, {
@@ -288,7 +297,7 @@ export const DatabaseKanbanView = ({
   const handleColumnTap = (
     groupKey: string,
   ) => {
-    if (!touchSelectedRecordId) {
+    if (!touchSelectedRecordIdRef.current) {
       return;
     }
     moveTouchSelectionToGroup(groupKey);
@@ -305,7 +314,9 @@ export const DatabaseKanbanView = ({
       return;
     }
     event.stopPropagation();
-    if (touchSelectedRecordId && touchSourceGroupKey && touchSourceGroupKey !== groupKey) {
+    const selectedRecordId = touchSelectedRecordIdRef.current;
+    const sourceGroupKey = touchSourceGroupKeyRef.current;
+    if (selectedRecordId && sourceGroupKey && sourceGroupKey !== groupKey) {
       moveTouchSelectionToGroup(groupKey);
       return;
     }
@@ -350,6 +361,7 @@ export const DatabaseKanbanView = ({
       getRecordValueByField(selectedRecord, groupAttribute.key),
     );
     if (touchSourceGroupKey !== nextGroupKey) {
+      touchSourceGroupKeyRef.current = nextGroupKey;
       setTouchSourceGroupKey(nextGroupKey);
     }
   }, [
@@ -359,6 +371,14 @@ export const DatabaseKanbanView = ({
     touchSelectedRecordId,
     touchSourceGroupKey,
   ]);
+
+  useEffect(() => {
+    touchSelectedRecordIdRef.current = touchSelectedRecordId;
+  }, [touchSelectedRecordId]);
+
+  useEffect(() => {
+    touchSourceGroupKeyRef.current = touchSourceGroupKey;
+  }, [touchSourceGroupKey]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
