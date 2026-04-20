@@ -1,3 +1,6 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](tickets.md)
+<!-- AUTO-GENERATED:backlink END -->
 # Ticket 20260420-004
 
 - Ticket-ID: `20260420-004`

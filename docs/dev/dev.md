@@ -11,9 +11,6 @@
 - 📝 [Architecture overview](architecture.md)
 - 📝 [Developer ↔ Codex Workflow](codex-workflow.md)
 
-## 📁 Package Inventory
-- 🗂️ [Overview](info/package-inventory-and-security-analysis.md)
-
 ## 📁 Assets
 - 🗂️ [Overview](assets/assets.md)
 
@@ -23,6 +20,10 @@
 - 📝 [QA and Regression Checklist](exam-profile-linking/qa-regression.md)
 - 📝 [Selection Matrix](exam-profile-linking/selection-matrix.md)
 - 📝 [UI Area Mapping](exam-profile-linking/ui-areas.md)
+
+## 📁 INFO
+- 🗂️ [Overview](info/info.md)
+- 📝 [Package Inventory and Security Analysis](info/package-inventory-and-security-analysis.md)
 
 ## 📁 Rendering
 - 🗂️ [Overview](rendering/rendering.md)

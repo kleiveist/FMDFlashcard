@@ -30,16 +30,18 @@ while adding a dedicated review experience and study progress tracking.
 - 📚 [Docs Home](docs/index.md)
 - 📝 [Refactor notes](docs/refactor-notes.md)
 
-## 📁 ADR
-- 🗂️ [Overview](docs/adr/adr.md)
-- 📝 [ADR 0001: Documentation source of truth](docs/adr/0001-documentation-source-of-truth.md)
-- 📝 [ADR 0002: Hybrid-Editor Performance Redesign (Big Bang)](docs/adr/0002-hybrid-editor-performance-redesign.md)
-- 📝 [ADR 0003: EDIT Mode](docs/adr/ADR%200003%3A%20EDIT-Mode.md)
-
 ## 📁 DEV
 - 🗂️ [Overview](docs/dev/dev.md)
 - 📝 [Architecture overview](docs/dev/architecture.md)
 - 📝 [Developer ↔ Codex Workflow](docs/dev/codex-workflow.md)
+
+## 📁 Tickets
+- 🗂️ [Overview](docs/tickets/tickets.md)
+- 📝 [Ticket 20260420-001](docs/tickets/20260420-001_db_filterfeld_schliesst_nach_aenderung.md)
+- 📝 [Ticket 20260420-002](docs/tickets/20260420-002_db_filtereingabe_bricht_nach_einem_zeichen_ab.md)
+- 📝 [Ticket 20260420-003](docs/tickets/20260420-003_cv_karten_in_gruppen_nach_oben_unten_verschieben.md)
+- 📝 [Ticket 20260420-004](docs/tickets/20260420-004_cv_filter_sortierung_systemfelder.md)
+- 📝 [Ticket 20260420-005](docs/tickets/20260420-005_pie_count_kreis_vergroessern.md)
 
 ## 📁 Tools
 - 🗂️ [Overview](docs/tools/tools.md)

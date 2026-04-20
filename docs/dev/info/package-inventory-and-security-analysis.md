@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](../dev.md)
+[← Back](info.md)
 <!-- AUTO-GENERATED:backlink END -->
 # Package Inventory and Security Analysis
 
