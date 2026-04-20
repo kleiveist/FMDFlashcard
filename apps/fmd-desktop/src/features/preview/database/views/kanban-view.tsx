@@ -30,9 +30,19 @@ type DatabaseKanbanViewProps = {
   attributes: DatabaseAttributeMeta[];
   visibleProperties: DatabaseAttributeMeta[];
   showCover: boolean;
+  orderByGroup?: Record<string, string[]>;
   monitoringProfiles?: MonitoringRenderProfile[];
   pendingRecordIds: string[];
-  onMoveRecord: (record: DatabaseRecord, nextGroupValue: string) => void;
+  onMoveRecord: (
+    record: DatabaseRecord,
+    nextGroupValue: string,
+    context: { previousGroupKey: string; nextGroupKey: string },
+  ) => void;
+  onReorderRecordWithinGroup: (
+    groupKey: string,
+    recordId: string,
+    direction: "up" | "down",
+  ) => void;
   onOpenRecord: (record: DatabaseRecord) => void;
   onOpenExamFromRecord?: (record: DatabaseRecord) => void;
 };
@@ -87,6 +97,34 @@ const formatGroupLabel = (
   );
   const trimmed = monitoringText.trim();
   return trimmed || rawValue;
+};
+
+const applyGroupOrder = (
+  records: DatabaseRecord[],
+  order: string[] | undefined,
+) => {
+  if (!order || order.length === 0 || records.length <= 1) {
+    return records;
+  }
+  const orderIndex = new Map<string, number>();
+  order.forEach((recordId, index) => {
+    if (!orderIndex.has(recordId)) {
+      orderIndex.set(recordId, index);
+    }
+  });
+  const prioritized: DatabaseRecord[] = [];
+  const fallback: DatabaseRecord[] = [];
+  records.forEach((record) => {
+    if (orderIndex.has(record.fileId)) {
+      prioritized.push(record);
+      return;
+    }
+    fallback.push(record);
+  });
+  prioritized.sort((left, right) =>
+    (orderIndex.get(left.fileId) ?? Number.MAX_SAFE_INTEGER) -
+      (orderIndex.get(right.fileId) ?? Number.MAX_SAFE_INTEGER));
+  return [...prioritized, ...fallback];
 };
 
 const stringifyMetaValue = (value: DatabaseNormalizedFieldValue, type: DatabaseFieldType): string | null => {
@@ -165,9 +203,11 @@ export const DatabaseKanbanView = ({
   attributes,
   visibleProperties,
   showCover,
+  orderByGroup = {},
   monitoringProfiles = [],
   pendingRecordIds,
   onMoveRecord,
+  onReorderRecordWithinGroup,
   onOpenRecord,
   onOpenExamFromRecord,
 }: DatabaseKanbanViewProps) => {
@@ -196,11 +236,11 @@ export const DatabaseKanbanView = ({
       .map(([key, bucketRecords]) => ({
         key,
         label: formatGroupLabel(groupAttribute.key, key, monitoringProfiles),
-        records: bucketRecords,
+        records: applyGroupOrder(bucketRecords, orderByGroup[key]),
       }))
       .sort((left, right) =>
         left.label.localeCompare(right.label, undefined, { sensitivity: "base" }));
-  }, [groupAttribute, records, monitoringProfiles]);
+  }, [groupAttribute, monitoringProfiles, orderByGroup, records]);
 
   if (!groupAttribute || !groupAttribute.viewCompatibility.supportsKanbanGrouping) {
     return (
@@ -241,7 +281,10 @@ export const DatabaseKanbanView = ({
               endInternalDrag(DRAG_CHANNELS.DATABASE_RECORD);
               return;
             }
-            onMoveRecord(record, group.key === EMPTY_GROUP_LABEL ? "" : group.key);
+            onMoveRecord(record, group.key === EMPTY_GROUP_LABEL ? "" : group.key, {
+              previousGroupKey: previousGroupValue,
+              nextGroupKey: group.key,
+            });
             endInternalDrag(DRAG_CHANNELS.DATABASE_RECORD);
           }}
         >
@@ -250,7 +293,7 @@ export const DatabaseKanbanView = ({
             <span>{group.records.length}</span>
           </header>
           <div className="database-kanban-column-body">
-            {group.records.map((record) => {
+            {group.records.map((record, index) => {
               const coverSource = showCover ? resolveCoverSource(record, attributes) : null;
               const metaRows = visibleProperties
                 .filter((attribute) =>
@@ -334,6 +377,28 @@ export const DatabaseKanbanView = ({
                   >
                     {record.systemFields.Dateiname ? String(record.systemFields.Dateiname) : record.fileId}
                   </button>
+                  <div className="database-kanban-card-order-actions">
+                    <button
+                      type="button"
+                      className="database-block-toolbar-button"
+                      onClick={() => onReorderRecordWithinGroup(group.key, record.fileId, "up")}
+                      disabled={index === 0 || pendingIds.has(record.fileId)}
+                      title="Nach oben"
+                      data-md-block-control="true"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="database-block-toolbar-button"
+                      onClick={() => onReorderRecordWithinGroup(group.key, record.fileId, "down")}
+                      disabled={index >= group.records.length - 1 || pendingIds.has(record.fileId)}
+                      title="Nach unten"
+                      data-md-block-control="true"
+                    >
+                      ↓
+                    </button>
+                  </div>
                   <p className="database-kanban-card-meta">
                     {record.relativePath}
                   </p>

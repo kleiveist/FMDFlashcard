@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
-import { act, createElement, type ReactElement } from "react";
+import { act, createElement, type ReactElement, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { DatabaseFilterPanel } from "./database-filter-panel";
 import {
   type DatabaseAttributeMeta,
+  type DatabaseFilterGroup,
   type DatabaseViewType,
 } from "../database-types";
 
@@ -157,6 +158,51 @@ describe("DatabaseFilterPanel", () => {
 
     expect(onChange).toHaveBeenCalledTimes(2);
     expect(onClose).not.toHaveBeenCalled();
+
+    cleanup();
+  });
+
+  it("supports continuous typing in value input without losing focus", () => {
+    const StatefulHarness = () => {
+      const [group, setGroup] = useState<DatabaseFilterGroup>({
+        id: "root",
+        op: "and",
+        rules: [
+          {
+            id: "rule-1",
+            field: "status",
+            op: "is",
+            value: "",
+          },
+        ],
+      });
+      return createElement(DatabaseFilterPanel, {
+        attributes: [attribute],
+        attributeSuggestions: suggestions,
+        viewType: "table" as const,
+        filterGroup: group,
+        onChange: setGroup,
+        onClose: vi.fn(),
+      });
+    };
+
+    const { container, cleanup } = render(createElement(StatefulHarness));
+    const valueInput = container.querySelector<HTMLInputElement>("input[placeholder='Wert']");
+    expect(valueInput).toBeTruthy();
+
+    act(() => {
+      valueInput?.focus();
+      valueInput?.dispatchEvent(new Event("focus", { bubbles: true }));
+      if (valueInput) {
+        valueInput.value = "abc";
+      }
+      valueInput?.dispatchEvent(new Event("input", { bubbles: true }));
+      valueInput?.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    expect(container.querySelector(".database-block-filter-panel")).toBeTruthy();
+    expect(document.activeElement).toBe(valueInput);
+    expect(valueInput?.value).toBe("abc");
 
     cleanup();
   });

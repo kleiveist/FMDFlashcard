@@ -78,6 +78,7 @@ import {
 } from "./frontmatter-update";
 import { compareNaturalPath } from "../../../lib/naturalSort";
 import { normalizeRelativePath } from "../../../lib/path";
+import { type VaultFile } from "../../../lib/tree";
 import { DatabaseFilterPanel } from "./ui/database-filter-panel";
 import { DatabaseGanttPanel } from "./ui/database-gantt-panel";
 import { DatabaseProjectPanel } from "./ui/database-project-panel";
@@ -95,7 +96,7 @@ import { type MonitoringRenderProfile } from "../../monitoring/monitoring-render
 
 type DatabaseBlockProps = {
   raw: string;
-  vaultFiles?: Array<{ path: string; relative_path: string }>;
+  vaultFiles?: VaultFile[];
   vaultPath?: string | null;
   sourceRelativePath?: string | null;
   onNavigateWikilink?: (wikilink: string) => void;
@@ -142,6 +143,28 @@ const cloneFilterGroup = (group: DatabaseFilterGroup): DatabaseFilterGroup => ({
 });
 
 const cloneSortRules = (rules: DatabaseSortRule[]) => rules.map((rule) => ({ ...rule }));
+
+const cloneKanbanOrderByGroup = (
+  value: Record<string, string[]> | undefined,
+): Record<string, string[]> => {
+  const next: Record<string, string[]> = {};
+  Object.entries(value ?? {}).forEach(([groupRaw, orderRaw]) => {
+    const group = groupRaw.trim();
+    if (!group) {
+      return;
+    }
+    const deduped = dedupeExact(
+      (orderRaw ?? [])
+        .map((entry) => String(entry ?? "").trim())
+        .filter(Boolean),
+    );
+    if (deduped.length === 0) {
+      return;
+    }
+    next[group] = deduped;
+  });
+  return next;
+};
 
 const cloneSourceSpec = (source: DatabaseSourceSpec): DatabaseSourceSpec => ({
   ...source,
@@ -261,6 +284,19 @@ const dedupeCaseInsensitive = (keys: string[]) => {
   return next;
 };
 
+const dedupeExact = (keys: string[]) => {
+  const seen = new Set<string>();
+  const next: string[] = [];
+  keys.forEach((key) => {
+    if (!key || seen.has(key)) {
+      return;
+    }
+    seen.add(key);
+    next.push(key);
+  });
+  return next;
+};
+
 const createDefaultPropertiesByView = (tableColumns: string[]): DatabasePropertiesByView => {
   const normalized = dedupeCaseInsensitive(tableColumns);
   return {
@@ -345,6 +381,52 @@ const getRecordValueByField = (record: DatabaseRecord, field: string): DatabaseN
   return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
 };
 
+const EMPTY_KANBAN_GROUP_KEY = "(leer)";
+
+const toKanbanGroupKey = (value: DatabaseNormalizedFieldValue) => {
+  if (value === null || typeof value === "undefined") {
+    return EMPTY_KANBAN_GROUP_KEY;
+  }
+  if (Array.isArray(value)) {
+    const entries = value.map((entry) => String(entry).trim()).filter(Boolean);
+    return entries.length > 0 ? entries.join(", ") : EMPTY_KANBAN_GROUP_KEY;
+  }
+  if (typeof value === "object" && "raw" in value) {
+    const raw = String(value.raw ?? "").trim();
+    return raw || EMPTY_KANBAN_GROUP_KEY;
+  }
+  if (typeof value === "boolean") {
+    return value ? "true" : "false";
+  }
+  const text = String(value).trim();
+  return text || EMPTY_KANBAN_GROUP_KEY;
+};
+
+const applyKanbanOrder = (records: DatabaseRecord[], order: string[] | undefined) => {
+  if (!order || order.length === 0 || records.length <= 1) {
+    return records;
+  }
+  const orderIndex = new Map<string, number>();
+  order.forEach((recordId, index) => {
+    if (!orderIndex.has(recordId)) {
+      orderIndex.set(recordId, index);
+    }
+  });
+  const prioritized: DatabaseRecord[] = [];
+  const fallback: DatabaseRecord[] = [];
+  records.forEach((record) => {
+    if (orderIndex.has(record.fileId)) {
+      prioritized.push(record);
+      return;
+    }
+    fallback.push(record);
+  });
+  prioritized.sort((left, right) =>
+    (orderIndex.get(left.fileId) ?? Number.MAX_SAFE_INTEGER) -
+      (orderIndex.get(right.fileId) ?? Number.MAX_SAFE_INTEGER));
+  return [...prioritized, ...fallback];
+};
+
 const getOpenPanelKey = (panels: DatabaseBlockOpenPanels): DatabasePanelKey | null => {
   if (panels.source) {
     return "source";
@@ -425,6 +507,19 @@ const normalizeFilterValueSuggestions = (
   }
   const text = String(value).trim();
   return text ? [text] : [];
+};
+
+const hasSuggestionValue = (value: DatabaseNormalizedFieldValue) => {
+  if (value === null || typeof value === "undefined") {
+    return false;
+  }
+  if (typeof value === "string") {
+    return value.trim().length > 0;
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  return true;
 };
 
 const resolveCellDraftValue = (
@@ -743,6 +838,9 @@ export const MarkdownHybridDatabaseBlock = ({
   const [viewType, setViewType] = useState<DatabaseViewType>(parsedActiveSavedView.view.type);
   const [kanbanGroupBy, setKanbanGroupBy] = useState<string | null>(parsedActiveSavedView.view.groupBy ?? null);
   const [kanbanShowCover, setKanbanShowCover] = useState<boolean>(parsedActiveSavedView.view.kanbanShowCover ?? false);
+  const [kanbanOrderByGroup, setKanbanOrderByGroup] = useState<Record<string, string[]>>(
+    cloneKanbanOrderByGroup(parsedActiveSavedView.view.kanbanOrderByGroup),
+  );
   const [timelineStartField, setTimelineStartField] = useState<string | null>(
     parsedActiveSavedView.view.timelineStartField ?? null,
   );
@@ -815,7 +913,13 @@ export const MarkdownHybridDatabaseBlock = ({
   );
   const [pendingRecordMutations, setPendingRecordMutations] = useState<string[]>([]);
   const [records, setRecords] = useState<DatabaseRecord[]>([]);
-  const [historyFiles, setHistoryFiles] = useState<Array<{ path: string; relativePath: string }>>([]);
+  const [historyFiles, setHistoryFiles] = useState<Array<{
+    path: string;
+    relativePath: string;
+    created_at?: number | null;
+    last_modified?: number | null;
+    size_bytes?: number | null;
+  }>>([]);
   const [historyRecords, setHistoryRecords] = useState<DatabaseRecord[]>([]);
   const [historyWarning, setHistoryWarning] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -839,6 +943,7 @@ export const MarkdownHybridDatabaseBlock = ({
   const viewTypeRef = useRef(viewType);
   const kanbanGroupByRef = useRef<string | null>(kanbanGroupBy);
   const kanbanShowCoverRef = useRef<boolean>(kanbanShowCover);
+  const kanbanOrderByGroupRef = useRef<Record<string, string[]>>(kanbanOrderByGroup);
   const timelineStartFieldRef = useRef<string | null>(timelineStartField);
   const timelineEndFieldRef = useRef<string | null>(timelineEndField);
   const timelineModeRef = useRef<DatabaseTimelineMode>(timelineMode);
@@ -899,6 +1004,7 @@ export const MarkdownHybridDatabaseBlock = ({
     setViewType(parsedActiveSavedView.view.type);
     setKanbanGroupBy(parsedActiveSavedView.view.groupBy ?? null);
     setKanbanShowCover(parsedActiveSavedView.view.kanbanShowCover ?? false);
+    setKanbanOrderByGroup(cloneKanbanOrderByGroup(parsedActiveSavedView.view.kanbanOrderByGroup));
     setTimelineStartField(parsedActiveSavedView.view.timelineStartField ?? null);
     setTimelineEndField(parsedActiveSavedView.view.timelineEndField ?? null);
     const nextTimelineMode = parsedActiveSavedView.view.timelineMode ?? DEFAULT_TIMELINE_MODE;
@@ -948,6 +1054,7 @@ export const MarkdownHybridDatabaseBlock = ({
     viewTypeRef.current = viewType;
     kanbanGroupByRef.current = kanbanGroupBy;
     kanbanShowCoverRef.current = kanbanShowCover;
+    kanbanOrderByGroupRef.current = kanbanOrderByGroup;
     timelineStartFieldRef.current = timelineStartField;
     timelineEndFieldRef.current = timelineEndField;
     timelineModeRef.current = timelineMode;
@@ -972,6 +1079,7 @@ export const MarkdownHybridDatabaseBlock = ({
     ganttZoom,
     kanbanGroupBy,
     kanbanShowCover,
+    kanbanOrderByGroup,
     pieAggregate,
     pieAggregateField,
     pieGroupField,
@@ -1085,7 +1193,11 @@ export const MarkdownHybridDatabaseBlock = ({
               filePath: file.path,
               relativePath: file.relativePath,
               frontmatter,
-              systemFields: createSystemFieldsForRecord(file.relativePath, file.path),
+              systemFields: createSystemFieldsForRecord(file.relativePath, file.path, {
+                createdAt: file.created_at ?? null,
+                lastModified: file.last_modified ?? null,
+                sizeBytes: file.size_bytes ?? null,
+              }),
             });
           } catch (error) {
             console.warn("Failed to read history markdown file", {
@@ -1155,6 +1267,9 @@ export const MarkdownHybridDatabaseBlock = ({
             const isExamRunnable = runnableExamPathSet.has(normalizedRelativePath.toLowerCase());
             const systemFields = createSystemFieldsForRecord(file.relativePath, file.path, {
               isExamRunnable,
+              createdAt: file.created_at ?? null,
+              lastModified: file.last_modified ?? null,
+              sizeBytes: file.size_bytes ?? null,
             });
             return buildNormalizedRecord({
               fileId: file.relativePath,
@@ -1421,6 +1536,9 @@ export const MarkdownHybridDatabaseBlock = ({
       type: nextViewType,
       groupBy: next.view?.groupBy ?? kanbanGroupByRef.current ?? null,
       kanbanShowCover: next.view?.kanbanShowCover ?? kanbanShowCoverRef.current ?? false,
+      kanbanOrderByGroup: cloneKanbanOrderByGroup(
+        next.view?.kanbanOrderByGroup ?? kanbanOrderByGroupRef.current,
+      ),
       timelineStartField: next.view?.timelineStartField ?? timelineStartFieldRef.current ?? null,
       timelineEndField: next.view?.timelineEndField ?? timelineEndFieldRef.current ?? null,
       timelineMode: resolvedTimelineMode,
@@ -1502,6 +1620,7 @@ export const MarkdownHybridDatabaseBlock = ({
           type: viewType,
           groupBy: kanbanGroupBy,
           kanbanShowCover,
+          kanbanOrderByGroup,
           timelineStartField,
           timelineEndField,
           timelineMode,
@@ -1545,6 +1664,7 @@ export const MarkdownHybridDatabaseBlock = ({
       activeViewName,
       kanbanGroupBy,
       kanbanShowCover,
+      kanbanOrderByGroup,
       viewType,
       timelineStartField,
       timelineEndField,
@@ -1624,6 +1744,9 @@ export const MarkdownHybridDatabaseBlock = ({
     kanbanGroupByRef.current = nextView.groupBy ?? null;
     setKanbanShowCover(nextView.kanbanShowCover ?? false);
     kanbanShowCoverRef.current = nextView.kanbanShowCover ?? false;
+    const nextKanbanOrder = cloneKanbanOrderByGroup(nextView.kanbanOrderByGroup);
+    setKanbanOrderByGroup(nextKanbanOrder);
+    kanbanOrderByGroupRef.current = nextKanbanOrder;
     setTimelineStartField(nextView.timelineStartField ?? null);
     timelineStartFieldRef.current = nextView.timelineStartField ?? null;
     setTimelineEndField(nextView.timelineEndField ?? null);
@@ -1698,6 +1821,7 @@ export const MarkdownHybridDatabaseBlock = ({
       type: viewTypeRef.current,
       groupBy: kanbanGroupByRef.current ?? null,
       kanbanShowCover: kanbanShowCoverRef.current ?? false,
+      kanbanOrderByGroup: cloneKanbanOrderByGroup(kanbanOrderByGroupRef.current),
       timelineStartField: timelineStartFieldRef.current ?? null,
       timelineEndField: timelineEndFieldRef.current ?? null,
       timelineMode: timelineModeRef.current ?? DEFAULT_TIMELINE_MODE,
@@ -2129,23 +2253,23 @@ export const MarkdownHybridDatabaseBlock = ({
       clearEditWhenDone: boolean;
     }) => {
       if (!tableCellEditingEnabled || !attribute.editable) {
-        return;
+        return false;
       }
 
       const mutationKey = buildCellMutationKey(record.fileId, attribute.key);
       if (pendingCellMutations.includes(mutationKey)) {
-        return;
+        return false;
       }
 
       const coercion = coerceDatabaseRecordFieldValue(attribute.type, draftValue);
       if (coercion.error) {
         setOperationError(coercion.error);
-        return;
+        return false;
       }
 
       const previousRecord = records.find((entry) => entry.fileId === record.fileId);
       if (!previousRecord) {
-        return;
+        return false;
       }
 
       rollbackRecordSnapshotRef.current.set(mutationKey, previousRecord);
@@ -2184,6 +2308,7 @@ export const MarkdownHybridDatabaseBlock = ({
         fileCacheRef.current.set(previousRecord.filePath, result.markdown);
         setOperationState("Wert gespeichert.");
         scheduleVaultAttributeRefresh();
+        return true;
       } catch (error) {
         const rollback = rollbackRecordSnapshotRef.current.get(mutationKey);
         if (rollback) {
@@ -2195,6 +2320,7 @@ export const MarkdownHybridDatabaseBlock = ({
         }
         setOperationState(null);
         setOperationError(error instanceof Error ? error.message : "Wert konnte nicht gespeichert werden.");
+        return false;
       } finally {
         rollbackRecordSnapshotRef.current.delete(mutationKey);
         removePendingCellMutation(mutationKey);
@@ -2639,16 +2765,103 @@ export const MarkdownHybridDatabaseBlock = ({
   const handleMoveKanbanRecord = async (
     record: DatabaseRecord,
     nextGroupValue: string,
+    context: { previousGroupKey: string; nextGroupKey: string },
   ) => {
     const groupAttribute = pickKanbanGroupAttribute(store.attributeRegistry, kanbanGroupBy);
     if (!groupAttribute) {
       return;
     }
-    await commitRecordFieldMutation({
+
+    const resolveOrderedGroupRecords = (groupKey: string) => {
+      const grouped = store.visibleRecords.filter((entry) =>
+        toKanbanGroupKey(getRecordValueByField(entry, groupAttribute.key)) === groupKey);
+      return applyKanbanOrder(grouped, kanbanOrderByGroupRef.current[groupKey]);
+    };
+
+    const previousOrderByGroup = cloneKanbanOrderByGroup(kanbanOrderByGroupRef.current);
+    const nextOrderByGroup = cloneKanbanOrderByGroup(kanbanOrderByGroupRef.current);
+
+    const sourceGroup = context.previousGroupKey;
+    const targetGroup = context.nextGroupKey;
+
+    const sourceRecords = resolveOrderedGroupRecords(sourceGroup)
+      .map((entry) => entry.fileId)
+      .filter((recordId) => recordId !== record.fileId);
+    if (sourceRecords.length > 0) {
+      nextOrderByGroup[sourceGroup] = sourceRecords;
+    } else {
+      delete nextOrderByGroup[sourceGroup];
+    }
+
+    const targetRecords = resolveOrderedGroupRecords(targetGroup).map((entry) => entry.fileId);
+    const nextTargetRecords = dedupeExact([...targetRecords, record.fileId]);
+    if (nextTargetRecords.length > 0) {
+      nextOrderByGroup[targetGroup] = nextTargetRecords;
+    }
+
+    setKanbanOrderByGroup(nextOrderByGroup);
+    kanbanOrderByGroupRef.current = nextOrderByGroup;
+    persistConfig({
+      view: {
+        kanbanOrderByGroup: nextOrderByGroup,
+      },
+    });
+
+    const didPersistField = await commitRecordFieldMutation({
       record,
       attribute: groupAttribute,
       draftValue: nextGroupValue,
       clearEditWhenDone: false,
+    });
+    if (!didPersistField) {
+      setKanbanOrderByGroup(previousOrderByGroup);
+      kanbanOrderByGroupRef.current = previousOrderByGroup;
+      persistConfig({
+        view: {
+          kanbanOrderByGroup: previousOrderByGroup,
+        },
+      });
+    }
+  };
+
+  const handleReorderKanbanRecordWithinGroup = (
+    groupKey: string,
+    recordId: string,
+    direction: "up" | "down",
+  ) => {
+    const groupAttribute = pickKanbanGroupAttribute(store.attributeRegistry, kanbanGroupByRef.current);
+    if (!groupAttribute) {
+      return;
+    }
+
+    const groupedRecords = store.visibleRecords.filter((entry) =>
+      toKanbanGroupKey(getRecordValueByField(entry, groupAttribute.key)) === groupKey);
+    const orderedRecords = applyKanbanOrder(groupedRecords, kanbanOrderByGroupRef.current[groupKey]);
+    const orderedIds = orderedRecords.map((entry) => entry.fileId);
+    const sourceIndex = orderedIds.indexOf(recordId);
+    if (sourceIndex < 0) {
+      return;
+    }
+    const targetIndex = direction === "up" ? sourceIndex - 1 : sourceIndex + 1;
+    if (targetIndex < 0 || targetIndex >= orderedIds.length) {
+      return;
+    }
+
+    const nextIds = [...orderedIds];
+    const [moved] = nextIds.splice(sourceIndex, 1);
+    if (!moved) {
+      return;
+    }
+    nextIds.splice(targetIndex, 0, moved);
+
+    const nextOrderByGroup = cloneKanbanOrderByGroup(kanbanOrderByGroupRef.current);
+    nextOrderByGroup[groupKey] = dedupeExact(nextIds);
+    setKanbanOrderByGroup(nextOrderByGroup);
+    kanbanOrderByGroupRef.current = nextOrderByGroup;
+    persistConfig({
+      view: {
+        kanbanOrderByGroup: nextOrderByGroup,
+      },
     });
   };
 
@@ -2970,6 +3183,53 @@ export const MarkdownHybridDatabaseBlock = ({
 
     return next;
   }, [store.attributeRegistry, store.normalizedRecords]);
+  const mergedAttributeSuggestions = useMemo(() => {
+    const byNormalized = new Map<string, { key: string; normalizedKey: string; count: number }>();
+
+    vaultAttributeIndex.suggestions.forEach((suggestion) => {
+      const normalizedKey = toLower(suggestion.key || suggestion.normalizedKey);
+      if (!normalizedKey) {
+        return;
+      }
+      byNormalized.set(normalizedKey, {
+        key: suggestion.key,
+        normalizedKey,
+        count: suggestion.count,
+      });
+    });
+
+    store.attributeRegistry.forEach((attribute) => {
+      const normalizedKey = toLower(attribute.key);
+      if (!normalizedKey) {
+        return;
+      }
+      const valueCount = store.normalizedRecords.reduce((count, record) => (
+        hasSuggestionValue(getRecordValueByField(record, attribute.key)) ? count + 1 : count
+      ), 0);
+      const existing = byNormalized.get(normalizedKey);
+      if (!existing) {
+        byNormalized.set(normalizedKey, {
+          key: attribute.key,
+          normalizedKey,
+          count: valueCount,
+        });
+        return;
+      }
+      byNormalized.set(normalizedKey, {
+        key: existing.key || attribute.key,
+        normalizedKey,
+        count: Math.max(existing.count, valueCount),
+      });
+    });
+
+    return Array.from(byNormalized.values())
+      .sort((left, right) => {
+        if (left.count !== right.count) {
+          return right.count - left.count;
+        }
+        return left.key.localeCompare(right.key, undefined, { sensitivity: "base" });
+      });
+  }, [store.attributeRegistry, store.normalizedRecords, vaultAttributeIndex.suggestions]);
 
   const kanbanGroupAttribute = pickKanbanGroupAttribute(
     store.attributeRegistry,
@@ -3034,7 +3294,7 @@ export const MarkdownHybridDatabaseBlock = ({
     <DatabasePropertiesPanel
       attributes={store.attributeRegistry}
       records={store.normalizedRecords}
-      attributeSuggestions={vaultAttributeIndex.suggestions}
+      attributeSuggestions={mergedAttributeSuggestions}
       viewType={viewType}
       visibleColumnKeys={visibleColumnKeys}
       kanbanShowCover={kanbanShowCover}
@@ -3055,7 +3315,7 @@ export const MarkdownHybridDatabaseBlock = ({
   ) : panels.filter ? (
     <DatabaseFilterPanel
       attributes={store.attributeRegistry}
-      attributeSuggestions={vaultAttributeIndex.suggestions}
+      attributeSuggestions={mergedAttributeSuggestions}
       valueSuggestionsByField={filterValueSuggestionsByField}
       viewType={viewType}
       filterGroup={activeFilters}
@@ -3065,7 +3325,7 @@ export const MarkdownHybridDatabaseBlock = ({
   ) : panels.sort ? (
     <DatabaseSortPanel
       attributes={store.attributeRegistry}
-      attributeSuggestions={vaultAttributeIndex.suggestions}
+      attributeSuggestions={mergedAttributeSuggestions}
       viewType={viewType}
       sortRules={activeSorts}
       onChange={handleSortChange}
@@ -3256,9 +3516,11 @@ export const MarkdownHybridDatabaseBlock = ({
             attributes={store.attributeRegistry}
             visibleProperties={visibleColumns}
             showCover={kanbanShowCover}
+            orderByGroup={kanbanOrderByGroup}
             monitoringProfiles={monitoringProfiles}
             pendingRecordIds={pendingRecordMutations}
             onMoveRecord={handleMoveKanbanRecord}
+            onReorderRecordWithinGroup={handleReorderKanbanRecordWithinGroup}
             onOpenRecord={openRecord}
             onOpenExamFromRecord={openExamFromRecord}
           />

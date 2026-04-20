@@ -13,6 +13,9 @@ use walkdir::{DirEntry, WalkDir};
 struct VaultFile {
     path: String,
     relative_path: String,
+    created_at: Option<u64>,
+    last_modified: Option<u64>,
+    size_bytes: Option<u64>,
 }
 
 #[derive(serde::Serialize)]
@@ -354,6 +357,19 @@ fn sanitize_relative_path(relative_path: &str) -> Result<PathBuf, String> {
 
 fn format_relative_path(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
+}
+
+fn to_unix_millis(value: SystemTime) -> Option<u64> {
+    value
+        .duration_since(UNIX_EPOCH)
+        .ok()
+        .and_then(|duration| {
+            let millis = duration.as_millis();
+            if millis > u64::MAX as u128 {
+                return None;
+            }
+            Some(millis as u64)
+        })
 }
 
 fn natural_compare_segments(left: &str, right: &str) -> Ordering {
@@ -814,9 +830,22 @@ fn list_vault_entries(
         }
         if entry.file_type().is_file() && is_markdown(path) {
             let relative = path.strip_prefix(&root).unwrap_or(path);
+            let metadata = entry.metadata().ok();
+            let created_at = metadata
+                .as_ref()
+                .and_then(|value| value.created().ok())
+                .and_then(to_unix_millis);
+            let last_modified = metadata
+                .as_ref()
+                .and_then(|value| value.modified().ok())
+                .and_then(to_unix_millis);
+            let size_bytes = metadata.as_ref().map(|value| value.len());
             files.push(VaultFile {
                 path: path.to_string_lossy().to_string(),
                 relative_path: format_relative_path(relative),
+                created_at,
+                last_modified,
+                size_bytes,
             });
             continue;
         }
@@ -826,14 +855,7 @@ fn list_vault_entries(
             let size_bytes = metadata.as_ref().map(|value| value.len());
             let last_modified = metadata
                 .and_then(|value| value.modified().ok())
-                .and_then(|value| value.duration_since(UNIX_EPOCH).ok())
-                .and_then(|value| {
-                    let millis = value.as_millis();
-                    if millis > u64::MAX as u128 {
-                        return None;
-                    }
-                    Some(millis as u64)
-                });
+                .and_then(to_unix_millis);
             let file_name = path
                 .file_name()
                 .map(|value| value.to_string_lossy().to_string())
@@ -886,9 +908,22 @@ fn list_markdown_files(
             let path = entry.path();
             if is_markdown(path) {
                 let relative = path.strip_prefix(&root).unwrap_or(path);
+                let metadata = entry.metadata().ok();
+                let created_at = metadata
+                    .as_ref()
+                    .and_then(|value| value.created().ok())
+                    .and_then(to_unix_millis);
+                let last_modified = metadata
+                    .as_ref()
+                    .and_then(|value| value.modified().ok())
+                    .and_then(to_unix_millis);
+                let size_bytes = metadata.as_ref().map(|value| value.len());
                 files.push(VaultFile {
                     path: path.to_string_lossy().to_string(),
                     relative_path: format_relative_path(relative),
+                    created_at,
+                    last_modified,
+                    size_bytes,
                 });
             }
         }
@@ -1203,6 +1238,9 @@ fn move_markdown_file(
     Ok(VaultFile {
         path: to_full.to_string_lossy().to_string(),
         relative_path: format_relative_path(&to_relative),
+        created_at: None,
+        last_modified: None,
+        size_bytes: None,
     })
 }
 
@@ -1346,6 +1384,9 @@ fn create_markdown_file(
     Ok(VaultFile {
         path: full_path.to_string_lossy().to_string(),
         relative_path: format_relative_path(&relative),
+        created_at: None,
+        last_modified: None,
+        size_bytes: None,
     })
 }
 
@@ -1419,14 +1460,23 @@ mod tests {
             VaultFile {
                 path: "/vault/10-file.md".to_string(),
                 relative_path: "10-file.md".to_string(),
+                created_at: None,
+                last_modified: None,
+                size_bytes: None,
             },
             VaultFile {
                 path: "/vault/2-file.md".to_string(),
                 relative_path: "2-file.md".to_string(),
+                created_at: None,
+                last_modified: None,
+                size_bytes: None,
             },
             VaultFile {
                 path: "/vault/1-file.md".to_string(),
                 relative_path: "1-file.md".to_string(),
+                created_at: None,
+                last_modified: None,
+                size_bytes: None,
             },
         ];
 

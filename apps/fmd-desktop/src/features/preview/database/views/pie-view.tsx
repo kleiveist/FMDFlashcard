@@ -412,8 +412,8 @@ export const DatabasePieView = ({
     );
   }
 
-  const size = 200;
-  const strokeWidth = 26;
+  const size = 236;
+  const strokeWidth = 32;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;

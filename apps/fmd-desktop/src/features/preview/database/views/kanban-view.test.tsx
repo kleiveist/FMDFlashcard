@@ -178,6 +178,7 @@ describe("DatabaseKanbanView", () => {
         showCover: false,
         pendingRecordIds: [],
         onMoveRecord: vi.fn(),
+        onReorderRecordWithinGroup: vi.fn(),
         onOpenRecord: vi.fn(),
       }),
     );
@@ -201,6 +202,7 @@ describe("DatabaseKanbanView", () => {
         showCover: false,
         pendingRecordIds: [],
         onMoveRecord,
+        onReorderRecordWithinGroup: vi.fn(),
         onOpenRecord: vi.fn(),
       }),
     );
@@ -231,6 +233,10 @@ describe("DatabaseKanbanView", () => {
     expect(onMoveRecord).toHaveBeenCalledTimes(1);
     expect(onMoveRecord.mock.calls[0]?.[0]?.fileId).toBe("a.md");
     expect(onMoveRecord.mock.calls[0]?.[1]).toBe("Done");
+    expect(onMoveRecord.mock.calls[0]?.[2]).toEqual({
+      previousGroupKey: "Open",
+      nextGroupKey: "Done",
+    });
 
     cleanup();
   });
@@ -246,6 +252,7 @@ describe("DatabaseKanbanView", () => {
         showCover: false,
         pendingRecordIds: [],
         onMoveRecord,
+        onReorderRecordWithinGroup: vi.fn(),
         onOpenRecord: vi.fn(),
       }),
     );
@@ -276,6 +283,10 @@ describe("DatabaseKanbanView", () => {
     expect(onMoveRecord).toHaveBeenCalledTimes(1);
     expect(onMoveRecord.mock.calls[0]?.[0]?.fileId).toBe("a.md");
     expect(onMoveRecord.mock.calls[0]?.[1]).toBe("Done");
+    expect(onMoveRecord.mock.calls[0]?.[2]).toEqual({
+      previousGroupKey: "Open",
+      nextGroupKey: "Done",
+    });
 
     cleanup();
   });
@@ -290,6 +301,7 @@ describe("DatabaseKanbanView", () => {
         showCover: true,
         pendingRecordIds: [],
         onMoveRecord: vi.fn(),
+        onReorderRecordWithinGroup: vi.fn(),
         onOpenRecord: vi.fn(),
       }),
     );
@@ -329,6 +341,7 @@ describe("DatabaseKanbanView", () => {
         showCover: false,
         pendingRecordIds: [],
         onMoveRecord: vi.fn(),
+        onReorderRecordWithinGroup: vi.fn(),
         onOpenRecord: vi.fn(),
       }),
     );
@@ -338,6 +351,96 @@ describe("DatabaseKanbanView", () => {
     const titles = Array.from(openColumn?.querySelectorAll(".database-kanban-card-title") ?? [])
       .map((node) => node.textContent?.trim());
     expect(titles).toEqual(["z", "a"]);
+
+    cleanup();
+  });
+
+  it("prioritizes manual orderByGroup entries over incoming order", () => {
+    const openRecordZ: DatabaseRecord = {
+      ...recordA,
+      fileId: "z.md",
+      filePath: "/vault/z.md",
+      relativePath: "z.md",
+      fileName: "z.md",
+      systemFields: {
+        Dateiname: "z",
+      },
+      normalizedFields: {
+        status: {
+          raw: "Open",
+        },
+      },
+    };
+
+    const { container, cleanup } = render(
+      createElement(DatabaseKanbanView, {
+        records: [openRecordZ, recordA],
+        groupAttribute,
+        attributes: [groupAttribute],
+        visibleProperties: [],
+        showCover: false,
+        orderByGroup: {
+          Open: ["a.md"],
+        },
+        pendingRecordIds: [],
+        onMoveRecord: vi.fn(),
+        onReorderRecordWithinGroup: vi.fn(),
+        onOpenRecord: vi.fn(),
+      }),
+    );
+
+    const openColumn = Array.from(container.querySelectorAll(".database-kanban-column"))
+      .find((column) => column.textContent?.includes("Open"));
+    const titles = Array.from(openColumn?.querySelectorAll(".database-kanban-card-title") ?? [])
+      .map((node) => node.textContent?.trim());
+    expect(titles).toEqual(["a", "z"]);
+
+    cleanup();
+  });
+
+  it("triggers up/down reorder actions for cards inside a group", () => {
+    const onReorderRecordWithinGroup = vi.fn();
+    const openRecordZ: DatabaseRecord = {
+      ...recordA,
+      fileId: "z.md",
+      filePath: "/vault/z.md",
+      relativePath: "z.md",
+      fileName: "z.md",
+      systemFields: {
+        Dateiname: "z",
+      },
+      normalizedFields: {
+        status: {
+          raw: "Open",
+        },
+      },
+    };
+
+    const { container, cleanup } = render(
+      createElement(DatabaseKanbanView, {
+        records: [openRecordZ, recordA],
+        groupAttribute,
+        attributes: [groupAttribute],
+        visibleProperties: [],
+        showCover: false,
+        pendingRecordIds: [],
+        onMoveRecord: vi.fn(),
+        onReorderRecordWithinGroup,
+        onOpenRecord: vi.fn(),
+      }),
+    );
+
+    const orderButtons = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".database-kanban-card-order-actions .database-block-toolbar-button"),
+    );
+
+    act(() => {
+      orderButtons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      orderButtons[2]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onReorderRecordWithinGroup).toHaveBeenCalledWith("Open", "z.md", "down");
+    expect(onReorderRecordWithinGroup).toHaveBeenCalledWith("Open", "a.md", "up");
 
     cleanup();
   });
@@ -364,6 +467,7 @@ describe("DatabaseKanbanView", () => {
         showCover: false,
         pendingRecordIds: [],
         onMoveRecord: vi.fn(),
+        onReorderRecordWithinGroup: vi.fn(),
         onOpenRecord: vi.fn(),
         onOpenExamFromRecord,
       }),

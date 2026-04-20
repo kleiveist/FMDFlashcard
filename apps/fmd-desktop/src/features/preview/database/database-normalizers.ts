@@ -449,8 +449,21 @@ export const createSystemFieldsForRecord = (
   fullPath: string,
   options?: {
     isExamRunnable?: boolean;
+    createdAt?: number | null;
+    lastModified?: number | null;
+    sizeBytes?: number | null;
   },
 ) => {
+  const toDateOrNull = (value: number | null | undefined): Date | null => {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      return null;
+    }
+    const next = new Date(value);
+    return Number.isFinite(next.getTime()) ? next : null;
+  };
+  const toSizeOrNull = (value: number | null | undefined): number | null =>
+    typeof value === "number" && Number.isFinite(value) ? value : null;
+
   const fileName = getFileNameFromPath(relativePath);
   return {
     Dateiname: getFileStem(fileName),
@@ -459,9 +472,9 @@ export const createSystemFieldsForRecord = (
     Dateipfad: normalizeRelativePath(relativePath),
     Ordner: getFileFolder(relativePath),
     Dateisystempfad: fullPath,
-    Erstellt: null,
-    Geaendert: null,
-    Dateigroesse: null,
+    Erstellt: toDateOrNull(options?.createdAt),
+    Geaendert: toDateOrNull(options?.lastModified),
+    Dateigroesse: toSizeOrNull(options?.sizeBytes),
     Exam: Boolean(options?.isExamRunnable),
   };
 };

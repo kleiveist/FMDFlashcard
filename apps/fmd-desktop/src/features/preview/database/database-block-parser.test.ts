@@ -511,6 +511,110 @@ describe("database-block-parser", () => {
     });
   });
 
+  it("keeps generated filter/sort ids stable across repeated parses", () => {
+    const raw = [
+      "::::",
+      "title: Stable IDs",
+      "views:",
+      "  activeViewId: view-1",
+      "  items:",
+      "    - id: view-1",
+      "      name: Main",
+      "      view:",
+      "        type: table",
+      "      properties:",
+      "        - Dateiname",
+      "      filters:",
+      "        op: and",
+      "        rules:",
+      "          - field: status",
+      "            op: is",
+      "            value: open",
+      "          - op: or",
+      "            rules:",
+      "              - field: owner",
+      "                op: is",
+      "                value: alice",
+      "      sort:",
+      "        - field: status",
+      "          dir: asc",
+      "        - field: owner",
+      "          dir: desc",
+      "options:",
+      "  editable: false",
+      "  showSearch: true",
+      "  showToolbar: true",
+      "::::",
+    ].join("\n");
+
+    const first = parseDatabaseBlockConfigFromRaw(raw);
+    const second = parseDatabaseBlockConfigFromRaw(raw);
+    expect(first.errors).toEqual([]);
+    expect(second.errors).toEqual([]);
+
+    const firstSaved = first.config.views.items[0]!;
+    const secondSaved = second.config.views.items[0]!;
+    expect(firstSaved.filters.id).toBe(secondSaved.filters.id);
+    expect(firstSaved.sort.map((rule) => rule.id)).toEqual(
+      secondSaved.sort.map((rule) => rule.id),
+    );
+
+    const firstNested = firstSaved.filters.rules.find((entry) => "rules" in entry);
+    const secondNested = secondSaved.filters.rules.find((entry) => "rules" in entry);
+    expect(firstNested && "rules" in firstNested).toBe(true);
+    expect(secondNested && "rules" in secondNested).toBe(true);
+    if (firstNested && "rules" in firstNested && secondNested && "rules" in secondNested) {
+      expect(firstNested.id).toBe(secondNested.id);
+      expect(
+        firstNested.rules
+          .filter((entry): entry is { id: string } => "id" in entry)
+          .map((entry) => entry.id),
+      ).toEqual(
+        secondNested.rules
+          .filter((entry): entry is { id: string } => "id" in entry)
+          .map((entry) => entry.id),
+      );
+    }
+  });
+
+  it("roundtrips kanbanOrderByGroup in saved view specs", () => {
+    const config = createDefaultDatabaseBlockConfig();
+    config.views = {
+      activeViewId: "view-kanban",
+      items: [
+        {
+          id: "view-kanban",
+          name: "Kanban",
+          view: {
+            type: "kanban",
+            groupBy: "status",
+            kanbanOrderByGroup: {
+              Open: ["a.md", "b.md"],
+              Done: ["c.md"],
+            },
+          },
+          properties: ["Dateiname", "status"],
+          filters: {
+            id: "root",
+            op: "and",
+            rules: [],
+          },
+          sort: [],
+        },
+      ],
+    };
+
+    const serialized = serializeDatabaseBlockConfig(config);
+    expect(serialized).toContain("kanbanOrderByGroup:");
+
+    const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
+    expect(reparsed.errors).toEqual([]);
+    expect(reparsed.config.views.items[0]?.view.kanbanOrderByGroup).toEqual({
+      Open: ["a.md", "b.md"],
+      Done: ["c.md"],
+    });
+  });
+
   it("returns defaults with parse error when opener is missing", () => {
     const parsed = parseDatabaseBlockConfigFromRaw("title: no marker");
     expect(parsed.isClosed).toBe(false);

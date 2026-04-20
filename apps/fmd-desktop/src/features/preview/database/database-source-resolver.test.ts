@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { resolveDatabaseSourceFiles } from "./database-source-resolver";
 
 const vaultFiles = [
-  { path: "/vault/A/one.md", relative_path: "A/one.md" },
+  {
+    path: "/vault/A/one.md",
+    relative_path: "A/one.md",
+    created_at: 1000,
+    last_modified: 2000,
+    size_bytes: 300,
+  },
   { path: "/vault/A/two.md", relative_path: "A/two.md" },
   { path: "/vault/A/image.png", relative_path: "A/image.png" },
   { path: "/vault/B/three.md", relative_path: "B/three.md" },
@@ -18,6 +24,11 @@ describe("database-source-resolver", () => {
 
     expect(result.warning).toBeNull();
     expect(result.files.map((file) => file.relativePath)).toEqual(["A/one.md", "A/two.md"]);
+    expect(result.files[0]).toMatchObject({
+      created_at: 1000,
+      last_modified: 2000,
+      size_bytes: 300,
+    });
   });
 
   it("resolves explicit-folder recursively", () => {

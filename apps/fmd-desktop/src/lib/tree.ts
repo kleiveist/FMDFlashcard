@@ -22,6 +22,9 @@ import { compareNaturalText } from "./naturalSort";
 export type VaultFile = {
   path: string;
   relative_path: string;
+  created_at?: number | null;
+  last_modified?: number | null;
+  size_bytes?: number | null;
 };
 
 export type VaultPngAsset = {

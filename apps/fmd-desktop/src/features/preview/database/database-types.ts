@@ -137,6 +137,7 @@ export type DatabaseViewSpec = {
   type: DatabaseViewType;
   groupBy?: string | null;
   kanbanShowCover?: boolean;
+  kanbanOrderByGroup?: Record<string, string[]>;
   timelineStartField?: string | null;
   timelineEndField?: string | null;
   timelineMode?: DatabaseTimelineMode;
@@ -286,6 +287,12 @@ export type DatabaseStoreSnapshot = {
 };
 
 export type DatabaseSourceResolutionResult = {
-  files: Array<{ path: string; relativePath: string }>;
+  files: Array<{
+    path: string;
+    relativePath: string;
+    created_at?: number | null;
+    last_modified?: number | null;
+    size_bytes?: number | null;
+  }>;
   warning: string | null;
 };

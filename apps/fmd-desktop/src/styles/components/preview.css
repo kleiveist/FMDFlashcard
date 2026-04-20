@@ -6686,7 +6686,7 @@ textarea.preview-editor {
 
 .database-pie-view {
   display: grid;
-  grid-template-columns: minmax(220px, auto) minmax(0, 1fr);
+  grid-template-columns: minmax(248px, auto) minmax(0, 1fr);
   gap: 12px;
   border: 1px solid var(--db-border);
   border-radius: var(--db-radius-table);
@@ -6696,8 +6696,8 @@ textarea.preview-editor {
 
 .database-pie-chart-wrap {
   position: relative;
-  inline-size: 220px;
-  block-size: 220px;
+  inline-size: 248px;
+  block-size: 248px;
   display: grid;
   place-items: center;
 }
@@ -6718,13 +6718,13 @@ textarea.preview-editor {
 
 .database-pie-center strong {
   display: block;
-  font-size: 1rem;
+  font-size: 1.28rem;
   font-variant-numeric: tabular-nums;
 }
 
 .database-pie-center span {
   color: var(--db-muted);
-  font-size: 0.74rem;
+  font-size: 0.82rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -7358,6 +7358,17 @@ textarea.preview-editor {
 .database-kanban-card-title:hover {
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+.database-kanban-card-order-actions {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.database-kanban-card-order-actions .database-block-toolbar-button {
+  min-width: 24px;
+  padding: 2px 6px;
+  line-height: 1;
 }
 
 .database-kanban-card-meta {

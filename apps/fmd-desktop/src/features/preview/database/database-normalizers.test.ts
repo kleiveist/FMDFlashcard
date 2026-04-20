@@ -94,6 +94,18 @@ describe("database-normalizers", () => {
     expect(examFields.Exam).toBe(true);
   });
 
+  it("maps file metadata into system fields", () => {
+    const systemFields = createSystemFieldsForRecord("path/Meta.md", "/vault/path/Meta.md", {
+      createdAt: 1_710_000_000_000,
+      lastModified: 1_720_000_000_000,
+      sizeBytes: 4096,
+    });
+
+    expect(systemFields.Erstellt).toBeInstanceOf(Date);
+    expect(systemFields.Geaendert).toBeInstanceOf(Date);
+    expect(systemFields.Dateigroesse).toBe(4096);
+  });
+
   it("builds normalized records and protects against case-insensitive duplicate keys", () => {
     const systemFields = createSystemFieldsForRecord("path/Exam.md", "/vault/path/Exam.md");
     const record = buildNormalizedRecord({

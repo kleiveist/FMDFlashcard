@@ -51,8 +51,6 @@ type ParsedLine = {
   lineNumber: number;
 };
 
-const parseIdCounterSeed = 0;
-
 const normalizeNewlines = (value: string) => value.replace(/\r\n?/g, "\n");
 
 const parseSingleQuoted = (value: string) => {
@@ -364,16 +362,22 @@ const parseYamlSubset = (yamlSource: string) => {
   };
 };
 
-const nextGeneratedId = (() => {
-  let sequence = parseIdCounterSeed;
-  return (prefix: string) => {
-    sequence += 1;
-    return `${prefix}-${sequence}`;
-  };
-})();
+const dedupeExact = (values: string[]) => {
+  const seen = new Set<string>();
+  const next: string[] = [];
+  values.forEach((value) => {
+    const trimmed = value.trim();
+    if (!trimmed || seen.has(trimmed)) {
+      return;
+    }
+    seen.add(trimmed);
+    next.push(trimmed);
+  });
+  return next;
+};
 
-const createDefaultFilterGroup = (): DatabaseFilterGroup => ({
-  id: nextGeneratedId("filter-group"),
+const createDefaultFilterGroup = (path = "root"): DatabaseFilterGroup => ({
+  id: `filter-group-${path}`,
   op: "and",
   rules: [],
 });
@@ -381,7 +385,11 @@ const createDefaultFilterGroup = (): DatabaseFilterGroup => ({
 const parseFilterGroupOp = (value: unknown): DatabaseFilterGroupOp =>
   typeof value === "string" && value.toLowerCase() === "or" ? "or" : "and";
 
-const parseFilterRule = (value: unknown): DatabaseFilterRule | null => {
+const parseFilterRule = (
+  value: unknown,
+  groupPath: string,
+  ruleIndex: number,
+): DatabaseFilterRule | null => {
   if (!isRecord(value)) {
     return null;
   }
@@ -391,7 +399,7 @@ const parseFilterRule = (value: unknown): DatabaseFilterRule | null => {
     return null;
   }
   const rule: DatabaseFilterRule = {
-    id: nextGeneratedId("filter-rule"),
+    id: `filter-rule-${groupPath}-${ruleIndex}`,
     field,
     op,
   };
@@ -404,19 +412,23 @@ const parseFilterRule = (value: unknown): DatabaseFilterRule | null => {
   return rule;
 };
 
-const parseFilterGroup = (value: unknown): DatabaseFilterGroup => {
+const parseFilterGroup = (value: unknown, path = "root"): DatabaseFilterGroup => {
   if (Array.isArray(value)) {
     return {
-      id: nextGeneratedId("filter-group"),
+      id: `filter-group-${path}`,
       op: "and",
-      rules: value
-        .map((entry) => parseFilterRule(entry))
-        .filter((entry): entry is DatabaseFilterRule => Boolean(entry)),
+      rules: value.reduce<Array<DatabaseFilterRule>>((nextRules, entry, index) => {
+        const parsed = parseFilterRule(entry, path, index);
+        if (parsed) {
+          nextRules.push(parsed);
+        }
+        return nextRules;
+      }, []),
     };
   }
 
   if (!isRecord(value)) {
-    return createDefaultFilterGroup();
+    return createDefaultFilterGroup(path);
   }
 
   const rawRules = Array.isArray(value.rules)
@@ -426,16 +438,16 @@ const parseFilterGroup = (value: unknown): DatabaseFilterGroup => {
     : [];
 
   const rules = rawRules
-    .map((entry) => {
+    .map((entry, index) => {
       if (isRecord(entry) && Array.isArray(entry.rules)) {
-        return parseFilterGroup(entry);
+        return parseFilterGroup(entry, `${path}-${index}`);
       }
-      return parseFilterRule(entry);
+      return parseFilterRule(entry, path, index);
     })
     .filter((entry): entry is DatabaseFilterRule | DatabaseFilterGroup => Boolean(entry));
 
   return {
-    id: nextGeneratedId("filter-group"),
+    id: `filter-group-${path}`,
     op: parseFilterGroupOp(value.op),
     rules,
   };
@@ -445,26 +457,25 @@ const parseSortRules = (value: unknown): DatabaseSortRule[] => {
   if (!Array.isArray(value)) {
     return [];
   }
-  return value
-    .map((entry): DatabaseSortRule | null => {
+  return value.reduce<DatabaseSortRule[]>((nextRules, entry, index) => {
       if (!isRecord(entry)) {
-        return null;
+        return nextRules;
       }
       const field = asString(entry.field);
       if (!field) {
-        return null;
+        return nextRules;
       }
       const dir = asString(entry.dir, "asc").toLowerCase() === "desc" ? "desc" : "asc";
       const nulls = asString(entry.nulls).toLowerCase();
-      return {
-        id: nextGeneratedId("sort-rule"),
+      nextRules.push({
+        id: `sort-rule-${index}`,
         field,
         dir,
         nulls: nulls === "first" || nulls === "last" ? nulls : undefined,
         natural: Boolean(entry.natural),
-      };
-    })
-    .filter((entry): entry is DatabaseSortRule => Boolean(entry));
+      });
+      return nextRules;
+    }, []);
 };
 
 const parseFieldDefinitions = (value: unknown): DatabaseFieldDefinition[] => {
@@ -737,6 +748,64 @@ const parseTimelineMode = (value: unknown): DatabaseTimelineMode => {
   return "date";
 };
 
+const parseKanbanOrderByGroup = (value: unknown): Record<string, string[]> => {
+  const next: Record<string, string[]> = {};
+
+  if (Array.isArray(value)) {
+    value.forEach((entry) => {
+      if (!isRecord(entry)) {
+        return;
+      }
+      const group = asString(entry.group);
+      if (!group) {
+        return;
+      }
+      const order = dedupeExact(asStringArray(entry.order));
+      if (order.length === 0) {
+        return;
+      }
+      next[group] = order;
+    });
+    return next;
+  }
+
+  if (!isRecord(value)) {
+    return next;
+  }
+
+  Object.entries(value).forEach(([groupRaw, orderRaw]) => {
+    const group = groupRaw.trim();
+    if (!group) {
+      return;
+    }
+    const order = dedupeExact(asStringArray(orderRaw));
+    if (order.length === 0) {
+      return;
+    }
+    next[group] = order;
+  });
+
+  return next;
+};
+
+const cloneKanbanOrderByGroup = (
+  value: Record<string, string[]> | undefined,
+): Record<string, string[]> => {
+  const next: Record<string, string[]> = {};
+  Object.entries(value ?? {}).forEach(([groupRaw, orderRaw]) => {
+    const group = groupRaw.trim();
+    if (!group) {
+      return;
+    }
+    const order = dedupeExact((orderRaw ?? []).map((entry) => String(entry ?? "")));
+    if (order.length === 0) {
+      return;
+    }
+    next[group] = order;
+  });
+  return next;
+};
+
 const parseViewSpec = (value: unknown): DatabaseViewSpec => {
   if (typeof value === "string") {
     return {
@@ -745,6 +814,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
       timelineBaseDate: null,
       ganttZoom: "month",
       kanbanShowCover: false,
+      kanbanOrderByGroup: {},
       projectStartField: DEFAULT_PROJECT_START_FIELD,
       projectUnitField: DEFAULT_PROJECT_UNIT_FIELD,
       blockResolution: DEFAULT_PROJECT_BLOCK_RESOLUTION,
@@ -760,6 +830,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
       timelineBaseDate: null,
       ganttZoom: "month",
       kanbanShowCover: false,
+      kanbanOrderByGroup: {},
       projectStartField: DEFAULT_PROJECT_START_FIELD,
       projectUnitField: DEFAULT_PROJECT_UNIT_FIELD,
       blockResolution: DEFAULT_PROJECT_BLOCK_RESOLUTION,
@@ -774,6 +845,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
     type,
     groupBy: asString(value.groupBy) || null,
     kanbanShowCover: Boolean(value.kanbanShowCover),
+    kanbanOrderByGroup: parseKanbanOrderByGroup(value.kanbanOrderByGroup),
     timelineStartField: asString(value.timelineStartField) || null,
     timelineEndField: asString(value.timelineEndField) || null,
     timelineMode: parseTimelineMode(value.timelineMode),
@@ -814,6 +886,7 @@ const cloneProjectBarFillConfigs = (
 
 const cloneViewSpec = (view: DatabaseViewSpec): DatabaseViewSpec => ({
   ...view,
+  kanbanOrderByGroup: cloneKanbanOrderByGroup(view.kanbanOrderByGroup),
   projectBarFillConfigs: cloneProjectBarFillConfigs(view.projectBarFillConfigs),
 });
 
@@ -854,6 +927,28 @@ const resolveSavedViewForId = (
   return views.items[0]!;
 };
 
+const createGeneratedSavedViewId = (index: number) => `view-generated-${index + 1}`;
+
+const normalizeSavedViewId = (
+  preferredId: string,
+  fallbackIndex: number,
+  seenIds: Set<string>,
+) => {
+  const base = preferredId.trim() || createGeneratedSavedViewId(fallbackIndex);
+  if (!seenIds.has(base)) {
+    seenIds.add(base);
+    return base;
+  }
+  let sequence = 2;
+  let candidate = `${base}-${sequence}`;
+  while (seenIds.has(candidate)) {
+    sequence += 1;
+    candidate = `${base}-${sequence}`;
+  }
+  seenIds.add(candidate);
+  return candidate;
+};
+
 const createMigratedSavedViews = (legacy: {
   name: string;
   view: DatabaseViewSpec;
@@ -861,7 +956,7 @@ const createMigratedSavedViews = (legacy: {
   filters: DatabaseFilterGroup;
   sort: DatabaseSortRule[];
 }): DatabaseSavedViewsConfig => {
-  const id = nextGeneratedId("saved-view");
+  const id = "view-migrated-1";
   const migrated: DatabaseSavedViewConfig = {
     id,
     name: legacy.name,
@@ -911,7 +1006,7 @@ const parseSavedViews = (
       const parsedFilters = parseFilterGroup("filters" in entry ? entry.filters : legacy.filters);
 
       return {
-        id: asString(entry.id) || nextGeneratedId("saved-view"),
+        id: asString(entry.id) || createGeneratedSavedViewId(index),
         name: asString(entry.name) || `View ${index + 1}`,
         view: parsedView,
         properties,
@@ -926,12 +1021,8 @@ const parseSavedViews = (
   }
 
   const seenIds = new Set<string>();
-  const normalizedItems = parsedItems.map((item) => {
-    let id = item.id.trim();
-    if (!id || seenIds.has(id)) {
-      id = nextGeneratedId("saved-view");
-    }
-    seenIds.add(id);
+  const normalizedItems = parsedItems.map((item, index) => {
+    const id = normalizeSavedViewId(item.id, index, seenIds);
     return {
       ...item,
       id,
@@ -1163,12 +1254,28 @@ function writeViewSpecYaml(
   lines: string[],
 ) {
   const indentText = " ".repeat(indent);
+  const kanbanOrderByGroup = cloneKanbanOrderByGroup(view.kanbanOrderByGroup);
   lines.push(`${indentText}type: ${formatYamlScalar(view.type)}`);
   if (view.groupBy) {
     lines.push(`${indentText}groupBy: ${formatYamlScalar(view.groupBy)}`);
   }
   if (view.kanbanShowCover) {
     lines.push(`${indentText}kanbanShowCover: ${formatYamlScalar(view.kanbanShowCover)}`);
+  }
+  const kanbanOrderEntries = Object.entries(kanbanOrderByGroup);
+  if (kanbanOrderEntries.length > 0) {
+    lines.push(`${indentText}kanbanOrderByGroup:`);
+    kanbanOrderEntries.forEach(([group, order]) => {
+      lines.push(`${indentText}  - group: ${formatYamlScalar(group)}`);
+      if (order.length === 0) {
+        lines.push(`${indentText}    order: []`);
+        return;
+      }
+      lines.push(`${indentText}    order:`);
+      order.forEach((recordId) => {
+        lines.push(`${indentText}      - ${formatYamlScalar(recordId)}`);
+      });
+    });
   }
   if (view.timelineStartField) {
     lines.push(`${indentText}timelineStartField: ${formatYamlScalar(view.timelineStartField)}`);

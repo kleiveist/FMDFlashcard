@@ -88,6 +88,23 @@ const attributes: DatabaseAttributeMeta[] = [
       supportsAggregation: false,
     },
   },
+  {
+    key: "Geaendert",
+    label: "Geaendert",
+    type: "date",
+    origin: "system",
+    editable: false,
+    sortable: true,
+    filterable: true,
+    aggregatable: false,
+    viewCompatibility: {
+      supportsTable: true,
+      supportsKanbanGrouping: false,
+      supportsTimeline: true,
+      supportsPieGrouping: false,
+      supportsAggregation: false,
+    },
+  },
 ];
 
 const createRecord = (id: string, fields: DatabaseRecord["normalizedFields"]): DatabaseRecord => ({
@@ -109,6 +126,7 @@ const records: DatabaseRecord[] = [
     units: 6,
     Due: new Date("2026-03-25"),
     StartTime: "09:30",
+    Geaendert: new Date("2026-03-20"),
   }),
   createRecord("item-10", {
     Rank: "SE10",
@@ -116,6 +134,7 @@ const records: DatabaseRecord[] = [
     units: 3,
     Due: null,
     StartTime: "14:10",
+    Geaendert: new Date("2026-04-12"),
   }),
   createRecord("item-1", {
     Rank: "SE1",
@@ -123,6 +142,7 @@ const records: DatabaseRecord[] = [
     units: 1,
     Due: new Date("2026-03-21"),
     StartTime: "08:45",
+    Geaendert: new Date("2026-02-02"),
   }),
 ];
 
@@ -229,6 +249,19 @@ describe("database-sorts", () => {
 
     const sorted = applyDatabaseSorts(records, rules, attributes);
     expect(sorted.map((record) => record.fileId)).toEqual(["item-2", "item-10", "item-1"]);
+  });
+
+  it("sorts system date fields ascending", () => {
+    const rules: DatabaseSortRule[] = [
+      {
+        id: "sort-1",
+        field: "Geaendert",
+        dir: "asc",
+      },
+    ];
+
+    const sorted = applyDatabaseSorts(records, rules, attributes);
+    expect(sorted.map((record) => record.fileId)).toEqual(["item-1", "item-2", "item-10"]);
   });
 
   it("uses natural relative-path tie-break ordering when rule values are equal", () => {

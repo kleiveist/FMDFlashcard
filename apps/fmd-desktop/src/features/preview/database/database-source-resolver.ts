@@ -14,7 +14,13 @@ import {
 export type DatabaseSourceResolverContext = {
   vaultFiles?: VaultFile[];
   sourceRelativePath?: string | null;
-  historyFiles?: Array<{ path: string; relativePath: string }>;
+  historyFiles?: Array<{
+    path: string;
+    relativePath: string;
+    created_at?: number | null;
+    last_modified?: number | null;
+    size_bytes?: number | null;
+  }>;
   historyWarning?: string | null;
 };
 
@@ -48,11 +54,28 @@ const mapToResolutionFiles = (files: VaultFile[]) =>
   files.map((file) => ({
     path: file.path,
     relativePath: normalizeRelativePath(file.relative_path),
+    created_at: file.created_at ?? null,
+    last_modified: file.last_modified ?? null,
+    size_bytes: file.size_bytes ?? null,
   }));
 
-const dedupeResolutionFilesByPath = (files: Array<{ path: string; relativePath: string }>) => {
+const dedupeResolutionFilesByPath = (
+  files: Array<{
+    path: string;
+    relativePath: string;
+    created_at?: number | null;
+    last_modified?: number | null;
+    size_bytes?: number | null;
+  }>,
+) => {
   const seen = new Set<string>();
-  const next: Array<{ path: string; relativePath: string }> = [];
+  const next: Array<{
+    path: string;
+    relativePath: string;
+    created_at?: number | null;
+    last_modified?: number | null;
+    size_bytes?: number | null;
+  }> = [];
   files.forEach((file) => {
     const key = file.path;
     if (seen.has(key)) {

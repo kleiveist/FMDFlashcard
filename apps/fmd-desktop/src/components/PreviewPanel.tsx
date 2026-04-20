@@ -5578,7 +5578,11 @@ const FrontmatterPropertiesPanel = ({
           filePath,
           relativePath: resolvedRelativePath,
           frontmatter: values,
-          systemFields: createSystemFieldsForRecord(resolvedRelativePath, filePath),
+          systemFields: createSystemFieldsForRecord(resolvedRelativePath, filePath, {
+            createdAt: matchingFile?.created_at ?? null,
+            lastModified: matchingFile?.last_modified ?? null,
+            sizeBytes: matchingFile?.size_bytes ?? null,
+          }),
         }),
       );
     });
@@ -5596,6 +5600,11 @@ const FrontmatterPropertiesPanel = ({
           systemFields: createSystemFieldsForRecord(
             normalizedSourceRelativePath,
             filePath,
+            {
+              createdAt: matchingFile?.created_at ?? null,
+              lastModified: matchingFile?.last_modified ?? null,
+              sizeBytes: matchingFile?.size_bytes ?? null,
+            },
           ),
         }),
       );
@@ -12102,12 +12111,23 @@ export const PreviewPanel = ({
                             {item.blocks.map((block, blockIndex) =>
                               renderMarkdownViewBlock(
                                 block,
-                                `group:${item.groupId}:${itemIndex}:${blockIndex}:${block.id}`,
+                                `group:${item.groupId}:${itemIndex}:${blockIndex}:${
+                                  block.kind === "database-block"
+                                    ? `${block.kind}:${block.startLine}`
+                                    : block.id
+                                }`,
                               )
                             )}
                           </div>
                         ) : (
-                          renderMarkdownViewBlock(item.block, `block:${itemIndex}:${item.block.id}`)
+                          renderMarkdownViewBlock(
+                            item.block,
+                            `block:${itemIndex}:${
+                              item.block.kind === "database-block"
+                                ? `${item.block.kind}:${item.block.startLine}`
+                                : item.block.id
+                            }`,
+                          )
                         )
                       )}
                     </div>
