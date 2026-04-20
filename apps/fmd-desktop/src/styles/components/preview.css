@@ -7329,12 +7329,6 @@ textarea.preview-editor {
   padding: 2px;
 }
 
-.database-kanban-column-body.is-touch-source {
-  outline: 2px solid var(--db-accent-focus);
-  outline-offset: 1px;
-  background: color-mix(in srgb, var(--db-control-active-bg) 30%, transparent);
-}
-
 .database-kanban-card {
   display: grid;
   gap: 4px;

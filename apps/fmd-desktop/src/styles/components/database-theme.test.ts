@@ -62,7 +62,6 @@ describe("database theme contracts", () => {
       /\.database-kanban-card-order-actions\s+\.database-block-toolbar-button\s*\{[\s\S]*?inline-size:\s*24px;[\s\S]*?min-inline-size:\s*24px;[\s\S]*?block-size:\s*17px;[\s\S]*?min-block-size:\s*17px;[\s\S]*?\}/,
     );
     expect(previewCss).toContain(".database-kanban-column.is-touch-source");
-    expect(previewCss).toContain(".database-kanban-column-body.is-touch-source");
     expect(previewCss).toContain(".database-kanban-card.is-touch-selected");
   });
 

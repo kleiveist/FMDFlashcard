@@ -216,7 +216,6 @@ export const DatabaseKanbanView = ({
   const pendingIds = useMemo(() => new Set(pendingRecordIds), [pendingRecordIds]);
   const [touchSelectedRecordId, setTouchSelectedRecordId] = useState<string | null>(null);
   const [touchSourceGroupKey, setTouchSourceGroupKey] = useState<string | null>(null);
-  const [lastSelectedRecordIdByGroup, setLastSelectedRecordIdByGroup] = useState<Record<string, string>>({});
   const recordsById = useMemo(
     () => new Map(records.map((record) => [record.fileId, record])),
     [records],
@@ -261,10 +260,6 @@ export const DatabaseKanbanView = ({
     }
     setTouchSelectedRecordId(record.fileId);
     setTouchSourceGroupKey(groupKey);
-    setLastSelectedRecordIdByGroup((previous) => ({
-      ...previous,
-      [groupKey]: record.fileId,
-    }));
   };
 
   const moveTouchSelectionToGroup = (targetGroupKey: string) => {
@@ -290,30 +285,13 @@ export const DatabaseKanbanView = ({
     clearTouchSelection();
   };
 
-  const resolveBodySelectionCandidate = (groupKey: string, groupRecords: DatabaseRecord[]) => {
-    const preferredRecordId = lastSelectedRecordIdByGroup[groupKey];
-    if (preferredRecordId) {
-      const preferred = groupRecords.find((entry) => entry.fileId === preferredRecordId);
-      if (preferred && !pendingIds.has(preferred.fileId)) {
-        return preferred;
-      }
-    }
-    return groupRecords.find((entry) => !pendingIds.has(entry.fileId)) ?? null;
-  };
-
   const handleColumnTap = (
     groupKey: string,
-    groupRecords: DatabaseRecord[],
   ) => {
-    if (touchSelectedRecordId) {
-      moveTouchSelectionToGroup(groupKey);
+    if (!touchSelectedRecordId) {
       return;
     }
-    const candidate = resolveBodySelectionCandidate(groupKey, groupRecords);
-    if (!candidate) {
-      return;
-    }
-    selectTouchSourceRecord(candidate, groupKey);
+    moveTouchSelectionToGroup(groupKey);
   };
 
   const handleCardTap = (
@@ -322,7 +300,8 @@ export const DatabaseKanbanView = ({
     record: DatabaseRecord,
   ) => {
     const target = event.target as HTMLElement | null;
-    if (target?.closest("[data-md-block-control='true']")) {
+    const nearestControl = target?.closest("[data-md-block-control='true']") ?? null;
+    if (nearestControl && nearestControl !== event.currentTarget) {
       return;
     }
     event.stopPropagation();
@@ -336,14 +315,26 @@ export const DatabaseKanbanView = ({
   const handleBodyTap = (
     event: ReactMouseEvent<HTMLDivElement>,
     groupKey: string,
-    groupRecords: DatabaseRecord[],
   ) => {
     const target = event.target as HTMLElement | null;
-    if (target?.closest("[data-md-block-control='true']")) {
+    const nearestControl = target?.closest("[data-md-block-control='true']") ?? null;
+    if (nearestControl && nearestControl !== event.currentTarget) {
       return;
     }
     event.stopPropagation();
-    handleColumnTap(groupKey, groupRecords);
+    handleColumnTap(groupKey);
+  };
+
+  const handleSectionTap = (
+    event: ReactMouseEvent<HTMLElement>,
+    groupKey: string,
+  ) => {
+    const target = event.target as HTMLElement | null;
+    const nearestControl = target?.closest("[data-md-block-control='true']") ?? null;
+    if (nearestControl && nearestControl !== event.currentTarget) {
+      return;
+    }
+    handleColumnTap(groupKey);
   };
 
   useEffect(() => {
@@ -417,13 +408,8 @@ export const DatabaseKanbanView = ({
               ? " is-touch-source"
               : ""
           }`}
-          onClick={(event) => {
-            const target = event.target as HTMLElement | null;
-            if (target?.closest("[data-md-block-control='true']")) {
-              return;
-            }
-            handleColumnTap(group.key, group.records);
-          }}
+          onClick={(event) => handleSectionTap(event, group.key)}
+          data-md-block-control="true"
           onDragOver={(event) => {
             event.preventDefault();
             setDropEffectSafe(event, "move");
@@ -462,12 +448,9 @@ export const DatabaseKanbanView = ({
             <span>{group.records.length}</span>
           </header>
           <div
-            className={`database-kanban-column-body${
-              touchSelectedRecordId && touchSourceGroupKey === group.key
-                ? " is-touch-source"
-                : ""
-            }`}
-            onClick={(event) => handleBodyTap(event, group.key, group.records)}
+            className="database-kanban-column-body"
+            onClick={(event) => handleBodyTap(event, group.key)}
+            data-md-block-control="true"
           >
             {group.records.map((record, index) => {
               const coverSource = showCover ? resolveCoverSource(record, attributes) : null;
@@ -526,6 +509,7 @@ export const DatabaseKanbanView = ({
                   }`}
                   draggable={!pendingIds.has(record.fileId)}
                   onClick={(event) => handleCardTap(event, group.key, record)}
+                  data-md-block-control="true"
                   onDragStart={(event) => {
                     startInternalDrag(event, {
                       channel: DRAG_CHANNELS.DATABASE_RECORD,
