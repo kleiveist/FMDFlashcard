@@ -15,7 +15,7 @@ import {
   type ReactElement,
 } from "react";
 import { createRoot } from "react-dom/client";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openPath, openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { invoke } from "@tauri-apps/api/core";
 import { PreviewPanel, serializeMarkdownFromHtml } from "./PreviewPanel";
 import { type MonitoringRenderProfile } from "../features/monitoring/monitoring-render-rules";
@@ -27,10 +27,14 @@ const testEnv = globalThis as typeof globalThis & {
 testEnv.IS_REACT_ACT_ENVIRONMENT = true;
 
 vi.mock("@tauri-apps/plugin-opener", () => ({
+  openPath: vi.fn().mockResolvedValue(undefined),
   openUrl: vi.fn().mockResolvedValue(undefined),
+  revealItemInDir: vi.fn().mockResolvedValue(undefined),
 }));
 
+const openPathMock = vi.mocked(openPath);
 const openUrlMock = vi.mocked(openUrl);
+const revealItemInDirMock = vi.mocked(revealItemInDir);
 const invokeMock = vi.mocked(invoke);
 const originalMatchMedia = window.matchMedia;
 const originalResizeObserver = window.ResizeObserver;
@@ -482,7 +486,9 @@ afterEach(() => {
     value: originalResizeObserver,
   });
   resizeObserverInstances.length = 0;
+  openPathMock.mockClear();
   openUrlMock.mockClear();
+  revealItemInDirMock.mockClear();
   invokeMock.mockReset();
 });
 
@@ -522,6 +528,248 @@ describe("PreviewPanel edit-safe interactions", () => {
       closeButtons[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(onCloseMarkdownTab).toHaveBeenCalledWith("/vault/Two.md");
+  });
+
+  it("opens tab context menu and executes View Folder action", async () => {
+    invokeMock.mockResolvedValueOnce({
+      exists: true,
+      isDir: true,
+    });
+    const { container, cleanup: localCleanup } = buildHarness("Body", {
+      markdownTabs: [
+        { path: "/vault/One.md", relativePath: "One.md" },
+        { path: "/vault/folder/Two.md", relativePath: "folder/Two.md" },
+      ],
+      activeMarkdownTabPath: "/vault/folder/Two.md",
+      vaultPath: "/vault",
+    });
+    cleanup = localCleanup;
+
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>(".preview-tab"));
+    expect(tabs).toHaveLength(2);
+
+    act(() => {
+      tabs[1]?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          button: 2,
+          clientX: 48,
+          clientY: 64,
+        }),
+      );
+    });
+
+    const menuItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".context-menu-item"));
+    const rightFolderItem = menuItems.find(
+      (button) => button.textContent?.trim() === "View Folder",
+    );
+    expect(rightFolderItem).toBeTruthy();
+
+    act(() => {
+      rightFolderItem?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await flushAsyncInteraction();
+
+    expect(invokeMock).toHaveBeenCalledWith("get_path_info", {
+      path: "/vault/folder",
+    });
+    expect(revealItemInDirMock).toHaveBeenCalledWith("/vault/folder/Two.md");
+    expect(openPathMock).not.toHaveBeenCalled();
+  });
+
+  it("opens tab context menu and executes View File action", async () => {
+    invokeMock.mockResolvedValueOnce({
+      exists: true,
+      isDir: false,
+    });
+    const { container, cleanup: localCleanup } = buildHarness("Body", {
+      markdownTabs: [
+        { path: "/vault/One.md", relativePath: "One.md" },
+        { path: "/vault/folder/Two.md", relativePath: "folder/Two.md" },
+      ],
+      activeMarkdownTabPath: "/vault/folder/Two.md",
+      vaultPath: "/vault",
+    });
+    cleanup = localCleanup;
+
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>(".preview-tab"));
+    expect(tabs).toHaveLength(2);
+
+    act(() => {
+      tabs[1]?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          button: 2,
+          clientX: 56,
+          clientY: 70,
+        }),
+      );
+    });
+
+    const menuItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".context-menu-item"));
+    const rightFileItem = menuItems.find(
+      (button) => button.textContent?.trim() === "View File",
+    );
+    expect(rightFileItem).toBeTruthy();
+
+    act(() => {
+      rightFileItem?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await flushAsyncInteraction();
+
+    expect(invokeMock).toHaveBeenCalledWith("get_path_info", {
+      path: "/vault/folder/Two.md",
+    });
+    expect(openPathMock).toHaveBeenCalledWith("/vault/folder/Two.md");
+  });
+
+  it("opens context menu from folder row and routes View Folder to folder scope", async () => {
+    invokeMock.mockResolvedValueOnce({
+      exists: true,
+      isDir: true,
+    });
+    const { container, cleanup: localCleanup } = buildHarness("Body", {
+      markdownTabs: [
+        { path: "/vault/folder-a/One.md", relativePath: "folder-a/One.md" },
+        { path: "/vault/folder-b/Two.md", relativePath: "folder-b/Two.md" },
+        { path: "/vault/folder-c/Three.md", relativePath: "folder-c/Three.md" },
+      ],
+      activeMarkdownTabPath: "/vault/folder-a/One.md",
+      vaultPath: "/vault",
+    });
+    cleanup = localCleanup;
+
+    const folderButtons = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".preview-tab-folder-button"),
+    );
+    expect(folderButtons).toHaveLength(3);
+
+    act(() => {
+      folderButtons[1]?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          button: 2,
+          clientX: 80,
+          clientY: 92,
+        }),
+      );
+    });
+
+    const menuItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".context-menu-item"));
+    const rightFolderItem = menuItems.find(
+      (button) => button.textContent?.trim() === "View Folder",
+    );
+    expect(rightFolderItem).toBeTruthy();
+
+    act(() => {
+      rightFolderItem?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await flushAsyncInteraction();
+
+    expect(invokeMock).toHaveBeenCalledWith("get_path_info", {
+      path: "/vault/folder-b",
+    });
+  });
+
+  it("anchors the tab context menu directly below the matching tab", async () => {
+    const { container, cleanup: localCleanup } = buildHarness("Body", {
+      markdownTabs: [
+        { path: "/vault/One.md", relativePath: "One.md" },
+        { path: "/vault/folder/Two.md", relativePath: "folder/Two.md" },
+      ],
+      activeMarkdownTabPath: "/vault/folder/Two.md",
+      vaultPath: "/vault",
+    });
+    cleanup = localCleanup;
+
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>(".preview-tab"));
+    expect(tabs).toHaveLength(2);
+    const targetTab = tabs[1] ?? null;
+    expect(targetTab).toBeTruthy();
+    if (!targetTab) {
+      return;
+    }
+
+    setElementBoundingRect(targetTab, { left: 240, top: 140, width: 120, height: 28 });
+    const tabButton = targetTab.querySelector<HTMLElement>(".preview-tab-button");
+    expect(tabButton).toBeTruthy();
+    if (!tabButton) {
+      return;
+    }
+    setElementBoundingRect(tabButton, { left: 240, top: 140, width: 84, height: 28 });
+
+    act(() => {
+      tabButton.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          button: 2,
+          clientX: 32,
+          clientY: 44,
+        }),
+      );
+    });
+    await flushAsyncInteraction();
+
+    const menu = document.querySelector<HTMLElement>(".context-menu");
+    expect(menu).toBeTruthy();
+    expect(menu?.style.left).toBe("240px");
+    expect(menu?.style.top).toBe("174px");
+  });
+
+  it("anchors row background context menu to the active tab button", async () => {
+    const { container, cleanup: localCleanup } = buildHarness("Body", {
+      markdownTabs: [
+        { path: "/vault/One.md", relativePath: "One.md" },
+        { path: "/vault/folder/Two.md", relativePath: "folder/Two.md" },
+      ],
+      activeMarkdownTabPath: "/vault/folder/Two.md",
+      vaultPath: "/vault",
+    });
+    cleanup = localCleanup;
+
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>(".preview-tab"));
+    expect(tabs).toHaveLength(2);
+    const activeTab = tabs[1] ?? null;
+    expect(activeTab).toBeTruthy();
+    if (!activeTab) {
+      return;
+    }
+
+    const activeTabButton = activeTab.querySelector<HTMLElement>(".preview-tab-button");
+    expect(activeTabButton).toBeTruthy();
+    if (!activeTabButton) {
+      return;
+    }
+
+    setElementBoundingRect(activeTabButton, { left: 310, top: 102, width: 90, height: 28 });
+
+    const row = container.querySelector<HTMLElement>(".preview-tab-row");
+    expect(row).toBeTruthy();
+    if (!row) {
+      return;
+    }
+
+    act(() => {
+      row.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          button: 2,
+          clientX: 18,
+          clientY: 24,
+        }),
+      );
+    });
+    await flushAsyncInteraction();
+
+    const menu = document.querySelector<HTMLElement>(".context-menu");
+    expect(menu).toBeTruthy();
+    expect(menu?.style.left).toBe("310px");
+    expect(menu?.style.top).toBe("136px");
   });
 
   it("reorders markdown tabs via drag and drop with before hint", async () => {

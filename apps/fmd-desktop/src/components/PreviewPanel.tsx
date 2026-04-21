@@ -41,8 +41,9 @@ import {
   useRef,
   useState,
 } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { createRoot, type Root } from "react-dom/client";
-import { openUrl } from "@tauri-apps/plugin-opener";
+import { openPath, openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
@@ -1654,6 +1655,8 @@ const PREVIEW_TAB_FOLDER_MODE_MIN_TABS = 3;
 const PREVIEW_TAB_ROOT_LABEL = "Root";
 const PREVIEW_FOLDER_BUTTON_MIN_WIDTH_PX = 140;
 const PREVIEW_FOLDER_BUTTON_MAX_WIDTH_PX = 260;
+const PREVIEW_TAB_CONTEXT_MENU_ANCHOR_GAP_PX = 6;
+const PREVIEW_TAB_CONTEXT_MENU_MIN_WIDTH_PX = 180;
 
 type MarkdownTabDisplayInfo = {
   path: string;
@@ -1665,6 +1668,60 @@ type MarkdownTabDisplayInfo = {
 type MarkdownTabFolderEntry = {
   key: string;
   label: string;
+};
+
+type MarkdownTabContextMenuState = {
+  x: number;
+  y: number;
+  tabPath: string;
+  relativePath: string;
+  filePath: string;
+  anchorRect: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null;
+};
+
+type PathInfo = {
+  exists: boolean;
+  isDir: boolean;
+};
+
+const resolveErrorText = (error: unknown) =>
+  error instanceof Error ? error.message : String(error ?? "");
+
+const getParentRelativePath = (value: string) => {
+  const normalized = normalizeRelativePath(value);
+  const lastSlash = normalized.lastIndexOf("/");
+  if (lastSlash <= 0) {
+    return "";
+  }
+  return normalized.slice(0, lastSlash);
+};
+
+const joinVaultPath = (vaultRoot: string, relativePath: string) => {
+  const separator = vaultRoot.includes("\\") ? "\\" : "/";
+  const trimmedRoot = vaultRoot.replace(/[\\/]+$/, "");
+  const normalizedRelative = normalizeRelativePath(relativePath).replace(/^\/+/, "").replace(/\//g, separator);
+  if (!normalizedRelative) {
+    return trimmedRoot;
+  }
+  return `${trimmedRoot}${separator}${normalizedRelative}`;
+};
+
+const snapshotElementRect = (element: HTMLElement | null) => {
+  if (!element) {
+    return null;
+  }
+  const rect = element.getBoundingClientRect();
+  return {
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    height: rect.height,
+  };
 };
 
 type LegacyMarkdownLinkPickerMode = "page" | "image";
@@ -8760,6 +8817,7 @@ export const PreviewPanel = ({
   const legacyMarkdownLinkPickerRef = useRef<HTMLDivElement | null>(null);
   const legacyMarkdownLinkPickerSearchInputRef = useRef<HTMLInputElement | null>(null);
   const markdownTabStripRef = useRef<HTMLDivElement | null>(null);
+  const markdownTabContextMenuRef = useRef<HTMLDivElement | null>(null);
   const hybridEditorRef = useRef<MarkdownHybridEditorHandle | null>(null);
   const markdownEditorHtmlRef = useRef<string | null>(null);
   const markdownEditorReadyRef = useRef(false);
@@ -8792,6 +8850,10 @@ export const PreviewPanel = ({
     path: string;
     position: "before" | "after";
   } | null>(null);
+  const [markdownTabContextMenu, setMarkdownTabContextMenu] =
+    useState<MarkdownTabContextMenuState | null>(null);
+  const [markdownTabContextMenuStyle, setMarkdownTabContextMenuStyle] =
+    useState<CSSProperties | null>(null);
   const markdownTabDragPreviewRef = useRef<HTMLElement | null>(null);
   const isNarrowFrontmatterViewport = useMediaQuery(SMART_QUERY, false);
   const effectiveFrontmatterPanelCollapsed =
@@ -8851,6 +8913,9 @@ export const PreviewPanel = ({
   const resolvedEditEnabled = documentMode === "write"
     ? true
     : (isHybridMode ? true : editEnabled);
+  const closeMarkdownTabContextMenu = useCallback(() => {
+    setMarkdownTabContextMenu(null);
+  }, []);
 
   useEffect(() => {
     setShowFrontmatterTextFallback(false);
@@ -8899,6 +8964,63 @@ export const PreviewPanel = ({
       observer.disconnect();
     };
   }, [markdownTabs.length]);
+
+  useLayoutEffect(() => {
+    if (!markdownTabContextMenu || !markdownTabContextMenuRef.current) {
+      return;
+    }
+    const padding = 8;
+    const rect = markdownTabContextMenuRef.current.getBoundingClientRect();
+    const resolvedMenuWidth =
+      rect.width > 0 ? rect.width : PREVIEW_TAB_CONTEXT_MENU_MIN_WIDTH_PX;
+    const resolvedMenuHeight = rect.height > 0 ? rect.height : 0;
+    let left = markdownTabContextMenu.anchorRect
+      ? markdownTabContextMenu.anchorRect.left
+      : markdownTabContextMenu.x;
+    let top = markdownTabContextMenu.anchorRect
+      ? markdownTabContextMenu.anchorRect.top +
+        markdownTabContextMenu.anchorRect.height +
+        PREVIEW_TAB_CONTEXT_MENU_ANCHOR_GAP_PX
+      : markdownTabContextMenu.y;
+
+    if (left + resolvedMenuWidth > window.innerWidth - padding) {
+      left = window.innerWidth - resolvedMenuWidth - padding;
+    }
+    if (top + resolvedMenuHeight > window.innerHeight - padding) {
+      top = window.innerHeight - resolvedMenuHeight - padding;
+    }
+    setMarkdownTabContextMenuStyle({
+      left: Math.max(padding, left),
+      top: Math.max(padding, top),
+    });
+  }, [markdownTabContextMenu]);
+
+  useEffect(() => {
+    if (!markdownTabContextMenu) {
+      return;
+    }
+    const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMarkdownTabContextMenu(null);
+      }
+    };
+    window.addEventListener("keydown", handleWindowKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleWindowKeyDown);
+    };
+  }, [markdownTabContextMenu]);
+
+  useEffect(() => {
+    if (!markdownTabContextMenu) {
+      return;
+    }
+    const tabStillExists = markdownTabs.some(
+      (tab) => tab.path === markdownTabContextMenu.tabPath,
+    );
+    if (!tabStillExists) {
+      setMarkdownTabContextMenu(null);
+    }
+  }, [markdownTabContextMenu, markdownTabs]);
 
   const captureScroll = useCallback((element: HTMLElement | null) => {
     if (!element) {
@@ -11515,6 +11637,219 @@ export const PreviewPanel = ({
     ],
   );
 
+  const activeMarkdownTab = useMemo(
+    () =>
+      markdownTabs.find((tab) => tab.path === activeMarkdownTabPath) ??
+      markdownTabs[0] ??
+      null,
+    [activeMarkdownTabPath, markdownTabs],
+  );
+
+  const openMarkdownTabContextMenu = useCallback(
+    (
+      event: MouseEvent<HTMLElement>,
+      tab: {
+        path: string;
+        relativePath: string;
+      } | null,
+      anchorElement: HTMLElement | null = null,
+    ) => {
+      if (!tab || !vaultPath) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      const resolvedAnchorElement = anchorElement ?? (event.currentTarget as HTMLElement | null);
+      const anchorRect = snapshotElementRect(resolvedAnchorElement);
+      const normalizedRelativePath = normalizeRelativePath(tab.relativePath).replace(/^\/+/, "");
+      const fallbackAbsolutePath = joinVaultPath(vaultPath, normalizedRelativePath);
+      setMarkdownTabContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        tabPath: tab.path,
+        relativePath: normalizedRelativePath,
+        filePath: tab.path.trim() || fallbackAbsolutePath,
+        anchorRect,
+      });
+      setMarkdownTabContextMenuStyle(
+        anchorRect
+          ? {
+              left: anchorRect.left,
+              top: anchorRect.top + anchorRect.height + PREVIEW_TAB_CONTEXT_MENU_ANCHOR_GAP_PX,
+            }
+          : {
+              left: event.clientX,
+              top: event.clientY,
+            },
+      );
+    },
+    [vaultPath],
+  );
+
+  const handleMarkdownTabContextMenu = useCallback(
+    (event: MouseEvent<HTMLElement>, tabPath: string) => {
+      const targetTab = markdownTabs.find((tab) => tab.path === tabPath) ?? null;
+      const tabElement = event.currentTarget;
+      const eventTarget = event.target instanceof HTMLElement ? event.target : null;
+      const clickedButton = eventTarget?.closest(".preview-tab-button");
+      const fallbackButton = tabElement.querySelector<HTMLElement>(".preview-tab-button");
+      openMarkdownTabContextMenu(
+        event,
+        targetTab,
+        clickedButton instanceof HTMLElement ? clickedButton : fallbackButton,
+      );
+    },
+    [markdownTabs, openMarkdownTabContextMenu],
+  );
+
+  const handleMarkdownTabRowContextMenu = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      const stripElement = markdownTabStripRef.current;
+      const activeTabElement = stripElement
+        ? Array.from(stripElement.querySelectorAll<HTMLElement>(".preview-tab")).find(
+            (element) => element.dataset.previewTabPath === activeMarkdownTab?.path,
+          ) ?? null
+        : null;
+      const activeTabButton = activeTabElement?.querySelector<HTMLElement>(".preview-tab-button") ?? null;
+      openMarkdownTabContextMenu(event, activeMarkdownTab, activeTabButton);
+    },
+    [activeMarkdownTab, openMarkdownTabContextMenu],
+  );
+
+  const handleMarkdownTabFolderContextMenu = useCallback(
+    (event: MouseEvent<HTMLElement>, folderLabel: string) => {
+      const tabInFolder =
+        markdownTabDisplayInfos
+          .find(
+            (tab) =>
+              tab.folderLabel === folderLabel &&
+              tab.path === activeMarkdownTabPath,
+          ) ??
+        markdownTabDisplayInfos.find((tab) => tab.folderLabel === folderLabel);
+      if (!tabInFolder) {
+        return;
+      }
+      const resolvedTab =
+        markdownTabs.find((tab) => tab.path === tabInFolder.path) ?? null;
+      openMarkdownTabContextMenu(event, resolvedTab, event.currentTarget);
+    },
+    [
+      activeMarkdownTabPath,
+      markdownTabDisplayInfos,
+      markdownTabs,
+      openMarkdownTabContextMenu,
+    ],
+  );
+
+  const handleOpenMarkdownTabFolder = useCallback(async () => {
+    const target = markdownTabContextMenu;
+    closeMarkdownTabContextMenu();
+    if (!target || !vaultPath) {
+      return;
+    }
+    const folderRelativePath = getParentRelativePath(target.relativePath);
+    const folderAbsPath = joinVaultPath(vaultPath, folderRelativePath);
+    try {
+      const info = await invoke<PathInfo>("get_path_info", {
+        path: folderAbsPath,
+      });
+      if (!info.exists || !info.isDir) {
+        console.error("Folder not found on disk.", {
+          relativePath: target.relativePath,
+          folderAbsPath,
+          fileAbsPath: target.filePath,
+          info,
+        });
+        return;
+      }
+      try {
+        await revealItemInDir(target.filePath);
+        return;
+      } catch (revealError) {
+        console.warn("Could not reveal file in system explorer. Falling back to folder open.", {
+          relativePath: target.relativePath,
+          folderAbsPath,
+          fileAbsPath: target.filePath,
+          revealError,
+        });
+      }
+      await openPath(folderAbsPath);
+    } catch (error) {
+      console.error("Could not open markdown tab folder.", {
+        relativePath: target.relativePath,
+        folderAbsPath,
+        fileAbsPath: target.filePath,
+        error: resolveErrorText(error),
+      });
+    }
+  }, [closeMarkdownTabContextMenu, markdownTabContextMenu, vaultPath]);
+
+  const handleOpenMarkdownTabFile = useCallback(async () => {
+    const target = markdownTabContextMenu;
+    closeMarkdownTabContextMenu();
+    if (!target || !vaultPath) {
+      return;
+    }
+    const fileAbsPath = target.filePath.trim() || joinVaultPath(vaultPath, target.relativePath);
+    try {
+      const info = await invoke<PathInfo>("get_path_info", {
+        path: fileAbsPath,
+      });
+      if (!info.exists || info.isDir) {
+        console.error("File not found on disk.", {
+          relativePath: target.relativePath,
+          fileAbsPath,
+          info,
+        });
+        return;
+      }
+      await openPath(fileAbsPath);
+    } catch (error) {
+      console.error("Could not open markdown tab file with default app.", {
+        relativePath: target.relativePath,
+        fileAbsPath,
+        error: resolveErrorText(error),
+      });
+    }
+  }, [closeMarkdownTabContextMenu, markdownTabContextMenu, vaultPath]);
+
+  const markdownTabContextMenuLayer = markdownTabContextMenu ? (
+    <div
+      className="context-menu-backdrop"
+      role="presentation"
+      onMouseDown={closeMarkdownTabContextMenu}
+    >
+      <div
+        ref={markdownTabContextMenuRef}
+        className="context-menu"
+        style={markdownTabContextMenuStyle ?? {
+          left: markdownTabContextMenu.x,
+          top: markdownTabContextMenu.y,
+        }}
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="context-menu-item"
+          onClick={() => {
+            void handleOpenMarkdownTabFolder();
+          }}
+        >
+          View Folder
+        </button>
+        <button
+          type="button"
+          className="context-menu-item"
+          onClick={() => {
+            void handleOpenMarkdownTabFile();
+          }}
+        >
+          View File
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   useEffect(() => {
     if (!isEditing) {
       rawCodeToggleClosePendingRef.current = false;
@@ -11669,7 +12004,12 @@ export const PreviewPanel = ({
           style={markdownTabStripStyle}
         >
           {useFolderRowMode ? (
-            <div className="preview-tab-folder-row" role="toolbar" aria-label="Open markdown folders">
+            <div
+              className="preview-tab-folder-row"
+              role="toolbar"
+              aria-label="Open markdown folders"
+              onContextMenu={handleMarkdownTabRowContextMenu}
+            >
               {markdownTabFolderEntries.map((entry) => (
                 <div
                   key={entry.key}
@@ -11683,6 +12023,9 @@ export const PreviewPanel = ({
                     aria-pressed={activeMarkdownTabFolderLabel === entry.label}
                     title={entry.label}
                     onClick={() => handleMarkdownFolderGroupSelect(entry.label)}
+                    onContextMenu={(event) =>
+                      handleMarkdownTabFolderContextMenu(event, entry.label)
+                    }
                   >
                     <span className="preview-tab-folder-label">{entry.label}</span>
                   </button>
@@ -11690,7 +12033,12 @@ export const PreviewPanel = ({
               ))}
             </div>
           ) : null}
-          <div className="preview-tab-row" role="tablist" aria-label="Open markdown files">
+          <div
+            className="preview-tab-row"
+            role="tablist"
+            aria-label="Open markdown files"
+            onContextMenu={handleMarkdownTabRowContextMenu}
+          >
             {filteredMarkdownTabDisplayInfos.map((tab) => {
               const isActive = activeMarkdownTabPath === tab.path;
               const visibleLabel = isCompactMarkdownTabLabels ? tab.fileLabel : tab.fullLabel;
@@ -11698,6 +12046,7 @@ export const PreviewPanel = ({
               return (
                 <div
                   key={tab.path}
+                  data-preview-tab-path={tab.path}
                   className={`preview-tab ${isActive ? "active" : ""} ${
                     dragMarkdownTabPath === tab.path ? "is-drag-source" : ""
                   } ${
@@ -11715,6 +12064,7 @@ export const PreviewPanel = ({
                   onDragLeave={(event) => handleMarkdownTabDragLeave(event, tab.path)}
                   onDrop={(event) => handleMarkdownTabDrop(event, tab.path)}
                   onDragEnd={handleMarkdownTabDragEnd}
+                  onContextMenu={(event) => handleMarkdownTabContextMenu(event, tab.path)}
                 >
                   <button
                     type="button"
@@ -11744,6 +12094,7 @@ export const PreviewPanel = ({
           </div>
         </div>
       ) : null}
+      {markdownTabContextMenuLayer}
       <div className="panel-body preview-body">
         {previewState === "error" ? (
           <div className="error">{previewError}</div>
