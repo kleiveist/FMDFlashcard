@@ -41,6 +41,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { createRoot, type Root } from "react-dom/client";
 import { openPath, openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
@@ -11849,6 +11850,8 @@ export const PreviewPanel = ({
       </div>
     </div>
   ) : null;
+  const markdownTabContextMenuPortalTarget =
+    typeof document === "undefined" ? null : document.body;
 
   useEffect(() => {
     if (!isEditing) {
@@ -12094,7 +12097,11 @@ export const PreviewPanel = ({
           </div>
         </div>
       ) : null}
-      {markdownTabContextMenuLayer}
+      {markdownTabContextMenuLayer
+        ? markdownTabContextMenuPortalTarget
+          ? createPortal(markdownTabContextMenuLayer, markdownTabContextMenuPortalTarget)
+          : markdownTabContextMenuLayer
+        : null}
       <div className="panel-body preview-body">
         {previewState === "error" ? (
           <div className="error">{previewError}</div>

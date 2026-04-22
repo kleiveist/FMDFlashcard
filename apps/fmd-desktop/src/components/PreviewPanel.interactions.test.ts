@@ -720,6 +720,55 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(menu?.style.top).toBe("174px");
   });
 
+  it("renders tab context menu in a body portal and keeps tab-button anchor", async () => {
+    const { container, cleanup: localCleanup } = buildHarness("Body", {
+      markdownTabs: [
+        { path: "/vault/One.md", relativePath: "One.md" },
+        { path: "/vault/folder/Two.md", relativePath: "folder/Two.md" },
+      ],
+      activeMarkdownTabPath: "/vault/folder/Two.md",
+      vaultPath: "/vault",
+    });
+    cleanup = localCleanup;
+
+    const tabs = Array.from(container.querySelectorAll<HTMLElement>(".preview-tab"));
+    expect(tabs).toHaveLength(2);
+    const targetTab = tabs[1] ?? null;
+    expect(targetTab).toBeTruthy();
+    if (!targetTab) {
+      return;
+    }
+
+    const tabButton = targetTab.querySelector<HTMLElement>(".preview-tab-button");
+    expect(tabButton).toBeTruthy();
+    if (!tabButton) {
+      return;
+    }
+    setElementBoundingRect(tabButton, { left: 292.96875, top: 132, width: 96, height: 28 });
+
+    act(() => {
+      tabButton.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          button: 2,
+          clientX: 350,
+          clientY: 150,
+        }),
+      );
+    });
+    await flushAsyncInteraction();
+
+    const backdrop = document.body.querySelector<HTMLElement>(".context-menu-backdrop");
+    const menu = document.body.querySelector<HTMLElement>(".context-menu");
+    expect(backdrop).toBeTruthy();
+    expect(menu).toBeTruthy();
+    expect(backdrop ? container.contains(backdrop) : true).toBe(false);
+    expect(menu ? container.contains(menu) : true).toBe(false);
+    expect(menu?.style.left).toBe("292.96875px");
+    expect(menu?.style.top).toBe("166px");
+  });
+
   it("anchors row background context menu to the active tab button", async () => {
     const { container, cleanup: localCleanup } = buildHarness("Body", {
       markdownTabs: [
