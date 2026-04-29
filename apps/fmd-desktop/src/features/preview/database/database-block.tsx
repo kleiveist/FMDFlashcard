@@ -57,6 +57,13 @@ import {
   type DatabaseTableLayoutProfile,
 } from "./database-table-layout-profile";
 import {
+  applyProjectBarFillConfigToRecordIds,
+  cloneProjectBarFillConfigs,
+  normalizeProjectBarFillConfigs,
+  readDatabaseProjectFillProfile,
+  writeDatabaseProjectFillProfile,
+} from "./database-project-fill-profile";
+import {
   buildDatabasePieValueOptions,
   normalizeDatabasePieExcludedValues,
 } from "./pie-values";
@@ -70,8 +77,6 @@ import {
   type DatabasePropertiesByView,
   type DatabaseProjectMissingPlacement,
   type DatabaseProjectBarFillConfig,
-  type DatabaseProjectBarFillMapping,
-  type DatabaseProjectBarFillMode,
   type DatabaseRecord,
   type DatabaseSavedViewConfig,
   type DatabaseSourceSpec,
@@ -89,7 +94,6 @@ import {
 import {
   bulkUpsertDatabaseAttribute,
   coerceDatabaseRecordFieldValue,
-  type DatabaseRecordFieldDraftValue,
   upsertDatabaseRecordField,
 } from "./frontmatter-update";
 import { compareNaturalPath } from "../../../lib/naturalSort";
@@ -193,82 +197,6 @@ const cloneSourceSpec = (source: DatabaseSourceSpec): DatabaseSourceSpec => ({
 
 const cloneFieldDefinitions = (fields: DatabaseFieldDefinition[]) =>
   fields.map((field) => ({ ...field }));
-
-const asFiniteNumber = (value: unknown): number | null => {
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : null;
-  }
-  if (typeof value === "string") {
-    const normalized = value.trim().replace(",", ".");
-    if (!normalized) {
-      return null;
-    }
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-};
-
-const normalizeProjectBarFillMode = (value: unknown): DatabaseProjectBarFillMode =>
-  value === "text-code" ? "text-code" : "numeric";
-
-const normalizeProjectBarFillMappings = (
-  mappings: DatabaseProjectBarFillMapping[] | undefined,
-): DatabaseProjectBarFillMapping[] =>
-  (mappings ?? [])
-    .map((entry) => {
-      const from = entry.from.trim();
-      const to = asFiniteNumber(entry.to);
-      if (!from || to === null) {
-        return null;
-      }
-      return {
-        from,
-        to,
-      };
-    })
-    .filter((entry): entry is DatabaseProjectBarFillMapping => Boolean(entry));
-
-const cloneProjectBarFillConfigs = (
-  configs: DatabaseProjectBarFillConfig[] | undefined,
-): DatabaseProjectBarFillConfig[] =>
-  (configs ?? []).map((entry) => ({
-    ...entry,
-    mappings: (entry.mappings ?? []).map((mapping) => ({ ...mapping })),
-  }));
-
-const normalizeProjectBarFillConfigs = (
-  configs: DatabaseProjectBarFillConfig[] | undefined,
-): DatabaseProjectBarFillConfig[] => {
-  const byRecordId = new Map<string, DatabaseProjectBarFillConfig>();
-  (configs ?? []).forEach((entry) => {
-    const recordId = entry.recordId.trim();
-    const attributeKey = entry.attributeKey.trim();
-    if (!recordId || !attributeKey) {
-      return;
-    }
-    const mode = normalizeProjectBarFillMode(entry.mode);
-    if (mode === "text-code") {
-      byRecordId.set(recordId, {
-        recordId,
-        attributeKey,
-        mode,
-        mappings: normalizeProjectBarFillMappings(entry.mappings),
-      });
-      return;
-    }
-    const min = asFiniteNumber(entry.min);
-    const max = asFiniteNumber(entry.max);
-    const hasValidRange = min !== null && max !== null && max > min;
-    byRecordId.set(recordId, {
-      recordId,
-      attributeKey,
-      mode,
-      ...(hasValidRange ? { min, max } : {}),
-    });
-  });
-  return Array.from(byRecordId.values());
-};
 
 const ensureFieldDefinition = (
   fields: DatabaseFieldDefinition[],
@@ -815,76 +743,6 @@ const pickProjectNumericAttribute = (
   return null;
 };
 
-const cloneProjectBarFillConfigForRecord = (
-  template: DatabaseProjectBarFillConfig,
-  recordId: string,
-): DatabaseProjectBarFillConfig => ({
-  recordId,
-  attributeKey: template.attributeKey,
-  mode: template.mode,
-  ...(template.mode === "text-code"
-    ? {
-      mappings: (template.mappings ?? []).map((mapping) => ({ ...mapping })),
-    }
-    : {
-      ...(typeof template.min === "number" ? { min: template.min } : {}),
-      ...(typeof template.max === "number" ? { max: template.max } : {}),
-    }),
-});
-
-const applyProjectBarFillConfigToRecordIds = (
-  currentConfigs: DatabaseProjectBarFillConfig[],
-  template: DatabaseProjectBarFillConfig,
-  recordIds: string[],
-): DatabaseProjectBarFillConfig[] => {
-  const targetIds = new Set(recordIds);
-  return normalizeProjectBarFillConfigs([
-    ...cloneProjectBarFillConfigs(currentConfigs).filter((entry) => !targetIds.has(entry.recordId)),
-    ...recordIds.map((recordId) => cloneProjectBarFillConfigForRecord(template, recordId)),
-  ]);
-};
-
-const resolveProjectBarFillRuleTargetValue = (
-  config: DatabaseProjectBarFillConfig,
-  attribute: DatabaseAttributeMeta,
-): { value: DatabaseRecordFieldDraftValue | null; error: string | null } => {
-  if (!attribute.editable || attribute.origin !== "frontmatter") {
-    return {
-      value: null,
-      error: "Die Regel kann nur auf editierbare Frontmatter-Attribute angewendet werden.",
-    };
-  }
-  if (config.mode === "text-code") {
-    const fullMapping = (config.mappings ?? []).find((mapping) => {
-      const target = asFiniteNumber(mapping.to);
-      return mapping.from.trim().length > 0 && target !== null && target >= 100;
-    });
-    if (!fullMapping) {
-      return {
-        value: null,
-        error: "Text/Code-Regel benoetigt eine Zuordnung mit Ziel 100%.",
-      };
-    }
-    return {
-      value: fullMapping.from.trim(),
-      error: null,
-    };
-  }
-
-  const min = asFiniteNumber(config.min);
-  const max = asFiniteNumber(config.max);
-  if (min === null || max === null || max <= min) {
-    return {
-      value: null,
-      error: "Numerische Regel benoetigt ein gueltiges Minimum und Maximum.",
-    };
-  }
-  return {
-    value: max,
-    error: null,
-  };
-};
-
 export const MarkdownHybridDatabaseBlock = ({
   raw,
   vaultFiles,
@@ -1071,6 +929,14 @@ export const MarkdownHybridDatabaseBlock = ({
   const openPanelKey = getOpenPanelKey(panels);
   const isPropertiesPanelLayerLocal = openPanelKey === "properties";
   const tableLayoutKey = useMemo(
+    () => buildDatabaseTableLayoutKey({
+      sourceRelativePath,
+      blockIndex,
+      viewId: activeViewId,
+    }),
+    [activeViewId, blockIndex, sourceRelativePath],
+  );
+  const projectFillProfileKey = useMemo(
     () => buildDatabaseTableLayoutKey({
       sourceRelativePath,
       blockIndex,
@@ -1652,6 +1518,45 @@ export const MarkdownHybridDatabaseBlock = ({
   );
   const activeViewName = activeSavedView?.name ?? parsed.config.title;
 
+  useEffect(() => {
+    let isCancelled = false;
+    const fallbackConfigs = normalizeProjectBarFillConfigs(
+      cloneProjectBarFillConfigs(activeSavedView?.view.projectBarFillConfigs),
+    );
+    setProjectBarFillConfigs(fallbackConfigs);
+    projectBarFillConfigsRef.current = fallbackConfigs;
+
+    if (!vaultPath) {
+      return () => {
+        isCancelled = true;
+      };
+    }
+
+    void readDatabaseProjectFillProfile(vaultPath, projectFillProfileKey)
+      .then((profile) => {
+        if (isCancelled) {
+          return;
+        }
+        const nextConfigs = normalizeProjectBarFillConfigs(
+          cloneProjectBarFillConfigs(profile?.barFillConfigs ?? fallbackConfigs),
+        );
+        setProjectBarFillConfigs(nextConfigs);
+        projectBarFillConfigsRef.current = nextConfigs;
+
+        if (!profile && fallbackConfigs.length > 0) {
+          void writeDatabaseProjectFillProfile(vaultPath, projectFillProfileKey, {
+            barFillConfigs: fallbackConfigs,
+          }).catch((error) => {
+            console.warn("Failed to migrate database project fill rules", error);
+          });
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeSavedView, projectFillProfileKey, vaultPath]);
+
   const persistConfig = useCallback((next: {
     source?: DatabaseSourceSpec;
     fields?: DatabaseFieldDefinition[];
@@ -2187,6 +2092,36 @@ export const MarkdownHybridDatabaseBlock = ({
     }
   };
 
+  const persistProjectBarFillProfile = useCallback((
+    nextConfigsRaw: DatabaseProjectBarFillConfig[],
+    stateMessage?: string,
+  ) => {
+    const nextConfigs = normalizeProjectBarFillConfigs(
+      cloneProjectBarFillConfigs(nextConfigsRaw),
+    );
+    setProjectBarFillConfigs(nextConfigs);
+    projectBarFillConfigsRef.current = nextConfigs;
+    setOperationError(null);
+    if (stateMessage) {
+      setOperationState(stateMessage);
+    }
+
+    if (!vaultPath) {
+      setOperationError("Project-Regeln koennen ohne geladenen Vault nicht dauerhaft gespeichert werden.");
+      return;
+    }
+
+    void writeDatabaseProjectFillProfile(vaultPath, projectFillProfileKey, {
+      barFillConfigs: nextConfigs,
+    }).catch((error) => {
+      setOperationError(
+        error instanceof Error
+          ? `Project-Regel konnte nicht gespeichert werden: ${error.message}`
+          : "Project-Regel konnte nicht gespeichert werden.",
+      );
+    });
+  }, [projectFillProfileKey, vaultPath]);
+
   const handleProjectBarFillConfigChange = useCallback((
     recordId: string,
     config: DatabaseProjectBarFillConfig | null,
@@ -2217,26 +2152,14 @@ export const MarkdownHybridDatabaseBlock = ({
       }
     }
 
-    setProjectBarFillConfigs(nextConfigs);
-    projectBarFillConfigsRef.current = nextConfigs;
-    persistConfig({
-      view: {
-        projectBarFillConfigs: nextConfigs,
-      },
-    });
-  }, [persistConfig]);
+    persistProjectBarFillProfile(nextConfigs);
+  }, [persistProjectBarFillProfile]);
 
   const handleApplyProjectBarFillConfigToVisible = useCallback(
     async (
       config: DatabaseProjectBarFillConfig,
       visibleProjectRecords: DatabaseRecord[],
     ) => {
-      if (!allowCellEditing) {
-        setOperationState(null);
-        setOperationError("Project-Regeln koennen im Lesemodus nicht angewendet werden.");
-        return;
-      }
-
       const template = normalizeProjectBarFillConfigs(
         cloneProjectBarFillConfigs([
           {
@@ -2251,28 +2174,6 @@ export const MarkdownHybridDatabaseBlock = ({
         return;
       }
 
-      const attribute = store.attributeRegistry.find((entry) =>
-        toLower(entry.key) === toLower(template.attributeKey)) ?? null;
-      if (!attribute) {
-        setOperationState(null);
-        setOperationError("Project-Regel-Attribut wurde nicht gefunden.");
-        return;
-      }
-
-      const target = resolveProjectBarFillRuleTargetValue(template, attribute);
-      if (target.error) {
-        setOperationState(null);
-        setOperationError(target.error);
-        return;
-      }
-
-      const coercion = coerceDatabaseRecordFieldValue(attribute.type, target.value);
-      if (coercion.error) {
-        setOperationState(null);
-        setOperationError(coercion.error);
-        return;
-      }
-
       const uniqueVisibleRecords = Array.from(
         visibleProjectRecords.reduce((map, record) => {
           if (!map.has(record.fileId)) {
@@ -2280,157 +2181,30 @@ export const MarkdownHybridDatabaseBlock = ({
           }
           return map;
         }, new Map<string, DatabaseRecord>()).values(),
-      ).filter((record) => {
-        const extension = record.extension.trim().toLowerCase();
-        return extension === "md" || record.filePath.trim().toLowerCase().endsWith(".md");
-      });
+      );
 
       if (uniqueVisibleRecords.length === 0) {
         setOperationState(null);
-        setOperationError("Keine sichtbaren Markdown-Dateien gefunden.");
-        return;
-      }
-
-      const latestByRecordId = new Map(records.map((record) => [record.fileId, record]));
-      const pendingIds = new Set(pendingRecordMutations);
-      const failed: Array<{ recordId: string; path: string; error: string }> = [];
-      const previousByRecordId = new Map<string, DatabaseRecord>();
-
-      uniqueVisibleRecords.forEach((record) => {
-        const latestRecord = latestByRecordId.get(record.fileId);
-        if (!latestRecord) {
-          failed.push({
-            recordId: record.fileId,
-            path: record.relativePath,
-            error: "Record is no longer loaded.",
-          });
-          return;
-        }
-        if (pendingIds.has(record.fileId)) {
-          failed.push({
-            recordId: latestRecord.fileId,
-            path: latestRecord.relativePath,
-            error: "Record update is already pending.",
-          });
-          return;
-        }
-        previousByRecordId.set(latestRecord.fileId, latestRecord);
-      });
-
-      if (previousByRecordId.size === 0) {
-        setOperationState(null);
-        setOperationError(
-          failed.length > 0
-            ? failed.map((entry) => `${entry.path}: ${entry.error}`).join(" ")
-            : "Keine sichtbaren Markdown-Dateien konnten aktualisiert werden.",
-        );
+        setOperationError("Keine sichtbaren Project-Eintraege gefunden.");
         return;
       }
 
       const previousBarFillConfigs = normalizeProjectBarFillConfigs(
         cloneProjectBarFillConfigs(projectBarFillConfigsRef.current),
       );
-      const optimisticRecordIds = Array.from(previousByRecordId.keys());
-      const optimisticBarFillConfigs = applyProjectBarFillConfigToRecordIds(
+      const targetRecordIds = uniqueVisibleRecords.map((record) => record.fileId);
+      const nextBarFillConfigs = applyProjectBarFillConfigToRecordIds(
         previousBarFillConfigs,
         template,
-        optimisticRecordIds,
+        targetRecordIds,
       );
-      setProjectBarFillConfigs(optimisticBarFillConfigs);
-      projectBarFillConfigsRef.current = optimisticBarFillConfigs;
-      setRecords((previous) =>
-        previous.map((record) =>
-          previousByRecordId.has(record.fileId)
-            ? applyOptimisticRecordFieldValue(record, attribute.key, coercion.typedValue)
-            : record));
-      previousByRecordId.forEach((_record, recordId) => {
-        addPendingRecordMutation(recordId);
-      });
-      setActiveCellEdit((previous) =>
-        previous &&
-          previousByRecordId.has(previous.recordId) &&
-          toLower(previous.fieldKey) === toLower(attribute.key)
-          ? null
-          : previous);
-      setOperationError(null);
-
-      let updated = 0;
-      const successfulRecordIds: string[] = [];
-
-      for (const previousRecord of previousByRecordId.values()) {
-        try {
-          const result = await upsertDatabaseRecordField({
-            path: previousRecord.filePath,
-            relativePath: previousRecord.relativePath,
-            key: attribute.key,
-            type: attribute.type,
-            value: target.value,
-          });
-          if (result.error) {
-            throw new Error(result.error);
-          }
-          fileCacheRef.current.set(previousRecord.filePath, result.markdown);
-          updated += 1;
-          successfulRecordIds.push(previousRecord.fileId);
-        } catch (error) {
-          failed.push({
-            recordId: previousRecord.fileId,
-            path: previousRecord.relativePath,
-            error: error instanceof Error ? error.message : "Failed to update frontmatter.",
-          });
-          setRecords((previous) =>
-            previous.map((record) =>
-              record.fileId === previousRecord.fileId
-                ? previousRecord
-                : record));
-        } finally {
-          removePendingRecordMutation(previousRecord.fileId);
-        }
-      }
-
-      const finalBarFillConfigs = successfulRecordIds.length > 0
-        ? applyProjectBarFillConfigToRecordIds(
-          previousBarFillConfigs,
-          template,
-          successfulRecordIds,
-        )
-        : previousBarFillConfigs;
-      setProjectBarFillConfigs(finalBarFillConfigs);
-      projectBarFillConfigsRef.current = finalBarFillConfigs;
-
-      if (updated > 0) {
-        persistConfig({
-          view: {
-            projectBarFillConfigs: finalBarFillConfigs,
-          },
-        });
-        scheduleVaultAttributeRefresh();
-      }
-
-      if (failed.length > 0) {
-        const visibleFailures = failed
-          .slice(0, 3)
-          .map((entry) => `${entry.path}: ${entry.error}`)
-          .join(" ");
-        const remaining = failed.length > 3 ? ` ${failed.length - 3} weitere Fehler.` : "";
-        setOperationState(
-          updated > 0
-            ? `${updated} sichtbare Datei${updated === 1 ? "" : "en"} aktualisiert.`
-            : null,
-        );
-        setOperationError(`${failed.length} Datei${failed.length === 1 ? "" : "en"} konnten nicht aktualisiert werden. ${visibleFailures}${remaining}`);
-      } else {
-        setOperationError(null);
-        setOperationState(`${updated} sichtbare Datei${updated === 1 ? "" : "en"} aktualisiert.`);
-      }
+      persistProjectBarFillProfile(
+        nextBarFillConfigs,
+        `Project-Regel auf ${targetRecordIds.length} sichtbare${targetRecordIds.length === 1 ? "n" : ""} Eintraege angewendet.`,
+      );
     },
     [
-      allowCellEditing,
-      pendingRecordMutations,
-      persistConfig,
-      records,
-      scheduleVaultAttributeRefresh,
-      store.attributeRegistry,
+      persistProjectBarFillProfile,
     ],
   );
 
@@ -3668,6 +3442,7 @@ export const MarkdownHybridDatabaseBlock = ({
       filters: nextFilters,
       sorts: nextSorts,
     });
+    persistProjectBarFillProfile(nextProjectBarFillConfigs);
   };
 
   const handleCreateAttribute = async ({

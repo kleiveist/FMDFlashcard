@@ -165,11 +165,11 @@ describe("database-block-parser", () => {
     expect(serialized).toContain("name: Main");
     expect(serialized).toContain("type: project");
     expect(serialized).toContain("projectMissingPlacement: hide-unplaced");
-    expect(serialized).toContain("projectBarFillConfigs:");
-    expect(serialized).toContain("attributeKey: progress");
-    expect(serialized).toContain("mode: text-code");
-    expect(serialized).toContain("mappings:");
     expect(serialized).toContain("      properties:");
+    expect(serialized).not.toContain("projectBarFillConfigs:");
+    expect(serialized).not.toContain("attributeKey: progress");
+    expect(serialized).not.toContain("mode: text-code");
+    expect(serialized).not.toContain("mappings:");
     expect(serialized).not.toContain("\nview:\n");
     expect(serialized).not.toContain("\ncolumns:");
     expect(serialized).not.toContain("\npropertiesByView:");
@@ -181,24 +181,7 @@ describe("database-block-parser", () => {
     expect(reparsed.config.title).toBe("Main");
     expect(reparsed.config.views.activeViewId).toBe("view-main");
     expect(reparsed.config.view.type).toBe("project");
-    expect(reparsed.config.view.projectBarFillConfigs).toHaveLength(2);
-    expect(reparsed.config.view.projectBarFillConfigs?.[0]).toMatchObject({
-      recordId: "/vault/record-a.md",
-      attributeKey: "progress",
-      mode: "numeric",
-      min: 0,
-      max: 100,
-    });
-    expect(reparsed.config.view.projectBarFillConfigs?.[1]).toMatchObject({
-      recordId: "/vault/record-b.md",
-      attributeKey: "statuscode",
-      mode: "text-code",
-      mappings: [
-        { from: "text1", to: 10 },
-        { from: "text2", to: 20 },
-        { from: "text3", to: 100 },
-      ],
-    });
+    expect(reparsed.config.view.projectBarFillConfigs).toEqual([]);
     expect(reparsed.config.columns).toEqual(["unitsstart", "units", "status"]);
     expect(reparsed.config.sort[0]?.field).toBe("unitsstart");
   });
@@ -266,9 +249,9 @@ describe("database-block-parser", () => {
     });
 
     const serialized = serializeDatabaseBlockConfig(parsed.config);
-    expect(serialized).toContain("projectBarFillConfigs:");
-    expect(serialized).toContain("recordId: /vault/b.md");
-    expect(serialized).toContain("from: text1");
+    expect(serialized).not.toContain("projectBarFillConfigs:");
+    expect(serialized).not.toContain("recordId: /vault/b.md");
+    expect(serialized).not.toContain("from: text1");
     expect(serialized).not.toContain("to: nope");
   });
 
