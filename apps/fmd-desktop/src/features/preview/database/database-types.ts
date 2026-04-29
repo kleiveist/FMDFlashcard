@@ -152,6 +152,7 @@ export type DatabaseViewSpec = {
   pieGroupField?: string | null;
   pieAggregate?: "count" | "sum" | "avg";
   pieAggregateField?: string | null;
+  pieExcludedValues?: string[];
 };
 
 export type DatabaseBlockOptions = {

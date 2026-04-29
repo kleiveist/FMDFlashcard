@@ -806,6 +806,9 @@ const cloneKanbanOrderByGroup = (
   return next;
 };
 
+const parsePieExcludedValues = (value: unknown): string[] =>
+  dedupeExact(asStringArray(value));
+
 const parseViewSpec = (value: unknown): DatabaseViewSpec => {
   if (typeof value === "string") {
     return {
@@ -821,6 +824,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
       defaultUnits: DEFAULT_PROJECT_DEFAULT_UNITS,
       projectMissingPlacement: DEFAULT_PROJECT_MISSING_PLACEMENT,
       projectBarFillConfigs: [],
+      pieExcludedValues: [],
     };
   }
   if (!isRecord(value)) {
@@ -837,6 +841,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
       defaultUnits: DEFAULT_PROJECT_DEFAULT_UNITS,
       projectMissingPlacement: DEFAULT_PROJECT_MISSING_PLACEMENT,
       projectBarFillConfigs: [],
+      pieExcludedValues: [],
     };
   }
   const type = parseViewType(value.type);
@@ -863,6 +868,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
         ? pieAggregateRaw
         : "count",
     pieAggregateField: asString(value.pieAggregateField) || null,
+    pieExcludedValues: parsePieExcludedValues(value.pieExcludedValues),
   };
 };
 
@@ -888,6 +894,7 @@ const cloneViewSpec = (view: DatabaseViewSpec): DatabaseViewSpec => ({
   ...view,
   kanbanOrderByGroup: cloneKanbanOrderByGroup(view.kanbanOrderByGroup),
   projectBarFillConfigs: cloneProjectBarFillConfigs(view.projectBarFillConfigs),
+  pieExcludedValues: dedupeExact(view.pieExcludedValues ?? []),
 });
 
 const cloneSavedViewConfig = (view: DatabaseSavedViewConfig): DatabaseSavedViewConfig => ({
@@ -1396,6 +1403,13 @@ function writeViewSpecYaml(
   }
   if (view.pieAggregateField) {
     lines.push(`${indentText}pieAggregateField: ${formatYamlScalar(view.pieAggregateField)}`);
+  }
+  const pieExcludedValues = dedupeExact(view.pieExcludedValues ?? []);
+  if (pieExcludedValues.length > 0) {
+    lines.push(`${indentText}pieExcludedValues:`);
+    pieExcludedValues.forEach((value) => {
+      lines.push(`${indentText}  - ${formatYamlScalar(value)}`);
+    });
   }
 }
 

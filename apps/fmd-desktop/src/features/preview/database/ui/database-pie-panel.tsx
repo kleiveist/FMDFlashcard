@@ -7,6 +7,7 @@
 import {
   type DatabaseAttributeMeta,
 } from "../database-types";
+import { type DatabasePieValueOption } from "../pie-values";
 
 type PieAggregateType = "count" | "sum" | "avg";
 
@@ -15,10 +16,13 @@ type DatabasePiePanelProps = {
   groupField: string | null;
   aggregate: PieAggregateType;
   aggregateField: string | null;
+  valueOptions: DatabasePieValueOption[];
+  excludedValues: string[];
   onChange: (next: {
     groupField?: string | null;
     aggregate?: PieAggregateType;
     aggregateField?: string | null;
+    excludedValues?: string[];
   }) => void;
   onClose: () => void;
 };
@@ -34,6 +38,8 @@ export const DatabasePiePanel = ({
   groupField,
   aggregate,
   aggregateField,
+  valueOptions,
+  excludedValues,
   onChange,
   onClose,
 }: DatabasePiePanelProps) => {
@@ -41,6 +47,19 @@ export const DatabasePiePanel = ({
     .filter((attribute) => attribute.viewCompatibility.supportsPieGrouping);
   const aggregatableAttributes = attributes
     .filter((attribute) => attribute.viewCompatibility.supportsAggregation);
+  const excludedValueSet = new Set(excludedValues);
+
+  const handleValueToggle = (value: string, checked: boolean) => {
+    if (checked) {
+      onChange({
+        excludedValues: excludedValues.filter((entry) => entry !== value),
+      });
+      return;
+    }
+    onChange({
+      excludedValues: [...excludedValues, value],
+    });
+  };
 
   return (
     <aside
@@ -96,6 +115,32 @@ export const DatabasePiePanel = ({
           </select>
         </label>
       </div>
+
+      {valueOptions.length > 0 ? (
+        <section className="database-pie-values">
+          <h6>Werte</h6>
+          <ul className="database-pie-value-list">
+            {valueOptions.map((option) => {
+              const isChecked = !excludedValueSet.has(option.value);
+              return (
+                <li key={option.value} className="database-pie-value-item">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={(event) => handleValueToggle(option.value, event.target.checked)}
+                    />
+                    <span className="database-pie-value-label">{option.value}</span>
+                    <span className="database-pie-value-count">{option.count}</span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : (
+        <p className="database-block-state">Keine Werte fuer das Gruppierfeld gefunden.</p>
+      )}
 
       <p className="database-block-state">
         Tags/Multiselect werden als einzelne Buckets (explode) behandelt.

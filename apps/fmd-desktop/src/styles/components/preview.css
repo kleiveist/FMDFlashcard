@@ -6572,6 +6572,56 @@ textarea.preview-editor {
   font-size: 0.78rem;
 }
 
+.database-pie-values {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  border-top: 1px solid var(--db-border);
+  padding-top: 8px;
+}
+
+.database-pie-values h6 {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--db-muted);
+}
+
+.database-pie-value-list {
+  display: grid;
+  gap: 6px;
+  max-height: 220px;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.database-pie-value-item {
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-radius-control);
+  background: var(--db-surface-muted);
+}
+
+.database-pie-value-item label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.database-pie-value-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.78rem;
+}
+
+.database-pie-value-count {
+  color: var(--db-muted);
+  font-size: 0.72rem;
+}
+
 .database-block-properties-create {
   display: grid;
   gap: 8px;

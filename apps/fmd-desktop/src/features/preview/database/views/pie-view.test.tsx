@@ -185,6 +185,37 @@ describe("DatabasePieView", () => {
     cleanup();
   });
 
+  it("excludes configured values from categorical pie buckets", () => {
+    const doneRecord: DatabaseRecord = {
+      ...baseRecord,
+      fileId: "excluded-done.md",
+      filePath: "/vault/excluded-done.md",
+      relativePath: "excluded-done.md",
+      normalizedFields: {
+        ...baseRecord.normalizedFields,
+        status: { raw: "Done" },
+      },
+    };
+
+    const { container, cleanup } = render(
+      createElement(DatabasePieView, {
+        records: [baseRecord, doneRecord],
+        groupAttribute: statusGroupAttribute,
+        aggregate: "count",
+        aggregateAttribute: null,
+        excludedValues: ["Done"],
+        visibleProperties: [],
+      }),
+    );
+
+    const labels = Array.from(container.querySelectorAll(".database-pie-legend-label"))
+      .map((node) => node.textContent?.trim());
+    expect(labels).toEqual(["Open"]);
+    expect(container.textContent).not.toContain("Done");
+
+    cleanup();
+  });
+
   it("explodes tags into separate buckets", () => {
     const secondRecord: DatabaseRecord = {
       ...baseRecord,
@@ -210,6 +241,38 @@ describe("DatabasePieView", () => {
     expect(container.textContent).toContain("alpha");
     expect(container.textContent).toContain("beta");
     expect(container.textContent).toContain("2");
+
+    cleanup();
+  });
+
+  it("filters only the disabled value when exploding multivalue pie buckets", () => {
+    const secondRecord: DatabaseRecord = {
+      ...baseRecord,
+      fileId: "tag-filter.md",
+      filePath: "/vault/tag-filter.md",
+      relativePath: "tag-filter.md",
+      normalizedFields: {
+        ...baseRecord.normalizedFields,
+        tags: ["beta"],
+      },
+    };
+
+    const { container, cleanup } = render(
+      createElement(DatabasePieView, {
+        records: [baseRecord, secondRecord],
+        groupAttribute: tagsGroupAttribute,
+        aggregate: "count",
+        aggregateAttribute: null,
+        excludedValues: ["alpha"],
+        visibleProperties: [],
+      }),
+    );
+
+    const labels = Array.from(container.querySelectorAll(".database-pie-legend-label"))
+      .map((node) => node.textContent?.trim());
+    expect(labels).toEqual(["beta"]);
+    expect(container.textContent).toContain("2");
+    expect(container.textContent).not.toContain("alpha");
 
     cleanup();
   });

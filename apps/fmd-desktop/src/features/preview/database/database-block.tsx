@@ -46,6 +46,10 @@ import {
 } from "./database-source-resolver";
 import { buildDatabaseStoreSnapshot } from "./database-store";
 import {
+  buildDatabasePieValueOptions,
+  normalizeDatabasePieExcludedValues,
+} from "./pie-values";
+import {
   type DatabaseAttributeMeta,
   type DatabaseFieldDefinition,
   type DatabaseFieldType,
@@ -318,6 +322,7 @@ const cloneSavedView = (savedView: DatabaseSavedViewConfig): DatabaseSavedViewCo
   view: {
     ...savedView.view,
     projectBarFillConfigs: cloneProjectBarFillConfigs(savedView.view.projectBarFillConfigs),
+    pieExcludedValues: normalizeDatabasePieExcludedValues(savedView.view.pieExcludedValues),
   },
   properties: dedupeCaseInsensitive(savedView.properties),
   filters: cloneFilterGroup(savedView.filters),
@@ -893,6 +898,9 @@ export const MarkdownHybridDatabaseBlock = ({
   const [pieAggregateField, setPieAggregateField] = useState<string | null>(
     parsedActiveSavedView.view.pieAggregateField ?? null,
   );
+  const [pieExcludedValues, setPieExcludedValues] = useState<string[]>(
+    normalizeDatabasePieExcludedValues(parsedActiveSavedView.view.pieExcludedValues),
+  );
   const [propertiesByView, setPropertiesByView] = useState<DatabasePropertiesByView>(
     buildPropertiesMirror(parsedActiveSavedView.properties),
   );
@@ -958,6 +966,7 @@ export const MarkdownHybridDatabaseBlock = ({
   const pieGroupFieldRef = useRef<string | null>(pieGroupField);
   const pieAggregateRef = useRef<"count" | "sum" | "avg">(pieAggregate);
   const pieAggregateFieldRef = useRef<string | null>(pieAggregateField);
+  const pieExcludedValuesRef = useRef<string[]>(pieExcludedValues);
   const propertiesByViewRef = useRef(propertiesByView);
   const activeFiltersRef = useRef(activeFilters);
   const activeSortsRef = useRef(activeSorts);
@@ -1037,6 +1046,7 @@ export const MarkdownHybridDatabaseBlock = ({
     setPieGroupField(parsedActiveSavedView.view.pieGroupField ?? null);
     setPieAggregate(parsedActiveSavedView.view.pieAggregate ?? "count");
     setPieAggregateField(parsedActiveSavedView.view.pieAggregateField ?? null);
+    setPieExcludedValues(normalizeDatabasePieExcludedValues(parsedActiveSavedView.view.pieExcludedValues));
     setPropertiesByView(buildPropertiesMirror(parsedActiveSavedView.properties));
     setActiveFilters(cloneFilterGroup(parsedActiveSavedView.filters));
     setActiveSorts(cloneSortRules(parsedActiveSavedView.sort));
@@ -1069,6 +1079,7 @@ export const MarkdownHybridDatabaseBlock = ({
     pieGroupFieldRef.current = pieGroupField;
     pieAggregateRef.current = pieAggregate;
     pieAggregateFieldRef.current = pieAggregateField;
+    pieExcludedValuesRef.current = pieExcludedValues;
     propertiesByViewRef.current = propertiesByView;
     activeFiltersRef.current = activeFilters;
     activeSortsRef.current = activeSorts;
@@ -1082,6 +1093,7 @@ export const MarkdownHybridDatabaseBlock = ({
     kanbanOrderByGroup,
     pieAggregate,
     pieAggregateField,
+    pieExcludedValues,
     pieGroupField,
     savedViews,
     source,
@@ -1565,6 +1577,9 @@ export const MarkdownHybridDatabaseBlock = ({
       pieGroupField: next.view?.pieGroupField ?? pieGroupFieldRef.current ?? null,
       pieAggregate: next.view?.pieAggregate ?? pieAggregateRef.current ?? "count",
       pieAggregateField: next.view?.pieAggregateField ?? pieAggregateFieldRef.current ?? null,
+      pieExcludedValues: normalizeDatabasePieExcludedValues(
+        next.view?.pieExcludedValues ?? pieExcludedValuesRef.current,
+      ),
     };
     const nextVisibleColumns = dedupeCaseInsensitive(
       next.visibleColumns ?? getPropertiesForView(propertiesByViewRef.current, viewTypeRef.current),
@@ -1635,6 +1650,7 @@ export const MarkdownHybridDatabaseBlock = ({
           pieGroupField,
           pieAggregate,
           pieAggregateField,
+          pieExcludedValues,
         },
         columns: getPropertiesForView(propertiesByView, "table"),
         propertiesByView,
@@ -1680,6 +1696,7 @@ export const MarkdownHybridDatabaseBlock = ({
       pieGroupField,
       pieAggregate,
       pieAggregateField,
+      pieExcludedValues,
       propertiesByView,
       visibleColumnKeys,
     ],
@@ -1784,6 +1801,9 @@ export const MarkdownHybridDatabaseBlock = ({
     pieAggregateRef.current = nextView.pieAggregate ?? "count";
     setPieAggregateField(nextView.pieAggregateField ?? null);
     pieAggregateFieldRef.current = nextView.pieAggregateField ?? null;
+    const nextPieExcludedValues = normalizeDatabasePieExcludedValues(nextView.pieExcludedValues);
+    setPieExcludedValues(nextPieExcludedValues);
+    pieExcludedValuesRef.current = nextPieExcludedValues;
     setPropertiesByView(nextPropertiesByView);
     propertiesByViewRef.current = nextPropertiesByView;
     setActiveFilters(nextFilters);
@@ -1838,6 +1858,7 @@ export const MarkdownHybridDatabaseBlock = ({
       pieGroupField: pieGroupFieldRef.current ?? null,
       pieAggregate: pieAggregateRef.current ?? "count",
       pieAggregateField: pieAggregateFieldRef.current ?? null,
+      pieExcludedValues: normalizeDatabasePieExcludedValues(pieExcludedValuesRef.current),
     };
     const nextProperties = dedupeCaseInsensitive(
       getPropertiesForView(propertiesByViewRef.current, viewTypeRef.current),
@@ -2035,25 +2056,39 @@ export const MarkdownHybridDatabaseBlock = ({
     groupField?: string | null;
     aggregate?: "count" | "sum" | "avg";
     aggregateField?: string | null;
+    excludedValues?: string[];
   }) => {
     const nextGroup = typeof next.groupField === "undefined"
       ? pieGroupFieldRef.current
       : next.groupField ?? null;
+    const didGroupChange = typeof next.groupField !== "undefined" &&
+      toLower(nextGroup ?? "") !== toLower(pieGroupFieldRef.current ?? "");
     const nextAggregate = next.aggregate ?? pieAggregateRef.current ?? "count";
     const nextAggregateField = nextAggregate === "count"
       ? null
       : typeof next.aggregateField === "undefined"
       ? pieAggregateFieldRef.current
       : next.aggregateField ?? null;
+    const nextExcludedValues = didGroupChange
+      ? []
+      : typeof next.excludedValues === "undefined"
+      ? pieExcludedValuesRef.current
+      : normalizeDatabasePieExcludedValues(next.excludedValues);
 
     setPieGroupField(nextGroup);
     setPieAggregate(nextAggregate);
     setPieAggregateField(nextAggregateField);
+    setPieExcludedValues(nextExcludedValues);
+    pieGroupFieldRef.current = nextGroup;
+    pieAggregateRef.current = nextAggregate;
+    pieAggregateFieldRef.current = nextAggregateField;
+    pieExcludedValuesRef.current = nextExcludedValues;
     persistConfig({
       view: {
         pieGroupField: nextGroup,
         pieAggregate: nextAggregate,
         pieAggregateField: nextAggregateField,
+        pieExcludedValues: nextExcludedValues,
       },
     });
   };
@@ -2936,6 +2971,9 @@ export const MarkdownHybridDatabaseBlock = ({
     const nextPieAggregateField = toLower(pieAggregateFieldRef.current ?? "") === normalizedKey
       ? null
       : pieAggregateFieldRef.current;
+    const nextPieExcludedValues = toLower(pieGroupFieldRef.current ?? "") === normalizedKey
+      ? []
+      : normalizeDatabasePieExcludedValues(pieExcludedValuesRef.current);
 
     const stripRemovedFieldFromView = (view: DatabaseViewSpec): DatabaseViewSpec => ({
       ...view,
@@ -2962,6 +3000,9 @@ export const MarkdownHybridDatabaseBlock = ({
       pieAggregateField: toLower(view.pieAggregateField ?? "") === normalizedKey
         ? null
         : view.pieAggregateField ?? null,
+      pieExcludedValues: toLower(view.pieGroupField ?? "") === normalizedKey
+        ? []
+        : normalizeDatabasePieExcludedValues(view.pieExcludedValues),
     });
 
     const nextSavedViews = dedupeSavedViewsById(
@@ -2998,6 +3039,8 @@ export const MarkdownHybridDatabaseBlock = ({
     pieGroupFieldRef.current = nextPieGroupField;
     setPieAggregateField(nextPieAggregateField);
     pieAggregateFieldRef.current = nextPieAggregateField;
+    setPieExcludedValues(nextPieExcludedValues);
+    pieExcludedValuesRef.current = nextPieExcludedValues;
     setSavedViews(nextSavedViews);
     savedViewsRef.current = nextSavedViews;
     if (activeCellEdit && toLower(activeCellEdit.fieldKey) === normalizedKey) {
@@ -3016,6 +3059,7 @@ export const MarkdownHybridDatabaseBlock = ({
         projectBarFillConfigs: nextProjectBarFillConfigs,
         pieGroupField: nextPieGroupField,
         pieAggregateField: nextPieAggregateField,
+        pieExcludedValues: nextPieExcludedValues,
       },
       visibleColumns: nextVisibleColumns,
       filters: nextFilters,
@@ -3274,6 +3318,14 @@ export const MarkdownHybridDatabaseBlock = ({
     },
     [pieAggregateField, store.attributeRegistry],
   );
+  const pieValueOptions = useMemo(
+    () => buildDatabasePieValueOptions({
+      records: store.normalizedRecords,
+      groupAttribute: pieGroupAttribute,
+      monitoringProfiles,
+    }),
+    [monitoringProfiles, pieGroupAttribute, store.normalizedRecords],
+  );
   const hasOpenPanel = panels.source ||
     panels.properties ||
     panels.filter ||
@@ -3359,6 +3411,8 @@ export const MarkdownHybridDatabaseBlock = ({
       groupField={pieGroupField}
       aggregate={pieAggregate}
       aggregateField={pieAggregateField}
+      valueOptions={pieValueOptions}
+      excludedValues={pieExcludedValues}
       onChange={handlePieOptionsChange}
       onClose={() => setPanels(defaultPanels)}
     />
@@ -3565,6 +3619,7 @@ export const MarkdownHybridDatabaseBlock = ({
             groupAttribute={pieGroupAttribute}
             aggregate={pieAggregate}
             aggregateAttribute={pieAggregateAttribute}
+            excludedValues={pieExcludedValues}
             visibleProperties={visibleColumns}
             monitoringProfiles={monitoringProfiles}
           />

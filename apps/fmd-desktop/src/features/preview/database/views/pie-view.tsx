@@ -11,6 +11,10 @@ import {
   type DatabaseRecord,
 } from "../database-types";
 import {
+  getDatabasePieGroupLabels,
+  normalizeDatabasePieExcludedValues,
+} from "../pie-values";
+import {
   formatMonitoringCompactText,
   renderMonitoringValue,
   type MonitoringRenderProfile,
@@ -21,6 +25,7 @@ type DatabasePieViewProps = {
   groupAttribute: DatabaseAttributeMeta | null;
   aggregate: "count" | "sum" | "avg";
   aggregateAttribute: DatabaseAttributeMeta | null;
+  excludedValues?: string[];
   visibleProperties: DatabaseAttributeMeta[];
   monitoringProfiles?: MonitoringRenderProfile[];
 };
@@ -34,8 +39,6 @@ type PieBucket = {
 
 const PIE_MONO_TONE_STEPS = [88, 80, 72, 64, 56, 48, 40, 32, 24, 18];
 
-const EMPTY_LABEL = "(leer)";
-
 const toLower = (value: string) => value.trim().toLowerCase();
 const isExamFieldKey = (key: string) => toLower(key) === "exam";
 
@@ -47,70 +50,6 @@ const getRecordValueByField = (record: DatabaseRecord, field: string): DatabaseN
   const matchedKey = Object.keys(record.normalizedFields)
     .find((key) => toLower(key) === normalizedField);
   return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
-};
-
-const toLabel = (
-  attributeKey: string,
-  value: DatabaseNormalizedFieldValue,
-  monitoringProfiles: MonitoringRenderProfile[],
-): string => {
-  const monitoringText = formatMonitoringCompactText(
-    renderMonitoringValue({
-      attributeKey,
-      value,
-      profiles: monitoringProfiles,
-    }),
-    value,
-  ).trim();
-  if (monitoringText) {
-    return monitoringText;
-  }
-  if (value === null || typeof value === "undefined") {
-    return EMPTY_LABEL;
-  }
-  if (Array.isArray(value)) {
-    const normalized = value
-      .map((entry) => String(entry).trim())
-      .filter(Boolean);
-    return normalized.length > 0 ? normalized.join(", ") : EMPTY_LABEL;
-  }
-  if (typeof value === "boolean") {
-    return value ? "true" : "false";
-  }
-  if (value instanceof Date) {
-    return value.toISOString().slice(0, 10);
-  }
-  if (typeof value === "object" && "raw" in value) {
-    const raw = String(value.raw ?? "").trim();
-    return raw || EMPTY_LABEL;
-  }
-  const text = String(value).trim();
-  return text || EMPTY_LABEL;
-};
-
-const getGroupLabels = (
-  attributeKey: string,
-  groupType: DatabaseAttributeMeta["type"],
-  value: DatabaseNormalizedFieldValue,
-  monitoringProfiles: MonitoringRenderProfile[],
-): string[] => {
-  if (groupType === "tags" || groupType === "multiselect") {
-    if (Array.isArray(value)) {
-      const labels = value
-        .map((entry) => String(entry).trim())
-        .filter(Boolean);
-      return labels.length > 0 ? labels : [EMPTY_LABEL];
-    }
-    if (typeof value === "string") {
-      const labels = value
-        .split(",")
-        .map((entry) => entry.trim())
-        .filter(Boolean);
-      return labels.length > 0 ? labels : [EMPTY_LABEL];
-    }
-    return [EMPTY_LABEL];
-  }
-  return [toLabel(attributeKey, value, monitoringProfiles)];
 };
 
 const toAggregatableNumber = (
@@ -247,9 +186,19 @@ export const DatabasePieView = ({
   groupAttribute,
   aggregate,
   aggregateAttribute,
+  excludedValues,
   visibleProperties,
   monitoringProfiles = [],
 }: DatabasePieViewProps) => {
+  const normalizedExcludedValues = useMemo(
+    () => normalizeDatabasePieExcludedValues(excludedValues),
+    [excludedValues],
+  );
+  const excludedValueSet = useMemo(
+    () => new Set(normalizedExcludedValues),
+    [normalizedExcludedValues],
+  );
+
   const validationError = useMemo(() => {
     if (!groupAttribute || !groupAttribute.viewCompatibility.supportsPieGrouping) {
       return "Waehle ein gruppierbares Feld fuer Pie/Donut.";
@@ -276,12 +225,16 @@ export const DatabasePieView = ({
     const recordsByBucket = new Map<string, DatabaseRecord[]>();
 
     records.forEach((record) => {
-      const labels = getGroupLabels(
+      const labels = getDatabasePieGroupLabels(
         groupAttribute.key,
         groupAttribute.type,
         getRecordValueByField(record, groupAttribute.key),
         monitoringProfiles,
-      );
+      ).filter((label) => !excludedValueSet.has(label));
+
+      if (labels.length === 0) {
+        return;
+      }
 
       if (aggregate === "count") {
         labels.forEach((label) => {
@@ -335,7 +288,15 @@ export const DatabasePieView = ({
         };
       })
       .filter((bucket) => Number.isFinite(bucket.value) && bucket.value >= 0);
-  }, [aggregate, aggregateAttribute, groupAttribute, monitoringProfiles, records, validationError]);
+  }, [
+    aggregate,
+    aggregateAttribute,
+    excludedValueSet,
+    groupAttribute,
+    monitoringProfiles,
+    records,
+    validationError,
+  ]);
 
   const legendDetailsByLabel = useMemo(() => {
     if (!groupAttribute || visibleProperties.length === 0) {

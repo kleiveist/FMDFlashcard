@@ -540,6 +540,9 @@ const pruneDatabaseViewSpecByKeys = (
   pieAggregateField: removalKeys.has(normalizeLower(view.pieAggregateField ?? ""))
     ? null
     : view.pieAggregateField ?? null,
+  pieExcludedValues: removalKeys.has(normalizeLower(view.pieGroupField ?? ""))
+    ? []
+    : [...(view.pieExcludedValues ?? [])],
 });
 
 const pruneDatabasePropertiesByViewByKeys = (

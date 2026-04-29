@@ -611,6 +611,41 @@ describe("database-block-parser", () => {
     });
   });
 
+  it("roundtrips excluded Pie values in saved view specs", () => {
+    const config = createDefaultDatabaseBlockConfig();
+    config.views = {
+      activeViewId: "view-pie",
+      items: [
+        {
+          id: "view-pie",
+          name: "Pie",
+          view: {
+            type: "pie",
+            pieGroupField: "status",
+            pieAggregate: "count",
+            pieExcludedValues: ["Done", "(leer)"],
+          },
+          properties: ["Dateiname", "status"],
+          filters: {
+            id: "root",
+            op: "and",
+            rules: [],
+          },
+          sort: [],
+        },
+      ],
+    };
+
+    const serialized = serializeDatabaseBlockConfig(config);
+    expect(serialized).toContain("pieExcludedValues:");
+    expect(serialized).toContain("- Done");
+    expect(serialized).toContain("- '(leer)'");
+
+    const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
+    expect(reparsed.errors).toEqual([]);
+    expect(reparsed.config.views.items[0]?.view.pieExcludedValues).toEqual(["Done", "(leer)"]);
+  });
+
   it("returns defaults with parse error when opener is missing", () => {
     const parsed = parseDatabaseBlockConfigFromRaw("title: no marker");
     expect(parsed.isClosed).toBe(false);
