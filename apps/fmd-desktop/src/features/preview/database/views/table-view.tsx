@@ -8,6 +8,7 @@ import {
   type DragEvent,
   type KeyboardEvent,
   type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
   type UIEvent,
   useEffect,
   useMemo,
@@ -45,11 +46,13 @@ type DatabaseTableViewProps = {
     draftValue: string | boolean;
   } | null;
   pendingCellMutations: string[];
+  columnWidths?: Record<string, number>;
   monitoringProfiles?: MonitoringRenderProfile[];
   onOpenRecord: (record: DatabaseRecord) => void;
   onOpenExamFromRecord?: (record: DatabaseRecord) => void;
   onToggleColumnSort: (columnKey: string) => void;
   onReorderColumns: (fromKey: string, toKey: string) => void;
+  onResizeColumn?: (columnKey: string, width: number) => void;
   onStartCellEdit: (record: DatabaseRecord, column: DatabaseAttributeMeta) => void;
   onEditCellDraftChange: (nextDraft: string | boolean) => void;
   onCommitCellEdit: (
@@ -68,6 +71,10 @@ type DatabaseTableViewProps = {
 const TABLE_ROW_HEIGHT = 34;
 const TABLE_OVERSCAN = 10;
 const TABLE_MAX_VISIBLE_ROWS = 50;
+const TABLE_DEFAULT_COLUMN_WIDTH = 180;
+const TABLE_MIN_COLUMN_WIDTH = 96;
+const TABLE_MAX_COLUMN_WIDTH = 640;
+const EMPTY_COLUMN_WIDTHS: Record<string, number> = {};
 const OPEN_RECORD_COLUMN_KEYS = new Set([
   "dateiname",
   "dateiname mit endung",
@@ -136,12 +143,34 @@ type BulkCellSelection = {
   anchorRecordId: string;
 };
 
+type ColumnResizeState = {
+  columnKey: string;
+  pointerStartX: number;
+  startWidth: number;
+};
+
 const isInteractiveCellTarget = (target: EventTarget | null, currentTarget: HTMLElement) => {
   if (!(target instanceof HTMLElement)) {
     return false;
   }
   const interactive = target.closest("button, input, select, textarea, [contenteditable='true']");
   return Boolean(interactive && currentTarget.contains(interactive));
+};
+
+const clampColumnWidth = (width: number) =>
+  Math.min(TABLE_MAX_COLUMN_WIDTH, Math.max(TABLE_MIN_COLUMN_WIDTH, Math.round(width)));
+
+const getColumnWidth = (widths: Record<string, number>, columnKey: string) => {
+  const direct = widths[columnKey];
+  if (typeof direct === "number" && Number.isFinite(direct)) {
+    return clampColumnWidth(direct);
+  }
+  const normalizedColumnKey = toLower(columnKey);
+  const matchedKey = Object.keys(widths).find((key) => toLower(key) === normalizedColumnKey);
+  const matched = matchedKey ? widths[matchedKey] : undefined;
+  return typeof matched === "number" && Number.isFinite(matched)
+    ? clampColumnWidth(matched)
+    : TABLE_DEFAULT_COLUMN_WIDTH;
 };
 
 export const DatabaseTableView = ({
@@ -151,11 +180,13 @@ export const DatabaseTableView = ({
   editable,
   activeEditCell,
   pendingCellMutations,
+  columnWidths = EMPTY_COLUMN_WIDTHS,
   monitoringProfiles = [],
   onOpenRecord,
   onOpenExamFromRecord,
   onToggleColumnSort,
   onReorderColumns,
+  onResizeColumn,
   onStartCellEdit,
   onEditCellDraftChange,
   onCommitCellEdit,
@@ -168,6 +199,9 @@ export const DatabaseTableView = ({
   const [bulkSelection, setBulkSelection] = useState<BulkCellSelection | null>(null);
   const [bulkDraftValue, setBulkDraftValue] = useState<string | boolean>("");
   const [isBulkApplying, setIsBulkApplying] = useState(false);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [draftColumnWidths, setDraftColumnWidths] = useState<Record<string, number>>(columnWidths);
+  const [resizeState, setResizeState] = useState<ColumnResizeState | null>(null);
 
   const totalHeight = records.length * TABLE_ROW_HEIGHT;
   const viewportHeight = Math.min(records.length, TABLE_MAX_VISIBLE_ROWS) * TABLE_ROW_HEIGHT;
@@ -180,6 +214,21 @@ export const DatabaseTableView = ({
   }, [records.length, scrollTop, viewportHeight]);
 
   const visibleRows = records.slice(visibleRange.start, visibleRange.end);
+  const effectiveColumnWidths = useMemo(
+    () => columns.reduce<Record<string, number>>((next, column) => {
+      next[column.key] = getColumnWidth(draftColumnWidths, column.key);
+      return next;
+    }, {}),
+    [columns, draftColumnWidths],
+  );
+  const gridTemplateColumns = useMemo(
+    () => columns.map((column) => `${effectiveColumnWidths[column.key] ?? TABLE_DEFAULT_COLUMN_WIDTH}px`).join(" "),
+    [columns, effectiveColumnWidths],
+  );
+  const tableContentWidth = useMemo(
+    () => columns.reduce((sum, column) => sum + (effectiveColumnWidths[column.key] ?? TABLE_DEFAULT_COLUMN_WIDTH), 0),
+    [columns, effectiveColumnWidths],
+  );
   const pendingByKey = useMemo(
     () => new Set(pendingCellMutations),
     [pendingCellMutations],
@@ -257,8 +306,47 @@ export const DatabaseTableView = ({
     setBulkDraftValue(selectedColumn?.type === "boolean" ? false : "");
   }, [selectedColumn?.key, selectedColumn?.type]);
 
+  useEffect(() => {
+    setDraftColumnWidths(columnWidths);
+  }, [columnWidths]);
+
+  useEffect(() => {
+    if (!resizeState) {
+      return;
+    }
+
+    const resolveNextWidth = (clientX: number) =>
+      clampColumnWidth(resizeState.startWidth + (clientX - resizeState.pointerStartX));
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const nextWidth = resolveNextWidth(event.clientX);
+      setDraftColumnWidths((current) => ({
+        ...current,
+        [resizeState.columnKey]: nextWidth,
+      }));
+    };
+
+    const handlePointerUp = (event: PointerEvent) => {
+      const nextWidth = resolveNextWidth(event.clientX);
+      setDraftColumnWidths((current) => ({
+        ...current,
+        [resizeState.columnKey]: nextWidth,
+      }));
+      setResizeState(null);
+      onResizeColumn?.(resizeState.columnKey, nextWidth);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp, { once: true });
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [onResizeColumn, resizeState]);
+
   const handleScroll = (event: UIEvent<HTMLDivElement>) => {
     setScrollTop(event.currentTarget.scrollTop);
+    setScrollLeft(event.currentTarget.scrollLeft);
   };
 
   const handleHeaderDragStart = (event: DragEvent<HTMLDivElement>, columnKey: string) => {
@@ -310,6 +398,19 @@ export const DatabaseTableView = ({
     setDraggedColumnKey(null);
     setDropTargetColumnKey(null);
     endInternalDrag(DRAG_CHANNELS.DATABASE_COLUMN);
+  };
+
+  const handleColumnResizePointerDown = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+    column: DatabaseAttributeMeta,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setResizeState({
+      columnKey: column.key,
+      pointerStartX: event.clientX,
+      startWidth: effectiveColumnWidths[column.key] ?? TABLE_DEFAULT_COLUMN_WIDTH,
+    });
   };
 
   const handleEditorKeyDown = (
@@ -517,48 +618,67 @@ export const DatabaseTableView = ({
   return (
     <div className="database-table-view">
       {bulkEditor}
-      <div className="database-table-header-row" role="row">
-        {columns.map((column) => {
-          const sortRule = sortRuleByKey.get(toLower(column.key)) ?? null;
-          const sortDirection = sortRule?.dir ?? null;
-          const isDragging = Boolean(draggedColumnKey) && toLower(draggedColumnKey ?? "") === toLower(column.key);
-          const isDropTarget = Boolean(dropTargetColumnKey) &&
-            toLower(dropTargetColumnKey ?? "") === toLower(column.key);
-          return (
-            <div
-              key={column.key}
-              className={`database-table-header-cell${isDragging ? " is-dragging" : ""}${isDropTarget ? " is-drop-target" : ""}`}
-              role="columnheader"
-              aria-sort={
-                sortDirection === "asc"
-                  ? "ascending"
-                  : sortDirection === "desc"
-                  ? "descending"
-                  : "none"
-              }
-              draggable
-              onDragStart={(event) => handleHeaderDragStart(event, column.key)}
-              onDragOver={(event) => handleHeaderDragOver(event, column.key)}
-              onDrop={(event) => handleHeaderDrop(event, column.key)}
-              onDragEnd={handleHeaderDragEnd}
-              data-md-block-control="true"
-            >
-              <button
-                type="button"
-                className={`database-table-header-button${sortDirection ? " is-sorted" : ""}`}
-                onClick={() => onToggleColumnSort(column.key)}
+      <div className="database-table-header-viewport">
+        <div
+          className="database-table-header-row"
+          role="row"
+          style={{
+            gridTemplateColumns,
+            width: `${tableContentWidth}px`,
+            transform: `translateX(-${scrollLeft}px)`,
+          }}
+        >
+          {columns.map((column) => {
+            const sortRule = sortRuleByKey.get(toLower(column.key)) ?? null;
+            const sortDirection = sortRule?.dir ?? null;
+            const isDragging = Boolean(draggedColumnKey) && toLower(draggedColumnKey ?? "") === toLower(column.key);
+            const isDropTarget = Boolean(dropTargetColumnKey) &&
+              toLower(dropTargetColumnKey ?? "") === toLower(column.key);
+            return (
+              <div
+                key={column.key}
+                className={`database-table-header-cell${isDragging ? " is-dragging" : ""}${isDropTarget ? " is-drop-target" : ""}`}
+                role="columnheader"
+                aria-sort={
+                  sortDirection === "asc"
+                    ? "ascending"
+                    : sortDirection === "desc"
+                    ? "descending"
+                    : "none"
+                }
+                draggable
+                onDragStart={(event) => handleHeaderDragStart(event, column.key)}
+                onDragOver={(event) => handleHeaderDragOver(event, column.key)}
+                onDrop={(event) => handleHeaderDrop(event, column.key)}
+                onDragEnd={handleHeaderDragEnd}
                 data-md-block-control="true"
               >
-                <span className="database-table-header-label">{column.label}</span>
-                {sortDirection ? (
-                  <span className="database-table-header-sort-indicator" aria-hidden="true">
-                    {sortDirection === "asc" ? "↑" : "↓"}
-                  </span>
-                ) : null}
-              </button>
-            </div>
-          );
-        })}
+                <button
+                  type="button"
+                  className={`database-table-header-button${sortDirection ? " is-sorted" : ""}`}
+                  onClick={() => onToggleColumnSort(column.key)}
+                  data-md-block-control="true"
+                >
+                  <span className="database-table-header-label">{column.label}</span>
+                  {sortDirection ? (
+                    <span className="database-table-header-sort-indicator" aria-hidden="true">
+                      {sortDirection === "asc" ? "↑" : "↓"}
+                    </span>
+                  ) : null}
+                </button>
+                <button
+                  type="button"
+                  className="database-table-column-resize-handle"
+                  aria-label={`Spaltenbreite aendern: ${column.label || column.key}`}
+                  title="Spaltenbreite aendern"
+                  draggable={false}
+                  onPointerDown={(event) => handleColumnResizePointerDown(event, column)}
+                  data-md-block-control="true"
+                />
+              </div>
+            );
+          })}
+        </div>
       </div>
       <div
         className="database-table-scroll"
@@ -566,7 +686,13 @@ export const DatabaseTableView = ({
         onScroll={handleScroll}
         style={{ maxHeight: `${viewportHeight}px` }}
       >
-        <div className="database-table-spacer" style={{ height: `${totalHeight}px` }}>
+        <div
+          className="database-table-spacer"
+          style={{
+            height: `${totalHeight}px`,
+            width: `${tableContentWidth}px`,
+          }}
+        >
           {visibleRows.map((record, localIndex) => {
             const rowIndex = visibleRange.start + localIndex;
             const top = rowIndex * TABLE_ROW_HEIGHT;
@@ -578,6 +704,8 @@ export const DatabaseTableView = ({
                 style={{
                   top: `${top}px`,
                   height: `${TABLE_ROW_HEIGHT}px`,
+                  gridTemplateColumns,
+                  width: `${tableContentWidth}px`,
                 }}
                 data-md-block-control="true"
               >

@@ -5950,18 +5950,25 @@ textarea.preview-editor {
   font-size: 0.78rem;
 }
 
-.database-table-header-row {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(150px, 1fr);
-  position: sticky;
-  top: 0;
-  z-index: 2;
+.database-table-header-viewport {
+  overflow: hidden;
   border-bottom: 1px solid var(--db-border);
   background: color-mix(in srgb, var(--db-surface-base) 84%, var(--db-surface-raised));
 }
 
+.database-table-header-row {
+  display: grid;
+  grid-auto-flow: column;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: transparent;
+  will-change: transform;
+}
+
 .database-table-header-cell {
+  position: relative;
+  min-width: 0;
   padding: 0;
   border-right: 1px solid var(--db-border);
   background: transparent;
@@ -5994,6 +6001,39 @@ textarea.preview-editor {
   color: var(--db-muted);
   cursor: pointer;
   text-align: left;
+}
+
+.database-table-column-resize-handle {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: -5px;
+  z-index: 2;
+  inline-size: 10px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  cursor: col-resize;
+  padding: 0;
+}
+
+.database-table-column-resize-handle::after {
+  content: "";
+  position: absolute;
+  inset-block: 7px;
+  inset-inline-start: 4px;
+  inline-size: 2px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.database-table-column-resize-handle:hover::after,
+.database-table-column-resize-handle:focus-visible::after {
+  background: var(--db-accent-border);
+}
+
+.database-table-column-resize-handle:focus-visible {
+  outline: 2px solid var(--db-accent-focus);
+  outline-offset: -2px;
 }
 
 .database-table-header-button:hover {
@@ -6035,10 +6075,8 @@ textarea.preview-editor {
 .database-table-row {
   position: absolute;
   left: 0;
-  right: 0;
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(150px, 1fr);
   border: none;
   border-bottom: 1px solid var(--db-border);
   background: transparent;

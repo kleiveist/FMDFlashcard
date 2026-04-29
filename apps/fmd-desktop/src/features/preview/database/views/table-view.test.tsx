@@ -142,6 +142,12 @@ const createDragDataTransfer = () => {
   };
 };
 
+const createPointerLikeEvent = (type: string, clientX: number) => {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.defineProperty(event, "clientX", { value: clientX });
+  return event;
+};
+
 const buildProps = (overrides: Partial<ComponentProps<typeof DatabaseTableView>> = {}) => ({
   records: [record],
   columns: [taskAttribute],
@@ -314,6 +320,34 @@ describe("DatabaseTableView", () => {
 
     expect(onReorderColumns).toHaveBeenCalledTimes(1);
     expect(onReorderColumns).toHaveBeenCalledWith("Task", "Dateiname");
+
+    cleanup();
+  });
+
+  it("resizes columns from the header resize handle", () => {
+    const onResizeColumn = vi.fn();
+    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
+      columns: [taskAttribute, fileNameAttribute],
+      columnWidths: {
+        Task: 180,
+        Dateiname: 180,
+      },
+      onResizeColumn,
+    })));
+
+    const resizeHandle = container.querySelector<HTMLButtonElement>(".database-table-column-resize-handle");
+    expect(resizeHandle).toBeTruthy();
+
+    act(() => {
+      resizeHandle?.dispatchEvent(createPointerLikeEvent("pointerdown", 200));
+      window.dispatchEvent(createPointerLikeEvent("pointermove", 240));
+      window.dispatchEvent(createPointerLikeEvent("pointerup", 240));
+    });
+
+    expect(onResizeColumn).toHaveBeenCalledTimes(1);
+    expect(onResizeColumn).toHaveBeenCalledWith("Task", 220);
+    const headerRow = container.querySelector<HTMLElement>(".database-table-header-row");
+    expect(headerRow?.style.gridTemplateColumns).toContain("220px");
 
     cleanup();
   });

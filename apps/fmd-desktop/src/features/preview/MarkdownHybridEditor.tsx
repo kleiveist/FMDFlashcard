@@ -10066,6 +10066,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
             runnableExamRelativePaths={runnableExamRelativePaths}
             onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
             monitoringProfiles={monitoringProfiles}
+            blockIndex={index}
             onCommitRaw={(nextRaw) => {
               handleTableBlockCommitRaw(index, nextRaw);
             }}
@@ -10617,6 +10618,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                     runnableExamRelativePaths={runnableExamRelativePaths}
                     onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
                     monitoringProfiles={monitoringProfiles}
+                    blockIndex={index}
                     onCommitRaw={(nextRaw) => {
                       handleTableBlockCommitRaw(index, nextRaw);
                     }}

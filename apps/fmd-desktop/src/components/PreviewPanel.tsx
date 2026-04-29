@@ -11150,6 +11150,7 @@ export const PreviewPanel = ({
           runnableExamRelativePaths={runnableExamRelativePaths}
           onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
           monitoringProfiles={monitoringProfiles}
+          blockIndex={resolvedIndex}
           onCommitRaw={(nextRaw) => {
             void commitMarkdownEditorDatabaseBlock(resolvedIndex, nextRaw);
           }}
@@ -11221,6 +11222,7 @@ export const PreviewPanel = ({
               runnableExamRelativePaths={runnableExamRelativePaths}
               onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
               monitoringProfiles={monitoringProfiles}
+              blockIndex={databaseBlockIndex}
               onCommitRaw={(nextRaw) => {
                 if (databaseBlockIndex < 0) {
                   return;

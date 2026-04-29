@@ -50,6 +50,13 @@ import {
   normalizeDatabaseKanbanExcludedValues,
 } from "./kanban-values";
 import {
+  applyDatabaseTableLayoutOrder,
+  buildDatabaseTableLayoutKey,
+  readDatabaseTableLayoutProfile,
+  writeDatabaseTableLayoutProfile,
+  type DatabaseTableLayoutProfile,
+} from "./database-table-layout-profile";
+import {
   buildDatabasePieValueOptions,
   normalizeDatabasePieExcludedValues,
 } from "./pie-values";
@@ -115,6 +122,7 @@ type DatabaseBlockProps = {
   monitoringProfiles?: MonitoringRenderProfile[];
   onCommitRaw: (nextRaw: string) => void;
   allowCellEditing?: boolean;
+  blockIndex?: number | null;
 };
 
 type DatabaseBlockOpenPanels = {
@@ -888,6 +896,7 @@ export const MarkdownHybridDatabaseBlock = ({
   monitoringProfiles = [],
   onCommitRaw,
   allowCellEditing = true,
+  blockIndex = null,
 }: DatabaseBlockProps) => {
   const parsed = useMemo(() => parseDatabaseBlockConfigFromRaw(raw), [raw]);
   const defaultConfig = useMemo(() => createDefaultDatabaseBlockConfig(), []);
@@ -995,6 +1004,7 @@ export const MarkdownHybridDatabaseBlock = ({
   );
   const [activeSorts, setActiveSorts] = useState<DatabaseSortRule[]>(cloneSortRules(parsedActiveSavedView.sort));
   const [activeCellEdit, setActiveCellEdit] = useState<DatabaseCellEditState | null>(null);
+  const [tableLayoutProfile, setTableLayoutProfile] = useState<DatabaseTableLayoutProfile | null>(null);
   const [pendingCellMutations, setPendingCellMutations] = useState<string[]>([]);
   const runnableExamPathSet = useMemo(
     () =>
@@ -1057,8 +1067,17 @@ export const MarkdownHybridDatabaseBlock = ({
   const propertiesByViewRef = useRef(propertiesByView);
   const activeFiltersRef = useRef(activeFilters);
   const activeSortsRef = useRef(activeSorts);
+  const tableLayoutProfileRef = useRef<DatabaseTableLayoutProfile | null>(tableLayoutProfile);
   const openPanelKey = getOpenPanelKey(panels);
   const isPropertiesPanelLayerLocal = openPanelKey === "properties";
+  const tableLayoutKey = useMemo(
+    () => buildDatabaseTableLayoutKey({
+      sourceRelativePath,
+      blockIndex,
+      viewId: activeViewId,
+    }),
+    [activeViewId, blockIndex, sourceRelativePath],
+  );
 
   const scheduleVaultAttributeRefresh = useCallback(() => {
     setVaultAttributeRefreshToken((value) => value + 1);
@@ -1176,6 +1195,7 @@ export const MarkdownHybridDatabaseBlock = ({
     propertiesByViewRef.current = propertiesByView;
     activeFiltersRef.current = activeFilters;
     activeSortsRef.current = activeSorts;
+    tableLayoutProfileRef.current = tableLayoutProfile;
   }, [
     activeFilters,
     activeSorts,
@@ -1203,8 +1223,31 @@ export const MarkdownHybridDatabaseBlock = ({
     projectUnitField,
     propertiesByView,
     activeViewId,
+    tableLayoutProfile,
     viewType,
   ]);
+
+  useEffect(() => {
+    let isCancelled = false;
+    setTableLayoutProfile(null);
+    tableLayoutProfileRef.current = null;
+    if (!vaultPath) {
+      return () => {
+        isCancelled = true;
+      };
+    }
+    void readDatabaseTableLayoutProfile(vaultPath, tableLayoutKey)
+      .then((layout) => {
+        if (isCancelled) {
+          return;
+        }
+        setTableLayoutProfile(layout);
+        tableLayoutProfileRef.current = layout;
+      });
+    return () => {
+      isCancelled = true;
+    };
+  }, [tableLayoutKey, vaultPath]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1806,6 +1849,14 @@ export const MarkdownHybridDatabaseBlock = ({
       .map((key) => store.attributeRegistry.find((attribute) => attribute.key === key) ?? null)
       .filter((attribute): attribute is DatabaseAttributeMeta => Boolean(attribute)),
     [store.attributeRegistry, store.visibleColumnKeys],
+  );
+  const tableVisibleColumns = useMemo(
+    () => applyDatabaseTableLayoutOrder(visibleColumns, tableLayoutProfile),
+    [tableLayoutProfile, visibleColumns],
+  );
+  const tableColumnWidths = useMemo(
+    () => tableLayoutProfile?.columnWidths ?? {},
+    [tableLayoutProfile],
   );
   const tableCellEditingEnabled = allowCellEditing;
 
@@ -3031,6 +3082,19 @@ export const MarkdownHybridDatabaseBlock = ({
     persistConfig({ visibleColumns: nextColumns });
   };
 
+  const persistTableLayoutProfile = useCallback((layout: DatabaseTableLayoutProfile) => {
+    const normalizedLayout = {
+      columnOrder: dedupeCaseInsensitive(layout.columnOrder),
+      columnWidths: layout.columnWidths,
+    };
+    setTableLayoutProfile(normalizedLayout);
+    tableLayoutProfileRef.current = normalizedLayout;
+    void writeDatabaseTableLayoutProfile(vaultPath, tableLayoutKey, normalizedLayout)
+      .catch((error) => {
+        console.warn("Failed to persist database table layout", error);
+      });
+  }, [tableLayoutKey, vaultPath]);
+
   const handleReorderVisibleColumns = (fromKey: string, toKey: string) => {
     const fromIndex = visibleColumnKeys.findIndex((entry) => entry.toLowerCase() === fromKey.toLowerCase());
     const toIndex = visibleColumnKeys.findIndex((entry) => entry.toLowerCase() === toKey.toLowerCase());
@@ -3047,6 +3111,36 @@ export const MarkdownHybridDatabaseBlock = ({
     setPropertiesByView(nextPropertiesByView);
     propertiesByViewRef.current = nextPropertiesByView;
     persistConfig({ visibleColumns: nextColumns });
+  };
+
+  const handleReorderTableColumns = (fromKey: string, toKey: string) => {
+    const tableColumnKeys = tableVisibleColumns.map((column) => column.key);
+    const fromIndex = tableColumnKeys.findIndex((entry) => entry.toLowerCase() === fromKey.toLowerCase());
+    const toIndex = tableColumnKeys.findIndex((entry) => entry.toLowerCase() === toKey.toLowerCase());
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+      return;
+    }
+    const nextColumns = [...tableColumnKeys];
+    const [moved] = nextColumns.splice(fromIndex, 1);
+    if (!moved) {
+      return;
+    }
+    nextColumns.splice(toIndex, 0, moved);
+    persistTableLayoutProfile({
+      columnOrder: nextColumns,
+      columnWidths: tableLayoutProfileRef.current?.columnWidths ?? {},
+    });
+  };
+
+  const handleResizeTableColumn = (columnKey: string, width: number) => {
+    const nextLayout = {
+      columnOrder: tableVisibleColumns.map((column) => column.key),
+      columnWidths: {
+        ...(tableLayoutProfileRef.current?.columnWidths ?? {}),
+        [columnKey]: width,
+      },
+    };
+    persistTableLayoutProfile(nextLayout);
   };
 
   const handleHideAllColumns = () => {
@@ -4072,16 +4166,18 @@ export const MarkdownHybridDatabaseBlock = ({
         {viewType === "table" ? (
           <DatabaseTableView
             records={store.visibleRecords}
-            columns={visibleColumns}
+            columns={tableVisibleColumns}
             sortRules={activeSorts}
             editable={tableCellEditingEnabled}
             activeEditCell={activeCellEdit}
             pendingCellMutations={pendingCellMutations}
+            columnWidths={tableColumnWidths}
             monitoringProfiles={monitoringProfiles}
             onOpenRecord={openRecord}
             onOpenExamFromRecord={openExamFromRecord}
             onToggleColumnSort={handleToggleColumnSort}
-            onReorderColumns={handleReorderVisibleColumns}
+            onReorderColumns={handleReorderTableColumns}
+            onResizeColumn={handleResizeTableColumn}
             onStartCellEdit={handleStartCellEdit}
             onEditCellDraftChange={handleCellEditDraftChange}
             onCommitCellEdit={handleCommitCellEdit}
