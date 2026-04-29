@@ -518,6 +518,9 @@ const pruneDatabaseViewSpecByKeys = (
 ): DatabaseViewSpec => ({
   ...view,
   groupBy: removalKeys.has(normalizeLower(view.groupBy ?? "")) ? null : view.groupBy ?? null,
+  kanbanExcludedValues: removalKeys.has(normalizeLower(view.groupBy ?? ""))
+    ? []
+    : [...(view.kanbanExcludedValues ?? [])],
   timelineStartField: removalKeys.has(normalizeLower(view.timelineStartField ?? ""))
     ? null
     : view.timelineStartField ?? null,

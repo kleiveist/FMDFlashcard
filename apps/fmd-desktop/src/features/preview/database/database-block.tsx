@@ -46,6 +46,10 @@ import {
 } from "./database-source-resolver";
 import { buildDatabaseStoreSnapshot } from "./database-store";
 import {
+  buildDatabaseKanbanValueOptions,
+  normalizeDatabaseKanbanExcludedValues,
+} from "./kanban-values";
+import {
   buildDatabasePieValueOptions,
   normalizeDatabasePieExcludedValues,
 } from "./pie-values";
@@ -85,6 +89,7 @@ import { normalizeRelativePath } from "../../../lib/path";
 import { type VaultFile } from "../../../lib/tree";
 import { DatabaseFilterPanel } from "./ui/database-filter-panel";
 import { DatabaseGanttPanel } from "./ui/database-gantt-panel";
+import { DatabaseKanbanPanel } from "./ui/database-kanban-panel";
 import { DatabaseProjectPanel } from "./ui/database-project-panel";
 import { DatabasePiePanel } from "./ui/database-pie-panel";
 import { DatabasePropertiesPanel } from "./ui/database-properties-panel";
@@ -116,6 +121,7 @@ type DatabaseBlockOpenPanels = {
   properties: boolean;
   filter: boolean;
   sort: boolean;
+  kanban: boolean;
   gantt: boolean;
   project: boolean;
   pie: boolean;
@@ -321,6 +327,7 @@ const cloneSavedView = (savedView: DatabaseSavedViewConfig): DatabaseSavedViewCo
   ...savedView,
   view: {
     ...savedView.view,
+    kanbanExcludedValues: normalizeDatabaseKanbanExcludedValues(savedView.view.kanbanExcludedValues),
     projectBarFillConfigs: cloneProjectBarFillConfigs(savedView.view.projectBarFillConfigs),
     pieExcludedValues: normalizeDatabasePieExcludedValues(savedView.view.pieExcludedValues),
   },
@@ -444,6 +451,9 @@ const getOpenPanelKey = (panels: DatabaseBlockOpenPanels): DatabasePanelKey | nu
   }
   if (panels.sort) {
     return "sort";
+  }
+  if (panels.kanban) {
+    return "kanban";
   }
   if (panels.gantt) {
     return "gantt";
@@ -714,6 +724,7 @@ const defaultPanels: DatabaseBlockOpenPanels = {
   properties: false,
   filter: false,
   sort: false,
+  kanban: false,
   gantt: false,
   project: false,
   pie: false,
@@ -816,6 +827,7 @@ export const MarkdownHybridDatabaseBlock = ({
     properties: null,
     filter: null,
     sort: null,
+    kanban: null,
     gantt: null,
     project: null,
     pie: null,
@@ -845,6 +857,9 @@ export const MarkdownHybridDatabaseBlock = ({
   const [kanbanShowCover, setKanbanShowCover] = useState<boolean>(parsedActiveSavedView.view.kanbanShowCover ?? false);
   const [kanbanOrderByGroup, setKanbanOrderByGroup] = useState<Record<string, string[]>>(
     cloneKanbanOrderByGroup(parsedActiveSavedView.view.kanbanOrderByGroup),
+  );
+  const [kanbanExcludedValues, setKanbanExcludedValues] = useState<string[]>(
+    normalizeDatabaseKanbanExcludedValues(parsedActiveSavedView.view.kanbanExcludedValues),
   );
   const [timelineStartField, setTimelineStartField] = useState<string | null>(
     parsedActiveSavedView.view.timelineStartField ?? null,
@@ -952,6 +967,7 @@ export const MarkdownHybridDatabaseBlock = ({
   const kanbanGroupByRef = useRef<string | null>(kanbanGroupBy);
   const kanbanShowCoverRef = useRef<boolean>(kanbanShowCover);
   const kanbanOrderByGroupRef = useRef<Record<string, string[]>>(kanbanOrderByGroup);
+  const kanbanExcludedValuesRef = useRef<string[]>(kanbanExcludedValues);
   const timelineStartFieldRef = useRef<string | null>(timelineStartField);
   const timelineEndFieldRef = useRef<string | null>(timelineEndField);
   const timelineModeRef = useRef<DatabaseTimelineMode>(timelineMode);
@@ -993,6 +1009,10 @@ export const MarkdownHybridDatabaseBlock = ({
     panelTriggerRefs.current.sort = node;
   }, []);
 
+  const setKanbanTriggerRef = useCallback((node: HTMLButtonElement | null) => {
+    panelTriggerRefs.current.kanban = node;
+  }, []);
+
   const setGanttTriggerRef = useCallback((node: HTMLButtonElement | null) => {
     panelTriggerRefs.current.gantt = node;
   }, []);
@@ -1014,6 +1034,7 @@ export const MarkdownHybridDatabaseBlock = ({
     setKanbanGroupBy(parsedActiveSavedView.view.groupBy ?? null);
     setKanbanShowCover(parsedActiveSavedView.view.kanbanShowCover ?? false);
     setKanbanOrderByGroup(cloneKanbanOrderByGroup(parsedActiveSavedView.view.kanbanOrderByGroup));
+    setKanbanExcludedValues(normalizeDatabaseKanbanExcludedValues(parsedActiveSavedView.view.kanbanExcludedValues));
     setTimelineStartField(parsedActiveSavedView.view.timelineStartField ?? null);
     setTimelineEndField(parsedActiveSavedView.view.timelineEndField ?? null);
     const nextTimelineMode = parsedActiveSavedView.view.timelineMode ?? DEFAULT_TIMELINE_MODE;
@@ -1065,6 +1086,7 @@ export const MarkdownHybridDatabaseBlock = ({
     kanbanGroupByRef.current = kanbanGroupBy;
     kanbanShowCoverRef.current = kanbanShowCover;
     kanbanOrderByGroupRef.current = kanbanOrderByGroup;
+    kanbanExcludedValuesRef.current = kanbanExcludedValues;
     timelineStartFieldRef.current = timelineStartField;
     timelineEndFieldRef.current = timelineEndField;
     timelineModeRef.current = timelineMode;
@@ -1091,6 +1113,7 @@ export const MarkdownHybridDatabaseBlock = ({
     kanbanGroupBy,
     kanbanShowCover,
     kanbanOrderByGroup,
+    kanbanExcludedValues,
     pieAggregate,
     pieAggregateField,
     pieExcludedValues,
@@ -1551,6 +1574,9 @@ export const MarkdownHybridDatabaseBlock = ({
       kanbanOrderByGroup: cloneKanbanOrderByGroup(
         next.view?.kanbanOrderByGroup ?? kanbanOrderByGroupRef.current,
       ),
+      kanbanExcludedValues: normalizeDatabaseKanbanExcludedValues(
+        next.view?.kanbanExcludedValues ?? kanbanExcludedValuesRef.current,
+      ),
       timelineStartField: next.view?.timelineStartField ?? timelineStartFieldRef.current ?? null,
       timelineEndField: next.view?.timelineEndField ?? timelineEndFieldRef.current ?? null,
       timelineMode: resolvedTimelineMode,
@@ -1636,6 +1662,7 @@ export const MarkdownHybridDatabaseBlock = ({
           groupBy: kanbanGroupBy,
           kanbanShowCover,
           kanbanOrderByGroup,
+          kanbanExcludedValues,
           timelineStartField,
           timelineEndField,
           timelineMode,
@@ -1681,6 +1708,7 @@ export const MarkdownHybridDatabaseBlock = ({
       kanbanGroupBy,
       kanbanShowCover,
       kanbanOrderByGroup,
+      kanbanExcludedValues,
       viewType,
       timelineStartField,
       timelineEndField,
@@ -1720,6 +1748,7 @@ export const MarkdownHybridDatabaseBlock = ({
         properties: panel === "properties",
         filter: panel === "filter",
         sort: panel === "sort",
+        kanban: panel === "kanban",
         gantt: panel === "gantt",
         project: panel === "project",
         pie: panel === "pie",
@@ -1764,6 +1793,9 @@ export const MarkdownHybridDatabaseBlock = ({
     const nextKanbanOrder = cloneKanbanOrderByGroup(nextView.kanbanOrderByGroup);
     setKanbanOrderByGroup(nextKanbanOrder);
     kanbanOrderByGroupRef.current = nextKanbanOrder;
+    const nextKanbanExcludedValues = normalizeDatabaseKanbanExcludedValues(nextView.kanbanExcludedValues);
+    setKanbanExcludedValues(nextKanbanExcludedValues);
+    kanbanExcludedValuesRef.current = nextKanbanExcludedValues;
     setTimelineStartField(nextView.timelineStartField ?? null);
     timelineStartFieldRef.current = nextView.timelineStartField ?? null;
     setTimelineEndField(nextView.timelineEndField ?? null);
@@ -1842,6 +1874,7 @@ export const MarkdownHybridDatabaseBlock = ({
       groupBy: kanbanGroupByRef.current ?? null,
       kanbanShowCover: kanbanShowCoverRef.current ?? false,
       kanbanOrderByGroup: cloneKanbanOrderByGroup(kanbanOrderByGroupRef.current),
+      kanbanExcludedValues: normalizeDatabaseKanbanExcludedValues(kanbanExcludedValuesRef.current),
       timelineStartField: timelineStartFieldRef.current ?? null,
       timelineEndField: timelineEndFieldRef.current ?? null,
       timelineMode: timelineModeRef.current ?? DEFAULT_TIMELINE_MODE,
@@ -1905,11 +1938,30 @@ export const MarkdownHybridDatabaseBlock = ({
     persistConfig({ viewType: nextType });
   };
 
-  const handleKanbanGroupByChange = (nextGroupBy: string | null) => {
-    setKanbanGroupBy(nextGroupBy);
+  const handleKanbanOptionsChange = (next: {
+    groupField?: string | null;
+    excludedValues?: string[];
+  }) => {
+    const nextGroup = typeof next.groupField === "undefined"
+      ? kanbanGroupByRef.current
+      : next.groupField ?? null;
+    const didGroupChange = typeof next.groupField !== "undefined" &&
+      toLower(nextGroup ?? "") !== toLower(kanbanGroupByRef.current ?? "");
+    let nextExcludedValues = kanbanExcludedValuesRef.current;
+    if (didGroupChange) {
+      nextExcludedValues = [];
+    } else if (typeof next.excludedValues !== "undefined") {
+      nextExcludedValues = normalizeDatabaseKanbanExcludedValues(next.excludedValues);
+    }
+
+    setKanbanGroupBy(nextGroup);
+    setKanbanExcludedValues(nextExcludedValues);
+    kanbanGroupByRef.current = nextGroup;
+    kanbanExcludedValuesRef.current = nextExcludedValues;
     persistConfig({
       view: {
-        groupBy: nextGroupBy,
+        groupBy: nextGroup,
+        kanbanExcludedValues: nextExcludedValues,
       },
     });
   };
@@ -2949,6 +3001,9 @@ export const MarkdownHybridDatabaseBlock = ({
     const nextKanbanGroupBy = toLower(kanbanGroupByRef.current ?? "") === normalizedKey
       ? null
       : kanbanGroupByRef.current;
+    const nextKanbanExcludedValues = toLower(kanbanGroupByRef.current ?? "") === normalizedKey
+      ? []
+      : normalizeDatabaseKanbanExcludedValues(kanbanExcludedValuesRef.current);
     const nextTimelineStartField = toLower(timelineStartFieldRef.current ?? "") === normalizedKey
       ? null
       : timelineStartFieldRef.current;
@@ -2978,6 +3033,9 @@ export const MarkdownHybridDatabaseBlock = ({
     const stripRemovedFieldFromView = (view: DatabaseViewSpec): DatabaseViewSpec => ({
       ...view,
       groupBy: toLower(view.groupBy ?? "") === normalizedKey ? null : view.groupBy ?? null,
+      kanbanExcludedValues: toLower(view.groupBy ?? "") === normalizedKey
+        ? []
+        : normalizeDatabaseKanbanExcludedValues(view.kanbanExcludedValues),
       timelineStartField: toLower(view.timelineStartField ?? "") === normalizedKey
         ? null
         : view.timelineStartField ?? null,
@@ -3025,6 +3083,8 @@ export const MarkdownHybridDatabaseBlock = ({
     activeSortsRef.current = nextSorts;
     setKanbanGroupBy(nextKanbanGroupBy);
     kanbanGroupByRef.current = nextKanbanGroupBy;
+    setKanbanExcludedValues(nextKanbanExcludedValues);
+    kanbanExcludedValuesRef.current = nextKanbanExcludedValues;
     setTimelineStartField(nextTimelineStartField);
     timelineStartFieldRef.current = nextTimelineStartField;
     setTimelineEndField(nextTimelineEndField);
@@ -3052,6 +3112,7 @@ export const MarkdownHybridDatabaseBlock = ({
       savedViews: nextSavedViews,
       view: {
         groupBy: nextKanbanGroupBy,
+        kanbanExcludedValues: nextKanbanExcludedValues,
         timelineStartField: nextTimelineStartField,
         timelineEndField: nextTimelineEndField,
         projectStartField: nextProjectStartField,
@@ -3279,15 +3340,20 @@ export const MarkdownHybridDatabaseBlock = ({
     store.attributeRegistry,
     kanbanGroupBy,
   );
-  const kanbanGroupByOptions = useMemo(
-    () => store.attributeRegistry
-      .filter((attribute) => attribute.viewCompatibility.supportsKanbanGrouping)
-      .map((attribute) => ({
-        key: attribute.key,
-        label: attribute.label || attribute.key,
-      })),
-    [store.attributeRegistry],
+  const kanbanValueOptions = useMemo(
+    () => buildDatabaseKanbanValueOptions({
+      records: store.normalizedRecords,
+      groupAttribute: kanbanGroupAttribute,
+      monitoringProfiles,
+    }),
+    [kanbanGroupAttribute, monitoringProfiles, store.normalizedRecords],
   );
+  const kanbanVisibleGroupValues = useMemo(() => {
+    const excludedValueSet = new Set(kanbanExcludedValues);
+    return kanbanValueOptions
+      .filter((option) => !excludedValueSet.has(option.value))
+      .map((option) => option.value);
+  }, [kanbanExcludedValues, kanbanValueOptions]);
   const timelineStartAttribute = pickTimelineAttribute(
     store.attributeRegistry,
     timelineStartField,
@@ -3330,6 +3396,7 @@ export const MarkdownHybridDatabaseBlock = ({
     panels.properties ||
     panels.filter ||
     panels.sort ||
+    panels.kanban ||
     panels.gantt ||
     panels.project ||
     panels.pie;
@@ -3381,6 +3448,15 @@ export const MarkdownHybridDatabaseBlock = ({
       viewType={viewType}
       sortRules={activeSorts}
       onChange={handleSortChange}
+      onClose={() => setPanels(defaultPanels)}
+    />
+  ) : panels.kanban ? (
+    <DatabaseKanbanPanel
+      attributes={store.attributeRegistry}
+      groupField={kanbanGroupBy}
+      valueOptions={kanbanValueOptions}
+      excludedValues={kanbanExcludedValues}
+      onChange={handleKanbanOptionsChange}
       onClose={() => setPanels(defaultPanels)}
     />
   ) : panels.gantt ? (
@@ -3446,19 +3522,17 @@ export const MarkdownHybridDatabaseBlock = ({
             savedViews={savedViewEntries}
             sourceLabel={getFolderLabel()}
             viewType={viewType}
-            kanbanGroupBy={kanbanGroupBy}
-            kanbanGroupByOptions={kanbanGroupByOptions}
             searchQuery={searchQuery}
             showSearch={parsed.config.options.showSearch}
             onSearchChange={setSearchQuery}
             onViewTypeChange={handleViewChange}
-            onKanbanGroupByChange={handleKanbanGroupByChange}
             onSelectSavedView={handleSwitchSavedView}
             onCreateSavedView={handleCreateSavedView}
             isSourcePanelOpen={panels.source}
             isFilterPanelOpen={panels.filter}
             isSortPanelOpen={panels.sort}
             isPropertiesPanelOpen={panels.properties}
+            isKanbanPanelOpen={panels.kanban}
             isGanttPanelOpen={panels.gantt}
             isProjectPanelOpen={panels.project}
             isPiePanelOpen={panels.pie}
@@ -3467,6 +3541,7 @@ export const MarkdownHybridDatabaseBlock = ({
             onToggleFilterPanel={() => setPanel("filter")}
             onToggleSortPanel={() => setPanel("sort")}
             onTogglePropertiesPanel={() => setPanel("properties")}
+            onToggleKanbanPanel={() => setPanel("kanban")}
             onToggleGanttPanel={() => setPanel("gantt")}
             onToggleProjectPanel={() => setPanel("project")}
             onTogglePiePanel={() => setPanel("pie")}
@@ -3475,6 +3550,7 @@ export const MarkdownHybridDatabaseBlock = ({
             sortButtonRef={setSortTriggerRef}
             filterButtonRef={setFilterTriggerRef}
             propertiesButtonRef={setPropertiesTriggerRef}
+            kanbanButtonRef={setKanbanTriggerRef}
             ganttButtonRef={setGanttTriggerRef}
             projectButtonRef={setProjectTriggerRef}
             pieButtonRef={setPieTriggerRef}
@@ -3571,6 +3647,7 @@ export const MarkdownHybridDatabaseBlock = ({
             visibleProperties={visibleColumns}
             showCover={kanbanShowCover}
             orderByGroup={kanbanOrderByGroup}
+            visibleGroupValues={kanbanVisibleGroupValues}
             monitoringProfiles={monitoringProfiles}
             pendingRecordIds={pendingRecordMutations}
             onMoveRecord={handleMoveKanbanRecord}

@@ -138,6 +138,7 @@ export type DatabaseViewSpec = {
   groupBy?: string | null;
   kanbanShowCover?: boolean;
   kanbanOrderByGroup?: Record<string, string[]>;
+  kanbanExcludedValues?: string[];
   timelineStartField?: string | null;
   timelineEndField?: string | null;
   timelineMode?: DatabaseTimelineMode;

@@ -809,6 +809,9 @@ const cloneKanbanOrderByGroup = (
 const parsePieExcludedValues = (value: unknown): string[] =>
   dedupeExact(asStringArray(value));
 
+const parseKanbanExcludedValues = (value: unknown): string[] =>
+  dedupeExact(asStringArray(value));
+
 const parseViewSpec = (value: unknown): DatabaseViewSpec => {
   if (typeof value === "string") {
     return {
@@ -818,6 +821,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
       ganttZoom: "month",
       kanbanShowCover: false,
       kanbanOrderByGroup: {},
+      kanbanExcludedValues: [],
       projectStartField: DEFAULT_PROJECT_START_FIELD,
       projectUnitField: DEFAULT_PROJECT_UNIT_FIELD,
       blockResolution: DEFAULT_PROJECT_BLOCK_RESOLUTION,
@@ -835,6 +839,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
       ganttZoom: "month",
       kanbanShowCover: false,
       kanbanOrderByGroup: {},
+      kanbanExcludedValues: [],
       projectStartField: DEFAULT_PROJECT_START_FIELD,
       projectUnitField: DEFAULT_PROJECT_UNIT_FIELD,
       blockResolution: DEFAULT_PROJECT_BLOCK_RESOLUTION,
@@ -851,6 +856,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
     groupBy: asString(value.groupBy) || null,
     kanbanShowCover: Boolean(value.kanbanShowCover),
     kanbanOrderByGroup: parseKanbanOrderByGroup(value.kanbanOrderByGroup),
+    kanbanExcludedValues: parseKanbanExcludedValues(value.kanbanExcludedValues),
     timelineStartField: asString(value.timelineStartField) || null,
     timelineEndField: asString(value.timelineEndField) || null,
     timelineMode: parseTimelineMode(value.timelineMode),
@@ -893,6 +899,7 @@ const cloneProjectBarFillConfigs = (
 const cloneViewSpec = (view: DatabaseViewSpec): DatabaseViewSpec => ({
   ...view,
   kanbanOrderByGroup: cloneKanbanOrderByGroup(view.kanbanOrderByGroup),
+  kanbanExcludedValues: dedupeExact(view.kanbanExcludedValues ?? []),
   projectBarFillConfigs: cloneProjectBarFillConfigs(view.projectBarFillConfigs),
   pieExcludedValues: dedupeExact(view.pieExcludedValues ?? []),
 });
@@ -1268,6 +1275,13 @@ function writeViewSpecYaml(
   }
   if (view.kanbanShowCover) {
     lines.push(`${indentText}kanbanShowCover: ${formatYamlScalar(view.kanbanShowCover)}`);
+  }
+  const kanbanExcludedValues = dedupeExact(view.kanbanExcludedValues ?? []);
+  if (kanbanExcludedValues.length > 0) {
+    lines.push(`${indentText}kanbanExcludedValues:`);
+    kanbanExcludedValues.forEach((value) => {
+      lines.push(`${indentText}  - ${formatYamlScalar(value)}`);
+    });
   }
   const kanbanOrderEntries = Object.entries(kanbanOrderByGroup);
   if (kanbanOrderEntries.length > 0) {

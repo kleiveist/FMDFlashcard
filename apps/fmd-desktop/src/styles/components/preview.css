@@ -6572,7 +6572,8 @@ textarea.preview-editor {
   font-size: 0.78rem;
 }
 
-.database-pie-values {
+.database-pie-values,
+.database-kanban-values {
   display: grid;
   gap: 6px;
   width: 100%;
@@ -6580,13 +6581,15 @@ textarea.preview-editor {
   padding-top: 8px;
 }
 
-.database-pie-values h6 {
+.database-pie-values h6,
+.database-kanban-values h6 {
   margin: 0;
   font-size: 0.76rem;
   color: var(--db-muted);
 }
 
-.database-pie-value-list {
+.database-pie-value-list,
+.database-kanban-value-list {
   display: grid;
   gap: 6px;
   max-height: 220px;
@@ -6596,13 +6599,15 @@ textarea.preview-editor {
   list-style: none;
 }
 
-.database-pie-value-item {
+.database-pie-value-item,
+.database-kanban-value-item {
   border: 1px solid var(--db-border);
   border-radius: var(--db-radius-control);
   background: var(--db-surface-muted);
 }
 
-.database-pie-value-item label {
+.database-pie-value-item label,
+.database-kanban-value-item label {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -6611,13 +6616,15 @@ textarea.preview-editor {
   cursor: pointer;
 }
 
-.database-pie-value-label {
+.database-pie-value-label,
+.database-kanban-value-label {
   min-width: 0;
   overflow-wrap: anywhere;
   font-size: 0.78rem;
 }
 
-.database-pie-value-count {
+.database-pie-value-count,
+.database-kanban-value-count {
   color: var(--db-muted);
   font-size: 0.72rem;
 }

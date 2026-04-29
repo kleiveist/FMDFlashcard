@@ -31,21 +31,17 @@ const buildProps = () => ({
   ],
   sourceLabel: "Quelle",
   viewType: "table" as const,
-  kanbanGroupBy: null,
-  kanbanGroupByOptions: [
-    { key: "status", label: "Status" },
-  ],
   searchQuery: "",
   showSearch: true,
   onSearchChange: vi.fn(),
   onViewTypeChange: vi.fn(),
-  onKanbanGroupByChange: vi.fn(),
   onSelectSavedView: vi.fn(),
   onCreateSavedView: vi.fn(),
   isSourcePanelOpen: false,
   isFilterPanelOpen: false,
   isSortPanelOpen: false,
   isPropertiesPanelOpen: false,
+  isKanbanPanelOpen: false,
   isGanttPanelOpen: false,
   isProjectPanelOpen: false,
   isPiePanelOpen: false,
@@ -54,6 +50,7 @@ const buildProps = () => ({
   onToggleFilterPanel: vi.fn(),
   onToggleSortPanel: vi.fn(),
   onTogglePropertiesPanel: vi.fn(),
+  onToggleKanbanPanel: vi.fn(),
   onToggleGanttPanel: vi.fn(),
   onToggleProjectPanel: vi.fn(),
   onTogglePiePanel: vi.fn(),
@@ -208,19 +205,17 @@ describe("DatabaseToolbar", () => {
     const kanban = render(createElement(DatabaseToolbar, {
       ...baseProps,
       viewType: "kanban",
-      kanbanGroupBy: "status",
     }));
     const secondaryKanban = kanban.container.querySelector(".database-block-toolbar-row-secondary");
-    const groupSelect = secondaryKanban?.querySelector<HTMLSelectElement>(".database-block-view-select");
+    const kanbanButton = Array.from(kanban.container.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.textContent?.includes("Kanban Optionen"));
     expect(secondaryKanban).toBeTruthy();
-    expect(groupSelect).toBeTruthy();
+    expect(kanbanButton).toBeTruthy();
+    expect(secondaryKanban?.querySelector(".database-block-view-select-secondary")).toBeNull();
     act(() => {
-      if (groupSelect) {
-        groupSelect.value = "";
-        groupSelect.dispatchEvent(new Event("change", { bubbles: true }));
-      }
+      kanbanButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    expect(baseProps.onKanbanGroupByChange).toHaveBeenCalledWith(null);
+    expect(baseProps.onToggleKanbanPanel).toHaveBeenCalledTimes(1);
     kanban.cleanup();
 
     const ganttProps = buildProps();

@@ -611,6 +611,40 @@ describe("database-block-parser", () => {
     });
   });
 
+  it("roundtrips normalized Kanban excluded values in saved view specs", () => {
+    const config = createDefaultDatabaseBlockConfig();
+    config.views = {
+      activeViewId: "view-kanban",
+      items: [
+        {
+          id: "view-kanban",
+          name: "Kanban",
+          view: {
+            type: "kanban",
+            groupBy: "status",
+            kanbanExcludedValues: ["Done", "(leer)", "Done", ""],
+          },
+          properties: ["Dateiname", "status"],
+          filters: {
+            id: "root",
+            op: "and",
+            rules: [],
+          },
+          sort: [],
+        },
+      ],
+    };
+
+    const serialized = serializeDatabaseBlockConfig(config);
+    expect(serialized).toContain("kanbanExcludedValues:");
+    expect(serialized).toContain("- Done");
+    expect(serialized).toContain("- '(leer)'");
+
+    const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
+    expect(reparsed.errors).toEqual([]);
+    expect(reparsed.config.views.items[0]?.view.kanbanExcludedValues).toEqual(["Done", "(leer)"]);
+  });
+
   it("roundtrips excluded Pie values in saved view specs", () => {
     const config = createDefaultDatabaseBlockConfig();
     config.views = {

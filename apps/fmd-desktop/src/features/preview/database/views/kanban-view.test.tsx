@@ -207,6 +207,54 @@ describe("DatabaseKanbanView", () => {
     cleanup();
   });
 
+  it("omits disabled group values and their cards", () => {
+    const { container, cleanup } = render(
+      createElement(DatabaseKanbanView, {
+        records: [recordA, recordB],
+        groupAttribute,
+        attributes: [groupAttribute],
+        visibleProperties: [],
+        showCover: false,
+        visibleGroupValues: ["Open"],
+        pendingRecordIds: [],
+        onMoveRecord: vi.fn(),
+        onReorderRecordWithinGroup: vi.fn(),
+        onOpenRecord: vi.fn(),
+      }),
+    );
+
+    expect(findColumnByLabel(container, "Open")).toBeTruthy();
+    expect(findColumnByLabel(container, "Done")).toBeUndefined();
+    expect(findCardByTitle(container, "a")).toBeTruthy();
+    expect(findCardByTitle(container, "b")).toBeNull();
+
+    cleanup();
+  });
+
+  it("renders enabled empty group columns", () => {
+    const { container, cleanup } = render(
+      createElement(DatabaseKanbanView, {
+        records: [recordA],
+        groupAttribute,
+        attributes: [groupAttribute],
+        visibleProperties: [],
+        showCover: false,
+        visibleGroupValues: ["Open", "Done"],
+        pendingRecordIds: [],
+        onMoveRecord: vi.fn(),
+        onReorderRecordWithinGroup: vi.fn(),
+        onOpenRecord: vi.fn(),
+      }),
+    );
+
+    const doneColumn = findColumnByLabel(container, "Done");
+    expect(doneColumn).toBeTruthy();
+    expect(doneColumn?.querySelectorAll(".database-kanban-card").length).toBe(0);
+    expect(doneColumn?.querySelector(".database-kanban-column-header span")?.textContent).toBe("0");
+
+    cleanup();
+  });
+
   it("calls move callback when a card is dropped into another column", () => {
     const onMoveRecord = vi.fn();
     const { container, cleanup } = render(

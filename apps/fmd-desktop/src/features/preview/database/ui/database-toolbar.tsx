@@ -15,19 +15,17 @@ type DatabaseToolbarProps = {
   savedViews: Array<{ id: string; name: string }>;
   sourceLabel: string;
   viewType: DatabaseViewType;
-  kanbanGroupBy: string | null;
-  kanbanGroupByOptions: Array<{ key: string; label: string }>;
   searchQuery: string;
   showSearch: boolean;
   onSearchChange: (nextValue: string) => void;
   onViewTypeChange: (nextView: DatabaseViewType) => void;
-  onKanbanGroupByChange: (nextValue: string | null) => void;
   onSelectSavedView: (viewId: string) => void;
   onCreateSavedView: (name: string) => void;
   isSourcePanelOpen: boolean;
   isFilterPanelOpen: boolean;
   isSortPanelOpen: boolean;
   isPropertiesPanelOpen: boolean;
+  isKanbanPanelOpen: boolean;
   isGanttPanelOpen: boolean;
   isProjectPanelOpen: boolean;
   isPiePanelOpen: boolean;
@@ -36,6 +34,7 @@ type DatabaseToolbarProps = {
   onToggleFilterPanel: () => void;
   onToggleSortPanel: () => void;
   onTogglePropertiesPanel: () => void;
+  onToggleKanbanPanel: () => void;
   onToggleGanttPanel: () => void;
   onToggleProjectPanel: () => void;
   onTogglePiePanel: () => void;
@@ -44,6 +43,7 @@ type DatabaseToolbarProps = {
   sortButtonRef?: DatabaseToolbarButtonRef;
   filterButtonRef?: DatabaseToolbarButtonRef;
   propertiesButtonRef?: DatabaseToolbarButtonRef;
+  kanbanButtonRef?: DatabaseToolbarButtonRef;
   ganttButtonRef?: DatabaseToolbarButtonRef;
   projectButtonRef?: DatabaseToolbarButtonRef;
   pieButtonRef?: DatabaseToolbarButtonRef;
@@ -146,19 +146,17 @@ export const DatabaseToolbar = ({
   savedViews,
   sourceLabel,
   viewType,
-  kanbanGroupBy,
-  kanbanGroupByOptions,
   searchQuery,
   showSearch,
   onSearchChange,
   onViewTypeChange,
-  onKanbanGroupByChange,
   onSelectSavedView,
   onCreateSavedView,
   isSourcePanelOpen,
   isFilterPanelOpen,
   isSortPanelOpen,
   isPropertiesPanelOpen,
+  isKanbanPanelOpen,
   isGanttPanelOpen,
   isProjectPanelOpen,
   isPiePanelOpen,
@@ -167,6 +165,7 @@ export const DatabaseToolbar = ({
   onToggleFilterPanel,
   onToggleSortPanel,
   onTogglePropertiesPanel,
+  onToggleKanbanPanel,
   onToggleGanttPanel,
   onToggleProjectPanel,
   onTogglePiePanel,
@@ -175,6 +174,7 @@ export const DatabaseToolbar = ({
   sortButtonRef,
   filterButtonRef,
   propertiesButtonRef,
+  kanbanButtonRef,
   ganttButtonRef,
   projectButtonRef,
   pieButtonRef,
@@ -529,17 +529,16 @@ export const DatabaseToolbar = ({
 
       <div className="database-block-toolbar-row-secondary">
         {viewType === "kanban" ? (
-          <select
-            className="database-block-view-select database-block-view-select-secondary"
-            value={kanbanGroupBy ?? ""}
-            aria-label="Group by"
-            onChange={(event) => onKanbanGroupByChange(event.target.value || null)}
+          <button
+            ref={kanbanButtonRef}
+            type="button"
+            className={`database-block-toolbar-button${isKanbanPanelOpen ? " is-active" : ""}`}
+            onClick={onToggleKanbanPanel}
+            aria-expanded={isKanbanPanelOpen}
+            data-md-block-control="true"
           >
-            <option value="">Auto</option>
-            {kanbanGroupByOptions.map((option) => (
-              <option key={option.key} value={option.key}>{option.label}</option>
-            ))}
-          </select>
+            Kanban Optionen
+          </button>
         ) : null}
         {viewType === "gantt" ? (
           <button

@@ -18,6 +18,11 @@ import {
   type MonitoringRenderProfile,
 } from "../../../monitoring/monitoring-render-rules";
 import {
+  DATABASE_KANBAN_EMPTY_LABEL,
+  formatDatabaseKanbanGroupLabel,
+  stringifyDatabaseKanbanGroupValue,
+} from "../kanban-values";
+import {
   DRAG_CHANNELS,
   endInternalDrag,
   readInternalDragText,
@@ -32,6 +37,7 @@ type DatabaseKanbanViewProps = {
   visibleProperties: DatabaseAttributeMeta[];
   showCover: boolean;
   orderByGroup?: Record<string, string[]>;
+  visibleGroupValues?: string[];
   monitoringProfiles?: MonitoringRenderProfile[];
   pendingRecordIds: string[];
   onMoveRecord: (
@@ -48,8 +54,6 @@ type DatabaseKanbanViewProps = {
   onOpenExamFromRecord?: (record: DatabaseRecord) => void;
 };
 
-const EMPTY_GROUP_LABEL = "(leer)";
-
 const toLower = (value: string) => value.trim().toLowerCase();
 const isExamFieldKey = (key: string) => toLower(key) === "exam";
 
@@ -61,43 +65,6 @@ const getRecordValueByField = (record: DatabaseRecord, field: string) => {
   const matchedKey = Object.keys(record.normalizedFields)
     .find((key) => toLower(key) === normalizedField);
   return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
-};
-
-const stringifyRawGroupValue = (value: DatabaseNormalizedFieldValue) => {
-  if (value === null || typeof value === "undefined") {
-    return EMPTY_GROUP_LABEL;
-  }
-  if (Array.isArray(value)) {
-    return value.length > 0
-      ? value.map((entry) => String(entry).trim()).filter(Boolean).join(", ")
-      : EMPTY_GROUP_LABEL;
-  }
-  if (typeof value === "object" && "raw" in value) {
-    const raw = String(value.raw ?? "").trim();
-    return raw || EMPTY_GROUP_LABEL;
-  }
-  if (typeof value === "boolean") {
-    return value ? "true" : "false";
-  }
-  const text = String(value).trim();
-  return text || EMPTY_GROUP_LABEL;
-};
-
-const formatGroupLabel = (
-  key: string,
-  rawValue: string,
-  monitoringProfiles: MonitoringRenderProfile[],
-) => {
-  const monitoringText = formatMonitoringCompactText(
-    renderMonitoringValue({
-      attributeKey: key,
-      value: rawValue === EMPTY_GROUP_LABEL ? "" : rawValue,
-      profiles: monitoringProfiles,
-    }),
-    rawValue,
-  );
-  const trimmed = monitoringText.trim();
-  return trimmed || rawValue;
 };
 
 const applyGroupOrder = (
@@ -205,6 +172,7 @@ export const DatabaseKanbanView = ({
   visibleProperties,
   showCover,
   orderByGroup = {},
+  visibleGroupValues,
   monitoringProfiles = [],
   pendingRecordIds,
   onMoveRecord,
@@ -227,10 +195,19 @@ export const DatabaseKanbanView = ({
       return [] as Array<{ key: string; label: string; records: DatabaseRecord[] }>;
     }
     const buckets = new Map<string, DatabaseRecord[]>();
+    const visibleGroupValueSet = typeof visibleGroupValues === "undefined"
+      ? null
+      : new Set(visibleGroupValues.map((entry) => entry.trim()).filter(Boolean));
+    visibleGroupValueSet?.forEach((value) => {
+      buckets.set(value, []);
+    });
     records.forEach((record) => {
-      const rawLabel = stringifyRawGroupValue(
+      const rawLabel = stringifyDatabaseKanbanGroupValue(
         getRecordValueByField(record, groupAttribute.key),
       );
+      if (visibleGroupValueSet && !visibleGroupValueSet.has(rawLabel)) {
+        return;
+      }
       const bucket = buckets.get(rawLabel);
       if (bucket) {
         bucket.push(record);
@@ -241,12 +218,12 @@ export const DatabaseKanbanView = ({
     return Array.from(buckets.entries())
       .map(([key, bucketRecords]) => ({
         key,
-        label: formatGroupLabel(groupAttribute.key, key, monitoringProfiles),
+        label: formatDatabaseKanbanGroupLabel(groupAttribute.key, key, monitoringProfiles),
         records: applyGroupOrder(bucketRecords, orderByGroup[key]),
       }))
       .sort((left, right) =>
         left.label.localeCompare(right.label, undefined, { sensitivity: "base" }));
-  }, [groupAttribute, monitoringProfiles, orderByGroup, records]);
+  }, [groupAttribute, monitoringProfiles, orderByGroup, records, visibleGroupValues]);
   const clearTouchSelection = () => {
     touchSelectedRecordIdRef.current = null;
     touchSourceGroupKeyRef.current = null;
@@ -280,14 +257,14 @@ export const DatabaseKanbanView = ({
       clearTouchSelection();
       return;
     }
-    const previousGroupValue = stringifyRawGroupValue(
+    const previousGroupValue = stringifyDatabaseKanbanGroupValue(
       getRecordValueByField(record, groupAttribute.key),
     );
     if (previousGroupValue === targetGroupKey) {
       // Keep selection when tapping within the same column body/section.
       return;
     }
-    onMoveRecord(record, targetGroupKey === EMPTY_GROUP_LABEL ? "" : targetGroupKey, {
+    onMoveRecord(record, targetGroupKey === DATABASE_KANBAN_EMPTY_LABEL ? "" : targetGroupKey, {
       previousGroupKey: previousGroupValue,
       nextGroupKey: targetGroupKey,
     });
@@ -357,7 +334,7 @@ export const DatabaseKanbanView = ({
       clearTouchSelection();
       return;
     }
-    const nextGroupKey = stringifyRawGroupValue(
+    const nextGroupKey = stringifyDatabaseKanbanGroupValue(
       getRecordValueByField(selectedRecord, groupAttribute.key),
     );
     if (touchSourceGroupKey !== nextGroupKey) {
@@ -448,7 +425,7 @@ export const DatabaseKanbanView = ({
               endInternalDrag(DRAG_CHANNELS.DATABASE_RECORD);
               return;
             }
-            const previousGroupValue = stringifyRawGroupValue(
+            const previousGroupValue = stringifyDatabaseKanbanGroupValue(
               getRecordValueByField(record, groupAttribute.key),
             );
             if (previousGroupValue === group.key) {
@@ -456,7 +433,7 @@ export const DatabaseKanbanView = ({
               return;
             }
             clearTouchSelection();
-            onMoveRecord(record, group.key === EMPTY_GROUP_LABEL ? "" : group.key, {
+            onMoveRecord(record, group.key === DATABASE_KANBAN_EMPTY_LABEL ? "" : group.key, {
               previousGroupKey: previousGroupValue,
               nextGroupKey: group.key,
             });
