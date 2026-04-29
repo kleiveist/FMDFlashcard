@@ -100,7 +100,7 @@ import { DatabaseGanttView } from "./views/gantt-view";
 import { DatabaseKanbanView } from "./views/kanban-view";
 import { DatabasePieView } from "./views/pie-view";
 import { DatabaseProjectView } from "./views/project-view";
-import { DatabaseTableView } from "./views/table-view";
+import { DatabaseTableView, type DatabaseTableBulkEditResult } from "./views/table-view";
 import { type MonitoringRenderProfile } from "../../monitoring/monitoring-render-rules";
 
 type DatabaseBlockProps = {
@@ -2849,6 +2849,175 @@ export const MarkdownHybridDatabaseBlock = ({
     });
   };
 
+  const handleBulkCommitCellEdit = useCallback(
+    async (
+      recordsToUpdate: DatabaseRecord[],
+      attribute: DatabaseAttributeMeta,
+      draftValue: string | boolean,
+    ): Promise<DatabaseTableBulkEditResult> => {
+      const uniqueRecords = Array.from(
+        recordsToUpdate.reduce((map, record) => {
+          if (!map.has(record.fileId)) {
+            map.set(record.fileId, record);
+          }
+          return map;
+        }, new Map<string, DatabaseRecord>()).values(),
+      );
+      const failed: Array<{ recordId: string; path: string; error: string }> = [];
+      const failAll = (error: string): DatabaseTableBulkEditResult => {
+        uniqueRecords.forEach((record) => {
+          failed.push({
+            recordId: record.fileId,
+            path: record.relativePath,
+            error,
+          });
+        });
+        setOperationState(null);
+        setOperationError(error);
+        return {
+          updated: 0,
+          failed: failed.length,
+          failedRecordIds: failed.map((entry) => entry.recordId),
+        };
+      };
+
+      if (!tableCellEditingEnabled || !attribute.editable) {
+        return failAll("Bulk Edit ist fuer dieses Attribut nicht verfuegbar.");
+      }
+      if (uniqueRecords.length < 2) {
+        return failAll("Waehle mindestens zwei Zellen in einer Spalte aus.");
+      }
+
+      const coercion = coerceDatabaseRecordFieldValue(attribute.type, draftValue);
+      if (coercion.error) {
+        return failAll(coercion.error);
+      }
+
+      const latestByRecordId = new Map(records.map((record) => [record.fileId, record]));
+      const pendingKeys = new Set(pendingCellMutations);
+      const previousByRecordId = new Map<string, DatabaseRecord>();
+      const mutationKeysByRecordId = new Map<string, string>();
+
+      uniqueRecords.forEach((requestedRecord) => {
+        const latestRecord = latestByRecordId.get(requestedRecord.fileId);
+        const mutationKey = buildCellMutationKey(requestedRecord.fileId, attribute.key);
+        if (!latestRecord) {
+          failed.push({
+            recordId: requestedRecord.fileId,
+            path: requestedRecord.relativePath,
+            error: "Record is no longer available.",
+          });
+          return;
+        }
+        if (pendingKeys.has(mutationKey)) {
+          failed.push({
+            recordId: latestRecord.fileId,
+            path: latestRecord.relativePath,
+            error: "Cell update is already pending.",
+          });
+          return;
+        }
+        previousByRecordId.set(latestRecord.fileId, latestRecord);
+        mutationKeysByRecordId.set(latestRecord.fileId, mutationKey);
+      });
+
+      if (previousByRecordId.size === 0) {
+        setOperationState(null);
+        setOperationError(
+          failed.length > 0
+            ? failed.map((entry) => `${entry.path}: ${entry.error}`).join(" ")
+            : "Keine Zellen konnten aktualisiert werden.",
+        );
+        return {
+          updated: 0,
+          failed: failed.length,
+          failedRecordIds: failed.map((entry) => entry.recordId),
+        };
+      }
+
+      setRecords((previous) =>
+        previous.map((record) =>
+          previousByRecordId.has(record.fileId)
+            ? applyOptimisticRecordFieldValue(record, attribute.key, coercion.typedValue)
+            : record));
+      previousByRecordId.forEach((previousRecord, recordId) => {
+        const mutationKey = mutationKeysByRecordId.get(recordId);
+        if (mutationKey) {
+          rollbackRecordSnapshotRef.current.set(mutationKey, previousRecord);
+          addPendingCellMutation(mutationKey);
+        }
+        addPendingRecordMutation(recordId);
+      });
+      setActiveCellEdit((previous) =>
+        previous &&
+          previousByRecordId.has(previous.recordId) &&
+          toLower(previous.fieldKey) === toLower(attribute.key)
+          ? null
+          : previous);
+      setOperationError(null);
+
+      let updated = 0;
+
+      for (const previousRecord of previousByRecordId.values()) {
+        const mutationKey = mutationKeysByRecordId.get(previousRecord.fileId);
+        try {
+          const result = await upsertDatabaseRecordField({
+            path: previousRecord.filePath,
+            relativePath: previousRecord.relativePath,
+            key: attribute.key,
+            type: attribute.type,
+            value: draftValue,
+          });
+          if (result.error) {
+            throw new Error(result.error);
+          }
+          fileCacheRef.current.set(previousRecord.filePath, result.markdown);
+          updated += 1;
+        } catch (error) {
+          failed.push({
+            recordId: previousRecord.fileId,
+            path: previousRecord.relativePath,
+            error: error instanceof Error ? error.message : "Failed to update frontmatter.",
+          });
+          setRecords((previous) =>
+            previous.map((record) =>
+              record.fileId === previousRecord.fileId
+                ? previousRecord
+                : record));
+        } finally {
+          if (mutationKey) {
+            rollbackRecordSnapshotRef.current.delete(mutationKey);
+            removePendingCellMutation(mutationKey);
+          }
+          removePendingRecordMutation(previousRecord.fileId);
+        }
+      }
+
+      if (updated > 0) {
+        scheduleVaultAttributeRefresh();
+      }
+      if (failed.length > 0) {
+        const visibleFailures = failed
+          .slice(0, 3)
+          .map((entry) => `${entry.path}: ${entry.error}`)
+          .join(" ");
+        const remaining = failed.length > 3 ? ` ${failed.length - 3} weitere Fehler.` : "";
+        setOperationState(updated > 0 ? `${updated} Wert${updated === 1 ? "" : "e"} gespeichert.` : null);
+        setOperationError(`${failed.length} Wert${failed.length === 1 ? "" : "e"} konnten nicht gespeichert werden. ${visibleFailures}${remaining}`);
+      } else {
+        setOperationError(null);
+        setOperationState(`${updated} Wert${updated === 1 ? "" : "e"} gespeichert.`);
+      }
+
+      return {
+        updated,
+        failed: failed.length,
+        failedRecordIds: failed.map((entry) => entry.recordId),
+      };
+    },
+    [pendingCellMutations, records, scheduleVaultAttributeRefresh, tableCellEditingEnabled],
+  );
+
   const handleMoveKanbanRecord = async (
     record: DatabaseRecord,
     nextGroupValue: string,
@@ -3637,6 +3806,7 @@ export const MarkdownHybridDatabaseBlock = ({
             onStartCellEdit={handleStartCellEdit}
             onEditCellDraftChange={handleCellEditDraftChange}
             onCommitCellEdit={handleCommitCellEdit}
+            onBulkCommitCellEdit={handleBulkCommitCellEdit}
             onCancelCellEdit={handleCancelCellEdit}
           />
         ) : viewType === "kanban" ? (

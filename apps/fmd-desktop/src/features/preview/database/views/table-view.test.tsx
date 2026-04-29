@@ -48,6 +48,19 @@ const taskAttribute: DatabaseAttributeMeta = {
   viewCompatibility: compatibility,
 };
 
+const statusAttribute: DatabaseAttributeMeta = {
+  key: "Status",
+  label: "Status",
+  type: "status",
+  origin: "frontmatter",
+  formula: null,
+  editable: true,
+  sortable: true,
+  filterable: true,
+  aggregatable: false,
+  viewCompatibility: compatibility,
+};
+
 const fileNameAttribute: DatabaseAttributeMeta = {
   key: "Dateiname",
   label: "Dateiname",
@@ -142,6 +155,7 @@ const buildProps = (overrides: Partial<ComponentProps<typeof DatabaseTableView>>
   onStartCellEdit: vi.fn(),
   onEditCellDraftChange: vi.fn(),
   onCommitCellEdit: vi.fn(),
+  onBulkCommitCellEdit: vi.fn(async () => ({ updated: 0, failed: 0, failedRecordIds: [] })),
   onCancelCellEdit: vi.fn(),
   ...overrides,
 });
@@ -371,6 +385,140 @@ describe("DatabaseTableView", () => {
     });
     expect(onOpenExamFromRecord).toHaveBeenCalledTimes(1);
     expect(onOpenExamFromRecord.mock.calls[0]?.[0]?.fileId).toBe("docs/exam.md");
+
+    cleanup();
+  });
+
+  it("bulk edits selected cells in one column", async () => {
+    const firstRecord = buildRecord(1);
+    const secondRecord = buildRecord(2);
+    const onBulkCommitCellEdit = vi.fn(async () => ({
+      updated: 2,
+      failed: 0,
+      failedRecordIds: [],
+    }));
+    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
+      records: [firstRecord, secondRecord],
+      onBulkCommitCellEdit,
+    })));
+
+    const selectors = container.querySelectorAll<HTMLInputElement>(".database-table-cell-select");
+    expect(selectors).toHaveLength(2);
+
+    await act(async () => {
+      selectors[0]?.click();
+      selectors[1]?.click();
+    });
+
+    const bulkEditor = container.querySelector<HTMLInputElement>(".database-table-bulk-editor");
+    expect(bulkEditor).toBeTruthy();
+    await act(async () => {
+      if (bulkEditor) {
+        bulkEditor.value = "Shared";
+        bulkEditor.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+
+    const applyButton = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-table-bulk-edit button"))
+      .find((button) => button.textContent?.includes("Anwenden"));
+    await act(async () => {
+      applyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onBulkCommitCellEdit).toHaveBeenCalledTimes(1);
+    expect(onBulkCommitCellEdit.mock.calls[0]?.[0].map((entry: DatabaseRecord) => entry.fileId)).toEqual([
+      firstRecord.fileId,
+      secondRecord.fileId,
+    ]);
+    expect(onBulkCommitCellEdit.mock.calls[0]?.[1].key).toBe("Task");
+    expect(onBulkCommitCellEdit.mock.calls[0]?.[2]).toBe("Shared");
+    expect(container.querySelector(".database-table-bulk-edit")).toBeNull();
+
+    cleanup();
+  });
+
+  it("keeps failed bulk edit cells selected", async () => {
+    const firstRecord = buildRecord(1);
+    const secondRecord = buildRecord(2);
+    const onBulkCommitCellEdit = vi.fn(async () => ({
+      updated: 1,
+      failed: 1,
+      failedRecordIds: [secondRecord.fileId],
+    }));
+    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
+      records: [firstRecord, secondRecord],
+      onBulkCommitCellEdit,
+    })));
+
+    const selectors = container.querySelectorAll<HTMLInputElement>(".database-table-cell-select");
+    await act(async () => {
+      selectors[0]?.click();
+      selectors[1]?.click();
+    });
+    const bulkEditor = container.querySelector<HTMLInputElement>(".database-table-bulk-editor");
+    await act(async () => {
+      if (bulkEditor) {
+        bulkEditor.value = "Shared";
+        bulkEditor.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+    const applyButton = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-table-bulk-edit button"))
+      .find((button) => button.textContent?.includes("Anwenden"));
+
+    await act(async () => {
+      applyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const nextSelectors = container.querySelectorAll<HTMLInputElement>(".database-table-cell-select");
+    expect(nextSelectors[0]?.checked).toBe(false);
+    expect(nextSelectors[1]?.checked).toBe(true);
+
+    cleanup();
+  });
+
+  it("resets bulk selection when selecting another column", () => {
+    const firstRecord: DatabaseRecord = {
+      ...buildRecord(1),
+      frontmatter: {
+        Task: "Alpha",
+        Status: "Open",
+      },
+      normalizedFields: {
+        ...record.normalizedFields,
+        Task: "Alpha",
+        Status: {
+          raw: "Open",
+        },
+      },
+    };
+    const secondRecord: DatabaseRecord = {
+      ...buildRecord(2),
+      frontmatter: {
+        Task: "Beta",
+        Status: "Done",
+      },
+      normalizedFields: {
+        ...record.normalizedFields,
+        Task: "Beta",
+        Status: {
+          raw: "Done",
+        },
+      },
+    };
+    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
+      records: [firstRecord, secondRecord],
+      columns: [taskAttribute, statusAttribute],
+    })));
+
+    const selectors = container.querySelectorAll<HTMLInputElement>(".database-table-cell-select");
+    act(() => {
+      selectors[0]?.click();
+      selectors[1]?.click();
+    });
+
+    expect(selectors[0]?.checked).toBe(false);
+    expect(selectors[1]?.checked).toBe(true);
+    expect(container.querySelector(".database-table-bulk-edit")?.textContent).toContain("Status");
 
     cleanup();
   });

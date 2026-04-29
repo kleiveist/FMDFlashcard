@@ -5911,6 +5911,45 @@ textarea.preview-editor {
   background: var(--db-surface-raised);
 }
 
+.database-table-bulk-edit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, 240px) auto auto;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--db-border);
+  background: color-mix(in srgb, var(--accent-soft) 16%, var(--db-surface-base));
+  padding: 8px;
+}
+
+.database-table-bulk-edit-summary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--db-text);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.database-table-bulk-editor {
+  inline-size: 100%;
+  min-inline-size: 0;
+  min-height: var(--db-control-height);
+  border-radius: var(--db-radius-control);
+  border: 1px solid var(--db-border);
+  background: var(--field-bg);
+  color: var(--db-text);
+  padding: 2px 8px;
+}
+
+.database-table-bulk-boolean-editor {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--db-text);
+  font-size: 0.78rem;
+}
+
 .database-table-header-row {
   display: grid;
   grid-auto-flow: column;
@@ -6034,6 +6073,10 @@ textarea.preview-editor {
   background: color-mix(in srgb, var(--accent-soft) 24%, transparent);
 }
 
+.database-table-cell.is-selected {
+  background: color-mix(in srgb, var(--accent-soft) 30%, transparent);
+}
+
 .database-table-cell.is-pending {
   opacity: 0.7;
 }
@@ -6052,6 +6095,13 @@ textarea.preview-editor {
   background: var(--field-bg);
   color: var(--db-text);
   padding: 2px 6px;
+}
+
+.database-table-cell-select {
+  flex: 0 0 auto;
+  inline-size: 14px;
+  block-size: 14px;
+  margin: 0;
 }
 
 .database-table-cell-boolean-editor {
@@ -7483,6 +7533,7 @@ textarea.preview-editor {
 .database-block-toolbar-create-view-input:focus-visible,
 .database-block-toolbar-search-input:focus-visible,
 .database-table-cell-editor:focus-visible,
+.database-table-bulk-editor:focus-visible,
 .database-block-panel select:focus-visible,
 .database-block-panel input:not([type="checkbox"]):not([type="radio"]):focus-visible {
   outline: 2px solid var(--db-accent-focus);
@@ -7543,6 +7594,10 @@ textarea.preview-editor {
   .database-block-panel-layer.is-local-properties .database-block-panel {
     width: min(620px, calc(100% - 24px));
     max-height: var(--database-block-panel-max-height, min(78vh, 640px));
+  }
+
+  .database-table-bulk-edit {
+    grid-template-columns: 1fr;
   }
 
   .database-pie-view {

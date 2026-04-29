@@ -8,6 +8,7 @@ import {
   type DragEvent,
   type KeyboardEvent,
   type UIEvent,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -25,6 +26,12 @@ import {
   setDropEffectSafe,
   startInternalDrag,
 } from "../../../../lib/dragDrop";
+
+export type DatabaseTableBulkEditResult = {
+  updated: number;
+  failed: number;
+  failedRecordIds: string[];
+};
 
 type DatabaseTableViewProps = {
   records: DatabaseRecord[];
@@ -49,6 +56,11 @@ type DatabaseTableViewProps = {
     column: DatabaseAttributeMeta,
     draftOverride?: string | boolean,
   ) => void;
+  onBulkCommitCellEdit: (
+    records: DatabaseRecord[],
+    column: DatabaseAttributeMeta,
+    draftValue: string | boolean,
+  ) => Promise<DatabaseTableBulkEditResult>;
   onCancelCellEdit: () => void;
 };
 
@@ -117,6 +129,11 @@ const isInertFormulaAttribute = (attribute: DatabaseAttributeMeta) =>
 const isExamCellEligible = (record: DatabaseRecord, field: string) =>
   getRecordValueByField(record, field) === true;
 
+type BulkCellSelection = {
+  fieldKey: string;
+  recordIds: string[];
+};
+
 export const DatabaseTableView = ({
   records,
   columns,
@@ -132,11 +149,15 @@ export const DatabaseTableView = ({
   onStartCellEdit,
   onEditCellDraftChange,
   onCommitCellEdit,
+  onBulkCommitCellEdit,
   onCancelCellEdit,
 }: DatabaseTableViewProps) => {
   const [scrollTop, setScrollTop] = useState(0);
   const [draggedColumnKey, setDraggedColumnKey] = useState<string | null>(null);
   const [dropTargetColumnKey, setDropTargetColumnKey] = useState<string | null>(null);
+  const [bulkSelection, setBulkSelection] = useState<BulkCellSelection | null>(null);
+  const [bulkDraftValue, setBulkDraftValue] = useState<string | boolean>("");
+  const [isBulkApplying, setIsBulkApplying] = useState(false);
 
   const totalHeight = records.length * TABLE_ROW_HEIGHT;
   const viewportHeight = Math.min(records.length, TABLE_MAX_VISIBLE_ROWS) * TABLE_ROW_HEIGHT;
@@ -180,6 +201,47 @@ export const DatabaseTableView = ({
     });
     return next;
   }, [sortRules]);
+  const selectedColumn = useMemo(
+    () => bulkSelection
+      ? columns.find((column) => toLower(column.key) === toLower(bulkSelection.fieldKey)) ?? null
+      : null,
+    [bulkSelection, columns],
+  );
+  const selectedRecordIds = useMemo(
+    () => new Set(bulkSelection?.recordIds ?? []),
+    [bulkSelection],
+  );
+  const selectedRecords = useMemo(
+    () => records.filter((entry) => selectedRecordIds.has(entry.fileId)),
+    [records, selectedRecordIds],
+  );
+  const hasSelectedPendingCells = Boolean(
+    selectedColumn &&
+    selectedRecords.some((entry) => pendingByKey.has(buildMutationKey(entry.fileId, selectedColumn.key))),
+  );
+
+  useEffect(() => {
+    if (!bulkSelection) {
+      return;
+    }
+    const availableRecordIds = new Set(records.map((entry) => entry.fileId));
+    const nextRecordIds = bulkSelection.recordIds.filter((recordId) => availableRecordIds.has(recordId));
+    const hasSelectedColumn = columns.some((column) => toLower(column.key) === toLower(bulkSelection.fieldKey));
+    if (!hasSelectedColumn || nextRecordIds.length === 0) {
+      setBulkSelection(null);
+      return;
+    }
+    if (nextRecordIds.length !== bulkSelection.recordIds.length) {
+      setBulkSelection({
+        ...bulkSelection,
+        recordIds: nextRecordIds,
+      });
+    }
+  }, [bulkSelection, columns, records]);
+
+  useEffect(() => {
+    setBulkDraftValue(selectedColumn?.type === "boolean" ? false : "");
+  }, [selectedColumn?.key, selectedColumn?.type]);
 
   const handleScroll = (event: UIEvent<HTMLDivElement>) => {
     setScrollTop(event.currentTarget.scrollTop);
@@ -252,12 +314,137 @@ export const DatabaseTableView = ({
     }
   };
 
+  const toggleBulkCellSelection = (record: DatabaseRecord, column: DatabaseAttributeMeta) => {
+    setBulkSelection((previous) => {
+      const sameColumn = previous && toLower(previous.fieldKey) === toLower(column.key);
+      if (!sameColumn) {
+        return {
+          fieldKey: column.key,
+          recordIds: [record.fileId],
+        };
+      }
+      const selected = new Set(previous.recordIds);
+      if (selected.has(record.fileId)) {
+        selected.delete(record.fileId);
+      } else {
+        selected.add(record.fileId);
+      }
+      const nextRecordIds = Array.from(selected);
+      return nextRecordIds.length > 0
+        ? {
+          fieldKey: previous.fieldKey,
+          recordIds: nextRecordIds,
+        }
+        : null;
+    });
+  };
+
+  const handleApplyBulkEdit = async () => {
+    if (!selectedColumn || selectedRecords.length < 2 || isBulkApplying) {
+      return;
+    }
+    setIsBulkApplying(true);
+    try {
+      const result = await onBulkCommitCellEdit(selectedRecords, selectedColumn, bulkDraftValue);
+      if (result.failedRecordIds.length > 0) {
+        const failedRecordIds = new Set(result.failedRecordIds);
+        setBulkSelection({
+          fieldKey: selectedColumn.key,
+          recordIds: selectedRecords
+            .filter((entry) => failedRecordIds.has(entry.fileId))
+            .map((entry) => entry.fileId),
+        });
+        return;
+      }
+      setBulkSelection(null);
+    } finally {
+      setIsBulkApplying(false);
+    }
+  };
+
+  const handleBulkEditorKeyDown = (
+    event: KeyboardEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setBulkSelection(null);
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void handleApplyBulkEdit();
+    }
+  };
+
   if (columns.length === 0) {
     return <div className="database-table-empty">Keine Attribute gefunden.</div>;
   }
 
+  const bulkEditor = selectedColumn && selectedRecords.length > 0 ? (
+    <div className="database-table-bulk-edit" data-md-block-control="true">
+      <span className="database-table-bulk-edit-summary">
+        {`${selectedRecords.length} Zelle${selectedRecords.length === 1 ? "" : "n"} in ${selectedColumn.label || selectedColumn.key}`}
+      </span>
+      {selectedColumn.type === "boolean" ? (
+        <label className="database-table-bulk-boolean-editor">
+          <input
+            type="checkbox"
+            checked={Boolean(bulkDraftValue)}
+            onChange={(event) => setBulkDraftValue(event.target.checked)}
+            onKeyDown={handleBulkEditorKeyDown}
+            disabled={isBulkApplying}
+            data-md-block-control="true"
+          />
+          Wert setzen
+        </label>
+      ) : (
+        <>
+          <input
+            type={resolveEditorInputType(selectedColumn.type)}
+            className="database-table-bulk-editor"
+            value={typeof bulkDraftValue === "string" ? bulkDraftValue : ""}
+            placeholder="Gemeinsamer Wert"
+            onChange={(event) => setBulkDraftValue(event.target.value)}
+            onKeyDown={handleBulkEditorKeyDown}
+            list={selectedColumn.type === "select" || selectedColumn.type === "status"
+              ? `database-bulk-cell-options-${toLower(selectedColumn.key).replace(/[^a-z0-9_-]/g, "-")}`
+              : undefined}
+            disabled={isBulkApplying}
+            data-md-block-control="true"
+          />
+          {(selectedColumn.type === "select" || selectedColumn.type === "status") ? (
+            <datalist id={`database-bulk-cell-options-${toLower(selectedColumn.key).replace(/[^a-z0-9_-]/g, "-")}`}>
+              {(valueOptionsByField.get(toLower(selectedColumn.key)) ?? []).map((optionValue) => (
+                <option key={optionValue} value={optionValue} />
+              ))}
+            </datalist>
+          ) : null}
+        </>
+      )}
+      <button
+        type="button"
+        className="database-block-toolbar-button"
+        onClick={() => void handleApplyBulkEdit()}
+        disabled={selectedRecords.length < 2 || hasSelectedPendingCells || isBulkApplying}
+        data-md-block-control="true"
+      >
+        Anwenden
+      </button>
+      <button
+        type="button"
+        className="database-block-toolbar-button"
+        onClick={() => setBulkSelection(null)}
+        disabled={isBulkApplying}
+        data-md-block-control="true"
+      >
+        Auswahl loeschen
+      </button>
+    </div>
+  ) : null;
+
   return (
     <div className="database-table-view">
+      {bulkEditor}
       <div className="database-table-header-row" role="row">
         {columns.map((column) => {
           const sortRule = sortRuleByKey.get(toLower(column.key)) ?? null;
@@ -324,6 +511,10 @@ export const DatabaseTableView = ({
               >
                 {columns.map((column) => {
                   const isInertFormulaCell = isInertFormulaAttribute(column);
+                  const isSelectableCell = editable && column.editable && !isInertFormulaCell;
+                  const isSelectedCell = bulkSelection !== null &&
+                    toLower(bulkSelection.fieldKey) === toLower(column.key) &&
+                    selectedRecordIds.has(record.fileId);
                   const isEditingCell = !isInertFormulaCell &&
                     activeEditCell !== null &&
                     activeEditCell.recordId === record.fileId &&
@@ -333,6 +524,8 @@ export const DatabaseTableView = ({
                     <span
                       key={`${record.fileId}:${column.key}`}
                       className={`database-table-cell${isEditingCell ? " is-editing" : ""}${
+                        isSelectedCell ? " is-selected" : ""
+                      }${
                         pendingByKey.has(buildMutationKey(record.fileId, column.key))
                           ? " is-pending"
                           : ""
@@ -346,6 +539,18 @@ export const DatabaseTableView = ({
                         onStartCellEdit(record, column);
                       }}
                     >
+                      {isSelectableCell ? (
+                        <input
+                          type="checkbox"
+                          className="database-table-cell-select"
+                          checked={isSelectedCell}
+                          aria-label={`Zelle fuer Bulk Edit auswaehlen: ${column.label || column.key} ${record.relativePath}`}
+                          onChange={() => toggleBulkCellSelection(record, column)}
+                          onDoubleClick={(event) => event.stopPropagation()}
+                          disabled={pendingByKey.has(buildMutationKey(record.fileId, column.key))}
+                          data-md-block-control="true"
+                        />
+                      ) : null}
                       {isEditingCell && activeEditCell ? (
                         column.type === "boolean" ? (
                           <label className="database-table-cell-boolean-editor">
