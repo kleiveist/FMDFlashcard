@@ -3,7 +3,11 @@ import { act, createElement, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { DatabaseProjectView } from "./project-view";
-import { type DatabaseAttributeMeta, type DatabaseRecord } from "../database-types";
+import {
+  type DatabaseAttributeMeta,
+  type DatabaseProjectBarFillConfig,
+  type DatabaseRecord,
+} from "../database-types";
 
 const render = (element: ReactElement, viewportWidth = 1400) => {
   Object.defineProperty(window, "innerWidth", {
@@ -660,7 +664,10 @@ describe("DatabaseProjectView", () => {
   });
 
   it("applies the active bar rule only to currently visible project records", async () => {
-    const onApplyBarFillConfigToVisible = vi.fn(async () => undefined);
+    const onApplyBarFillConfigToVisible = vi.fn(async (
+      _config: DatabaseProjectBarFillConfig,
+      _records: DatabaseRecord[],
+    ) => undefined);
     const { container, cleanup } = render(
       createElement(DatabaseProjectView, {
         records: [fillRecord, unplacedRecord],
@@ -696,14 +703,18 @@ describe("DatabaseProjectView", () => {
     });
 
     expect(onApplyBarFillConfigToVisible).toHaveBeenCalledTimes(1);
-    expect(onApplyBarFillConfigToVisible.mock.calls[0]?.[0]).toMatchObject({
+    const applyCall = onApplyBarFillConfigToVisible.mock.calls[0];
+    expect(applyCall).toBeDefined();
+    if (!applyCall) {
+      throw new Error("Expected project rule apply call.");
+    }
+    expect(applyCall[0]).toMatchObject({
       recordId: "fill",
       attributeKey: "StatusCode",
       mode: "text-code",
       mappings: [{ from: "text3", to: 100 }],
     });
-    expect(onApplyBarFillConfigToVisible.mock.calls[0]?.[1].map((entry: DatabaseRecord) => entry.fileId))
-      .toEqual(["fill"]);
+    expect(applyCall[1].map((entry) => entry.fileId)).toEqual(["fill"]);
 
     cleanup();
   });

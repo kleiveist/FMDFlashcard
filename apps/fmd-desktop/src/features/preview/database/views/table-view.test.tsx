@@ -392,7 +392,11 @@ describe("DatabaseTableView", () => {
   it("bulk edits selected cells in one column", async () => {
     const firstRecord = buildRecord(1);
     const secondRecord = buildRecord(2);
-    const onBulkCommitCellEdit = vi.fn(async () => ({
+    const onBulkCommitCellEdit = vi.fn(async (
+      _records: DatabaseRecord[],
+      _column: DatabaseAttributeMeta,
+      _draftValue: string | boolean,
+    ) => ({
       updated: 2,
       failed: 0,
       failedRecordIds: [],
@@ -426,12 +430,17 @@ describe("DatabaseTableView", () => {
     });
 
     expect(onBulkCommitCellEdit).toHaveBeenCalledTimes(1);
-    expect(onBulkCommitCellEdit.mock.calls[0]?.[0].map((entry: DatabaseRecord) => entry.fileId)).toEqual([
+    const bulkCall = onBulkCommitCellEdit.mock.calls[0];
+    expect(bulkCall).toBeDefined();
+    if (!bulkCall) {
+      throw new Error("Expected bulk edit call.");
+    }
+    expect(bulkCall[0].map((entry) => entry.fileId)).toEqual([
       firstRecord.fileId,
       secondRecord.fileId,
     ]);
-    expect(onBulkCommitCellEdit.mock.calls[0]?.[1].key).toBe("Task");
-    expect(onBulkCommitCellEdit.mock.calls[0]?.[2]).toBe("Shared");
+    expect(bulkCall[1].key).toBe("Task");
+    expect(bulkCall[2]).toBe("Shared");
     expect(container.querySelector(".database-table-bulk-edit")).toBeNull();
 
     cleanup();
