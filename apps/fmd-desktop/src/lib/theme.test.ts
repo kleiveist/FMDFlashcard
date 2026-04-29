@@ -9,13 +9,13 @@ import { describe, expect, it } from "vitest";
 import { applyDesignMode } from "./theme";
 
 describe("theme helpers", () => {
-  it("applies edge design mode on the document root dataset", () => {
+  it("applies desktop design mode on the document root dataset", () => {
     if (typeof document !== "undefined") {
       const root = document.documentElement;
       const previousMode = root.dataset.designMode;
       try {
-        applyDesignMode("edge");
-        expect(root.dataset.designMode).toBe("edge");
+        applyDesignMode("desktop");
+        expect(root.dataset.designMode).toBe("desktop");
       } finally {
         if (typeof previousMode === "string") {
           root.dataset.designMode = previousMode;
@@ -36,8 +36,8 @@ describe("theme helpers", () => {
     });
 
     try {
-      applyDesignMode("edge");
-      expect(root.dataset.designMode).toBe("edge");
+      applyDesignMode("desktop");
+      expect(root.dataset.designMode).toBe("desktop");
     } finally {
       if (previousDescriptor) {
         Object.defineProperty(globalThis, "document", previousDescriptor);

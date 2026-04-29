@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 const previewCss = readFileSync(new URL("./preview.css", import.meta.url), "utf8");
-const edgeCss = readFileSync(new URL("./edge.css", import.meta.url), "utf8");
+const desktopCss = readFileSync(new URL("./desktop.css", import.meta.url), "utf8");
 
 describe("database theme contracts", () => {
   it("defines accent/frame/control/panel token groups for the database block", () => {
@@ -65,7 +65,7 @@ describe("database theme contracts", () => {
     expect(previewCss).toContain(".database-kanban-card.is-touch-selected");
   });
 
-  it("keeps non-edge dropdown and panel backgrounds opaque", () => {
+  it("keeps non-desktop dropdown and panel backgrounds opaque", () => {
     expect(previewCss).toContain("--db-panel-bg: var(--panel);");
     expect(previewCss).toMatch(
       /\.database-block-toolbar-dropdown-panel\s*\{[\s\S]*?background-color:\s*var\(--db-panel-bg,\s*var\(--panel\)\);[\s\S]*?background:\s*var\(--db-panel-bg,\s*var\(--panel\)\);[\s\S]*?background-image:\s*none;[\s\S]*?\}/,
@@ -74,16 +74,16 @@ describe("database theme contracts", () => {
       /\.database-block-panel\s*\{[\s\S]*?background-color:\s*var\(--db-panel-bg,\s*var\(--panel\)\);[\s\S]*?background:\s*var\(--db-panel-bg,\s*var\(--panel\)\);[\s\S]*?background-image:\s*none;[\s\S]*?\}/,
     );
     expect(previewCss).toMatch(
-      /:root:not\(\[data-design-mode="edge"\]\)\s*:is\([\s\S]*?\.database-block-view-dropdown[\s\S]*?\.database-block-search-dropdown[\s\S]*?\.database-block-properties-panel[\s\S]*?\)\s*\{[\s\S]*?background-color:\s*var\(--panel\);[\s\S]*?background:\s*var\(--panel\);[\s\S]*?background-image:\s*none;[\s\S]*?box-shadow:\s*none;[\s\S]*?\}/,
+      /:root:not\(\[data-design-mode="desktop"\]\)\s*:is\([\s\S]*?\.database-block-view-dropdown[\s\S]*?\.database-block-search-dropdown[\s\S]*?\.database-block-properties-panel[\s\S]*?\)\s*\{[\s\S]*?background-color:\s*var\(--panel\);[\s\S]*?background:\s*var\(--panel\);[\s\S]*?background-image:\s*none;[\s\S]*?box-shadow:\s*none;[\s\S]*?\}/,
     );
   });
 
-  it("keeps edge mode database surfaces hard and flat", () => {
-    expect(edgeCss).toMatch(
-      /:root\[data-design-mode="edge"\]\s*\.database-block\s*\{[\s\S]*?--db-radius-block:\s*0;[\s\S]*?--db-frame-shadow:\s*none;[\s\S]*?--db-panel-shadow:\s*none;[\s\S]*?\}/,
+  it("keeps desktop mode database surfaces compact and flat", () => {
+    expect(desktopCss).toMatch(
+      /:root\[data-design-mode="desktop"\]\s*\.database-block\s*\{[\s\S]*?--db-radius-block:\s*8px;[\s\S]*?--db-radius-control:\s*6px;[\s\S]*?--db-radius-pill:\s*6px;[\s\S]*?--db-frame-shadow:\s*none;[\s\S]*?--db-panel-shadow:\s*none;[\s\S]*?\}/,
     );
-    expect(edgeCss).toMatch(
-      /:root\[data-design-mode="edge"\]\s*:is\([\s\S]*?\.database-block-panel[\s\S]*?\.database-block-toolbar-dropdown-panel[\s\S]*?\)\s*\{[\s\S]*?box-shadow:\s*none;[\s\S]*?background-image:\s*none;[\s\S]*?\}/,
+    expect(desktopCss).toMatch(
+      /:root\[data-design-mode="desktop"\]\s*:is\([\s\S]*?\.database-block-panel[\s\S]*?\.database-block-toolbar-dropdown-panel[\s\S]*?\)\s*\{[\s\S]*?box-shadow:\s*none;[\s\S]*?background-image:\s*none;[\s\S]*?\}/,
     );
   });
 

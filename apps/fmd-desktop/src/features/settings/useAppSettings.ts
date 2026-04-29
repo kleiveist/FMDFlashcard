@@ -1126,10 +1126,12 @@ export const normalizeSettings = (
 ): NormalizedSettingsResult => {
   const stored = settings ?? {};
   const storedTheme = stored.theme === "dark" ? "dark" : DEFAULT_THEME;
-  const storedDesignMode =
-    stored.design_mode === "modern" || stored.design_mode === "edge"
+  const storedDesignMode: DesignMode =
+    stored.design_mode === "modern" || stored.design_mode === "desktop"
       ? stored.design_mode
-      : DEFAULT_DESIGN_MODE;
+      : stored.design_mode === "edge"
+        ? "desktop"
+        : DEFAULT_DESIGN_MODE;
   const storedAccentRaw = stored.accent_color ?? DEFAULT_ACCENT;
   const storedAccent = normalizeHex(storedAccentRaw);
   const resolvedAccent = isValidHex(storedAccent) ? storedAccent : DEFAULT_ACCENT;

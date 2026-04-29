@@ -21,21 +21,23 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-const isEdgeDesignMode = () =>
+const isDesktopDesignMode = () =>
   typeof document !== "undefined" &&
-  document.documentElement.dataset.designMode === "edge";
+  document.documentElement.dataset.designMode === "desktop";
+
+const DESKTOP_ICON_RADIUS = 1;
 
 const getStrokeProps = () => {
-  const edge = isEdgeDesignMode();
+  const desktop = isDesktopDesignMode();
   return {
-    strokeWidth: edge ? "1.9" : "1.8",
-    strokeLinecap: edge ? "square" : "round",
-    strokeLinejoin: edge ? "miter" : "round",
+    strokeWidth: desktop ? "1.9" : "1.8",
+    strokeLinecap: desktop ? "square" : "round",
+    strokeLinejoin: desktop ? "miter" : "round",
   } as const;
 };
 
 export const FolderIcon = () => {
-  const edge = isEdgeDesignMode();
+  const desktop = isDesktopDesignMode();
   const stroke = getStrokeProps();
   return (
     <svg
@@ -47,7 +49,7 @@ export const FolderIcon = () => {
       strokeLinecap={stroke.strokeLinecap}
       strokeLinejoin={stroke.strokeLinejoin}
     >
-      {edge ? (
+      {desktop ? (
         <>
           <path d="M3 6h6l2 2h10v11H3V6z" />
           <line x1="3" y1="8" x2="21" y2="8" />
@@ -60,7 +62,7 @@ export const FolderIcon = () => {
 };
 
 export const FileIcon = () => {
-  const edge = isEdgeDesignMode();
+  const desktop = isDesktopDesignMode();
   const stroke = getStrokeProps();
   return (
     <svg
@@ -72,7 +74,7 @@ export const FileIcon = () => {
       strokeLinecap={stroke.strokeLinecap}
       strokeLinejoin={stroke.strokeLinejoin}
     >
-      {edge ? (
+      {desktop ? (
         <>
           <path d="M7 4h8l4 4v12H7V4z" />
           <path d="M15 4v4h4" />
@@ -164,7 +166,7 @@ export const MenuIcon = () => {
 };
 
 export const CardsIcon = () => {
-  const edge = isEdgeDesignMode();
+  const desktop = isDesktopDesignMode();
   const stroke = getStrokeProps();
   return (
     <svg
@@ -176,14 +178,26 @@ export const CardsIcon = () => {
       strokeLinecap={stroke.strokeLinecap}
       strokeLinejoin={stroke.strokeLinejoin}
     >
-      <rect x="5" y="6" width="12" height="7" rx={edge ? 0 : 2} />
-      <rect x="7" y="11" width="12" height="7" rx={edge ? 0 : 2} />
+      <rect
+        x="5"
+        y="6"
+        width="12"
+        height="7"
+        rx={desktop ? DESKTOP_ICON_RADIUS : 2}
+      />
+      <rect
+        x="7"
+        y="11"
+        width="12"
+        height="7"
+        rx={desktop ? DESKTOP_ICON_RADIUS : 2}
+      />
     </svg>
   );
 };
 
 export const GridEventIcon = () => {
-  const edge = isEdgeDesignMode();
+  const desktop = isDesktopDesignMode();
   const stroke = getStrokeProps();
   return (
     <svg
@@ -195,7 +209,13 @@ export const GridEventIcon = () => {
       strokeLinecap={stroke.strokeLinecap}
       strokeLinejoin={stroke.strokeLinejoin}
     >
-      <rect x="4" y="4" width="16" height="16" rx={edge ? 0 : 2} />
+      <rect
+        x="4"
+        y="4"
+        width="16"
+        height="16"
+        rx={desktop ? DESKTOP_ICON_RADIUS : 2}
+      />
       <line x1="4" y1="9" x2="20" y2="9" />
       <line x1="9" y1="9" x2="9" y2="20" />
       <line x1="15" y1="9" x2="15" y2="20" />
@@ -205,7 +225,7 @@ export const GridEventIcon = () => {
 };
 
 export const HelpIcon = () => {
-  const edge = isEdgeDesignMode();
+  const desktop = isDesktopDesignMode();
   const stroke = getStrokeProps();
   return (
     <svg
@@ -217,7 +237,7 @@ export const HelpIcon = () => {
       strokeLinecap={stroke.strokeLinecap}
       strokeLinejoin={stroke.strokeLinejoin}
     >
-      {edge ? (
+      {desktop ? (
         <>
           <rect x="4" y="4" width="16" height="16" />
           <path d="M9.5 9a2.5 2.5 0 1 1 5 1c0 1.4-1.5 2-2.4 2.7-0.4 0.3-0.6 0.7-0.6 1.3" />
@@ -282,7 +302,7 @@ export const AppearanceIcon = () => {
 };
 
 export const KeyboardIcon = () => {
-  const edge = isEdgeDesignMode();
+  const desktop = isDesktopDesignMode();
   const stroke = getStrokeProps();
   return (
     <svg
@@ -294,7 +314,13 @@ export const KeyboardIcon = () => {
       strokeLinecap={stroke.strokeLinecap}
       strokeLinejoin={stroke.strokeLinejoin}
     >
-      <rect x="3" y="6" width="18" height="12" rx={edge ? 0 : 2} />
+      <rect
+        x="3"
+        y="6"
+        width="18"
+        height="12"
+        rx={desktop ? DESKTOP_ICON_RADIUS : 2}
+      />
       <line x1="7" y1="10" x2="17" y2="10" />
       <line x1="7" y1="14" x2="11" y2="14" />
       <line x1="13" y1="14" x2="17" y2="14" />
@@ -303,7 +329,7 @@ export const KeyboardIcon = () => {
 };
 
 export const GlobeIcon = () => {
-  const edge = isEdgeDesignMode();
+  const desktop = isDesktopDesignMode();
   const stroke = getStrokeProps();
   return (
     <svg
@@ -315,7 +341,7 @@ export const GlobeIcon = () => {
       strokeLinecap={stroke.strokeLinecap}
       strokeLinejoin={stroke.strokeLinejoin}
     >
-      {edge ? (
+      {desktop ? (
         <path d="M7 3h10l4 4v10l-4 4H7l-4-4V7z" />
       ) : (
         <circle cx="12" cy="12" r="9" />

@@ -187,11 +187,13 @@ export const AppearanceSection = ({
                     </button>
                     <button
                       type="button"
-                      className={`design-mode-option ${designMode === "edge" ? "active" : ""}`}
-                      onClick={() => onDesignModeChange("edge")}
-                      aria-pressed={designMode === "edge"}
+                      className={`design-mode-option ${
+                        designMode === "desktop" ? "active" : ""
+                      }`}
+                      onClick={() => onDesignModeChange("desktop")}
+                      aria-pressed={designMode === "desktop"}
                     >
-                      {tSettings(language, "settings.appearance.designMode.edge")}
+                      {tSettings(language, "settings.appearance.designMode.desktop")}
                     </button>
                   </div>
                   <span className="helper-text">

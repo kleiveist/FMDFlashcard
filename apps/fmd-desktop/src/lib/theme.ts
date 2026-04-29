@@ -19,7 +19,7 @@
 import { buildAccentTokens } from "./color";
 
 export type ThemeMode = "light" | "dark";
-export type DesignMode = "smart" | "modern" | "edge";
+export type DesignMode = "smart" | "modern" | "desktop";
 
 export const applyTheme = (theme: ThemeMode) => {
   const root = document.documentElement;

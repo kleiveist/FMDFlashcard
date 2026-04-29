@@ -444,11 +444,39 @@
   --ui-button-field-shadow-active: inset 0 0 0 1px color-mix(in srgb, var(--accent-border) 55%, transparent);
 }
 
-:root[data-design-mode="edge"] {
-  --ui-radius-panel: 0;
-  --ui-radius-control: 0;
-  --ui-radius-menu: 0;
-  --ui-radius-chip: 0;
+:root[data-design-mode="desktop"] {
+  --bg: #e4e6ea;
+  --bg-strong: #dce0e4;
+  --page-bg-base: #e4e6ea;
+  --page-bg-spot-base: #eceef1;
+  --page-bg-edge-base: #d7dbe0;
+  --page-bg: var(--page-bg-base);
+  --panel: #f1f2f4;
+  --left-bg-base: #e1e4e8;
+  --left-bg-tint: var(--left-bg-base);
+  --panel-warm: #e9ecef;
+  --line: rgba(64, 70, 78, 0.24);
+  --line-soft: rgba(64, 70, 78, 0.14);
+  --block-bg-base: #f2f3f5;
+  --block-bg: var(--block-bg-base);
+  --block-border-base: var(--line-soft);
+  --block-border: var(--block-border-base);
+  --field-bg-base: #eceef1;
+  --field-bg: var(--field-bg-base);
+  --field-border-base: var(--line-soft);
+  --field-border: var(--field-border-base);
+  --preview-bg: #f3f4f6;
+  --md-surface-bg: var(--preview-bg);
+  --md-table-bg: var(--preview-bg);
+  --md-table-head-bg: #e4e7eb;
+  --md-editor-bg: var(--md-surface-bg);
+  --md-editor-border: var(--line-soft);
+  --md-editor-border-hover: var(--line);
+  --md-editor-focus-border: var(--line);
+  --ui-radius-panel: 8px;
+  --ui-radius-control: 6px;
+  --ui-radius-menu: 8px;
+  --ui-radius-chip: 6px;
   --ui-space-2xs: 2px;
   --ui-space-xs: 4px;
   --ui-space-sm: 6px;
@@ -481,31 +509,31 @@
   --ui-sidebar-shell-padding: 10px;
   --ui-sidebar-shell-gap: 10px;
   --ui-sidebar-shell-shadow: none;
-  --field-border: transparent;
+  --field-border: var(--line-soft);
   --ui-nav-button-bg: transparent;
   --ui-nav-button-border: transparent;
-  --ui-nav-button-hover-bg: var(--accent-weak-bg);
-  --ui-nav-button-active-bg: var(--accent-active-bg);
-  --ui-nav-button-active-border: transparent;
+  --ui-nav-button-hover-bg: rgba(var(--accent-rgb), 0.08);
+  --ui-nav-button-active-bg: rgba(var(--accent-rgb), 0.12);
+  --ui-nav-button-active-border: rgba(var(--accent-rgb), 0.24);
   --ui-tree-row-bg: transparent;
-  --ui-tree-row-hover-bg: var(--accent-weak-bg);
-  --ui-tree-row-active-bg: var(--accent-active-bg);
+  --ui-tree-row-hover-bg: rgba(var(--accent-rgb), 0.07);
+  --ui-tree-row-active-bg: rgba(var(--accent-rgb), 0.11);
   --ui-tree-row-active-border: var(--accent-border);
   --ui-tree-row-selected-border: var(--accent-strong);
   --ui-control-font-size: 0.76rem;
   --ui-control-font-size-compact: 0.72rem;
   --ui-control-padding-x: var(--ui-space-sm);
-  --ui-control-bg: transparent;
-  --ui-control-bg-hover: var(--accent-weak-bg);
-  --ui-control-bg-active: var(--accent-active-bg);
-  --ui-control-bg-open: var(--accent-active-bg);
-  --ui-control-bg-disabled: transparent;
-  --ui-control-bg-readonly: transparent;
-  --ui-control-border: transparent;
+  --ui-control-bg: var(--field-bg);
+  --ui-control-bg-hover: color-mix(in srgb, var(--field-bg) 88%, var(--accent) 12%);
+  --ui-control-bg-active: color-mix(in srgb, var(--field-bg) 82%, var(--accent) 18%);
+  --ui-control-bg-open: color-mix(in srgb, var(--field-bg) 82%, var(--accent) 18%);
+  --ui-control-bg-disabled: color-mix(in srgb, var(--field-bg) 90%, var(--bg-strong));
+  --ui-control-bg-readonly: color-mix(in srgb, var(--field-bg) 94%, var(--bg-strong));
+  --ui-control-border: var(--field-border);
   --ui-control-border-hover: var(--accent-border);
   --ui-control-border-active: var(--accent-border);
   --ui-control-border-open: var(--accent-border);
-  --ui-control-border-disabled: transparent;
+  --ui-control-border-disabled: var(--line-soft);
   --ui-control-border-readonly: var(--ui-border-subtle);
   --ui-control-shadow-rest: none;
   --ui-control-shadow-hover: none;
@@ -515,12 +543,12 @@
   --ui-button-field-font-size: 0.74rem;
   --ui-button-field-bg: transparent;
   --ui-button-field-border: transparent;
-  --ui-button-field-hover-bg: var(--accent-weak-bg);
+  --ui-button-field-hover-bg: rgba(var(--accent-rgb), 0.08);
   --ui-button-field-hover-border: transparent;
-  --ui-button-field-active-bg: var(--accent-active-bg);
-  --ui-button-field-active-border: transparent;
-  --ui-button-field-open-bg: var(--accent-active-bg);
-  --ui-button-field-open-border: transparent;
+  --ui-button-field-active-bg: rgba(var(--accent-rgb), 0.12);
+  --ui-button-field-active-border: rgba(var(--accent-rgb), 0.24);
+  --ui-button-field-open-bg: rgba(var(--accent-rgb), 0.12);
+  --ui-button-field-open-border: rgba(var(--accent-rgb), 0.24);
   --ui-button-field-disabled-bg: transparent;
   --ui-button-field-disabled-border: transparent;
   --ui-button-field-shadow-rest: none;
@@ -542,10 +570,32 @@
   --ui-button-field-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.32);
 }
 
-:root[data-theme="dark"][data-design-mode="edge"] {
+:root[data-theme="dark"][data-design-mode="desktop"] {
+  --bg: #191b1f;
+  --bg-strong: #1d2026;
+  --page-bg-base: #191b1f;
+  --page-bg-spot-base: #20242a;
+  --page-bg-edge-base: #15181d;
+  --page-bg: var(--page-bg-base);
+  --panel: #202329;
+  --left-bg-base: #1b1e24;
+  --left-bg-tint: var(--left-bg-base);
+  --panel-warm: #24272e;
+  --field-bg-base: #252930;
+  --field-bg: var(--field-bg-base);
+  --field-border-base: rgba(221, 227, 235, 0.12);
+  --line: rgba(221, 227, 235, 0.18);
+  --line-soft: rgba(221, 227, 235, 0.11);
+  --block-bg-base: #202329;
+  --block-bg: var(--block-bg-base);
+  --preview-bg: #1f2228;
+  --md-surface-bg: var(--preview-bg);
+  --md-table-bg: var(--preview-bg);
+  --md-table-head-bg: #262a31;
+  --md-editor-bg: var(--md-surface-bg);
   --ui-border-subtle: color-mix(in srgb, var(--line) 82%, transparent);
   --ui-border-hover: color-mix(in srgb, var(--accent-border) 90%, var(--line));
-  --field-border: transparent;
+  --field-border: var(--line-soft);
   --ui-nav-button-bg: transparent;
   --ui-nav-button-border: transparent;
   --ui-nav-button-hover-bg: color-mix(
@@ -558,7 +608,7 @@
     var(--accent-active-bg) 80%,
     transparent
   );
-  --ui-nav-button-active-border: transparent;
+  --ui-nav-button-active-border: color-mix(in srgb, var(--accent-border) 80%, var(--line));
   --ui-tree-row-hover-bg: var(--ui-nav-button-hover-bg);
   --ui-tree-row-active-bg: var(--ui-nav-button-active-bg);
   --ui-control-border-hover: color-mix(in srgb, var(--accent-border) 92%, var(--line));

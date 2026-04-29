@@ -11,7 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AppearanceSection } from "./AppearanceSection";
 
 describe("AppearanceSection", () => {
-  it("renders edge design option and marks it active", () => {
+  it("renders desktop design option and marks it active", () => {
     const markup = renderToStaticMarkup(
       createElement(AppearanceSection, {
         language: "en",
@@ -32,13 +32,14 @@ describe("AppearanceSection", () => {
         onEditorBlueprintGridIntensityChange: vi.fn(),
         onDesignModeChange: vi.fn(),
         onThemeToggle: vi.fn(),
-        designMode: "edge",
+        designMode: "desktop",
         theme: "light",
       }),
     );
 
-    expect(markup).toContain("Edge Design");
-    expect(markup).toMatch(/design-mode-option active[^>]*>Edge Design</);
+    expect(markup).toContain("Desktop Design");
+    expect(markup).toMatch(/design-mode-option active[^>]*>Desktop Design</);
+    expect(markup).not.toContain("Edge Design");
     expect(markup).toContain("aria-label=\"Designmodus auswaehlen\"");
     expect(markup).toContain("aria-label=\"Appearance pages\"");
     expect(markup).toContain(">Accent Editor<");

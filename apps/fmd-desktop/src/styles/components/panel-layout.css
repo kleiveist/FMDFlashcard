@@ -186,7 +186,7 @@
 }
 
 :root[data-design-mode="modern"],
-:root[data-design-mode="edge"] {
+:root[data-design-mode="desktop"] {
   --study-header-quick-action-size: 34px;
   --study-header-quick-action-icon-size: 16px;
 }
@@ -234,8 +234,8 @@
   transform: translate3d(0, 0, 0);
 }
 
-:root[data-design-mode="edge"] .study-header-quick-action-button {
-  border-radius: 0;
+:root[data-design-mode="desktop"] .study-header-quick-action-button {
+  border-radius: var(--ui-radius-control);
 }
 
 .focus-toggle {

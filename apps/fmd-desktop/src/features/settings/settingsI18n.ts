@@ -64,7 +64,7 @@ const SETTINGS_EN = {
   "settings.appearance.designMode": "Design mode",
   "settings.appearance.designMode.smart": "Smart Design",
   "settings.appearance.designMode.modern": "Modern Design",
-  "settings.appearance.designMode.edge": "Edge Design",
+  "settings.appearance.designMode.desktop": "Desktop Design",
   "settings.appearance.designMode.helper":
     "Controls shape, density, navigation and surface style app-wide.",
   "settings.appearance.accentColor": "Accent color",
@@ -412,7 +412,7 @@ const SETTINGS_DE: Record<SettingsI18nKey, string> = {
   "settings.appearance.designMode": "Designmodus",
   "settings.appearance.designMode.smart": "Smart Design",
   "settings.appearance.designMode.modern": "Modern Design",
-  "settings.appearance.designMode.edge": "Edge Design",
+  "settings.appearance.designMode.desktop": "Desktop Design",
   "settings.appearance.designMode.helper":
     "Steuert Form, Dichte, Navigation und Flächenstil app-weit.",
   "settings.appearance.accentColor": "Akzentfarbe",

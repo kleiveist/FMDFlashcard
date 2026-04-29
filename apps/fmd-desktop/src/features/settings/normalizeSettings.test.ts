@@ -68,12 +68,20 @@ describe("normalizeSettings", () => {
     expect(settings.designMode).toBe("modern");
   });
 
-  it("restores edge design mode when valid", () => {
+  it("restores desktop design mode when valid", () => {
+    const { settings } = normalizeSettings({
+      design_mode: "desktop",
+    } as AppSettings);
+
+    expect(settings.designMode).toBe("desktop");
+  });
+
+  it("migrates legacy edge design mode to desktop", () => {
     const { settings } = normalizeSettings({
       design_mode: "edge",
     } as AppSettings);
 
-    expect(settings.designMode).toBe("edge");
+    expect(settings.designMode).toBe("desktop");
   });
 
   it("supports new and legacy cursor accessory settings keys", () => {

@@ -294,6 +294,37 @@ export const StudySectionNav = ({
         >
           <MenuIcon />
         </button>
+        {showNoteAction || showSettingsAction ? (
+          <div className="study-section-header-actions">
+            {showNoteAction ? (
+              <button
+                ref={noteActionRef}
+                type="button"
+                className={`nav-item study-section-note-toggle ${
+                  isNoteActionActive ? "active" : ""
+                }`}
+                onClick={onNoteAction}
+                aria-label="Open note"
+                aria-haspopup="dialog"
+                aria-expanded={isNoteActionActive}
+                title={noteLabel}
+              >
+                <MarkdownIcon />
+              </button>
+            ) : null}
+            {showSettingsAction ? (
+              <button
+                type="button"
+                className="nav-item study-section-settings-toggle"
+                onClick={onSettingsAction}
+                aria-label={settingsActionLabel}
+                title={settingsActionLabel}
+              >
+                <SettingsIcon />
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         <div className="study-section-primary-group">
           {PRIMARY_GROUPS.map((group) => {
             const Icon = group.icon;
@@ -317,33 +348,6 @@ export const StudySectionNav = ({
             );
           })}
         </div>
-        {showNoteAction ? (
-          <button
-            ref={noteActionRef}
-            type="button"
-            className={`nav-item study-section-note-toggle ${
-              isNoteActionActive ? "active" : ""
-            }`}
-            onClick={onNoteAction}
-            aria-label="Open note"
-            aria-haspopup="dialog"
-            aria-expanded={isNoteActionActive}
-            title={noteLabel}
-          >
-            <MarkdownIcon />
-          </button>
-        ) : null}
-        {showSettingsAction ? (
-          <button
-            type="button"
-            className="nav-item study-section-settings-toggle"
-            onClick={onSettingsAction}
-            aria-label={settingsActionLabel}
-            title={settingsActionLabel}
-          >
-            <SettingsIcon />
-          </button>
-        ) : null}
       </nav>
       <div
         ref={primaryOverflow.measureRef}
@@ -353,6 +357,20 @@ export const StudySectionNav = ({
         <span className="nav-item study-section-menu-toggle" aria-hidden="true">
           <MenuIcon />
         </span>
+        {showNoteAction || showSettingsAction ? (
+          <span className="study-section-header-actions" aria-hidden="true">
+            {showNoteAction ? (
+              <span className="nav-item study-section-note-toggle" aria-hidden="true">
+                <MarkdownIcon />
+              </span>
+            ) : null}
+            {showSettingsAction ? (
+              <span className="nav-item study-section-settings-toggle" aria-hidden="true">
+                <SettingsIcon />
+              </span>
+            ) : null}
+          </span>
+        ) : null}
         <span className="study-section-primary-group" aria-hidden="true">
           {PRIMARY_GROUPS.map((group) => (
             <span
@@ -363,16 +381,6 @@ export const StudySectionNav = ({
             </span>
           ))}
         </span>
-        {showNoteAction ? (
-          <span className="nav-item study-section-note-toggle" aria-hidden="true">
-            <MarkdownIcon />
-          </span>
-        ) : null}
-        {showSettingsAction ? (
-          <span className="nav-item study-section-settings-toggle" aria-hidden="true">
-            <SettingsIcon />
-          </span>
-        ) : null}
       </div>
       {isSecondaryVisible ? (
         <nav
