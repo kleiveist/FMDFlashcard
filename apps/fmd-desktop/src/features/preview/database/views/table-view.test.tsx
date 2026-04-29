@@ -406,13 +406,16 @@ describe("DatabaseTableView", () => {
       onBulkCommitCellEdit,
     })));
 
-    const selectors = container.querySelectorAll<HTMLInputElement>(".database-table-cell-select");
-    expect(selectors).toHaveLength(2);
+    expect(container.querySelector(".database-table-cell-select")).toBeNull();
+    const cells = container.querySelectorAll<HTMLElement>(".database-table-cell");
+    expect(cells).toHaveLength(2);
 
     await act(async () => {
-      selectors[0]?.click();
-      selectors[1]?.click();
+      cells[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      cells[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true, ctrlKey: true }));
     });
+    expect(cells[0]?.getAttribute("aria-selected")).toBe("true");
+    expect(cells[1]?.getAttribute("aria-selected")).toBe("true");
 
     const bulkEditor = container.querySelector<HTMLInputElement>(".database-table-bulk-editor");
     expect(bulkEditor).toBeTruthy();
@@ -459,10 +462,10 @@ describe("DatabaseTableView", () => {
       onBulkCommitCellEdit,
     })));
 
-    const selectors = container.querySelectorAll<HTMLInputElement>(".database-table-cell-select");
+    const cells = container.querySelectorAll<HTMLElement>(".database-table-cell");
     await act(async () => {
-      selectors[0]?.click();
-      selectors[1]?.click();
+      cells[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      cells[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true, ctrlKey: true }));
     });
     const bulkEditor = container.querySelector<HTMLInputElement>(".database-table-bulk-editor");
     await act(async () => {
@@ -478,9 +481,68 @@ describe("DatabaseTableView", () => {
       applyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    const nextSelectors = container.querySelectorAll<HTMLInputElement>(".database-table-cell-select");
-    expect(nextSelectors[0]?.checked).toBe(false);
-    expect(nextSelectors[1]?.checked).toBe(true);
+    const nextCells = container.querySelectorAll<HTMLElement>(".database-table-cell");
+    expect(nextCells[0]?.getAttribute("aria-selected")).toBeNull();
+    expect(nextCells[1]?.getAttribute("aria-selected")).toBe("true");
+
+    cleanup();
+  });
+
+  it("selects a contiguous cell range with shift click", async () => {
+    const firstRecord = buildRecord(1);
+    const secondRecord = buildRecord(2);
+    const thirdRecord = buildRecord(3);
+    const onBulkCommitCellEdit = vi.fn(async (
+      _records: DatabaseRecord[],
+      _column: DatabaseAttributeMeta,
+      _draftValue: string | boolean,
+    ) => ({
+      updated: 3,
+      failed: 0,
+      failedRecordIds: [],
+    }));
+    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
+      records: [firstRecord, secondRecord, thirdRecord],
+      onBulkCommitCellEdit,
+    })));
+
+    const cells = container.querySelectorAll<HTMLElement>(".database-table-cell");
+    await act(async () => {
+      cells[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      cells[2]?.dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: true }));
+    });
+
+    expect(Array.from(cells).map((cell) => cell.getAttribute("aria-selected"))).toEqual([
+      "true",
+      "true",
+      "true",
+    ]);
+    const bulkEditor = container.querySelector<HTMLInputElement>(".database-table-bulk-editor");
+    await act(async () => {
+      if (bulkEditor) {
+        bulkEditor.value = "Range";
+        bulkEditor.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+    const applyButton = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-table-bulk-edit button"))
+      .find((button) => button.textContent?.includes("Anwenden"));
+
+    await act(async () => {
+      applyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onBulkCommitCellEdit).toHaveBeenCalledTimes(1);
+    const bulkCall = onBulkCommitCellEdit.mock.calls[0];
+    expect(bulkCall).toBeDefined();
+    if (!bulkCall) {
+      throw new Error("Expected range bulk edit call.");
+    }
+    expect(bulkCall[0].map((entry) => entry.fileId)).toEqual([
+      firstRecord.fileId,
+      secondRecord.fileId,
+      thirdRecord.fileId,
+    ]);
+    expect(bulkCall[2]).toBe("Range");
 
     cleanup();
   });
@@ -519,14 +581,14 @@ describe("DatabaseTableView", () => {
       columns: [taskAttribute, statusAttribute],
     })));
 
-    const selectors = container.querySelectorAll<HTMLInputElement>(".database-table-cell-select");
+    const cells = container.querySelectorAll<HTMLElement>(".database-table-cell");
     act(() => {
-      selectors[0]?.click();
-      selectors[1]?.click();
+      cells[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      cells[1]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(selectors[0]?.checked).toBe(false);
-    expect(selectors[1]?.checked).toBe(true);
+    expect(cells[0]?.getAttribute("aria-selected")).toBeNull();
+    expect(cells[1]?.getAttribute("aria-selected")).toBe("true");
     expect(container.querySelector(".database-table-bulk-edit")?.textContent).toContain("Status");
 
     cleanup();

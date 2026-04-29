@@ -7,6 +7,7 @@
 import {
   type DragEvent,
   type KeyboardEvent,
+  type MouseEvent,
   type UIEvent,
   useEffect,
   useMemo,
@@ -132,6 +133,15 @@ const isExamCellEligible = (record: DatabaseRecord, field: string) =>
 type BulkCellSelection = {
   fieldKey: string;
   recordIds: string[];
+  anchorRecordId: string;
+};
+
+const isInteractiveCellTarget = (target: EventTarget | null, currentTarget: HTMLElement) => {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  const interactive = target.closest("button, input, select, textarea, [contenteditable='true']");
+  return Boolean(interactive && currentTarget.contains(interactive));
 };
 
 export const DatabaseTableView = ({
@@ -232,9 +242,13 @@ export const DatabaseTableView = ({
       return;
     }
     if (nextRecordIds.length !== bulkSelection.recordIds.length) {
+      const nextAnchorRecordId = nextRecordIds.includes(bulkSelection.anchorRecordId)
+        ? bulkSelection.anchorRecordId
+        : nextRecordIds[0]!;
       setBulkSelection({
         ...bulkSelection,
         recordIds: nextRecordIds,
+        anchorRecordId: nextAnchorRecordId,
       });
     }
   }, [bulkSelection, columns, records]);
@@ -314,13 +328,61 @@ export const DatabaseTableView = ({
     }
   };
 
-  const toggleBulkCellSelection = (record: DatabaseRecord, column: DatabaseAttributeMeta) => {
+  const resolveSelectableRangeRecordIds = (
+    fromRecordId: string,
+    toRecordId: string,
+    column: DatabaseAttributeMeta,
+  ) => {
+    const fromIndex = records.findIndex((entry) => entry.fileId === fromRecordId);
+    const toIndex = records.findIndex((entry) => entry.fileId === toRecordId);
+    if (fromIndex < 0 || toIndex < 0) {
+      return [toRecordId];
+    }
+    const start = Math.min(fromIndex, toIndex);
+    const end = Math.max(fromIndex, toIndex);
+    return records
+      .slice(start, end + 1)
+      .filter((entry) => !pendingByKey.has(buildMutationKey(entry.fileId, column.key)))
+      .map((entry) => entry.fileId);
+  };
+
+  const handleBulkCellClick = (
+    event: MouseEvent<HTMLElement>,
+    record: DatabaseRecord,
+    column: DatabaseAttributeMeta,
+  ) => {
+    if (
+      !editable ||
+      !column.editable ||
+      isInertFormulaAttribute(column) ||
+      pendingByKey.has(buildMutationKey(record.fileId, column.key)) ||
+      isInteractiveCellTarget(event.target, event.currentTarget)
+    ) {
+      return;
+    }
+    const isToggleSelection = event.ctrlKey || event.metaKey;
+    const isRangeSelection = event.shiftKey;
+    if (isToggleSelection || isRangeSelection) {
+      event.preventDefault();
+    }
     setBulkSelection((previous) => {
       const sameColumn = previous && toLower(previous.fieldKey) === toLower(column.key);
-      if (!sameColumn) {
+      if (isRangeSelection && sameColumn) {
+        const anchorRecordId = previous.anchorRecordId;
+        const rangeRecordIds = resolveSelectableRangeRecordIds(anchorRecordId, record.fileId, column);
+        return rangeRecordIds.length > 0
+          ? {
+            fieldKey: previous.fieldKey,
+            recordIds: rangeRecordIds,
+            anchorRecordId,
+          }
+          : null;
+      }
+      if (!sameColumn || !isToggleSelection) {
         return {
           fieldKey: column.key,
           recordIds: [record.fileId],
+          anchorRecordId: record.fileId,
         };
       }
       const selected = new Set(previous.recordIds);
@@ -330,10 +392,14 @@ export const DatabaseTableView = ({
         selected.add(record.fileId);
       }
       const nextRecordIds = Array.from(selected);
+      const nextAnchorRecordId = nextRecordIds.includes(previous.anchorRecordId)
+        ? previous.anchorRecordId
+        : nextRecordIds[0] ?? record.fileId;
       return nextRecordIds.length > 0
         ? {
           fieldKey: previous.fieldKey,
           recordIds: nextRecordIds,
+          anchorRecordId: nextAnchorRecordId,
         }
         : null;
     });
@@ -348,11 +414,17 @@ export const DatabaseTableView = ({
       const result = await onBulkCommitCellEdit(selectedRecords, selectedColumn, bulkDraftValue);
       if (result.failedRecordIds.length > 0) {
         const failedRecordIds = new Set(result.failedRecordIds);
+        const nextRecordIds = selectedRecords
+          .filter((entry) => failedRecordIds.has(entry.fileId))
+          .map((entry) => entry.fileId);
+        if (nextRecordIds.length === 0) {
+          setBulkSelection(null);
+          return;
+        }
         setBulkSelection({
           fieldKey: selectedColumn.key,
-          recordIds: selectedRecords
-            .filter((entry) => failedRecordIds.has(entry.fileId))
-            .map((entry) => entry.fileId),
+          recordIds: nextRecordIds,
+          anchorRecordId: nextRecordIds[0]!,
         });
         return;
       }
@@ -523,7 +595,7 @@ export const DatabaseTableView = ({
                   return (
                     <span
                       key={`${record.fileId}:${column.key}`}
-                      className={`database-table-cell${isEditingCell ? " is-editing" : ""}${
+                      className={`database-table-cell${isSelectableCell ? " is-selectable" : ""}${isEditingCell ? " is-editing" : ""}${
                         isSelectedCell ? " is-selected" : ""
                       }${
                         pendingByKey.has(buildMutationKey(record.fileId, column.key))
@@ -532,6 +604,8 @@ export const DatabaseTableView = ({
                       }${isInertFormulaCell ? " is-inert" : ""}`}
                       role="cell"
                       aria-readonly={isInertFormulaCell ? "true" : undefined}
+                      aria-selected={isSelectedCell ? "true" : undefined}
+                      onClick={(event) => handleBulkCellClick(event, record, column)}
                       onDoubleClick={() => {
                         if (isInertFormulaCell || !editable || !column.editable) {
                           return;
@@ -539,18 +613,6 @@ export const DatabaseTableView = ({
                         onStartCellEdit(record, column);
                       }}
                     >
-                      {isSelectableCell ? (
-                        <input
-                          type="checkbox"
-                          className="database-table-cell-select"
-                          checked={isSelectedCell}
-                          aria-label={`Zelle fuer Bulk Edit auswaehlen: ${column.label || column.key} ${record.relativePath}`}
-                          onChange={() => toggleBulkCellSelection(record, column)}
-                          onDoubleClick={(event) => event.stopPropagation()}
-                          disabled={pendingByKey.has(buildMutationKey(record.fileId, column.key))}
-                          data-md-block-control="true"
-                        />
-                      ) : null}
                       {isEditingCell && activeEditCell ? (
                         column.type === "boolean" ? (
                           <label className="database-table-cell-boolean-editor">
