@@ -79,6 +79,102 @@ type ParseMarkdownPipeTableOptions = SplitPipeRowOptions & {
 
 const normalizeLineBreaks = (value: string) => value.replace(/\r\n?/g, "\n");
 
+type InlinePipeState = {
+  bracketDepth: number;
+  inCodeSpan: boolean;
+  inWikiLink: boolean;
+  linkDestinationDepth: number;
+  pendingLinkDestination: boolean;
+};
+
+const createInlinePipeState = (): InlinePipeState => ({
+  bracketDepth: 0,
+  inCodeSpan: false,
+  inWikiLink: false,
+  linkDestinationDepth: 0,
+  pendingLinkDestination: false,
+});
+
+const isEscapedAt = (value: string, index: number) => {
+  let slashCount = 0;
+  for (let cursor = index - 1; cursor >= 0 && value[cursor] === "\\"; cursor -= 1) {
+    slashCount += 1;
+  }
+  return slashCount % 2 === 1;
+};
+
+const isPipeDelimiter = (value: string, index: number, state: InlinePipeState) =>
+  value[index] === "|" &&
+  !isEscapedAt(value, index) &&
+  !state.inCodeSpan &&
+  !state.inWikiLink &&
+  state.bracketDepth === 0 &&
+  state.linkDestinationDepth === 0;
+
+const updateInlinePipeState = (
+  value: string,
+  index: number,
+  state: InlinePipeState,
+) => {
+  const char = value[index] ?? "";
+  if (!char || isEscapedAt(value, index)) {
+    return;
+  }
+
+  if (char === "`") {
+    state.inCodeSpan = !state.inCodeSpan;
+    state.pendingLinkDestination = false;
+    return;
+  }
+  if (state.inCodeSpan) {
+    return;
+  }
+
+  if (state.inWikiLink) {
+    if (char === "]" && value[index + 1] === "]") {
+      state.inWikiLink = false;
+    }
+    return;
+  }
+
+  if (state.linkDestinationDepth > 0) {
+    if (char === "(") {
+      state.linkDestinationDepth += 1;
+    } else if (char === ")") {
+      state.linkDestinationDepth -= 1;
+    }
+    return;
+  }
+
+  if (state.pendingLinkDestination) {
+    if (char === "(") {
+      state.linkDestinationDepth = 1;
+      state.pendingLinkDestination = false;
+      return;
+    }
+    if (!/\s/.test(char)) {
+      state.pendingLinkDestination = false;
+    }
+  }
+
+  if (char === "[" && value[index + 1] === "[") {
+    state.inWikiLink = true;
+    state.pendingLinkDestination = false;
+    return;
+  }
+
+  if (char === "[") {
+    state.bracketDepth += 1;
+    state.pendingLinkDestination = false;
+    return;
+  }
+
+  if (char === "]" && state.bracketDepth > 0) {
+    state.bracketDepth -= 1;
+    state.pendingLinkDestination = state.bracketDepth === 0;
+  }
+};
+
 export const normalizeMarkdownTableCellPreviewValue = (value: string) =>
   normalizeLineBreaks(value)
     .replace(/(?:<br\s*\/?>\s*){2,}/gi, "\n\n")
@@ -111,32 +207,30 @@ const splitPipeRow = (
     return null;
   }
 
-  let hasPipe = false;
-  for (let index = 0; index < normalized.length; index += 1) {
-    if (normalized[index] === "|" && normalized[index - 1] !== "\\") {
-      hasPipe = true;
-      break;
-    }
-  }
-  if (!hasPipe && options?.requirePipeDelimiter !== false) {
-    return null;
-  }
-  if (!hasPipe && options?.requirePipeDelimiter === false) {
-    return [normalized.trim()];
-  }
-
   const segments: string[] = [];
   let current = "";
+  let hasDelimiter = false;
+  let inlineState = createInlinePipeState();
   for (let index = 0; index < normalized.length; index += 1) {
     const char = normalized[index] ?? "";
-    if (char === "|" && normalized[index - 1] !== "\\") {
+    if (isPipeDelimiter(normalized, index, inlineState)) {
+      hasDelimiter = true;
       segments.push(current);
       current = "";
+      inlineState = createInlinePipeState();
       continue;
     }
     current += char;
+    updateInlinePipeState(normalized, index, inlineState);
   }
   segments.push(current);
+
+  if (!hasDelimiter && options?.requirePipeDelimiter !== false) {
+    return null;
+  }
+  if (!hasDelimiter && options?.requirePipeDelimiter === false) {
+    return [normalized.trim()];
+  }
 
   if (segments.length <= 1) {
     return null;
@@ -299,13 +393,15 @@ export const parseMarkdownPipeTable = (raw: string): MarkdownPipeTableModel | nu
 const escapeMarkdownPipeCell = (value: string) => {
   const normalized = value.replace(/\r\n?/g, "\n").replace(/\n/g, "<br>");
   let output = "";
+  const inlineState = createInlinePipeState();
   for (let index = 0; index < normalized.length; index += 1) {
     const char = normalized[index] ?? "";
-    if (char === "|" && normalized[index - 1] !== "\\") {
+    if (isPipeDelimiter(normalized, index, inlineState)) {
       output += "\\|";
       continue;
     }
     output += char;
+    updateInlinePipeState(normalized, index, inlineState);
   }
   return output.trim();
 };

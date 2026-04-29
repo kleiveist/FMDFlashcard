@@ -8490,6 +8490,61 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
+  it("preserves wikilink table cells when editing a neighboring cell", () => {
+    withImmediateRaf(() => {
+      let latestMarkdown = [
+        "| Answer Token | Graphic |",
+        "| --- | --- |",
+        "| The graphic shows an N:M relationship in Martin notation. | ![[png/IDBS01-Notation04-T1.png|Martin N:M]] |",
+        "| The graphic shows an optional C:CN relationship. | ![[png/IDBS01-Notation02-T5.png|Optional C:CN]] |",
+      ].join("\n");
+
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState(latestMarkdown);
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="table-cell-wikilink-neighbor-preserve"
+              markdown={markdown}
+              mode="edit"
+              onChange={(value) => {
+                latestMarkdown = value;
+                setMarkdown(value);
+              }}
+              renderPreview={(value: string) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+
+      const firstBodyCell = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)",
+      );
+      dispatchMouseDown(firstBodyCell);
+
+      const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+      expect(textarea).toBeTruthy();
+      applyTextareaInput(textarea, "Edited answer token");
+
+      act(() => {
+        textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+      });
+
+      const nextMarkdown = readMarkdown();
+      expect(nextMarkdown).toContain("| Edited answer token | ![[png/IDBS01-Notation04-T1.png|Martin N:M]] |");
+      expect(nextMarkdown).toContain(
+        "| The graphic shows an optional C:CN relationship. | ![[png/IDBS01-Notation02-T5.png|Optional C:CN]] |",
+      );
+      expect(nextMarkdown.match(/!\[\[png\/IDBS01-[^\]]+\|[^\]]+\]\]/g)).toHaveLength(2);
+      cleanup();
+    });
+  });
+
   it("persists multiline table cell edits when switching to another cell", () => {
     withImmediateRaf(() => {
       let latestMarkdown = [

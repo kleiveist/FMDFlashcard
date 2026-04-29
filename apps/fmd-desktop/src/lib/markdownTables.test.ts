@@ -32,6 +32,28 @@ describe("markdownTables", () => {
     expect(serializeMarkdownPipeTable(parsed!)).toBe(raw);
   });
 
+  it("keeps pipes inside markdown links and wikilinks inside the owning table cell", () => {
+    const raw = [
+      "| Answer | Graphic |",
+      "| --- | --- |",
+      "| Choice A | ![[png/IDBS01-Notation04-T1.png|320]] |",
+      "| [Docs | label](https://example.test/a|b) | [[Folder/Page|Page label]] |",
+    ].join("\n");
+
+    const parsed = parseMarkdownPipeTable(raw);
+    expect(parsed).toBeTruthy();
+    expect(parsed?.bodyRows).toHaveLength(2);
+    expect(parsed?.bodyRows[0]?.map((cell) => cell.raw)).toEqual([
+      "Choice A",
+      "![[png/IDBS01-Notation04-T1.png|320]]",
+    ]);
+    expect(parsed?.bodyRows[1]?.map((cell) => cell.raw)).toEqual([
+      "[Docs | label](https://example.test/a|b)",
+      "[[Folder/Page|Page label]]",
+    ]);
+    expect(serializeMarkdownPipeTable(parsed!)).toBe(raw);
+  });
+
   it("repairs missing boundary pipes and uneven rows", () => {
     const repaired = repairMarkdownPipeTable([
       "Name | Value",
