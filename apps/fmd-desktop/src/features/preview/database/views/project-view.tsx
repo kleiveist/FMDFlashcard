@@ -50,6 +50,10 @@ type DatabaseProjectViewProps = {
   onOpenRecord?: (record: DatabaseRecord) => void;
   onOpenExamFromRecord?: (record: DatabaseRecord) => void;
   onChangeBarFillConfig?: (recordId: string, config: DatabaseProjectBarFillConfig | null) => void;
+  onApplyBarFillConfigToVisible?: (
+    config: DatabaseProjectBarFillConfig,
+    records: DatabaseRecord[],
+  ) => Promise<void>;
   onCommitPlacement?: (params: {
     record: DatabaseRecord;
     startSlot: number;
@@ -493,6 +497,7 @@ export const DatabaseProjectView = ({
   onOpenRecord,
   onOpenExamFromRecord,
   onChangeBarFillConfig,
+  onApplyBarFillConfigToVisible,
   onCommitPlacement,
 }: DatabaseProjectViewProps) => {
   const [interaction, setInteraction] = useState<InteractionState | null>(null);
@@ -506,6 +511,7 @@ export const DatabaseProjectView = ({
   const [configDraft, setConfigDraft] = useState<ProjectBarConfigDraft>(
     createDefaultProjectBarConfigDraft(attributes),
   );
+  const [isApplyingBarRule, setIsApplyingBarRule] = useState(false);
 
   const barFillConfigByRecordId = useMemo(() => {
     const map = new Map<string, DatabaseProjectBarFillConfig>();
@@ -608,6 +614,22 @@ export const DatabaseProjectView = ({
     }
     onChangeBarFillConfig?.(activeConfigRecordId, null);
     handleCloseBarConfig();
+  };
+
+  const handleApplyBarConfigToVisible = async () => {
+    if (!activeConfigRecordId || !onApplyBarFillConfigToVisible || isApplyingBarRule) {
+      return;
+    }
+    const config = toNormalizedProjectBarConfig(activeConfigRecordId, configDraft);
+    if (!config) {
+      return;
+    }
+    setIsApplyingBarRule(true);
+    try {
+      await onApplyBarFillConfigToVisible(config, visibleRecords);
+    } finally {
+      setIsApplyingBarRule(false);
+    }
   };
 
   useEffect(() => {
@@ -1186,10 +1208,21 @@ export const DatabaseProjectView = ({
           )}
 
           <footer className="database-project-bar-config-actions">
+            {onApplyBarFillConfigToVisible ? (
+              <button
+                type="button"
+                className="database-block-toolbar-button"
+                onClick={() => void handleApplyBarConfigToVisible()}
+                disabled={!configDraft.attributeKey.trim() || visibleRecords.length === 0 || isApplyingBarRule}
+              >
+                Regel auf sichtbare anwenden
+              </button>
+            ) : null}
             <button
               type="button"
               className="database-block-toolbar-button"
               onClick={handleRemoveBarConfig}
+              disabled={isApplyingBarRule}
             >
               Verknuepfung entfernen
             </button>
@@ -1197,6 +1230,7 @@ export const DatabaseProjectView = ({
               type="button"
               className="database-block-toolbar-button"
               onClick={handleCloseBarConfig}
+              disabled={isApplyingBarRule}
             >
               Abbrechen
             </button>
@@ -1204,7 +1238,7 @@ export const DatabaseProjectView = ({
               type="button"
               className="database-block-toolbar-button"
               onClick={handleSaveBarConfig}
-              disabled={!configDraft.attributeKey.trim()}
+              disabled={!configDraft.attributeKey.trim() || isApplyingBarRule}
             >
               Speichern
             </button>

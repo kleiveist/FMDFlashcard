@@ -82,6 +82,7 @@ import {
 import {
   bulkUpsertDatabaseAttribute,
   coerceDatabaseRecordFieldValue,
+  type DatabaseRecordFieldDraftValue,
   upsertDatabaseRecordField,
 } from "./frontmatter-update";
 import { compareNaturalPath } from "../../../lib/naturalSort";
@@ -804,6 +805,76 @@ const pickProjectNumericAttribute = (
     return preferred;
   }
   return null;
+};
+
+const cloneProjectBarFillConfigForRecord = (
+  template: DatabaseProjectBarFillConfig,
+  recordId: string,
+): DatabaseProjectBarFillConfig => ({
+  recordId,
+  attributeKey: template.attributeKey,
+  mode: template.mode,
+  ...(template.mode === "text-code"
+    ? {
+      mappings: (template.mappings ?? []).map((mapping) => ({ ...mapping })),
+    }
+    : {
+      ...(typeof template.min === "number" ? { min: template.min } : {}),
+      ...(typeof template.max === "number" ? { max: template.max } : {}),
+    }),
+});
+
+const applyProjectBarFillConfigToRecordIds = (
+  currentConfigs: DatabaseProjectBarFillConfig[],
+  template: DatabaseProjectBarFillConfig,
+  recordIds: string[],
+): DatabaseProjectBarFillConfig[] => {
+  const targetIds = new Set(recordIds);
+  return normalizeProjectBarFillConfigs([
+    ...cloneProjectBarFillConfigs(currentConfigs).filter((entry) => !targetIds.has(entry.recordId)),
+    ...recordIds.map((recordId) => cloneProjectBarFillConfigForRecord(template, recordId)),
+  ]);
+};
+
+const resolveProjectBarFillRuleTargetValue = (
+  config: DatabaseProjectBarFillConfig,
+  attribute: DatabaseAttributeMeta,
+): { value: DatabaseRecordFieldDraftValue | null; error: string | null } => {
+  if (!attribute.editable || attribute.origin !== "frontmatter") {
+    return {
+      value: null,
+      error: "Die Regel kann nur auf editierbare Frontmatter-Attribute angewendet werden.",
+    };
+  }
+  if (config.mode === "text-code") {
+    const fullMapping = (config.mappings ?? []).find((mapping) => {
+      const target = asFiniteNumber(mapping.to);
+      return mapping.from.trim().length > 0 && target !== null && target >= 100;
+    });
+    if (!fullMapping) {
+      return {
+        value: null,
+        error: "Text/Code-Regel benoetigt eine Zuordnung mit Ziel 100%.",
+      };
+    }
+    return {
+      value: fullMapping.from.trim(),
+      error: null,
+    };
+  }
+
+  const min = asFiniteNumber(config.min);
+  const max = asFiniteNumber(config.max);
+  if (min === null || max === null || max <= min) {
+    return {
+      value: null,
+      error: "Numerische Regel benoetigt ein gueltiges Minimum und Maximum.",
+    };
+  }
+  return {
+    value: max,
+    error: null,
+  };
 };
 
 export const MarkdownHybridDatabaseBlock = ({
@@ -2103,6 +2174,214 @@ export const MarkdownHybridDatabaseBlock = ({
       },
     });
   }, [persistConfig]);
+
+  const handleApplyProjectBarFillConfigToVisible = useCallback(
+    async (
+      config: DatabaseProjectBarFillConfig,
+      visibleProjectRecords: DatabaseRecord[],
+    ) => {
+      if (!allowCellEditing) {
+        setOperationState(null);
+        setOperationError("Project-Regeln koennen im Lesemodus nicht angewendet werden.");
+        return;
+      }
+
+      const template = normalizeProjectBarFillConfigs(
+        cloneProjectBarFillConfigs([
+          {
+            ...config,
+            recordId: "__project_rule_template__",
+          },
+        ]),
+      )[0];
+      if (!template) {
+        setOperationState(null);
+        setOperationError("Project-Regel ist unvollstaendig.");
+        return;
+      }
+
+      const attribute = store.attributeRegistry.find((entry) =>
+        toLower(entry.key) === toLower(template.attributeKey)) ?? null;
+      if (!attribute) {
+        setOperationState(null);
+        setOperationError("Project-Regel-Attribut wurde nicht gefunden.");
+        return;
+      }
+
+      const target = resolveProjectBarFillRuleTargetValue(template, attribute);
+      if (target.error) {
+        setOperationState(null);
+        setOperationError(target.error);
+        return;
+      }
+
+      const coercion = coerceDatabaseRecordFieldValue(attribute.type, target.value);
+      if (coercion.error) {
+        setOperationState(null);
+        setOperationError(coercion.error);
+        return;
+      }
+
+      const uniqueVisibleRecords = Array.from(
+        visibleProjectRecords.reduce((map, record) => {
+          if (!map.has(record.fileId)) {
+            map.set(record.fileId, record);
+          }
+          return map;
+        }, new Map<string, DatabaseRecord>()).values(),
+      ).filter((record) => {
+        const extension = record.extension.trim().toLowerCase();
+        return extension === "md" || record.filePath.trim().toLowerCase().endsWith(".md");
+      });
+
+      if (uniqueVisibleRecords.length === 0) {
+        setOperationState(null);
+        setOperationError("Keine sichtbaren Markdown-Dateien gefunden.");
+        return;
+      }
+
+      const latestByRecordId = new Map(records.map((record) => [record.fileId, record]));
+      const pendingIds = new Set(pendingRecordMutations);
+      const failed: Array<{ recordId: string; path: string; error: string }> = [];
+      const previousByRecordId = new Map<string, DatabaseRecord>();
+
+      uniqueVisibleRecords.forEach((record) => {
+        const latestRecord = latestByRecordId.get(record.fileId);
+        if (!latestRecord) {
+          failed.push({
+            recordId: record.fileId,
+            path: record.relativePath,
+            error: "Record is no longer loaded.",
+          });
+          return;
+        }
+        if (pendingIds.has(record.fileId)) {
+          failed.push({
+            recordId: latestRecord.fileId,
+            path: latestRecord.relativePath,
+            error: "Record update is already pending.",
+          });
+          return;
+        }
+        previousByRecordId.set(latestRecord.fileId, latestRecord);
+      });
+
+      if (previousByRecordId.size === 0) {
+        setOperationState(null);
+        setOperationError(
+          failed.length > 0
+            ? failed.map((entry) => `${entry.path}: ${entry.error}`).join(" ")
+            : "Keine sichtbaren Markdown-Dateien konnten aktualisiert werden.",
+        );
+        return;
+      }
+
+      const previousBarFillConfigs = normalizeProjectBarFillConfigs(
+        cloneProjectBarFillConfigs(projectBarFillConfigsRef.current),
+      );
+      const optimisticRecordIds = Array.from(previousByRecordId.keys());
+      const optimisticBarFillConfigs = applyProjectBarFillConfigToRecordIds(
+        previousBarFillConfigs,
+        template,
+        optimisticRecordIds,
+      );
+      setProjectBarFillConfigs(optimisticBarFillConfigs);
+      projectBarFillConfigsRef.current = optimisticBarFillConfigs;
+      setRecords((previous) =>
+        previous.map((record) =>
+          previousByRecordId.has(record.fileId)
+            ? applyOptimisticRecordFieldValue(record, attribute.key, coercion.typedValue)
+            : record));
+      previousByRecordId.forEach((_record, recordId) => {
+        addPendingRecordMutation(recordId);
+      });
+      setActiveCellEdit((previous) =>
+        previous &&
+          previousByRecordId.has(previous.recordId) &&
+          toLower(previous.fieldKey) === toLower(attribute.key)
+          ? null
+          : previous);
+      setOperationError(null);
+
+      let updated = 0;
+      const successfulRecordIds: string[] = [];
+
+      for (const previousRecord of previousByRecordId.values()) {
+        try {
+          const result = await upsertDatabaseRecordField({
+            path: previousRecord.filePath,
+            relativePath: previousRecord.relativePath,
+            key: attribute.key,
+            type: attribute.type,
+            value: target.value,
+          });
+          if (result.error) {
+            throw new Error(result.error);
+          }
+          fileCacheRef.current.set(previousRecord.filePath, result.markdown);
+          updated += 1;
+          successfulRecordIds.push(previousRecord.fileId);
+        } catch (error) {
+          failed.push({
+            recordId: previousRecord.fileId,
+            path: previousRecord.relativePath,
+            error: error instanceof Error ? error.message : "Failed to update frontmatter.",
+          });
+          setRecords((previous) =>
+            previous.map((record) =>
+              record.fileId === previousRecord.fileId
+                ? previousRecord
+                : record));
+        } finally {
+          removePendingRecordMutation(previousRecord.fileId);
+        }
+      }
+
+      const finalBarFillConfigs = successfulRecordIds.length > 0
+        ? applyProjectBarFillConfigToRecordIds(
+          previousBarFillConfigs,
+          template,
+          successfulRecordIds,
+        )
+        : previousBarFillConfigs;
+      setProjectBarFillConfigs(finalBarFillConfigs);
+      projectBarFillConfigsRef.current = finalBarFillConfigs;
+
+      if (updated > 0) {
+        persistConfig({
+          view: {
+            projectBarFillConfigs: finalBarFillConfigs,
+          },
+        });
+        scheduleVaultAttributeRefresh();
+      }
+
+      if (failed.length > 0) {
+        const visibleFailures = failed
+          .slice(0, 3)
+          .map((entry) => `${entry.path}: ${entry.error}`)
+          .join(" ");
+        const remaining = failed.length > 3 ? ` ${failed.length - 3} weitere Fehler.` : "";
+        setOperationState(
+          updated > 0
+            ? `${updated} sichtbare Datei${updated === 1 ? "" : "en"} aktualisiert.`
+            : null,
+        );
+        setOperationError(`${failed.length} Datei${failed.length === 1 ? "" : "en"} konnten nicht aktualisiert werden. ${visibleFailures}${remaining}`);
+      } else {
+        setOperationError(null);
+        setOperationState(`${updated} sichtbare Datei${updated === 1 ? "" : "en"} aktualisiert.`);
+      }
+    },
+    [
+      allowCellEditing,
+      pendingRecordMutations,
+      persistConfig,
+      records,
+      scheduleVaultAttributeRefresh,
+      store.attributeRegistry,
+    ],
+  );
 
   const handlePieOptionsChange = (next: {
     groupField?: string | null;
@@ -3856,6 +4135,7 @@ export const MarkdownHybridDatabaseBlock = ({
             editable={allowCellEditing}
             pendingRecordIds={pendingRecordMutations}
             onChangeBarFillConfig={handleProjectBarFillConfigChange}
+            onApplyBarFillConfigToVisible={handleApplyProjectBarFillConfigToVisible}
             onCommitPlacement={handleCommitProjectPlacement}
             onOpenRecord={openRecord}
             onOpenExamFromRecord={openExamFromRecord}

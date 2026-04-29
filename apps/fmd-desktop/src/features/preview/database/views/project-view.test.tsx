@@ -658,4 +658,53 @@ describe("DatabaseProjectView", () => {
 
     cleanup();
   });
+
+  it("applies the active bar rule only to currently visible project records", async () => {
+    const onApplyBarFillConfigToVisible = vi.fn(async () => undefined);
+    const { container, cleanup } = render(
+      createElement(DatabaseProjectView, {
+        records: [fillRecord, unplacedRecord],
+        attributes: [statusCodeAttribute],
+        startField: "unitsstart",
+        unitField: "units",
+        resolution: 100,
+        defaultUnits: 1,
+        missingPlacement: "hide-unplaced",
+        barFillConfigs: [
+          {
+            recordId: "fill",
+            attributeKey: "StatusCode",
+            mode: "text-code",
+            mappings: [{ from: "text3", to: 100 }],
+          },
+        ],
+        visibleProperties: [],
+        onApplyBarFillConfigToVisible,
+      }),
+    );
+
+    const bar = container.querySelector<HTMLElement>(".database-project-bar");
+    act(() => {
+      bar?.dispatchEvent(createPointerLikeEvent("pointerdown", 64, { ctrlKey: true }));
+    });
+
+    const popup = document.querySelector<HTMLElement>(".database-project-bar-config");
+    const applyButton = Array.from(popup?.querySelectorAll("button") ?? [])
+      .find((button) => (button.textContent ?? "").includes("Regel auf sichtbare anwenden"));
+    await act(async () => {
+      applyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onApplyBarFillConfigToVisible).toHaveBeenCalledTimes(1);
+    expect(onApplyBarFillConfigToVisible.mock.calls[0]?.[0]).toMatchObject({
+      recordId: "fill",
+      attributeKey: "StatusCode",
+      mode: "text-code",
+      mappings: [{ from: "text3", to: 100 }],
+    });
+    expect(onApplyBarFillConfigToVisible.mock.calls[0]?.[1].map((entry: DatabaseRecord) => entry.fileId))
+      .toEqual(["fill"]);
+
+    cleanup();
+  });
 });
