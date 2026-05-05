@@ -35,6 +35,13 @@ while adding a dedicated review experience and study progress tracking.
 - 📝 [Architecture overview](docs/dev/architecture.md)
 - 📝 [Developer ↔ Codex Workflow](docs/dev/codex-workflow.md)
 
+## 📁 Data Processing
+- 🗂️ [Overview](docs/dev/data-processing/data-processing.md)
+- 📝 [Database Blocks and Views](docs/dev/data-processing/database-blocks-and-views.md)
+- 📝 [Filtering, Sorting, and Normalization](docs/dev/data-processing/filtering-sorting-and-normalization.md)
+- 📝 [Markdown and Frontmatter](docs/dev/data-processing/markdown-and-frontmatter.md)
+- 📝 [Persistence and Profile Data](docs/dev/data-processing/persistence-and-profile-data.md)
+
 ## 📁 Tools
 - 🗂️ [Overview](docs/tools/tools.md)
 - 📝 [Build and Packaging](docs/tools/build-package.md)

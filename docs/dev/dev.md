@@ -14,6 +14,13 @@
 ## 📁 Assets
 - 🗂️ [Overview](assets/assets.md)
 
+## 📁 Data Processing
+- 🗂️ [Overview](data-processing/data-processing.md)
+- 📝 [Database Blocks and Views](data-processing/database-blocks-and-views.md)
+- 📝 [Filtering, Sorting, and Normalization](data-processing/filtering-sorting-and-normalization.md)
+- 📝 [Markdown and Frontmatter](data-processing/markdown-and-frontmatter.md)
+- 📝 [Persistence and Profile Data](data-processing/persistence-and-profile-data.md)
+
 ## 📁 Exam profile linking
 - 🗂️ [Overview](exam-profile-linking/exam-profile-linking.md)
 - 📝 [Mapping and Naming Rules](exam-profile-linking/mapping-and-naming.md)

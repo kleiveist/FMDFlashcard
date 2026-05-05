@@ -13,6 +13,13 @@
 - 📝 [Architecture overview](dev/architecture.md)
 - 📝 [Developer ↔ Codex Workflow](dev/codex-workflow.md)
 
+## 📁 Data Processing
+- 🗂️ [Overview](dev/data-processing/data-processing.md)
+- 📝 [Database Blocks and Views](dev/data-processing/database-blocks-and-views.md)
+- 📝 [Filtering, Sorting, and Normalization](dev/data-processing/filtering-sorting-and-normalization.md)
+- 📝 [Markdown and Frontmatter](dev/data-processing/markdown-and-frontmatter.md)
+- 📝 [Persistence and Profile Data](dev/data-processing/persistence-and-profile-data.md)
+
 ## 📁 Tools
 - 🗂️ [Overview](tools/tools.md)
 - 📝 [Build and Packaging](tools/build-package.md)
