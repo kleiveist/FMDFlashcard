@@ -8,9 +8,13 @@
 ## 📄 Pages
 - 📝 [Build and Packaging](build-package.md)
 - 📝 [Control Script Reference](control-reference.md)
-- 📝 [Python Tooling Code](python-code/python-code.md)
 - 📝 [Run and Test](run-test.md)
 - 📝 [Setup and Bootstrap](setup-bootstrap.md)
+
+## 📁 Python Tooling Code
+- 🗂️ [Overview](python-code/python-code.md)
+- 📝 [Python Tooling Extension Guide](python-code/extension-guide.md)
+- 📝 [Python Tooling Module Reference](python-code/module-reference.md)
 
 <!-- AUTO-GENERATED:docs-index END -->
 

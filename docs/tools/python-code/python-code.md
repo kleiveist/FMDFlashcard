@@ -5,9 +5,9 @@
 
 <!-- AUTO-GENERATED:docs-index START -->
 
-## Pages
-- [Module Reference](module-reference.md)
-- [Extension Guide](extension-guide.md)
+## 📄 Pages
+- 📝 [Python Tooling Extension Guide](extension-guide.md)
+- 📝 [Python Tooling Module Reference](module-reference.md)
 
 <!-- AUTO-GENERATED:docs-index END -->
 
@@ -78,4 +78,3 @@ This folder documents the Python tooling under `tools/`. It is a developer refer
 | Change Linux package mappings | [`installuixarc.py`](../../../tools/inst/linux/installuixarc.py) or [`installuixubu.py`](../../../tools/inst/linux/installuixubu.py) | `python3 tools/control.py --install --dry-run` |
 | Change build output or bundle cleanup | Matching file in [`tools/inst/build/`](../../../tools/inst/build) | `python3 tools/control.py --build --dry-run` and the target-specific dry run |
 | Change test timeout behavior | [`tools/inst/run_test.py`](../../../tools/inst/run_test.py) | `python3 tools/control.py --test --dry-run` |
-

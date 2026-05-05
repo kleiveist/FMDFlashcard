@@ -39,7 +39,6 @@ while adding a dedicated review experience and study progress tracking.
 - 🗂️ [Overview](docs/tools/tools.md)
 - 📝 [Build and Packaging](docs/tools/build-package.md)
 - 📝 [Control Script Reference](docs/tools/control-reference.md)
-- 📝 [Python Tooling Code](docs/tools/python-code/python-code.md)
 - 📝 [Run and Test](docs/tools/run-test.md)
 - 📝 [Setup and Bootstrap](docs/tools/setup-bootstrap.md)
 

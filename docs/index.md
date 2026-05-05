@@ -17,7 +17,6 @@
 - 🗂️ [Overview](tools/tools.md)
 - 📝 [Build and Packaging](tools/build-package.md)
 - 📝 [Control Script Reference](tools/control-reference.md)
-- 📝 [Python Tooling Code](tools/python-code/python-code.md)
 - 📝 [Run and Test](tools/run-test.md)
 - 📝 [Setup and Bootstrap](tools/setup-bootstrap.md)
 
