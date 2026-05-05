@@ -8,6 +8,7 @@
 ## 📄 Pages
 - 📝 [Build and Packaging](build-package.md)
 - 📝 [Control Script Reference](control-reference.md)
+- 📝 [Python Tooling Code](python-code/python-code.md)
 - 📝 [Run and Test](run-test.md)
 - 📝 [Setup and Bootstrap](setup-bootstrap.md)
 
@@ -18,6 +19,7 @@ This section is the single source of truth for repository tooling.
 Scope:
 - `tools/control.py` command entrypoint
 - Tool runners under `tools/inst/`
+- Python tooling source documentation under `docs/tools/python-code/`
 - Setup/bootstrap, run/test, build/packaging, and command reference
 
 Important:
@@ -30,6 +32,7 @@ Important:
 - [Run and test](run-test.md)
 - [Build and packaging](build-package.md)
 - [Control script reference](control-reference.md)
+- [Python tooling code](python-code/python-code.md)
 
 ## Quick start
 
