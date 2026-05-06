@@ -7187,6 +7187,7 @@ textarea.preview-editor {
   z-index: 4;
   position: sticky;
   left: 0;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   padding: 0 10px;
@@ -7194,6 +7195,21 @@ textarea.preview-editor {
   color: var(--db-muted);
   border-right: 1px solid var(--db-border);
   box-shadow: inset -1px 0 0 color-mix(in srgb, var(--db-border-strong) 58%, transparent);
+}
+
+.database-project-view.is-sidebar-collapsed .database-project-sidebar-header {
+  color: transparent;
+  padding: 0;
+}
+
+.database-project-view.is-sidebar-collapsed .database-project-sidebar-header::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: 18px;
+  background: color-mix(in srgb, var(--db-surface-base) 78%, transparent);
+  border-inline-end: 1px solid color-mix(in srgb, var(--db-border-strong) 54%, transparent);
 }
 
 .database-project-header-scale {
@@ -7226,6 +7242,7 @@ textarea.preview-editor {
   position: sticky;
   left: 0;
   z-index: 2;
+  box-sizing: border-box;
   border-right: 1px solid var(--db-border);
   border-bottom: 1px solid var(--db-border);
   background: color-mix(in srgb, var(--db-surface-base) 90%, transparent);
@@ -7235,8 +7252,62 @@ textarea.preview-editor {
   padding: 6px 10px;
 }
 
+.database-project-sidebar-row.is-collapsed {
+  z-index: 5;
+  overflow: visible;
+  padding: 0;
+  background: transparent;
+  cursor: context-menu;
+}
+
+.database-project-sidebar-row.is-collapsed::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: 18px;
+  background: color-mix(in srgb, var(--db-surface-base) 58%, transparent);
+  border-inline-end: 1px solid color-mix(in srgb, var(--db-border-strong) 54%, transparent);
+}
+
+.database-project-sidebar-row.is-collapsed .database-project-sidebar-row-title,
+.database-project-sidebar-row.is-collapsed .database-project-sidebar-row-meta {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-8px);
+}
+
+.database-project-sidebar-row.is-collapsed.is-peeking {
+  z-index: 8;
+  inline-size: min(420px, calc(100vw - 32px));
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--db-surface-base) 96%, transparent);
+  border: 1px solid var(--db-border);
+  border-inline-start: none;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--ink) 14%, transparent);
+}
+
+.database-project-sidebar-row.is-collapsed.is-peeking::before {
+  content: none;
+}
+
+.database-project-sidebar-row.is-collapsed.is-peeking .database-project-sidebar-row-title,
+.database-project-sidebar-row.is-collapsed.is-peeking .database-project-sidebar-row-meta {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
 .database-project-sidebar-row.is-unplaced {
   background: color-mix(in srgb, var(--db-surface-base) 80%, transparent);
+}
+
+.database-project-sidebar-row.is-collapsed.is-unplaced {
+  background: transparent;
+}
+
+.database-project-sidebar-row.is-collapsed.is-peeking.is-unplaced {
+  background: color-mix(in srgb, var(--db-surface-base) 96%, transparent);
 }
 
 .database-project-sidebar-row-title {

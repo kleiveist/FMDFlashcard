@@ -23,7 +23,11 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: [
+      "src/**/*.test.ts",
+      "src/features/preview/database/views/project-view.test.tsx",
+      "src/features/preview/database/database-block.test.tsx",
+    ],
     setupFiles: ["./vitest.setup.ts"],
     fileParallelism: false,
     minWorkers: 1,

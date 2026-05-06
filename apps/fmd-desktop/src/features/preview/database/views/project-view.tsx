@@ -105,16 +105,27 @@ type InteractionState =
 
 const SLOT_WIDTH = 18;
 const SIDEBAR_WIDTH = 280;
+const SIDEBAR_COLLAPSED_WIDTH = 18;
 const ROW_META_MAX_WIDTH = 320;
 const ROW_META_EDGE_PADDING = 8;
 const KEYBOARD_SCROLL_STEP_X = 48;
 const KEYBOARD_SCROLL_STEP_Y = 40;
+const BASE_PROJECT_DOMAIN_UNITS = 100;
+const PROJECT_BLOCK_RESOLUTION_OPTIONS = [1, 2, 4] as const;
 
 const toLower = (value: string) => value.trim().toLowerCase();
 const isExamFieldKey = (key: string) => toLower(key) === "exam";
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
+
+const normalizeBlocksPerUnit = (value: number) =>
+  PROJECT_BLOCK_RESOLUTION_OPTIONS.includes(value as typeof PROJECT_BLOCK_RESOLUTION_OPTIONS[number])
+    ? value
+    : 1;
+
+const isNonPrimaryPointerButton = (button: number | undefined) =>
+  typeof button === "number" && button !== 0;
 
 const getNearestScrollHost = (element: HTMLElement | null): HTMLElement | null => {
   if (!element || typeof window === "undefined") {
@@ -443,12 +454,10 @@ const buildEntry = ({
   record,
   startField,
   unitField,
-  resolution,
 }: {
   record: DatabaseRecord;
   startField: string;
   unitField: string;
-  resolution: number;
 }): ProjectEntry | null => {
   const startRaw = getRecordValueByField(record, startField);
   const unitsRaw = getRecordValueByField(record, unitField);
@@ -468,16 +477,14 @@ const buildEntry = ({
     return null;
   }
 
-  const clampedStart = clamp(startSlot, 0, Math.max(0, resolution - 1));
-  const clampedUnits = clamp(units, 1, Math.max(1, resolution - clampedStart));
   const title = getRowTitle(record);
 
   return {
     record,
     title,
-    startSlot: clampedStart,
-    units: clampedUnits,
-    tooltip: `${title}\nSlot: ${clampedStart}\nUnits: ${clampedUnits}\n${record.relativePath}`,
+    startSlot,
+    units,
+    tooltip: `${title}\nSlot: ${startSlot}\nUnits: ${units}\n${record.relativePath}`,
   };
 };
 
@@ -505,6 +512,7 @@ export const DatabaseProjectView = ({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     typeof window !== "undefined" ? window.innerWidth < 1200 : false,
   );
+  const [peekRecordId, setPeekRecordId] = useState<string | null>(null);
   const gridScrollRef = useRef<HTMLDivElement | null>(null);
   const configAnchorRef = useRef<HTMLElement | null>(null);
   const [activeConfigRecordId, setActiveConfigRecordId] = useState<string | null>(null);
@@ -512,6 +520,7 @@ export const DatabaseProjectView = ({
     createDefaultProjectBarConfigDraft(attributes),
   );
   const [isApplyingBarRule, setIsApplyingBarRule] = useState(false);
+  const blocksPerUnit = normalizeBlocksPerUnit(resolution);
 
   const barFillConfigByRecordId = useMemo(() => {
     const map = new Map<string, DatabaseProjectBarFillConfig>();
@@ -541,23 +550,33 @@ export const DatabaseProjectView = ({
         record,
         startField,
         unitField,
-        resolution,
       });
       if (entry) {
         map.set(record.fileId, entry);
       }
     });
     return map;
-  }, [records, resolution, startField, unitField]);
+  }, [records, startField, unitField]);
 
   const pendingIds = useMemo(() => new Set(pendingRecordIds), [pendingRecordIds]);
   const recordById = useMemo(() => new Map(records.map((record) => [record.fileId, record])), [records]);
+  const maxDomainUnits = useMemo(() => {
+    let maxEnd = BASE_PROJECT_DOMAIN_UNITS;
+    entryByRecordId.forEach((entry) => {
+      const draft = draftByRecordId[entry.record.fileId];
+      const startSlot = draft?.startSlot ?? entry.startSlot;
+      const units = draft?.units ?? entry.units;
+      maxEnd = Math.max(maxEnd, startSlot + units);
+    });
+    return Math.max(1, maxEnd);
+  }, [draftByRecordId, entryByRecordId]);
+  const trackBlockCount = maxDomainUnits * blocksPerUnit;
   const slotBoundaries = useMemo(() =>
-    Array.from({ length: resolution }, (_, index) => index),
-  [resolution]);
+    Array.from({ length: trackBlockCount }, (_, index) => index),
+  [trackBlockCount]);
   const rowMetaClampMax = Math.max(
     ROW_META_EDGE_PADDING,
-    resolution * SLOT_WIDTH - (ROW_META_MAX_WIDTH + ROW_META_EDGE_PADDING),
+    trackBlockCount * SLOT_WIDTH - (ROW_META_MAX_WIDTH + ROW_META_EDGE_PADDING),
   );
 
   const visibleRecords = useMemo(
@@ -579,6 +598,12 @@ export const DatabaseProjectView = ({
       configAnchorRef.current = null;
     }
   }, [activeConfigRecordId, recordById]);
+
+  useEffect(() => {
+    if (peekRecordId && !recordById.has(peekRecordId)) {
+      setPeekRecordId(null);
+    }
+  }, [peekRecordId, recordById]);
 
   useEffect(() => {
     if (!activeConfigRecordId) {
@@ -638,18 +663,20 @@ export const DatabaseProjectView = ({
     }
 
     const handlePointerMove = (event: PointerEvent) => {
-      const deltaSlots = Math.round((event.clientX - interaction.pointerStartX) / SLOT_WIDTH);
+      const deltaSlots = Math.round(
+        (event.clientX - interaction.pointerStartX) / (SLOT_WIDTH * blocksPerUnit),
+      );
       let nextStart = interaction.originStartSlot;
       let nextUnits = interaction.originUnits;
 
       if (interaction.kind === "move") {
-        const maxStart = Math.max(0, resolution - interaction.originUnits);
+        const maxStart = Math.max(0, maxDomainUnits - interaction.originUnits);
         nextStart = clamp(interaction.originStartSlot + deltaSlots, 0, maxStart);
       } else if (interaction.kind === "resize-end") {
         nextUnits = clamp(
           interaction.originUnits + deltaSlots,
           1,
-          Math.max(1, resolution - interaction.originStartSlot),
+          Math.max(1, maxDomainUnits - interaction.originStartSlot),
         );
       } else {
         const maxStart = interaction.originStartSlot + interaction.originUnits - 1;
@@ -658,7 +685,7 @@ export const DatabaseProjectView = ({
         nextUnits = clamp(
           interaction.originUnits - consumed,
           1,
-          Math.max(1, resolution - nextStart),
+          Math.max(1, maxDomainUnits - nextStart),
         );
       }
 
@@ -709,9 +736,9 @@ export const DatabaseProjectView = ({
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerup", handlePointerUp);
     };
-  }, [draftByRecordId, interaction, onCommitPlacement, recordById, resolution]);
+  }, [blocksPerUnit, draftByRecordId, interaction, maxDomainUnits, onCommitPlacement, recordById]);
 
-  if (resolution < 1) {
+  if (blocksPerUnit < 1) {
     return (
       <div className="database-view-empty">
         Blockaufloesung muss mindestens 1 sein.
@@ -719,9 +746,13 @@ export const DatabaseProjectView = ({
     );
   }
 
-  const totalWidth = Math.max(SLOT_WIDTH, resolution * SLOT_WIDTH);
-  const sidebarWidth = isSidebarCollapsed ? 0 : SIDEBAR_WIDTH;
+  const totalWidth = Math.max(SLOT_WIDTH, trackBlockCount * SLOT_WIDTH);
+  const sidebarWidth = isSidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH;
   const gridTemplateColumns = `${sidebarWidth}px ${totalWidth}px`;
+  const handleToggleSidebar = () => {
+    setPeekRecordId(null);
+    setIsSidebarCollapsed((current) => !current);
+  };
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.defaultPrevented) {
       return;
@@ -767,7 +798,7 @@ export const DatabaseProjectView = ({
         <button
           type="button"
           className="database-block-toolbar-button"
-          onClick={() => setIsSidebarCollapsed((current) => !current)}
+          onClick={handleToggleSidebar}
           aria-expanded={!isSidebarCollapsed}
           data-md-block-control="true"
         >
@@ -782,20 +813,23 @@ export const DatabaseProjectView = ({
             gridTemplateColumns,
           }}
         >
-          {!isSidebarCollapsed ? (
-            <div className="database-project-sidebar-header">Datensatz</div>
-          ) : null}
+          <div className="database-project-sidebar-header">Datensatz</div>
           <div className="database-project-header-scale">
-            {slotBoundaries.map((slot) => (
-              <span
-                key={slot}
-                className={`database-project-header-tick${slot % 5 === 0 ? " is-major" : ""}`}
-                style={{ left: `${slot * SLOT_WIDTH}px`, width: `${SLOT_WIDTH}px` }}
-                title={`Slot ${slot}`}
-              >
-                {slot % 5 === 0 ? slot : ""}
-              </span>
-            ))}
+            {slotBoundaries.map((slot) => {
+              const unit = slot / blocksPerUnit;
+              const isUnitBoundary = slot % blocksPerUnit === 0;
+              const isMajor = isUnitBoundary && unit % 5 === 0;
+              return (
+                <span
+                  key={slot}
+                  className={`database-project-header-tick${isMajor ? " is-major" : ""}`}
+                  style={{ left: `${slot * SLOT_WIDTH}px`, width: `${SLOT_WIDTH}px` }}
+                  title={isUnitBoundary ? `Slot ${unit}` : `Block ${slot}`}
+                >
+                  {isMajor ? unit : ""}
+                </span>
+              );
+            })}
           </div>
 
           {visibleRecords.map((record) => {
@@ -804,8 +838,10 @@ export const DatabaseProjectView = ({
             const displayStart = draft?.startSlot ?? entry?.startSlot ?? null;
             const displayUnits = draft?.units ?? entry?.units ?? null;
             const hasPlacement = displayStart !== null && displayUnits !== null;
-            const startX = hasPlacement ? displayStart * SLOT_WIDTH : null;
-            const width = hasPlacement ? Math.max(8, displayUnits * SLOT_WIDTH) : 0;
+            const displayStartBlock = hasPlacement ? displayStart * blocksPerUnit : null;
+            const displayUnitBlocks = hasPlacement ? displayUnits * blocksPerUnit : null;
+            const startX = displayStartBlock !== null ? displayStartBlock * SLOT_WIDTH : null;
+            const width = displayUnitBlocks !== null ? Math.max(8, displayUnitBlocks * SLOT_WIDTH) : 0;
             const rowTitle = getRowTitle(record);
             const isPending = pendingIds.has(record.fileId);
             const barFillConfig = barFillConfigByRecordId.get(record.fileId) ?? null;
@@ -851,37 +887,71 @@ export const DatabaseProjectView = ({
             const rowMetaLeft = hasPlacement && startX !== null
               ? clamp(startX + width + 10, ROW_META_EDGE_PADDING, rowMetaClampMax)
               : 10;
+            const isSidebarPeeking = isSidebarCollapsed && peekRecordId === record.fileId;
+            const revealSidebarRow = () => {
+              if (isSidebarCollapsed) {
+                setPeekRecordId(record.fileId);
+              }
+            };
+            const clearSidebarPeek = () => {
+              if (isSidebarCollapsed) {
+                setPeekRecordId((current) => current === record.fileId ? null : current);
+              }
+            };
 
             return (
               <Fragment key={record.fileId}>
-                {!isSidebarCollapsed ? (
-                  <div className={`database-project-sidebar-row${hasPlacement ? "" : " is-unplaced"}`}>
-                    <button
-                      type="button"
-                      className="database-project-sidebar-row-title"
-                      onClick={() => onOpenRecord?.(record)}
-                      title={record.relativePath}
-                      draggable={editable}
-                      onDragStart={(event) => {
-                        startInternalDrag(event, {
-                          channel: DRAG_CHANNELS.DATABASE_RECORD,
-                          payload: record.fileId,
-                          plainTextFallback: record.fileId,
-                          effectAllowed: "move",
-                        });
-                      }}
-                      onDragEnd={() => {
-                        endInternalDrag(DRAG_CHANNELS.DATABASE_RECORD);
-                      }}
-                      data-md-block-control="true"
-                    >
-                      {rowTitle}
-                    </button>
-                    <span className="database-project-sidebar-row-meta">
-                      {hasPlacement ? `Slot ${displayStart} · ${displayUnits}u` : "Unplatziert"}
-                    </span>
-                  </div>
-                ) : null}
+                <div
+                  className={`database-project-sidebar-row${hasPlacement ? "" : " is-unplaced"}${
+                    isSidebarCollapsed ? " is-collapsed" : ""
+                  }${isSidebarPeeking ? " is-peeking" : ""}`}
+                  tabIndex={isSidebarCollapsed ? 0 : undefined}
+                  onPointerEnter={revealSidebarRow}
+                  onPointerMove={revealSidebarRow}
+                  onPointerLeave={clearSidebarPeek}
+                  onFocus={revealSidebarRow}
+                  onBlur={(event) => {
+                    const nextTarget = event.relatedTarget;
+                    if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
+                      return;
+                    }
+                    clearSidebarPeek();
+                  }}
+                  onContextMenu={(event) => {
+                    if (!isSidebarCollapsed) {
+                      return;
+                    }
+                    event.preventDefault();
+                    revealSidebarRow();
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="database-project-sidebar-row-title"
+                    onClick={() => onOpenRecord?.(record)}
+                    title={record.relativePath}
+                    draggable={editable && (!isSidebarCollapsed || isSidebarPeeking)}
+                    tabIndex={isSidebarCollapsed && !isSidebarPeeking ? -1 : undefined}
+                    onDragStart={(event) => {
+                      startInternalDrag(event, {
+                        channel: DRAG_CHANNELS.DATABASE_RECORD,
+                        payload: record.fileId,
+                        plainTextFallback: record.fileId,
+                        effectAllowed: "move",
+                      });
+                    }}
+                    onDragEnd={() => {
+                      endInternalDrag(DRAG_CHANNELS.DATABASE_RECORD);
+                      clearSidebarPeek();
+                    }}
+                    data-md-block-control="true"
+                  >
+                    {rowTitle}
+                  </button>
+                  <span className="database-project-sidebar-row-meta">
+                    {hasPlacement ? `Slot ${displayStart} · ${displayUnits}u` : "Unplatziert"}
+                  </span>
+                </div>
 
                 <div
                   className={`database-project-row-track${isPending ? " is-pending" : ""}`}
@@ -909,19 +979,19 @@ export const DatabaseProjectView = ({
                     const nextUnits = clamp(
                       existing?.units ?? defaultUnits,
                       1,
-                      resolution,
+                      maxDomainUnits,
                     );
                     const rect = event.currentTarget.getBoundingClientRect();
                     const xInTrack = event.clientX - rect.left;
                     const startSlot = clamp(
-                      Math.floor(xInTrack / SLOT_WIDTH),
+                      Math.floor(xInTrack / (SLOT_WIDTH * blocksPerUnit)),
                       0,
-                      Math.max(0, resolution - 1),
+                      Math.max(0, maxDomainUnits - 1),
                     );
                     onCommitPlacement({
                       record: droppedRecord,
                       startSlot,
-                      units: clamp(nextUnits, 1, Math.max(1, resolution - startSlot)),
+                      units: clamp(nextUnits, 1, Math.max(1, maxDomainUnits - startSlot)),
                     });
                     endInternalDrag(DRAG_CHANNELS.DATABASE_RECORD);
                   }}
@@ -933,6 +1003,14 @@ export const DatabaseProjectView = ({
                         left: `${startX ?? 0}px`,
                         width: `${width}px`,
                       }}
+                      onContextMenu={(event) => {
+                        if (!onChangeBarFillConfig) {
+                          return;
+                        }
+                        event.preventDefault();
+                        event.stopPropagation();
+                        handleOpenBarConfig(record.fileId, event.currentTarget);
+                      }}
                       onPointerDown={(event) => {
                         if (event.ctrlKey || event.metaKey) {
                           if (!onChangeBarFillConfig) {
@@ -941,6 +1019,9 @@ export const DatabaseProjectView = ({
                           event.preventDefault();
                           event.stopPropagation();
                           handleOpenBarConfig(record.fileId, event.currentTarget);
+                          return;
+                        }
+                        if (isNonPrimaryPointerButton(event.button)) {
                           return;
                         }
                         if (!editable || isPending || displayStart === null || displayUnits === null) {
@@ -979,6 +1060,9 @@ export const DatabaseProjectView = ({
                             );
                             return;
                           }
+                          if (isNonPrimaryPointerButton(event.button)) {
+                            return;
+                          }
                           if (!editable || isPending || displayStart === null || displayUnits === null) {
                             return;
                           }
@@ -1008,6 +1092,9 @@ export const DatabaseProjectView = ({
                                 ? event.currentTarget.parentElement
                                 : event.currentTarget,
                             );
+                            return;
+                          }
+                          if (isNonPrimaryPointerButton(event.button)) {
                             return;
                           }
                           if (!editable || isPending || displayStart === null || displayUnits === null) {

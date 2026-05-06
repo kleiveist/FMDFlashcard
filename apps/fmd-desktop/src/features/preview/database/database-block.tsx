@@ -60,8 +60,6 @@ import {
   applyProjectBarFillConfigToRecordIds,
   cloneProjectBarFillConfigs,
   normalizeProjectBarFillConfigs,
-  readDatabaseProjectFillProfile,
-  writeDatabaseProjectFillProfile,
 } from "./database-project-fill-profile";
 import {
   buildDatabasePieValueOptions,
@@ -154,8 +152,6 @@ const toWikilinkTarget = (relativePath: string) =>
   relativePath.replace(/\.md$/i, "");
 
 const toLower = (value: string) => value.trim().toLowerCase();
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, value));
 
 const cloneFilterGroup = (group: DatabaseFilterGroup): DatabaseFilterGroup => ({
   ...group,
@@ -670,9 +666,10 @@ const defaultPanels: DatabaseBlockOpenPanels = {
 const DEFAULT_TIMELINE_MODE: DatabaseTimelineMode = "date";
 const DEFAULT_PROJECT_START_FIELD = "unitsstart";
 const DEFAULT_PROJECT_UNIT_FIELD = "units";
-const DEFAULT_PROJECT_BLOCK_RESOLUTION = 100;
+const DEFAULT_PROJECT_BLOCK_RESOLUTION = 1;
 const DEFAULT_PROJECT_DEFAULT_UNITS = 1;
 const DEFAULT_PROJECT_MISSING_PLACEMENT: DatabaseProjectMissingPlacement = "show-unplaced";
+const PROJECT_BLOCK_RESOLUTION_OPTIONS = [1, 2, 4] as const;
 const pad2 = (value: number) => String(value).padStart(2, "0");
 const resolveTodayBaseDate = () => {
   const now = new Date();
@@ -705,20 +702,11 @@ const asPositiveInteger = (value: unknown): number | null => {
   return null;
 };
 
-const asNonNegativeInteger = (value: unknown): number | null => {
-  if (typeof value === "number") {
-    if (Number.isInteger(value) && value >= 0) {
-      return value;
-    }
-    return null;
-  }
-  if (typeof value === "string") {
-    const parsed = Number(value.trim());
-    if (Number.isInteger(parsed) && parsed >= 0) {
-      return parsed;
-    }
-  }
-  return null;
+const normalizeProjectBlockResolution = (value: unknown) => {
+  const parsed = asPositiveInteger(value) ?? DEFAULT_PROJECT_BLOCK_RESOLUTION;
+  return PROJECT_BLOCK_RESOLUTION_OPTIONS.includes(parsed as typeof PROJECT_BLOCK_RESOLUTION_OPTIONS[number])
+    ? parsed
+    : DEFAULT_PROJECT_BLOCK_RESOLUTION;
 };
 
 const isProjectNumericType = (type: DatabaseFieldType) =>
@@ -829,7 +817,7 @@ export const MarkdownHybridDatabaseBlock = ({
     parsedActiveSavedView.view.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD,
   );
   const [projectBlockResolution, setProjectBlockResolution] = useState<number>(
-    asPositiveInteger(parsedActiveSavedView.view.blockResolution) ?? DEFAULT_PROJECT_BLOCK_RESOLUTION,
+    normalizeProjectBlockResolution(parsedActiveSavedView.view.blockResolution),
   );
   const [projectDefaultUnits, setProjectDefaultUnits] = useState<number>(
     asPositiveInteger(parsedActiveSavedView.view.defaultUnits) ?? DEFAULT_PROJECT_DEFAULT_UNITS,
@@ -936,15 +924,6 @@ export const MarkdownHybridDatabaseBlock = ({
     }),
     [activeViewId, blockIndex, sourceRelativePath],
   );
-  const projectFillProfileKey = useMemo(
-    () => buildDatabaseTableLayoutKey({
-      sourceRelativePath,
-      blockIndex,
-      viewId: activeViewId,
-    }),
-    [activeViewId, blockIndex, sourceRelativePath],
-  );
-
   const scheduleVaultAttributeRefresh = useCallback(() => {
     setVaultAttributeRefreshToken((value) => value + 1);
   }, []);
@@ -1009,7 +988,7 @@ export const MarkdownHybridDatabaseBlock = ({
     setProjectStartField(parsedActiveSavedView.view.projectStartField ?? DEFAULT_PROJECT_START_FIELD);
     setProjectUnitField(parsedActiveSavedView.view.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD);
     setProjectBlockResolution(
-      asPositiveInteger(parsedActiveSavedView.view.blockResolution) ?? DEFAULT_PROJECT_BLOCK_RESOLUTION,
+      normalizeProjectBlockResolution(parsedActiveSavedView.view.blockResolution),
     );
     setProjectDefaultUnits(
       asPositiveInteger(parsedActiveSavedView.view.defaultUnits) ?? DEFAULT_PROJECT_DEFAULT_UNITS,
@@ -1518,45 +1497,6 @@ export const MarkdownHybridDatabaseBlock = ({
   );
   const activeViewName = activeSavedView?.name ?? parsed.config.title;
 
-  useEffect(() => {
-    let isCancelled = false;
-    const fallbackConfigs = normalizeProjectBarFillConfigs(
-      cloneProjectBarFillConfigs(activeSavedView?.view.projectBarFillConfigs),
-    );
-    setProjectBarFillConfigs(fallbackConfigs);
-    projectBarFillConfigsRef.current = fallbackConfigs;
-
-    if (!vaultPath) {
-      return () => {
-        isCancelled = true;
-      };
-    }
-
-    void readDatabaseProjectFillProfile(vaultPath, projectFillProfileKey)
-      .then((profile) => {
-        if (isCancelled) {
-          return;
-        }
-        const nextConfigs = normalizeProjectBarFillConfigs(
-          cloneProjectBarFillConfigs(profile?.barFillConfigs ?? fallbackConfigs),
-        );
-        setProjectBarFillConfigs(nextConfigs);
-        projectBarFillConfigsRef.current = nextConfigs;
-
-        if (!profile && fallbackConfigs.length > 0) {
-          void writeDatabaseProjectFillProfile(vaultPath, projectFillProfileKey, {
-            barFillConfigs: fallbackConfigs,
-          }).catch((error) => {
-            console.warn("Failed to migrate database project fill rules", error);
-          });
-        }
-      });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [activeSavedView, projectFillProfileKey, vaultPath]);
-
   const persistConfig = useCallback((next: {
     source?: DatabaseSourceSpec;
     fields?: DatabaseFieldDefinition[];
@@ -1605,9 +1545,9 @@ export const MarkdownHybridDatabaseBlock = ({
       ),
       projectStartField: next.view?.projectStartField ?? projectStartFieldRef.current ?? DEFAULT_PROJECT_START_FIELD,
       projectUnitField: next.view?.projectUnitField ?? projectUnitFieldRef.current ?? DEFAULT_PROJECT_UNIT_FIELD,
-      blockResolution: next.view?.blockResolution ??
-        projectBlockResolutionRef.current ??
-        DEFAULT_PROJECT_BLOCK_RESOLUTION,
+      blockResolution: normalizeProjectBlockResolution(
+        next.view?.blockResolution ?? projectBlockResolutionRef.current,
+      ),
       defaultUnits: next.view?.defaultUnits ??
         projectDefaultUnitsRef.current ??
         DEFAULT_PROJECT_DEFAULT_UNITS,
@@ -1840,7 +1780,7 @@ export const MarkdownHybridDatabaseBlock = ({
     projectStartFieldRef.current = nextView.projectStartField ?? DEFAULT_PROJECT_START_FIELD;
     setProjectUnitField(nextView.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD);
     projectUnitFieldRef.current = nextView.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD;
-    const nextResolution = asPositiveInteger(nextView.blockResolution) ?? DEFAULT_PROJECT_BLOCK_RESOLUTION;
+    const nextResolution = normalizeProjectBlockResolution(nextView.blockResolution);
     setProjectBlockResolution(nextResolution);
     projectBlockResolutionRef.current = nextResolution;
     const nextDefaultUnits = asPositiveInteger(nextView.defaultUnits) ?? DEFAULT_PROJECT_DEFAULT_UNITS;
@@ -1909,7 +1849,7 @@ export const MarkdownHybridDatabaseBlock = ({
       ganttZoom: ganttZoomRef.current ?? getTimelineDefaultZoom(timelineModeRef.current ?? DEFAULT_TIMELINE_MODE),
       projectStartField: projectStartFieldRef.current ?? DEFAULT_PROJECT_START_FIELD,
       projectUnitField: projectUnitFieldRef.current ?? DEFAULT_PROJECT_UNIT_FIELD,
-      blockResolution: projectBlockResolutionRef.current ?? DEFAULT_PROJECT_BLOCK_RESOLUTION,
+      blockResolution: normalizeProjectBlockResolution(projectBlockResolutionRef.current),
       defaultUnits: projectDefaultUnitsRef.current ?? DEFAULT_PROJECT_DEFAULT_UNITS,
       projectMissingPlacement: projectMissingPlacementRef.current ?? DEFAULT_PROJECT_MISSING_PLACEMENT,
       projectBarFillConfigs: normalizeProjectBarFillConfigs(
@@ -2042,8 +1982,6 @@ export const MarkdownHybridDatabaseBlock = ({
     startField?: string | null;
     unitField?: string | null;
     blockResolution?: number;
-    defaultUnits?: number;
-    missingPlacement?: DatabaseProjectMissingPlacement;
   }) => {
     const nextStart = typeof next.startField === "undefined"
       ? projectStartFieldRef.current ?? DEFAULT_PROJECT_START_FIELD
@@ -2051,48 +1989,26 @@ export const MarkdownHybridDatabaseBlock = ({
     const nextUnit = typeof next.unitField === "undefined"
       ? projectUnitFieldRef.current ?? DEFAULT_PROJECT_UNIT_FIELD
       : next.unitField ?? DEFAULT_PROJECT_UNIT_FIELD;
-    const previousResolution = projectBlockResolutionRef.current ?? DEFAULT_PROJECT_BLOCK_RESOLUTION;
-    const nextResolution = asPositiveInteger(next.blockResolution) ??
-      previousResolution;
-    const nextDefaultUnitCount = asPositiveInteger(next.defaultUnits) ??
-      projectDefaultUnitsRef.current ??
-      DEFAULT_PROJECT_DEFAULT_UNITS;
-    const nextMissingPlacement = next.missingPlacement ??
-      projectMissingPlacementRef.current ??
-      DEFAULT_PROJECT_MISSING_PLACEMENT;
-
+    const nextResolution = typeof next.blockResolution === "undefined"
+      ? normalizeProjectBlockResolution(projectBlockResolutionRef.current)
+      : normalizeProjectBlockResolution(next.blockResolution);
     setProjectStartField(nextStart);
     projectStartFieldRef.current = nextStart;
     setProjectUnitField(nextUnit);
     projectUnitFieldRef.current = nextUnit;
     setProjectBlockResolution(nextResolution);
     projectBlockResolutionRef.current = nextResolution;
-    setProjectDefaultUnits(nextDefaultUnitCount);
-    projectDefaultUnitsRef.current = nextDefaultUnitCount;
-    setProjectMissingPlacement(nextMissingPlacement);
-    projectMissingPlacementRef.current = nextMissingPlacement;
 
     persistConfig({
       view: {
         projectStartField: nextStart,
         projectUnitField: nextUnit,
         blockResolution: nextResolution,
-        defaultUnits: nextDefaultUnitCount,
-        projectMissingPlacement: nextMissingPlacement,
       },
     });
-
-    if (nextResolution !== previousResolution) {
-      void remapProjectPlacementsForResolution({
-        fromResolution: previousResolution,
-        toResolution: nextResolution,
-        startKey: nextStart,
-        unitKey: nextUnit,
-      });
-    }
   };
 
-  const persistProjectBarFillProfile = useCallback((
+  const persistProjectBarFillConfigs = useCallback((
     nextConfigsRaw: DatabaseProjectBarFillConfig[],
     stateMessage?: string,
   ) => {
@@ -2106,21 +2022,12 @@ export const MarkdownHybridDatabaseBlock = ({
       setOperationState(stateMessage);
     }
 
-    if (!vaultPath) {
-      setOperationError("Project-Regeln koennen ohne geladenen Vault nicht dauerhaft gespeichert werden.");
-      return;
-    }
-
-    void writeDatabaseProjectFillProfile(vaultPath, projectFillProfileKey, {
-      barFillConfigs: nextConfigs,
-    }).catch((error) => {
-      setOperationError(
-        error instanceof Error
-          ? `Project-Regel konnte nicht gespeichert werden: ${error.message}`
-          : "Project-Regel konnte nicht gespeichert werden.",
-      );
+    persistConfig({
+      view: {
+        projectBarFillConfigs: nextConfigs,
+      },
     });
-  }, [projectFillProfileKey, vaultPath]);
+  }, [persistConfig]);
 
   const handleProjectBarFillConfigChange = useCallback((
     recordId: string,
@@ -2152,8 +2059,8 @@ export const MarkdownHybridDatabaseBlock = ({
       }
     }
 
-    persistProjectBarFillProfile(nextConfigs);
-  }, [persistProjectBarFillProfile]);
+    persistProjectBarFillConfigs(nextConfigs);
+  }, [persistProjectBarFillConfigs]);
 
   const handleApplyProjectBarFillConfigToVisible = useCallback(
     async (
@@ -2198,13 +2105,13 @@ export const MarkdownHybridDatabaseBlock = ({
         template,
         targetRecordIds,
       );
-      persistProjectBarFillProfile(
+      persistProjectBarFillConfigs(
         nextBarFillConfigs,
         `Project-Regel auf ${targetRecordIds.length} sichtbare${targetRecordIds.length === 1 ? "n" : ""} Eintraege angewendet.`,
       );
     },
     [
-      persistProjectBarFillProfile,
+      persistProjectBarFillConfigs,
     ],
   );
 
@@ -2281,155 +2188,6 @@ export const MarkdownHybridDatabaseBlock = ({
       systemFields: record.systemFields,
     });
   };
-
-  const remapProjectPlacementsForResolution = useCallback(
-    async ({
-      fromResolution,
-      toResolution,
-      startKey,
-      unitKey,
-    }: {
-      fromResolution: number;
-      toResolution: number;
-      startKey: string;
-      unitKey: string;
-    }) => {
-      if (!allowCellEditing) {
-        return;
-      }
-
-      const previousResolution = Math.max(1, Math.round(fromResolution));
-      const nextResolution = Math.max(1, Math.round(toResolution));
-      if (previousResolution === nextResolution) {
-        return;
-      }
-
-      const toRemap = records
-        .map((record) => {
-          const startRaw = getRecordValueByField(record, startKey);
-          const unitsRaw = getRecordValueByField(record, unitKey);
-          const start = asNonNegativeInteger(startRaw);
-          const units = asPositiveInteger(unitsRaw);
-          if (start === null || units === null) {
-            return null;
-          }
-
-          const oldStart = clamp(start, 0, Math.max(0, previousResolution - 1));
-          const oldUnits = clamp(units, 1, Math.max(1, previousResolution - oldStart));
-          const mappedStart = clamp(
-            Math.round((oldStart * nextResolution) / previousResolution),
-            0,
-            Math.max(0, nextResolution - 1),
-          );
-          const mappedEnd = clamp(
-            Math.round(((oldStart + oldUnits) * nextResolution) / previousResolution),
-            mappedStart + 1,
-            nextResolution,
-          );
-          const mappedUnits = Math.max(1, mappedEnd - mappedStart);
-          if (mappedStart === oldStart && mappedUnits === oldUnits) {
-            return null;
-          }
-
-          return {
-            record,
-            previousStart: oldStart,
-            previousUnits: oldUnits,
-            nextStart: mappedStart,
-            nextUnits: mappedUnits,
-          };
-        })
-        .filter(
-          (
-            entry,
-          ): entry is {
-            record: DatabaseRecord;
-            previousStart: number;
-            previousUnits: number;
-            nextStart: number;
-            nextUnits: number;
-          } => Boolean(entry),
-        );
-
-      if (toRemap.length === 0) {
-        return;
-      }
-
-      const rollbackByRecordId = new Map<string, DatabaseRecord>();
-      toRemap.forEach((entry) => {
-        rollbackByRecordId.set(entry.record.fileId, entry.record);
-      });
-
-      setRecords((previous) =>
-        previous.map((record) => {
-          const remapped = toRemap.find((entry) => entry.record.fileId === record.fileId);
-          if (!remapped) {
-            return record;
-          }
-          return applyOptimisticRecordFieldValue(
-            applyOptimisticRecordFieldValue(record, startKey, remapped.nextStart),
-            unitKey,
-            remapped.nextUnits,
-          );
-        }));
-      toRemap.forEach((entry) => {
-        addPendingRecordMutation(entry.record.fileId);
-      });
-      setOperationError(null);
-
-      let failed = 0;
-
-      for (const remapped of toRemap) {
-        try {
-          const startResult = await upsertDatabaseRecordField({
-            path: remapped.record.filePath,
-            relativePath: remapped.record.relativePath,
-            key: startKey,
-            type: "number",
-            value: remapped.nextStart,
-          });
-          if (startResult.error) {
-            throw new Error(startResult.error);
-          }
-
-          const unitsResult = await upsertDatabaseRecordField({
-            path: remapped.record.filePath,
-            relativePath: remapped.record.relativePath,
-            key: unitKey,
-            type: "unit",
-            value: remapped.nextUnits,
-          });
-          if (unitsResult.error) {
-            throw new Error(unitsResult.error);
-          }
-
-          fileCacheRef.current.set(remapped.record.filePath, unitsResult.markdown);
-        } catch {
-          failed += 1;
-          const rollback = rollbackByRecordId.get(remapped.record.fileId);
-          if (rollback) {
-            setRecords((previous) =>
-              previous.map((record) =>
-                record.fileId === rollback.fileId
-                  ? rollback
-                  : record));
-          }
-        } finally {
-          removePendingRecordMutation(remapped.record.fileId);
-        }
-      }
-
-      if (failed > 0) {
-        setOperationState(null);
-        setOperationError(`${failed} Placement(s) konnten nicht auf die neue Aufloesung gemappt werden.`);
-      } else {
-        setOperationError(null);
-        setOperationState("Project Raster neu skaliert.");
-      }
-      scheduleVaultAttributeRefresh();
-    },
-    [allowCellEditing, records, scheduleVaultAttributeRefresh],
-  );
 
   const commitRecordFieldMutation = useCallback(
     async ({
@@ -2787,9 +2545,8 @@ export const MarkdownHybridDatabaseBlock = ({
     }
 
     const { startKey, unitKey } = ensureProjectFieldSetup();
-    const resolution = Math.max(1, projectBlockResolutionRef.current ?? DEFAULT_PROJECT_BLOCK_RESOLUTION);
-    const boundedStart = clamp(Math.round(startSlot), 0, Math.max(0, resolution - 1));
-    const boundedUnits = clamp(Math.round(units), 1, Math.max(1, resolution - boundedStart));
+    const boundedStart = Math.max(0, Math.round(startSlot));
+    const boundedUnits = Math.max(1, Math.round(units));
 
     const previousRecord = records.find((entry) => entry.fileId === record.fileId);
     if (!previousRecord) {
@@ -3442,7 +3199,6 @@ export const MarkdownHybridDatabaseBlock = ({
       filters: nextFilters,
       sorts: nextSorts,
     });
-    persistProjectBarFillProfile(nextProjectBarFillConfigs);
   };
 
   const handleCreateAttribute = async ({
@@ -3793,8 +3549,6 @@ export const MarkdownHybridDatabaseBlock = ({
       startField={projectStartField}
       unitField={projectUnitField}
       blockResolution={projectBlockResolution}
-      defaultUnits={projectDefaultUnits}
-      missingPlacement={projectMissingPlacement}
       onChange={handleProjectOptionsChange}
       onClose={() => setPanels(defaultPanels)}
     />

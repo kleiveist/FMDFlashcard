@@ -578,9 +578,10 @@ const DATABASE_VIEW_TYPES: DatabaseViewType[] = ["table", "kanban", "gantt", "pr
 
 const DEFAULT_PROJECT_START_FIELD = "unitsstart";
 const DEFAULT_PROJECT_UNIT_FIELD = "units";
-const DEFAULT_PROJECT_BLOCK_RESOLUTION = 100;
+const DEFAULT_PROJECT_BLOCK_RESOLUTION = 1;
 const DEFAULT_PROJECT_DEFAULT_UNITS = 1;
 const DEFAULT_PROJECT_MISSING_PLACEMENT: DatabaseProjectMissingPlacement = "show-unplaced";
+const PROJECT_BLOCK_RESOLUTION_OPTIONS = [1, 2, 4] as const;
 
 const dedupeCaseInsensitive = (keys: string[]) => {
   const seen = new Set<string>();
@@ -634,6 +635,13 @@ const parsePositiveInteger = (value: unknown, fallback: number) => {
     return fallback;
   }
   return Number.isInteger(numeric) && numeric >= 1 ? numeric : fallback;
+};
+
+const parseProjectBlockResolution = (value: unknown, fallback = DEFAULT_PROJECT_BLOCK_RESOLUTION) => {
+  const parsed = parsePositiveInteger(value, fallback);
+  return PROJECT_BLOCK_RESOLUTION_OPTIONS.includes(parsed as typeof PROJECT_BLOCK_RESOLUTION_OPTIONS[number])
+    ? parsed
+    : fallback;
 };
 
 const parseFiniteNumber = (value: unknown): number | null => {
@@ -864,7 +872,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
     ganttZoom: parseGanttZoom(value.ganttZoom),
     projectStartField: asString(value.projectStartField) || DEFAULT_PROJECT_START_FIELD,
     projectUnitField: asString(value.projectUnitField) || DEFAULT_PROJECT_UNIT_FIELD,
-    blockResolution: parsePositiveInteger(value.blockResolution, DEFAULT_PROJECT_BLOCK_RESOLUTION),
+    blockResolution: parseProjectBlockResolution(value.blockResolution),
     defaultUnits: parsePositiveInteger(value.defaultUnits, DEFAULT_PROJECT_DEFAULT_UNITS),
     projectMissingPlacement: parseProjectMissingPlacement(value.projectMissingPlacement),
     projectBarFillConfigs: normalizeProjectBarFillConfigs(value.projectBarFillConfigs),
@@ -891,10 +899,23 @@ const cloneSortRules = (rules: DatabaseSortRule[]) => rules.map((rule) => ({ ...
 const cloneProjectBarFillConfigs = (
   configs: DatabaseProjectBarFillConfig[] | undefined,
 ): DatabaseProjectBarFillConfig[] =>
-  (configs ?? []).map((entry) => ({
-    ...entry,
-    mappings: (entry.mappings ?? []).map((mapping) => ({ ...mapping })),
-  }));
+  (configs ?? []).map((entry) => {
+    if (entry.mode === "text-code") {
+      return {
+        recordId: entry.recordId,
+        attributeKey: entry.attributeKey,
+        mode: entry.mode,
+        mappings: (entry.mappings ?? []).map((mapping) => ({ ...mapping })),
+      };
+    }
+    return {
+      recordId: entry.recordId,
+      attributeKey: entry.attributeKey,
+      mode: entry.mode,
+      ...(typeof entry.min === "number" ? { min: entry.min } : {}),
+      ...(typeof entry.max === "number" ? { max: entry.max } : {}),
+    };
+  });
 
 const cloneViewSpec = (view: DatabaseViewSpec): DatabaseViewSpec => ({
   ...view,
@@ -1262,6 +1283,42 @@ function writeSortRulesYaml(
   });
 }
 
+function writeProjectBarFillConfigsYaml(
+  configs: DatabaseProjectBarFillConfig[],
+  indent: number,
+  lines: string[],
+) {
+  const indentText = " ".repeat(indent);
+  if (configs.length === 0) {
+    return;
+  }
+  lines.push(`${indentText}projectBarFillConfigs:`);
+  configs.forEach((config) => {
+    lines.push(`${indentText}  - recordId: ${formatYamlScalar(config.recordId)}`);
+    lines.push(`${indentText}    attributeKey: ${formatYamlScalar(config.attributeKey)}`);
+    lines.push(`${indentText}    mode: ${formatYamlScalar(config.mode)}`);
+    if (config.mode === "text-code") {
+      const mappings = normalizeProjectBarFillMappings(config.mappings);
+      if (mappings.length === 0) {
+        lines.push(`${indentText}    mappings: []`);
+      } else {
+        lines.push(`${indentText}    mappings:`);
+        mappings.forEach((mapping) => {
+          lines.push(`${indentText}      - from: ${formatYamlScalar(mapping.from)}`);
+          lines.push(`${indentText}        to: ${formatYamlScalar(mapping.to)}`);
+        });
+      }
+      return;
+    }
+    if (typeof config.min === "number" && Number.isFinite(config.min)) {
+      lines.push(`${indentText}    min: ${formatYamlScalar(config.min)}`);
+    }
+    if (typeof config.max === "number" && Number.isFinite(config.max)) {
+      lines.push(`${indentText}    max: ${formatYamlScalar(config.max)}`);
+    }
+  });
+}
+
 function writeViewSpecYaml(
   view: DatabaseViewSpec,
   indent: number,
@@ -1329,6 +1386,11 @@ function writeViewSpecYaml(
     if (view.projectMissingPlacement) {
       lines.push(`${indentText}projectMissingPlacement: ${formatYamlScalar(view.projectMissingPlacement)}`);
     }
+    writeProjectBarFillConfigsYaml(
+      normalizeProjectBarFillConfigs(view.projectBarFillConfigs),
+      indent,
+      lines,
+    );
   }
   if (view.pieGroupField) {
     lines.push(`${indentText}pieGroupField: ${formatYamlScalar(view.pieGroupField)}`);

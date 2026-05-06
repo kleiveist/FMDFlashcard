@@ -6,7 +6,6 @@
 
 import {
   type DatabaseAttributeMeta,
-  type DatabaseProjectMissingPlacement,
 } from "../database-types";
 
 type DatabaseProjectPanelProps = {
@@ -14,14 +13,10 @@ type DatabaseProjectPanelProps = {
   startField: string | null;
   unitField: string | null;
   blockResolution: number;
-  defaultUnits: number;
-  missingPlacement: DatabaseProjectMissingPlacement;
   onChange: (next: {
     startField?: string | null;
     unitField?: string | null;
     blockResolution?: number;
-    defaultUnits?: number;
-    missingPlacement?: DatabaseProjectMissingPlacement;
   }) => void;
   onClose: () => void;
 };
@@ -34,21 +29,18 @@ const isProjectNumericType = (type: DatabaseAttributeMeta["type"]) =>
   type === "rating" ||
   type === "progress";
 
-const asPositiveIntegerOrNull = (value: string): number | null => {
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 1) {
-    return null;
-  }
-  return parsed;
-};
+const PROJECT_BLOCK_RESOLUTION_OPTIONS = [1, 2, 4] as const;
+
+const normalizeBlockResolutionOption = (value: number) =>
+  PROJECT_BLOCK_RESOLUTION_OPTIONS.includes(value as typeof PROJECT_BLOCK_RESOLUTION_OPTIONS[number])
+    ? value
+    : 1;
 
 export const DatabaseProjectPanel = ({
   attributes,
   startField,
   unitField,
   blockResolution,
-  defaultUnits,
-  missingPlacement,
   onChange,
   onClose,
 }: DatabaseProjectPanelProps) => {
@@ -97,49 +89,18 @@ export const DatabaseProjectPanel = ({
 
         <label>
           Blockaufloesung
-          <input
-            type="number"
-            min={1}
-            step={1}
-            value={blockResolution}
-            onChange={(event) => {
-              const next = asPositiveIntegerOrNull(event.target.value);
-              if (next !== null) {
-                onChange({ blockResolution: next });
-              }
-            }}
-          />
-        </label>
-
-        <label>
-          Standard Units
-          <input
-            type="number"
-            min={1}
-            step={1}
-            value={defaultUnits}
-            onChange={(event) => {
-              const next = asPositiveIntegerOrNull(event.target.value);
-              if (next !== null) {
-                onChange({ defaultUnits: next });
-              }
-            }}
-          />
-        </label>
-
-        <label>
-          Ohne Placement
           <select
-            value={missingPlacement}
-            onChange={(event) =>
-              onChange({
-                missingPlacement: event.target.value === "hide-unplaced" ? "hide-unplaced" : "show-unplaced",
-              })}
+            value={normalizeBlockResolutionOption(blockResolution)}
+            onChange={(event) => onChange({ blockResolution: Number(event.target.value) })}
           >
-            <option value="show-unplaced">Als unplatziert anzeigen</option>
-            <option value="hide-unplaced">Rechts ausblenden</option>
+            {PROJECT_BLOCK_RESOLUTION_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option} {option === 1 ? "Block" : "Bloecke"} pro Unit
+              </option>
+            ))}
           </select>
         </label>
+
       </div>
 
       {numericAttributes.length === 0 ? (

@@ -114,7 +114,7 @@ describe("database-block-parser", () => {
             type: "project",
             projectStartField: "unitsstart",
             projectUnitField: "units",
-            blockResolution: 200,
+            blockResolution: 4,
             defaultUnits: 2,
             projectMissingPlacement: "hide-unplaced",
             projectBarFillConfigs: [
@@ -166,10 +166,10 @@ describe("database-block-parser", () => {
     expect(serialized).toContain("type: project");
     expect(serialized).toContain("projectMissingPlacement: hide-unplaced");
     expect(serialized).toContain("      properties:");
-    expect(serialized).not.toContain("projectBarFillConfigs:");
-    expect(serialized).not.toContain("attributeKey: progress");
-    expect(serialized).not.toContain("mode: text-code");
-    expect(serialized).not.toContain("mappings:");
+    expect(serialized).toContain("projectBarFillConfigs:");
+    expect(serialized).toContain("attributeKey: progress");
+    expect(serialized).toContain("mode: text-code");
+    expect(serialized).toContain("mappings:");
     expect(serialized).not.toContain("\nview:\n");
     expect(serialized).not.toContain("\ncolumns:");
     expect(serialized).not.toContain("\npropertiesByView:");
@@ -181,7 +181,25 @@ describe("database-block-parser", () => {
     expect(reparsed.config.title).toBe("Main");
     expect(reparsed.config.views.activeViewId).toBe("view-main");
     expect(reparsed.config.view.type).toBe("project");
-    expect(reparsed.config.view.projectBarFillConfigs).toEqual([]);
+    expect(reparsed.config.view.projectBarFillConfigs).toEqual([
+      {
+        recordId: "/vault/record-a.md",
+        attributeKey: "progress",
+        mode: "numeric",
+        min: 0,
+        max: 100,
+      },
+      {
+        recordId: "/vault/record-b.md",
+        attributeKey: "statuscode",
+        mode: "text-code",
+        mappings: [
+          { from: "text1", to: 10 },
+          { from: "text2", to: 20 },
+          { from: "text3", to: 100 },
+        ],
+      },
+    ]);
     expect(reparsed.config.columns).toEqual(["unitsstart", "units", "status"]);
     expect(reparsed.config.sort[0]?.field).toBe("unitsstart");
   });
@@ -249,10 +267,108 @@ describe("database-block-parser", () => {
     });
 
     const serialized = serializeDatabaseBlockConfig(parsed.config);
-    expect(serialized).not.toContain("projectBarFillConfigs:");
-    expect(serialized).not.toContain("recordId: /vault/b.md");
-    expect(serialized).not.toContain("from: text1");
+    expect(serialized).toContain("projectBarFillConfigs:");
+    expect(serialized).toContain("recordId: /vault/b.md");
+    expect(serialized).toContain("from: text1");
     expect(serialized).not.toContain("to: nope");
+  });
+
+  it("roundtrips project bar fill configs independently for saved project views", () => {
+    const raw = [
+      "::::",
+      "title: Project Rules",
+      "views:",
+      "  activeViewId: view-alpha",
+      "  items:",
+      "    - id: view-alpha",
+      "      name: Alpha",
+      "      view:",
+      "        type: project",
+      "        blockResolution: 2",
+      "        projectBarFillConfigs:",
+      "          - recordId: task-a.md",
+      "            attributeKey: progress",
+      "            mode: numeric",
+      "            min: 0",
+      "            max: 100",
+      "      properties:",
+      "        - progress",
+      "      filters:",
+      "        op: and",
+      "        rules: []",
+      "      sort: []",
+      "    - id: view-beta",
+      "      name: Beta",
+      "      view:",
+      "        type: project",
+      "        blockResolution: 4",
+      "        projectBarFillConfigs:",
+      "          - recordId: task-a.md",
+      "            attributeKey: StatusCode",
+      "            mode: text-code",
+      "            mappings:",
+      "              - from: text1",
+      "                to: 25",
+      "              - from: text2",
+      "                to: 75",
+      "      properties:",
+      "        - StatusCode",
+      "      filters:",
+      "        op: and",
+      "        rules: []",
+      "      sort: []",
+      "::::",
+    ].join("\n");
+
+    const parsed = parseDatabaseBlockConfigFromRaw(raw);
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.config.view.projectBarFillConfigs).toEqual([
+      {
+        recordId: "task-a.md",
+        attributeKey: "progress",
+        mode: "numeric",
+        min: 0,
+        max: 100,
+      },
+    ]);
+
+    const serialized = serializeDatabaseBlockConfig(parsed.config);
+    const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
+    expect(reparsed.errors).toEqual([]);
+    expect(reparsed.config.views.items.map((view) => ({
+      id: view.id,
+      blockResolution: view.view.blockResolution,
+      projectBarFillConfigs: view.view.projectBarFillConfigs,
+    }))).toEqual([
+      {
+        id: "view-alpha",
+        blockResolution: 2,
+        projectBarFillConfigs: [
+          {
+            recordId: "task-a.md",
+            attributeKey: "progress",
+            mode: "numeric",
+            min: 0,
+            max: 100,
+          },
+        ],
+      },
+      {
+        id: "view-beta",
+        blockResolution: 4,
+        projectBarFillConfigs: [
+          {
+            recordId: "task-a.md",
+            attributeKey: "StatusCode",
+            mode: "text-code",
+            mappings: [
+              { from: "text1", to: 25 },
+              { from: "text2", to: 75 },
+            ],
+          },
+        ],
+      },
+    ]);
   });
 
   it("roundtrips structured formula definitions in fields", () => {

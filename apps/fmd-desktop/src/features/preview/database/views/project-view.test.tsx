@@ -15,6 +15,24 @@ const render = (element: ReactElement, viewportWidth = 1400) => {
     writable: true,
     value: viewportWidth,
   });
+  if (typeof window.PointerEvent !== "function") {
+    class MockPointerEvent extends MouseEvent {
+      pointerId: number;
+      pointerType: string;
+      isPrimary: boolean;
+
+      constructor(type: string, init: MouseEventInit = {}) {
+        super(type, init);
+        this.pointerId = 1;
+        this.pointerType = "mouse";
+        this.isPrimary = true;
+      }
+    }
+    Object.defineProperty(window, "PointerEvent", {
+      configurable: true,
+      value: MockPointerEvent,
+    });
+  }
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
@@ -32,6 +50,13 @@ const render = (element: ReactElement, viewportWidth = 1400) => {
   };
 };
 
+const flushReactWork = async () => {
+  await act(async () => {
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    await Promise.resolve();
+  });
+};
+
 const createDragDataTransfer = () => {
   const values = new Map<string, string>();
   return {
@@ -47,13 +72,25 @@ const createDragDataTransfer = () => {
 const createPointerLikeEvent = (
   type: string,
   clientX: number,
-  options?: { ctrlKey?: boolean; metaKey?: boolean },
+  options?: { ctrlKey?: boolean; metaKey?: boolean; button?: number },
 ) => {
-  const event = new Event(type, { bubbles: true, cancelable: true });
-  Object.defineProperty(event, "clientX", { value: clientX });
-  Object.defineProperty(event, "ctrlKey", { value: Boolean(options?.ctrlKey) });
-  Object.defineProperty(event, "metaKey", { value: Boolean(options?.metaKey) });
-  return event;
+  return new PointerEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    clientX,
+    ctrlKey: Boolean(options?.ctrlKey),
+    metaKey: Boolean(options?.metaKey),
+    button: options?.button ?? 0,
+  });
+};
+
+const setFormControlValue = (
+  element: HTMLInputElement | HTMLSelectElement,
+  value: string,
+) => {
+  const prototype = Object.getPrototypeOf(element) as HTMLInputElement | HTMLSelectElement;
+  const descriptor = Object.getOwnPropertyDescriptor(prototype, "value");
+  descriptor?.set?.call(element, value);
 };
 
 const createRecord = (
@@ -216,7 +253,7 @@ describe("DatabaseProjectView", () => {
         records: [placedRecord, unplacedRecord],
         startField: "unitsstart",
         unitField: "units",
-        resolution: 100,
+        resolution: 1,
         defaultUnits: 1,
         missingPlacement: "show-unplaced",
         visibleProperties: [],
@@ -237,7 +274,7 @@ describe("DatabaseProjectView", () => {
         records: [placedRecord, unplacedRecord],
         startField: "unitsstart",
         unitField: "units",
-        resolution: 100,
+        resolution: 1,
         defaultUnits: 2,
         missingPlacement: "show-unplaced",
         visibleProperties: [],
@@ -267,14 +304,14 @@ describe("DatabaseProjectView", () => {
     cleanup();
   });
 
-  it("commits block move and resize interactions", () => {
+  it("commits block move and resize interactions", async () => {
     const onCommitPlacement = vi.fn();
     const { container, cleanup } = render(
       createElement(DatabaseProjectView, {
         records: [placedRecord],
         startField: "unitsstart",
         unitField: "units",
-        resolution: 100,
+        resolution: 1,
         defaultUnits: 1,
         missingPlacement: "show-unplaced",
         visibleProperties: [],
@@ -286,9 +323,15 @@ describe("DatabaseProjectView", () => {
     const bar = container.querySelector<HTMLElement>(".database-project-bar");
     const endHandle = container.querySelector<HTMLElement>(".database-project-bar-handle.is-end");
 
-    act(() => {
+    await act(async () => {
       bar?.dispatchEvent(createPointerLikeEvent("pointerdown", 100));
+    });
+    await flushReactWork();
+    act(() => {
       window.dispatchEvent(createPointerLikeEvent("pointermove", 136));
+    });
+    await flushReactWork();
+    act(() => {
       window.dispatchEvent(createPointerLikeEvent("pointerup", 136));
     });
 
@@ -296,9 +339,15 @@ describe("DatabaseProjectView", () => {
     expect(onCommitPlacement.mock.calls[0]?.[0]?.startSlot).toBe(5);
     expect(onCommitPlacement.mock.calls[0]?.[0]?.units).toBe(4);
 
-    act(() => {
+    await act(async () => {
       endHandle?.dispatchEvent(createPointerLikeEvent("pointerdown", 120));
+    });
+    await flushReactWork();
+    act(() => {
       window.dispatchEvent(createPointerLikeEvent("pointermove", 138));
+    });
+    await flushReactWork();
+    act(() => {
       window.dispatchEvent(createPointerLikeEvent("pointerup", 138));
     });
 
@@ -309,41 +358,115 @@ describe("DatabaseProjectView", () => {
     cleanup();
   });
 
-  it("shows sidebar toggle and collapses sidebar by reflow (no overlay)", () => {
-    const { container, cleanup } = render(
+  it("multiplies visual bars by block resolution but commits domain units", async () => {
+    const resolutionTwo = render(
       createElement(DatabaseProjectView, {
         records: [placedRecord],
         startField: "unitsstart",
         unitField: "units",
-        resolution: 100,
+        resolution: 2,
         defaultUnits: 1,
         missingPlacement: "show-unplaced",
         visibleProperties: [],
       }),
     );
 
-    const toggleButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => (button.textContent ?? "").includes("Datensatz"));
-    expect(toggleButton).toBeTruthy();
-    expect(container.querySelector(".database-project-sidebar-header")).toBeTruthy();
+    const barAtTwo = resolutionTwo.container.querySelector<HTMLElement>(".database-project-bar");
+    expect(barAtTwo?.style.left).toBe("108px");
+    expect(barAtTwo?.style.width).toBe("144px");
+    resolutionTwo.cleanup();
 
+    const onCommitPlacement = vi.fn();
+    const resolutionFour = render(
+      createElement(DatabaseProjectView, {
+        records: [placedRecord],
+        startField: "unitsstart",
+        unitField: "units",
+        resolution: 4,
+        defaultUnits: 1,
+        missingPlacement: "show-unplaced",
+        visibleProperties: [],
+        editable: true,
+        onCommitPlacement,
+      }),
+    );
+
+    const barAtFour = resolutionFour.container.querySelector<HTMLElement>(".database-project-bar");
+    expect(barAtFour?.style.left).toBe("216px");
+    expect(barAtFour?.style.width).toBe("288px");
+
+    await act(async () => {
+      barAtFour?.dispatchEvent(createPointerLikeEvent("pointerdown", 100));
+    });
+    await flushReactWork();
     act(() => {
-      toggleButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      window.dispatchEvent(createPointerLikeEvent("pointermove", 172));
+    });
+    await flushReactWork();
+    act(() => {
+      window.dispatchEvent(createPointerLikeEvent("pointerup", 172));
     });
 
-    expect(container.querySelector(".database-project-sidebar-header")).toBeNull();
-    expect(container.querySelector(".database-project-sidebar-overlay")).toBeNull();
+    expect(onCommitPlacement).toHaveBeenCalledTimes(1);
+    expect(onCommitPlacement.mock.calls[0]?.[0]?.startSlot).toBe(4);
+    expect(onCommitPlacement.mock.calls[0]?.[0]?.units).toBe(4);
 
-    cleanup();
+    resolutionFour.cleanup();
   });
 
-  it("uses the same sidebar toggle control on narrow viewport", () => {
+  it("collapses the sidebar to a catch rail and restores the timeline offset", () => {
     const { container, cleanup } = render(
       createElement(DatabaseProjectView, {
         records: [placedRecord],
         startField: "unitsstart",
         unitField: "units",
-        resolution: 100,
+        resolution: 1,
+        defaultUnits: 1,
+        missingPlacement: "show-unplaced",
+        visibleProperties: [],
+      }),
+    );
+
+    const grid = container.querySelector<HTMLElement>(".database-project-grid");
+    const bar = container.querySelector<HTMLElement>(".database-project-bar");
+    const toggleButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => (button.textContent ?? "").includes("Datensatz"));
+    expect(toggleButton).toBeTruthy();
+    expect(container.querySelector(".database-project-sidebar-header")).toBeTruthy();
+    expect(grid?.style.gridTemplateColumns).toBe("280px 1800px");
+    expect(bar?.style.left).toBe("54px");
+    expect(bar?.style.width).toBe("72px");
+
+    act(() => {
+      toggleButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(container.querySelector(".database-project-view")?.classList.contains("is-sidebar-collapsed")).toBe(true);
+    expect(container.querySelector(".database-project-sidebar-header")).toBeTruthy();
+    expect(container.querySelector(".database-project-sidebar-row")?.classList.contains("is-collapsed")).toBe(true);
+    expect(grid?.style.gridTemplateColumns).toBe("18px 1800px");
+    expect(bar?.style.left).toBe("54px");
+    expect(bar?.style.width).toBe("72px");
+
+    act(() => {
+      toggleButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(container.querySelector(".database-project-view")?.classList.contains("is-sidebar-collapsed")).toBe(false);
+    expect(grid?.style.gridTemplateColumns).toBe("280px 1800px");
+    expect(bar?.style.left).toBe("54px");
+    expect(bar?.style.width).toBe("72px");
+
+    cleanup();
+  });
+
+  it("uses the same compact hidden sidebar on narrow viewport", () => {
+    const { container, cleanup } = render(
+      createElement(DatabaseProjectView, {
+        records: [placedRecord],
+        startField: "unitsstart",
+        unitField: "units",
+        resolution: 1,
         defaultUnits: 1,
         missingPlacement: "show-unplaced",
         visibleProperties: [],
@@ -351,10 +474,85 @@ describe("DatabaseProjectView", () => {
       1000,
     );
 
+    const grid = container.querySelector<HTMLElement>(".database-project-grid");
     const toggleButton = Array.from(container.querySelectorAll("button"))
       .find((button) => (button.textContent ?? "").includes("Datensatz anzeigen"));
     expect(toggleButton).toBeTruthy();
-    expect(container.querySelector(".database-project-sidebar-header")).toBeNull();
+    expect(container.querySelector(".database-project-view")?.classList.contains("is-sidebar-collapsed")).toBe(true);
+    expect(container.querySelector(".database-project-sidebar-header")).toBeTruthy();
+    expect(container.querySelector(".database-project-sidebar-row")?.classList.contains("is-collapsed")).toBe(true);
+    expect(grid?.style.gridTemplateColumns).toBe("18px 1800px");
+
+    cleanup();
+  });
+
+  it("reveals hidden sidebar rows from the left catch area and keeps drag placement available", () => {
+    const onCommitPlacement = vi.fn();
+    const { container, cleanup } = render(
+      createElement(DatabaseProjectView, {
+        records: [placedRecord, unplacedRecord],
+        startField: "unitsstart",
+        unitField: "units",
+        resolution: 1,
+        defaultUnits: 2,
+        missingPlacement: "show-unplaced",
+        visibleProperties: [],
+        editable: true,
+        onCommitPlacement,
+      }),
+    );
+
+    const toggleButton = Array.from(container.querySelectorAll("button"))
+      .find((button) => (button.textContent ?? "").includes("Datensatz"));
+    act(() => {
+      toggleButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const sidebarRows = container.querySelectorAll<HTMLElement>(".database-project-sidebar-row");
+    const hiddenUnplacedRow = sidebarRows[1];
+    expect(hiddenUnplacedRow?.classList.contains("is-collapsed")).toBe(true);
+    expect(hiddenUnplacedRow?.classList.contains("is-peeking")).toBe(false);
+
+    act(() => {
+      hiddenUnplacedRow?.dispatchEvent(new PointerEvent("pointermove", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 8,
+      }));
+    });
+    expect(hiddenUnplacedRow?.classList.contains("is-peeking")).toBe(true);
+
+    act(() => {
+      hiddenUnplacedRow?.dispatchEvent(new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        button: 2,
+      }));
+    });
+    expect(hiddenUnplacedRow?.classList.contains("is-peeking")).toBe(true);
+
+    const titleButton = hiddenUnplacedRow?.querySelector<HTMLButtonElement>(".database-project-sidebar-row-title");
+    expect(titleButton?.draggable).toBe(true);
+    expect(titleButton?.tabIndex).not.toBe(-1);
+
+    const dataTransfer = createDragDataTransfer();
+    act(() => {
+      const dragStart = new Event("dragstart", { bubbles: true, cancelable: true });
+      Object.defineProperty(dragStart, "dataTransfer", { value: dataTransfer });
+      titleButton?.dispatchEvent(dragStart);
+    });
+
+    const targetTrack = container.querySelectorAll<HTMLElement>(".database-project-row-track")[0];
+    act(() => {
+      const drop = new Event("drop", { bubbles: true, cancelable: true });
+      Object.defineProperty(drop, "dataTransfer", { value: dataTransfer });
+      Object.defineProperty(drop, "clientX", { value: 54 });
+      targetTrack?.dispatchEvent(drop);
+    });
+
+    expect(onCommitPlacement).toHaveBeenCalledTimes(1);
+    expect(onCommitPlacement.mock.calls[0]?.[0]?.record.fileId).toBe("unplaced");
+    expect(onCommitPlacement.mock.calls[0]?.[0]?.units).toBe(2);
 
     cleanup();
   });
@@ -365,7 +563,7 @@ describe("DatabaseProjectView", () => {
         records: [placedRecord],
         startField: "unitsstart",
         unitField: "units",
-        resolution: 100,
+        resolution: 1,
         defaultUnits: 1,
         missingPlacement: "show-unplaced",
         visibleProperties: [],
@@ -406,7 +604,7 @@ describe("DatabaseProjectView", () => {
         records: [placedRecord],
         startField: "unitsstart",
         unitField: "units",
-        resolution: 100,
+        resolution: 1,
         defaultUnits: 1,
         missingPlacement: "show-unplaced",
         visibleProperties: [statusAttribute, ownerAttribute, priorityAttribute],
@@ -433,7 +631,7 @@ describe("DatabaseProjectView", () => {
         records: [placedRecord],
         startField: "unitsstart",
         unitField: "units",
-        resolution: 100,
+        resolution: 1,
         defaultUnits: 1,
         missingPlacement: "show-unplaced",
         visibleProperties: [examAttribute],
@@ -461,7 +659,7 @@ describe("DatabaseProjectView", () => {
         attributes: [progressFormulaAttribute],
         startField: "unitsstart",
         unitField: "units",
-        resolution: 100,
+        resolution: 1,
         defaultUnits: 1,
         missingPlacement: "show-unplaced",
         barFillConfigs: [
@@ -488,7 +686,7 @@ describe("DatabaseProjectView", () => {
         attributes: [progressFormulaAttribute],
         startField: "unitsstart",
         unitField: "units",
-        resolution: 100,
+        resolution: 1,
         defaultUnits: 1,
         missingPlacement: "show-unplaced",
         barFillConfigs: [
@@ -517,7 +715,7 @@ describe("DatabaseProjectView", () => {
         attributes: [statusCodeAttribute],
         startField: "unitsstart",
         unitField: "units",
-        resolution: 100,
+        resolution: 1,
         defaultUnits: 1,
         missingPlacement: "show-unplaced",
         barFillConfigs: [
@@ -546,7 +744,7 @@ describe("DatabaseProjectView", () => {
         attributes: [statusCodeAttribute],
         startField: "unitsstart",
         unitField: "units",
-        resolution: 100,
+        resolution: 1,
         defaultUnits: 1,
         missingPlacement: "show-unplaced",
         barFillConfigs: [
@@ -573,7 +771,7 @@ describe("DatabaseProjectView", () => {
         attributes: [statusCodeAttribute],
         startField: "unitsstart",
         unitField: "units",
-        resolution: 100,
+        resolution: 1,
         defaultUnits: 1,
         missingPlacement: "show-unplaced",
         visibleProperties: [],
@@ -600,7 +798,7 @@ describe("DatabaseProjectView", () => {
         attributes: [statusCodeAttribute],
         startField: "unitsstart",
         unitField: "units",
-        resolution: 100,
+        resolution: 1,
         defaultUnits: 1,
         missingPlacement: "show-unplaced",
         visibleProperties: [],
@@ -623,27 +821,28 @@ describe("DatabaseProjectView", () => {
       if (!modeSelect) {
         return;
       }
-      modeSelect.value = "text-code";
+      setFormControlValue(modeSelect, "text-code");
       modeSelect.dispatchEvent(new Event("change", { bubbles: true }));
     });
 
-    const mappingInputs = popup?.querySelectorAll<HTMLInputElement>(".database-project-bar-config-mapping-row input") ?? [];
+    const updatedPopup = document.querySelector<HTMLElement>(".database-project-bar-config");
+    const mappingInputs = updatedPopup?.querySelectorAll<HTMLInputElement>(".database-project-bar-config-mapping-row input") ?? [];
     act(() => {
       const source = mappingInputs[0];
       const target = mappingInputs[1];
       if (source) {
-        source.value = "text2";
+        setFormControlValue(source, "text2");
         source.dispatchEvent(new Event("input", { bubbles: true }));
         source.dispatchEvent(new Event("change", { bubbles: true }));
       }
       if (target) {
-        target.value = "20";
+        setFormControlValue(target, "20");
         target.dispatchEvent(new Event("input", { bubbles: true }));
         target.dispatchEvent(new Event("change", { bubbles: true }));
       }
     });
 
-    const saveButton = Array.from(popup?.querySelectorAll("button") ?? [])
+    const saveButton = Array.from(updatedPopup?.querySelectorAll("button") ?? [])
       .find((button) => (button.textContent ?? "").includes("Speichern"));
     act(() => {
       saveButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -663,7 +862,41 @@ describe("DatabaseProjectView", () => {
     cleanup();
   });
 
+  it("opens bar config on right click without starting placement edits", () => {
+    const onChangeBarFillConfig = vi.fn();
+    const onCommitPlacement = vi.fn();
+    const { container, cleanup } = render(
+      createElement(DatabaseProjectView, {
+        records: [fillRecord],
+        attributes: [statusCodeAttribute],
+        startField: "unitsstart",
+        unitField: "units",
+        resolution: 1,
+        defaultUnits: 1,
+        missingPlacement: "show-unplaced",
+        visibleProperties: [],
+        editable: true,
+        onChangeBarFillConfig,
+        onCommitPlacement,
+      }),
+    );
+
+    const bar = container.querySelector<HTMLElement>(".database-project-bar");
+    act(() => {
+      bar?.dispatchEvent(new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        button: 2,
+      }));
+    });
+
+    expect(document.querySelector(".database-project-bar-config")).toBeTruthy();
+    expect(onCommitPlacement).not.toHaveBeenCalled();
+    cleanup();
+  });
+
   it("applies the active bar rule only to currently visible project records", async () => {
+    const onChangeBarFillConfig = vi.fn();
     const onApplyBarFillConfigToVisible = vi.fn(async (
       _config: DatabaseProjectBarFillConfig,
       _records: DatabaseRecord[],
@@ -674,7 +907,7 @@ describe("DatabaseProjectView", () => {
         attributes: [statusCodeAttribute],
         startField: "unitsstart",
         unitField: "units",
-        resolution: 100,
+        resolution: 1,
         defaultUnits: 1,
         missingPlacement: "hide-unplaced",
         barFillConfigs: [
@@ -686,18 +919,27 @@ describe("DatabaseProjectView", () => {
           },
         ],
         visibleProperties: [],
+        onChangeBarFillConfig,
         onApplyBarFillConfigToVisible,
       }),
     );
 
     const bar = container.querySelector<HTMLElement>(".database-project-bar");
     act(() => {
-      bar?.dispatchEvent(createPointerLikeEvent("pointerdown", 64, { ctrlKey: true }));
+      bar?.dispatchEvent(new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        button: 2,
+      }));
     });
+    await flushReactWork();
+    await flushReactWork();
 
     const popup = document.querySelector<HTMLElement>(".database-project-bar-config");
+    expect(popup).toBeTruthy();
     const applyButton = Array.from(popup?.querySelectorAll("button") ?? [])
       .find((button) => (button.textContent ?? "").includes("Regel auf sichtbare anwenden"));
+    expect(applyButton).toBeTruthy();
     await act(async () => {
       applyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
