@@ -304,6 +304,14 @@ export const filterSpacedRepetitionCardStates = (
   return filtered;
 };
 
+export const mergeSpacedRepetitionCardStates = (
+  base: Record<string, SpacedRepetitionCardProgress>,
+  incoming: Record<string, SpacedRepetitionCardProgress>,
+) => ({
+  ...base,
+  ...incoming,
+});
+
 export const reconcileSpacedRepetitionUserState = (
   state: SpacedRepetitionUserState,
   activeCardIds: Set<string>,

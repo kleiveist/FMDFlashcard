@@ -13,8 +13,11 @@ import {
   ensureProfileRoot,
   loadExamRunStore,
   loadProfileSettings,
+  loadSpacedRepetitionStore,
+  saveSpacedRepetitionStore,
 } from "./storage";
 import type { ExamRun } from "../../lib/examRuns";
+import type { SpacedRepetitionStorage } from "../spaced-repetition/logic";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -49,6 +52,40 @@ const getProfileFilePath = (profilePath: string) =>
 
 const getExamRunsDir = (profilePath: string) =>
   `${profilePath.replace(/\\/g, "/")}/exam-runs`;
+
+const getSrRegistryPath = (profilePath: string) =>
+  `${profilePath.replace(/\\/g, "/")}/spaced-repetition/registry.json`;
+
+const getSrProgressPath = (profilePath: string, userId: string) =>
+  `${profilePath.replace(/\\/g, "/")}/spaced-repetition/users/${encodeURIComponent(
+    userId,
+  )}/progress.json`;
+
+const srProgress = (
+  boxCanonical: number,
+  attempts: number,
+  lastReviewedAt: string | null,
+) => ({
+  boxCanonical,
+  attempts,
+  lastResult: attempts > 0 ? ("correct" as const) : ("neutral" as const),
+  lastReviewedAt,
+});
+
+const buildSrStorage = (
+  userId: string,
+  cardStates: SpacedRepetitionStorage["userStateById"][string]["cardStates"] = {},
+): SpacedRepetitionStorage => ({
+  users: [{ id: userId, name: `User ${userId}`, createdAt: "2024-01-01" }],
+  userStateById: {
+    [userId]: {
+      cardStates,
+      completedPerDay: {},
+      lastLoadedAt: null,
+    },
+  },
+  lastActiveUserId: userId,
+});
 
 beforeEach(() => {
   files.clear();
@@ -198,6 +235,191 @@ describe("loadProfileSettings", () => {
     const written = JSON.parse(files.get(profileFile) ?? "{}");
     expect(written.schemaVersion).toBe(1);
     expect(written.id).toBe("alpha");
+  });
+});
+
+describe("spaced repetition folder storage", () => {
+  it("writes and loads progress from one folder per SR user", async () => {
+    const profilePath = "/profiles/sr";
+    const storage = buildSrStorage("u1", {
+      cardA: srProgress(2, 3, "2024-01-02T00:00:00.000Z"),
+    });
+
+    await saveSpacedRepetitionStore(profilePath, {
+      schemaVersion: 2,
+      byVaultId: { __profile__: storage },
+      migratedVaultIds: [],
+    });
+
+    expect(files.has(getSrRegistryPath(profilePath))).toBe(true);
+    expect(files.has(getSrProgressPath(profilePath, "u1"))).toBe(true);
+
+    const loaded = await loadSpacedRepetitionStore(profilePath);
+    const loadedStorage = loaded.byVaultId.__profile__;
+
+    expect(loadedStorage?.users.map((user) => user.id)).toEqual(["u1"]);
+    expect(loadedStorage?.lastActiveUserId).toBe("u1");
+    expect(loadedStorage?.userStateById.u1.cardStates.cardA?.attempts).toBe(3);
+  });
+
+  it("migrates all legacy vault keys instead of preferring an empty current key", async () => {
+    const profilePath = "/profiles/sr-legacy";
+    const emptyStorage: SpacedRepetitionStorage = {
+      users: [],
+      userStateById: {},
+      lastActiveUserId: null,
+    };
+    const filledStorage = buildSrStorage("u1", {
+      cardA: srProgress(3, 4, "2024-01-03T00:00:00.000Z"),
+    });
+    files.set(
+      `${profilePath}/spaced-repetition.json`,
+      JSON.stringify({
+        schemaVersion: 1,
+        byVaultId: {
+          currentEmpty: emptyStorage,
+          filledLegacy: filledStorage,
+        },
+        migratedVaultIds: [],
+      }),
+    );
+
+    const loaded = await loadSpacedRepetitionStore(profilePath);
+    const loadedStorage = loaded.byVaultId.__profile__;
+    const registry = JSON.parse(files.get(getSrRegistryPath(profilePath)) ?? "{}");
+
+    expect(loadedStorage?.users.map((user) => user.id)).toEqual(["u1"]);
+    expect(loadedStorage?.userStateById.u1.cardStates.cardA?.boxCanonical).toBe(3);
+    expect(registry.legacyVaultIds.sort()).toEqual([
+      "currentEmpty",
+      "filledLegacy",
+    ]);
+  });
+
+  it("deduplicates legacy users and keeps the newest card progress", async () => {
+    const profilePath = "/profiles/sr-merge";
+    const older = buildSrStorage("u1", {
+      cardA: srProgress(5, 8, "2024-01-01T00:00:00.000Z"),
+    });
+    older.userStateById.u1.completedPerDay = { "2024-01-01": 2 };
+    const newer = buildSrStorage("u1", {
+      cardA: srProgress(2, 1, "2024-01-02T00:00:00.000Z"),
+      cardB: srProgress(1, 1, "2024-01-02T00:00:00.000Z"),
+    });
+    newer.userStateById.u1.completedPerDay = { "2024-01-01": 5 };
+    files.set(
+      `${profilePath}/spaced-repetition.json`,
+      JSON.stringify({
+        schemaVersion: 1,
+        byVaultId: {
+          vaultA: older,
+          vaultB: newer,
+        },
+        migratedVaultIds: [],
+      }),
+    );
+
+    const loaded = await loadSpacedRepetitionStore(profilePath);
+    const state = loaded.byVaultId.__profile__?.userStateById.u1;
+
+    expect(loaded.byVaultId.__profile__?.users).toHaveLength(1);
+    expect(state?.cardStates.cardA?.boxCanonical).toBe(2);
+    expect(state?.cardStates.cardA?.attempts).toBe(1);
+    expect(state?.cardStates.cardB?.attempts).toBe(1);
+    expect(state?.completedPerDay["2024-01-01"]).toBe(5);
+  });
+
+  it("does not reload deleted SR users from archived progress files", async () => {
+    const profilePath = "/profiles/sr-delete";
+    await saveSpacedRepetitionStore(profilePath, {
+      schemaVersion: 2,
+      byVaultId: {
+        __profile__: {
+          users: [
+            { id: "u1", name: "User 1", createdAt: "2024-01-01" },
+            { id: "u2", name: "User 2", createdAt: "2024-01-01" },
+          ],
+          userStateById: {
+            u1: {
+              cardStates: {},
+              completedPerDay: {},
+              lastLoadedAt: null,
+            },
+            u2: {
+              cardStates: { cardB: srProgress(1, 1, null) },
+              completedPerDay: {},
+              lastLoadedAt: null,
+            },
+          },
+          lastActiveUserId: "u1",
+        },
+      },
+      migratedVaultIds: [],
+    });
+
+    await saveSpacedRepetitionStore(profilePath, {
+      schemaVersion: 2,
+      byVaultId: { __profile__: buildSrStorage("u1") },
+      migratedVaultIds: [],
+    });
+
+    const loaded = await loadSpacedRepetitionStore(profilePath);
+    const archivedU2Progress = Array.from(files.keys()).some((path) =>
+      path.startsWith(
+        `${profilePath}/spaced-repetition/users/u2/progress.deleted.`,
+      ),
+    );
+
+    expect(loaded.byVaultId.__profile__?.users.map((user) => user.id)).toEqual([
+      "u1",
+    ]);
+    expect(files.has(getSrProgressPath(profilePath, "u2"))).toBe(false);
+    expect(archivedU2Progress).toBe(true);
+  });
+
+  it("does not resurrect deleted SR users from an already migrated legacy file", async () => {
+    const profilePath = "/profiles/sr-delete-legacy";
+    files.set(
+      `${profilePath}/spaced-repetition.json`,
+      JSON.stringify({
+        schemaVersion: 1,
+        byVaultId: {
+          oldVault: {
+            users: [
+              { id: "u1", name: "User 1", createdAt: "2024-01-01" },
+              { id: "u2", name: "User 2", createdAt: "2024-01-01" },
+            ],
+            userStateById: {
+              u1: {
+                cardStates: {},
+                completedPerDay: {},
+                lastLoadedAt: null,
+              },
+              u2: {
+                cardStates: { cardB: srProgress(1, 1, null) },
+                completedPerDay: {},
+                lastLoadedAt: null,
+              },
+            },
+            lastActiveUserId: "u2",
+          },
+        },
+        migratedVaultIds: [],
+      }),
+    );
+
+    await loadSpacedRepetitionStore(profilePath);
+    await saveSpacedRepetitionStore(profilePath, {
+      schemaVersion: 2,
+      byVaultId: { __profile__: buildSrStorage("u1") },
+      migratedVaultIds: [],
+    });
+
+    const loaded = await loadSpacedRepetitionStore(profilePath);
+
+    expect(loaded.byVaultId.__profile__?.users.map((user) => user.id)).toEqual([
+      "u1",
+    ]);
   });
 });
 

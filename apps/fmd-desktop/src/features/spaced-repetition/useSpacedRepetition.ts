@@ -54,9 +54,9 @@ import {
   getFlashcardId,
   getSpacedRepetitionEffectiveBox,
   hashString,
+  mergeSpacedRepetitionCardStates,
   MAX_SPACED_REPETITION_BOX,
   normalizeSpacedRepetitionCardProgress,
-  reconcileSpacedRepetitionUserStateById,
   type SpacedRepetitionRepetitionStrength,
   type SpacedRepetitionSession,
   type SpacedRepetitionStorage,
@@ -140,37 +140,6 @@ const normalizeSpacedRepetitionPageSize = (value: number) => {
   return SPACED_REPETITION_PAGE_SIZES.includes(value as SpacedRepetitionPageSize)
     ? (value as SpacedRepetitionPageSize)
     : DEFAULT_SPACED_REPETITION_PAGE_SIZE;
-};
-
-const getSpacedRepetitionStorageScore = (storage: SpacedRepetitionStorage) => {
-  const users = Array.isArray(storage.users) ? storage.users.length : 0;
-  const states =
-    storage.userStateById && typeof storage.userStateById === "object"
-      ? Object.keys(storage.userStateById).length
-      : 0;
-  const hasActive = storage.lastActiveUserId ? 1 : 0;
-  return users * 10 + states * 3 + hasActive;
-};
-
-const resolveLegacySpacedRepetitionStorage = (
-  byVaultId: Record<string, SpacedRepetitionStorage>,
-  vaultId: string | null,
-) => {
-  if (vaultId && byVaultId[vaultId]) {
-    return { key: vaultId, storage: byVaultId[vaultId] };
-  }
-  const legacyEntries = Object.entries(byVaultId).filter(
-    ([key]) => key !== PROFILE_SCOPED_VAULT_KEY,
-  );
-  if (legacyEntries.length === 0) {
-    return null;
-  }
-  const ranked = [...legacyEntries].sort(
-    (a, b) =>
-      getSpacedRepetitionStorageScore(b[1]) - getSpacedRepetitionStorageScore(a[1]),
-  );
-  const [key, storage] = ranked[0];
-  return key && storage ? { key, storage } : null;
 };
 
 type UseSpacedRepetitionOptions = {
@@ -567,26 +536,8 @@ export const useSpacedRepetition = ({
     const restoreSpacedRepetitionData = async () => {
       try {
         const store = await loadSpacedRepetitionStore(userVaultProfilePath);
-        let nextStore = store;
-        let storage = store.byVaultId[storageScopeId] ?? null;
-        if (!storage) {
-          const legacy = resolveLegacySpacedRepetitionStorage(store.byVaultId, vaultId);
-          if (legacy) {
-            storage = legacy.storage;
-            nextStore = {
-              ...store,
-              byVaultId: {
-                ...store.byVaultId,
-                [PROFILE_SCOPED_VAULT_KEY]: legacy.storage,
-              },
-              migratedVaultIds: Array.from(
-                new Set([...(store.migratedVaultIds ?? []), legacy.key]),
-              ),
-            };
-            await saveSpacedRepetitionStore(userVaultProfilePath, nextStore);
-          }
-        }
-        spacedRepetitionStoreRef.current = nextStore;
+        const storage = store.byVaultId[storageScopeId] ?? null;
+        spacedRepetitionStoreRef.current = store;
         if (cancelled) {
           return;
         }
@@ -611,7 +562,7 @@ export const useSpacedRepetition = ({
     return () => {
       cancelled = true;
     };
-  }, [storageScopeId, userVaultProfilePath, userVaultRevision, vaultId]);
+  }, [storageScopeId, userVaultProfilePath, userVaultRevision]);
 
   useEffect(() => {
     if (!spacedRepetitionDataLoaded || !userVaultProfilePath) {
@@ -695,17 +646,22 @@ export const useSpacedRepetition = ({
     setSpacedRepetitionUserStateById((prev) => {
       const current =
         prev[spacedRepetitionActiveUserId] ?? createEmptySpacedRepetitionUserState();
-      if (
-        current.cardStates === session.cardProgressById &&
-        current.completedPerDay === session.completedPerDay
-      ) {
+      const hasCardStateChanges = Object.entries(session.cardProgressById).some(
+        ([cardId, progress]) => current.cardStates[cardId] !== progress,
+      );
+      if (!hasCardStateChanges && current.completedPerDay === session.completedPerDay) {
         return prev;
       }
       return {
         ...prev,
         [spacedRepetitionActiveUserId]: {
           ...current,
-          cardStates: session.cardProgressById,
+          cardStates: hasCardStateChanges
+            ? mergeSpacedRepetitionCardStates(
+                current.cardStates,
+                session.cardProgressById,
+              )
+            : current.cardStates,
           completedPerDay: session.completedPerDay,
         },
       };
@@ -959,12 +915,8 @@ export const useSpacedRepetition = ({
         cards,
         cardIdContext,
       );
-      const normalizedUserStateById = reconcileSpacedRepetitionUserStateById(
-        spacedRepetitionUserStateById,
-        activeCardIds,
-      );
       const currentUserState =
-        normalizedUserStateById[activeUserId] ??
+        spacedRepetitionUserStateById[activeUserId] ??
         createEmptySpacedRepetitionUserState();
       const filteredStoredCardStates = filterSpacedRepetitionCardStates(
         currentUserState.cardStates,
@@ -1043,10 +995,13 @@ export const useSpacedRepetition = ({
         },
       }));
       setSpacedRepetitionUserStateById({
-        ...normalizedUserStateById,
+        ...spacedRepetitionUserStateById,
         [activeUserId]: {
           ...currentUserState,
-          cardStates: nextSession.cardProgressById,
+          cardStates: mergeSpacedRepetitionCardStates(
+            currentUserState.cardStates,
+            nextSession.cardProgressById,
+          ),
           lastLoadedAt: new Date().toISOString(),
           completedPerDay: storedCompletedPerDay,
         },

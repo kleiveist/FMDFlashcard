@@ -3,6 +3,7 @@ import type { Flashcard } from "../../lib/flashcards";
 import {
   buildActiveSpacedRepetitionCardIdSet,
   filterSpacedRepetitionCardStates,
+  mergeSpacedRepetitionCardStates,
   reconcileSpacedRepetitionUserStateById,
   type SpacedRepetitionCardProgress,
   type SpacedRepetitionUserState,
@@ -43,6 +44,22 @@ describe("spaced repetition helpers", () => {
       new Set(["live"]),
     );
     expect(Object.keys(reconciled.alice.cardStates)).toEqual(["live"]);
+  });
+
+  it("merges loaded card states without dropping non-loaded progress", () => {
+    const merged = mergeSpacedRepetitionCardStates(
+      {
+        ghost: baseProgress,
+        live: { ...baseProgress, attempts: 1 },
+      },
+      {
+        live: { ...baseProgress, attempts: 4 },
+      },
+    );
+
+    expect(Object.keys(merged).sort()).toEqual(["ghost", "live"]);
+    expect(merged.live.attempts).toBe(4);
+    expect(merged.ghost).toBe(baseProgress);
   });
 
   it("generates different IDs for the same card across vaults", () => {

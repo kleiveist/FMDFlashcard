@@ -28,7 +28,13 @@ import {
   normalizeExamPointsProfilesStore,
   type ExamPointsProfilesStore,
 } from "../../lib/exam/pointsProfiles";
-import type { SpacedRepetitionStorage } from "../spaced-repetition/logic";
+import {
+  normalizeSpacedRepetitionCardProgress,
+  type SpacedRepetitionCardProgress,
+  type SpacedRepetitionStorage,
+  type SpacedRepetitionUser,
+  type SpacedRepetitionUserState,
+} from "../spaced-repetition/logic";
 
 type PathInfo = {
   exists: boolean;
@@ -65,6 +71,19 @@ export type SpacedRepetitionProfileStore = {
   migratedVaultIds: string[];
 };
 
+type SpacedRepetitionRegistryStore = {
+  schemaVersion: number;
+  lastActiveUserId: string | null;
+  legacyVaultIds: string[];
+  migratedAt: string | null;
+};
+
+type SpacedRepetitionUserProgressStore = {
+  schemaVersion: number;
+  user: SpacedRepetitionUser;
+  state: SpacedRepetitionUserState;
+};
+
 export type FastFlashcardProfileStore = {
   schemaVersion: number;
   sessions: FastFlashcardSessionSummary[];
@@ -84,14 +103,20 @@ const USER_VAULT_PROFILES_DIR = "profiles";
 const USER_VAULT_USERS_DIR = "users";
 const USER_VAULT_PROFILE_FILE = "profile.json";
 const USER_VAULT_SPACED_REPETITION_FILE = "spaced-repetition.json";
+const USER_VAULT_SPACED_REPETITION_DIR = "spaced-repetition";
+const USER_VAULT_SPACED_REPETITION_REGISTRY_FILE = "registry.json";
+const USER_VAULT_SPACED_REPETITION_USERS_DIR = "users";
+const USER_VAULT_SPACED_REPETITION_PROGRESS_FILE = "progress.json";
 const USER_VAULT_FAST_FLASHCARD_FILE = "fast-flashcard.json";
 const USER_VAULT_EXAM_RUNS_DIR = "exam-runs";
 const USER_VAULT_EXAM_POINTS_PROFILES_FILE = "exam-points-profiles.json";
 
 const USER_VAULT_PROFILE_SCHEMA_VERSION = USER_VAULT_SCHEMA_VERSION;
+const USER_VAULT_SPACED_REPETITION_SCHEMA_VERSION = 2;
 const USER_VAULT_EXAM_RUNS_SCHEMA_VERSION = USER_VAULT_SCHEMA_VERSION;
 const USER_VAULT_EXAM_POINTS_PROFILE_SCHEMA_VERSION =
   EXAM_POINTS_PROFILE_SCHEMA_VERSION;
+const PROFILE_SCOPED_SPACED_REPETITION_KEY = "__profile__";
 
 const isMissingPathError = (message: string) =>
   message.includes("Path does not exist") ||
@@ -235,6 +260,34 @@ const resolveProfileMetaPath = (profilePath: string) =>
 
 const resolveSpacedRepetitionPath = (profilePath: string) =>
   joinPath(profilePath, USER_VAULT_SPACED_REPETITION_FILE);
+
+const resolveSpacedRepetitionRootPath = (profilePath: string) =>
+  joinPath(profilePath, USER_VAULT_SPACED_REPETITION_DIR);
+
+const resolveSpacedRepetitionRegistryPath = (profilePath: string) =>
+  joinPath(
+    resolveSpacedRepetitionRootPath(profilePath),
+    USER_VAULT_SPACED_REPETITION_REGISTRY_FILE,
+  );
+
+const resolveSpacedRepetitionUsersRootPath = (profilePath: string) =>
+  joinPath(
+    resolveSpacedRepetitionRootPath(profilePath),
+    USER_VAULT_SPACED_REPETITION_USERS_DIR,
+  );
+
+const buildSafeSpacedRepetitionUserFolderName = (userId: string) =>
+  sanitizeProfileName(encodeURIComponent(userId)) || "user";
+
+const resolveSpacedRepetitionUserProgressPath = (
+  profilePath: string,
+  userId: string,
+) =>
+  joinPath(
+    resolveSpacedRepetitionUsersRootPath(profilePath),
+    buildSafeSpacedRepetitionUserFolderName(userId),
+    USER_VAULT_SPACED_REPETITION_PROGRESS_FILE,
+  );
 
 const resolveFastFlashcardPath = (profilePath: string) =>
   joinPath(profilePath, USER_VAULT_FAST_FLASHCARD_FILE);
@@ -551,7 +604,7 @@ export const ensureProfileRoot = async (
 };
 
 export const createEmptySpacedRepetitionStore = (): SpacedRepetitionProfileStore => ({
-  schemaVersion: USER_VAULT_SCHEMA_VERSION,
+  schemaVersion: USER_VAULT_SPACED_REPETITION_SCHEMA_VERSION,
   byVaultId: {},
   migratedVaultIds: [],
 });
@@ -627,17 +680,334 @@ const normalizeSpacedRepetitionStore = (
     return createEmptySpacedRepetitionStore();
   }
   const candidate = value as Partial<SpacedRepetitionProfileStore>;
-  const byVaultId =
+  const byVaultIdRaw =
     candidate.byVaultId && typeof candidate.byVaultId === "object"
-      ? (candidate.byVaultId as Record<string, SpacedRepetitionStorage>)
+      ? (candidate.byVaultId as Record<string, unknown>)
       : {};
+  const byVaultId = Object.fromEntries(
+    Object.entries(byVaultIdRaw).map(([vaultId, storage]) => [
+      vaultId,
+      normalizeSpacedRepetitionStorage(storage),
+    ]),
+  );
   const migratedVaultIds = Array.isArray(candidate.migratedVaultIds)
     ? candidate.migratedVaultIds.filter((id) => typeof id === "string")
     : [];
   return {
-    schemaVersion: USER_VAULT_SCHEMA_VERSION,
+    schemaVersion: USER_VAULT_SPACED_REPETITION_SCHEMA_VERSION,
     byVaultId,
     migratedVaultIds,
+  };
+};
+
+const createEmptySpacedRepetitionStorage = (): SpacedRepetitionStorage => ({
+  users: [],
+  userStateById: {},
+  lastActiveUserId: null,
+});
+
+const createEmptySpacedRepetitionRegistry =
+  (): SpacedRepetitionRegistryStore => ({
+    schemaVersion: USER_VAULT_SPACED_REPETITION_SCHEMA_VERSION,
+    lastActiveUserId: null,
+    legacyVaultIds: [],
+    migratedAt: null,
+  });
+
+const normalizeCompletedPerDay = (value: unknown): Record<string, number> => {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>)
+      .filter((entry): entry is [string, number] => {
+        return typeof entry[1] === "number" && Number.isFinite(entry[1]);
+      })
+      .map(([key, count]) => [key, Math.max(0, Math.floor(count))]),
+  );
+};
+
+const normalizeSpacedRepetitionUser = (
+  value: unknown,
+): SpacedRepetitionUser | null => {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const candidate = value as Partial<SpacedRepetitionUser>;
+  const id = typeof candidate.id === "string" ? candidate.id : "";
+  const name = typeof candidate.name === "string" ? candidate.name : "";
+  if (!id || !name) {
+    return null;
+  }
+  return {
+    id,
+    name,
+    createdAt:
+      typeof candidate.createdAt === "string"
+        ? candidate.createdAt
+        : new Date().toISOString(),
+  };
+};
+
+const normalizeSpacedRepetitionUserState = (
+  value: unknown,
+): SpacedRepetitionUserState => {
+  const candidate =
+    value && typeof value === "object"
+      ? (value as Partial<SpacedRepetitionUserState>)
+      : {};
+  const cardStatesRaw =
+    candidate.cardStates && typeof candidate.cardStates === "object"
+      ? (candidate.cardStates as Record<string, unknown>)
+      : {};
+  return {
+    cardStates: Object.fromEntries(
+      Object.entries(cardStatesRaw).map(([cardId, progress]) => [
+        cardId,
+        normalizeSpacedRepetitionCardProgress(
+          progress as Partial<SpacedRepetitionCardProgress>,
+        ),
+      ]),
+    ),
+    lastLoadedAt:
+      typeof candidate.lastLoadedAt === "string" ? candidate.lastLoadedAt : null,
+    completedPerDay: normalizeCompletedPerDay(candidate.completedPerDay),
+  };
+};
+
+const normalizeSpacedRepetitionStorage = (
+  value: unknown,
+): SpacedRepetitionStorage => {
+  if (!value || typeof value !== "object") {
+    return createEmptySpacedRepetitionStorage();
+  }
+  const candidate = value as Partial<SpacedRepetitionStorage>;
+  const users = Array.isArray(candidate.users)
+    ? candidate.users
+        .map((user) => normalizeSpacedRepetitionUser(user))
+        .filter((user): user is SpacedRepetitionUser => user !== null)
+    : [];
+  const userIds = new Set(users.map((user) => user.id));
+  const userStateByIdRaw =
+    candidate.userStateById && typeof candidate.userStateById === "object"
+      ? (candidate.userStateById as Record<string, unknown>)
+      : {};
+  const userStateById = Object.fromEntries(
+    Object.entries(userStateByIdRaw)
+      .filter(([userId]) => userIds.has(userId))
+      .map(([userId, state]) => [
+        userId,
+        normalizeSpacedRepetitionUserState(state),
+      ]),
+  );
+  const lastActiveUserId =
+    typeof candidate.lastActiveUserId === "string" &&
+    userIds.has(candidate.lastActiveUserId)
+      ? candidate.lastActiveUserId
+      : null;
+  return { users, userStateById, lastActiveUserId };
+};
+
+const normalizeSpacedRepetitionRegistry = (
+  value: unknown,
+): SpacedRepetitionRegistryStore => {
+  if (!value || typeof value !== "object") {
+    return createEmptySpacedRepetitionRegistry();
+  }
+  const candidate = value as Partial<SpacedRepetitionRegistryStore>;
+  return {
+    schemaVersion: USER_VAULT_SPACED_REPETITION_SCHEMA_VERSION,
+    lastActiveUserId:
+      typeof candidate.lastActiveUserId === "string"
+        ? candidate.lastActiveUserId
+        : null,
+    legacyVaultIds: Array.isArray(candidate.legacyVaultIds)
+      ? candidate.legacyVaultIds.filter((id) => typeof id === "string")
+      : [],
+    migratedAt:
+      typeof candidate.migratedAt === "string" ? candidate.migratedAt : null,
+  };
+};
+
+const normalizeSpacedRepetitionUserProgressStore = (
+  value: unknown,
+): SpacedRepetitionUserProgressStore | null => {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const candidate = value as Partial<SpacedRepetitionUserProgressStore>;
+  const user = normalizeSpacedRepetitionUser(candidate.user);
+  if (!user) {
+    return null;
+  }
+  return {
+    schemaVersion: USER_VAULT_SPACED_REPETITION_SCHEMA_VERSION,
+    user,
+    state: normalizeSpacedRepetitionUserState(candidate.state),
+  };
+};
+
+const compareIsoTimestamp = (left: string | null, right: string | null) => {
+  const leftTime = left ? Date.parse(left) : Number.NaN;
+  const rightTime = right ? Date.parse(right) : Number.NaN;
+  const normalizedLeft = Number.isNaN(leftTime) ? -1 : leftTime;
+  const normalizedRight = Number.isNaN(rightTime) ? -1 : rightTime;
+  return normalizedLeft - normalizedRight;
+};
+
+const mergeSpacedRepetitionCardProgress = (
+  base: SpacedRepetitionCardProgress | undefined,
+  incoming: SpacedRepetitionCardProgress,
+) => {
+  if (!base) {
+    return incoming;
+  }
+  const reviewedCompare = compareIsoTimestamp(
+    base.lastReviewedAt,
+    incoming.lastReviewedAt,
+  );
+  if (reviewedCompare !== 0) {
+    return reviewedCompare < 0 ? incoming : base;
+  }
+  if (base.attempts !== incoming.attempts) {
+    return incoming.attempts > base.attempts ? incoming : base;
+  }
+  if (base.boxCanonical !== incoming.boxCanonical) {
+    return incoming.boxCanonical > base.boxCanonical ? incoming : base;
+  }
+  return base;
+};
+
+const mergeCompletedPerDay = (
+  base: Record<string, number>,
+  incoming: Record<string, number>,
+) => {
+  const next = { ...base };
+  Object.entries(incoming).forEach(([dateKey, count]) => {
+    next[dateKey] = Math.max(next[dateKey] ?? 0, count);
+  });
+  return next;
+};
+
+const mergeSpacedRepetitionUserStates = (
+  base: SpacedRepetitionUserState | undefined,
+  incoming: SpacedRepetitionUserState,
+): SpacedRepetitionUserState => {
+  if (!base) {
+    return incoming;
+  }
+  const cardStates = { ...base.cardStates };
+  Object.entries(incoming.cardStates).forEach(([cardId, progress]) => {
+    cardStates[cardId] = mergeSpacedRepetitionCardProgress(
+      cardStates[cardId],
+      progress,
+    );
+  });
+  const lastLoadedAt =
+    compareIsoTimestamp(base.lastLoadedAt, incoming.lastLoadedAt) < 0
+      ? incoming.lastLoadedAt
+      : base.lastLoadedAt;
+  return {
+    cardStates,
+    lastLoadedAt,
+    completedPerDay: mergeCompletedPerDay(
+      base.completedPerDay,
+      incoming.completedPerDay,
+    ),
+  };
+};
+
+const mergeSpacedRepetitionStorages = (
+  base: SpacedRepetitionStorage,
+  incoming: SpacedRepetitionStorage,
+): SpacedRepetitionStorage => {
+  const users = [...base.users];
+  const userIds = new Set(users.map((user) => user.id));
+  incoming.users.forEach((user) => {
+    if (!userIds.has(user.id)) {
+      users.push(user);
+      userIds.add(user.id);
+    }
+  });
+  const userStateById = { ...base.userStateById };
+  Object.entries(incoming.userStateById).forEach(([userId, state]) => {
+    if (!userIds.has(userId)) {
+      return;
+    }
+    userStateById[userId] = mergeSpacedRepetitionUserStates(
+      userStateById[userId],
+      state,
+    );
+  });
+  const lastActiveUserId =
+    base.lastActiveUserId && userIds.has(base.lastActiveUserId)
+      ? base.lastActiveUserId
+      : incoming.lastActiveUserId && userIds.has(incoming.lastActiveUserId)
+        ? incoming.lastActiveUserId
+        : null;
+  return { users, userStateById, lastActiveUserId };
+};
+
+const getSpacedRepetitionStorageScore = (storage: SpacedRepetitionStorage) => {
+  const stateCount = Object.keys(storage.userStateById).length;
+  const cardCount = Object.values(storage.userStateById).reduce(
+    (count, state) => count + Object.keys(state.cardStates).length,
+    0,
+  );
+  return (
+    storage.users.length * 10 +
+    stateCount * 3 +
+    cardCount +
+    (storage.lastActiveUserId ? 1 : 0)
+  );
+};
+
+const selectLegacyLastActiveUserId = (
+  byVaultId: Record<string, SpacedRepetitionStorage>,
+  storage: SpacedRepetitionStorage,
+) => {
+  const userIds = new Set(storage.users.map((user) => user.id));
+  const ranked = Object.entries(byVaultId).sort((left, right) => {
+    return (
+      getSpacedRepetitionStorageScore(right[1]) -
+      getSpacedRepetitionStorageScore(left[1])
+    );
+  });
+  for (const [, legacyStorage] of ranked) {
+    const userId = legacyStorage.lastActiveUserId;
+    if (userId && userIds.has(userId)) {
+      return userId;
+    }
+  }
+  return null;
+};
+
+const mergeSpacedRepetitionStorageEntries = (
+  byVaultId: Record<string, SpacedRepetitionStorage>,
+) => {
+  const entries = Object.entries(byVaultId);
+  const sortedEntries = [...entries].sort(([leftKey], [rightKey]) => {
+    if (leftKey === PROFILE_SCOPED_SPACED_REPETITION_KEY) {
+      return -1;
+    }
+    if (rightKey === PROFILE_SCOPED_SPACED_REPETITION_KEY) {
+      return 1;
+    }
+    return leftKey.localeCompare(rightKey);
+  });
+  const storage = sortedEntries.reduce(
+    (merged, [, storageEntry]) =>
+      mergeSpacedRepetitionStorages(merged, storageEntry),
+    createEmptySpacedRepetitionStorage(),
+  );
+  const legacyActiveUserId = selectLegacyLastActiveUserId(byVaultId, storage);
+  return {
+    storage: {
+      ...storage,
+      lastActiveUserId:
+        storage.lastActiveUserId ?? legacyActiveUserId ?? storage.users[0]?.id ?? null,
+    },
+    vaultIds: entries.map(([vaultId]) => vaultId),
   };
 };
 
@@ -1126,12 +1496,103 @@ export const saveProfileSettings = async (
 export const loadSpacedRepetitionStore = async (
   profilePath: string,
 ): Promise<SpacedRepetitionProfileStore> => {
-  const path = resolveSpacedRepetitionPath(profilePath);
-  const store = await readJsonFile<SpacedRepetitionProfileStore>(
-    path,
-    createEmptySpacedRepetitionStore(),
+  const registryPath = resolveSpacedRepetitionRegistryPath(profilePath);
+  const registryResult =
+    await readJsonFileWithStatus<SpacedRepetitionRegistryStore>(registryPath);
+  const registry = normalizeSpacedRepetitionRegistry(registryResult.value);
+  const usersRoot = resolveSpacedRepetitionUsersRootPath(profilePath);
+  let userFolders: string[] = [];
+  try {
+    userFolders = await listDirectories(usersRoot);
+  } catch (error) {
+    const message = asErrorMessage(error, "Failed to scan spaced repetition users.");
+    if (!isMissingPathError(message)) {
+      console.warn("Failed to scan spaced repetition users", message);
+    }
+  }
+
+  const progressEntries = await Promise.all(
+    userFolders.map(async (folder) => {
+      const progressPath = joinPath(
+        usersRoot,
+        folder,
+        USER_VAULT_SPACED_REPETITION_PROGRESS_FILE,
+      );
+      const { value, error } =
+        await readJsonFileWithStatus<SpacedRepetitionUserProgressStore>(
+          progressPath,
+        );
+      if (error) {
+        if (error !== "missing") {
+          console.warn("Failed to read spaced repetition progress", progressPath);
+        }
+        return null;
+      }
+      return normalizeSpacedRepetitionUserProgressStore(value);
+    }),
   );
-  return normalizeSpacedRepetitionStore(store);
+
+  const folderStorage = progressEntries.reduce((storage, entry) => {
+    if (!entry) {
+      return storage;
+    }
+    return mergeSpacedRepetitionStorages(storage, {
+      users: [entry.user],
+      userStateById: { [entry.user.id]: entry.state },
+      lastActiveUserId: null,
+    });
+  }, createEmptySpacedRepetitionStorage());
+
+  const migratedVaultIds = new Set(registry.legacyVaultIds);
+  const legacyPath = resolveSpacedRepetitionPath(profilePath);
+  const legacyStore = normalizeSpacedRepetitionStore(
+    await readJsonFile<SpacedRepetitionProfileStore | null>(legacyPath, null),
+  );
+  const pendingLegacyByVaultId = Object.fromEntries(
+    Object.entries(legacyStore.byVaultId).filter(
+      ([vaultId]) => !migratedVaultIds.has(vaultId),
+    ),
+  );
+  const pendingLegacyVaultIds = Object.keys(pendingLegacyByVaultId);
+  const pendingLegacy =
+    pendingLegacyVaultIds.length > 0
+      ? mergeSpacedRepetitionStorageEntries(pendingLegacyByVaultId)
+      : { storage: createEmptySpacedRepetitionStorage(), vaultIds: [] };
+
+  pendingLegacyVaultIds.forEach((vaultId) => migratedVaultIds.add(vaultId));
+
+  let storage = mergeSpacedRepetitionStorages(
+    folderStorage,
+    pendingLegacy.storage,
+  );
+  const userIds = new Set(storage.users.map((user) => user.id));
+  const registryActiveUserId =
+    registry.lastActiveUserId && userIds.has(registry.lastActiveUserId)
+      ? registry.lastActiveUserId
+      : null;
+  const legacyActiveUserId = selectLegacyLastActiveUserId(
+    pendingLegacyByVaultId,
+    storage,
+  );
+  storage = {
+    ...storage,
+    lastActiveUserId:
+      registryActiveUserId ?? legacyActiveUserId ?? storage.users[0]?.id ?? null,
+  };
+
+  const store: SpacedRepetitionProfileStore = {
+    schemaVersion: USER_VAULT_SPACED_REPETITION_SCHEMA_VERSION,
+    byVaultId: { [PROFILE_SCOPED_SPACED_REPETITION_KEY]: storage },
+    migratedVaultIds: Array.from(migratedVaultIds),
+  };
+
+  const needsFolderWrite =
+    pendingLegacyVaultIds.length > 0 || registryResult.error !== null;
+  if (needsFolderWrite) {
+    await saveSpacedRepetitionStore(profilePath, store);
+  }
+
+  return store;
 };
 
 export const saveSpacedRepetitionStore = async (
@@ -1139,9 +1600,85 @@ export const saveSpacedRepetitionStore = async (
   store: SpacedRepetitionProfileStore,
 ) => {
   try {
-    await writeJsonFile(resolveSpacedRepetitionPath(profilePath), {
-      ...store,
-      schemaVersion: USER_VAULT_SCHEMA_VERSION,
+    const { storage, vaultIds } = mergeSpacedRepetitionStorageEntries(
+      store.byVaultId,
+    );
+    const registryPath = resolveSpacedRepetitionRegistryPath(profilePath);
+    const previousRegistry = normalizeSpacedRepetitionRegistry(
+      (
+        await readJsonFileWithStatus<SpacedRepetitionRegistryStore>(registryPath)
+      ).value,
+    );
+    const legacyVaultIds = Array.from(
+      new Set([
+        ...previousRegistry.legacyVaultIds,
+        ...(Array.isArray(store.migratedVaultIds) ? store.migratedVaultIds : []),
+        ...vaultIds.filter(
+          (vaultId) => vaultId !== PROFILE_SCOPED_SPACED_REPETITION_KEY,
+        ),
+      ]),
+    );
+    const root = resolveSpacedRepetitionRootPath(profilePath);
+    const usersRoot = resolveSpacedRepetitionUsersRootPath(profilePath);
+    await ensureDirectory(root);
+    await ensureDirectory(usersRoot);
+
+    const activeFolderNames = new Set<string>();
+    await Promise.all(
+      storage.users.map(async (user) => {
+        const state =
+          storage.userStateById[user.id] ?? normalizeSpacedRepetitionUserState(null);
+        const folderName = buildSafeSpacedRepetitionUserFolderName(user.id);
+        activeFolderNames.add(folderName);
+        const progressPath = resolveSpacedRepetitionUserProgressPath(
+          profilePath,
+          user.id,
+        );
+        await ensureDirectory(joinPath(usersRoot, folderName));
+        await writeJsonFileAtomic(progressPath, {
+          schemaVersion: USER_VAULT_SPACED_REPETITION_SCHEMA_VERSION,
+          user,
+          state,
+        });
+      }),
+    );
+
+    const existingFolders = await listDirectories(usersRoot);
+    await Promise.all(
+      existingFolders
+        .filter((folder) => !activeFolderNames.has(folder))
+        .map(async (folder) => {
+          const progressPath = joinPath(
+            usersRoot,
+            folder,
+            USER_VAULT_SPACED_REPETITION_PROGRESS_FILE,
+          );
+          const info = await getPathInfo(progressPath);
+          if (!info.exists || info.isDir) {
+            return;
+          }
+          const backupPath = buildJsonSiblingPath(
+            progressPath,
+            `.deleted.${Date.now()}`,
+          );
+          try {
+            await renameJsonFile(progressPath, backupPath);
+          } catch (error) {
+            console.warn(
+              "Failed to archive deleted spaced repetition user",
+              asErrorMessage(error, "Unknown error"),
+            );
+          }
+        }),
+    );
+
+    await writeJsonFileAtomic(registryPath, {
+      schemaVersion: USER_VAULT_SPACED_REPETITION_SCHEMA_VERSION,
+      lastActiveUserId: storage.lastActiveUserId ?? null,
+      legacyVaultIds,
+      migratedAt:
+        previousRegistry.migratedAt ??
+        (legacyVaultIds.length > 0 ? new Date().toISOString() : null),
     });
   } catch (error) {
     console.error(
