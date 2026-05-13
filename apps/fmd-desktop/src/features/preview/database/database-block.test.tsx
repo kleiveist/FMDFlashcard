@@ -76,7 +76,7 @@ const flushAsyncWork = async () => {
   });
 };
 
-const createSingleProjectViewRaw = () => [
+const createSingleProjectViewRaw = (resolution = 1) => [
   "::::",
   "title: Main",
   "source:",
@@ -90,7 +90,7 @@ const createSingleProjectViewRaw = () => [
   "        type: project",
   "        projectStartField: unitsstart",
   "        projectUnitField: units",
-  "        blockResolution: 1",
+  `        blockResolution: ${resolution}`,
   "        defaultUnits: 2",
   "        projectMissingPlacement: show-unplaced",
   "      properties:",
@@ -286,6 +286,49 @@ describe("MarkdownHybridDatabaseBlock project presentation config", () => {
 
     const commands = invokeMock.mock.calls.map((call) => call[0]);
     expect(commands.filter((command) => command !== "read_text_file")).toEqual([]);
+    cleanup();
+  });
+
+  it("keeps project scaling stable across project/table view switching", async () => {
+    const onCommitRaw = vi.fn();
+    const { container, cleanup } = await render(
+      createElement(MarkdownHybridDatabaseBlock, {
+        raw: createSingleProjectViewRaw(4),
+        vaultFiles: [taskFile],
+        sourceRelativePath: "tasks/index.md",
+        onCommitRaw,
+        allowCellEditing: true,
+      }),
+    );
+    await flushAsyncWork();
+
+    const initialBar = container.querySelector<HTMLElement>(".database-project-bar");
+    expect(initialBar?.style.width).toBe("360px");
+
+    const viewTypeSelect = container.querySelector<HTMLSelectElement>(".database-block-view-select");
+    expect(viewTypeSelect).toBeTruthy();
+    act(() => {
+      if (viewTypeSelect) {
+        setSelectValue(viewTypeSelect, "table");
+      }
+    });
+    await flushAsyncWork();
+    expect(container.querySelector(".database-project-bar")).toBeNull();
+
+    act(() => {
+      if (viewTypeSelect) {
+        setSelectValue(viewTypeSelect, "project");
+      }
+    });
+    await flushAsyncWork();
+
+    const switchedBar = container.querySelector<HTMLElement>(".database-project-bar");
+    expect(switchedBar?.style.width).toBe("360px");
+
+    const parsed = parseDatabaseBlockConfigFromRaw(getLatestCommittedRaw(onCommitRaw));
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.config.views.items[0]?.view.blockResolution).toBe(4);
+
     cleanup();
   });
 

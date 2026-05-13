@@ -1389,28 +1389,43 @@ function writeViewSpecYaml(
   if (view.ganttZoom) {
     lines.push(`${indentText}ganttZoom: ${formatYamlScalar(view.ganttZoom)}`);
   }
-  if (view.type === "project") {
-    if (view.projectStartField) {
-      lines.push(`${indentText}projectStartField: ${formatYamlScalar(view.projectStartField)}`);
-    }
-    if (view.projectUnitField) {
-      lines.push(`${indentText}projectUnitField: ${formatYamlScalar(view.projectUnitField)}`);
-    }
-    if (typeof view.blockResolution === "number" && Number.isFinite(view.blockResolution)) {
-      lines.push(`${indentText}blockResolution: ${formatYamlScalar(view.blockResolution)}`);
-    }
-    if (typeof view.defaultUnits === "number" && Number.isFinite(view.defaultUnits)) {
-      lines.push(`${indentText}defaultUnits: ${formatYamlScalar(view.defaultUnits)}`);
-    }
-    if (view.projectMissingPlacement) {
-      lines.push(`${indentText}projectMissingPlacement: ${formatYamlScalar(view.projectMissingPlacement)}`);
-    }
-    writeProjectBarFillConfigsYaml(
-      normalizeProjectBarFillConfigs(view.projectBarFillConfigs),
-      indent,
-      lines,
-    );
+  if (
+    view.projectStartField &&
+    (view.type === "project" || view.projectStartField !== DEFAULT_PROJECT_START_FIELD)
+  ) {
+    lines.push(`${indentText}projectStartField: ${formatYamlScalar(view.projectStartField)}`);
   }
+  if (
+    view.projectUnitField &&
+    (view.type === "project" || view.projectUnitField !== DEFAULT_PROJECT_UNIT_FIELD)
+  ) {
+    lines.push(`${indentText}projectUnitField: ${formatYamlScalar(view.projectUnitField)}`);
+  }
+  if (
+    typeof view.blockResolution === "number" &&
+    Number.isFinite(view.blockResolution) &&
+    (view.type === "project" || view.blockResolution !== DEFAULT_PROJECT_BLOCK_RESOLUTION)
+  ) {
+    lines.push(`${indentText}blockResolution: ${formatYamlScalar(view.blockResolution)}`);
+  }
+  if (
+    typeof view.defaultUnits === "number" &&
+    Number.isFinite(view.defaultUnits) &&
+    (view.type === "project" || view.defaultUnits !== DEFAULT_PROJECT_DEFAULT_UNITS)
+  ) {
+    lines.push(`${indentText}defaultUnits: ${formatYamlScalar(view.defaultUnits)}`);
+  }
+  if (
+    view.projectMissingPlacement &&
+    (view.type === "project" || view.projectMissingPlacement !== DEFAULT_PROJECT_MISSING_PLACEMENT)
+  ) {
+    lines.push(`${indentText}projectMissingPlacement: ${formatYamlScalar(view.projectMissingPlacement)}`);
+  }
+  writeProjectBarFillConfigsYaml(
+    normalizeProjectBarFillConfigs(view.projectBarFillConfigs),
+    indent,
+    lines,
+  );
   if (view.pieGroupField) {
     lines.push(`${indentText}pieGroupField: ${formatYamlScalar(view.pieGroupField)}`);
   }

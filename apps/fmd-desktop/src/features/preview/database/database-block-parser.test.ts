@@ -371,6 +371,68 @@ describe("database-block-parser", () => {
     ]);
   });
 
+  it("preserves project scaling settings even when saved view type is not project", () => {
+    const config = createDefaultDatabaseBlockConfig();
+    config.views = {
+      activeViewId: "view-main",
+      items: [
+        {
+          id: "view-main",
+          name: "Main",
+          view: {
+            ...config.view,
+            type: "table",
+            projectStartField: "plan_start",
+            projectUnitField: "plan_units",
+            blockResolution: 4,
+            defaultUnits: 3,
+            projectMissingPlacement: "hide-unplaced",
+            projectBarFillConfigs: [
+              {
+                recordId: "task-a.md",
+                attributeKey: "progress",
+                mode: "numeric",
+                min: 0,
+                max: 100,
+              },
+            ],
+          },
+          properties: ["plan_start", "plan_units", "progress"],
+          filters: { op: "and", rules: [] },
+          sort: [],
+        },
+      ],
+    };
+
+    const serialized = serializeDatabaseBlockConfig(config);
+    expect(serialized).toContain("type: table");
+    expect(serialized).toContain("projectStartField: plan_start");
+    expect(serialized).toContain("projectUnitField: plan_units");
+    expect(serialized).toContain("blockResolution: 4");
+    expect(serialized).toContain("defaultUnits: 3");
+    expect(serialized).toContain("projectMissingPlacement: hide-unplaced");
+    expect(serialized).toContain("projectBarFillConfigs:");
+
+    const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
+    expect(reparsed.errors).toEqual([]);
+    const reparsedView = reparsed.config.views.items[0]?.view;
+    expect(reparsedView?.type).toBe("table");
+    expect(reparsedView?.projectStartField).toBe("plan_start");
+    expect(reparsedView?.projectUnitField).toBe("plan_units");
+    expect(reparsedView?.blockResolution).toBe(4);
+    expect(reparsedView?.defaultUnits).toBe(3);
+    expect(reparsedView?.projectMissingPlacement).toBe("hide-unplaced");
+    expect(reparsedView?.projectBarFillConfigs).toEqual([
+      {
+        recordId: "task-a.md",
+        attributeKey: "progress",
+        mode: "numeric",
+        min: 0,
+        max: 100,
+      },
+    ]);
+  });
+
   it("roundtrips structured formula definitions in fields", () => {
     const config = createDefaultDatabaseBlockConfig();
     config.fields = [
