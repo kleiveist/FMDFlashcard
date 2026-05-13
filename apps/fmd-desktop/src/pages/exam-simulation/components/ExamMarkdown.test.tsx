@@ -96,4 +96,39 @@ describe("ExamMarkdown", () => {
 
     expect(markup).toContain("data-md-ordered-delimiter=\")\"");
   });
+
+  it("hides #exam wrapper directives from rendered output", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ExamMarkdown, {
+        content: [
+          "#exam",
+          "1) Prompt text",
+          "#endexam",
+        ].join("\n"),
+      }),
+    );
+
+    expect(markup).toContain("Prompt text");
+    expect(markup).not.toContain("#exam");
+    expect(markup).not.toContain("#endexam");
+  });
+
+  it("does not render global app navigation markup inside exam content", () => {
+    const markup = renderToStaticMarkup(
+      createElement(ExamMarkdown, {
+        content: [
+          "<aside id=\"app-sidebar\" class=\"sidebar\" aria-label=\"Primary navigation\">",
+          "<nav>Hidden global nav</nav>",
+          "</aside>",
+          "",
+          "Visible exam content",
+        ].join("\n"),
+      }),
+    );
+
+    expect(markup).toContain("Visible exam content");
+    expect(markup).not.toContain("Hidden global nav");
+    expect(markup).not.toContain("app-sidebar");
+    expect(markup).not.toContain("Primary navigation");
+  });
 });

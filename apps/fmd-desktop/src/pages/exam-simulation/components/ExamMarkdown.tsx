@@ -54,6 +54,7 @@ import { MarkdownHighlightedPre } from "../../../components/MarkdownHighlightedP
 
 const markdownSchema = {
   ...defaultSchema,
+  strip: [...(defaultSchema.strip ?? []), "aside", "nav"],
   tagNames: [
     ...(defaultSchema.tagNames ?? []),
     "br",
@@ -83,6 +84,40 @@ const markdownSchema = {
   },
 };
 
+const examWrapperDirectiveLinePattern = /^\s*#(?:exam|endexam)\s*$/i;
+const fencedCodeDelimiterPattern = /^\s*(```|~~~)/;
+
+const stripExamWrapperDirectiveLines = (markdown: string) => {
+  if (!markdown) {
+    return markdown;
+  }
+  const lines = markdown.split("\n");
+  const nextLines: string[] = [];
+  let activeFenceDelimiter: string | null = null;
+
+  lines.forEach((line) => {
+    const fenceMatch = line.match(fencedCodeDelimiterPattern);
+    if (fenceMatch) {
+      const fenceDelimiter = fenceMatch[1] ?? "";
+      if (activeFenceDelimiter === null) {
+        activeFenceDelimiter = fenceDelimiter;
+      } else if (activeFenceDelimiter === fenceDelimiter) {
+        activeFenceDelimiter = null;
+      }
+      nextLines.push(line);
+      return;
+    }
+
+    if (activeFenceDelimiter === null && examWrapperDirectiveLinePattern.test(line)) {
+      return;
+    }
+
+    nextLines.push(line);
+  });
+
+  return nextLines.join("\n");
+};
+
 type ExamMarkdownProps = {
   content: string;
   className?: string;
@@ -108,6 +143,47 @@ const readMarkdownElementProperty = (node: unknown, key: string) => {
     character.toUpperCase()
   );
   return properties[camelKey];
+};
+
+const toClassNameTokens = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => String(entry).split(/\s+/)).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value.split(/\s+/).filter(Boolean);
+  }
+  return [];
+};
+
+const readMarkdownElementStringProperty = (
+  node: unknown,
+  key: string,
+): string | null => {
+  const value = readMarkdownElementProperty(node, key);
+  if (typeof value === "string") {
+    return value.trim() || null;
+  }
+  return null;
+};
+
+const hasMarkdownElementClass = (node: unknown, className: string) => {
+  const classTokens = toClassNameTokens(readMarkdownElementProperty(node, "className"));
+  const target = className.trim().toLowerCase();
+  if (!target) {
+    return false;
+  }
+  return classTokens.some((token) => token.toLowerCase() === target);
+};
+
+const isGlobalNavigationNode = (node: unknown) => {
+  const id = readMarkdownElementStringProperty(node, "id")?.toLowerCase() ?? "";
+  const ariaLabel = readMarkdownElementStringProperty(node, "aria-label")?.toLowerCase() ?? "";
+  return (
+    id === "app-sidebar" ||
+    id.endsWith("app-sidebar") ||
+    ariaLabel === "primary navigation" ||
+    hasMarkdownElementClass(node, "sidebar")
+  );
 };
 
 const mediaPlaceholderTextPattern = /__FMD_MEDIA_(\d+)__/;
@@ -344,7 +420,9 @@ export const ExamMarkdown = ({
   vaultPngAssets,
 }: ExamMarkdownProps) => {
   const classes = ["exam-markdown", className].filter(Boolean).join(" ");
-  const normalizedContent = normalizeInlineFormattingForPreview(content);
+  const normalizedContent = stripExamWrapperDirectiveLines(
+    normalizeInlineFormattingForPreview(content),
+  );
   const mediaPreview = buildMarkdownMediaPreviewSource(normalizedContent, "exam-markdown");
 
   return (
@@ -404,7 +482,22 @@ export const ExamMarkdown = ({
           blockquote: ({ node: _node, children, ...props }) => (
             <blockquote {...props}>{renderExamMathChildren(children, "exam-blockquote")}</blockquote>
           ),
+          aside: ({ node, children, ...props }) => {
+            if (isGlobalNavigationNode(node)) {
+              return null;
+            }
+            return <aside {...props}>{renderExamMathChildren(children, "exam-aside")}</aside>;
+          },
+          nav: ({ node, children, ...props }) => {
+            if (isGlobalNavigationNode(node)) {
+              return null;
+            }
+            return <nav {...props}>{renderExamMathChildren(children, "exam-nav")}</nav>;
+          },
           div: ({ node, children, ...props }) => {
+            if (isGlobalNavigationNode(node)) {
+              return null;
+            }
             const mediaBlockMarker = readMarkdownElementProperty(node, "data-fmd-media-block");
             const placeholderMatch = readMarkdownNodeText(node).match(mediaPlaceholderTextPattern);
             const placeholderIndex = placeholderMatch

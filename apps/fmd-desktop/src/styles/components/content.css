@@ -2065,6 +2065,10 @@ body.focus-mode .spaced-repetition-sidebar {
   margin-top: 0;
 }
 
+.exam-markdown :is(aside#app-sidebar, aside[id$="app-sidebar"], nav[aria-label="Primary navigation"], .sidebar) {
+  display: none !important;
+}
+
 .exam-markdown p {
   margin: 0 0 0.8rem;
 }
