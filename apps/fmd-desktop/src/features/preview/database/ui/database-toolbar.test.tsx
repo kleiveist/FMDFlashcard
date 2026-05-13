@@ -220,13 +220,10 @@ describe("DatabaseToolbar", () => {
       .find((button) => button.textContent?.includes("Kanban Fokus"));
     expect(targetItem).toBeTruthy();
 
+    const targetRow = targetItem?.closest(".database-block-view-dropdown-row");
+    const menuTrigger = targetRow?.querySelector<HTMLButtonElement>(".database-block-view-dropdown-menu-trigger");
     act(() => {
-      targetItem?.dispatchEvent(new MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        clientX: 120,
-        clientY: 140,
-      }));
+      menuTrigger?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     const renameButton = Array.from(document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"))

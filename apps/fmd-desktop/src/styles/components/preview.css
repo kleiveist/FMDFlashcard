@@ -5815,13 +5815,16 @@ textarea.preview-editor {
 
 .database-block-view-dropdown-row {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .database-block-view-dropdown-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 100%;
+  flex: 1 1 auto;
   border: 1px solid transparent;
   background: transparent;
   color: var(--db-text);
@@ -5839,10 +5842,22 @@ textarea.preview-editor {
   white-space: nowrap;
 }
 
-.database-block-view-dropdown-item-meta {
+.database-block-view-dropdown-menu-trigger {
   flex: 0 0 auto;
+  min-inline-size: 28px;
+  min-block-size: 28px;
+  border: 1px solid transparent;
+  border-radius: calc(var(--db-radius-control) - 2px);
+  background: transparent;
   color: var(--db-muted);
-  letter-spacing: 0.04em;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 6px;
+}
+
+.database-block-view-dropdown-menu-trigger:hover {
+  background: var(--db-accent-soft);
+  border-color: var(--db-accent-border);
 }
 
 .database-block-view-dropdown-item:hover {
@@ -5871,7 +5886,9 @@ textarea.preview-editor {
 }
 
 .database-block-view-context-menu {
-  position: fixed;
+  position: absolute;
+  inset-block-start: calc(100% + 4px);
+  inset-inline-start: 0;
   z-index: 1305;
   min-inline-size: 170px;
   display: flex;
