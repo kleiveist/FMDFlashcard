@@ -398,7 +398,7 @@ describe("database-block-parser", () => {
             ],
           },
           properties: ["plan_start", "plan_units", "progress"],
-          filters: { op: "and", rules: [] },
+          filters: { id: "filter-root", op: "and", rules: [] },
           sort: [],
         },
       ],
