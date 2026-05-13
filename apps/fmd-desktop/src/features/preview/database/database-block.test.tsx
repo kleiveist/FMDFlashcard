@@ -483,7 +483,7 @@ describe("MarkdownHybridDatabaseBlock project presentation config", () => {
     act(() => {
       if (renameInput) {
         setInputValue(renameInput, "Alt Neu");
-        renameInput.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+        renameInput.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }));
       }
     });
     await flushAsyncWork();

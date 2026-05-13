@@ -238,7 +238,7 @@ describe("DatabaseToolbar", () => {
       if (renameInput) {
         renameInput.value = "Kanban Fokus 2";
         renameInput.dispatchEvent(new Event("input", { bubbles: true }));
-        renameInput.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+        renameInput.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }));
       }
     });
     expect(props.onRenameSavedView).toHaveBeenCalledWith("view-kanban", "Kanban Fokus 2");

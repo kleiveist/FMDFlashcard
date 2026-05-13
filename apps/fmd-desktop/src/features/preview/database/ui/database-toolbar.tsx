@@ -621,7 +621,7 @@ export const DatabaseToolbar = ({
                             onKeyDown={(event: ReactKeyboardEvent<HTMLInputElement>) => {
                               if (event.key === "Enter") {
                                 event.preventDefault();
-                                event.currentTarget.blur();
+                                submitRenameForView(savedView.id, event.currentTarget.value);
                                 return;
                               }
                               if (event.key === "Escape") {
