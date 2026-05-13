@@ -46,14 +46,22 @@ export type ValidateProfileRootResult = {
   reason: string;
 };
 
-type UserVaultProfileStore = UserVaultProfileMeta & {
+type LegacyUserVaultProfileStore = UserVaultProfileMeta & {
   schemaVersion?: number;
   settings?: UserVaultProfileSettings | null;
+};
+
+type UserVaultProfileStore = UserVaultProfileMeta & {
+  schemaVersion: number;
 };
 
 type MigrationResult<T> = {
   store: T;
   didMigrate: boolean;
+};
+
+type ProfileStoreMigrationResult = MigrationResult<UserVaultProfileStore> & {
+  legacySettings: UserVaultProfileSettings | null;
 };
 
 export type UserVaultMetaStore = {
@@ -102,6 +110,7 @@ const USER_VAULT_META_FILE = "user-vault.json";
 const USER_VAULT_PROFILES_DIR = "profiles";
 const USER_VAULT_USERS_DIR = "users";
 const USER_VAULT_PROFILE_FILE = "profile.json";
+const USER_VAULT_PROFILE_SETTINGS_FILE = "settings.json";
 const USER_VAULT_SPACED_REPETITION_FILE = "spaced-repetition.json";
 const USER_VAULT_SPACED_REPETITION_DIR = "spaced-repetition";
 const USER_VAULT_SPACED_REPETITION_REGISTRY_FILE = "registry.json";
@@ -257,6 +266,9 @@ const resolveUserVaultMetaPath = (userVaultPath: string) =>
 
 const resolveProfileMetaPath = (profilePath: string) =>
   joinPath(profilePath, USER_VAULT_PROFILE_FILE);
+
+const resolveProfileSettingsPath = (profilePath: string) =>
+  joinPath(profilePath, USER_VAULT_PROFILE_SETTINGS_FILE);
 
 const resolveSpacedRepetitionPath = (profilePath: string) =>
   joinPath(profilePath, USER_VAULT_SPACED_REPETITION_FILE);
@@ -443,9 +455,19 @@ export const migrateDefaultProfileFolders = async (
       );
       continue;
     }
-    const base = storedProfile && typeof storedProfile === "object" ? storedProfile : {};
+    const legacySettings = normalizeProfileSettingsValue(
+      storedProfile && typeof storedProfile === "object"
+        ? (storedProfile as Record<string, unknown>).settings
+        : null,
+    );
+    const settingsPath = resolveProfileSettingsPath(targetPath);
+    if (hasNonEmptyProfileSettings(legacySettings)) {
+      const settingsInfo = await getPathInfo(settingsPath);
+      if (!settingsInfo.exists) {
+        await writeJsonFileAtomic(settingsPath, legacySettings);
+      }
+    }
     await writeJsonFile(resolveProfileMetaPath(targetPath), {
-      ...base,
       schemaVersion: USER_VAULT_PROFILE_SCHEMA_VERSION,
       id: candidate,
       name: username,
@@ -640,10 +662,27 @@ const normalizeProfileMeta = (
   return { id: fallbackId, name: fallback.name, createdAt };
 };
 
+const PROFILE_META_KEYS = new Set(["schemaVersion", "id", "name", "createdAt"]);
+
+const normalizeProfileSettingsValue = (
+  value: unknown,
+): UserVaultProfileSettings | null => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as UserVaultProfileSettings;
+};
+
+const hasNonEmptyProfileSettings = (
+  value: UserVaultProfileSettings | null,
+): value is UserVaultProfileSettings => {
+  return Boolean(value && Object.keys(value).length > 0);
+};
+
 const migrateProfileStore = (
   value: unknown,
   fallbackId: string,
-): MigrationResult<UserVaultProfileStore> | null => {
+): ProfileStoreMigrationResult | null => {
   if (!value || typeof value !== "object") {
     return null;
   }
@@ -651,26 +690,50 @@ const migrateProfileStore = (
   const storedVersion =
     typeof candidate.schemaVersion === "number" ? candidate.schemaVersion : 0;
   const meta = normalizeProfileMeta(fallbackId, candidate as UserVaultProfileMeta);
-  const settingsCandidate = candidate.settings;
-  const settings =
-    settingsCandidate &&
-    typeof settingsCandidate === "object" &&
-    !Array.isArray(settingsCandidate)
-      ? (settingsCandidate as UserVaultProfileSettings)
-      : null;
+  const legacySettings = normalizeProfileSettingsValue(candidate.settings);
+  const hasOnlyMetaKeys = Object.keys(candidate).every((key) =>
+    PROFILE_META_KEYS.has(key),
+  );
+  const hasSameMeta =
+    candidate.id === meta.id &&
+    candidate.name === meta.name &&
+    candidate.createdAt === meta.createdAt;
   const didMigrate =
     storedVersion !== USER_VAULT_PROFILE_SCHEMA_VERSION ||
-    settingsCandidate === undefined ||
-    settingsCandidate !== settings;
+    !hasSameMeta ||
+    !hasOnlyMetaKeys;
   return {
     store: {
-      ...(candidate as UserVaultProfileStore),
-      ...meta,
       schemaVersion: USER_VAULT_PROFILE_SCHEMA_VERSION,
-      settings,
+      ...meta,
     },
     didMigrate,
+    legacySettings,
   };
+};
+
+const migrateProfileMetadataStore = async (
+  profilePath: string,
+): Promise<ProfileStoreMigrationResult | null> => {
+  const metaPath = resolveProfileMetaPath(profilePath);
+  const stored = await readJsonFile<LegacyUserVaultProfileStore | null>(metaPath, null);
+  const fallbackId = resolveProfileIdFromPath(profilePath);
+  const migrated = migrateProfileStore(stored, fallbackId);
+  if (!migrated) {
+    return null;
+  }
+  if (!migrated.didMigrate) {
+    return migrated;
+  }
+  try {
+    await writeJsonFile(metaPath, migrated.store);
+  } catch (error) {
+    console.warn(
+      "Failed to migrate user profile metadata",
+      asErrorMessage(error, "Unknown error"),
+    );
+  }
+  return migrated;
 };
 
 const normalizeSpacedRepetitionStore = (
@@ -1404,7 +1467,6 @@ export const createUserVaultProfile = async (
   await writeJsonFile(resolveProfileMetaPath(profilePath), {
     schemaVersion: USER_VAULT_PROFILE_SCHEMA_VERSION,
     ...meta,
-    settings: {},
   });
   return { ...meta, path: profilePath };
 };
@@ -1437,31 +1499,29 @@ export const loadProfileData = async (
 export const loadProfileSettings = async (
   profilePath: string,
 ): Promise<UserVaultProfileSettings | null> => {
-  const path = resolveProfileMetaPath(profilePath);
-  const store = await readJsonFile<UserVaultProfileStore | null>(path, null);
-  const fallbackId = resolveProfileIdFromPath(profilePath);
-  const migrated = migrateProfileStore(store, fallbackId);
-  if (!migrated) {
+  const settingsPath = resolveProfileSettingsPath(profilePath);
+  const settingsResult =
+    await readJsonFileWithStatus<UserVaultProfileSettings | null>(settingsPath);
+  const storedSettings = normalizeProfileSettingsValue(settingsResult.value);
+  if (hasNonEmptyProfileSettings(storedSettings)) {
+    return storedSettings;
+  }
+  if (settingsResult.error !== "missing") {
     return null;
   }
-  if (migrated.didMigrate) {
-    try {
-      await writeJsonFile(path, migrated.store);
-    } catch (error) {
-      console.warn(
-        "Failed to migrate user profile settings",
-        asErrorMessage(error, "Unknown error"),
-      );
-    }
-  }
-  const settings = migrated.store.settings;
-  if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+  const migrated = await migrateProfileMetadataStore(profilePath);
+  if (!migrated || !hasNonEmptyProfileSettings(migrated.legacySettings)) {
     return null;
   }
-  if (Object.keys(settings).length === 0) {
-    return null;
+  try {
+    await writeJsonFileAtomic(settingsPath, migrated.legacySettings);
+  } catch (error) {
+    console.warn(
+      "Failed to migrate user profile settings",
+      asErrorMessage(error, "Unknown error"),
+    );
   }
-  return settings;
+  return migrated.legacySettings;
 };
 
 export const saveProfileSettings = async (
@@ -1469,20 +1529,25 @@ export const saveProfileSettings = async (
   settings: UserVaultProfileSettings | null,
 ): Promise<boolean> => {
   try {
-    const path = resolveProfileMetaPath(profilePath);
-    const stored = await readJsonFile<Record<string, unknown> | null>(path, null);
-    const fallbackId = resolveProfileIdFromPath(profilePath);
-    const meta = normalizeProfileMeta(
-      fallbackId,
-      (stored as UserVaultProfileMeta | null) ?? null,
-    );
-    const base = stored && typeof stored === "object" ? stored : {};
-    await writeJsonFile(path, {
-      ...base,
-      schemaVersion: USER_VAULT_PROFILE_SCHEMA_VERSION,
-      ...meta,
-      settings: settings ?? null,
-    });
+    const migrated = await migrateProfileMetadataStore(profilePath);
+    if (!migrated) {
+      const fallbackId = resolveProfileIdFromPath(profilePath);
+      const meta = normalizeProfileMeta(fallbackId, null);
+      await writeJsonFile(resolveProfileMetaPath(profilePath), {
+        schemaVersion: USER_VAULT_PROFILE_SCHEMA_VERSION,
+        ...meta,
+      });
+    }
+    const settingsPath = resolveProfileSettingsPath(profilePath);
+    const normalizedSettings = normalizeProfileSettingsValue(settings);
+    if (hasNonEmptyProfileSettings(normalizedSettings)) {
+      await writeJsonFileAtomic(settingsPath, normalizedSettings);
+      return true;
+    }
+    const settingsInfo = await getPathInfo(settingsPath);
+    if (settingsInfo.exists && !settingsInfo.isDir) {
+      await deleteFile(settingsPath);
+    }
     return true;
   } catch (error) {
     console.error(

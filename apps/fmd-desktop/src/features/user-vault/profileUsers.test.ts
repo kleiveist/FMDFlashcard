@@ -49,6 +49,17 @@ beforeEach(() => {
       files.set(normalize(filePath), contents);
       return null;
     }
+    if (command === "rename_json_file") {
+      const { from, to } = args as { from: string; to: string };
+      const normalizedFrom = normalize(from);
+      if (!files.has(normalizedFrom)) {
+        throw new Error("Source file not found.");
+      }
+      const contents = files.get(normalizedFrom) ?? "";
+      files.delete(normalizedFrom);
+      files.set(normalize(to), contents);
+      return null;
+    }
     if (command === "get_path_info") {
       const exists = directories.has(path);
       return { exists, isDir: exists };
@@ -150,5 +161,34 @@ describe("migrateDefaultProfileFolders", () => {
     expect(updated.name).toBe("kleif");
     const meta = JSON.parse(files.get("/profile-root/user-vault.json") ?? "{}");
     expect(meta.activeProfileId).toBe("2026-02-11_kleif");
+  });
+
+  it("moves legacy embedded settings into settings.json during rename", async () => {
+    addDir("/profile-root", ["users"]);
+    addDir("/profile-root/users", ["2026-02-11_default-1"]);
+    addDir("/profile-root/users/2026-02-11_default-1");
+    files.set(
+      "/profile-root/users/2026-02-11_default-1/profile.json",
+      JSON.stringify({
+        id: "2026-02-11_default-1",
+        name: "Kleif",
+        createdAt: "2026-02-11T00:00:00.000Z",
+        settings: { theme: "dark" },
+      }),
+    );
+
+    await migrateDefaultProfileFolders("/profile-root");
+
+    const migratedProfilePath = "/profile-root/users/2026-02-11_kleif/profile.json";
+    const migratedSettingsPath = "/profile-root/users/2026-02-11_kleif/settings.json";
+    expect(JSON.parse(files.get(migratedProfilePath) ?? "{}")).toEqual({
+      schemaVersion: 1,
+      id: "2026-02-11_kleif",
+      name: "kleif",
+      createdAt: "2026-02-11T00:00:00.000Z",
+    });
+    expect(JSON.parse(files.get(migratedSettingsPath) ?? "{}")).toEqual({
+      theme: "dark",
+    });
   });
 });

@@ -14,6 +14,7 @@ import {
   loadExamRunStore,
   loadProfileSettings,
   loadSpacedRepetitionStore,
+  saveProfileSettings,
   saveSpacedRepetitionStore,
 } from "./storage";
 import type { ExamRun } from "../../lib/examRuns";
@@ -49,6 +50,9 @@ const buildRun = (id: string): ExamRun => ({
 
 const getProfileFilePath = (profilePath: string) =>
   `${profilePath.replace(/\\/g, "/")}/profile.json`;
+
+const getSettingsFilePath = (profilePath: string) =>
+  `${profilePath.replace(/\\/g, "/")}/settings.json`;
 
 const getExamRunsDir = (profilePath: string) =>
   `${profilePath.replace(/\\/g, "/")}/exam-runs`;
@@ -216,9 +220,10 @@ describe("ensureProfileRoot", () => {
 });
 
 describe("loadProfileSettings", () => {
-  it("migrates profile settings to include schemaVersion", async () => {
+  it("migrates legacy profile.json settings into settings.json", async () => {
     const profilePath = "/profiles/alpha";
     const profileFile = getProfileFilePath(profilePath);
+    const settingsFile = getSettingsFilePath(profilePath);
     files.set(
       profileFile,
       JSON.stringify({
@@ -232,9 +237,84 @@ describe("loadProfileSettings", () => {
     const settings = await loadProfileSettings(profilePath);
 
     expect(settings).toEqual({ theme: "dark" });
-    const written = JSON.parse(files.get(profileFile) ?? "{}");
-    expect(written.schemaVersion).toBe(1);
-    expect(written.id).toBe("alpha");
+    expect(JSON.parse(files.get(settingsFile) ?? "{}")).toEqual({ theme: "dark" });
+    const migratedProfile = JSON.parse(files.get(profileFile) ?? "{}");
+    expect(migratedProfile).toEqual({
+      schemaVersion: 1,
+      id: "alpha",
+      name: "Alpha",
+      createdAt: "2024-01-01T00:00:00.000Z",
+    });
+  });
+
+  it("prefers settings.json over legacy embedded profile settings", async () => {
+    const profilePath = "/profiles/alpha";
+    const profileFile = getProfileFilePath(profilePath);
+    const settingsFile = getSettingsFilePath(profilePath);
+    files.set(
+      profileFile,
+      JSON.stringify({
+        schemaVersion: 1,
+        id: "alpha",
+        name: "Alpha",
+        createdAt: "2024-01-01T00:00:00.000Z",
+        settings: { theme: "legacy-dark" },
+      }),
+    );
+    files.set(settingsFile, JSON.stringify({ theme: "light" }));
+
+    const settings = await loadProfileSettings(profilePath);
+
+    expect(settings).toEqual({ theme: "light" });
+  });
+});
+
+describe("saveProfileSettings", () => {
+  it("writes profile settings into settings.json and keeps profile.json metadata-only", async () => {
+    const profilePath = "/profiles/alpha";
+    const profileFile = getProfileFilePath(profilePath);
+    const settingsFile = getSettingsFilePath(profilePath);
+    files.set(
+      profileFile,
+      JSON.stringify({
+        id: "alpha",
+        name: "Alpha",
+        createdAt: "2024-01-01T00:00:00.000Z",
+        settings: { theme: "legacy" },
+      }),
+    );
+
+    const saved = await saveProfileSettings(profilePath, { theme: "dark" });
+
+    expect(saved).toBe(true);
+    expect(JSON.parse(files.get(settingsFile) ?? "{}")).toEqual({ theme: "dark" });
+    expect(JSON.parse(files.get(profileFile) ?? "{}")).toEqual({
+      schemaVersion: 1,
+      id: "alpha",
+      name: "Alpha",
+      createdAt: "2024-01-01T00:00:00.000Z",
+    });
+  });
+
+  it("removes settings.json when profile settings are cleared", async () => {
+    const profilePath = "/profiles/alpha";
+    const profileFile = getProfileFilePath(profilePath);
+    const settingsFile = getSettingsFilePath(profilePath);
+    files.set(
+      profileFile,
+      JSON.stringify({
+        schemaVersion: 1,
+        id: "alpha",
+        name: "Alpha",
+        createdAt: "2024-01-01T00:00:00.000Z",
+      }),
+    );
+    files.set(settingsFile, JSON.stringify({ theme: "dark" }));
+
+    const saved = await saveProfileSettings(profilePath, null);
+
+    expect(saved).toBe(true);
+    expect(files.has(settingsFile)).toBe(false);
   });
 });
 
