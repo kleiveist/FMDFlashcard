@@ -5800,6 +5800,7 @@ textarea.preview-editor {
 
 .database-block-view-dropdown {
   min-inline-size: 230px;
+  overflow: visible;
 }
 
 .database-block-view-dropdown-list {
