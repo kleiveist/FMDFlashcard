@@ -259,12 +259,72 @@ const resolveRulePreviewAlias = (
   if (aliases.length === 0) {
     return rule.rulePreviewAlias?.trim() ?? "";
   }
+  const normalizedAliases = new Map<string, string>();
+  aliases.forEach((alias) => {
+    const normalized = normalizeLower(alias);
+    if (!normalized || normalizedAliases.has(normalized)) {
+      return;
+    }
+    normalizedAliases.set(normalized, alias);
+  });
+  const explicitTargets = Array.isArray(rule.targetAttributes)
+    ? rule.targetAttributes
+        .map((entry) => String(entry ?? "").trim())
+        .filter(Boolean)
+        .map((entry) => normalizedAliases.get(normalizeLower(entry)) ?? "")
+        .filter(Boolean)
+        .filter((entry, index, all) => all.indexOf(entry) === index)
+    : [];
+  if (explicitTargets.length > 0) {
+    const normalizedRuleAlias = normalizeLower(rule.rulePreviewAlias ?? "");
+    if (normalizedRuleAlias) {
+      const matchedExplicit = explicitTargets.find(
+        (alias) => normalizeLower(alias) === normalizedRuleAlias,
+      );
+      if (matchedExplicit) {
+        return matchedExplicit;
+      }
+    }
+    return explicitTargets[0] ?? aliases[0] ?? "";
+  }
   const normalizedRuleAlias = normalizeLower(rule.rulePreviewAlias ?? "");
   if (!normalizedRuleAlias) {
     return aliases[0] ?? "";
   }
   const matched = aliases.find((alias) => normalizeLower(alias) === normalizedRuleAlias);
   return matched ?? aliases[0] ?? "";
+};
+
+const normalizeRuleTargetAttributes = (
+  value: unknown,
+  aliases: string[],
+) => {
+  if (!Array.isArray(value) || aliases.length === 0) {
+    return undefined;
+  }
+  const aliasByNormalized = new Map<string, string>();
+  aliases.forEach((alias) => {
+    const normalized = normalizeLower(alias);
+    if (!normalized || aliasByNormalized.has(normalized)) {
+      return;
+    }
+    aliasByNormalized.set(normalized, alias);
+  });
+  const seen = new Set<string>();
+  const next: string[] = [];
+  value.forEach((entry) => {
+    const normalized = normalizeLower(String(entry ?? ""));
+    if (!normalized || seen.has(normalized)) {
+      return;
+    }
+    const matched = aliasByNormalized.get(normalized);
+    if (!matched) {
+      return;
+    }
+    seen.add(normalized);
+    next.push(matched);
+  });
+  return next.length > 0 ? next : undefined;
 };
 
 const resolveRulePreviewRawValue = (
@@ -371,6 +431,26 @@ const cloneRule = (rule: MonitoringRenderRule): MonitoringRenderRule => {
     };
   }
   return { ...rule };
+};
+
+const hydrateRuleForAliases = (
+  rule: MonitoringRenderRule,
+  aliases: string[],
+  fallbackRawValue: string,
+): MonitoringRenderRule => {
+  const normalizedTargets = normalizeRuleTargetAttributes(
+    rule.targetAttributes,
+    aliases,
+  );
+  const ruleWithTargets: MonitoringRenderRule = {
+    ...cloneRule(rule),
+    targetAttributes: normalizedTargets,
+  };
+  return {
+    ...ruleWithTargets,
+    rulePreviewAlias: resolveRulePreviewAlias(ruleWithTargets, aliases),
+    rulePreviewRawValue: resolveRulePreviewRawValue(ruleWithTargets, fallbackRawValue),
+  };
 };
 
 const cloneProfile = (profile: MonitoringRenderProfile): MonitoringRenderProfile => ({
@@ -990,11 +1070,13 @@ export const MonitoringRulesPage = () => {
   const [aliasSuggestionCursor, setAliasSuggestionCursor] = useState(0);
   const [aliasCaretPosition, setAliasCaretPosition] = useState(0);
   const aliasInputRef = useRef<HTMLInputElement | null>(null);
+  const targetAttributesControlRef = useRef<HTMLDivElement | null>(null);
   const [valueMapTextByRuleId, setValueMapTextByRuleId] = useState<Record<string, string>>({});
   const [thresholdTextByRuleId, setThresholdTextByRuleId] = useState<Record<string, string>>({});
   const [groupedMapTextByRuleId, setGroupedMapTextByRuleId] = useState<Record<string, string>>({});
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
   const [isRuleEditorOpen, setIsRuleEditorOpen] = useState(false);
+  const [targetAttributesPickerRuleId, setTargetAttributesPickerRuleId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
   const [statusError, setStatusError] = useState("");
   const [activeSubview, setActiveSubview] = useState<MonitoringRulesSubview>("attribute-pools");
@@ -1196,6 +1278,7 @@ export const MonitoringRulesPage = () => {
       setGroupedMapTextByRuleId({});
       setSelectedRuleId(null);
       setIsRuleEditorOpen(false);
+      setTargetAttributesPickerRuleId(null);
       return;
     }
     const cloned = cloneProfile(selectedProfile);
@@ -1206,6 +1289,7 @@ export const MonitoringRulesPage = () => {
     setGroupedMapTextByRuleId({});
     setSelectedRuleId(null);
     setIsRuleEditorOpen(false);
+    setTargetAttributesPickerRuleId(null);
     setAliasSuggestionsOpen(false);
     setAliasSuggestionCursor(0);
     setAliasCaretPosition(0);
@@ -1238,10 +1322,41 @@ export const MonitoringRulesPage = () => {
     if (draft.rules.length === 0) {
       setSelectedRuleId(null);
       setIsRuleEditorOpen(false);
+      setTargetAttributesPickerRuleId(null);
       return;
     }
     setSelectedRuleId(draft.rules[0]?.id ?? null);
   }, [draft, selectedRuleId, isRuleEditorOpen]);
+
+  useEffect(() => {
+    if (!targetAttributesPickerRuleId || !selectedRuleId || !isRuleEditorOpen) {
+      return;
+    }
+    if (targetAttributesPickerRuleId === selectedRuleId) {
+      return;
+    }
+    setTargetAttributesPickerRuleId(null);
+  }, [isRuleEditorOpen, selectedRuleId, targetAttributesPickerRuleId]);
+
+  useEffect(() => {
+    if (!targetAttributesPickerRuleId) {
+      return;
+    }
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (targetAttributesControlRef.current?.contains(target)) {
+        return;
+      }
+      setTargetAttributesPickerRuleId(null);
+    };
+    window.addEventListener("mousedown", handlePointerDown);
+    return () => {
+      window.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [targetAttributesPickerRuleId]);
 
   useEffect(() => {
     if (activeSubview !== "formula-attributes" || formulaGroupsState !== "idle") {
@@ -1331,23 +1446,39 @@ export const MonitoringRulesPage = () => {
     if (!draft || !previewAttribute) {
       return null;
     }
+    const hydratedProfile: MonitoringRenderProfile = {
+      ...cloneProfile(draft),
+      rules: draft.rules.map((rule) =>
+        hydrateRuleForAliases(rule, availableRuleAliases, activePreviewRawValue)),
+    };
     return renderMonitoringValue({
       attributeKey: previewAttribute,
       value: activePreviewRawValue,
-      profiles: [draft],
+      profiles: [hydratedProfile],
     });
-  }, [activePreviewRawValue, draft, previewAttribute]);
+  }, [activePreviewRawValue, availableRuleAliases, draft, previewAttribute]);
 
   const preparedRuleEntries = useMemo(() => {
     if (!draft) {
       return [];
     }
     return draft.rules.map((rule, index) => {
-      const rulePreviewAlias = resolveRulePreviewAlias(rule, availableRuleAliases);
-      const rulePreviewRawValue = resolveRulePreviewRawValue(rule, activePreviewRawValue);
+      const hydratedRule = hydrateRuleForAliases(
+        rule,
+        availableRuleAliases,
+        activePreviewRawValue,
+      );
+      const rulePreviewAlias = resolveRulePreviewAlias(
+        hydratedRule,
+        availableRuleAliases,
+      );
+      const rulePreviewRawValue = resolveRulePreviewRawValue(
+        hydratedRule,
+        activePreviewRawValue,
+      );
       const rulePreviewProfile: MonitoringRenderProfile = {
         ...cloneProfile(draft),
-        rules: [cloneRule(rule)],
+        rules: [cloneRule(hydratedRule)],
       };
       const rulePreviewResult = rulePreviewAlias
         ? renderMonitoringValue({
@@ -1380,6 +1511,13 @@ export const MonitoringRulesPage = () => {
   const activeRuleIndex = selectedRuleEntry?.index ?? -1;
   const activeRulePreviewRawValue = selectedRuleEntry?.previewRawValue ?? "";
   const activeRulePreviewResult = selectedRuleEntry?.previewResult ?? null;
+  const activeRuleTargetAttributes = useMemo(
+    () =>
+      activeRule
+        ? normalizeRuleTargetAttributes(activeRule.targetAttributes, availableRuleAliases)
+        : undefined,
+    [activeRule, availableRuleAliases],
+  );
 
   const persistProfiles = async (nextProfiles: MonitoringRenderProfile[]) => {
     settings.setMonitoringRenderProfiles(nextProfiles);
@@ -1517,6 +1655,68 @@ export const MonitoringRulesPage = () => {
     setIsRuleEditorOpen(openEditorAfter);
   };
 
+  const resolveRuleTargetAttributesSummary = (
+    aliases: string[],
+    selected: string[] | undefined,
+  ) => {
+    if (!selected || selected.length === 0) {
+      return "All";
+    }
+    if (selected.length >= aliases.length && aliases.length > 0) {
+      return `All (${selected.length})`;
+    }
+    if (selected.length <= 2) {
+      return selected.join(", ");
+    }
+    return `${selected[0] ?? ""} +${selected.length - 1}`;
+  };
+
+  const handleSetRuleTargetAttributes = (
+    ruleId: string,
+    nextTargetAttributes: string[] | undefined,
+  ) => {
+    updateRule(ruleId, (current) => ({
+      ...hydrateRuleForAliases(
+        {
+          ...current,
+          targetAttributes: normalizeRuleTargetAttributes(
+            nextTargetAttributes,
+            availableRuleAliases,
+          ),
+        },
+        availableRuleAliases,
+        resolveRulePreviewRawValue(current, activePreviewRawValue),
+      ),
+    }));
+  };
+
+  const handleToggleRuleTargetAttribute = (
+    ruleId: string,
+    alias: string,
+    checked: boolean,
+  ) => {
+    updateRule(ruleId, (current) => {
+      const selectedTargets = normalizeRuleTargetAttributes(
+        current.targetAttributes,
+        availableRuleAliases,
+      ) ?? [];
+      const normalizedAlias = normalizeLower(alias);
+      const nextTargets = checked
+        ? dedupeAliases([...selectedTargets, alias])
+        : selectedTargets.filter(
+            (entry) => normalizeLower(entry) !== normalizedAlias,
+          );
+      return hydrateRuleForAliases(
+        {
+          ...current,
+          targetAttributes: nextTargets.length > 0 ? nextTargets : undefined,
+        },
+        availableRuleAliases,
+        resolveRulePreviewRawValue(current, activePreviewRawValue),
+      );
+    });
+  };
+
   const handleAliasSuggestionSelect = (suggestion: string) => {
     const cursor = aliasInputRef.current?.selectionStart ?? aliasesDraft.length;
     const next = replaceAliasToken(aliasesDraft, cursor, suggestion);
@@ -1623,17 +1823,12 @@ export const MonitoringRulesPage = () => {
     };
     const normalizedDraftWithRulePreviewContext: MonitoringRenderProfile = {
       ...normalizedDraftWithPendingRuleText,
-      rules: normalizedDraftWithPendingRuleText.rules.map((rule) => ({
-        ...rule,
-        rulePreviewAlias: resolveRulePreviewAlias(
+      rules: normalizedDraftWithPendingRuleText.rules.map((rule) =>
+        hydrateRuleForAliases(
           rule,
           normalizedDraftWithPendingRuleText.attributeAliases,
-        ),
-        rulePreviewRawValue: resolveRulePreviewRawValue(
-          rule,
           normalizedDraftWithPendingRuleText.previewRawValue ?? "",
-        ),
-      })),
+        )),
     };
     const nextProfiles = profiles.map((profile) =>
       profile.id === normalizedDraftWithRulePreviewContext.id ? normalizedDraftWithRulePreviewContext : profile,
@@ -2378,6 +2573,7 @@ export const MonitoringRulesPage = () => {
                             id: current.id,
                             rulePreviewAlias: current.rulePreviewAlias,
                             rulePreviewRawValue: current.rulePreviewRawValue,
+                            targetAttributes: current.targetAttributes,
                           }));
                         }}
                       >
@@ -2387,16 +2583,6 @@ export const MonitoringRulesPage = () => {
                           </option>
                         ))}
                       </select>
-                      <button
-                        type="button"
-                        className="ghost small"
-                        onClick={() => {
-                          handleRemoveRule(activeRule.id);
-                        }}
-                        disabled={draft.rules.length <= 1}
-                      >
-                        Entfernen
-                      </button>
                     </header>
 
                     {activeRule.type === "value-map" ? (
@@ -2765,6 +2951,103 @@ export const MonitoringRulesPage = () => {
                         </label>
                       </div>
                     ) : null}
+
+                    <div
+                      className="monitoring-rules-rule-target-control"
+                      ref={targetAttributesControlRef}
+                    >
+                      <span className="monitoring-rules-rule-target-label">Attr:</span>
+                      <button
+                        type="button"
+                        className="ghost small monitoring-rules-rule-target-toggle"
+                        onClick={() =>
+                          setTargetAttributesPickerRuleId((current) =>
+                            current === activeRule.id ? null : activeRule.id)
+                        }
+                      >
+                        {resolveRuleTargetAttributesSummary(
+                          availableRuleAliases,
+                          activeRuleTargetAttributes,
+                        )}{" "}
+                        ▾
+                      </button>
+                      {targetAttributesPickerRuleId === activeRule.id ? (
+                        <div
+                          className="monitoring-rules-rule-target-popover"
+                          role="menu"
+                          aria-label="Target Attributes"
+                        >
+                          <div className="monitoring-rules-rule-target-actions">
+                            <button
+                              type="button"
+                              className="ghost small"
+                              onClick={() => {
+                                handleSetRuleTargetAttributes(activeRule.id, undefined);
+                                setTargetAttributesPickerRuleId(null);
+                              }}
+                            >
+                              All (auto)
+                            </button>
+                            <button
+                              type="button"
+                              className="ghost small"
+                              onClick={() =>
+                                handleSetRuleTargetAttributes(
+                                  activeRule.id,
+                                  availableRuleAliases,
+                                )
+                              }
+                            >
+                              Select all
+                            </button>
+                          </div>
+                          <div className="monitoring-rules-rule-target-list">
+                            {availableRuleAliases.length === 0 ? (
+                              <span className="monitoring-rules-rule-target-empty">
+                                Keine Alias-Attribute
+                              </span>
+                            ) : (
+                              availableRuleAliases.map((alias) => {
+                                const checked = Boolean(
+                                  activeRuleTargetAttributes?.some(
+                                    (entry) => normalizeLower(entry) === normalizeLower(alias),
+                                  ),
+                                );
+                                return (
+                                  <label key={`rule-target-${activeRule.id}-${alias}`}>
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={(event) => {
+                                        handleToggleRuleTargetAttribute(
+                                          activeRule.id,
+                                          alias,
+                                          event.target.checked,
+                                        );
+                                      }}
+                                    />
+                                    {alias}
+                                  </label>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="monitoring-rules-rule-actions">
+                      <button
+                        type="button"
+                        className="ghost small monitoring-rules-danger-action"
+                        onClick={() => {
+                          handleRemoveRule(activeRule.id);
+                        }}
+                        disabled={draft.rules.length <= 1}
+                      >
+                        Entfernen
+                      </button>
+                    </div>
 
                     <div className="monitoring-rules-rule-preview-layout">
                       <div className="monitoring-rules-rule-preview">

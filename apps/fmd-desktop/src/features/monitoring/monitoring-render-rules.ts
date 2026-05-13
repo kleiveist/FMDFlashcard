@@ -42,6 +42,12 @@ type MonitoringRulePreviewContext = {
   rulePreviewRawValue?: string;
 };
 
+type MonitoringRuleTargetContext = {
+  targetAttributes?: string[];
+};
+
+type MonitoringRuleContext = MonitoringRulePreviewContext & MonitoringRuleTargetContext;
+
 export type MonitoringRenderRule =
   | {
       id: string;
@@ -50,27 +56,27 @@ export type MonitoringRenderRule =
       caseSensitive?: boolean;
       displayMode?: "append" | "replace";
       separator?: string;
-    } & MonitoringRulePreviewContext
+    } & MonitoringRuleContext
   | {
       id: string;
       type: "ratio-derived-percent";
       decimals?: number;
       showBase?: boolean;
       wrapInParentheses?: boolean;
-    } & MonitoringRulePreviewContext
+    } & MonitoringRuleContext
   | {
       id: string;
       type: "percent-format";
       decimals?: number;
       clamp?: boolean;
-    } & MonitoringRulePreviewContext
+    } & MonitoringRuleContext
   | {
       id: string;
       type: "progress-visual";
       visualStyle?: MonitoringProgressVisualStyle;
       min?: number;
       max?: number;
-    } & MonitoringRulePreviewContext
+    } & MonitoringRuleContext
   | {
       id: string;
       type: "threshold-symbol";
@@ -78,7 +84,7 @@ export type MonitoringRenderRule =
       displayMode?: "append" | "replace";
       appendToText?: boolean;
       separator?: string;
-    } & MonitoringRulePreviewContext
+    } & MonitoringRuleContext
   | {
       id: string;
       type: "grouped-label-map";
@@ -86,7 +92,7 @@ export type MonitoringRenderRule =
       caseSensitive?: boolean;
       replaceText?: boolean;
       separator?: string;
-    } & MonitoringRulePreviewContext;
+    } & MonitoringRuleContext;
 
 export type MonitoringRenderProfile = {
   id: string;
@@ -310,12 +316,102 @@ const dedupeAliases = (aliases: string[]) => {
   return next;
 };
 
-const resolveRulePreviewAlias = (
-  value: string | undefined,
+const normalizeStandaloneRuleTargetAttributes = (value: unknown) => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const next: string[] = [];
+  const seen = new Set<string>();
+  value.forEach((entry) => {
+    const trimmed = String(entry ?? "").trim();
+    const normalized = toLower(trimmed);
+    if (!normalized || seen.has(normalized)) {
+      return;
+    }
+    seen.add(normalized);
+    next.push(trimmed);
+  });
+  return next.length > 0 ? next : undefined;
+};
+
+const normalizeRuleTargetAttributes = (
+  value: unknown,
   profileAliases: string[],
 ) => {
+  if (!Array.isArray(value) || profileAliases.length === 0) {
+    return undefined;
+  }
+  const aliasByNormalized = new Map<string, string>();
+  profileAliases.forEach((alias) => {
+    const normalized = toLower(alias);
+    if (!normalized || aliasByNormalized.has(normalized)) {
+      return;
+    }
+    aliasByNormalized.set(normalized, alias);
+  });
+  const next: string[] = [];
+  const seen = new Set<string>();
+  value.forEach((entry) => {
+    const normalized = toLower(String(entry ?? ""));
+    if (!normalized || seen.has(normalized)) {
+      return;
+    }
+    const matchedAlias = aliasByNormalized.get(normalized);
+    if (!matchedAlias) {
+      return;
+    }
+    seen.add(normalized);
+    next.push(matchedAlias);
+  });
+  return next.length > 0 ? next : undefined;
+};
+
+const isRuleTargetedToAttribute = (
+  rule: MonitoringRenderRule,
+  attributeKey: string,
+  profileAliases: string[],
+) => {
+  const normalizedAttributeKey = toLower(attributeKey);
+  if (!normalizedAttributeKey) {
+    return false;
+  }
+  const targets = normalizeStandaloneRuleTargetAttributes(rule.targetAttributes);
+  if (!targets) {
+    return true;
+  }
+  const validAliases = new Set(profileAliases.map((alias) => toLower(alias)));
+  const effectiveTargets = targets.filter((target) =>
+    validAliases.has(toLower(target)),
+  );
+  if (effectiveTargets.length === 0) {
+    return true;
+  }
+  return effectiveTargets.some((target) => toLower(target) === normalizedAttributeKey);
+};
+
+const resolveRulePreviewAlias = (
+  rule: MonitoringRenderRule,
+  profileAliases: string[],
+) => {
+  const value = rule.rulePreviewAlias;
   if (profileAliases.length === 0) {
     return value?.trim() ?? "";
+  }
+  const explicitTargets = normalizeRuleTargetAttributes(
+    rule.targetAttributes,
+    profileAliases,
+  );
+  if (explicitTargets && explicitTargets.length > 0) {
+    const normalizedPreviewAlias = toLower(value ?? "");
+    if (normalizedPreviewAlias) {
+      const matchedExplicit = explicitTargets.find(
+        (alias) => toLower(alias) === normalizedPreviewAlias,
+      );
+      if (matchedExplicit) {
+        return matchedExplicit;
+      }
+    }
+    return explicitTargets[0] ?? profileAliases[0] ?? "";
   }
   const normalized = toLower(value ?? "");
   if (!normalized) {
@@ -331,7 +427,11 @@ const hydrateRulePreviewContext = (
   fallbackRawValue: string,
 ): MonitoringRenderRule => ({
   ...rule,
-  rulePreviewAlias: resolveRulePreviewAlias(rule.rulePreviewAlias, profileAliases),
+  targetAttributes: normalizeRuleTargetAttributes(
+    rule.targetAttributes,
+    profileAliases,
+  ),
+  rulePreviewAlias: resolveRulePreviewAlias(rule, profileAliases),
   rulePreviewRawValue:
     typeof rule.rulePreviewRawValue === "string"
       ? rule.rulePreviewRawValue
@@ -500,9 +600,12 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
     typeof value.rulePreviewAlias === "string" ? value.rulePreviewAlias.trim() : "";
   const rulePreviewRawValue =
     typeof value.rulePreviewRawValue === "string" ? value.rulePreviewRawValue : undefined;
-  const previewContext: MonitoringRulePreviewContext = {
+  const ruleContext: MonitoringRuleContext = {
     rulePreviewAlias: rulePreviewAlias || undefined,
     rulePreviewRawValue,
+    targetAttributes: normalizeStandaloneRuleTargetAttributes(
+      value.targetAttributes,
+    ),
   };
 
   if (type === "value-map") {
@@ -513,7 +616,7 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
       caseSensitive: Boolean(value.caseSensitive),
       displayMode: value.displayMode === "replace" ? "replace" : "append",
       separator: String(value.separator ?? " "),
-      ...previewContext,
+      ...ruleContext,
     };
   }
   if (type === "ratio-derived-percent") {
@@ -524,7 +627,7 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
       decimals: Number.isFinite(decimals) ? Math.max(0, Math.min(6, Math.floor(decimals))) : 0,
       showBase: value.showBase !== false,
       wrapInParentheses: value.wrapInParentheses !== false,
-      ...previewContext,
+      ...ruleContext,
     };
   }
   if (type === "percent-format") {
@@ -534,7 +637,7 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
       type,
       decimals: Number.isFinite(decimals) ? Math.max(0, Math.min(6, Math.floor(decimals))) : 0,
       clamp: value.clamp !== false,
-      ...previewContext,
+      ...ruleContext,
     };
   }
   if (type === "progress-visual") {
@@ -550,7 +653,7 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
       visualStyle,
       min: Number.isFinite(min) ? min : 0,
       max: Number.isFinite(max) ? max : 100,
-      ...previewContext,
+      ...ruleContext,
     };
   }
   if (type === "threshold-symbol") {
@@ -564,7 +667,7 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
       thresholds: normalizeThresholds(value.thresholds),
       displayMode,
       separator: String(value.separator ?? " "),
-      ...previewContext,
+      ...ruleContext,
     };
   }
   if (type === "grouped-label-map") {
@@ -575,7 +678,7 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
       caseSensitive: Boolean(value.caseSensitive),
       replaceText: Boolean(value.replaceText),
       separator: String(value.separator ?? " "),
-      ...previewContext,
+      ...ruleContext,
     };
   }
   return null;
@@ -894,6 +997,10 @@ export const renderMonitoringValue = ({
   let progressVisual: MonitoringRenderResult["progressVisual"] = null;
 
   profile.rules.forEach((rule) => {
+    if (!isRuleTargetedToAttribute(rule, attributeKey, profile.attributeAliases)) {
+      return;
+    }
+
     if (rule.type === "value-map") {
       if (!parsed.codeValue && !parsed.textValue) {
         return;

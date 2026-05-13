@@ -81,6 +81,30 @@ describe("monitoring-render-rules", () => {
     expect(normalized[0]?.rules[0]?.rulePreviewRawValue).toBe("J");
   });
 
+  it("normalizes rule targetAttributes against profile aliases", () => {
+    const normalized = normalizeMonitoringRenderProfiles([
+      {
+        id: "target-profile",
+        name: "Target Profile",
+        attributeAliases: ["score", "percent", "status"],
+        inputFormat: "text",
+        scopes: ["database"],
+        rules: [
+          {
+            id: "target-rule",
+            type: "value-map",
+            mappings: [{ from: "ok", to: "✅" }],
+            targetAttributes: [" percent ", "PERCENT", "missing", ""],
+            rulePreviewAlias: "status",
+          },
+        ],
+      },
+    ]);
+
+    expect(normalized[0]?.rules[0]?.targetAttributes).toEqual(["percent"]);
+    expect(normalized[0]?.rules[0]?.rulePreviewAlias).toBe("percent");
+  });
+
   it("falls back to first profile alias when stored rule alias is invalid", () => {
     const normalized = normalizeMonitoringRenderProfiles([
       {
@@ -104,6 +128,69 @@ describe("monitoring-render-rules", () => {
 
     expect(normalized[0]?.rules[0]?.rulePreviewAlias).toBe("score");
     expect(normalized[0]?.rules[0]?.rulePreviewRawValue).toBe("42");
+  });
+
+  it("applies targetAttributes-restricted rules only to matching aliases", () => {
+    const profile = createProfile({
+      id: "targeted-render",
+      name: "Targeted Render",
+      attributeAliases: ["score", "percent"],
+      inputFormat: "text",
+      rules: [
+        {
+          id: "targeted-map",
+          type: "value-map",
+          mappings: [{ from: "ok", to: "✅" }],
+          displayMode: "append",
+          separator: " ",
+          targetAttributes: ["percent"],
+        },
+      ],
+    });
+
+    const scoreResult = renderMonitoringValue({
+      attributeKey: "score",
+      value: "ok",
+      profiles: [profile],
+    });
+    const percentResult = renderMonitoringValue({
+      attributeKey: "percent",
+      value: "ok",
+      profiles: [profile],
+    });
+
+    expect(scoreResult?.displayText).toBe("ok");
+    expect(scoreResult?.symbol).toBeNull();
+    expect(percentResult?.displayText).toBe("ok ✅");
+    expect(percentResult?.symbol).toBe("✅");
+  });
+
+  it("treats invalid targetAttributes as unrestricted", () => {
+    const profile = createProfile({
+      id: "target-fallback",
+      name: "Target Fallback",
+      attributeAliases: ["score"],
+      inputFormat: "text",
+      rules: [
+        {
+          id: "target-fallback-map",
+          type: "value-map",
+          mappings: [{ from: "ok", to: "✅" }],
+          displayMode: "append",
+          separator: " ",
+          targetAttributes: ["missing-alias"],
+        },
+      ],
+    });
+
+    const result = renderMonitoringValue({
+      attributeKey: "score",
+      value: "ok",
+      profiles: [profile],
+    });
+
+    expect(result?.displayText).toBe("ok ✅");
+    expect(result?.symbol).toBe("✅");
   });
 
   it("resolves aliases case-insensitively including corrected keys", () => {

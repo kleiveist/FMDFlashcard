@@ -697,13 +697,80 @@
 }
 
 .monitoring-rules-rule-modal-panel {
-  width: min(900px, 96vw);
-  max-height: min(88vh, 820px);
+  width: min(920px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
 }
 
 .monitoring-rules-rule-modal-body {
   overflow: auto;
   min-height: 0;
+}
+
+.monitoring-rules-rule-target-control {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.monitoring-rules-rule-target-label {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.monitoring-rules-rule-target-toggle {
+  min-height: var(--ui-control-height-compact);
+}
+
+.monitoring-rules-rule-target-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  min-width: min(340px, calc(100vw - 56px));
+  max-width: min(420px, calc(100vw - 56px));
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 92%, var(--surface));
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--ink) 16%, transparent);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.monitoring-rules-rule-target-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.monitoring-rules-rule-target-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 6px 8px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.monitoring-rules-rule-target-list label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 0.82rem;
+}
+
+.monitoring-rules-rule-target-empty {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.monitoring-rules-rule-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .monitoring-rules-confirm-modal {
