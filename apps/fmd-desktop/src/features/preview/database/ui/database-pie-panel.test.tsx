@@ -56,6 +56,7 @@ describe("DatabasePiePanel", () => {
           { value: "Done", count: 1 },
         ],
         excludedValues: [],
+        colorSpectrum: "standard",
         onChange,
         onClose: vi.fn(),
       }),
@@ -86,6 +87,7 @@ describe("DatabasePiePanel", () => {
           { value: "Done", count: 1 },
         ],
         excludedValues: ["Done"],
+        colorSpectrum: "standard",
         onChange,
         onClose: vi.fn(),
       }),
@@ -100,6 +102,54 @@ describe("DatabasePiePanel", () => {
     });
 
     expect(onChange).toHaveBeenCalledWith({ excludedValues: [] });
+    cleanup();
+  });
+
+  it("updates selected pie color spectrum", () => {
+    const onChange = vi.fn();
+    const { container, cleanup } = render(
+      createElement(DatabasePiePanel, {
+        attributes: [statusAttribute],
+        groupField: "status",
+        aggregate: "count",
+        aggregateField: null,
+        valueOptions: [],
+        excludedValues: [],
+        colorSpectrum: "standard",
+        onChange,
+        onClose: vi.fn(),
+      }),
+    );
+
+    const spectrumButton = Array.from(container.querySelectorAll<HTMLButtonElement>("button[role='radio']"))
+      .find((button) => button.textContent?.includes("Ozean"));
+    expect(spectrumButton).toBeTruthy();
+
+    act(() => {
+      spectrumButton?.click();
+    });
+
+    expect(onChange).toHaveBeenCalledWith({ colorSpectrum: "ocean" });
+    cleanup();
+  });
+
+  it("does not render an aggregate field control", () => {
+    const { container, cleanup } = render(
+      createElement(DatabasePiePanel, {
+        attributes: [statusAttribute],
+        groupField: "status",
+        aggregate: "count",
+        aggregateField: null,
+        valueOptions: [],
+        excludedValues: [],
+        colorSpectrum: "standard",
+        onChange: vi.fn(),
+        onClose: vi.fn(),
+      }),
+    );
+
+    expect(container.textContent).not.toContain("Aggregatfeld");
+    expect(container.querySelectorAll("select")).toHaveLength(2);
     cleanup();
   });
 });

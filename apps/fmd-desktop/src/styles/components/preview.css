@@ -6658,6 +6658,96 @@ textarea.preview-editor {
   font-size: 0.78rem;
 }
 
+.database-pie-spectrum {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  border-top: 1px solid var(--db-border);
+  padding-top: 8px;
+}
+
+.database-pie-spectrum h6 {
+  margin: 0;
+  font-size: 0.76rem;
+  color: var(--db-muted);
+}
+
+.database-pie-spectrum-grid {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+}
+
+.database-pie-spectrum-option {
+  border: 1px solid var(--db-border);
+  border-radius: var(--db-radius-control);
+  background: var(--db-surface-muted);
+  color: inherit;
+  padding: 6px 8px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.14s ease,
+    background-color 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+.database-pie-spectrum-option:hover,
+.database-pie-spectrum-option:focus-visible {
+  border-color: var(--db-accent-border);
+  background: color-mix(in srgb, var(--db-accent-soft) 68%, var(--db-surface-muted));
+}
+
+.database-pie-spectrum-option:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--db-accent-border) 42%, transparent);
+}
+
+.database-pie-spectrum-option.is-active {
+  border-color: var(--db-accent-border);
+  background: color-mix(in srgb, var(--db-accent-soft) 72%, var(--db-surface-muted));
+}
+
+.database-pie-spectrum-dot {
+  --db-pie-spectrum-swatch: linear-gradient(135deg, var(--accent-strong), var(--accent));
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--db-border) 76%, transparent);
+  background: var(--db-pie-spectrum-swatch);
+  box-shadow:
+    inset 0 1px 1px color-mix(in srgb, white 32%, transparent),
+    0 1px 2px color-mix(in srgb, black 20%, transparent);
+  position: relative;
+  overflow: hidden;
+}
+
+.database-pie-spectrum-dot::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  top: 1px;
+  left: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, white 58%, transparent);
+}
+
+.database-pie-spectrum-option.is-active .database-pie-spectrum-dot {
+  box-shadow:
+    inset 0 1px 1px color-mix(in srgb, white 32%, transparent),
+    0 0 0 2px color-mix(in srgb, var(--db-accent-border) 24%, transparent);
+}
+
+.database-pie-spectrum-label {
+  min-width: 0;
+  font-size: 0.76rem;
+}
+
 .database-pie-values,
 .database-kanban-values {
   display: grid;
@@ -6829,20 +6919,30 @@ textarea.preview-editor {
 
 .database-pie-view {
   display: grid;
-  grid-template-columns: minmax(248px, auto) minmax(0, 1fr);
+  grid-template-columns: minmax(0, min(var(--db-pie-chart-size, 248px), 100%)) minmax(0, 1fr);
+  align-items: start;
+  justify-content: stretch;
   gap: 12px;
   border: 1px solid var(--db-border);
   border-radius: var(--db-radius-table);
   background: var(--db-surface-raised);
   padding: 12px;
+  container-type: inline-size;
+}
+
+.database-pie-view.is-stacked {
+  grid-template-columns: 1fr;
+  justify-items: center;
 }
 
 .database-pie-chart-wrap {
   position: relative;
-  inline-size: 248px;
-  block-size: 248px;
+  inline-size: min(100%, var(--db-pie-chart-size, 248px));
+  block-size: auto;
+  aspect-ratio: 1 / 1;
   display: grid;
   place-items: center;
+  user-select: none;
 }
 
 .database-pie-chart {
@@ -6854,7 +6954,10 @@ textarea.preview-editor {
   position: absolute;
   inset: 0;
   display: grid;
-  place-items: center;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  padding: 10px;
   text-align: center;
   pointer-events: none;
 }
@@ -6872,6 +6975,38 @@ textarea.preview-editor {
   letter-spacing: 0.06em;
 }
 
+.database-pie-resize-grip {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-end: 0;
+  transform: translate(50%, -50%);
+  inline-size: 16px;
+  block-size: 16px;
+  border-radius: 999px;
+  border: 1px solid var(--db-border);
+  background: color-mix(in srgb, var(--db-surface-base) 86%, var(--accent-soft));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--db-surface-raised) 78%, transparent);
+  cursor: ew-resize;
+}
+
+.database-pie-resize-grip::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 48%, var(--db-surface-base));
+}
+
+.database-pie-resize-grip.is-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 72%, var(--db-surface-base));
+}
+
+.database-pie-chart-wrap.is-resizing,
+.database-pie-chart-wrap.is-resizing * {
+  cursor: ew-resize !important;
+}
+
 .database-pie-legend {
   list-style: none;
   margin: 0;
@@ -6879,6 +7014,12 @@ textarea.preview-editor {
   display: grid;
   gap: 6px;
   align-content: flex-start;
+  min-inline-size: min(var(--db-pie-legend-min-inline-size, 240px), 100%);
+}
+
+.database-pie-view.is-stacked .database-pie-legend {
+  inline-size: min(100%, var(--db-pie-legend-min-inline-size, 460px));
+  min-inline-size: 0;
 }
 
 .database-pie-legend li {
@@ -6927,6 +7068,17 @@ textarea.preview-editor {
   margin: 0;
   color: var(--db-muted);
   font-size: 0.7rem;
+}
+
+@container (max-width: 640px) {
+  .database-pie-legend li {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .database-pie-legend-percent {
+    grid-column: 2 / -1;
+    justify-self: end;
+  }
 }
 
 .database-gantt-view {

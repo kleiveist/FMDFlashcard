@@ -14,6 +14,7 @@ export type DatabaseTimelineMode = "date" | "time" | "datetime";
 export type DatabaseGanttZoom = "year" | "quarter" | "month" | "week" | "day" | "hour" | "minute";
 export type DatabaseProjectMissingPlacement = "show-unplaced" | "hide-unplaced";
 export type DatabaseProjectBarFillMode = "numeric" | "text-code";
+export type DatabasePieColorSpectrum = "standard" | "ocean" | "sunset" | "forest" | "pastel";
 
 export type DatabaseProjectBarFillMapping = {
   from: string;
@@ -154,6 +155,7 @@ export type DatabaseViewSpec = {
   pieAggregate?: "count" | "sum" | "avg";
   pieAggregateField?: string | null;
   pieExcludedValues?: string[];
+  pieColorSpectrum?: DatabasePieColorSpectrum;
 };
 
 export type DatabaseBlockOptions = {

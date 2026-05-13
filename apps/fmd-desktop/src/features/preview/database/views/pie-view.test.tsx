@@ -2,7 +2,10 @@
 import { act, createElement, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it } from "vitest";
-import { DatabasePieView } from "./pie-view";
+import {
+  DatabasePieView,
+  resolveDatabasePieLayoutProfile,
+} from "./pie-view";
 import {
   type DatabaseAttributeMeta,
   type DatabaseRecord,
@@ -134,6 +137,24 @@ const baseRecord: DatabaseRecord = {
 };
 
 describe("DatabasePieView", () => {
+  it("resolves responsive pie layout profile for wide and narrow containers", () => {
+    const wide = resolveDatabasePieLayoutProfile(980);
+    expect(wide.isStacked).toBe(false);
+    expect(wide.chartSize).toBe(320);
+    expect(wide.legendMinInlineSize).toBeGreaterThanOrEqual(240);
+
+    const narrow = resolveDatabasePieLayoutProfile(520);
+    expect(narrow.isStacked).toBe(true);
+    expect(narrow.chartSize).toBeLessThanOrEqual(320);
+    expect(narrow.chartSize).toBeGreaterThanOrEqual(160);
+    expect(narrow.legendMinInlineSize).toBeGreaterThanOrEqual(240);
+
+    const tiny = resolveDatabasePieLayoutProfile(180);
+    expect(tiny.isStacked).toBe(true);
+    expect(tiny.chartSize).toBeLessThanOrEqual(156);
+    expect(tiny.legendMinInlineSize).toBeLessThanOrEqual(156);
+  });
+
   it("shows validation message for missing group field", () => {
     const { container, cleanup } = render(
       createElement(DatabasePieView, {
@@ -590,6 +611,190 @@ describe("DatabasePieView", () => {
 
     expect(segmentStrokes).toHaveLength(3);
     expect(new Set(segmentStrokes).size).toBeGreaterThan(1);
+
+    cleanup();
+  });
+
+  it("applies selected non-standard pie color spectrum", () => {
+    const doneRecord: DatabaseRecord = {
+      ...baseRecord,
+      fileId: "ocean-done.md",
+      filePath: "/vault/ocean-done.md",
+      relativePath: "ocean-done.md",
+      normalizedFields: {
+        ...baseRecord.normalizedFields,
+        status: { raw: "Done" },
+      },
+    };
+    const reviewRecord: DatabaseRecord = {
+      ...baseRecord,
+      fileId: "ocean-review.md",
+      filePath: "/vault/ocean-review.md",
+      relativePath: "ocean-review.md",
+      normalizedFields: {
+        ...baseRecord.normalizedFields,
+        status: { raw: "Review" },
+      },
+    };
+
+    const { container, cleanup } = render(
+      createElement(DatabasePieView, {
+        records: [baseRecord, doneRecord, reviewRecord],
+        groupAttribute: statusGroupAttribute,
+        aggregate: "count",
+        aggregateAttribute: null,
+        excludedValues: [],
+        colorSpectrum: "ocean",
+        visibleProperties: [],
+      }),
+    );
+
+    const segmentStrokes = Array.from(container.querySelectorAll(".database-pie-chart circle"))
+      .slice(1)
+      .map((node) => node.getAttribute("stroke") ?? "");
+
+    expect(segmentStrokes).toEqual(["#006994", "#0A9396", "#2A9D8F"]);
+    segmentStrokes.forEach((stroke) => {
+      expect(stroke).not.toContain("color-mix(");
+      expect(stroke).not.toContain("var(--accent");
+    });
+
+    cleanup();
+  });
+
+  it("allows interactive pie circle scaling with left-drag on edge handle", () => {
+    const { container, cleanup } = render(
+      createElement(DatabasePieView, {
+        records: [baseRecord],
+        groupAttribute: statusGroupAttribute,
+        aggregate: "count",
+        aggregateAttribute: null,
+        visibleProperties: [],
+      }),
+    );
+
+    const view = container.querySelector<HTMLElement>(".database-pie-view");
+    const chartWrap = container.querySelector<HTMLElement>(".database-pie-chart-wrap");
+    const resizeGrip = container.querySelector<HTMLButtonElement>(".database-pie-resize-grip");
+
+    expect(view?.style.getPropertyValue("--db-pie-chart-size").trim()).toBe("320px");
+    expect(resizeGrip).toBeTruthy();
+
+    act(() => {
+      resizeGrip?.dispatchEvent(new MouseEvent("mousedown", {
+        bubbles: true,
+        button: 0,
+        buttons: 1,
+        clientX: 100,
+        clientY: 100,
+      }));
+      window.dispatchEvent(new MouseEvent("mousemove", {
+        bubbles: true,
+        buttons: 1,
+        clientX: 220,
+        clientY: 100,
+      }));
+      window.dispatchEvent(new MouseEvent("mouseup", {
+        bubbles: true,
+        button: 0,
+        buttons: 0,
+        clientX: 220,
+        clientY: 100,
+      }));
+    });
+
+    expect(chartWrap?.classList.contains("is-resizing")).toBe(false);
+    expect(view?.style.getPropertyValue("--db-pie-chart-size").trim()).toBe("448px");
+
+    act(() => {
+      resizeGrip?.dispatchEvent(new MouseEvent("mousedown", {
+        bubbles: true,
+        button: 0,
+        buttons: 1,
+        clientX: 220,
+        clientY: 100,
+      }));
+      window.dispatchEvent(new MouseEvent("mousemove", {
+        bubbles: true,
+        buttons: 1,
+        clientX: -100,
+        clientY: 100,
+      }));
+      window.dispatchEvent(new MouseEvent("mouseup", {
+        bubbles: true,
+        button: 0,
+        buttons: 0,
+        clientX: -100,
+        clientY: 100,
+      }));
+    });
+
+    expect(view?.style.getPropertyValue("--db-pie-chart-size").trim()).toBe("224px");
+
+    act(() => {
+      resizeGrip?.dispatchEvent(new MouseEvent("mousedown", {
+        bubbles: true,
+        button: 2,
+        buttons: 2,
+        clientX: 100,
+        clientY: 100,
+      }));
+      window.dispatchEvent(new MouseEvent("mousemove", {
+        bubbles: true,
+        buttons: 2,
+        clientX: 260,
+        clientY: 100,
+      }));
+      window.dispatchEvent(new MouseEvent("mouseup", {
+        bubbles: true,
+        button: 2,
+        buttons: 0,
+        clientX: 260,
+        clientY: 100,
+      }));
+    });
+
+    // Right-click drag must not resize.
+    expect(view?.style.getPropertyValue("--db-pie-chart-size").trim()).toBe("224px");
+
+    cleanup();
+  });
+
+  it("shows active resizing state while left-drag is in progress", () => {
+    const { container, cleanup } = render(
+      createElement(DatabasePieView, {
+        records: [baseRecord],
+        groupAttribute: statusGroupAttribute,
+        aggregate: "count",
+        aggregateAttribute: null,
+        visibleProperties: [],
+      }),
+    );
+
+    const chartWrap = container.querySelector<HTMLElement>(".database-pie-chart-wrap");
+    const resizeGrip = container.querySelector<HTMLButtonElement>(".database-pie-resize-grip");
+
+    act(() => {
+      resizeGrip?.dispatchEvent(new MouseEvent("mousedown", {
+        bubbles: true,
+        button: 0,
+        buttons: 1,
+        clientX: 120,
+        clientY: 100,
+      }));
+    });
+    expect(chartWrap?.classList.contains("is-resizing")).toBe(true);
+
+    act(() => {
+      window.dispatchEvent(new MouseEvent("mouseup", {
+        bubbles: true,
+        button: 0,
+        buttons: 0,
+        clientX: 120,
+        clientY: 100,
+      }));
+    });
+    expect(chartWrap?.classList.contains("is-resizing")).toBe(false);
 
     cleanup();
   });

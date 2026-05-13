@@ -4,10 +4,18 @@
  * Pie/donut visualization with type-aware aggregations.
  */
 
-import { type CSSProperties, useMemo } from "react";
+import {
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   type DatabaseAttributeMeta,
   type DatabaseNormalizedFieldValue,
+  type DatabasePieColorSpectrum,
   type DatabaseRecord,
 } from "../database-types";
 import {
@@ -26,6 +34,7 @@ type DatabasePieViewProps = {
   aggregate: "count" | "sum" | "avg";
   aggregateAttribute: DatabaseAttributeMeta | null;
   excludedValues?: string[];
+  colorSpectrum?: DatabasePieColorSpectrum;
   visibleProperties: DatabaseAttributeMeta[];
   monitoringProfiles?: MonitoringRenderProfile[];
 };
@@ -37,10 +46,92 @@ type PieBucket = {
   records: DatabaseRecord[];
 };
 
+type DatabasePieLayoutProfile = {
+  isStacked: boolean;
+  chartSize: number;
+  legendMinInlineSize: number;
+};
+
+type PieResizeDragState = {
+  startX: number;
+  startY: number;
+  startScale: number;
+};
+
 const PIE_MONO_TONE_STEPS = [88, 80, 72, 64, 56, 48, 40, 32, 24, 18];
+const PIE_DEFAULT_WIDTH = 720;
+const PIE_STACK_BREAKPOINT = 760;
+const PIE_CHART_MIN_SIZE = 160;
+const PIE_CHART_MAX_SIZE = 320;
+const PIE_LEGEND_MIN_INLINE_SIZE = 240;
+const PIE_LEGEND_MAX_INLINE_SIZE = 460;
+const PIE_VIEW_HORIZONTAL_PADDING = 24;
+const PIE_VIEW_GAP = 12;
+const PIE_INTERACTIVE_SCALE_MIN = 70;
+const PIE_INTERACTIVE_SCALE_MAX = 140;
+const PIE_INTERACTIVE_CHART_MIN_SIZE = 112;
+const PIE_INTERACTIVE_LEGEND_MIN_INLINE_SIZE = 160;
+const PIE_RESIZE_DRAG_SENSITIVITY = 0.35;
+const PIE_COLOR_SPECTRUMS: Record<Exclude<DatabasePieColorSpectrum, "standard">, string[]> = {
+  ocean: ["#006994", "#0A9396", "#2A9D8F", "#4DCCBD", "#76D7EA", "#BDEBFF"],
+  sunset: ["#7C2D12", "#B45309", "#DC2626", "#EA580C", "#F59E0B", "#FECACA"],
+  forest: ["#14532D", "#166534", "#15803D", "#16A34A", "#4ADE80", "#BBF7D0"],
+  pastel: ["#9D4EDD", "#60A5FA", "#34D399", "#F9A8D4", "#FDE68A", "#FDBA74"],
+};
 
 const toLower = (value: string) => value.trim().toLowerCase();
 const isExamFieldKey = (key: string) => toLower(key) === "exam";
+
+const clampNumber = (value: number, min: number, max: number) => {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+  return Math.min(Math.max(value, min), max);
+};
+
+const normalizeDatabasePieColorSpectrum = (
+  value: DatabasePieColorSpectrum | null | undefined,
+): DatabasePieColorSpectrum => {
+  switch (value) {
+    case "ocean":
+    case "sunset":
+    case "forest":
+    case "pastel":
+    case "standard":
+      return value;
+    default:
+      return "standard";
+  }
+};
+
+export const resolveDatabasePieLayoutProfile = (containerWidth: number): DatabasePieLayoutProfile => {
+  const safeWidth = containerWidth > 0 ? containerWidth : PIE_DEFAULT_WIDTH;
+  const innerWidth = Math.max(140, safeWidth - PIE_VIEW_HORIZONTAL_PADDING);
+  const isStacked = innerWidth < PIE_STACK_BREAKPOINT;
+
+  const chartTarget = isStacked
+    ? innerWidth * 0.72
+    : innerWidth - PIE_LEGEND_MIN_INLINE_SIZE - PIE_VIEW_GAP;
+
+  const chartUpperBound = Math.min(PIE_CHART_MAX_SIZE, innerWidth);
+  const chartLowerBound = Math.min(PIE_CHART_MIN_SIZE, chartUpperBound);
+  const chartSize = Math.round(clampNumber(chartTarget, chartLowerBound, chartUpperBound));
+
+  const legendTarget = isStacked
+    ? innerWidth
+    : innerWidth - chartSize - PIE_VIEW_GAP;
+  const legendUpperBound = Math.min(PIE_LEGEND_MAX_INLINE_SIZE, innerWidth);
+  const legendLowerBound = Math.min(PIE_LEGEND_MIN_INLINE_SIZE, legendUpperBound);
+  const legendMinInlineSize = Math.round(
+    clampNumber(legendTarget, legendLowerBound, legendUpperBound),
+  );
+
+  return {
+    isStacked,
+    chartSize,
+    legendMinInlineSize,
+  };
+};
 
 const getRecordValueByField = (record: DatabaseRecord, field: string): DatabaseNormalizedFieldValue => {
   if (field in record.normalizedFields) {
@@ -173,12 +264,26 @@ const formatBucketValue = (value: number, aggregate: "count" | "sum" | "avg") =>
   });
 };
 
-const resolvePieAccentColor = (index: number) => {
+const resolveStandardPieAccentColor = (index: number) => {
   const stepIndex = index % PIE_MONO_TONE_STEPS.length;
   const cycle = Math.floor(index / PIE_MONO_TONE_STEPS.length);
   const accentToken = cycle % 2 === 0 ? "var(--accent-strong)" : "var(--accent)";
   const accentWeight = Math.max(18, PIE_MONO_TONE_STEPS[stepIndex]! - cycle * 6);
   return `color-mix(in srgb, ${accentToken} ${accentWeight}%, var(--db-surface-raised))`;
+};
+
+const resolvePieAccentColor = (
+  index: number,
+  spectrum: DatabasePieColorSpectrum,
+) => {
+  if (spectrum === "standard") {
+    return resolveStandardPieAccentColor(index);
+  }
+  const palette = PIE_COLOR_SPECTRUMS[spectrum];
+  if (!palette || palette.length === 0) {
+    return resolveStandardPieAccentColor(index);
+  }
+  return palette[index % palette.length] ?? resolveStandardPieAccentColor(index);
 };
 
 export const DatabasePieView = ({
@@ -187,9 +292,149 @@ export const DatabasePieView = ({
   aggregate,
   aggregateAttribute,
   excludedValues,
+  colorSpectrum,
   visibleProperties,
   monitoringProfiles = [],
 }: DatabasePieViewProps) => {
+  const pieViewRef = useRef<HTMLDivElement | null>(null);
+  const pieResizeDragRef = useRef<PieResizeDragState | null>(null);
+  const [viewWidth, setViewWidth] = useState(0);
+  const [pieScalePercent, setPieScalePercent] = useState(100);
+  const [isPieResizeDragging, setIsPieResizeDragging] = useState(false);
+  const normalizedColorSpectrum = useMemo(
+    () => normalizeDatabasePieColorSpectrum(colorSpectrum),
+    [colorSpectrum],
+  );
+
+  useEffect(() => {
+    const node = pieViewRef.current;
+    if (!node) {
+      return;
+    }
+
+    const measure = (width: number) => {
+      if (!Number.isFinite(width) || width <= 0) {
+        return;
+      }
+      setViewWidth((previous) => Math.abs(previous - width) >= 1 ? width : previous);
+    };
+
+    const measureFromDom = () => {
+      measure(node.getBoundingClientRect().width);
+    };
+
+    measureFromDom();
+
+    if (typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      const [entry] = entries;
+      if (!entry) {
+        return;
+      }
+      measure(entry.contentRect.width);
+    });
+
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  const layoutProfile = useMemo(
+    () => resolveDatabasePieLayoutProfile(viewWidth),
+    [viewWidth],
+  );
+  const scaledChartSize = useMemo(
+    () =>
+      Math.round(
+        clampNumber(
+          layoutProfile.chartSize * (pieScalePercent / 100),
+          PIE_INTERACTIVE_CHART_MIN_SIZE,
+          PIE_CHART_MAX_SIZE * (PIE_INTERACTIVE_SCALE_MAX / 100),
+        ),
+      ),
+    [layoutProfile.chartSize, pieScalePercent],
+  );
+  const scaledLegendMinInlineSize = useMemo(() => {
+    if (layoutProfile.isStacked) {
+      return layoutProfile.legendMinInlineSize;
+    }
+    const safeWidth = viewWidth > 0 ? viewWidth : PIE_DEFAULT_WIDTH;
+    const innerWidth = Math.max(140, safeWidth - PIE_VIEW_HORIZONTAL_PADDING);
+    const availableWidth = innerWidth - scaledChartSize - PIE_VIEW_GAP;
+    return Math.round(
+      clampNumber(
+        availableWidth,
+        PIE_INTERACTIVE_LEGEND_MIN_INLINE_SIZE,
+        PIE_LEGEND_MAX_INLINE_SIZE,
+      ),
+    );
+  }, [layoutProfile.isStacked, layoutProfile.legendMinInlineSize, scaledChartSize, viewWidth]);
+
+  useEffect(() => {
+    if (!isPieResizeDragging) {
+      return;
+    }
+
+    const endResizeDrag = () => {
+      pieResizeDragRef.current = null;
+      setIsPieResizeDragging(false);
+    };
+
+    const handleMouseMove = (event: MouseEvent) => {
+      const dragState = pieResizeDragRef.current;
+      if (!dragState || (event.buttons & 1) !== 1) {
+        return;
+      }
+
+      event.preventDefault();
+      const deltaX = event.clientX - dragState.startX;
+      const deltaY = dragState.startY - event.clientY;
+      const nextScale = clampNumber(
+        dragState.startScale + (deltaX + deltaY) * PIE_RESIZE_DRAG_SENSITIVITY,
+        PIE_INTERACTIVE_SCALE_MIN,
+        PIE_INTERACTIVE_SCALE_MAX,
+      );
+      setPieScalePercent(Math.round(nextScale));
+    };
+
+    const handleMouseUp = (event: MouseEvent) => {
+      if (event.button !== 0 && (event.buttons & 1) === 1) {
+        return;
+      }
+      event.preventDefault();
+      endResizeDrag();
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("blur", endResizeDrag);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("blur", endResizeDrag);
+    };
+  }, [isPieResizeDragging]);
+
+  const handlePieResizeGripMouseDown = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+
+    pieResizeDragRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      startScale: pieScalePercent,
+    };
+    setIsPieResizeDragging(true);
+  };
+
   const normalizedExcludedValues = useMemo(
     () => normalizeDatabasePieExcludedValues(excludedValues),
     [excludedValues],
@@ -380,8 +625,15 @@ export const DatabasePieView = ({
   let offset = 0;
 
   return (
-    <div className="database-pie-view">
-      <div className="database-pie-chart-wrap">
+    <div
+      ref={pieViewRef}
+      className={`database-pie-view${layoutProfile.isStacked ? " is-stacked" : ""}`}
+      style={{
+        "--db-pie-chart-size": `${scaledChartSize}px`,
+        "--db-pie-legend-min-inline-size": `${scaledLegendMinInlineSize}px`,
+      } as CSSProperties}
+    >
+      <div className={`database-pie-chart-wrap${isPieResizeDragging ? " is-resizing" : ""}`}>
         <svg
           className="database-pie-chart"
           viewBox={`0 0 ${size} ${size}`}
@@ -401,7 +653,7 @@ export const DatabasePieView = ({
             const dash = ratio * circumference;
             const dashArray = `${dash} ${Math.max(0, circumference - dash)}`;
             const dashOffset = -offset;
-            const bucketColor = resolvePieAccentColor(index);
+            const bucketColor = resolvePieAccentColor(index, normalizedColorSpectrum);
             offset += dash;
 
             return (
@@ -426,12 +678,19 @@ export const DatabasePieView = ({
           <strong>{formatBucketValue(total, aggregate)}</strong>
           <span>{aggregate}</span>
         </div>
+        <button
+          type="button"
+          className={`database-pie-resize-grip${isPieResizeDragging ? " is-active" : ""}`}
+          data-md-block-control="true"
+          aria-label={`Pie-Kreis mit Linksklick ziehen (aktuell ${pieScalePercent} Prozent)`}
+          onMouseDown={handlePieResizeGripMouseDown}
+        />
       </div>
 
       <ul className="database-pie-legend">
         {buckets.map((bucket, index) => {
           const percent = total > 0 ? (bucket.value / total) * 100 : 0;
-          const bucketColor = resolvePieAccentColor(index);
+          const bucketColor = resolvePieAccentColor(index, normalizedColorSpectrum);
           const details = legendDetailsByLabel.get(bucket.label) ?? [];
           return (
             <li key={bucket.label}>

@@ -22,6 +22,7 @@ import {
   type DatabaseProjectBarFillConfig,
   type DatabaseProjectBarFillMapping,
   type DatabaseProjectBarFillMode,
+  type DatabasePieColorSpectrum,
   type DatabaseTimelineMode,
   type DatabaseSortRule,
   type DatabaseSourceSpec,
@@ -817,6 +818,20 @@ const cloneKanbanOrderByGroup = (
 const parsePieExcludedValues = (value: unknown): string[] =>
   dedupeExact(asStringArray(value));
 
+const parsePieColorSpectrum = (value: unknown): DatabasePieColorSpectrum => {
+  const normalized = asString(value, "standard").toLowerCase();
+  switch (normalized) {
+    case "ocean":
+    case "sunset":
+    case "forest":
+    case "pastel":
+    case "standard":
+      return normalized;
+    default:
+      return "standard";
+  }
+};
+
 const parseKanbanExcludedValues = (value: unknown): string[] =>
   dedupeExact(asStringArray(value));
 
@@ -837,6 +852,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
       projectMissingPlacement: DEFAULT_PROJECT_MISSING_PLACEMENT,
       projectBarFillConfigs: [],
       pieExcludedValues: [],
+      pieColorSpectrum: "standard",
     };
   }
   if (!isRecord(value)) {
@@ -855,6 +871,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
       projectMissingPlacement: DEFAULT_PROJECT_MISSING_PLACEMENT,
       projectBarFillConfigs: [],
       pieExcludedValues: [],
+      pieColorSpectrum: "standard",
     };
   }
   const type = parseViewType(value.type);
@@ -883,6 +900,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
         : "count",
     pieAggregateField: asString(value.pieAggregateField) || null,
     pieExcludedValues: parsePieExcludedValues(value.pieExcludedValues),
+    pieColorSpectrum: parsePieColorSpectrum(value.pieColorSpectrum),
   };
 };
 
@@ -923,6 +941,7 @@ const cloneViewSpec = (view: DatabaseViewSpec): DatabaseViewSpec => ({
   kanbanExcludedValues: dedupeExact(view.kanbanExcludedValues ?? []),
   projectBarFillConfigs: cloneProjectBarFillConfigs(view.projectBarFillConfigs),
   pieExcludedValues: dedupeExact(view.pieExcludedValues ?? []),
+  pieColorSpectrum: parsePieColorSpectrum(view.pieColorSpectrum),
 });
 
 const cloneSavedViewConfig = (view: DatabaseSavedViewConfig): DatabaseSavedViewConfig => ({
@@ -1407,6 +1426,9 @@ function writeViewSpecYaml(
     pieExcludedValues.forEach((value) => {
       lines.push(`${indentText}  - ${formatYamlScalar(value)}`);
     });
+  }
+  if (view.pieColorSpectrum && view.pieColorSpectrum !== "standard") {
+    lines.push(`${indentText}pieColorSpectrum: ${formatYamlScalar(view.pieColorSpectrum)}`);
   }
 }
 

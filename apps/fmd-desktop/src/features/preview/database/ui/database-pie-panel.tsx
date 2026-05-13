@@ -4,8 +4,10 @@
  * View configuration panel for pie/donut settings.
  */
 
+import { type CSSProperties } from "react";
 import {
   type DatabaseAttributeMeta,
+  type DatabasePieColorSpectrum,
 } from "../database-types";
 import { type DatabasePieValueOption } from "../pie-values";
 
@@ -18,11 +20,13 @@ type DatabasePiePanelProps = {
   aggregateField: string | null;
   valueOptions: DatabasePieValueOption[];
   excludedValues: string[];
+  colorSpectrum: DatabasePieColorSpectrum;
   onChange: (next: {
     groupField?: string | null;
     aggregate?: PieAggregateType;
     aggregateField?: string | null;
     excludedValues?: string[];
+    colorSpectrum?: DatabasePieColorSpectrum;
   }) => void;
   onClose: () => void;
 };
@@ -33,6 +37,22 @@ const aggregateOptions: Array<{ value: PieAggregateType; label: string }> = [
   { value: "avg", label: "Durchschnitt" },
 ];
 
+const colorSpectrumOptions: Array<{ value: DatabasePieColorSpectrum; label: string }> = [
+  { value: "standard", label: "Standard (Akzent)" },
+  { value: "ocean", label: "Ozean" },
+  { value: "sunset", label: "Sonnenuntergang" },
+  { value: "forest", label: "Wald" },
+  { value: "pastel", label: "Pastell" },
+];
+
+const colorSpectrumSwatches: Record<DatabasePieColorSpectrum, string> = {
+  standard: "linear-gradient(135deg, color-mix(in srgb, var(--accent-strong) 82%, var(--db-surface-base)), color-mix(in srgb, var(--accent) 76%, var(--db-surface-base)))",
+  ocean: "linear-gradient(135deg, #006994, #4DCCBD)",
+  sunset: "linear-gradient(135deg, #7C2D12, #F59E0B)",
+  forest: "linear-gradient(135deg, #14532D, #4ADE80)",
+  pastel: "linear-gradient(135deg, #9D4EDD, #F9A8D4)",
+};
+
 export const DatabasePiePanel = ({
   attributes,
   groupField,
@@ -40,6 +60,7 @@ export const DatabasePiePanel = ({
   aggregateField,
   valueOptions,
   excludedValues,
+  colorSpectrum,
   onChange,
   onClose,
 }: DatabasePiePanelProps) => {
@@ -48,6 +69,10 @@ export const DatabasePiePanel = ({
   const aggregatableAttributes = attributes
     .filter((attribute) => attribute.viewCompatibility.supportsAggregation);
   const excludedValueSet = new Set(excludedValues);
+  const fallbackAggregateField = aggregateField && aggregatableAttributes.some((attribute) =>
+    attribute.key === aggregateField)
+    ? aggregateField
+    : (aggregatableAttributes[0]?.key ?? null);
 
   const handleValueToggle = (value: string, checked: boolean) => {
     if (checked) {
@@ -93,7 +118,13 @@ export const DatabasePiePanel = ({
           Aggregation
           <select
             value={aggregate}
-            onChange={(event) => onChange({ aggregate: event.target.value as PieAggregateType })}
+            onChange={(event) => {
+              const nextAggregate = event.target.value as PieAggregateType;
+              onChange({
+                aggregate: nextAggregate,
+                aggregateField: nextAggregate === "count" ? null : fallbackAggregateField,
+              });
+            }}
           >
             {aggregateOptions.map((option) => (
               <option key={option.value} value={option.value}>{option.label}</option>
@@ -101,20 +132,33 @@ export const DatabasePiePanel = ({
           </select>
         </label>
 
-        <label>
-          Aggregatfeld
-          <select
-            value={aggregateField ?? ""}
-            onChange={(event) => onChange({ aggregateField: event.target.value || null })}
-            disabled={aggregate === "count"}
-          >
-            <option value="">{aggregate === "count" ? "Nicht benoetigt" : "Feld waehlen"}</option>
-            {aggregatableAttributes.map((attribute) => (
-              <option key={attribute.key} value={attribute.key}>{attribute.label || attribute.key}</option>
-            ))}
-          </select>
-        </label>
       </div>
+
+      <section className="database-pie-spectrum">
+        <h6>Farbspektrum</h6>
+        <div className="database-pie-spectrum-grid" role="radiogroup" aria-label="Farbspektrum">
+          {colorSpectrumOptions.map((option) => {
+            const isActive = colorSpectrum === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={`database-pie-spectrum-option${isActive ? " is-active" : ""}`}
+                role="radio"
+                aria-checked={isActive}
+                onClick={() => onChange({ colorSpectrum: option.value })}
+              >
+                <span
+                  className="database-pie-spectrum-dot"
+                  style={{ "--db-pie-spectrum-swatch": colorSpectrumSwatches[option.value] } as CSSProperties}
+                  aria-hidden="true"
+                />
+                <span className="database-pie-spectrum-label">{option.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
 
       {valueOptions.length > 0 ? (
         <section className="database-pie-values">

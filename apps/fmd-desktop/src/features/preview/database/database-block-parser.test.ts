@@ -779,6 +779,39 @@ describe("database-block-parser", () => {
     expect(reparsed.config.views.items[0]?.view.pieExcludedValues).toEqual(["Done", "(leer)"]);
   });
 
+  it("roundtrips pie color spectrum in saved view specs", () => {
+    const config = createDefaultDatabaseBlockConfig();
+    config.views = {
+      activeViewId: "view-pie-spectrum",
+      items: [
+        {
+          id: "view-pie-spectrum",
+          name: "Pie Spectrum",
+          view: {
+            type: "pie",
+            pieGroupField: "status",
+            pieAggregate: "count",
+            pieColorSpectrum: "ocean",
+          },
+          properties: ["Dateiname", "status"],
+          filters: {
+            id: "root",
+            op: "and",
+            rules: [],
+          },
+          sort: [],
+        },
+      ],
+    };
+
+    const serialized = serializeDatabaseBlockConfig(config);
+    expect(serialized).toContain("pieColorSpectrum: ocean");
+
+    const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
+    expect(reparsed.errors).toEqual([]);
+    expect(reparsed.config.views.items[0]?.view.pieColorSpectrum).toBe("ocean");
+  });
+
   it("returns defaults with parse error when opener is missing", () => {
     const parsed = parseDatabaseBlockConfigFromRaw("title: no marker");
     expect(parsed.isClosed).toBe(false);

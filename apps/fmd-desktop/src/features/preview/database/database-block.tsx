@@ -72,6 +72,7 @@ import {
   type DatabaseFilterGroup,
   type DatabaseGanttZoom,
   type DatabaseNormalizedFieldValue,
+  type DatabasePieColorSpectrum,
   type DatabasePropertiesByView,
   type DatabaseProjectMissingPlacement,
   type DatabaseProjectBarFillConfig,
@@ -240,6 +241,21 @@ const dedupeExact = (keys: string[]) => {
   return next;
 };
 
+const normalizeDatabasePieColorSpectrum = (
+  value: DatabasePieColorSpectrum | null | undefined,
+): DatabasePieColorSpectrum => {
+  switch (value) {
+    case "ocean":
+    case "sunset":
+    case "forest":
+    case "pastel":
+    case "standard":
+      return value;
+    default:
+      return "standard";
+  }
+};
+
 const createDefaultPropertiesByView = (tableColumns: string[]): DatabasePropertiesByView => {
   const normalized = dedupeCaseInsensitive(tableColumns);
   return {
@@ -263,6 +279,7 @@ const cloneSavedView = (savedView: DatabaseSavedViewConfig): DatabaseSavedViewCo
     kanbanExcludedValues: normalizeDatabaseKanbanExcludedValues(savedView.view.kanbanExcludedValues),
     projectBarFillConfigs: cloneProjectBarFillConfigs(savedView.view.projectBarFillConfigs),
     pieExcludedValues: normalizeDatabasePieExcludedValues(savedView.view.pieExcludedValues),
+    pieColorSpectrum: normalizeDatabasePieColorSpectrum(savedView.view.pieColorSpectrum),
   },
   properties: dedupeCaseInsensitive(savedView.properties),
   filters: cloneFilterGroup(savedView.filters),
@@ -842,6 +859,9 @@ export const MarkdownHybridDatabaseBlock = ({
   const [pieExcludedValues, setPieExcludedValues] = useState<string[]>(
     normalizeDatabasePieExcludedValues(parsedActiveSavedView.view.pieExcludedValues),
   );
+  const [pieColorSpectrum, setPieColorSpectrum] = useState<DatabasePieColorSpectrum>(
+    normalizeDatabasePieColorSpectrum(parsedActiveSavedView.view.pieColorSpectrum),
+  );
   const [propertiesByView, setPropertiesByView] = useState<DatabasePropertiesByView>(
     buildPropertiesMirror(parsedActiveSavedView.properties),
   );
@@ -910,6 +930,7 @@ export const MarkdownHybridDatabaseBlock = ({
   const pieAggregateRef = useRef<"count" | "sum" | "avg">(pieAggregate);
   const pieAggregateFieldRef = useRef<string | null>(pieAggregateField);
   const pieExcludedValuesRef = useRef<string[]>(pieExcludedValues);
+  const pieColorSpectrumRef = useRef<DatabasePieColorSpectrum>(pieColorSpectrum);
   const propertiesByViewRef = useRef(propertiesByView);
   const activeFiltersRef = useRef(activeFilters);
   const activeSortsRef = useRef(activeSorts);
@@ -1003,6 +1024,7 @@ export const MarkdownHybridDatabaseBlock = ({
     setPieAggregate(parsedActiveSavedView.view.pieAggregate ?? "count");
     setPieAggregateField(parsedActiveSavedView.view.pieAggregateField ?? null);
     setPieExcludedValues(normalizeDatabasePieExcludedValues(parsedActiveSavedView.view.pieExcludedValues));
+    setPieColorSpectrum(normalizeDatabasePieColorSpectrum(parsedActiveSavedView.view.pieColorSpectrum));
     setPropertiesByView(buildPropertiesMirror(parsedActiveSavedView.properties));
     setActiveFilters(cloneFilterGroup(parsedActiveSavedView.filters));
     setActiveSorts(cloneSortRules(parsedActiveSavedView.sort));
@@ -1037,6 +1059,7 @@ export const MarkdownHybridDatabaseBlock = ({
     pieAggregateRef.current = pieAggregate;
     pieAggregateFieldRef.current = pieAggregateField;
     pieExcludedValuesRef.current = pieExcludedValues;
+    pieColorSpectrumRef.current = pieColorSpectrum;
     propertiesByViewRef.current = propertiesByView;
     activeFiltersRef.current = activeFilters;
     activeSortsRef.current = activeSorts;
@@ -1053,6 +1076,7 @@ export const MarkdownHybridDatabaseBlock = ({
     pieAggregate,
     pieAggregateField,
     pieExcludedValues,
+    pieColorSpectrum,
     pieGroupField,
     savedViews,
     source,
@@ -1565,6 +1589,9 @@ export const MarkdownHybridDatabaseBlock = ({
       pieExcludedValues: normalizeDatabasePieExcludedValues(
         next.view?.pieExcludedValues ?? pieExcludedValuesRef.current,
       ),
+      pieColorSpectrum: normalizeDatabasePieColorSpectrum(
+        next.view?.pieColorSpectrum ?? pieColorSpectrumRef.current,
+      ),
     };
     const nextVisibleColumns = dedupeCaseInsensitive(
       next.visibleColumns ?? getPropertiesForView(propertiesByViewRef.current, viewTypeRef.current),
@@ -1637,6 +1664,7 @@ export const MarkdownHybridDatabaseBlock = ({
           pieAggregate,
           pieAggregateField,
           pieExcludedValues,
+          pieColorSpectrum,
         },
         columns: getPropertiesForView(propertiesByView, "table"),
         propertiesByView,
@@ -1684,6 +1712,7 @@ export const MarkdownHybridDatabaseBlock = ({
       pieAggregate,
       pieAggregateField,
       pieExcludedValues,
+      pieColorSpectrum,
       propertiesByView,
       visibleColumnKeys,
     ],
@@ -1803,6 +1832,9 @@ export const MarkdownHybridDatabaseBlock = ({
     const nextPieExcludedValues = normalizeDatabasePieExcludedValues(nextView.pieExcludedValues);
     setPieExcludedValues(nextPieExcludedValues);
     pieExcludedValuesRef.current = nextPieExcludedValues;
+    const nextPieColorSpectrum = normalizeDatabasePieColorSpectrum(nextView.pieColorSpectrum);
+    setPieColorSpectrum(nextPieColorSpectrum);
+    pieColorSpectrumRef.current = nextPieColorSpectrum;
     setPropertiesByView(nextPropertiesByView);
     propertiesByViewRef.current = nextPropertiesByView;
     setActiveFilters(nextFilters);
@@ -1859,6 +1891,7 @@ export const MarkdownHybridDatabaseBlock = ({
       pieAggregate: pieAggregateRef.current ?? "count",
       pieAggregateField: pieAggregateFieldRef.current ?? null,
       pieExcludedValues: normalizeDatabasePieExcludedValues(pieExcludedValuesRef.current),
+      pieColorSpectrum: normalizeDatabasePieColorSpectrum(pieColorSpectrumRef.current),
     };
     const nextProperties = dedupeCaseInsensitive(
       getPropertiesForView(propertiesByViewRef.current, viewTypeRef.current),
@@ -2120,6 +2153,7 @@ export const MarkdownHybridDatabaseBlock = ({
     aggregate?: "count" | "sum" | "avg";
     aggregateField?: string | null;
     excludedValues?: string[];
+    colorSpectrum?: DatabasePieColorSpectrum;
   }) => {
     const nextGroup = typeof next.groupField === "undefined"
       ? pieGroupFieldRef.current
@@ -2137,21 +2171,27 @@ export const MarkdownHybridDatabaseBlock = ({
       : typeof next.excludedValues === "undefined"
       ? pieExcludedValuesRef.current
       : normalizeDatabasePieExcludedValues(next.excludedValues);
+    const nextPieColorSpectrum = typeof next.colorSpectrum === "undefined"
+      ? pieColorSpectrumRef.current
+      : normalizeDatabasePieColorSpectrum(next.colorSpectrum);
 
     setPieGroupField(nextGroup);
     setPieAggregate(nextAggregate);
     setPieAggregateField(nextAggregateField);
     setPieExcludedValues(nextExcludedValues);
+    setPieColorSpectrum(nextPieColorSpectrum);
     pieGroupFieldRef.current = nextGroup;
     pieAggregateRef.current = nextAggregate;
     pieAggregateFieldRef.current = nextAggregateField;
     pieExcludedValuesRef.current = nextExcludedValues;
+    pieColorSpectrumRef.current = nextPieColorSpectrum;
     persistConfig({
       view: {
         pieGroupField: nextGroup,
         pieAggregate: nextAggregate,
         pieAggregateField: nextAggregateField,
         pieExcludedValues: nextExcludedValues,
+        pieColorSpectrum: nextPieColorSpectrum,
       },
     });
   };
@@ -3560,6 +3600,7 @@ export const MarkdownHybridDatabaseBlock = ({
       aggregateField={pieAggregateField}
       valueOptions={pieValueOptions}
       excludedValues={pieExcludedValues}
+      colorSpectrum={pieColorSpectrum}
       onChange={handlePieOptionsChange}
       onClose={() => setPanels(defaultPanels)}
     />
@@ -3772,6 +3813,7 @@ export const MarkdownHybridDatabaseBlock = ({
             aggregate={pieAggregate}
             aggregateAttribute={pieAggregateAttribute}
             excludedValues={pieExcludedValues}
+            colorSpectrum={pieColorSpectrum}
             visibleProperties={visibleColumns}
             monitoringProfiles={monitoringProfiles}
           />
