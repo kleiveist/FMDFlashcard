@@ -653,7 +653,11 @@ const normalizeProfileMeta = (
     typeof meta.name === "string" &&
     typeof meta.createdAt === "string"
   ) {
-    return meta;
+    return {
+      id: meta.id,
+      name: meta.name,
+      createdAt: meta.createdAt,
+    };
   }
   const fallback = parseProfileId(fallbackId);
   const createdAt = fallback.dateStamp
