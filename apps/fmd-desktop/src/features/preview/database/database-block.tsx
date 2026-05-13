@@ -330,6 +330,18 @@ const createSavedViewId = (name: string, existingIds: Set<string>) => {
   return candidate;
 };
 
+const createDuplicateSavedViewName = (name: string, existingNames: Set<string>) => {
+  const baseName = name.trim() || "View";
+  const copyBase = `${baseName} Copy`;
+  let candidate = copyBase;
+  let sequence = 2;
+  while (existingNames.has(toLower(candidate))) {
+    candidate = `${copyBase} ${sequence}`;
+    sequence += 1;
+  }
+  return candidate;
+};
+
 const buildCellMutationKey = (recordId: string, fieldKey: string) =>
   `${recordId}::${toLower(fieldKey)}`;
 
@@ -1926,6 +1938,128 @@ export const MarkdownHybridDatabaseBlock = ({
       sorts: nextSorts,
     });
   }, [handleSwitchSavedView, persistConfig]);
+
+  const handleRenameSavedView = useCallback((viewId: string, nextName: string) => {
+    const trimmedName = nextName.trim();
+    if (!trimmedName) {
+      return;
+    }
+    const nextSavedViews = cloneSavedViews(savedViewsRef.current);
+    const targetIndex = nextSavedViews.findIndex((savedView) => savedView.id === viewId);
+    if (targetIndex < 0) {
+      return;
+    }
+    const targetView = nextSavedViews[targetIndex];
+    if (!targetView) {
+      return;
+    }
+    nextSavedViews[targetIndex] = {
+      ...targetView,
+      name: trimmedName,
+    };
+    setSavedViews(nextSavedViews);
+    savedViewsRef.current = nextSavedViews;
+    persistConfig({
+      savedViews: nextSavedViews,
+      activeViewId: activeViewIdRef.current,
+    });
+  }, [persistConfig]);
+
+  const handleDeleteSavedView = useCallback((viewId: string) => {
+    const currentSavedViews = cloneSavedViews(savedViewsRef.current);
+    if (currentSavedViews.length <= 1) {
+      return;
+    }
+    const targetIndex = currentSavedViews.findIndex((savedView) => savedView.id === viewId);
+    if (targetIndex < 0) {
+      return;
+    }
+    const nextSavedViews = currentSavedViews.filter((savedView) => savedView.id !== viewId);
+    if (nextSavedViews.length === 0) {
+      return;
+    }
+
+    setSavedViews(nextSavedViews);
+    savedViewsRef.current = nextSavedViews;
+
+    const nextActiveViewExists = nextSavedViews.some((savedView) => savedView.id === activeViewIdRef.current);
+    if (viewId === activeViewIdRef.current || !nextActiveViewExists) {
+      const fallbackView = nextSavedViews[Math.min(targetIndex, nextSavedViews.length - 1)] ?? nextSavedViews[0];
+      if (!fallbackView) {
+        return;
+      }
+      handleSwitchSavedView(fallbackView.id);
+      return;
+    }
+
+    persistConfig({
+      savedViews: nextSavedViews,
+      activeViewId: activeViewIdRef.current,
+    });
+  }, [handleSwitchSavedView, persistConfig]);
+
+  const handleDuplicateSavedView = useCallback((viewId: string) => {
+    const sourceView = savedViewsRef.current.find((savedView) => savedView.id === viewId);
+    if (!sourceView) {
+      return;
+    }
+
+    const existingIds = new Set(savedViewsRef.current.map((savedView) => savedView.id));
+    const existingNames = new Set(savedViewsRef.current.map((savedView) => toLower(savedView.name)));
+    const nextName = createDuplicateSavedViewName(sourceView.name, existingNames);
+    const nextId = createSavedViewId(nextName, existingIds);
+    const duplicateView: DatabaseSavedViewConfig = {
+      ...cloneSavedView(sourceView),
+      id: nextId,
+      name: nextName,
+    };
+    const nextSavedViews = cloneSavedViews(savedViewsRef.current);
+    const sourceIndex = nextSavedViews.findIndex((savedView) => savedView.id === viewId);
+    if (sourceIndex < 0) {
+      return;
+    }
+    nextSavedViews.splice(sourceIndex + 1, 0, duplicateView);
+    setSavedViews(nextSavedViews);
+    savedViewsRef.current = nextSavedViews;
+    handleSwitchSavedView(nextId);
+  }, [handleSwitchSavedView]);
+
+  const handleReorderSavedViews = useCallback((sourceViewId: string, targetViewId: string) => {
+    if (sourceViewId === targetViewId) {
+      return;
+    }
+    const nextSavedViews = cloneSavedViews(savedViewsRef.current);
+    const sourceIndex = nextSavedViews.findIndex((savedView) => savedView.id === sourceViewId);
+    const targetIndex = nextSavedViews.findIndex((savedView) => savedView.id === targetViewId);
+    if (sourceIndex < 0 || targetIndex < 0) {
+      return;
+    }
+    const [movedView] = nextSavedViews.splice(sourceIndex, 1);
+    if (!movedView) {
+      return;
+    }
+    nextSavedViews.splice(targetIndex, 0, movedView);
+    setSavedViews(nextSavedViews);
+    savedViewsRef.current = nextSavedViews;
+    persistConfig({
+      savedViews: nextSavedViews,
+      activeViewId: activeViewIdRef.current,
+    });
+  }, [persistConfig]);
+
+  const handleMoveSavedView = useCallback((viewId: string, direction: "up" | "down") => {
+    const views = savedViewsRef.current;
+    const sourceIndex = views.findIndex((savedView) => savedView.id === viewId);
+    if (sourceIndex < 0) {
+      return;
+    }
+    const targetIndex = direction === "up" ? sourceIndex - 1 : sourceIndex + 1;
+    const targetView = views[targetIndex];
+    if (!targetView) {
+      return;
+    }
+    handleReorderSavedViews(viewId, targetView.id);
+  }, [handleReorderSavedViews]);
 
   const handleSourceChange = (nextSource: DatabaseSourceSpec) => {
     const cloned = cloneSourceSpec(nextSource);
@@ -3640,6 +3774,11 @@ export const MarkdownHybridDatabaseBlock = ({
             onViewTypeChange={handleViewChange}
             onSelectSavedView={handleSwitchSavedView}
             onCreateSavedView={handleCreateSavedView}
+            onRenameSavedView={handleRenameSavedView}
+            onDeleteSavedView={handleDeleteSavedView}
+            onDuplicateSavedView={handleDuplicateSavedView}
+            onReorderSavedViews={handleReorderSavedViews}
+            onMoveSavedView={handleMoveSavedView}
             isSourcePanelOpen={panels.source}
             isFilterPanelOpen={panels.filter}
             isSortPanelOpen={panels.sort}

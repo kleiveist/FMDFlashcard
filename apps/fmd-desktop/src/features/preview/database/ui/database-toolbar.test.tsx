@@ -37,6 +37,11 @@ const buildProps = () => ({
   onViewTypeChange: vi.fn(),
   onSelectSavedView: vi.fn(),
   onCreateSavedView: vi.fn(),
+  onRenameSavedView: vi.fn(),
+  onDeleteSavedView: vi.fn(),
+  onDuplicateSavedView: vi.fn(),
+  onReorderSavedViews: vi.fn(),
+  onMoveSavedView: vi.fn(),
   isSourcePanelOpen: false,
   isFilterPanelOpen: false,
   isSortPanelOpen: false,
@@ -195,6 +200,148 @@ describe("DatabaseToolbar", () => {
     });
 
     expect(props.onCreateSavedView).toHaveBeenCalledWith("Neue View");
+
+    cleanup();
+  });
+
+  it("supports context-menu rename/delete/duplicate/move actions for saved views", () => {
+    const props = buildProps();
+    const confirmSpy = vi.spyOn(window, "confirm")
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
+    const { container, cleanup } = render(createElement(DatabaseToolbar, props));
+
+    const viewButton = container.querySelector<HTMLButtonElement>(".database-block-view-name-button");
+    act(() => {
+      viewButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const targetItem = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"))
+      .find((button) => button.textContent?.includes("Kanban Fokus"));
+    expect(targetItem).toBeTruthy();
+
+    act(() => {
+      targetItem?.dispatchEvent(new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 120,
+        clientY: 140,
+      }));
+    });
+
+    const renameButton = Array.from(document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"))
+      .find((button) => button.textContent?.includes("Rename"));
+    act(() => {
+      renameButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const renameInput = container.querySelector<HTMLInputElement>(".database-block-view-dropdown-rename-input");
+    expect(renameInput).toBeTruthy();
+    act(() => {
+      if (renameInput) {
+        renameInput.value = "Kanban Fokus 2";
+        renameInput.dispatchEvent(new Event("input", { bubbles: true }));
+        renameInput.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+      }
+    });
+    expect(props.onRenameSavedView).toHaveBeenCalledWith("view-kanban", "Kanban Fokus 2");
+
+    const renamedTargetItem = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"))
+      .find((button) => button.textContent?.includes("Kanban Fokus"));
+    act(() => {
+      renamedTargetItem?.dispatchEvent(new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 125,
+        clientY: 145,
+      }));
+    });
+    const duplicateButton = Array.from(document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"))
+      .find((button) => button.textContent?.includes("Duplicate"));
+    act(() => {
+      duplicateButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(props.onDuplicateSavedView).toHaveBeenCalledWith("view-kanban");
+
+    const duplicateTargetItem = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"))
+      .find((button) => button.textContent?.includes("Kanban Fokus"));
+    act(() => {
+      duplicateTargetItem?.dispatchEvent(new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 130,
+        clientY: 150,
+      }));
+    });
+    const moveUpButton = Array.from(document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"))
+      .find((button) => button.textContent?.includes("Move up"));
+    act(() => {
+      moveUpButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(props.onMoveSavedView).toHaveBeenCalledWith("view-kanban", "up");
+
+    const deleteTargetItem = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"))
+      .find((button) => button.textContent?.includes("Kanban Fokus"));
+    act(() => {
+      deleteTargetItem?.dispatchEvent(new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 135,
+        clientY: 155,
+      }));
+    });
+    const deleteButton = Array.from(document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"))
+      .find((button) => button.textContent?.includes("Delete"));
+    act(() => {
+      deleteButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(props.onDeleteSavedView).not.toHaveBeenCalled();
+
+    const deleteConfirmTargetItem = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"))
+      .find((button) => button.textContent?.includes("Kanban Fokus"));
+    act(() => {
+      deleteConfirmTargetItem?.dispatchEvent(new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 140,
+        clientY: 160,
+      }));
+    });
+    const deleteButtonConfirm = Array.from(document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"))
+      .find((button) => button.textContent?.includes("Delete"));
+    act(() => {
+      deleteButtonConfirm?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(props.onDeleteSavedView).toHaveBeenCalledWith("view-kanban");
+    expect(confirmSpy).toHaveBeenCalledTimes(2);
+
+    confirmSpy.mockRestore();
+    cleanup();
+  });
+
+  it("supports drag-and-drop reordering of saved views", () => {
+    const props = buildProps();
+    const { container, cleanup } = render(createElement(DatabaseToolbar, props));
+
+    const viewButton = container.querySelector<HTMLButtonElement>(".database-block-view-name-button");
+    act(() => {
+      viewButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const items = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"));
+    const firstItem = items[0];
+    const secondItem = items[1];
+    expect(firstItem).toBeTruthy();
+    expect(secondItem).toBeTruthy();
+
+    act(() => {
+      secondItem?.dispatchEvent(new Event("dragstart", { bubbles: true, cancelable: true }));
+      firstItem?.dispatchEvent(new Event("dragover", { bubbles: true, cancelable: true }));
+      firstItem?.dispatchEvent(new Event("drop", { bubbles: true, cancelable: true }));
+      secondItem?.dispatchEvent(new Event("dragend", { bubbles: true }));
+    });
+
+    expect(props.onReorderSavedViews).toHaveBeenCalledWith("view-kanban", "view-table");
 
     cleanup();
   });

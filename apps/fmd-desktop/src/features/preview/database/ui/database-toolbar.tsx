@@ -4,7 +4,24 @@
  * Unified toolbar shell for database block interactions.
  */
 
-import { type ChangeEvent, type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ChangeEvent,
+  type CSSProperties,
+  type DragEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  DRAG_CHANNELS,
+  endInternalDrag,
+  readInternalDragText,
+  setDropEffectSafe,
+  startInternalDrag,
+} from "../../../../lib/dragDrop";
 import { type DatabaseViewType } from "../database-types";
 
 type DatabaseToolbarButtonRef = (node: HTMLButtonElement | null) => void;
@@ -21,6 +38,11 @@ type DatabaseToolbarProps = {
   onViewTypeChange: (nextView: DatabaseViewType) => void;
   onSelectSavedView: (viewId: string) => void;
   onCreateSavedView: (name: string) => void;
+  onRenameSavedView: (viewId: string, nextName: string) => void;
+  onDeleteSavedView: (viewId: string) => void;
+  onDuplicateSavedView: (viewId: string) => void;
+  onReorderSavedViews: (sourceViewId: string, targetViewId: string) => void;
+  onMoveSavedView: (viewId: string, direction: "up" | "down") => void;
   isSourcePanelOpen: boolean;
   isFilterPanelOpen: boolean;
   isSortPanelOpen: boolean;
@@ -47,6 +69,12 @@ type DatabaseToolbarProps = {
   ganttButtonRef?: DatabaseToolbarButtonRef;
   projectButtonRef?: DatabaseToolbarButtonRef;
   pieButtonRef?: DatabaseToolbarButtonRef;
+};
+
+type ViewContextMenuState = {
+  viewId: string;
+  top: number;
+  left: number;
 };
 
 const viewOptions: Array<{ value: DatabaseViewType; label: string }> = [
@@ -152,6 +180,11 @@ export const DatabaseToolbar = ({
   onViewTypeChange,
   onSelectSavedView,
   onCreateSavedView,
+  onRenameSavedView,
+  onDeleteSavedView,
+  onDuplicateSavedView,
+  onReorderSavedViews,
+  onMoveSavedView,
   isSourcePanelOpen,
   isFilterPanelOpen,
   isSortPanelOpen,
@@ -182,6 +215,8 @@ export const DatabaseToolbar = ({
   const rootRef = useRef<HTMLElement | null>(null);
   const viewAnchorRef = useRef<HTMLDivElement | null>(null);
   const viewDropdownRef = useRef<HTMLDivElement | null>(null);
+  const viewContextMenuRef = useRef<HTMLDivElement | null>(null);
+  const inlineRenameInputRef = useRef<HTMLInputElement | null>(null);
   const searchAnchorRef = useRef<HTMLDivElement | null>(null);
   const searchDropdownRef = useRef<HTMLDivElement | null>(null);
   const [isViewDropdownOpen, setIsViewDropdownOpen] = useState(false);
@@ -190,17 +225,93 @@ export const DatabaseToolbar = ({
   const [viewDropdownStyle, setViewDropdownStyle] = useState<CSSProperties | undefined>(undefined);
   const [searchDropdownStyle, setSearchDropdownStyle] = useState<CSSProperties | undefined>(undefined);
   const [newViewName, setNewViewName] = useState("");
+  const [renameDraft, setRenameDraft] = useState("");
+  const [editingViewId, setEditingViewId] = useState<string | null>(null);
+  const [draggingViewId, setDraggingViewId] = useState<string | null>(null);
+  const [dragOverViewId, setDragOverViewId] = useState<string | null>(null);
+  const [viewContextMenu, setViewContextMenu] = useState<ViewContextMenuState | null>(null);
   const normalizedActiveViewName = activeViewName.trim() || "View";
 
   const normalizedSavedViews = useMemo(
     () => savedViews.filter((savedView) => savedView.id.trim().length > 0),
     [savedViews],
   );
-
   const handleViewChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const next = event.target.value as DatabaseViewType;
     onViewTypeChange(next);
   };
+
+  const closeViewOverlays = useCallback(() => {
+    setViewContextMenu(null);
+    setEditingViewId(null);
+    setRenameDraft("");
+    setDraggingViewId(null);
+    setDragOverViewId(null);
+  }, []);
+
+  const openRenameForView = useCallback((viewId: string) => {
+    const target = normalizedSavedViews.find((savedView) => savedView.id === viewId);
+    if (!target) {
+      return;
+    }
+    setViewContextMenu(null);
+    setEditingViewId(viewId);
+    setRenameDraft(target.name);
+  }, [normalizedSavedViews]);
+
+  const submitRenameForView = useCallback((viewId: string | null, rawName?: string) => {
+    if (!viewId) {
+      setEditingViewId(null);
+      setRenameDraft("");
+      return;
+    }
+    const trimmedName = (rawName ?? renameDraft).trim();
+    if (!trimmedName) {
+      const source = normalizedSavedViews.find((savedView) => savedView.id === viewId);
+      setRenameDraft(source?.name ?? "");
+      return;
+    }
+    onRenameSavedView(viewId, trimmedName);
+    setEditingViewId(null);
+    setRenameDraft("");
+  }, [normalizedSavedViews, onRenameSavedView, renameDraft]);
+
+  const handleViewItemDragStart = (event: DragEvent<HTMLButtonElement>, viewId: string) => {
+    setViewContextMenu(null);
+    setEditingViewId(null);
+    setRenameDraft("");
+    setDraggingViewId(viewId);
+    startInternalDrag(event, {
+      channel: DRAG_CHANNELS.DATABASE_SAVED_VIEW,
+      payload: viewId,
+      plainTextFallback: viewId,
+      effectAllowed: "move",
+    });
+  };
+
+  const handleViewItemDrop = (event: DragEvent<HTMLButtonElement>, targetViewId: string) => {
+    event.preventDefault();
+    const sourceViewId = readInternalDragText(event, { channel: DRAG_CHANNELS.DATABASE_SAVED_VIEW });
+    if (sourceViewId && sourceViewId !== targetViewId) {
+      onReorderSavedViews(sourceViewId, targetViewId);
+    }
+    setDragOverViewId(null);
+    setDraggingViewId(null);
+    endInternalDrag(DRAG_CHANNELS.DATABASE_SAVED_VIEW);
+  };
+
+  const clampMenuPosition = useCallback((top: number, left: number) => {
+    const viewportWidth = Math.max(window.innerWidth || 0, 240);
+    const viewportHeight = Math.max(window.innerHeight || 0, 200);
+    const estimatedWidth = 190;
+    const estimatedHeight = 180;
+    const nextLeft = Math.max(6, Math.min(left, viewportWidth - estimatedWidth - 6));
+    const nextTop = Math.max(6, Math.min(top, viewportHeight - estimatedHeight - 6));
+    return {
+      top: nextTop,
+      left: nextLeft,
+    };
+  }, []);
 
   const positionDropdowns = useCallback(() => {
     const root = rootRef.current;
@@ -274,12 +385,22 @@ export const DatabaseToolbar = ({
       if (!(target instanceof Node)) {
         return;
       }
-      if (rootRef.current?.contains(target)) {
+      const isInsideToolbar = rootRef.current?.contains(target) ?? false;
+      if (!isInsideToolbar) {
+        setIsViewDropdownOpen(false);
+        setIsSearchDropdownOpen(false);
+        setPendingSearchOpen(false);
+        closeViewOverlays();
         return;
       }
-      setIsViewDropdownOpen(false);
-      setIsSearchDropdownOpen(false);
-      setPendingSearchOpen(false);
+
+      if (
+        viewContextMenu &&
+        viewContextMenuRef.current &&
+        !viewContextMenuRef.current.contains(target)
+      ) {
+        setViewContextMenu(null);
+      }
     };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") {
@@ -288,6 +409,7 @@ export const DatabaseToolbar = ({
       setIsViewDropdownOpen(false);
       setIsSearchDropdownOpen(false);
       setPendingSearchOpen(false);
+      closeViewOverlays();
     };
     window.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
@@ -295,7 +417,7 @@ export const DatabaseToolbar = ({
       window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [closeViewOverlays, viewContextMenu]);
 
   useEffect(() => {
     if (!isViewDropdownOpen && !isSearchDropdownOpen) {
@@ -333,7 +455,8 @@ export const DatabaseToolbar = ({
       return;
     }
     setViewDropdownStyle(undefined);
-  }, [isViewDropdownOpen]);
+    closeViewOverlays();
+  }, [closeViewOverlays, isViewDropdownOpen]);
 
   useEffect(() => {
     if (isSearchDropdownOpen) {
@@ -342,11 +465,30 @@ export const DatabaseToolbar = ({
     setSearchDropdownStyle(undefined);
   }, [isSearchDropdownOpen]);
 
+  useEffect(() => {
+    if (!editingViewId || !isViewDropdownOpen) {
+      return;
+    }
+    inlineRenameInputRef.current?.focus();
+    inlineRenameInputRef.current?.select();
+  }, [editingViewId, isViewDropdownOpen]);
+
+  useEffect(() => {
+    if (editingViewId && !normalizedSavedViews.some((savedView) => savedView.id === editingViewId)) {
+      setEditingViewId(null);
+      setRenameDraft("");
+    }
+    if (viewContextMenu && !normalizedSavedViews.some((savedView) => savedView.id === viewContextMenu.viewId)) {
+      setViewContextMenu(null);
+    }
+  }, [editingViewId, normalizedSavedViews, viewContextMenu]);
+
   const submitCreateView = () => {
     const trimmedName = newViewName.trim();
     if (!trimmedName) {
       return;
     }
+    closeViewOverlays();
     onCreateSavedView(trimmedName);
     setNewViewName("");
     setIsViewDropdownOpen(false);
@@ -373,6 +515,7 @@ export const DatabaseToolbar = ({
               onClick={() => {
                 setIsViewDropdownOpen((value) => !value);
                 setIsSearchDropdownOpen(false);
+                closeViewOverlays();
               }}
             >
               <span className="database-block-view-name-text">{normalizedActiveViewName}</span>
@@ -388,21 +531,174 @@ export const DatabaseToolbar = ({
                 data-md-block-control="true"
               >
                 <div className="database-block-view-dropdown-list">
-                  {normalizedSavedViews.map((savedView) => (
-                    <button
-                      key={savedView.id}
-                      type="button"
-                      className={`database-block-view-dropdown-item${
-                        savedView.id === activeViewId ? " is-active" : ""
-                      }`}
-                      onClick={() => {
-                        onSelectSavedView(savedView.id);
-                        setIsViewDropdownOpen(false);
-                      }}
-                    >
-                      {savedView.name}
-                    </button>
-                  ))}
+                  {normalizedSavedViews.map((savedView, index) => {
+                    const isActive = savedView.id === activeViewId;
+                    const isEditing = savedView.id === editingViewId;
+                    const canDelete = normalizedSavedViews.length > 1;
+                    const canMoveUp = index > 0;
+                    const canMoveDown = index < normalizedSavedViews.length - 1;
+
+                    return (
+                      <div
+                        key={savedView.id}
+                        className={`database-block-view-dropdown-row${
+                          draggingViewId === savedView.id ? " is-drag-source" : ""
+                        }${
+                          dragOverViewId === savedView.id && draggingViewId !== savedView.id
+                            ? " is-drag-target"
+                            : ""
+                        }`}
+                      >
+                        {isEditing ? (
+                          <input
+                            ref={(node) => {
+                              inlineRenameInputRef.current = node;
+                            }}
+                            type="text"
+                            value={renameDraft}
+                            className="database-block-view-dropdown-rename-input"
+                            data-md-block-control="true"
+                            onChange={(event) => setRenameDraft(event.target.value)}
+                            onBlur={(event) => {
+                              submitRenameForView(savedView.id, event.currentTarget.value);
+                            }}
+                            onKeyDown={(event: ReactKeyboardEvent<HTMLInputElement>) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                event.currentTarget.blur();
+                                return;
+                              }
+                              if (event.key === "Escape") {
+                                event.preventDefault();
+                                setEditingViewId(null);
+                                setRenameDraft("");
+                              }
+                            }}
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            draggable
+                            className={`database-block-view-dropdown-item${isActive ? " is-active" : ""}`}
+                            onClick={() => {
+                              onSelectSavedView(savedView.id);
+                              setIsViewDropdownOpen(false);
+                            }}
+                            onContextMenu={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              const nextPosition = clampMenuPosition(event.clientY, event.clientX);
+                              setEditingViewId(null);
+                              setRenameDraft("");
+                              setViewContextMenu({
+                                viewId: savedView.id,
+                                top: nextPosition.top,
+                                left: nextPosition.left,
+                              });
+                            }}
+                            onDragStart={(event) => handleViewItemDragStart(event, savedView.id)}
+                            onDragOver={(event) => {
+                              event.preventDefault();
+                              setDragOverViewId(savedView.id);
+                              setDropEffectSafe(event, "move");
+                            }}
+                            onDragLeave={(event) => {
+                              const related = event.relatedTarget;
+                              if (
+                                related instanceof Node &&
+                                event.currentTarget.contains(related)
+                              ) {
+                                return;
+                              }
+                              setDragOverViewId((previous) => (previous === savedView.id ? null : previous));
+                            }}
+                            onDrop={(event) => handleViewItemDrop(event, savedView.id)}
+                            onDragEnd={() => {
+                              setDragOverViewId(null);
+                              setDraggingViewId(null);
+                              endInternalDrag(DRAG_CHANNELS.DATABASE_SAVED_VIEW);
+                            }}
+                          >
+                            <span className="database-block-view-dropdown-item-name">{savedView.name}</span>
+                            <span className="database-block-view-dropdown-item-meta" aria-hidden="true">
+                              ...
+                            </span>
+                          </button>
+                        )}
+                        {viewContextMenu?.viewId === savedView.id ? (
+                          <div
+                            ref={viewContextMenuRef}
+                            role="menu"
+                            className="database-block-view-context-menu"
+                            style={{
+                              top: `${viewContextMenu.top}px`,
+                              left: `${viewContextMenu.left}px`,
+                            }}
+                          >
+                            <button
+                              type="button"
+                              className="database-block-view-context-menu-item"
+                              onClick={() => openRenameForView(savedView.id)}
+                            >
+                              Rename
+                            </button>
+                            <button
+                              type="button"
+                              className="database-block-view-context-menu-item"
+                              onClick={() => {
+                                setViewContextMenu(null);
+                                onDuplicateSavedView(savedView.id);
+                              }}
+                            >
+                              Duplicate
+                            </button>
+                            <button
+                              type="button"
+                              className="database-block-view-context-menu-item"
+                              disabled={!canMoveUp}
+                              onClick={() => {
+                                setViewContextMenu(null);
+                                onMoveSavedView(savedView.id, "up");
+                              }}
+                            >
+                              Move up
+                            </button>
+                            <button
+                              type="button"
+                              className="database-block-view-context-menu-item"
+                              disabled={!canMoveDown}
+                              onClick={() => {
+                                setViewContextMenu(null);
+                                onMoveSavedView(savedView.id, "down");
+                              }}
+                            >
+                              Move down
+                            </button>
+                            <button
+                              type="button"
+                              className="database-block-view-context-menu-item is-danger"
+                              disabled={!canDelete}
+                              onClick={() => {
+                                setViewContextMenu(null);
+                                if (!canDelete) {
+                                  return;
+                                }
+                                const confirmed = window.confirm(
+                                  `Delete view "${savedView.name}"?`,
+                                );
+                                if (!confirmed) {
+                                  return;
+                                }
+                                onDeleteSavedView(savedView.id);
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="database-block-view-dropdown-create">
                   <input

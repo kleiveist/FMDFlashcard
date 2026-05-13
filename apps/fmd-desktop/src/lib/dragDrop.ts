@@ -9,6 +9,7 @@ export const DRAG_CHANNELS = {
   CLOZE_TOKEN: "cloze-token",
   DATABASE_RECORD: "db-record",
   DATABASE_COLUMN: "db-column",
+  DATABASE_SAVED_VIEW: "db-saved-view",
   DATABASE_VISIBLE_COLUMN: "db-visible-column",
   DATABASE_SORT_RULE: "db-sort-rule",
   MARKDOWN_BLOCK: "markdown-block",

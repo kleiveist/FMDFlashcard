@@ -5813,7 +5813,15 @@ textarea.preview-editor {
   border-bottom: 1px solid var(--db-border);
 }
 
+.database-block-view-dropdown-row {
+  position: relative;
+}
+
 .database-block-view-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
   border: 1px solid transparent;
   background: transparent;
   color: var(--db-text);
@@ -5822,6 +5830,19 @@ textarea.preview-editor {
   text-align: left;
   padding: 0 8px;
   cursor: pointer;
+}
+
+.database-block-view-dropdown-item-name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.database-block-view-dropdown-item-meta {
+  flex: 0 0 auto;
+  color: var(--db-muted);
+  letter-spacing: 0.04em;
 }
 
 .database-block-view-dropdown-item:hover {
@@ -5833,6 +5854,59 @@ textarea.preview-editor {
   background: var(--db-control-active-bg);
   border-color: var(--db-control-active-border);
   color: var(--db-control-active-text);
+}
+
+.database-block-view-dropdown-row.is-drag-source .database-block-view-dropdown-item {
+  opacity: 0.6;
+}
+
+.database-block-view-dropdown-row.is-drag-target .database-block-view-dropdown-item {
+  border-color: var(--db-control-active-border);
+  box-shadow: inset 0 0 0 1px var(--db-control-active-border);
+}
+
+.database-block-view-dropdown-rename-input {
+  width: 100%;
+  min-height: 28px;
+}
+
+.database-block-view-context-menu {
+  position: fixed;
+  z-index: 1305;
+  min-inline-size: 170px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border: 1px solid var(--db-panel-border, var(--line-soft));
+  border-radius: var(--db-radius-control);
+  background: var(--db-panel-bg, var(--panel));
+  box-shadow: var(--db-panel-shadow, var(--shadow-soft));
+  padding: 4px;
+}
+
+.database-block-view-context-menu-item {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--db-text);
+  border-radius: calc(var(--db-radius-control) - 3px);
+  min-height: 26px;
+  text-align: left;
+  cursor: pointer;
+  padding: 0 8px;
+}
+
+.database-block-view-context-menu-item:hover:not(:disabled) {
+  background: var(--db-accent-soft);
+  border-color: var(--db-accent-border);
+}
+
+.database-block-view-context-menu-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.database-block-view-context-menu-item.is-danger {
+  color: var(--danger-strong, #be3f35);
 }
 
 .database-block-view-dropdown-create {

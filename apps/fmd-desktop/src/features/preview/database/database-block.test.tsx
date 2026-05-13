@@ -154,6 +154,60 @@ const createTwoProjectViewsRaw = () => [
   "::::",
 ].join("\n");
 
+const createThreeProjectViewsRaw = () => [
+  "::::",
+  "title: Main",
+  "source:",
+  "  type: current-folder",
+  "views:",
+  "  activeViewId: view-main",
+  "  items:",
+  "    - id: view-main",
+  "      name: Main",
+  "      view:",
+  "        type: project",
+  "        projectStartField: unitsstart",
+  "        projectUnitField: units",
+  "        blockResolution: 1",
+  "      properties:",
+  "        - StatusCode",
+  "      filters:",
+  "        op: and",
+  "        rules: []",
+  "      sort: []",
+  "    - id: view-alt",
+  "      name: Alt",
+  "      view:",
+  "        type: project",
+  "        projectStartField: unitsstart",
+  "        projectUnitField: units",
+  "        blockResolution: 1",
+  "      properties:",
+  "        - StatusCode",
+  "      filters:",
+  "        op: and",
+  "        rules: []",
+  "      sort: []",
+  "    - id: view-extra",
+  "      name: Extra",
+  "      view:",
+  "        type: project",
+  "        projectStartField: unitsstart",
+  "        projectUnitField: units",
+  "        blockResolution: 1",
+  "      properties:",
+  "        - StatusCode",
+  "      filters:",
+  "        op: and",
+  "        rules: []",
+  "      sort: []",
+  "options:",
+  "  editable: true",
+  "  showSearch: false",
+  "  showToolbar: true",
+  "::::",
+].join("\n");
+
 const getLatestCommittedRaw = (onCommitRaw: ReturnType<typeof vi.fn>) => {
   const latestCall = onCommitRaw.mock.calls[onCommitRaw.mock.calls.length - 1];
   const raw = latestCall?.[0];
@@ -345,6 +399,136 @@ describe("MarkdownHybridDatabaseBlock project presentation config", () => {
         mode: "text-code",
         mappings: [{ from: "text2", to: 80 }],
       });
+    cleanup();
+  });
+
+  it("renames, reorders, and deletes saved views with active fallback persistence", async () => {
+    const onCommitRaw = vi.fn();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { container, cleanup } = await render(
+      createElement(MarkdownHybridDatabaseBlock, {
+        raw: createThreeProjectViewsRaw(),
+        vaultFiles: [taskFile],
+        sourceRelativePath: "tasks/index.md",
+        onCommitRaw,
+        allowCellEditing: true,
+      }),
+    );
+    await flushAsyncWork();
+
+    const nameButton = container.querySelector<HTMLButtonElement>(".database-block-view-name-button");
+    act(() => {
+      nameButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const altItem = getViewButtonByText("Alt");
+    act(() => {
+      altItem?.dispatchEvent(new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 180,
+        clientY: 200,
+      }));
+    });
+    const renameAction = Array.from(document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"))
+      .find((button) => (button.textContent ?? "").includes("Rename"));
+    act(() => {
+      renameAction?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    const renameInput = container.querySelector<HTMLInputElement>(".database-block-view-dropdown-rename-input");
+    expect(renameInput).toBeTruthy();
+    act(() => {
+      if (renameInput) {
+        setInputValue(renameInput, "Alt Neu");
+        renameInput.dispatchEvent(new FocusEvent("blur", { bubbles: true }));
+      }
+    });
+    await flushAsyncWork();
+
+    let parsed = parseDatabaseBlockConfigFromRaw(getLatestCommittedRaw(onCommitRaw));
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.config.views.items.find((view) => view.id === "view-alt")?.name).toBe("Alt Neu");
+
+    const extraItem = getViewButtonByText("Extra");
+    const mainItem = getViewButtonByText("Main");
+    act(() => {
+      extraItem?.dispatchEvent(new Event("dragstart", { bubbles: true, cancelable: true }));
+      mainItem?.dispatchEvent(new Event("dragover", { bubbles: true, cancelable: true }));
+      mainItem?.dispatchEvent(new Event("drop", { bubbles: true, cancelable: true }));
+      extraItem?.dispatchEvent(new Event("dragend", { bubbles: true }));
+    });
+    await flushAsyncWork();
+
+    parsed = parseDatabaseBlockConfigFromRaw(getLatestCommittedRaw(onCommitRaw));
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.config.views.items.map((view) => view.id)).toEqual([
+      "view-extra",
+      "view-main",
+      "view-alt",
+    ]);
+
+    const reorderedMainItem = getViewButtonByText("Main");
+    act(() => {
+      reorderedMainItem?.dispatchEvent(new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 190,
+        clientY: 210,
+      }));
+    });
+    const deleteAction = Array.from(document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"))
+      .find((button) => (button.textContent ?? "").includes("Delete"));
+    act(() => {
+      deleteAction?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await flushAsyncWork();
+
+    parsed = parseDatabaseBlockConfigFromRaw(getLatestCommittedRaw(onCommitRaw));
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.config.views.items.map((view) => view.id)).toEqual(["view-extra", "view-alt"]);
+    expect(parsed.config.views.activeViewId).toBe("view-alt");
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    confirmSpy.mockRestore();
+    cleanup();
+  });
+
+  it("does not allow deleting the final remaining saved view", async () => {
+    const onCommitRaw = vi.fn();
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { container, cleanup } = await render(
+      createElement(MarkdownHybridDatabaseBlock, {
+        raw: createSingleProjectViewRaw(),
+        vaultFiles: [taskFile],
+        sourceRelativePath: "tasks/index.md",
+        onCommitRaw,
+        allowCellEditing: true,
+      }),
+    );
+    await flushAsyncWork();
+
+    const nameButton = container.querySelector<HTMLButtonElement>(".database-block-view-name-button");
+    act(() => {
+      nameButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    const mainItem = getViewButtonByText("Main");
+    act(() => {
+      mainItem?.dispatchEvent(new MouseEvent("contextmenu", {
+        bubbles: true,
+        cancelable: true,
+        clientX: 180,
+        clientY: 200,
+      }));
+    });
+    const deleteAction = Array.from(document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"))
+      .find((button) => (button.textContent ?? "").includes("Delete"));
+    expect(deleteAction?.disabled).toBe(true);
+    act(() => {
+      deleteAction?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onCommitRaw).toHaveBeenCalledTimes(0);
+    expect(confirmSpy).toHaveBeenCalledTimes(0);
+    confirmSpy.mockRestore();
     cleanup();
   });
 });
