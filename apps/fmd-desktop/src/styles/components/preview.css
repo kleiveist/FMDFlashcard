@@ -1769,6 +1769,131 @@ textarea.preview-editor {
   white-space: normal;
 }
 
+.canvas-toolbar-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ui-space-xs);
+}
+
+.canvas-code-editor {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.canvas-board-viewport {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--ui-radius-panel);
+  background: color-mix(in srgb, var(--panel) 90%, var(--surface-1));
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+}
+
+.canvas-board-viewport.is-panning {
+  cursor: grabbing;
+}
+
+.canvas-board-stage {
+  position: absolute;
+  inset: 0 auto auto 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.canvas-board-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.canvas-edge-line {
+  stroke: currentColor;
+  stroke-width: 1.5px;
+  opacity: 0.75;
+}
+
+.canvas-edge-label {
+  fill: var(--ink);
+  font-size: 0.7rem;
+  font-family: var(--mono);
+  paint-order: stroke;
+  stroke: var(--panel);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.canvas-node {
+  position: absolute;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--ink) 10%, transparent);
+  min-width: 48px;
+  min-height: 36px;
+  overflow: hidden;
+  user-select: none;
+}
+
+.canvas-node[data-canvas-node-id] {
+  cursor: default;
+}
+
+.canvas-panel[data-canvas-mode="edit"] .canvas-node[data-canvas-node-id] {
+  cursor: move;
+}
+
+.canvas-node-group {
+  background: color-mix(in srgb, var(--panel) 76%, transparent);
+  box-shadow: none;
+  border-style: dashed;
+  z-index: 1;
+}
+
+.canvas-node-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ink);
+  padding: 6px 8px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.canvas-node-body {
+  padding: 8px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.canvas-node-text .canvas-node-body {
+  user-select: text;
+}
+
+.canvas-node-text .canvas-node-body > *:first-child {
+  margin-top: 0;
+}
+
+.canvas-node-text .canvas-node-body > *:last-child {
+  margin-bottom: 0;
+}
+
+.canvas-node-subtle {
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin-top: 4px;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .markdown-hybrid-surface {
   gap: var(--ui-space-md);
 }

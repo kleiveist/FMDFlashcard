@@ -34,6 +34,7 @@ import {
 } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FileList } from "../components/FileList";
+import { CanvasPanel } from "../components/CanvasPanel";
 import { NoteModal } from "../components/NoteModal";
 import { ModalShell } from "../components/ModalShell";
 import { PreviewPanel } from "../components/PreviewPanel";
@@ -49,6 +50,10 @@ import {
 } from "../features/preview/frontmatter";
 import { loadFormulaHistoryFiles } from "../features/preview/formula/formula-history-source";
 import { deriveMarkdownEditorColors } from "../lib/markdownEditorColors";
+import {
+  isMarkdownFilePath,
+  resolveVaultFileDocumentKind,
+} from "../lib/fileTypes";
 import { normalizeRelativePath, normalizeVaultPath } from "../lib/path";
 import { compareNaturalPath } from "../lib/naturalSort";
 import { useMediaQuery } from "../lib/useMediaQuery";
@@ -260,7 +265,7 @@ const DashboardPageInner = (
       return "No vault selected";
     }
     const count = visibleFiles.length;
-    const base = `${count} Markdown-Datei${count === 1 ? "" : "en"}`;
+    const base = `${count} Datei${count === 1 ? "" : "en"}`;
     if (!normalizedActiveFolderPath) {
       return base;
     }
@@ -273,6 +278,10 @@ const DashboardPageInner = (
         .map((file) => normalizeRelativePath(file.relative_path)),
     [examFiles],
   );
+  const selectedDocumentKind = preview.selectedFile
+    ? resolveVaultFileDocumentKind(preview.selectedFile)
+    : "unknown";
+  const isCanvasDocumentSelected = selectedDocumentKind === "canvas";
   const canEdit =
     Boolean(preview.selectedFile) && preview.previewState === "idle";
   const selectedMarkdownPath = preview.selectedFile?.path ?? null;
@@ -386,6 +395,9 @@ const DashboardPageInner = (
   ]);
 
   useEffect(() => {
+    if (selectedDocumentKind === "canvas") {
+      return;
+    }
     if (
       !shouldApplyPreviewDefaultMode({
         didApplyDefault: didApplyPreviewDefaultModeRef.current,
@@ -408,6 +420,7 @@ const DashboardPageInner = (
     preview,
     settings.markdownPreviewDefaultMode,
     settings.settingsLoaded,
+    selectedDocumentKind,
     vaultView,
   ]);
 
@@ -437,8 +450,11 @@ const DashboardPageInner = (
         return;
       }
 
+      const markdownFiles = vault.files.filter((file) =>
+        isMarkdownFilePath(file.relative_path),
+      );
       const markdownDocuments = await Promise.all(
-        vault.files.map(async (file) => {
+        markdownFiles.map(async (file) => {
           try {
             return await invoke<string>("read_text_file", {
               path: file.path,
@@ -460,11 +476,8 @@ const DashboardPageInner = (
       );
       const nextFormulaAttributeKeysByFile: Record<string, string[]> = {};
       const nextFrontmatterValuesByFile: Record<string, Record<string, unknown>> = {};
-      vault.files.forEach((file, index) => {
+      markdownFiles.forEach((file, index) => {
         const normalizedRelativePath = normalizeRelativePath(file.relative_path).replace(/^\/+/, "");
-        if (!/\.md$/i.test(normalizedRelativePath)) {
-          return;
-        }
         const parsed = parseFrontmatterDocument(markdownDocuments[index] ?? "");
         if (!parsed.hasFrontmatter || parsed.error) {
           return;
@@ -1007,6 +1020,30 @@ const DashboardPageInner = (
     [documentMode, editDraft, isEditing, isSaving, preview],
   );
 
+  const handleCanvasSourcePersist = useCallback(
+    async (
+      nextSource: string,
+    ): Promise<{ ok: boolean; error?: string }> => {
+      const selectedPath = preview.selectedFile?.path ?? null;
+      if (!selectedPath) {
+        return { ok: false, error: "No file selected." };
+      }
+      try {
+        await invoke("write_text_file", {
+          path: selectedPath,
+          contents: nextSource,
+        });
+        preview.setPreview(nextSource);
+        return { ok: true };
+      } catch (error) {
+        const message = asErrorMessage(error, "Failed to save canvas file.");
+        setEditError(message);
+        return { ok: false, error: message };
+      }
+    },
+    [preview],
+  );
+
   const handleFrontmatterWikilinkNavigate = useCallback(
     (wikilink: string) => {
       const target = extractWikilinkTarget(wikilink);
@@ -1366,53 +1403,63 @@ const DashboardPageInner = (
         tabIndex={-1}
       >
         {vaultView === "markdown" ? (
-          <PreviewPanel
-            emptyPreview={emptyPreview}
-            editDraft={editDraft}
-            editError={editError}
-            editCaretIndex={editCaretIndex}
-            isEditing={isEditing}
-            preview={preview.preview}
-            previewError={preview.previewError}
-            previewState={preview.previewState}
-            editorMode={preview.editorMode}
-            editEnabled={preview.editEnabled}
-            documentMode={documentMode}
-            selectedFile={preview.selectedFile}
-            vaultFiles={vault.files}
-            vaultPngAssets={vault.pngAssets}
-            vaultPath={vault.vaultPath}
-            sourceRelativePath={preview.selectedFile?.relative_path ?? null}
-            canEdit={canEdit}
-            markdownEditorStyle={markdownEditorStyle}
-            onEditChange={handleEditDraftChange}
-            onHybridDirtyChange={setIsHybridBlockDirty}
-            onEditCaretApplied={handleEditCaretApplied}
-            onEditExit={handleEditAutosave}
-            onEditStart={handleEditStart}
-            onSelectEditorMode={handleSelectEditorMode}
-            onToggleEditEnabled={handleToggleEditEnabled}
-            onWriteSave={handleWriteSave}
-            onWriteCancel={handleWriteCancel}
-            onFrontmatterSave={handleFrontmatterSave}
-            onNavigateWikilink={handleFrontmatterWikilinkNavigate}
-            runnableExamRelativePaths={runnableExamRelativePaths}
-            onOpenExamFromDatabaseRecord={handleOpenExamFromDatabase}
-            onOpenTaskProfileEditor={handleOpenTaskProfileEditor}
-            taskProfileSummariesByName={frontmatterTaskProfileSummaries}
-            valueSuggestionsByKey={frontmatterValueSuggestions}
-            keySuggestions={frontmatterKeySuggestions}
-            formulaAttributeKeysByFile={frontmatterFormulaAttributeKeysByFile ?? undefined}
-            frontmatterValuesByFile={frontmatterValuesByFile ?? undefined}
-            formulaHistoryFolderPath={frontmatterFormulaHistoryFolderPath}
-            formulaHistoryWarning={frontmatterFormulaHistoryWarning}
-            markdownTabs={markdownTabs}
-            activeMarkdownTabPath={preview.selectedFile?.path ?? null}
-            onSelectMarkdownTab={handleSelectMarkdownTab}
-            onCloseMarkdownTab={handleCloseMarkdownTab}
-            onReorderMarkdownTabs={handleReorderMarkdownTabs}
-            monitoringProfiles={settings.monitoringRenderProfiles}
-          />
+          isCanvasDocumentSelected ? (
+            <CanvasPanel
+              selectedFile={preview.selectedFile}
+              preview={preview.preview}
+              previewError={preview.previewError}
+              previewState={preview.previewState}
+              onPersistSource={handleCanvasSourcePersist}
+            />
+          ) : (
+            <PreviewPanel
+              emptyPreview={emptyPreview}
+              editDraft={editDraft}
+              editError={editError}
+              editCaretIndex={editCaretIndex}
+              isEditing={isEditing}
+              preview={preview.preview}
+              previewError={preview.previewError}
+              previewState={preview.previewState}
+              editorMode={preview.editorMode}
+              editEnabled={preview.editEnabled}
+              documentMode={documentMode}
+              selectedFile={preview.selectedFile}
+              vaultFiles={vault.files}
+              vaultPngAssets={vault.pngAssets}
+              vaultPath={vault.vaultPath}
+              sourceRelativePath={preview.selectedFile?.relative_path ?? null}
+              canEdit={canEdit}
+              markdownEditorStyle={markdownEditorStyle}
+              onEditChange={handleEditDraftChange}
+              onHybridDirtyChange={setIsHybridBlockDirty}
+              onEditCaretApplied={handleEditCaretApplied}
+              onEditExit={handleEditAutosave}
+              onEditStart={handleEditStart}
+              onSelectEditorMode={handleSelectEditorMode}
+              onToggleEditEnabled={handleToggleEditEnabled}
+              onWriteSave={handleWriteSave}
+              onWriteCancel={handleWriteCancel}
+              onFrontmatterSave={handleFrontmatterSave}
+              onNavigateWikilink={handleFrontmatterWikilinkNavigate}
+              runnableExamRelativePaths={runnableExamRelativePaths}
+              onOpenExamFromDatabaseRecord={handleOpenExamFromDatabase}
+              onOpenTaskProfileEditor={handleOpenTaskProfileEditor}
+              taskProfileSummariesByName={frontmatterTaskProfileSummaries}
+              valueSuggestionsByKey={frontmatterValueSuggestions}
+              keySuggestions={frontmatterKeySuggestions}
+              formulaAttributeKeysByFile={frontmatterFormulaAttributeKeysByFile ?? undefined}
+              frontmatterValuesByFile={frontmatterValuesByFile ?? undefined}
+              formulaHistoryFolderPath={frontmatterFormulaHistoryFolderPath}
+              formulaHistoryWarning={frontmatterFormulaHistoryWarning}
+              markdownTabs={markdownTabs}
+              activeMarkdownTabPath={preview.selectedFile?.path ?? null}
+              onSelectMarkdownTab={handleSelectMarkdownTab}
+              onCloseMarkdownTab={handleCloseMarkdownTab}
+              onReorderMarkdownTabs={handleReorderMarkdownTabs}
+              monitoringProfiles={settings.monitoringRenderProfiles}
+            />
+          )
         ) : (
           <ExamEditorView
             sourcePath={preview.selectedFile?.path ?? null}

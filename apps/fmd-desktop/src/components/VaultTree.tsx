@@ -41,6 +41,7 @@ import { InlineRenameLabel } from "./InlineRenameLabel";
 import { VaultCreateModal } from "./VaultCreateModal";
 import { VaultDeleteModal } from "./VaultDeleteModal";
 import { asErrorMessage } from "../lib/errors";
+import { isMarkdownFilePath } from "../lib/fileTypes";
 import {
   DRAG_CHANNELS,
   endInternalDrag,
@@ -64,9 +65,6 @@ const OVERFLOW_DEPTH = 4;
 const DEFAULT_FILE_NAME = "New Note.md";
 const DEFAULT_FOLDER_NAME = "New Folder";
 const NAME_FORBIDDEN_PATTERN = /[\\/]/;
-const MARKDOWN_FILE_PATTERN = /\.(md|markdown|mdx)$/i;
-
-const isMarkdownFilePath = (value: string) => MARKDOWN_FILE_PATTERN.test(value);
 
 type DeleteShortcutEvent = {
   key: string;
@@ -1954,7 +1952,7 @@ export const VaultTree = ({
           {deleteError ? <div className="error">{deleteError}</div> : null}
           {statusMessage ? <div className="muted">{statusMessage}</div> : null}
           {vaultPath && listState === "idle" && treeNodes.length === 0 ? (
-            <div className="empty-state">Keine Markdown-Dateien in diesem Vault.</div>
+            <div className="empty-state">Keine unterstuetzten Dateien in diesem Vault.</div>
           ) : null}
           {vaultPath && listState === "idle" && treeNodes.length > 0 ? (
             <div className="vault-tree">

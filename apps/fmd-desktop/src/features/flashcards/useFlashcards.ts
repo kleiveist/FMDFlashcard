@@ -25,6 +25,7 @@
 import { useCallback, useEffect, useMemo, useState, type DragEvent } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { DRAG_CHANNELS, endInternalDrag } from "../../lib/dragDrop";
+import { isMarkdownFilePath } from "../../lib/fileTypes";
 import {
   parseFlashcardEntries,
   type Flashcard,
@@ -508,7 +509,7 @@ export const useFlashcards = ({
         }
 
         const markdownFiles = files.filter((file) =>
-          file.relative_path.toLowerCase().endsWith(".md"),
+          isMarkdownFilePath(file.relative_path),
         );
         const results = await Promise.allSettled(
           markdownFiles.map(async (file) => {
@@ -564,6 +565,9 @@ export const useFlashcards = ({
         return merged;
       }
 
+      if (!selectedFile || !isMarkdownFilePath(selectedFile.relative_path)) {
+        return [];
+      }
       const previewEntries = parseFlashcardEntries(preview);
       return previewEntries.map((entry) => ({
         card: entry.card,

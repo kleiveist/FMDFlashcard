@@ -40,6 +40,7 @@ import { UserListSection } from "./components/settings/ProfileSetupSections";
 import { LayoutModeProvider, useLayoutMode } from "./lib/layoutMode";
 import { useMediaQuery } from "./lib/useMediaQuery";
 import type { VaultFile } from "./lib/tree";
+import { isMarkdownFilePath } from "./lib/fileTypes";
 import {
   getEffectiveBinding,
   getShortcutPlatform,
@@ -270,6 +271,10 @@ const AppContent = () => {
       previousSelectedMarkdownPathRef.current = null;
       return;
     }
+    if (!isMarkdownFilePath(selected.relative_path)) {
+      previousSelectedMarkdownPathRef.current = null;
+      return;
+    }
     const selectedPath = selected.path;
     const selectedRelativePath = selected.relative_path;
     const previousSelectedPath = previousSelectedMarkdownPathRef.current;
@@ -322,7 +327,11 @@ const AppContent = () => {
       setDashboardMarkdownTabs([]);
       return;
     }
-    const validPathSet = new Set(vault.files.map((file) => file.path));
+    const validPathSet = new Set(
+      vault.files
+        .filter((file) => isMarkdownFilePath(file.relative_path))
+        .map((file) => file.path),
+    );
     setDashboardMarkdownTabs((previous) => {
       const next = previous.filter((tab) => validPathSet.has(tab.path));
       return next.length === previous.length ? previous : next;

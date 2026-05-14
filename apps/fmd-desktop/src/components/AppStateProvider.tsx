@@ -41,6 +41,7 @@ import {
   type TaskMutationScope,
 } from "../lib/taskAreaToggle";
 import { isHiddenPath, normalizeRelativePath, normalizeVaultPath } from "../lib/path";
+import { isMarkdownFilePath } from "../lib/fileTypes";
 import { type DesignMode, type ThemeMode } from "../lib/theme";
 import { type VaultFile } from "../lib/tree";
 import type { LoadState } from "../lib/types";
@@ -153,7 +154,7 @@ const countMarkdownFiles = (files: VaultFile[], showHiddenFolders: boolean) =>
     if (!showHiddenFolders && isHiddenPath(relativePath)) {
       return count;
     }
-    if (relativePath.toLowerCase().endsWith(".md")) {
+    if (isMarkdownFilePath(relativePath)) {
       return count + 1;
     }
     return count;

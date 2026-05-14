@@ -608,8 +608,8 @@ export const FileList = ({
         {vaultPath && listState === "idle" && files.length === 0 ? (
           <div className="empty-state">
             {activeFolderPath
-              ? "Keine Markdown-Dateien in diesem Ordner."
-              : "Keine Markdown-Dateien in diesem Vault."}
+              ? "Keine Dateien in diesem Ordner."
+              : "Keine Dateien in diesem Vault."}
           </div>
         ) : null}
         {vaultPath && listState !== "error" ? (

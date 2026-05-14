@@ -315,6 +315,17 @@ fn is_markdown(path: &Path) -> bool {
     }
 }
 
+fn is_canvas(path: &Path) -> bool {
+    match path.extension().and_then(|ext| ext.to_str()) {
+        Some(ext) => ext.eq_ignore_ascii_case("canvas"),
+        None => false,
+    }
+}
+
+fn is_supported_text_document(path: &Path) -> bool {
+    is_markdown(path) || is_canvas(path)
+}
+
 fn is_png(path: &Path) -> bool {
     match path.extension().and_then(|ext| ext.to_str()) {
         Some(ext) => ext.eq_ignore_ascii_case("png"),
@@ -828,7 +839,7 @@ fn list_vault_entries(
             }
             continue;
         }
-        if entry.file_type().is_file() && is_markdown(path) {
+        if entry.file_type().is_file() && is_supported_text_document(path) {
             let relative = path.strip_prefix(&root).unwrap_or(path);
             let metadata = entry.metadata().ok();
             let created_at = metadata
@@ -1074,8 +1085,8 @@ fn read_text_file(path: String) -> Result<String, String> {
     if !path.is_file() {
         return Err("Path is not a file.".to_string());
     }
-    if !is_markdown(&path) {
-        return Err("Only markdown files are supported.".to_string());
+    if !is_supported_text_document(&path) {
+        return Err("Only markdown and canvas files are supported.".to_string());
     }
     fs::read_to_string(&path).map_err(|err| err.to_string())
 }
@@ -1083,8 +1094,8 @@ fn read_text_file(path: String) -> Result<String, String> {
 #[tauri::command]
 fn write_text_file(path: String, contents: String) -> Result<(), String> {
     let path = PathBuf::from(path);
-    if !is_markdown(&path) {
-        return Err("Only markdown files are supported.".to_string());
+    if !is_supported_text_document(&path) {
+        return Err("Only markdown and canvas files are supported.".to_string());
     }
     if path.exists() {
         if !path.is_file() {
@@ -1099,8 +1110,8 @@ fn write_text_file(path: String, contents: String) -> Result<(), String> {
 #[tauri::command]
 fn write_text_file_atomic(path: String, contents: String) -> Result<(), String> {
     let path = PathBuf::from(path);
-    if !is_markdown(&path) {
-        return Err("Only markdown files are supported.".to_string());
+    if !is_supported_text_document(&path) {
+        return Err("Only markdown and canvas files are supported.".to_string());
     }
     if path.exists() {
         if !path.is_file() {
