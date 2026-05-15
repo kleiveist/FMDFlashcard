@@ -8,6 +8,7 @@
 <!-- AUTO-GENERATED:docs-index START -->
 
 ## 📄 Pages
+- 📝 [Canvas Syntax](canvas-syntax.md)
 - 📝 [Exam syntax](exam-syntax.md)
 - 📝 [Flashcard syntax reference](flashcard-syntax.md)
 - 📝 [Tables in Flashcards and Exams](table-rendering.md)

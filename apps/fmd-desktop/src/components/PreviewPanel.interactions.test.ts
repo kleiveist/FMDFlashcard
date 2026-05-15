@@ -493,6 +493,66 @@ afterEach(() => {
 });
 
 describe("PreviewPanel edit-safe interactions", () => {
+  it("renders embedded Canvas blocks inside Markdown view", () => {
+    const markdown = [
+      "Before canvas",
+      "",
+      "#canvas",
+      JSON.stringify(
+        {
+          nodes: [
+            {
+              id: "node-1",
+              type: "text",
+              text: "# Canvas Node",
+              x: 0,
+              y: 0,
+              width: 220,
+              height: 100,
+            },
+          ],
+          edges: [],
+        },
+        null,
+        2,
+      ),
+      "#canvasend",
+      "",
+      "After canvas",
+    ].join("\n");
+    const { container, cleanup: localCleanup } = buildHarness(markdown);
+    cleanup = localCleanup;
+
+    expect(container.textContent).toContain("Before canvas");
+    expect(container.textContent).toContain("After canvas");
+    expect(container.querySelector(".preview-markdown-view-block-canvas-block")).not.toBeNull();
+    expect(container.querySelector(".canvas-embedded-block")).not.toBeNull();
+    expect(container.textContent).toContain("Canvas Node");
+  });
+
+  it("serializes embedded Canvas islands back to their raw Markdown block", () => {
+    const raw = [
+      "#canvas",
+      "{",
+      "  \"nodes\": [],",
+      "  \"edges\": []",
+      "}",
+      "#canvasend",
+    ].join("\n");
+    const host = document.createElement("div");
+    host.innerHTML = [
+      "<p>Before</p>",
+      `<div class="preview-markdown-view-block-canvas-block" data-md-canvas-block-raw="${encodeURIComponent(raw)}"></div>`,
+      "<p>After</p>",
+    ].join("");
+
+    const serialized = serializeMarkdownFromHtml(host);
+
+    expect(serialized).toContain("Before");
+    expect(serialized).toContain(raw);
+    expect(serialized).toContain("After");
+  });
+
   it("renders markdown tabs and routes select/close actions", () => {
     const onSelectMarkdownTab = vi.fn();
     const onCloseMarkdownTab = vi.fn();

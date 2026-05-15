@@ -2,7 +2,7 @@ export type CanvasSide = "top" | "right" | "bottom" | "left";
 
 export type CanvasEdgeEnd = "none" | "arrow";
 
-export type CanvasNode = {
+export type FmdCanvasNode = {
   id: string;
   type: string;
   x: number;
@@ -17,7 +17,7 @@ export type CanvasNode = {
   [key: string]: unknown;
 };
 
-export type CanvasEdge = {
+export type FmdCanvasEdge = {
   id: string;
   fromNode: string;
   toNode: string;
@@ -30,10 +30,15 @@ export type CanvasEdge = {
   [key: string]: unknown;
 };
 
-export type CanvasDocument = {
-  nodes: CanvasNode[];
-  edges: CanvasEdge[];
+export type FmdCanvasDocument = {
+  nodes: FmdCanvasNode[];
+  edges: FmdCanvasEdge[];
+  [key: string]: unknown;
 };
+
+export type CanvasNode = FmdCanvasNode;
+export type CanvasEdge = FmdCanvasEdge;
+export type CanvasDocument = FmdCanvasDocument;
 
 export type CanvasParseResult =
   | { ok: true; document: CanvasDocument }
@@ -70,10 +75,10 @@ const normalizeNode = (
     return { ok: false, error: `nodes[${index}] must be an object.` };
   }
 
-  const id = typeof candidate.id === "string" ? candidate.id.trim() : "";
-  if (!id) {
-    return { ok: false, error: `nodes[${index}].id must be a non-empty string.` };
-  }
+  const id =
+    typeof candidate.id === "string" && candidate.id.trim().length > 0
+      ? candidate.id.trim()
+      : `node-${index + 1}`;
 
   const type = typeof candidate.type === "string" ? candidate.type.trim() : "";
   if (!type) {
@@ -263,6 +268,7 @@ export const parseCanvasDocument = (source: string): CanvasParseResult => {
   }
 
   const document: CanvasDocument = {
+    ...root,
     nodes,
     edges,
   };
@@ -275,4 +281,3 @@ export const parseCanvasDocument = (source: string): CanvasParseResult => {
 
 export const serializeCanvasDocument = (document: CanvasDocument): string =>
   `${JSON.stringify(document, null, 2)}\n`;
-

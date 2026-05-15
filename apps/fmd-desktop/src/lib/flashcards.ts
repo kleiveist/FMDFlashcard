@@ -18,6 +18,7 @@
 
 import { answerMarkers, falseTokens, trueTokens } from "./flashcardKeywords";
 import { maskDatabaseBlockLines } from "./databaseBlockSyntax";
+import { maskCanvasBlockLines } from "../features/canvas/markdownBlockSyntax";
 import { findTableLineIndices } from "./markdownTables";
 import {
   extractAuxiliaryBlocksFromLines,
@@ -1248,7 +1249,7 @@ export const parseFlashcardEntries = (
   options?: ParseFlashcardsOptions,
 ): ParsedFlashcardEntry[] => {
   const answerMatch = resolveAnswerMatch(options);
-  const lines = maskDatabaseBlockLines(normalizeLines(markdown));
+  const lines = maskCanvasBlockLines(maskDatabaseBlockLines(normalizeLines(markdown)));
   const entries: ParsedFlashcardEntry[] = [];
   let index = 0;
 

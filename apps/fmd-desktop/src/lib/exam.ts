@@ -26,6 +26,7 @@ import {
   type FlashcardPart,
 } from "./flashcards";
 import { maskDatabaseBlockLines } from "./databaseBlockSyntax";
+import { maskCanvasBlockLines } from "../features/canvas/markdownBlockSyntax";
 import { findTableLineIndices } from "./markdownTables";
 import { extractAuxiliaryBlocksFromLines } from "./auxiliaryBlocks";
 import { extractMediaFromLines, type MediaItem } from "./cardMedia";
@@ -395,7 +396,7 @@ const parseTaskChunk = (
 };
 
 export const parseExamTasks = (markdown: string): ExamParseResult => {
-  const lines = maskDatabaseBlockLines(normalizeLines(markdown));
+  const lines = maskCanvasBlockLines(maskDatabaseBlockLines(normalizeLines(markdown)));
   const tableLineIndices = findTableLineIndices(lines);
   const tasks: ExamTask[] = [];
   let inExam = false;

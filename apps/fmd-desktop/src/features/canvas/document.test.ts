@@ -119,5 +119,42 @@ describe("canvas document parser", () => {
     expect(serialized.endsWith("\n")).toBe(true);
     expect(serialized).toContain("\"nodes\": []");
   });
-});
 
+  it("generates stable node ids when ids are missing", () => {
+    const parsed = parseCanvasDocument(
+      JSON.stringify({
+        nodes: [
+          {
+            type: "text",
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 80,
+          },
+        ],
+        edges: [],
+      }),
+    );
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) {
+      return;
+    }
+    expect(parsed.document.nodes[0]?.id).toBe("node-1");
+  });
+
+  it("preserves unknown root fields where possible", () => {
+    const parsed = parseCanvasDocument(
+      JSON.stringify({
+        nodes: [],
+        edges: [],
+        metadata: { source: "test" },
+      }),
+    );
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) {
+      return;
+    }
+    expect(parsed.document.metadata).toEqual({ source: "test" });
+    expect(serializeCanvasDocument(parsed.document)).toContain("\"metadata\"");
+  });
+});

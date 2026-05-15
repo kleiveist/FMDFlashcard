@@ -34,5 +34,6 @@
 - 📝 [Spaced repetition](usr/spaced-repetition.md)
 - 📝 [Troubleshooting](usr/troubleshooting.md)
 - 📝 [User Vault (Statistiken)](usr/user-vault.md)
+- 📝 [Canvas Syntax](usr/syntax/canvas-syntax.md)
 
 <!-- AUTO-GENERATED:docs-index END -->

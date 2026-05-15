@@ -1855,6 +1855,22 @@ textarea.preview-editor {
   z-index: 1;
 }
 
+.canvas-group-node {
+  background: color-mix(in srgb, var(--panel) 76%, transparent);
+  box-shadow: none;
+  border-style: dashed;
+  z-index: 1;
+}
+
+.canvas-content-node {
+  z-index: 2;
+}
+
+.canvas-group-node.is-editable,
+.canvas-content-node.is-editable {
+  cursor: move;
+}
+
 .canvas-node-title {
   font-size: 0.72rem;
   font-weight: 600;
@@ -1884,6 +1900,22 @@ textarea.preview-editor {
   margin-bottom: 0;
 }
 
+.canvas-node-markdown {
+  padding: 8px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--ink);
+  user-select: text;
+}
+
+.canvas-node-markdown > *:first-child {
+  margin-top: 0;
+}
+
+.canvas-node-markdown > *:last-child {
+  margin-bottom: 0;
+}
+
 .canvas-node-subtle {
   font-size: 0.68rem;
   color: var(--muted);
@@ -1892,6 +1924,93 @@ textarea.preview-editor {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.canvas-embedded-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-sm);
+  min-width: 0;
+  margin: var(--ui-space-md) 0;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--ui-radius-panel);
+  background: color-mix(in srgb, var(--panel) 92%, var(--surface-1));
+  padding: var(--ui-space-sm);
+}
+
+.canvas-embedded-block.is-fullscreen {
+  position: fixed;
+  inset: 18px;
+  z-index: 80;
+  background: var(--panel);
+  box-shadow: var(--shadow-modal);
+}
+
+.canvas-embedded-block.is-fullscreen .canvas-embedded-viewport {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+
+.canvas-embedded-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-sm);
+  min-width: 0;
+}
+
+.canvas-embedded-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink);
+  min-width: 0;
+}
+
+.canvas-embedded-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--ui-space-xs);
+  flex-wrap: wrap;
+}
+
+.canvas-embedded-error {
+  margin: 0;
+}
+
+.canvas-embedded-code-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-sm);
+  min-height: 320px;
+}
+
+.canvas-embedded-code-editor {
+  min-height: 280px;
+}
+
+.canvas-embedded-code-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.canvas-embedded-viewport {
+  min-height: 320px;
+}
+
+.canvas-empty-state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.markdown-hybrid-block-canvas-block .markdown-hybrid-block-body,
+.preview-markdown-view-block-canvas-block {
+  min-width: 0;
 }
 
 .markdown-hybrid-surface {

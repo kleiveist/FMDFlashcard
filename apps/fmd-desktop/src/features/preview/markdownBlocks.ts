@@ -9,6 +9,7 @@
 import { parseMarkdownPipeTableAt } from "../../lib/markdownTables";
 import { parseStandalonePngEmbedLine } from "../../lib/markdownMedia";
 import { isDatabaseBlockMarkerLine } from "../../lib/databaseBlockSyntax";
+import { resolveCanvasBlockRangeAt } from "../canvas/markdownBlockSyntax";
 
 export type MarkdownBlockKind =
   | "blank"
@@ -16,6 +17,7 @@ export type MarkdownBlockKind =
   | "paragraph"
   | "math-block"
   | "database-block"
+  | "canvas-block"
   | "card-start"
   | "card-end"
   | "help-block"
@@ -175,6 +177,9 @@ const isSpecialBlockStart = (lines: string[], index: number) => {
     return true;
   }
   if (isDatabaseBlockMarker(line)) {
+    return true;
+  }
+  if (resolveCanvasBlockRangeAt(lines, index)) {
     return true;
   }
   if (isCardBlockStartLine(line)) {
@@ -435,6 +440,24 @@ export const parseMarkdownBlocks = (
       blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "blank", i, i));
       blockIndex += 1;
       i += 1;
+      continue;
+    }
+
+    const canvasBlockRange = resolveCanvasBlockRangeAt(lines, i);
+    if (canvasBlockRange) {
+      blocks.push(
+        buildBlock(
+          markdown,
+          lines,
+          lineStarts,
+          blockIndex,
+          "canvas-block",
+          canvasBlockRange.startLine,
+          canvasBlockRange.endLine,
+        ),
+      );
+      blockIndex += 1;
+      i = canvasBlockRange.endLine + 1;
       continue;
     }
 

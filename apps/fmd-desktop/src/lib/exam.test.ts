@@ -688,3 +688,58 @@ Answer: A`;
     expect(hasExamBlock).toBe(false);
   });
 });
+
+describe("exam parser Canvas isolation", () => {
+  it("ignores exam and answer markers inside Canvas blocks", () => {
+    const markdown = [
+      "#canvas",
+      "{",
+      "  \"nodes\": [",
+      "    {",
+      "      \"id\": \"node-1\",",
+      "      \"type\": \"text\",",
+      "      \"text\": \"#exam\\n1) Decoy\\nAnswer: Wrong\\n#endexam\",",
+      "      \"x\": 0,",
+      "      \"y\": 0,",
+      "      \"width\": 240,",
+      "      \"height\": 120",
+      "    }",
+      "  ],",
+      "  \"edges\": []",
+      "}",
+      "#canvasend",
+      "",
+      "#exam",
+      "1) Real task",
+      "Answer: Real answer",
+      "#endexam",
+    ].join("\n");
+
+    const { tasks, hasExamBlock } = parseExamTasks(markdown);
+
+    expect(hasExamBlock).toBe(true);
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.prompt).toBe("1) Real task");
+    expect(tasks[0]?.officialAnswer).toBe("Real answer");
+  });
+
+  it("does not split exam tasks on Canvas block separators", () => {
+    const markdown = [
+      "#exam",
+      "1) Task with canvas",
+      "#canvas",
+      "{",
+      "  \"nodes\": [{ \"id\": \"node-1\", \"type\": \"text\", \"text\": \"---\", \"x\": 0, \"y\": 0, \"width\": 100, \"height\": 80 }],",
+      "  \"edges\": []",
+      "}",
+      "#canvasend",
+      "Answer: A",
+      "#endexam",
+    ].join("\n");
+
+    const { tasks } = parseExamTasks(markdown);
+
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]?.officialAnswer).toBe("A");
+  });
+});

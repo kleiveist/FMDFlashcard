@@ -73,6 +73,7 @@ import {
   normalizeLegacyUnorderedListIndentation,
 } from "../features/preview/unorderedListNormalization";
 import { MarkdownHybridDatabaseBlock } from "../features/preview/database/database-block";
+import { CanvasEmbeddedBlock } from "../features/canvas/CanvasEmbeddedBlock";
 import {
   normalizeDateTimeValue,
   normalizeDateValue,
@@ -1863,6 +1864,7 @@ const LEGACY_MARKDOWN_PICKER_BLOCKED_BLOCK_KINDS = new Set<MarkdownBlock["kind"]
   "code-fence",
   "math-block",
   "database-block",
+  "canvas-block",
   "hr",
   "table",
 ]);
@@ -3512,6 +3514,14 @@ const serializeMarkdownNode = (
       ? `${databaseBlockRaw}\n`
       : `${databaseBlockRaw}\n\n`;
   }
+  const canvasBlockRaw = decodeDatabaseBlockRaw(
+    element.getAttribute("data-md-canvas-block-raw"),
+  );
+  if (canvasBlockRaw) {
+    return context.inContentEditable
+      ? `${canvasBlockRaw}\n`
+      : `${canvasBlockRaw}\n\n`;
+  }
   const hasClassName = (name: string) => element.classList.contains(name);
   const isInlineMarkerElement = hasClassName("md-inline-marker");
   const isHeadingMarkerElement = hasClassName("md-heading-marker");
@@ -4403,6 +4413,21 @@ export const buildEditableMarkdownHtml = (
     const nextIndex = parsedIndex ?? databaseBlockIndex;
     databaseBlockIndex = Math.max(databaseBlockIndex, nextIndex + 1);
     block.setAttribute("data-md-database-block-index", String(nextIndex));
+    block.setAttribute("data-md-inline-line", "true");
+    block.setAttribute("contenteditable", "false");
+  });
+  let canvasBlockIndex = 0;
+  clone.querySelectorAll<HTMLElement>(".preview-markdown-view-block-canvas-block").forEach((block) => {
+    const encodedRaw = block.getAttribute("data-md-canvas-block-raw");
+    if (!encodedRaw) {
+      return;
+    }
+    const parsedIndex = resolveDatabaseBlockIndex(
+      block.getAttribute("data-md-canvas-block-index"),
+    );
+    const nextIndex = parsedIndex ?? canvasBlockIndex;
+    canvasBlockIndex = Math.max(canvasBlockIndex, nextIndex + 1);
+    block.setAttribute("data-md-canvas-block-index", String(nextIndex));
     block.setAttribute("data-md-inline-line", "true");
     block.setAttribute("contenteditable", "false");
   });
@@ -8815,6 +8840,7 @@ export const PreviewPanel = ({
   const markdownEditorScrollRef = useRef<HTMLDivElement | null>(null);
   const markdownEditorRef = useRef<HTMLDivElement | null>(null);
   const markdownEditorDatabaseIslandsRef = useRef<Map<HTMLElement, Root>>(new Map());
+  const markdownEditorCanvasIslandsRef = useRef<Map<HTMLElement, Root>>(new Map());
   const legacyMarkdownLinkPickerRef = useRef<HTMLDivElement | null>(null);
   const legacyMarkdownLinkPickerSearchInputRef = useRef<HTMLInputElement | null>(null);
   const markdownTabStripRef = useRef<HTMLDivElement | null>(null);
@@ -9236,6 +9262,10 @@ export const PreviewPanel = ({
       root.unmount();
     });
     markdownEditorDatabaseIslandsRef.current.clear();
+    markdownEditorCanvasIslandsRef.current.forEach((root) => {
+      root.unmount();
+    });
+    markdownEditorCanvasIslandsRef.current.clear();
   }, []);
 
   const syncMarkdownDraftFromEditor = useCallback(() => {
@@ -10941,6 +10971,18 @@ export const PreviewPanel = ({
     });
     return indexById;
   }, [markdownViewBlocks]);
+  const markdownViewCanvasBlockIndexById = useMemo(() => {
+    const indexById = new Map<string, number>();
+    let canvasBlockIndex = 0;
+    markdownViewBlocks.forEach((block) => {
+      if (block.kind !== "canvas-block") {
+        return;
+      }
+      indexById.set(block.id, canvasBlockIndex);
+      canvasBlockIndex += 1;
+    });
+    return indexById;
+  }, [markdownViewBlocks]);
   const canEditMarkdownViewDatabaseBlock = Boolean(
     canEdit &&
       previewState === "idle" &&
@@ -11001,6 +11043,74 @@ export const PreviewPanel = ({
       );
       if (host) {
         host.setAttribute("data-md-database-block-raw", encodeDatabaseBlockRaw(nextRaw));
+      }
+      if (nextMarkdown !== editDraft) {
+        pendingLegacyUnorderedListAutocorrectRef.current = true;
+        onEditChange(nextMarkdown);
+      }
+      if (!onFrontmatterSave) {
+        return;
+      }
+      try {
+        await onFrontmatterSave(nextMarkdown);
+      } catch {
+        // Keep the merged draft in place so users can retry save manually.
+      }
+    },
+    [canEditMarkdownViewDatabaseBlock, editDraft, onEditChange, onFrontmatterSave],
+  );
+  const commitMarkdownViewCanvasBlock = useCallback(
+    async (canvasBlockIndex: number, nextRaw: string) => {
+      if (!canEditMarkdownViewDatabaseBlock || !onFrontmatterSave) {
+        return;
+      }
+      const sourceBlocks = parseMarkdownBlocks(preview);
+      const sourceCanvasBlocks = sourceBlocks.filter(
+        (block) => block.kind === "canvas-block",
+      );
+      const sourceBlock = sourceCanvasBlocks[canvasBlockIndex];
+      if (!sourceBlock) {
+        return;
+      }
+      const nextMarkdown = replaceMarkdownBlock(preview, sourceBlock, nextRaw);
+      if (nextMarkdown === preview) {
+        return;
+      }
+      await onFrontmatterSave(nextMarkdown);
+    },
+    [canEditMarkdownViewDatabaseBlock, onFrontmatterSave, preview],
+  );
+  const commitMarkdownEditorCanvasBlock = useCallback(
+    async (canvasBlockIndex: number, nextRaw: string) => {
+      if (!canEditMarkdownViewDatabaseBlock || canvasBlockIndex < 0) {
+        return;
+      }
+      const editor = markdownEditorRef.current;
+      if (!editor) {
+        return;
+      }
+      const sourceBody = normalizeMarkdownViewEditBodyForPersist(
+        serializeMarkdownFromHtml(editor),
+      );
+      const sourceBlocks = parseMarkdownBlocks(sourceBody);
+      const sourceCanvasBlocks = sourceBlocks.filter(
+        (block) => block.kind === "canvas-block",
+      );
+      const sourceBlock = sourceCanvasBlocks[canvasBlockIndex];
+      if (!sourceBlock) {
+        return;
+      }
+      const nextBody = normalizeMarkdownViewEditBodyForPersist(
+        replaceMarkdownBlock(sourceBody, sourceBlock, nextRaw),
+      );
+      const nextMarkdown = composeMarkdownWithBody(editDraft, nextBody, {
+        bodyMayContainFrontmatter: false,
+      });
+      const host = editor.querySelector<HTMLElement>(
+        `.preview-markdown-view-block-canvas-block[data-md-canvas-block-index="${canvasBlockIndex}"]`,
+      );
+      if (host) {
+        host.setAttribute("data-md-canvas-block-raw", encodeDatabaseBlockRaw(nextRaw));
       }
       if (nextMarkdown !== editDraft) {
         pendingLegacyUnorderedListAutocorrectRef.current = true;
@@ -11158,9 +11268,57 @@ export const PreviewPanel = ({
         />,
       );
     });
+
+    const canvasHosts = Array.from(
+      editor.querySelectorAll<HTMLElement>(
+        ".preview-markdown-view-block-canvas-block[data-md-canvas-block-raw]",
+      ),
+    );
+    const canvasHostSet = new Set(canvasHosts);
+
+    markdownEditorCanvasIslandsRef.current.forEach((root, host) => {
+      if (canvasHostSet.has(host) && editor.contains(host)) {
+        return;
+      }
+      root.unmount();
+      markdownEditorCanvasIslandsRef.current.delete(host);
+    });
+
+    let canvasFallbackIndex = 0;
+    canvasHosts.forEach((host) => {
+      const encodedRaw = host.getAttribute("data-md-canvas-block-raw");
+      if (!encodedRaw) {
+        return;
+      }
+      const resolvedIndex = resolveDatabaseBlockIndex(
+        host.getAttribute("data-md-canvas-block-index"),
+      ) ?? canvasFallbackIndex;
+      canvasFallbackIndex = Math.max(canvasFallbackIndex, resolvedIndex + 1);
+      host.setAttribute("data-md-canvas-block-index", String(resolvedIndex));
+      host.setAttribute("data-md-inline-line", "true");
+      host.setAttribute("contenteditable", "false");
+
+      let root = markdownEditorCanvasIslandsRef.current.get(host);
+      if (!root) {
+        root = createRoot(host);
+        markdownEditorCanvasIslandsRef.current.set(host, root);
+      }
+
+      root.render(
+        <CanvasEmbeddedBlock
+          raw={decodeDatabaseBlockRaw(encodedRaw)}
+          blockIndex={resolvedIndex}
+          allowEditing={canEditMarkdownViewDatabaseBlock}
+          onCommitRaw={(nextRaw) => {
+            void commitMarkdownEditorCanvasBlock(resolvedIndex, nextRaw);
+          }}
+        />,
+      );
+    });
   }, [
     canEditMarkdownViewDatabaseBlock,
     commitMarkdownEditorDatabaseBlock,
+    commitMarkdownEditorCanvasBlock,
     isCodeMode,
     isEditing,
     monitoringProfiles,
@@ -11234,6 +11392,32 @@ export const PreviewPanel = ({
           </div>
         );
       }
+      if (block.kind === "canvas-block") {
+        const canvasBlockIndex = markdownViewCanvasBlockIndexById.get(block.id) ?? -1;
+        return (
+          <div
+            key={keyPrefix}
+            className={wrapperClassName}
+            data-md-block-kind={block.kind}
+            data-md-canvas-block-raw={encodeDatabaseBlockRaw(block.raw)}
+            data-md-canvas-block-index={canvasBlockIndex >= 0 ? canvasBlockIndex : undefined}
+            data-md-card-group-id={cardGroupId ?? undefined}
+            data-md-card-group-role={cardGroupRole ?? undefined}
+          >
+            <CanvasEmbeddedBlock
+              raw={block.raw}
+              blockIndex={canvasBlockIndex}
+              allowEditing={canEditMarkdownViewDatabaseBlock}
+              onCommitRaw={(nextRaw) => {
+                if (canvasBlockIndex < 0) {
+                  return;
+                }
+                void commitMarkdownViewCanvasBlock(canvasBlockIndex, nextRaw);
+              }}
+            />
+          </div>
+        );
+      }
       if (block.kind === "blank") {
         return (
           <div
@@ -11265,7 +11449,9 @@ export const PreviewPanel = ({
     [
       canEditMarkdownViewDatabaseBlock,
       commitMarkdownViewDatabaseBlock,
+      commitMarkdownViewCanvasBlock,
       markdownViewDatabaseBlockIndexById,
+      markdownViewCanvasBlockIndexById,
       onNavigateWikilink,
       onOpenExamFromDatabaseRecord,
       renderHybridMarkdownPreview,
@@ -11273,6 +11459,7 @@ export const PreviewPanel = ({
       selectedFile?.relative_path,
       sourceRelativePath,
       vaultFiles,
+      vaultPath,
       monitoringProfiles,
     ],
   );
@@ -12474,6 +12661,8 @@ export const PreviewPanel = ({
                                 `group:${item.groupId}:${itemIndex}:${blockIndex}:${
                                   block.kind === "database-block"
                                     ? `${block.kind}:${block.startLine}`
+                                    : block.kind === "canvas-block"
+                                    ? `${block.kind}:${block.startLine}`
                                     : block.id
                                 }`,
                               )
@@ -12484,6 +12673,8 @@ export const PreviewPanel = ({
                             item.block,
                             `block:${itemIndex}:${
                               item.block.kind === "database-block"
+                                ? `${item.block.kind}:${item.block.startLine}`
+                                : item.block.kind === "canvas-block"
                                 ? `${item.block.kind}:${item.block.startLine}`
                                 : item.block.id
                             }`,

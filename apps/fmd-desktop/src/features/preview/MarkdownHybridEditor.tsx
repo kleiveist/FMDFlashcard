@@ -96,6 +96,7 @@ import {
   type MarkdownHybridTableSessionController,
 } from "./MarkdownHybridTableBlock";
 import { MarkdownHybridDatabaseBlock } from "./database/database-block";
+import { CanvasEmbeddedBlock } from "../canvas/CanvasEmbeddedBlock";
 import {
   createDefaultDatabaseBlockConfig,
   serializeDatabaseBlockConfig,
@@ -373,6 +374,7 @@ const MARKDOWN_BLOCK_KIND_SET = new Set<MarkdownBlock["kind"]>([
   "paragraph",
   "math-block",
   "database-block",
+  "canvas-block",
   "card-start",
   "card-end",
   "help-block",
@@ -1005,6 +1007,7 @@ const canOpenPageLinkPickerInBlockKind = (kind: MarkdownBlock["kind"]) =>
   kind !== "hr" &&
   kind !== "table" &&
   kind !== "database-block" &&
+  kind !== "canvas-block" &&
   kind !== "math-block";
 
 const findAdjacentWikilinkRange = (
@@ -2599,7 +2602,7 @@ type StableRenderKeyToken = {
 // Content-derived signatures remount active block editors on each keystroke and
 // can trigger blur/exit loops. Use a structural block identity instead.
 const getBlockSignature = (block: MarkdownBlock) =>
-  block.kind === "database-block"
+  block.kind === "database-block" || block.kind === "canvas-block"
     ? `${block.kind}:${block.startLine}`
     : block.id;
 
@@ -2766,6 +2769,8 @@ const resolveDragPreviewKindLabel = (kind: MarkdownBlock["kind"]) => {
       return "Math";
     case "database-block":
       return "Database";
+    case "canvas-block":
+      return "Canvas";
     case "card-start":
       return "Card Start";
     case "card-end":
@@ -2866,6 +2871,8 @@ const resolveVirtualizationFallbackHeight = (kind: MarkdownBlock["kind"]) => {
       return 120;
     case "database-block":
       return 360;
+    case "canvas-block":
+      return 560;
     case "card-start":
     case "card-end":
       return 60;
@@ -5258,7 +5265,11 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       }
 
       const liveBlock = blocks[activeBlockIndex] ?? null;
-      if (liveBlock?.kind === "table" || liveBlock?.kind === "database-block") {
+      if (
+        liveBlock?.kind === "table" ||
+        liveBlock?.kind === "database-block" ||
+        liveBlock?.kind === "canvas-block"
+      ) {
         if (liveBlock.kind === "table") {
           const session = activeTableSessionRef.current;
           if (session?.blockIndex === activeBlockIndex && !session.flush()) {
@@ -10076,6 +10087,21 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         continue;
       }
 
+      if (block.kind === "canvas-block") {
+        bodyByIndex.set(
+          index,
+          <CanvasEmbeddedBlock
+            raw={block.raw}
+            blockIndex={index}
+            allowEditing={!disabled}
+            onCommitRaw={(nextRaw) => {
+              handleTableBlockCommitRaw(index, nextRaw);
+            }}
+          />,
+        );
+        continue;
+      }
+
       if (block.kind === "math-block") {
         bodyByIndex.set(
           index,
@@ -10623,6 +10649,15 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                       handleTableBlockCommitRaw(index, nextRaw);
                     }}
                     allowCellEditing={!disabled}
+                  />
+                ) : block.kind === "canvas-block" ? (
+                  <CanvasEmbeddedBlock
+                    raw={block.raw}
+                    blockIndex={index}
+                    allowEditing={!disabled}
+                    onCommitRaw={(nextRaw) => {
+                      handleTableBlockCommitRaw(index, nextRaw);
+                    }}
                   />
                 ) : isActive ? (
                   block.kind === "math-block" ? (

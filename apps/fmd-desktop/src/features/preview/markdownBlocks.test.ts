@@ -754,3 +754,39 @@ describe("normalizeQuotePrefixedHashLines", () => {
     );
   });
 });
+
+describe("markdownBlocks Canvas blocks", () => {
+  it("parses directive Canvas blocks as standalone hybrid blocks", () => {
+    const markdown = [
+      "Before",
+      "#canvas",
+      "{",
+      "  \"nodes\": [],",
+      "  \"edges\": []",
+      "}",
+      "#canvasend",
+      "After",
+    ].join("\n");
+
+    const blocks = parseMarkdownBlocks(markdown);
+
+    expect(blocks.map((block) => block.kind)).toEqual([
+      "paragraph",
+      "canvas-block",
+      "paragraph",
+    ]);
+  });
+
+  it("parses fenced canvas code blocks as Canvas hybrid blocks", () => {
+    const markdown = [
+      "```canvas",
+      "{ \"nodes\": [], \"edges\": [] }",
+      "```",
+    ].join("\n");
+
+    const blocks = parseMarkdownBlocks(markdown);
+
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0]?.kind).toBe("canvas-block");
+  });
+});

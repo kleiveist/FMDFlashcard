@@ -1577,3 +1577,65 @@ Answer: Real answer
     expect(isDragAnswerMatch("token", "Token")).toBe(false);
   });
 });
+
+describe("parseFlashcards Canvas isolation", () => {
+  it("ignores flashcard-looking markers inside Canvas blocks", () => {
+    const markdown = [
+      "#canvas",
+      "{",
+      "  \"nodes\": [",
+      "    {",
+      "      \"id\": \"node-1\",",
+      "      \"type\": \"text\",",
+      "      \"text\": \"#card\\nQuestion?\\nAnswer: Wrong\\n#endcard\",",
+      "      \"x\": 0,",
+      "      \"y\": 0,",
+      "      \"width\": 240,",
+      "      \"height\": 120",
+      "    }",
+      "  ],",
+      "  \"edges\": []",
+      "}",
+      "#canvasend",
+      "",
+      "#card",
+      "Real question?",
+      "Answer: Real answer",
+      "#endcard",
+    ].join("\n");
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.front).toBe("Real question?");
+      expect(part.back).toBe("Real answer");
+    }
+  });
+
+  it("does not split card segments on separators inside Canvas blocks", () => {
+    const markdown = [
+      "#card",
+      "Question before canvas?",
+      "#canvas",
+      "{",
+      "  \"nodes\": [{ \"id\": \"node-1\", \"type\": \"text\", \"text\": \"---\", \"x\": 0, \"y\": 0, \"width\": 100, \"height\": 80 }],",
+      "  \"edges\": []",
+      "}",
+      "#canvasend",
+      "Answer: Stable",
+      "#endcard",
+    ].join("\n");
+
+    const cards = parseFlashcards(markdown);
+
+    expect(cards).toHaveLength(1);
+    const part = getSinglePart(cards[0]);
+    expect(part.kind).toBe("free-text");
+    if (part.kind === "free-text") {
+      expect(part.back).toBe("Stable");
+    }
+  });
+});

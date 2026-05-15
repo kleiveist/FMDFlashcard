@@ -35,6 +35,7 @@
 
 ## 📁 Syntax
 - 🗂️ [Overview](syntax/syntax.md)
+- 📝 [Canvas Syntax](syntax/canvas-syntax.md)
 - 📝 [Exam syntax](syntax/exam-syntax.md)
 - 📝 [Flashcard syntax reference](syntax/flashcard-syntax.md)
 - 📝 [Tables in Flashcards and Exams](syntax/table-rendering.md)

@@ -8,6 +8,7 @@ nav:
       - User docs index: usr/usr.md
       - Getting started: usr/getting-started.md
       - Flashcard syntax: usr/syntax/flashcard-syntax.md
+      - Canvas syntax: usr/syntax/canvas-syntax.md
       - Spaced repetition: usr/spaced-repetition.md
       - Settings: usr/settings.md
       - Troubleshooting: usr/troubleshooting.md
