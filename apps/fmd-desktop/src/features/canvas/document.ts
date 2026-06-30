@@ -1,6 +1,11 @@
 export type CanvasSide = "top" | "right" | "bottom" | "left";
 
 export type CanvasEdgeEnd = "none" | "arrow";
+export type CanvasNodeShape =
+  | "rounded-rectangle"
+  | "rectangle"
+  | "ellipse"
+  | "diamond";
 
 export type FmdCanvasNode = {
   id: string;
@@ -14,6 +19,8 @@ export type FmdCanvasNode = {
   color?: string;
   group?: string;
   file?: string;
+  url?: string;
+  shape?: CanvasNodeShape;
   [key: string]: unknown;
 };
 
@@ -46,6 +53,13 @@ export type CanvasParseResult =
 
 const VALID_SIDES = new Set<CanvasSide>(["top", "right", "bottom", "left"]);
 const VALID_EDGE_ENDS = new Set<CanvasEdgeEnd>(["none", "arrow"]);
+const VALID_NODE_TYPES = new Set(["text", "group", "file", "link"]);
+const VALID_NODE_SHAPES = new Set<CanvasNodeShape>([
+  "rounded-rectangle",
+  "rectangle",
+  "ellipse",
+  "diamond",
+]);
 
 const asObject = (
   value: unknown,
@@ -84,6 +98,13 @@ const normalizeNode = (
   if (!type) {
     return { ok: false, error: `nodes[${index}].type must be a non-empty string.` };
   }
+  const normalizedType = type.toLowerCase();
+  if (!VALID_NODE_TYPES.has(normalizedType)) {
+    return {
+      ok: false,
+      error: `nodes[${index}].type must be one of text/group/file/link.`,
+    };
+  }
 
   const x = asFiniteNumber(candidate.x);
   if (x === null) {
@@ -117,13 +138,24 @@ const normalizeNode = (
   if ("file" in candidate && typeof candidate.file !== "string") {
     return { ok: false, error: `nodes[${index}].file must be a string when provided.` };
   }
+  if ("url" in candidate && typeof candidate.url !== "string") {
+    return { ok: false, error: `nodes[${index}].url must be a string when provided.` };
+  }
+  const shapeRaw = asOptionalString(candidate.shape)?.trim();
+  if (shapeRaw && !VALID_NODE_SHAPES.has(shapeRaw as CanvasNodeShape)) {
+    return {
+      ok: false,
+      error:
+        `nodes[${index}].shape must be one of rounded-rectangle/rectangle/ellipse/diamond.`,
+    };
+  }
 
   return {
     ok: true,
     node: {
       ...candidate,
       id,
-      type,
+      type: normalizedType,
       x,
       y,
       width,
@@ -133,8 +165,28 @@ const normalizeNode = (
       label: asOptionalString(candidate.label),
       color: asOptionalString(candidate.color),
       file: asOptionalString(candidate.file),
+      url: asOptionalString(candidate.url),
+      shape: shapeRaw as CanvasNodeShape | undefined,
     },
   };
+};
+
+const validateNodeReferences = (document: CanvasDocument): string | null => {
+  const nodesById = new Map(document.nodes.map((node) => [node.id, node]));
+  for (let index = 0; index < document.nodes.length; index += 1) {
+    const node = document.nodes[index];
+    if (!node?.group) {
+      continue;
+    }
+    const groupNode = nodesById.get(node.group);
+    if (!groupNode) {
+      return `nodes[${index}].group references an unknown node id: ${node.group}`;
+    }
+    if (groupNode.type !== "group") {
+      return `nodes[${index}].group must reference a group node: ${node.group}`;
+    }
+  }
+  return null;
 };
 
 const normalizeEdge = (
@@ -250,20 +302,36 @@ export const parseCanvasDocument = (source: string): CanvasParseResult => {
   }
 
   const nodes: CanvasNode[] = [];
+  const nodeIds = new Set<string>();
   for (let index = 0; index < root.nodes.length; index += 1) {
     const normalized = normalizeNode(root.nodes[index], index);
     if (!normalized.ok) {
       return normalized;
     }
+    if (nodeIds.has(normalized.node.id)) {
+      return {
+        ok: false,
+        error: `nodes[${index}].id duplicates an existing node id: ${normalized.node.id}`,
+      };
+    }
+    nodeIds.add(normalized.node.id);
     nodes.push(normalized.node);
   }
 
   const edges: CanvasEdge[] = [];
+  const edgeIds = new Set<string>();
   for (let index = 0; index < root.edges.length; index += 1) {
     const normalized = normalizeEdge(root.edges[index], index);
     if (!normalized.ok) {
       return normalized;
     }
+    if (edgeIds.has(normalized.edge.id)) {
+      return {
+        ok: false,
+        error: `edges[${index}].id duplicates an existing edge id: ${normalized.edge.id}`,
+      };
+    }
+    edgeIds.add(normalized.edge.id);
     edges.push(normalized.edge);
   }
 
@@ -272,6 +340,10 @@ export const parseCanvasDocument = (source: string): CanvasParseResult => {
     nodes,
     edges,
   };
+  const nodeRefError = validateNodeReferences(document);
+  if (nodeRefError) {
+    return { ok: false, error: nodeRefError };
+  }
   const refError = validateEdgeNodeReferences(document);
   if (refError) {
     return { ok: false, error: refError };

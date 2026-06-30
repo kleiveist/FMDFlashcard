@@ -49,17 +49,29 @@ describe("ExamManualScoringPanel", () => {
 
     const headerMain = container.querySelector(".scoring-panel-header-main");
     expect(headerMain).not.toBeNull();
+    const headerMainActions = container.querySelector(
+      ".scoring-panel-header-main-actions",
+    );
+    expect(headerMainActions).not.toBeNull();
     const headerActions = container.querySelector(".scoring-panel-header-actions");
-    expect(headerActions).not.toBeNull();
 
-    const finishButton = headerActions?.querySelector<HTMLButtonElement>("button.primary.small");
-    const resetButton = headerActions?.querySelector<HTMLButtonElement>("button.ghost.small");
+    const finishButton =
+      headerMainActions?.querySelector<HTMLButtonElement>("button.primary.small");
+    const resetButton =
+      headerMainActions?.querySelector<HTMLButtonElement>("button.ghost.small");
     expect(finishButton?.textContent).toBe("Go to Correction");
     expect(finishButton?.classList.contains("primary")).toBe(true);
     expect(finishButton?.classList.contains("small")).toBe(true);
     expect(resetButton?.textContent).toBe("Reset");
     expect(resetButton?.classList.contains("ghost")).toBe(true);
     expect(resetButton?.classList.contains("small")).toBe(true);
+    expect(headerActions?.querySelector("button.primary.small")).toBeNull();
+    expect(headerActions?.querySelector("button.ghost.small")).toBeNull();
+    expect(
+      headerActions?.querySelector(
+        'button[aria-label="Copy QA answers for AI evaluation"]',
+      ),
+    ).toBeNull();
     expect(container.textContent).not.toContain("SCORING");
     expect(container.querySelector(".exam-task-header-actions")).toBeNull();
 
@@ -90,10 +102,10 @@ describe("ExamManualScoringPanel", () => {
     );
 
     const finishButton = container.querySelector<HTMLButtonElement>(
-      ".scoring-panel-header-main button.primary.small",
+      ".scoring-panel-header-main-actions button.primary.small",
     );
     const resetButton = container.querySelector<HTMLButtonElement>(
-      ".scoring-panel-header-main button.ghost.small",
+      ".scoring-panel-header-main-actions button.ghost.small",
     );
     expect(finishButton?.disabled).toBe(true);
     expect(resetButton?.disabled).toBe(false);
@@ -103,6 +115,59 @@ describe("ExamManualScoringPanel", () => {
     });
 
     expect(onReset).toHaveBeenCalledTimes(1);
+    cleanup();
+  });
+
+  it("renders the AI copy button before correction and exposes copy status", () => {
+    const onCopyAiEvaluation = vi.fn();
+    const { container, cleanup } = render(
+      createElement(ExamManualScoringPanel, {
+        task: null,
+        showAiCopyButton: true,
+        aiCopyStatus: "Copied QA answers for AI evaluation",
+        finishDisabled: false,
+        canGoBack: false,
+        canGoNext: false,
+        onCopyAiEvaluation,
+        onAwardedPointsChange: vi.fn(),
+        onBack: vi.fn(),
+        onNext: vi.fn(),
+        onFinishScoring: vi.fn(),
+        onReset: vi.fn(),
+      }),
+    );
+
+    const leftActions = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(
+        ".scoring-panel-header-main-actions button",
+      ),
+    );
+    expect(leftActions.map((button) => button.textContent)).toEqual([
+      "Go to Correction",
+      "Reset",
+    ]);
+
+    const headerActions = container.querySelector(".scoring-panel-header-actions");
+    const rightButtons = Array.from(
+      headerActions?.querySelectorAll<HTMLButtonElement>("button") ?? [],
+    );
+    expect(rightButtons.map((button) => button.textContent)).toEqual(["AI"]);
+
+    const aiButton = rightButtons[0];
+    expect(aiButton?.getAttribute("aria-label")).toBe(
+      "Copy QA answers for AI evaluation",
+    );
+    expect(aiButton?.getAttribute("title")).toBe(
+      "Copy QA answers for AI evaluation",
+    );
+
+    act(() => {
+      aiButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onCopyAiEvaluation).toHaveBeenCalledTimes(1);
+    const status = container.querySelector('[role="status"]');
+    expect(status?.textContent).toBe("Copied QA answers for AI evaluation");
     cleanup();
   });
 

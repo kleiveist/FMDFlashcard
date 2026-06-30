@@ -11,9 +11,12 @@ type ExamManualScoringPanelProps = {
   helpEnabled?: boolean;
   vaultPath?: string | null;
   vaultPngAssets?: VaultPngAsset[] | null;
+  showAiCopyButton?: boolean;
+  aiCopyStatus?: string;
   finishDisabled: boolean;
   canGoBack: boolean;
   canGoNext: boolean;
+  onCopyAiEvaluation?: () => void;
   onAwardedPointsChange: (taskIndex: number, value: string, maxPoints: number) => void;
   onBack: () => void;
   onNext: () => void;
@@ -75,9 +78,12 @@ export const ExamManualScoringPanel = ({
   helpEnabled = false,
   vaultPath,
   vaultPngAssets,
+  showAiCopyButton = false,
+  aiCopyStatus = "",
   finishDisabled,
   canGoBack,
   canGoNext,
+  onCopyAiEvaluation,
   onAwardedPointsChange,
   onBack,
   onNext,
@@ -87,7 +93,7 @@ export const ExamManualScoringPanel = ({
   <section className="panel scoring-panel">
     <header className="scoring-panel-header">
       <div className="scoring-panel-header-main">
-        <div className="scoring-panel-header-actions">
+        <div className="scoring-panel-header-main-actions">
           <button
             type="button"
             className="primary small"
@@ -104,6 +110,28 @@ export const ExamManualScoringPanel = ({
         <p className="muted">
           Only QA tasks or mixed tasks containing QA are listed here.
         </p>
+      </div>
+      <div className="scoring-panel-header-actions">
+        {showAiCopyButton ? (
+          <button
+            type="button"
+            className="ghost small scoring-ai-copy-button"
+            onClick={onCopyAiEvaluation}
+            aria-label="Copy QA answers for AI evaluation"
+            title="Copy QA answers for AI evaluation"
+          >
+            AI
+          </button>
+        ) : null}
+        {aiCopyStatus ? (
+          <span
+            className="muted scoring-ai-copy-status"
+            role="status"
+            aria-live="polite"
+          >
+            {aiCopyStatus}
+          </span>
+        ) : null}
       </div>
     </header>
 

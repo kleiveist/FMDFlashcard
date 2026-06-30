@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { act, createElement, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ExamSimulationPage } from "./ExamSimulationPage";
 import { useExamSimulationViewModel } from "./hooks/useExamSimulationViewModel";
 
 const capturedExamFilePanelProps: Array<Record<string, unknown>> = [];
 const capturedNoteModalProps: Array<Record<string, unknown>> = [];
+const capturedExamManualScoringPanelProps: Array<Record<string, unknown>> = [];
 const capturedExamResultsPanelProps: Array<Record<string, unknown>> = [];
 const capturedExamTaskRunnerProps: Array<Record<string, unknown>> = [];
 
@@ -50,7 +51,10 @@ vi.mock("./components/ExamIdlePanel", () => ({
 }));
 
 vi.mock("./components/ExamManualScoringPanel", () => ({
-  ExamManualScoringPanel: () => null,
+  ExamManualScoringPanel: (props: Record<string, unknown>) => {
+    capturedExamManualScoringPanelProps.push(props);
+    return null;
+  },
 }));
 
 vi.mock("./components/ExamResultsPanel", () => ({
@@ -200,6 +204,7 @@ const createViewModel = () => {
     getTaskAwardedPoints: () => null,
     getTaskAutoGradeDecision: () => undefined,
     activeManualTaskEntry: null,
+    manualTaskEntries: [],
     canGoManualScoringBack: false,
     canGoManualScoringNext: false,
     incorrectTaskResults: [],
@@ -274,8 +279,13 @@ describe("ExamSimulationPage popup sync", () => {
     vi.clearAllMocks();
     capturedExamFilePanelProps.length = 0;
     capturedNoteModalProps.length = 0;
+    capturedExamManualScoringPanelProps.length = 0;
     capturedExamResultsPanelProps.length = 0;
     capturedExamTaskRunnerProps.length = 0;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("passes shared mode/profile handlers to sidebar and popup, renders panel header KPIs, and splits run summary tasks", () => {
@@ -356,8 +366,10 @@ describe("ExamSimulationPage popup sync", () => {
     expect(examNoteModalProps?.headerActions).toBeUndefined();
     expect(container.textContent).toContain("3 selected");
     expect(container.textContent).toContain("15 tasks");
-    expect(container.textContent).toContain("72 max points");
-    expect(container.textContent).toContain("24 min duration");
+    expect(container.textContent).toContain("Max points in run");
+    expect(container.textContent).toContain("72");
+    expect(container.textContent).toContain("Duration");
+    expect(container.textContent).toContain("24 minutes");
     expect(container.textContent).toContain("Selection");
     expect(container.textContent).toContain("3 selected, 3 included");
     expect(container.textContent).not.toContain("3 selected, 3 included, 15 tasks total");
@@ -459,6 +471,85 @@ describe("ExamSimulationPage popup sync", () => {
     const { cleanup } = render(createElement(ExamSimulationPage));
 
     expect(capturedExamFilePanelProps).toHaveLength(0);
+    cleanup();
+  });
+
+  it("passes QA entries to the scoring AI copy action and reports copied status", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText } });
+    const manualTaskEntry = {
+      taskIndex: 0,
+      manualIndex: 0,
+      manualCount: 1,
+      maxPoints: 10,
+      partStates: [{ textResponse: "Answer from textarea state" }],
+      awardedPoints: null,
+      task: {
+        id: "task-1",
+        sessionTaskId: "session-task-1",
+        index: 0,
+        rawLines: ["Question"],
+        prompt: "Question",
+        gradingMode: "manual",
+        sourceRange: { startLine: 0, endLine: 0 },
+        cardWrapper: false,
+        cardLines: ["Question"],
+        warnings: [],
+        sourceTitle: "exam.md",
+        sourceExamPath: "/vault/exam.md",
+        originalTaskNumber: 1,
+        sourceTaskIndex: 0,
+        sessionIndex: 1,
+        card: {
+          kind: "composite",
+          parts: [
+            {
+              kind: "free-text",
+              front: "Explain the QA concept",
+              back: "Official answer",
+            },
+          ],
+          primaryType: "qa",
+          detectedTypes: ["qa"],
+        },
+      },
+    } as never;
+    const viewModel = {
+      ...createViewModel(),
+      stage: "scoring_manual",
+      activeManualTaskEntry: manualTaskEntry,
+      manualTaskEntries: [manualTaskEntry],
+    };
+    mockUseExamSimulationViewModel.mockReturnValue(viewModel as never);
+
+    const { cleanup } = render(createElement(ExamSimulationPage));
+    const scoringProps =
+      capturedExamManualScoringPanelProps[
+        capturedExamManualScoringPanelProps.length - 1
+      ];
+    expect(scoringProps?.showAiCopyButton).toBe(true);
+
+    const copyHandler = scoringProps?.onCopyAiEvaluation as
+      | (() => Promise<void>)
+      | undefined;
+    await act(async () => {
+      await copyHandler?.();
+    });
+
+    expect(writeText).toHaveBeenCalledTimes(1);
+    const copiedMarkdown = writeText.mock.calls[0]?.[0] as string;
+    expect(copiedMarkdown).toContain("# AI Evaluation Request");
+    expect(copiedMarkdown).toContain("Explain the QA concept");
+    expect(copiedMarkdown).toContain("Answer from textarea state");
+    expect(copiedMarkdown).toContain("__ / 10");
+
+    const latestScoringProps =
+      capturedExamManualScoringPanelProps[
+        capturedExamManualScoringPanelProps.length - 1
+      ];
+    expect(latestScoringProps?.aiCopyStatus).toBe(
+      "Copied QA answers for AI evaluation",
+    );
     cleanup();
   });
 
@@ -606,11 +697,12 @@ describe("ExamSimulationPage popup sync", () => {
 
       const { container, cleanup } = render(createElement(ExamSimulationPage));
 
-      expect(capturedExamTaskRunnerProps).toHaveLength(2);
-      const firstRunner = capturedExamTaskRunnerProps.find(
+      const visibleRunnerProps = capturedExamTaskRunnerProps.slice(-2);
+      expect(visibleRunnerProps).toHaveLength(2);
+      const firstRunner = visibleRunnerProps.find(
         (entry) => entry.taskIndex === 0,
       );
-      const secondRunner = capturedExamTaskRunnerProps.find(
+      const secondRunner = visibleRunnerProps.find(
         (entry) => entry.taskIndex === 1,
       );
       expect(firstRunner).toBeTruthy();
@@ -693,7 +785,7 @@ describe("ExamSimulationPage popup sync", () => {
 
       const { container, cleanup } = render(createElement(ExamSimulationPage));
 
-      const runnerTaskIndices = capturedExamTaskRunnerProps.map(
+      const runnerTaskIndices = capturedExamTaskRunnerProps.slice(-2).map(
         (entry) => entry.taskIndex,
       );
       expect(runnerTaskIndices).toEqual([2, 3]);

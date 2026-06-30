@@ -161,4 +161,10 @@ describe("desktop.css", () => {
       /:root\[data-design-mode="desktop"\][\s\S]*?layout-table/,
     );
   });
+
+  it("keeps the app sidebar hidden for exam focus mode in desktop design", () => {
+    expect(desktopCss).toMatch(
+      /@media\s*\(min-width:\s*1201px\)\s*\{[\s\S]*?:root\[data-design-mode="desktop"\]\s*body\.focus-mode\s*\.app-shell\[data-active-tab="exam"\]\s*#app-sidebar\.sidebar\s*\{\s*display:\s*none;[\s\S]*?\}/,
+    );
+  });
 });

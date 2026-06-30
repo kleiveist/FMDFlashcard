@@ -1999,6 +1999,347 @@ textarea.preview-editor {
   min-height: 320px;
 }
 
+.business-canvas-editor .preview-body,
+.business-canvas-editor .preview-content {
+  min-height: 0;
+}
+
+.business-canvas-workbench {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.business-canvas-viewport {
+  height: clamp(460px, 68vh, 760px);
+  min-height: clamp(460px, 68vh, 760px);
+  background-color: color-mix(in srgb, var(--panel) 92%, var(--surface-1));
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--line-soft) 58%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--line-soft) 58%, transparent) 1px, transparent 1px);
+  background-position:
+    var(--business-canvas-grid-x, 0) var(--business-canvas-grid-y, 0),
+    var(--business-canvas-grid-x, 0) var(--business-canvas-grid-y, 0);
+  background-size:
+    var(--business-canvas-grid-size, 20px) var(--business-canvas-grid-size, 20px),
+    var(--business-canvas-grid-size, 20px) var(--business-canvas-grid-size, 20px);
+}
+
+.business-canvas-content {
+  width: 2600px;
+  height: 1900px;
+  transform-origin: 0 0;
+}
+
+.business-canvas-toolbar-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+}
+
+.business-canvas-floating-toolbar {
+  position: absolute;
+  z-index: 1;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-xs);
+  max-width: min(760px, calc(100% - var(--ui-space-lg)));
+  padding: 5px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--ui-radius-menu);
+  background: color-mix(in srgb, var(--panel) 96%, transparent);
+  box-shadow: var(--ui-shadow-flyout);
+  overflow-x: auto;
+}
+
+.business-canvas-context-menu {
+  position: fixed;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+  padding: 5px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--ui-radius-menu);
+  background: var(--panel);
+  box-shadow: var(--ui-shadow-flyout);
+}
+
+.business-canvas-context-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: var(--ui-radius-control);
+  color: var(--ink);
+  background: transparent;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.business-canvas-context-menu button:hover:not(:disabled),
+.business-canvas-context-menu button:focus-visible {
+  background: color-mix(in srgb, var(--accent-soft) 30%, transparent);
+  outline: none;
+}
+
+.business-canvas-context-menu button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.business-canvas-edges {
+  z-index: 2;
+  pointer-events: none;
+}
+
+.business-canvas-edges .canvas-edge-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16px;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.business-canvas-edges .canvas-edge-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7px;
+  opacity: 0.82;
+}
+
+.business-canvas-edges .canvas-edge-line.is-undirected {
+  stroke-dasharray: 7 6;
+}
+
+.business-canvas-edges .canvas-edge-row.is-selected .canvas-edge-line {
+  color: var(--accent);
+  stroke-width: 2.5px;
+  opacity: 1;
+}
+
+.business-canvas-selection-rect {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--accent-border) 78%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent-soft) 16%, transparent);
+}
+
+.business-canvas-node {
+  --business-canvas-node-color: var(--accent);
+  --business-canvas-node-fill: color-mix(in srgb, var(--business-canvas-node-color) 11%, var(--panel));
+  --business-canvas-node-border: color-mix(in srgb, var(--business-canvas-node-color) 62%, var(--line-soft));
+  border-color: var(--business-canvas-node-border);
+  background: var(--business-canvas-node-fill);
+}
+
+.business-canvas-group-node {
+  z-index: 1;
+  background: color-mix(in srgb, var(--business-canvas-node-color) 8%, transparent);
+  border-style: dashed;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--business-canvas-node-color) 22%, transparent);
+}
+
+.business-canvas-card-node {
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.business-canvas-node.is-selected {
+  z-index: 6;
+  outline: 2px solid color-mix(in srgb, var(--accent-border) 82%, transparent);
+  outline-offset: 2px;
+}
+
+.business-canvas-node.is-dragging {
+  z-index: 7;
+  opacity: 0.92;
+}
+
+.business-canvas-node.is-editing {
+  z-index: 8;
+  outline-color: var(--accent);
+}
+
+.business-canvas-node.is-connection-source,
+.business-canvas-node.is-connection-target {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent-soft) 42%, transparent),
+    0 8px 20px color-mix(in srgb, var(--ink) 12%, transparent);
+}
+
+.business-canvas-color-1 {
+  --business-canvas-node-color: #64748b;
+}
+
+.business-canvas-color-2 {
+  --business-canvas-node-color: #0f766e;
+}
+
+.business-canvas-color-3 {
+  --business-canvas-node-color: #2563eb;
+}
+
+.business-canvas-color-4 {
+  --business-canvas-node-color: #7c3aed;
+}
+
+.business-canvas-color-5 {
+  --business-canvas-node-color: #c2410c;
+}
+
+.business-canvas-color-6 {
+  --business-canvas-node-color: #be123c;
+}
+
+.business-canvas-color-custom {
+  --business-canvas-node-color: var(--business-canvas-custom-color, #64748b);
+}
+
+.business-canvas-shape-rounded-rectangle {
+  border-radius: 12px;
+}
+
+.business-canvas-shape-rectangle {
+  border-radius: 2px;
+}
+
+.business-canvas-shape-ellipse {
+  border-radius: 999px;
+}
+
+.business-canvas-shape-diamond {
+  overflow: visible;
+  transform: rotate(45deg);
+}
+
+.business-canvas-shape-diamond .canvas-node-body,
+.business-canvas-shape-diamond .business-canvas-anchor,
+.business-canvas-shape-diamond .canvas-node-resize-handle {
+  transform: rotate(-45deg);
+}
+
+.business-canvas-card-node .canvas-node-body {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.canvas-node-text-content,
+.canvas-node-editable {
+  width: 100%;
+  max-height: 100%;
+  color: var(--ink);
+  line-height: 1.35;
+  text-align: center;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.canvas-node-editable {
+  outline: none;
+  user-select: text;
+}
+
+.canvas-group-name-input {
+  position: relative;
+  z-index: 2;
+  width: calc(100% - 16px);
+  margin: 8px;
+}
+
+.canvas-node-resize-handle {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  z-index: 10;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--business-canvas-node-border) 80%, var(--panel));
+  border-radius: 4px;
+  background:
+    linear-gradient(135deg, transparent 0 45%, currentColor 45% 55%, transparent 55%),
+    var(--panel);
+  color: var(--muted);
+  cursor: nwse-resize;
+}
+
+.business-canvas-anchor {
+  position: absolute;
+  z-index: 9;
+  width: 8px;
+  height: 8px;
+  border: 1px solid var(--accent-border);
+  border-radius: 999px;
+  background: var(--panel);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
+.business-canvas-anchor-top {
+  top: -5px;
+  left: calc(50% - 4px);
+}
+
+.business-canvas-anchor-right {
+  top: calc(50% - 4px);
+  right: -5px;
+}
+
+.business-canvas-anchor-bottom {
+  bottom: -5px;
+  left: calc(50% - 4px);
+}
+
+.business-canvas-anchor-left {
+  top: calc(50% - 4px);
+  left: -5px;
+}
+
+.business-canvas-card-node:hover .business-canvas-anchor,
+.business-canvas-card-node.is-selected .business-canvas-anchor,
+.business-canvas-card-node.is-connection-source .business-canvas-anchor,
+.business-canvas-card-node.is-connection-target .business-canvas-anchor {
+  opacity: 1;
+}
+
+.business-canvas-color-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.business-canvas-color-swatch {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  background: var(--business-canvas-node-color);
+  cursor: pointer;
+}
+
+.canvas-shape-select,
+.canvas-edge-direction-select,
+.canvas-edge-label-input {
+  min-height: 28px;
+  font-size: 0.74rem;
+}
+
 .canvas-empty-state {
   position: absolute;
   inset: 0;

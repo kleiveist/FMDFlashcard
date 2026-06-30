@@ -224,6 +224,10 @@
     align-items: stretch;
   }
 
+  :root[data-design-mode="desktop"] body.focus-mode .app-shell[data-active-tab="exam"] #app-sidebar.sidebar {
+    display: none;
+  }
+
   :root[data-design-mode="desktop"] .sidebar-head {
     display: contents;
   }

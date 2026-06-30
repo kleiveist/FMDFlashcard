@@ -44,6 +44,10 @@ import { ExamStatisticsPanel, type StatsTab } from "./components/ExamStatisticsP
 import { ExamTaskRunner } from "./components/ExamTaskRunner";
 import { ExamTimeBar } from "./components/ExamTimeBar";
 import { useExamSimulationViewModel } from "./hooks/useExamSimulationViewModel";
+import {
+  buildAiEvaluationMarkdown,
+  hasAiEvaluationQaTasks,
+} from "./aiEvaluationExport";
 import { ExamTogglesPanel } from "../../components/settings/ExamSettingsSection";
 import { useLayoutMode } from "../../lib/layoutMode";
 import { requestSettingsFocus } from "../../features/settings/settingsDeepLink";
@@ -62,6 +66,7 @@ const studyPrevCommand = getShortcutById("studyPrevious");
 const studyNextCommand = getShortcutById("studyNext");
 const studySubmitCommand = getShortcutById("studySubmit");
 const EXAM_ULTRAWIDE_MIN_WIDTH = 2400;
+const AI_COPY_STATUS_TIMEOUT_MS = 2500;
 const STANDARD_RUN_PROFILE_LABEL = "Standard (no profile)";
 type OpenExamFileTarget = {
   path: string;
@@ -87,6 +92,38 @@ type ExamSimulationPageProps = {
     file: OpenExamFileTarget,
     options?: OpenExamFileOptions,
   ) => void;
+};
+
+const copyTextToClipboard = async (value: string) => {
+  const normalized = value.replace(/\r\n?/g, "\n");
+  if (
+    typeof navigator !== "undefined" &&
+    navigator.clipboard &&
+    typeof navigator.clipboard.writeText === "function"
+  ) {
+    await navigator.clipboard.writeText(normalized);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = normalized;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  textarea.style.pointerEvents = "none";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  try {
+    const exec = (document as Document & {
+      execCommand?: (command: string) => boolean;
+    }).execCommand;
+    if (typeof exec === "function") {
+      exec.call(document, "copy");
+    }
+  } finally {
+    textarea.remove();
+  }
 };
 
 export const ExamSimulationPage = ({
@@ -127,6 +164,7 @@ export const ExamSimulationPage = ({
     getTaskAwardedPoints,
     getTaskAutoGradeDecision,
     activeManualTaskEntry,
+    manualTaskEntries = [],
     canGoManualScoringBack,
     canGoManualScoringNext,
     incorrectTaskResults,
@@ -198,9 +236,11 @@ export const ExamSimulationPage = ({
   const [overviewStatsTab, setOverviewStatsTab] = useState<StatsTab>("last");
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isExamTogglesOpen, setIsExamTogglesOpen] = useState(false);
+  const [aiCopyStatus, setAiCopyStatus] = useState("");
   const consumedLaunchPresetIdRef = useRef<number | null>(null);
   const autoViewModeRef = useRef(false);
   const examLayoutRef = useRef<HTMLDivElement | null>(null);
+  const aiCopyStatusTimeoutRef = useRef<number | null>(null);
   const [isUltrawideExamLayout, setIsUltrawideExamLayout] = useState(false);
   const isTableView = useLayoutMode() === "table";
   const openExamToggles = useCallback(() => {
@@ -280,6 +320,33 @@ export const ExamSimulationPage = ({
   ]
     .filter(Boolean)
     .join(" ");
+  const showAiCopyButton = useMemo(
+    () => hasAiEvaluationQaTasks(manualTaskEntries),
+    [manualTaskEntries],
+  );
+  const showAiCopyStatus = useCallback((message: string) => {
+    setAiCopyStatus(message);
+    if (aiCopyStatusTimeoutRef.current !== null) {
+      window.clearTimeout(aiCopyStatusTimeoutRef.current);
+    }
+    aiCopyStatusTimeoutRef.current = window.setTimeout(() => {
+      setAiCopyStatus("");
+      aiCopyStatusTimeoutRef.current = null;
+    }, AI_COPY_STATUS_TIMEOUT_MS);
+  }, []);
+  const handleCopyAiEvaluation = useCallback(async () => {
+    const markdown = buildAiEvaluationMarkdown(manualTaskEntries);
+    if (!markdown) {
+      return;
+    }
+    try {
+      await copyTextToClipboard(markdown);
+      showAiCopyStatus("Copied QA answers for AI evaluation");
+    } catch (error) {
+      console.error("Failed to copy QA answers for AI evaluation", error);
+      showAiCopyStatus("Could not copy QA answers for AI evaluation");
+    }
+  }, [manualTaskEntries, showAiCopyStatus]);
   const handleRunSummaryInfoKeyDown = useCallback(
     (event: ReactKeyboardEvent<HTMLDivElement>) => {
       if (!runSummaryNoteTriggerEnabled || !onRunSummaryNoteAction) {
@@ -298,6 +365,25 @@ export const ExamSimulationPage = ({
     }
     onCloseExamFilesNote();
   }, [isExamFilesNoteOpen, onCloseExamFilesNote, stage]);
+
+  useEffect(() => {
+    return () => {
+      if (aiCopyStatusTimeoutRef.current !== null) {
+        window.clearTimeout(aiCopyStatusTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (stage === "scoring_manual") {
+      return;
+    }
+    setAiCopyStatus("");
+    if (aiCopyStatusTimeoutRef.current !== null) {
+      window.clearTimeout(aiCopyStatusTimeoutRef.current);
+      aiCopyStatusTimeoutRef.current = null;
+    }
+  }, [stage]);
 
   const examFilePanelProps = {
     files: examFiles,
@@ -882,9 +968,12 @@ export const ExamSimulationPage = ({
               helpEnabled={settings.examHelpEnabled}
               vaultPath={vault.vaultPath}
               vaultPngAssets={vault.pngAssets}
+              showAiCopyButton={showAiCopyButton}
+              aiCopyStatus={aiCopyStatus}
               finishDisabled={false}
               canGoBack={canGoManualScoringBack}
               canGoNext={canGoManualScoringNext}
+              onCopyAiEvaluation={handleCopyAiEvaluation}
               onAwardedPointsChange={handleAwardedPointsChange}
               onBack={handleManualScoringBack}
               onNext={handleManualScoringNext}
