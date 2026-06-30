@@ -777,6 +777,27 @@ describe("markdownBlocks Canvas blocks", () => {
     ]);
   });
 
+  it("parses directive Canvas blocks with #endcanvas aliases", () => {
+    const markdown = [
+      "Before",
+      "#canvas",
+      "{",
+      "  \"nodes\": [],",
+      "  \"edges\": []",
+      "}",
+      "#endcanvas",
+      "After",
+    ].join("\n");
+
+    const blocks = parseMarkdownBlocks(markdown);
+
+    expect(blocks.map((block) => block.kind)).toEqual([
+      "paragraph",
+      "canvas-block",
+      "paragraph",
+    ]);
+  });
+
   it("parses fenced canvas code blocks as Canvas hybrid blocks", () => {
     const markdown = [
       "```canvas",

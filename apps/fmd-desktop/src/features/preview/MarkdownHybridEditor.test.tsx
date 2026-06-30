@@ -2208,6 +2208,7 @@ describe("MarkdownHybridEditor", () => {
       );
       expect(categoryLabels).toEqual([
         "Standard Blocks",
+        "Canvas",
         "Structure",
         "Links",
         "Database",
@@ -2217,6 +2218,7 @@ describe("MarkdownHybridEditor", () => {
       expect(categoryButtons.some((button) => button.textContent?.trim() === "Text & Headings")).toBe(false);
       expect(categoryButtons.some((button) => button.textContent?.trim() === "Lists")).toBe(false);
       expect(categoryButtons.some((button) => button.textContent?.trim() === "Standard Blocks")).toBe(true);
+      expect(categoryButtons.some((button) => button.textContent?.trim() === "Canvas")).toBe(true);
 
       const advancedButton = findButtonByExactText(container, "Advanced");
       expect(advancedButton).toBeTruthy();
@@ -2243,6 +2245,50 @@ describe("MarkdownHybridEditor", () => {
       expect(examWrapperButtons).toHaveLength(0);
       expect(examBlueprintButtons).toHaveLength(0);
       expect(findMenuItemButtonByLabel(container, "Flashcard Block")).toBeNull();
+
+      cleanup();
+    });
+  });
+
+  it("inserts a Canvas block from the top-level insert menu and renders it as a Canvas field", () => {
+    withImmediateRaf(() => {
+      const Harness = () => {
+        const [markdown, setMarkdown] = useState("");
+        return (
+          <div>
+            <div data-testid="markdown-value">{markdown}</div>
+            <MarkdownHybridEditor
+              historyKey="insert-menu-canvas-block"
+              markdown={markdown}
+              mode="edit"
+              onChange={setMarkdown}
+              renderPreview={(value) => <div>{value}</div>}
+            />
+          </div>
+        );
+      };
+
+      const { container, cleanup } = render(createElement(Harness));
+      dispatchClick(container.querySelector(".markdown-hybrid-block-insert-button"));
+
+      const canvasButton = findMenuItemButtonByLabel(container, "Canvas");
+      expect(canvasButton).toBeTruthy();
+      expect(
+        canvasButton?.querySelector(
+          ".markdown-hybrid-insert-menu-item-icon[data-md-insert-menu-icon='canvas']",
+        ),
+      ).toBeTruthy();
+
+      dispatchClick(canvasButton);
+
+      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toContain("#canvas");
+      expect(markdownValue).toContain("\"id\": \"node-1\"");
+      expect(markdownValue).toContain("\"text\": \"Neue Karte\"");
+      expect(markdownValue).toContain("#canvasend");
+      expect(container.querySelector(".canvas-embedded-block")).not.toBeNull();
+      expect(container.querySelector(".canvas-content-node")).not.toBeNull();
+      expect(container.textContent).toContain("Neue Karte");
 
       cleanup();
     });

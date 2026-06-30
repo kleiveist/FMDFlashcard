@@ -23,7 +23,7 @@ export const CANVAS_BLOCK_START = "#canvas";
 export const CANVAS_BLOCK_END = "#canvasend";
 
 const canvasDirectiveStartLinePattern = /^\s*#canvas\s*$/i;
-const canvasDirectiveEndLinePattern = /^\s*#canvasend\s*$/i;
+const canvasDirectiveEndLinePattern = /^\s*#(?:canvasend|endcanvas)\s*$/i;
 const codeFenceStartLinePattern = /^\s*(`{3,}|~{3,})(.*)$/;
 
 const normalizeNewlines = (value: string) => value.replace(/\r\n?/g, "\n");

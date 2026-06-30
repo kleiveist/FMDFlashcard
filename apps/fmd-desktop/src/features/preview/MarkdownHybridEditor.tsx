@@ -97,6 +97,7 @@ import {
 } from "./MarkdownHybridTableBlock";
 import { MarkdownHybridDatabaseBlock } from "./database/database-block";
 import { CanvasEmbeddedBlock } from "../canvas/CanvasEmbeddedBlock";
+import { serializeMarkdownCanvasBlock } from "../canvas/markdownBlockSyntax";
 import {
   createDefaultDatabaseBlockConfig,
   serializeDatabaseBlockConfig,
@@ -320,6 +321,7 @@ type InsertMenuIconId =
   | "toggle-list"
   | "code-block"
   | "math-block"
+  | "canvas"
   | "divider"
   | "quote"
   | "nested-quote"
@@ -417,6 +419,23 @@ const buildDatabaseInsertTemplate = (viewType: "table" | "kanban" | "gantt" | "p
   return serializeDatabaseBlockConfig(config);
 };
 
+const CANVAS_INSERT_TEMPLATE = serializeMarkdownCanvasBlock({
+  nodes: [
+    {
+      id: "node-1",
+      type: "text",
+      text: "Neue Karte",
+      x: 120,
+      y: 120,
+      width: 260,
+      height: 140,
+      color: "1",
+      shape: "rounded-rectangle",
+    },
+  ],
+  edges: [],
+});
+
 const INSERT_MENU_CATEGORIES: InsertMenuCategory[] = [
   { id: "standard-blocks", label: "Standard Blocks", icon: "blocks" },
   { id: "structure", label: "Structure", icon: "table" },
@@ -424,6 +443,13 @@ const INSERT_MENU_CATEGORIES: InsertMenuCategory[] = [
   { id: "database", label: "Database", icon: "database" },
   { id: "advanced", label: "Advanced", icon: "sparkles" },
 ];
+
+const INSERT_MENU_CANVAS_ITEM: InsertMenuItem = {
+  id: "canvas-block",
+  label: "Canvas",
+  template: CANVAS_INSERT_TEMPLATE,
+  icon: "canvas",
+};
 
 const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem[]> = {
   "standard-blocks": [
@@ -753,6 +779,15 @@ const InsertMenuIconGraphic = ({ icon }: { icon: InsertMenuIconId }) => {
           <path d="M5 8h5l2 8 2.2-6 2.1 6L19 8h2" />
           <path d="M8 5.5h8" />
           <path d="M8 18.5h8" />
+        </svg>
+      );
+    case "canvas":
+      return (
+        <svg {...svgProps}>
+          <rect x="4.5" y="5" width="15" height="13.5" rx="1.8" />
+          <rect x="7" y="8" width="5.3" height="3.5" rx="0.9" />
+          <rect x="13.3" y="13" width="4" height="2.8" rx="0.8" />
+          <path d="M12.4 9.8h2.4v3" />
         </svg>
       );
     case "divider":
@@ -9493,20 +9528,43 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
               className="markdown-hybrid-insert-image-picker"
             />
           ) : insertMenuState?.phase === "categories"
-            ? INSERT_MENU_CATEGORIES.map((category) => (
-              <button
-                key={category.id}
-                type="button"
-                className="markdown-hybrid-insert-menu-item markdown-hybrid-insert-menu-item-row"
-                onClick={handleSelectInsertMenuCategory(category.id)}
-                role="menuitem"
-              >
-                {renderInsertMenuRowContent({
-                  label: category.label,
-                  icon: category.icon,
-                })}
-              </button>
-            ))
+            ? INSERT_MENU_CATEGORIES.flatMap((category) => {
+              const categoryButton = (
+                <button
+                  key={category.id}
+                  type="button"
+                  className="markdown-hybrid-insert-menu-item markdown-hybrid-insert-menu-item-row"
+                  onClick={handleSelectInsertMenuCategory(category.id)}
+                  role="menuitem"
+                >
+                  {renderInsertMenuRowContent({
+                    label: category.label,
+                    icon: category.icon,
+                  })}
+                </button>
+              );
+
+              if (category.id !== "standard-blocks") {
+                return [categoryButton];
+              }
+
+              const canvasButton = (
+                <button
+                  key={INSERT_MENU_CANVAS_ITEM.id}
+                  type="button"
+                  className="markdown-hybrid-insert-menu-item markdown-hybrid-insert-menu-item-row"
+                  onClick={handleInsertMenuItemSelect(INSERT_MENU_CANVAS_ITEM)}
+                  role="menuitem"
+                >
+                  {renderInsertMenuRowContent({
+                    label: INSERT_MENU_CANVAS_ITEM.label,
+                    icon: INSERT_MENU_CANVAS_ITEM.icon,
+                  })}
+                </button>
+              );
+
+              return [categoryButton, canvasButton];
+            })
             : insertMenuState?.phase === "advanced-variant" && activeAdvancedInsertTemplate
             ? (
               <>
