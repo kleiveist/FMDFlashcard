@@ -35,6 +35,7 @@ import { useFlashcardAreaToggle } from "../../features/flashcards/useFlashcardAr
 import {
   areClozeBlanksComplete,
   areTrueFalseItemsComplete,
+  evaluateFlashcardResult,
   isFlashcardPartComplete,
 } from "../../features/flashcards/logic";
 import { requestSettingsFocus } from "../../features/settings/settingsDeepLink";
@@ -175,6 +176,15 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
       return null;
     }
     const cardIndex = currentEntry.cardIndex;
+    const submissionResult = evaluateFlashcardResult(
+      currentEntry.card,
+      cardIndex,
+      fastFlashcards.flashcardSelections,
+      fastFlashcards.flashcardTrueFalseSelections,
+      fastFlashcards.flashcardClozeResponses,
+      fastFlashcards.flashcardSelfGrades,
+      fastFlashcards.flashcardCompositeStates,
+    );
     const toggleState = fastAreaToggle.getToggleState(cardIndex);
     return (
       <FlashcardAreaMenuTrigger
@@ -183,10 +193,20 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
         disabledReason={toggleState.disabledReason}
         error={toggleState.error}
         notice={toggleState.notice}
+        locked={submissionResult === "incorrect"}
         onToggle={(nextEnabled) => fastAreaToggle.toggleCardArea(cardIndex, nextEnabled)}
       />
     );
-  }, [currentEntry, fastAreaToggle, isCurrentSubmitted]);
+  }, [
+    currentEntry,
+    fastAreaToggle,
+    fastFlashcards.flashcardClozeResponses,
+    fastFlashcards.flashcardCompositeStates,
+    fastFlashcards.flashcardSelections,
+    fastFlashcards.flashcardSelfGrades,
+    fastFlashcards.flashcardTrueFalseSelections,
+    isCurrentSubmitted,
+  ]);
 
   useEffect(() => {
     document.body.classList.toggle("focus-mode", isViewMode);

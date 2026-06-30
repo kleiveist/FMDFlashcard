@@ -44,6 +44,7 @@ import { useAppState } from "../components/AppStateProvider";
 import {
   areClozeBlanksComplete,
   areTrueFalseItemsComplete,
+  evaluateFlashcardResult,
   isFlashcardPartComplete,
 } from "../features/flashcards/logic";
 import { useFlashcardAreaToggle } from "../features/flashcards/useFlashcardAreaToggle";
@@ -161,6 +162,17 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
     const entryHelpEnabled = helpEnabled;
     const entryHelpText = card.helpText;
     const keyPrefix = options.keyPrefix ?? "flashcard";
+    const submissionResult = submitted
+      ? evaluateFlashcardResult(
+          card,
+          cardIndex,
+          flashcards.flashcardSelections,
+          flashcards.flashcardTrueFalseSelections,
+          flashcards.flashcardClozeResponses,
+          flashcards.flashcardSelfGrades,
+          flashcards.flashcardCompositeStates,
+        )
+      : "pending";
     const areaToggleState = submitted ? flashcardAreaToggle.getToggleState(cardIndex) : null;
     const resultHeaderAction = areaToggleState ? (
       <FlashcardAreaMenuTrigger
@@ -169,6 +181,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
         disabledReason={areaToggleState.disabledReason}
         error={areaToggleState.error}
         notice={areaToggleState.notice}
+        locked={submissionResult === "incorrect"}
         onToggle={(nextEnabled) => flashcardAreaToggle.toggleCardArea(cardIndex, nextEnabled)}
       />
     ) : null;

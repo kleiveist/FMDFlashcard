@@ -2,9 +2,7 @@
  * @file apps/fmd-desktop/src/components/flashcards/FlashcardAreaMenu.tsx
  */
 
-import { useId, useRef, useState } from "react";
-import { AnchoredPopup } from "../AnchoredPopup";
-import { ChevronDownIcon } from "../icons";
+import { useId } from "react";
 
 type FlashcardAreaMenuTriggerProps = {
   enabled: boolean;
@@ -12,16 +10,8 @@ type FlashcardAreaMenuTriggerProps = {
   disabledReason?: string;
   error?: string;
   notice?: string;
-  onToggle: (nextEnabled: boolean) => void;
-};
-
-type FlashcardAreaDropdownProps = {
-  id: string;
-  enabled: boolean;
-  pending: boolean;
-  disabledReason?: string;
-  error?: string;
-  notice?: string;
+  locked?: boolean;
+  lockedReason?: string;
   onToggle: (nextEnabled: boolean) => void;
 };
 
@@ -34,6 +24,8 @@ type FlashcardAreaToggleRowProps = {
 };
 
 const AREA_LABEL = "Flashcard";
+const DEFAULT_LOCKED_REASON =
+  "Diese Karte bleibt im Kartenpool, da sie falsch beantwortet wurde.";
 
 export const FlashcardAreaToggleRow = ({
   label,
@@ -66,24 +58,26 @@ export const FlashcardAreaToggleRow = ({
   );
 };
 
-export const FlashcardAreaDropdown = ({
-  id,
+export const FlashcardAreaMenuTrigger = ({
   enabled,
   pending,
   disabledReason,
   error,
   notice,
+  locked = false,
+  lockedReason,
   onToggle,
-}: FlashcardAreaDropdownProps) => {
-  const isDisabled = Boolean(disabledReason);
+}: FlashcardAreaMenuTriggerProps) => {
+  const isLocked = locked || Boolean(lockedReason);
+  const lockNotice = isLocked ? lockedReason || DEFAULT_LOCKED_REASON : "";
+  const isDisabled = Boolean(disabledReason) || isLocked;
 
   return (
-    <section id={id} className="flashcard-area-dropdown" aria-label="Flashcard area">
-      <div className="flashcard-area-dropdown-title-row">
-        <span className="label">Flashcard</span>
-        {pending ? <span className="muted small">Saving...</span> : null}
-      </div>
-      <div className="flashcard-area-dropdown-list">
+    <section
+      className={`flashcard-area-switch-panel ${isLocked ? "is-locked" : ""}`}
+      aria-label="Flashcard pool"
+    >
+      <div className="flashcard-area-switch-row">
         <FlashcardAreaToggleRow
           label={AREA_LABEL}
           enabled={enabled}
@@ -91,69 +85,19 @@ export const FlashcardAreaDropdown = ({
           pending={pending}
           onToggle={onToggle}
         />
+        {pending ? <span className="muted small">Saving...</span> : null}
       </div>
-      <span className="muted small flashcard-area-dropdown-note">
-        Applies to Flashcard, Fast Flashcard, and Repetition for the full task.
-      </span>
-      {disabledReason ? (
-        <span className="muted small flashcard-area-dropdown-note">{disabledReason}</span>
+      {lockNotice ? (
+        <div className="flashcard-area-switch-notice" role="status">
+          {lockNotice}
+        </div>
+      ) : disabledReason ? (
+        <span className="muted small flashcard-area-switch-note">{disabledReason}</span>
       ) : null}
       {error ? <div className="error">{error}</div> : null}
       {!error && notice ? (
-        <span className="muted small flashcard-area-dropdown-note">{notice}</span>
+        <span className="muted small flashcard-area-switch-note">{notice}</span>
       ) : null}
     </section>
-  );
-};
-
-export const FlashcardAreaMenuTrigger = ({
-  enabled,
-  pending,
-  disabledReason,
-  error,
-  notice,
-  onToggle,
-}: FlashcardAreaMenuTriggerProps) => {
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
-  const popupId = useId();
-
-  return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        className="ghost small flashcard-area-menu-trigger"
-        aria-label="Toggle flashcard area"
-        aria-haspopup="dialog"
-        aria-expanded={isOpen}
-        aria-controls={popupId}
-        onClick={() => setIsOpen((prev) => !prev)}
-      >
-        Flashcard
-        <span aria-hidden="true" className="flashcard-area-menu-trigger-icon">
-          <ChevronDownIcon />
-        </span>
-      </button>
-      <AnchoredPopup
-        isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
-        anchorRef={triggerRef}
-        closeLayerId={`flashcard-area-menu-${popupId}`}
-        ariaLabel="Flashcard menu"
-        placement="bottom-end"
-        className="flashcard-area-dropdown-popup"
-      >
-        <FlashcardAreaDropdown
-          id={popupId}
-          enabled={enabled}
-          pending={pending}
-          disabledReason={disabledReason}
-          error={error}
-          notice={notice}
-          onToggle={onToggle}
-        />
-      </AnchoredPopup>
-    </>
   );
 };

@@ -42,6 +42,7 @@ import { useAppState } from "../../components/AppStateProvider";
 import type { StudySectionKey } from "../../lib/studySections";
 import { requestSettingsFocus } from "../../features/settings/settingsDeepLink";
 import { useFlashcardAreaToggle } from "../../features/flashcards/useFlashcardAreaToggle";
+import { evaluateFlashcardResult } from "../../features/flashcards/logic";
 
 type SpacedRepetitionPageProps = {
   onSectionSelect?: (section: StudySectionKey) => void;
@@ -200,6 +201,18 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
       if (!submitted) {
         return null;
       }
+      const card = spacedRepetition.spacedRepetitionFlashcards[cardIndex];
+      const submissionResult = card
+        ? evaluateFlashcardResult(
+            card,
+            cardIndex,
+            spacedRepetition.spacedRepetitionSelections,
+            spacedRepetition.spacedRepetitionTrueFalseSelections,
+            spacedRepetition.spacedRepetitionClozeResponses,
+            spacedRepetition.spacedRepetitionSelfGrades,
+            spacedRepetition.spacedRepetitionCompositeStates,
+          )
+        : "pending";
       const toggleState = srAreaToggle.getToggleState(cardIndex);
       return (
         <FlashcardAreaMenuTrigger
@@ -208,11 +221,20 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
           disabledReason={toggleState.disabledReason}
           error={toggleState.error}
           notice={toggleState.notice}
+          locked={submissionResult === "incorrect"}
           onToggle={(nextEnabled) => srAreaToggle.toggleCardArea(cardIndex, nextEnabled)}
         />
       );
     },
-    [srAreaToggle],
+    [
+      spacedRepetition.spacedRepetitionClozeResponses,
+      spacedRepetition.spacedRepetitionCompositeStates,
+      spacedRepetition.spacedRepetitionFlashcards,
+      spacedRepetition.spacedRepetitionSelections,
+      spacedRepetition.spacedRepetitionSelfGrades,
+      spacedRepetition.spacedRepetitionTrueFalseSelections,
+      srAreaToggle,
+    ],
   );
 
   useEffect(() => {
