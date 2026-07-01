@@ -23,6 +23,35 @@ import {
   type CanvasNodeShape,
   type CanvasSide,
 } from "./document";
+import {
+  CanvasAlignLeftIcon,
+  CanvasAlignTopIcon,
+  CanvasCodeIcon,
+  CanvasColorPalette,
+  CanvasConnectIcon,
+  CanvasCopyIcon,
+  CanvasDeleteConfirmDialog,
+  CanvasDuplicateIcon,
+  CanvasEdgeDirectionPicker,
+  CanvasEditIcon,
+  CanvasFitIcon,
+  CanvasFloatingToolbar,
+  CanvasGroupIcon,
+  CanvasIconButton,
+  CanvasPasteIcon,
+  CanvasPlusIcon,
+  CanvasShapePicker,
+  CanvasSnapIcon,
+  CanvasTrashIcon,
+  CanvasViewIcon,
+  CanvasZoomInIcon,
+  CanvasZoomOutIcon,
+} from "./CanvasToolbar";
+import {
+  buildEmptyCanvasCustomColorSlots,
+  normalizeCanvasCustomColorSlots,
+  type CanvasCustomColorSlot,
+} from "./canvasSettings";
 
 export type CanvasEditorMode = "view" | "edit" | "code";
 type CanvasMode = CanvasEditorMode;
@@ -50,6 +79,8 @@ type CanvasEditorProps = {
   toolbarActions?: ReactNode;
   className?: string;
   bodyClassName?: string;
+  canvasCustomColors?: CanvasCustomColorSlot[];
+  onCanvasCustomColorsChange?: (nextSlots: CanvasCustomColorSlot[]) => void;
   onPersistSource: (nextSource: string) => Promise<PersistCanvasResult>;
 };
 
@@ -108,6 +139,22 @@ type EdgeRenderRow = {
   toPoint: CanvasPoint;
 };
 
+type ConnectionDragState = {
+  fromNodeId: string;
+  fromSide: CanvasSide;
+  currentPoint: CanvasPoint;
+};
+
+type ConnectionDropPromptState = {
+  fromNodeId: string;
+  fromSide: CanvasSide;
+  point: CanvasPoint;
+};
+
+type DeleteConfirmState = {
+  nodeIds: string[];
+} | null;
+
 const INTERNAL_WIDTH = 2600;
 const INTERNAL_HEIGHT = 1900;
 const INTERNAL_ORIGIN = 1200;
@@ -127,6 +174,8 @@ const MIN_NODE_WIDTH = 100;
 const MIN_NODE_HEIGHT = 60;
 const GROUP_PADDING = 32;
 const PASTE_OFFSET = 24;
+const ALIGN_GAP = 24;
+const CANVAS_SIDES: CanvasSide[] = ["top", "right", "bottom", "left"];
 const STANDARD_COLORS = ["1", "2", "3", "4", "5", "6"] as const;
 const SHAPES: CanvasNodeShape[] = [
   "rounded-rectangle",
@@ -353,9 +402,11 @@ const normalizeEdgeSides = (document: CanvasDocument): CanvasDocument => {
       if (!fromNode || !toNode) {
         return edge;
       }
+      const shortest = resolveShortestSides(fromNode, toNode);
       return {
         ...edge,
-        ...resolveShortestSides(fromNode, toNode),
+        fromSide: edge.fromSide ?? shortest.fromSide,
+        toSide: edge.toSide ?? shortest.toSide,
       };
     }),
   };
@@ -448,6 +499,8 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
   toolbarActions,
   className,
   bodyClassName,
+  canvasCustomColors = buildEmptyCanvasCustomColorSlots(),
+  onCanvasCustomColorsChange,
   onPersistSource,
 }, ref) => {
   const [mode, setMode] = useState<CanvasMode>("view");
@@ -474,6 +527,10 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
   const [edgeLabelDraft, setEdgeLabelDraft] = useState("");
   const [clipboardNodes, setClipboardNodes] = useState<CanvasNode[]>([]);
   const [armedConnectionNodeId, setArmedConnectionNodeId] = useState<string | null>(null);
+  const [connectionDrag, setConnectionDrag] = useState<ConnectionDragState | null>(null);
+  const [connectionDropPrompt, setConnectionDropPrompt] =
+    useState<ConnectionDropPromptState | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [spacePressed, setSpacePressed] = useState(false);
   const draftDocumentRef = useRef(draftDocument);
@@ -499,6 +556,23 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
     gridStateRef.current = { size: gridSize, snap: snapEnabled };
   }, [gridSize, snapEnabled]);
 
+  const normalizedCustomColors = useMemo(
+    () => normalizeCanvasCustomColorSlots(canvasCustomColors),
+    [canvasCustomColors],
+  );
+
+  const saveCustomColorSlot = useCallback(
+    (slot: CanvasCustomColorSlot) => {
+      const nextSlots = normalizeCanvasCustomColorSlots(
+        normalizedCustomColors.map((current) =>
+          current.slot === slot.slot ? slot : current,
+        ),
+      );
+      onCanvasCustomColorsChange?.(nextSlots);
+    },
+    [normalizedCustomColors, onCanvasCustomColorsChange],
+  );
+
   useEffect(() => {
     const nextSourceKey = sourceKey ?? null;
     const hasSourceChanged = nextSourceKey !== sourceKeyRef.current;
@@ -516,6 +590,9 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
       setSelectedEdgeId(null);
       setEditingNodeId(null);
       setEditingEdgeId(null);
+      setConnectionDrag(null);
+      setConnectionDropPrompt(null);
+      setDeleteConfirm(null);
       setModeError("");
       setSaveError("");
     }
@@ -714,6 +791,43 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
     [gridSize, snapEnabled],
   );
 
+  const oppositeSide = useCallback((side: CanvasSide): CanvasSide => {
+    switch (side) {
+      case "top":
+        return "bottom";
+      case "right":
+        return "left";
+      case "bottom":
+        return "top";
+      case "left":
+        return "right";
+    }
+  }, []);
+
+  const resolveNearestSide = useCallback(
+    (node: CanvasNode, point: CanvasPoint): CanvasSide => {
+      const contentPoint = {
+        x: INTERNAL_ORIGIN + point.x,
+        y: INTERNAL_ORIGIN + point.y,
+      };
+      let bestSide: CanvasSide = "left";
+      let bestDistance = Number.POSITIVE_INFINITY;
+      CANVAS_SIDES.forEach((side) => {
+        const anchorPoint = resolveAnchorPoint(node, side);
+        const distance = Math.hypot(
+          contentPoint.x - anchorPoint.x,
+          contentPoint.y - anchorPoint.y,
+        );
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestSide = side;
+        }
+      });
+      return bestSide;
+    },
+    [],
+  );
+
   const createNodeAtPoint = useCallback(
     (kind: "text" | "group", point: CanvasPoint) => {
       if (mode !== "edit") {
@@ -860,6 +974,25 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
     [applyDraftChange, mode],
   );
 
+  const requestDeleteNodeIds = useCallback(
+    (nodeIds: string[]) => {
+      if (nodeIds.length === 0) {
+        return;
+      }
+      const nodes = nodeIds
+        .map((nodeId) => nodesById.get(nodeId))
+        .filter((node): node is CanvasNode => Boolean(node));
+      const requiresConfirmation =
+        nodeIds.length > 1 || nodes.some((node) => isGroupNode(node));
+      if (!requiresConfirmation) {
+        deleteNodeIds(nodeIds);
+        return;
+      }
+      setDeleteConfirm({ nodeIds });
+    },
+    [deleteNodeIds, nodesById],
+  );
+
   const deleteSelection = useCallback(() => {
     if (mode !== "edit") {
       return;
@@ -876,8 +1009,23 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
     if (selectedNodeIds.length === 0) {
       return;
     }
-    deleteNodeIds(selectedNodeIds);
-  }, [applyDraftChange, deleteNodeIds, mode, selectedEdgeId, selectedNodeIds]);
+    requestDeleteNodeIds(selectedNodeIds);
+  }, [
+    applyDraftChange,
+    mode,
+    requestDeleteNodeIds,
+    selectedEdgeId,
+    selectedNodeIds,
+  ]);
+
+  const confirmNodeDelete = useCallback(() => {
+    if (!deleteConfirm) {
+      return;
+    }
+    const nodeIds = deleteConfirm.nodeIds;
+    setDeleteConfirm(null);
+    deleteNodeIds(nodeIds);
+  }, [deleteConfirm, deleteNodeIds]);
 
   const createGroupFromSelection = useCallback(() => {
     if (mode !== "edit" || selectedRegularNodes.length < 2) {
@@ -952,19 +1100,51 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
         return;
       }
       const target = Math.min(...selectedNodes.map((node) => node[axis]));
+      const orderedNodes =
+        axis === "x"
+          ? [...selectedNodes].sort((left, right) => left.y - right.y || left.x - right.x)
+          : [...selectedNodes].sort((left, right) => left.x - right.x || left.y - right.y);
+      const updates = new Map<string, CanvasPoint>();
+      if (axis === "x") {
+        let nextY = orderedNodes[0]?.y ?? 0;
+        orderedNodes.forEach((node) => {
+          updates.set(node.id, {
+            x: clampNodeX(target, node.width),
+            y: clampNodeY(nextY, node.height),
+          });
+          nextY += node.height + ALIGN_GAP;
+        });
+      } else {
+        let nextX = orderedNodes[0]?.x ?? 0;
+        orderedNodes.forEach((node) => {
+          updates.set(node.id, {
+            x: clampNodeX(nextX, node.width),
+            y: clampNodeY(target, node.height),
+          });
+          nextX += node.width + ALIGN_GAP;
+        });
+      }
       const selectedIds = new Set(selectedNodeIds);
       applyDraftChange((current) => ({
         ...current,
-        nodes: current.nodes.map((node) =>
-          selectedIds.has(node.id) ? { ...node, [axis]: target } : node,
-        ),
+        nodes: current.nodes.map((node) => {
+          if (!selectedIds.has(node.id)) {
+            return node;
+          }
+          const update = updates.get(node.id);
+          return update ? { ...node, ...update } : node;
+        }),
       }));
     },
     [applyDraftChange, mode, selectedNodeIds, selectedNodes],
   );
 
   const addConnection = useCallback(
-    (fromNodeId: string, toNodeId: string) => {
+    (
+      fromNodeId: string,
+      toNodeId: string,
+      sides?: { fromSide?: CanvasSide; toSide?: CanvasSide },
+    ) => {
       if (fromNodeId === toNodeId) {
         return;
       }
@@ -975,7 +1155,11 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
         if (!fromNode || !toNode || isGroupNode(fromNode) || isGroupNode(toNode)) {
           return current;
         }
-        const sidePair = resolveShortestSides(fromNode, toNode);
+        const shortestPair = resolveShortestSides(fromNode, toNode);
+        const sidePair = {
+          fromSide: sides?.fromSide ?? shortestPair.fromSide,
+          toSide: sides?.toSide ?? shortestPair.toSide,
+        };
         const edge: CanvasEdge = {
           id: createId("edge", ids),
           fromNode: fromNodeId,
@@ -990,6 +1174,57 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
       setSelectedEdgeId(null);
     },
     [applyDraftChange],
+  );
+
+  const createConnectedNodeAtPoint = useCallback(
+    (prompt: ConnectionDropPromptState) => {
+      if (mode !== "edit") {
+        return;
+      }
+      const snappedPoint = toSnappedCanvasPoint(prompt.point);
+      let createdNodeId = "";
+      applyDraftChange((current) => {
+        const nodeIds = new Set(current.nodes.map((node) => node.id));
+        const edgeIds = new Set(current.edges.map((edge) => edge.id));
+        const fromNode = current.nodes.find((node) => node.id === prompt.fromNodeId);
+        if (!fromNode || isGroupNode(fromNode)) {
+          return current;
+        }
+        createdNodeId = createId("card", nodeIds);
+        nodeIds.add(createdNodeId);
+        const createdEdgeId = createId("edge", edgeIds);
+        const newNode: CanvasNode = {
+          id: createdNodeId,
+          type: "text",
+          text: "Neue Karte",
+          x: clampNodeX(snappedPoint.x - DEFAULT_CARD_WIDTH / 2, DEFAULT_CARD_WIDTH),
+          y: clampNodeY(snappedPoint.y - DEFAULT_CARD_HEIGHT / 2, DEFAULT_CARD_HEIGHT),
+          width: DEFAULT_CARD_WIDTH,
+          height: DEFAULT_CARD_HEIGHT,
+          color: "1",
+          shape: "rounded-rectangle",
+        };
+        const edge: CanvasEdge = {
+          id: createdEdgeId,
+          fromNode: prompt.fromNodeId,
+          toNode: createdNodeId,
+          fromSide: prompt.fromSide,
+          toSide: oppositeSide(prompt.fromSide),
+          fromEnd: "none",
+          toEnd: "arrow",
+        };
+        return {
+          ...current,
+          nodes: [...current.nodes, newNode],
+          edges: [...current.edges, edge],
+        };
+      });
+      setConnectionDropPrompt(null);
+      setArmedConnectionNodeId(null);
+      setSelectedNodeIds(createdNodeId ? [createdNodeId] : []);
+      setSelectedEdgeId(null);
+    },
+    [applyDraftChange, mode, oppositeSide, toSnappedCanvasPoint],
   );
 
   const updateEdgeDirection = useCallback(
@@ -1029,6 +1264,112 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
     setContextMenu(null);
     setEditingNodeId(node.id);
   }, []);
+
+  const startConnectionDrag = useCallback(
+    (
+      event: ReactPointerEvent<HTMLButtonElement>,
+      node: CanvasNode,
+      side: CanvasSide,
+    ) => {
+      if (mode !== "edit" || isGroupNode(node)) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      setContextMenu(null);
+      setEditingNodeId(null);
+      setEditingEdgeId(null);
+      setSelectedNodeIds([node.id]);
+      setSelectedEdgeId(null);
+      setArmedConnectionNodeId(null);
+      setConnectionDropPrompt(null);
+      setConnectionDrag({
+        fromNodeId: node.id,
+        fromSide: side,
+        currentPoint: viewportToCanvasPoint(event.clientX, event.clientY),
+      });
+    },
+    [mode, viewportToCanvasPoint],
+  );
+
+  useEffect(() => {
+    if (!connectionDrag) {
+      return;
+    }
+    const activeDrag = connectionDrag;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      setConnectionDrag((current) =>
+        current
+          ? {
+              ...current,
+              currentPoint: viewportToCanvasPoint(event.clientX, event.clientY),
+            }
+          : current,
+      );
+    };
+
+    const handlePointerUp = (event: PointerEvent) => {
+      const dropPoint = viewportToCanvasPoint(event.clientX, event.clientY);
+      const target = document.elementFromPoint(event.clientX, event.clientY);
+      const targetElement = target instanceof HTMLElement ? target : null;
+      const handleElement = targetElement?.closest<HTMLElement>(
+        "[data-canvas-connection-side][data-canvas-node-id]",
+      );
+      const handleNodeId = handleElement?.dataset.canvasNodeId;
+      const handleSide = handleElement?.dataset.canvasConnectionSide;
+      if (
+        handleNodeId &&
+        handleNodeId !== activeDrag.fromNodeId &&
+        CANVAS_SIDES.includes(handleSide as CanvasSide)
+      ) {
+        addConnection(activeDrag.fromNodeId, handleNodeId, {
+          fromSide: activeDrag.fromSide,
+          toSide: handleSide as CanvasSide,
+        });
+        setConnectionDrag(null);
+        return;
+      }
+
+      const nodeElement = targetElement?.closest<HTMLElement>("[data-canvas-node-id]");
+      const targetNodeId = nodeElement?.dataset.canvasNodeId;
+      const targetNode = targetNodeId ? draftDocumentRef.current.nodes.find(
+        (node) => node.id === targetNodeId,
+      ) : null;
+      if (
+        targetNode &&
+        targetNode.id !== activeDrag.fromNodeId &&
+        !isGroupNode(targetNode)
+      ) {
+        addConnection(activeDrag.fromNodeId, targetNode.id, {
+          fromSide: activeDrag.fromSide,
+          toSide: resolveNearestSide(targetNode, dropPoint),
+        });
+        setConnectionDrag(null);
+        return;
+      }
+
+      setConnectionDropPrompt({
+        fromNodeId: activeDrag.fromNodeId,
+        fromSide: activeDrag.fromSide,
+        point: dropPoint,
+      });
+      setConnectionDrag(null);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [
+    addConnection,
+    connectionDrag?.fromNodeId,
+    connectionDrag?.fromSide,
+    resolveNearestSide,
+    viewportToCanvasPoint,
+  ]);
 
   useEffect(() => {
     if (!editingNodeId) {
@@ -1215,6 +1556,8 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
         setEditingNodeId(null);
         setEditingEdgeId(null);
         setArmedConnectionNodeId(null);
+        setConnectionDrag(null);
+        setConnectionDropPrompt(null);
         setSelectedEdgeId(null);
         setSelectedNodeIds([]);
         return;
@@ -1271,7 +1614,7 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
         return;
       }
       const target = event.target as HTMLElement | null;
-      if (target?.closest("[data-canvas-node-id], .canvas-edge-hit, .canvas-floating-toolbar, .business-canvas-context-menu")) {
+      if (target?.closest("[data-canvas-node-id], .canvas-edge-hit, .canvas-floating-toolbar, .business-canvas-context-menu, .canvas-connection-drop-popup")) {
         return;
       }
       setContextMenu(null);
@@ -1322,6 +1665,10 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
   const onNodePointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>, node: CanvasNode) => {
       if (mode !== "edit" || event.button !== 0 || isEditableTarget(event.target)) {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-canvas-connection-side]")) {
         return;
       }
       event.stopPropagation();
@@ -1487,6 +1834,38 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
     [activeDocument.edges, nodesById],
   );
 
+  const connectionPreviewPath = useMemo(() => {
+    if (!connectionDrag) {
+      return null;
+    }
+    const fromNode = nodesById.get(connectionDrag.fromNodeId);
+    if (!fromNode) {
+      return null;
+    }
+    const fromPoint = resolveAnchorPoint(fromNode, connectionDrag.fromSide);
+    const toPoint = {
+      x: INTERNAL_ORIGIN + connectionDrag.currentPoint.x,
+      y: INTERNAL_ORIGIN + connectionDrag.currentPoint.y,
+    };
+    const distance = Math.hypot(toPoint.x - fromPoint.x, toPoint.y - fromPoint.y);
+    const controlDistance = clamp(distance * 0.45, 80, 220);
+    const fromVector = sideVector(connectionDrag.fromSide);
+    const controlOne = {
+      x: fromPoint.x + fromVector.x * controlDistance,
+      y: fromPoint.y + fromVector.y * controlDistance,
+    };
+    const controlTwo = {
+      x: toPoint.x,
+      y: toPoint.y,
+    };
+    return [
+      `M ${fromPoint.x} ${fromPoint.y}`,
+      `C ${controlOne.x} ${controlOne.y}`,
+      `${controlTwo.x} ${controlTwo.y}`,
+      `${toPoint.x} ${toPoint.y}`,
+    ].join(" ");
+  }, [connectionDrag, nodesById]);
+
   const selectedBounds = useMemo(() => {
     if (selectedNodes.length === 0) {
       return null;
@@ -1501,6 +1880,11 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
   }, [selectedNodes]);
 
   const selectedSingleNode = selectedNodes.length === 1 ? selectedNodes[0] : null;
+  const selectedColorValue =
+    selectedNodes.length > 0 &&
+    selectedNodes.every((node) => (node.color ?? null) === (selectedNodes[0].color ?? null))
+      ? selectedNodes[0].color ?? null
+      : null;
   const selectedToolbarIsGroup = selectedSingleNode ? isGroupNode(selectedSingleNode) : false;
   const selectedToolbarStyle = selectedBounds
     ? ({
@@ -1524,6 +1908,16 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
         transform: `translate(${
           viewport.x + selectedEdgeRow.labelPoint.x * viewport.zoom
         }px, ${viewport.y + (selectedEdgeRow.labelPoint.y - 44) * viewport.zoom}px)`,
+      } as CSSProperties)
+    : undefined;
+
+  const connectionDropPromptStyle = connectionDropPrompt
+    ? ({
+        transform: `translate(${
+          viewport.x + (INTERNAL_ORIGIN + connectionDropPrompt.point.x) * viewport.zoom
+        }px, ${
+          viewport.y + (INTERNAL_ORIGIN + connectionDropPrompt.point.y) * viewport.zoom
+        }px)`,
       } as CSSProperties)
     : undefined;
 
@@ -1604,42 +1998,39 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
         <div className="preview-actions">
           {showModeToggle ? (
             <div className="preview-mode-toggle" role="group" aria-label="Canvas mode">
-              <button
-                type="button"
-                className={`ghost small preview-mode-button ${mode === "view" ? "active" : ""}`}
+              <CanvasIconButton
+                label="Canvas view mode"
+                className="preview-mode-button"
+                active={mode === "view"}
                 onClick={() => {
                   void switchMode("view");
                 }}
                 disabled={!hasSource || isSaving}
-                aria-pressed={mode === "view"}
-                title="Canvas view mode"
               >
-                View
-              </button>
-              <button
-                type="button"
-                className={`ghost small preview-mode-button ${mode === "edit" ? "active" : ""}`}
+                <CanvasViewIcon />
+              </CanvasIconButton>
+              <CanvasIconButton
+                label="Canvas edit mode"
+                className="preview-mode-button"
+                active={mode === "edit"}
                 onClick={() => {
                   void switchMode("edit");
                 }}
                 disabled={!hasSource || isSaving || Boolean(loadValidationError) || !canEditSource}
-                aria-pressed={mode === "edit"}
-                title="Canvas edit mode"
               >
-                Edit
-              </button>
-              <button
-                type="button"
-                className={`ghost small preview-mode-button ${mode === "code" ? "active" : ""}`}
+                <CanvasEditIcon />
+              </CanvasIconButton>
+              <CanvasIconButton
+                label="Canvas JSON mode"
+                className="preview-mode-button"
+                active={mode === "code"}
                 onClick={() => {
                   void switchMode("code");
                 }}
                 disabled={!hasSource || isSaving || !canEditSource}
-                aria-pressed={mode === "code"}
-                title="Canvas JSON mode"
               >
-                Code
-              </button>
+                <CanvasCodeIcon />
+              </CanvasIconButton>
             </div>
           ) : null}
           {toolbarActions ? (
@@ -1648,58 +2039,49 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
             </div>
           ) : null}
           <div className="canvas-toolbar-row business-canvas-top-toolbar">
-            <button
-              type="button"
-              className="ghost small"
+            <CanvasIconButton
+              label="Add card"
               onClick={() => createNodeAtVisibleTopLeft("text")}
               disabled={!canEdit}
             >
-              Add card
-            </button>
-            <button
-              type="button"
-              className="ghost small"
+              <CanvasPlusIcon />
+            </CanvasIconButton>
+            <CanvasIconButton
+              label="Paste"
               onClick={() => pasteNodes()}
               disabled={!canEdit || clipboardNodes.length === 0}
             >
-              Paste
-            </button>
-            <button
-              type="button"
-              className="ghost small"
+              <CanvasPasteIcon />
+            </CanvasIconButton>
+            <CanvasIconButton
+              label="Zoom out"
               onClick={() => zoomAtCenter(-ZOOM_STEP)}
               disabled={mode === "code"}
-              aria-label="Zoom out"
             >
-              -
-            </button>
-            <button
-              type="button"
-              className="ghost small"
+              <CanvasZoomOutIcon />
+            </CanvasIconButton>
+            <CanvasIconButton
+              label={`Reset view (${Math.round(viewport.zoom * 100)}%)`}
               onClick={() => setViewport(DEFAULT_VIEWPORT)}
               disabled={mode === "code"}
-              aria-label="Reset view"
             >
-              {Math.round(viewport.zoom * 100)}%
-            </button>
-            <button
-              type="button"
-              className="ghost small"
+              <CanvasFitIcon />
+            </CanvasIconButton>
+            <CanvasIconButton
+              label="Zoom in"
               onClick={() => zoomAtCenter(ZOOM_STEP)}
               disabled={mode === "code"}
-              aria-label="Zoom in"
             >
-              +
-            </button>
-            <button
-              type="button"
-              className={`ghost small ${snapEnabled ? "active" : ""}`}
+              <CanvasZoomInIcon />
+            </CanvasIconButton>
+            <CanvasIconButton
+              label="Snap to grid"
+              active={snapEnabled}
               onClick={() => setSnapEnabled((current) => !current)}
               disabled={mode === "code"}
-              aria-pressed={snapEnabled}
             >
-              Snap
-            </button>
+              <CanvasSnapIcon />
+            </CanvasIconButton>
           </div>
           {isSaving ? <span className="chip">Saving...</span> : null}
         </div>
@@ -1902,6 +2284,12 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
                         </g>
                       );
                     })}
+                    {connectionPreviewPath ? (
+                      <path
+                        d={connectionPreviewPath}
+                        className="canvas-edge-line canvas-edge-preview"
+                      />
+                    ) : null}
                   </svg>
 
                   {selectionRectStyle ? (
@@ -1976,11 +2364,18 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
                             </div>
                           )}
                         </div>
-                        {["top", "right", "bottom", "left"].map((side) => (
-                          <span
+                        {CANVAS_SIDES.map((side) => (
+                          <button
                             key={side}
+                            type="button"
                             className={`business-canvas-anchor business-canvas-anchor-${side}`}
-                            aria-hidden="true"
+                            data-canvas-node-id={node.id}
+                            data-canvas-connection-side={side}
+                            aria-label={`Connect ${side}`}
+                            title={`Connect ${side}`}
+                            onPointerDown={(event) =>
+                              startConnectionDrag(event, node, side)
+                            }
                           />
                         ))}
                         {isSelected ? (
@@ -2002,77 +2397,58 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
 
               <div className="business-canvas-toolbar-layer">
                 {mode === "edit" && selectedNodes.length > 0 && selectedToolbarStyle ? (
-                  <div
-                    className="canvas-floating-toolbar business-canvas-floating-toolbar"
-                    style={selectedToolbarStyle}
-                  >
+                  <CanvasFloatingToolbar style={selectedToolbarStyle}>
                     {selectedNodes.length > 1 ? (
                       <>
-                        <span className="chip">{selectedNodes.length} selected</span>
-                        <button type="button" className="ghost small" onClick={copySelectedNodes}>
-                          Copy
-                        </button>
-                        <button
-                          type="button"
-                          className="ghost small"
+                        <CanvasIconButton label="Copy selected cards" onClick={copySelectedNodes}>
+                          <CanvasCopyIcon />
+                        </CanvasIconButton>
+                        <CanvasIconButton
+                          label="Paste"
                           onClick={() => pasteNodes()}
                           disabled={clipboardNodes.length === 0}
                         >
-                          Paste
-                        </button>
-                        <button
-                          type="button"
-                          className="ghost small"
+                          <CanvasPasteIcon />
+                        </CanvasIconButton>
+                        <CanvasIconButton
+                          label="Create group"
                           onClick={createGroupFromSelection}
                           disabled={selectedRegularNodes.length < 2}
                         >
-                          Create group
-                        </button>
-                        <button type="button" className="ghost small" onClick={() => alignSelection("x")}>
-                          Align left
-                        </button>
-                        <button type="button" className="ghost small" onClick={() => alignSelection("y")}>
-                          Align top
-                        </button>
+                          <CanvasGroupIcon />
+                        </CanvasIconButton>
+                        <CanvasIconButton label="Align left" onClick={() => alignSelection("x")}>
+                          <CanvasAlignLeftIcon />
+                        </CanvasIconButton>
+                        <CanvasIconButton label="Align top" onClick={() => alignSelection("y")}>
+                          <CanvasAlignTopIcon />
+                        </CanvasIconButton>
                       </>
                     ) : selectedSingleNode && isGroupNode(selectedSingleNode) ? (
                       <>
-                        <button
-                          type="button"
-                          className="ghost small"
+                        <CanvasIconButton
+                          label="Edit group"
                           onClick={() => startNodeEditing(selectedSingleNode)}
                         >
-                          Edit
-                        </button>
+                          <CanvasEditIcon />
+                        </CanvasIconButton>
                       </>
                     ) : selectedSingleNode ? (
                       <>
-                        <button
-                          type="button"
-                          className="ghost small"
+                        <CanvasIconButton
+                          label="Edit card"
                           onClick={() => startNodeEditing(selectedSingleNode)}
                         >
-                          Edit
-                        </button>
-                        <select
-                          className="text-input canvas-shape-select"
+                          <CanvasEditIcon />
+                        </CanvasIconButton>
+                        <CanvasShapePicker
                           value={resolveNodeShape(selectedSingleNode)}
-                          onChange={(event) =>
-                            applyShape(event.target.value as CanvasNodeShape)
-                          }
-                          aria-label="Card shape"
-                        >
-                          {SHAPES.map((shape) => (
-                            <option key={shape} value={shape}>
-                              {shape}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          className={`ghost small${
-                            armedConnectionNodeId === selectedSingleNode.id ? " active" : ""
-                          }`}
+                          shapes={SHAPES}
+                          onChange={applyShape}
+                        />
+                        <CanvasIconButton
+                          label="Connect card"
+                          active={armedConnectionNodeId === selectedSingleNode.id}
                           onClick={() =>
                             setArmedConnectionNodeId((current) =>
                               current === selectedSingleNode.id
@@ -2081,58 +2457,41 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
                             )
                           }
                         >
-                          Connect
-                        </button>
-                        <button type="button" className="ghost small" onClick={copySelectedNodes}>
-                          Copy
-                        </button>
-                        <button
-                          type="button"
-                          className="ghost small"
-                          onClick={duplicateSelectedNodes}
-                        >
-                          Duplicate
-                        </button>
+                          <CanvasConnectIcon />
+                        </CanvasIconButton>
+                        <CanvasIconButton label="Copy card" onClick={copySelectedNodes}>
+                          <CanvasCopyIcon />
+                        </CanvasIconButton>
+                        <CanvasIconButton label="Duplicate card" onClick={duplicateSelectedNodes}>
+                          <CanvasDuplicateIcon />
+                        </CanvasIconButton>
                       </>
                     ) : null}
-                    <div className="business-canvas-color-row" aria-label="Canvas colors">
-                      {STANDARD_COLORS.map((color) => (
-                        <button
-                          key={color}
-                          type="button"
-                          className={`business-canvas-color-swatch business-canvas-color-${color}`}
-                          onClick={() => applyColor(color)}
-                          aria-label={`Apply color ${color}`}
-                        />
-                      ))}
-                    </div>
-                    <button type="button" className="ghost small" onClick={deleteSelection}>
-                      Delete
-                    </button>
-                  </div>
+                    <CanvasColorPalette
+                      label="Canvas color"
+                      standardColors={STANDARD_COLORS}
+                      customColors={normalizedCustomColors}
+                      selectedColor={selectedColorValue}
+                      onSelectColor={applyColor}
+                      onSaveCustomColor={saveCustomColorSlot}
+                    />
+                    <CanvasIconButton label="Delete selection" onClick={deleteSelection}>
+                      <CanvasTrashIcon />
+                    </CanvasIconButton>
+                  </CanvasFloatingToolbar>
                 ) : null}
 
                 {mode === "edit" && selectedEdge && edgeToolbarStyle ? (
-                  <div
-                    className="canvas-floating-toolbar business-canvas-floating-toolbar"
-                    style={edgeToolbarStyle}
-                  >
-                    <select
-                      className="text-input canvas-edge-direction-select"
+                  <CanvasFloatingToolbar style={edgeToolbarStyle}>
+                    <CanvasEdgeDirectionPicker
                       value={directionFromEdge(selectedEdge)}
-                      onChange={(event) =>
+                      onChange={(direction) =>
                         updateEdgeDirection(
                           selectedEdge.id,
-                          event.target.value as DirectionPreset,
+                          direction,
                         )
                       }
-                      aria-label="Edge direction"
-                    >
-                      <option value="none">None</option>
-                      <option value="forward">Forward</option>
-                      <option value="backward">Backward</option>
-                      <option value="both">Both</option>
-                    </select>
+                    />
                     {editingEdgeId === selectedEdge.id ? (
                       <input
                         className="text-input canvas-edge-label-input"
@@ -2153,20 +2512,33 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
                         autoFocus
                       />
                     ) : (
-                      <button
-                        type="button"
-                        className="ghost small"
+                      <CanvasIconButton
+                        label="Edit edge label"
                         onClick={() => {
                           setEditingEdgeId(selectedEdge.id);
                           setEdgeLabelDraft(selectedEdge.label ?? "");
                         }}
                       >
-                        Edit label
-                      </button>
+                        <CanvasEditIcon />
+                      </CanvasIconButton>
                     )}
-                    <button type="button" className="ghost small" onClick={deleteSelection}>
-                      Delete
-                    </button>
+                    <CanvasIconButton label="Delete edge" onClick={deleteSelection}>
+                      <CanvasTrashIcon />
+                    </CanvasIconButton>
+                  </CanvasFloatingToolbar>
+                ) : null}
+
+                {mode === "edit" && connectionDropPrompt && connectionDropPromptStyle ? (
+                  <div
+                    className="canvas-connection-drop-popup"
+                    style={connectionDropPromptStyle}
+                  >
+                    <CanvasIconButton
+                      label="Neue Karte"
+                      onClick={() => createConnectedNodeAtPoint(connectionDropPrompt)}
+                    >
+                      <CanvasPlusIcon />
+                    </CanvasIconButton>
                   </div>
                 ) : null}
               </div>
@@ -2205,7 +2577,7 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
                         type="button"
                         role="menuitem"
                         onClick={() => {
-                          deleteNodeIds([contextMenuNode.id]);
+                          requestDeleteNodeIds([contextMenuNode.id]);
                           setContextMenu(null);
                         }}
                       >
@@ -2253,6 +2625,14 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
           )}
         </div>
       </div>
+      <CanvasDeleteConfirmDialog
+        isOpen={Boolean(deleteConfirm)}
+        title="Auswahl loeschen?"
+        description="Die ausgewaehlten Canvas-Elemente und verbundene Kanten werden geloescht."
+        confirmLabel="Loeschen"
+        onCancel={() => setDeleteConfirm(null)}
+        onConfirm={confirmNodeDelete}
+      />
     </section>
   );
 });

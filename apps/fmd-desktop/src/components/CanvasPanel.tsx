@@ -4,12 +4,15 @@ import {
   CanvasEditor,
   type PersistCanvasResult,
 } from "../features/canvas/CanvasEditor";
+import type { CanvasCustomColorSlot } from "../features/canvas/canvasSettings";
 
 type CanvasPanelProps = {
   selectedFile: VaultFile | null;
   preview: string;
   previewState: LoadState;
   previewError: string;
+  canvasCustomColors?: CanvasCustomColorSlot[];
+  onCanvasCustomColorsChange?: (nextSlots: CanvasCustomColorSlot[]) => void;
   onPersistSource: (nextSource: string) => Promise<PersistCanvasResult>;
 };
 
@@ -18,6 +21,8 @@ export const CanvasPanel = ({
   preview,
   previewState,
   previewError,
+  canvasCustomColors,
+  onCanvasCustomColorsChange,
   onPersistSource,
 }: CanvasPanelProps) => (
   <CanvasEditor
@@ -29,6 +34,8 @@ export const CanvasPanel = ({
     subtitle={selectedFile?.relative_path ?? "No file selected"}
     canEditSource={Boolean(selectedFile)}
     showModeToggle
+    canvasCustomColors={canvasCustomColors}
+    onCanvasCustomColorsChange={onCanvasCustomColorsChange}
     onPersistSource={onPersistSource}
   />
 );

@@ -57,6 +57,9 @@ const buttonWithText = (container: HTMLElement, text: string) =>
     (button) => button.textContent?.trim() === text,
   );
 
+const buttonWithLabel = (container: HTMLElement, label: string) =>
+  container.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+
 const CanvasPanelHarness = ({
   document,
   onPersistSource,
@@ -102,9 +105,12 @@ describe("CanvasPanel", () => {
     expect(container.querySelector(".business-canvas-content")).not.toBeNull();
     expect(container.querySelector(".business-canvas-toolbar-layer")).not.toBeNull();
     expect(container.querySelector(".business-canvas-edges")).not.toBeNull();
-    expect(buttonWithText(container, "View")).toBeDefined();
-    expect(buttonWithText(container, "Edit")).toBeDefined();
-    expect(buttonWithText(container, "Code")).toBeDefined();
+    expect(buttonWithLabel(container, "Canvas view mode")).toBeDefined();
+    expect(buttonWithLabel(container, "Canvas edit mode")).toBeDefined();
+    expect(buttonWithLabel(container, "Canvas JSON mode")).toBeDefined();
+    expect(buttonWithText(container, "View")).toBeUndefined();
+    expect(buttonWithText(container, "Edit")).toBeUndefined();
+    expect(buttonWithText(container, "Code")).toBeUndefined();
     expect(
       container.querySelector<HTMLElement>(".business-canvas-content")?.style.transform,
     ).toBe("translate(-900px, -1020px) scale(1)");
@@ -117,9 +123,9 @@ describe("CanvasPanel", () => {
     const { container, cleanup } = renderCanvasPanel({ nodes: [], edges: [] }, onPersistSource);
     await flush();
 
-    await clickButton(buttonWithText(container, "Edit"));
+    await clickButton(buttonWithLabel(container, "Canvas edit mode"));
     await flush();
-    const addCardButton = buttonWithText(container, "Add card");
+    const addCardButton = buttonWithLabel(container, "Add card");
     expect(addCardButton?.disabled).toBe(false);
     await clickButton(addCardButton);
     await flush();

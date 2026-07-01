@@ -97,6 +97,7 @@ import {
 } from "./MarkdownHybridTableBlock";
 import { MarkdownHybridDatabaseBlock } from "./database/database-block";
 import { CanvasEmbeddedBlock } from "../canvas/CanvasEmbeddedBlock";
+import type { CanvasCustomColorSlot } from "../canvas/canvasSettings";
 import { serializeMarkdownCanvasBlock } from "../canvas/markdownBlockSyntax";
 import {
   createDefaultDatabaseBlockConfig,
@@ -357,6 +358,8 @@ type MarkdownHybridEditorProps = {
   runnableExamRelativePaths?: string[];
   onOpenExamFromDatabaseRecord?: (target: { path: string; relativePath: string }) => void;
   monitoringProfiles?: MonitoringRenderProfile[];
+  canvasCustomColors?: CanvasCustomColorSlot[];
+  onCanvasCustomColorsChange?: (nextSlots: CanvasCustomColorSlot[]) => void;
   onChange: (value: string) => void;
   onCommit?: (value: string, context: { block: MarkdownBlock }) => void;
   onDirtyChange?: (dirty: boolean) => void;
@@ -3329,6 +3332,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   runnableExamRelativePaths,
   onOpenExamFromDatabaseRecord,
   monitoringProfiles = [],
+  canvasCustomColors,
+  onCanvasCustomColorsChange,
   onChange,
   onCommit,
   onDirtyChange,
@@ -10152,6 +10157,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
             raw={block.raw}
             blockIndex={index}
             allowEditing={!disabled}
+            canvasCustomColors={canvasCustomColors}
+            onCanvasCustomColorsChange={onCanvasCustomColorsChange}
             onCommitRaw={(nextRaw) => {
               handleTableBlockCommitRaw(index, nextRaw);
             }}
@@ -10345,6 +10352,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
   }, [
     activeBlockIndex,
     blocks,
+    canvasCustomColors,
     clearPendingTableActivation,
     disabled,
     handleGlobalRedo,
@@ -10362,6 +10370,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
     handleTableBlockCommitRaw,
     handleTableBlockRequestActivate,
     imageEmbedReplacePickerState,
+    onCanvasCustomColorsChange,
     onNavigateWikilink,
     pinnedVirtualizedIndices,
     pendingTableActivation,
@@ -10713,6 +10722,8 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                     raw={block.raw}
                     blockIndex={index}
                     allowEditing={!disabled}
+                    canvasCustomColors={canvasCustomColors}
+                    onCanvasCustomColorsChange={onCanvasCustomColorsChange}
                     onCommitRaw={(nextRaw) => {
                       handleTableBlockCommitRaw(index, nextRaw);
                     }}

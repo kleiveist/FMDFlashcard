@@ -74,6 +74,7 @@ import {
 } from "../features/preview/unorderedListNormalization";
 import { MarkdownHybridDatabaseBlock } from "../features/preview/database/database-block";
 import { CanvasEmbeddedBlock } from "../features/canvas/CanvasEmbeddedBlock";
+import type { CanvasCustomColorSlot } from "../features/canvas/canvasSettings";
 import {
   normalizeDateTimeValue,
   normalizeDateValue,
@@ -1638,6 +1639,8 @@ type PreviewPanelProps = {
     position: "before" | "after",
   ) => void;
   monitoringProfiles?: MonitoringRenderProfile[];
+  canvasCustomColors?: CanvasCustomColorSlot[];
+  onCanvasCustomColorsChange?: (nextSlots: CanvasCustomColorSlot[]) => void;
 };
 
 export const canStartPreviewEdit = ({
@@ -8833,6 +8836,8 @@ export const PreviewPanel = ({
   onCloseMarkdownTab,
   onReorderMarkdownTabs,
   monitoringProfiles = [],
+  canvasCustomColors,
+  onCanvasCustomColorsChange,
 }: PreviewPanelProps) => {
   const previewRef = useRef<HTMLDivElement | null>(null);
   const markdownViewRef = useRef<HTMLDivElement | null>(null);
@@ -11309,6 +11314,8 @@ export const PreviewPanel = ({
           raw={decodeDatabaseBlockRaw(encodedRaw)}
           blockIndex={resolvedIndex}
           allowEditing={canEditMarkdownViewDatabaseBlock}
+          canvasCustomColors={canvasCustomColors}
+          onCanvasCustomColorsChange={onCanvasCustomColorsChange}
           onCommitRaw={(nextRaw) => {
             void commitMarkdownEditorCanvasBlock(resolvedIndex, nextRaw);
           }}
@@ -11317,12 +11324,14 @@ export const PreviewPanel = ({
     });
   }, [
     canEditMarkdownViewDatabaseBlock,
+    canvasCustomColors,
     commitMarkdownEditorDatabaseBlock,
     commitMarkdownEditorCanvasBlock,
     isCodeMode,
     isEditing,
     monitoringProfiles,
     onNavigateWikilink,
+    onCanvasCustomColorsChange,
     onOpenExamFromDatabaseRecord,
     runnableExamRelativePaths,
     selectedFile?.relative_path,
@@ -11408,6 +11417,8 @@ export const PreviewPanel = ({
               raw={block.raw}
               blockIndex={canvasBlockIndex}
               allowEditing={canEditMarkdownViewDatabaseBlock}
+              canvasCustomColors={canvasCustomColors}
+              onCanvasCustomColorsChange={onCanvasCustomColorsChange}
               onCommitRaw={(nextRaw) => {
                 if (canvasBlockIndex < 0) {
                   return;
@@ -11448,10 +11459,12 @@ export const PreviewPanel = ({
     },
     [
       canEditMarkdownViewDatabaseBlock,
+      canvasCustomColors,
       commitMarkdownViewDatabaseBlock,
       commitMarkdownViewCanvasBlock,
       markdownViewDatabaseBlockIndexById,
       markdownViewCanvasBlockIndexById,
+      onCanvasCustomColorsChange,
       onNavigateWikilink,
       onOpenExamFromDatabaseRecord,
       renderHybridMarkdownPreview,
@@ -12379,6 +12392,8 @@ export const PreviewPanel = ({
                   runnableExamRelativePaths={runnableExamRelativePaths}
                   onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
                   monitoringProfiles={monitoringProfiles}
+                  canvasCustomColors={canvasCustomColors}
+                  onCanvasCustomColorsChange={onCanvasCustomColorsChange}
                   onChange={handleHybridBodyChange}
                   onDirtyChange={onHybridDirtyChange}
                   renderPreview={(source) =>

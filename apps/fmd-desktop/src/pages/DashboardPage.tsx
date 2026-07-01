@@ -1409,6 +1409,8 @@ const DashboardPageInner = (
               preview={preview.preview}
               previewError={preview.previewError}
               previewState={preview.previewState}
+              canvasCustomColors={settings.canvasCustomColors}
+              onCanvasCustomColorsChange={settings.setCanvasCustomColors}
               onPersistSource={handleCanvasSourcePersist}
             />
           ) : (
@@ -1458,6 +1460,8 @@ const DashboardPageInner = (
               onCloseMarkdownTab={handleCloseMarkdownTab}
               onReorderMarkdownTabs={handleReorderMarkdownTabs}
               monitoringProfiles={settings.monitoringRenderProfiles}
+              canvasCustomColors={settings.canvasCustomColors}
+              onCanvasCustomColorsChange={settings.setCanvasCustomColors}
             />
           )
         ) : (

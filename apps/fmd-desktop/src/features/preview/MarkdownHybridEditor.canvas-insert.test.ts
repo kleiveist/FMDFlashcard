@@ -60,6 +60,9 @@ const findButtonByExactText = (container: ParentNode, label: string) =>
     (button) => button.textContent?.trim() === label,
   ) ?? null;
 
+const findButtonByLabel = (container: ParentNode, label: string) =>
+  container.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+
 const findMenuItemButtonByLabel = (container: ParentNode, label: string) => {
   const labelNode = Array.from(
     container.querySelectorAll<HTMLElement>(".markdown-hybrid-insert-menu-item-label"),
@@ -127,6 +130,9 @@ describe("MarkdownHybridEditor Canvas insert menu", () => {
       expect(findButtonByExactText(container, "View")).toBeNull();
       expect(findButtonByExactText(container, "Edit")).toBeNull();
       expect(findButtonByExactText(container, "Code")).toBeNull();
+      expect(findButtonByLabel(container, "Canvas view mode")).toBeNull();
+      expect(findButtonByLabel(container, "Canvas edit mode")).toBeNull();
+      expect(findButtonByLabel(container, "Canvas JSON mode")).toBeNull();
 
       cleanup();
     });

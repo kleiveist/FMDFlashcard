@@ -2000,6 +2000,52 @@ textarea.preview-editor {
   flex-wrap: wrap;
 }
 
+.canvas-toolbar-row,
+.business-canvas-top-toolbar,
+.preview-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.canvas-toolbar-icon-button {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--ui-radius-control);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  cursor: pointer;
+}
+
+.canvas-toolbar-icon-button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.canvas-toolbar-icon-button:hover:not(:disabled),
+.canvas-toolbar-icon-button:focus-visible {
+  border-color: color-mix(in srgb, var(--accent-border) 72%, var(--line-soft));
+  background: color-mix(in srgb, var(--accent-soft) 28%, var(--panel));
+  outline: 2px solid color-mix(in srgb, var(--accent-border) 32%, transparent);
+  outline-offset: 2px;
+}
+
+.canvas-toolbar-icon-button.active {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent-border) 80%, var(--line-soft));
+  background: color-mix(in srgb, var(--accent-soft) 42%, var(--panel));
+}
+
+.canvas-toolbar-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
+}
+
 .canvas-embedded-error {
   margin: 0;
 }
@@ -2086,6 +2132,73 @@ textarea.preview-editor {
   overflow-x: auto;
 }
 
+.canvas-toolbar-picker {
+  position: relative;
+  display: inline-flex;
+}
+
+.canvas-toolbar-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  display: flex;
+  gap: 5px;
+  padding: 6px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--ui-radius-menu);
+  background: var(--panel);
+  box-shadow: var(--ui-shadow-flyout);
+}
+
+.canvas-shape-popover,
+.canvas-edge-direction-icons {
+  align-items: center;
+}
+
+.canvas-color-popover {
+  flex-direction: column;
+  min-width: 210px;
+}
+
+.canvas-color-palette-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.canvas-color-editor {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 30px;
+  align-items: center;
+  gap: 6px;
+}
+
+.canvas-color-editor input[type="color"] {
+  width: 32px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--ui-radius-control);
+  background: transparent;
+}
+
+.canvas-edge-direction-icons {
+  display: inline-flex;
+  gap: 5px;
+}
+
+.canvas-connection-drop-popup {
+  position: absolute;
+  z-index: 2;
+  pointer-events: auto;
+  padding: 5px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--ui-radius-menu);
+  background: var(--panel);
+  box-shadow: var(--ui-shadow-flyout);
+}
+
 .business-canvas-context-menu {
   position: fixed;
   z-index: 90;
@@ -2153,6 +2266,13 @@ textarea.preview-editor {
   color: var(--accent);
   stroke-width: 2.5px;
   opacity: 1;
+}
+
+.business-canvas-edges .canvas-edge-preview {
+  color: var(--accent);
+  stroke-dasharray: 8 7;
+  stroke-width: 2px;
+  opacity: 0.78;
 }
 
 .business-canvas-selection-rect {
@@ -2310,34 +2430,36 @@ textarea.preview-editor {
 .business-canvas-anchor {
   position: absolute;
   z-index: 9;
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
+  padding: 0;
   border: 1px solid var(--accent-border);
   border-radius: 999px;
   background: var(--panel);
   opacity: 0;
   pointer-events: none;
+  cursor: crosshair;
   transition: opacity 0.12s ease;
 }
 
 .business-canvas-anchor-top {
-  top: -5px;
-  left: calc(50% - 4px);
+  top: -7px;
+  left: calc(50% - 6px);
 }
 
 .business-canvas-anchor-right {
-  top: calc(50% - 4px);
-  right: -5px;
+  top: calc(50% - 6px);
+  right: -7px;
 }
 
 .business-canvas-anchor-bottom {
-  bottom: -5px;
-  left: calc(50% - 4px);
+  bottom: -7px;
+  left: calc(50% - 6px);
 }
 
 .business-canvas-anchor-left {
-  top: calc(50% - 4px);
-  left: -5px;
+  top: calc(50% - 6px);
+  left: -7px;
 }
 
 .business-canvas-card-node:hover .business-canvas-anchor,
@@ -2345,6 +2467,15 @@ textarea.preview-editor {
 .business-canvas-card-node.is-connection-source .business-canvas-anchor,
 .business-canvas-card-node.is-connection-target .business-canvas-anchor {
   opacity: 1;
+  pointer-events: auto;
+}
+
+.business-canvas-anchor:hover,
+.business-canvas-anchor:focus-visible {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 18%, var(--panel));
+  outline: 2px solid color-mix(in srgb, var(--accent-border) 34%, transparent);
+  outline-offset: 2px;
 }
 
 .business-canvas-color-row {
@@ -2363,8 +2494,21 @@ textarea.preview-editor {
   cursor: pointer;
 }
 
-.canvas-shape-select,
-.canvas-edge-direction-select,
+.business-canvas-color-swatch.active {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.canvas-custom-color-swatch {
+  background: var(--business-canvas-custom-color, transparent);
+}
+
+.canvas-custom-color-swatch.is-empty {
+  background:
+    linear-gradient(135deg, transparent 0 42%, color-mix(in srgb, var(--muted) 70%, transparent) 42% 58%, transparent 58%),
+    color-mix(in srgb, var(--surface-1) 76%, var(--panel));
+}
+
 .canvas-edge-label-input {
   min-height: 28px;
   font-size: 0.74rem;

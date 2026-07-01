@@ -47,6 +47,9 @@ const buttonWithText = (container: ParentNode, text: string) =>
     (button) => button.textContent?.trim() === text,
   );
 
+const buttonWithLabel = (container: ParentNode, label: string) =>
+  container.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+
 const buildCanvasBlock = (text = "# Example") => [
   "#canvas",
   JSON.stringify(
@@ -87,6 +90,9 @@ describe("CanvasEmbeddedBlock", () => {
     expect(buttonWithText(container, "Edit")).toBeUndefined();
     expect(buttonWithText(container, "Code")).toBeUndefined();
     expect(buttonWithText(container, "Duplicate")).toBeUndefined();
+    expect(buttonWithLabel(container, "Canvas view mode")).toBeNull();
+    expect(buttonWithLabel(container, "Canvas edit mode")).toBeNull();
+    expect(buttonWithLabel(container, "Canvas JSON mode")).toBeNull();
 
     cleanup();
   });
@@ -98,8 +104,8 @@ describe("CanvasEmbeddedBlock", () => {
     await flush();
 
     expect(container.querySelector(".business-canvas-editor")?.getAttribute("data-canvas-mode")).toBe("view");
-    expect(buttonWithText(container, "Add card")?.disabled).toBe(true);
-    expect(buttonWithText(container, "Delete")?.disabled).toBe(true);
+    expect(buttonWithLabel(container, "Add card")?.disabled).toBe(true);
+    expect(buttonWithLabel(container, "Delete canvas block")?.disabled).toBe(true);
 
     cleanup();
   });
@@ -116,7 +122,7 @@ describe("CanvasEmbeddedBlock", () => {
     await flush();
 
     expect(container.querySelector(".business-canvas-editor")?.getAttribute("data-canvas-mode")).toBe("edit");
-    const addCardButton = buttonWithText(container, "Add card");
+    const addCardButton = buttonWithLabel(container, "Add card");
     expect(addCardButton?.disabled).toBe(false);
     await clickButton(addCardButton);
     await flush();
@@ -144,12 +150,12 @@ describe("CanvasEmbeddedBlock", () => {
     );
     await flush();
 
-    await clickButton(buttonWithText(container, "Delete"));
+    await clickButton(buttonWithLabel(container, "Delete canvas block"));
     expect(document.body.textContent).toContain("Canvas loeschen?");
     await clickButton(buttonWithText(document.body, "Abbrechen"));
     expect(onCommitRaw).not.toHaveBeenCalled();
 
-    await clickButton(buttonWithText(container, "Delete"));
+    await clickButton(buttonWithLabel(container, "Delete canvas block"));
     await clickButton(buttonWithText(document.body, "Canvas loeschen"));
     expect(onCommitRaw).toHaveBeenCalledWith("");
 

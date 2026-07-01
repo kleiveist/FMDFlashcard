@@ -78,6 +78,11 @@ import {
   normalizeDatabaseFormulaDefinitionV1,
   type DatabaseFormulaDefinitionV1,
 } from "../preview/formula/database-formula-types";
+import {
+  normalizeCanvasSettings,
+  type CanvasCustomColorSlot,
+  type CanvasSettings,
+} from "../canvas/canvasSettings";
 
 type AppLanguage = "de" | "en";
 type EditorGridIntensity = "light" | "medium" | "strong";
@@ -146,6 +151,7 @@ export type AppSettings = {
   design_mode?: string | null;
   accent_color?: string | null;
   markdownEditor?: MarkdownEditorSettings | null;
+  canvas?: CanvasSettings | null;
   editor_exact_colors?: boolean | null;
   editor_markdown_exact_colors_enabled?: boolean | null;
   editor_markdown_custom_accent_hex?: string | null;
@@ -234,6 +240,8 @@ type PersistUpdates = {
   markdownEditorAccentLightHex?: string;
   markdownEditorAccentDarkHex?: string;
   markdownEditorAccentCustomSwatches?: string[];
+  canvasCustomColors?: CanvasCustomColorSlot[];
+  canvasLastPalette?: string | null;
   editorBlueprintGrid?: boolean;
   editorBlueprintGridIntensity?: EditorGridIntensity;
   cursorAccessoryEnabled?: boolean;
@@ -305,6 +313,7 @@ export type SettingsSnapshot = {
   markdownEditorAccentLightHex: string;
   markdownEditorAccentDarkHex: string;
   markdownEditorAccentCustomSwatches: string[];
+  canvas: CanvasSettings;
   editorBlueprintGrid: boolean;
   editorBlueprintGridIntensity: EditorGridIntensity;
   cursorAccessoryEnabled: boolean;
@@ -1063,6 +1072,7 @@ const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings =>
       customSwatches: settings.markdownEditorAccentCustomSwatches,
     },
   },
+  canvas: settings.canvas,
   editor_markdown_exact_colors_enabled: settings.markdownEditorAccentEnabled,
   editor_blueprint_grid: settings.editorBlueprintGrid,
   editor_blueprint_grid_intensity: settings.editorBlueprintGridIntensity,
@@ -1145,6 +1155,7 @@ export const normalizeSettings = (
   const storedMarkdownAccentCustomSwatches = normalizeMarkdownAccentSwatches(
     storedMarkdownAccent?.customSwatches ?? [],
   );
+  const storedCanvasSettings = normalizeCanvasSettings(stored.canvas);
   const legacyMarkdownAccent =
     normalizeMarkdownAccentHex(stored.markdownEditor?.accentColorHex) ??
     normalizeMarkdownAccentHex(stored.editor_markdown_custom_accent_hex);
@@ -1484,6 +1495,7 @@ export const normalizeSettings = (
       markdownEditorAccentLightHex: storedMarkdownAccentLightHex,
       markdownEditorAccentDarkHex: storedMarkdownAccentDarkHex,
       markdownEditorAccentCustomSwatches: storedMarkdownAccentCustomSwatches,
+      canvas: storedCanvasSettings,
       editorBlueprintGrid: storedEditorBlueprintGrid,
       editorBlueprintGridIntensity: storedEditorBlueprintGridIntensity,
       cursorAccessoryEnabled: storedCursorAccessoryEnabled,
@@ -1560,6 +1572,9 @@ export const useAppSettings = () => {
     markdownEditorAccentCustomSwatches,
     setMarkdownEditorAccentCustomSwatchesState,
   ] = useState<string[]>([]);
+  const [canvasSettings, setCanvasSettingsState] = useState<CanvasSettings>(() =>
+    normalizeCanvasSettings(null),
+  );
   const [editorBlueprintGrid, setEditorBlueprintGrid] = useState(
     DEFAULT_EDITOR_BLUEPRINT_GRID,
   );
@@ -2093,6 +2108,16 @@ export const useAppSettings = () => {
     [],
   );
 
+  const setCanvasCustomColors = useCallback(
+    (value: CanvasCustomColorSlot[]) => {
+      setCanvasSettingsState((current) => ({
+        ...current,
+        customColors: normalizeCanvasSettings({ customColors: value }).customColors,
+      }));
+    },
+    [],
+  );
+
   const setMarkdownViewEditEnabled = useCallback((value: boolean) => {
     setMarkdownViewEditEnabledState(Boolean(value));
   }, []);
@@ -2139,6 +2164,7 @@ export const useAppSettings = () => {
       markdownEditorAccentLightHex,
       markdownEditorAccentDarkHex,
       markdownEditorAccentCustomSwatches,
+      canvas: canvasSettings,
       editorBlueprintGrid,
       editorBlueprintGridIntensity,
       cursorAccessoryEnabled,
@@ -2200,6 +2226,7 @@ export const useAppSettings = () => {
       markdownEditorAccentLightHex,
       markdownEditorAccentDarkHex,
       markdownEditorAccentCustomSwatches,
+      canvasSettings,
       editorBlueprintGrid,
       editorBlueprintGridIntensity,
       cursorAccessoryEnabled,
@@ -2292,6 +2319,7 @@ export const useAppSettings = () => {
               customSwatches: settings.markdownEditorAccentCustomSwatches,
             },
           },
+          canvas: settings.canvas,
           editorBlueprintGrid: settings.editorBlueprintGrid,
           editorBlueprintGridIntensity: settings.editorBlueprintGridIntensity,
           uiCursorAccessoryEnabled: settings.cursorAccessoryEnabled,
@@ -2391,6 +2419,14 @@ export const useAppSettings = () => {
         markdownEditorAccentCustomSwatches:
           updates.markdownEditorAccentCustomSwatches ??
           markdownEditorAccentCustomSwatches,
+        canvas: {
+          customColors:
+            updates.canvasCustomColors ?? canvasSettings.customColors,
+          lastPalette:
+            "canvasLastPalette" in updates
+              ? updates.canvasLastPalette ?? null
+              : canvasSettings.lastPalette ?? null,
+        },
         editorBlueprintGrid: updates.editorBlueprintGrid ?? editorBlueprintGrid,
         editorBlueprintGridIntensity:
           updates.editorBlueprintGridIntensity ?? editorBlueprintGridIntensity,
@@ -2501,6 +2537,9 @@ export const useAppSettings = () => {
       if (saved && "recentVaults" in updates) {
         setRecentVaults(nextSettings.recentVaults ?? []);
       }
+      if (saved && ("canvasCustomColors" in updates || "canvasLastPalette" in updates)) {
+        setCanvasSettingsState(nextSettings.canvas);
+      }
       return saved;
     },
     [
@@ -2510,6 +2549,7 @@ export const useAppSettings = () => {
       markdownEditorAccentLightHex,
       markdownEditorAccentDarkHex,
       markdownEditorAccentCustomSwatches,
+      canvasSettings,
       editorBlueprintGrid,
       editorBlueprintGridIntensity,
       cursorAccessoryEnabled,
@@ -2607,6 +2647,7 @@ export const useAppSettings = () => {
     setMarkdownEditorAccentCustomSwatchesState(
       normalized.markdownEditorAccentCustomSwatches,
     );
+    setCanvasSettingsState(normalized.canvas);
     setEditorBlueprintGrid(normalized.editorBlueprintGrid);
     setEditorBlueprintGridIntensity(normalized.editorBlueprintGridIntensity);
     setCursorAccessoryEnabledState(normalized.cursorAccessoryEnabled);
@@ -2865,6 +2906,8 @@ export const useAppSettings = () => {
     markdownEditorAccentLightHex,
     markdownEditorAccentDarkHex,
     markdownEditorAccentCustomSwatches,
+    canvasSettings,
+    canvasCustomColors: canvasSettings.customColors,
     editorBlueprintGrid,
     editorBlueprintGridIntensity,
     cursorAccessoryEnabled,
@@ -2915,6 +2958,7 @@ export const useAppSettings = () => {
     setMarkdownEditorAccentHex,
     setMarkdownEditorAccentCustomSwatches,
     addMarkdownEditorAccentCustomSwatch,
+    setCanvasCustomColors,
     setEditorBlueprintGrid,
     setEditorBlueprintGridIntensity,
     setCursorAccessoryEnabled,

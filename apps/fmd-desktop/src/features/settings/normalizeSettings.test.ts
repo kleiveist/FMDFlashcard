@@ -39,6 +39,37 @@ describe("normalizeSettings", () => {
     expect(settings.markdownEditorOpenInNewTabByDefault).toBe(true);
   });
 
+  it("normalizes Canvas custom color slots", () => {
+    const { settings } = normalizeSettings({
+      canvas: {
+        customColors: [
+          { slot: 1, name: "Signal", value: "ff0066" },
+          { slot: 2, name: "", value: "not-a-color" },
+          { slot: 8, name: "Ignored", value: "#111111" },
+        ],
+        lastPalette: "cards",
+      },
+    } as AppSettings);
+
+    expect(settings.canvas.customColors).toHaveLength(6);
+    expect(settings.canvas.customColors[0]).toEqual({
+      slot: 1,
+      name: "Signal",
+      value: "#ff0066",
+    });
+    expect(settings.canvas.customColors[1]).toEqual({
+      slot: 2,
+      name: "Custom 2",
+      value: null,
+    });
+    expect(settings.canvas.customColors[5]).toEqual({
+      slot: 6,
+      name: "Custom 6",
+      value: null,
+    });
+    expect(settings.canvas.lastPalette).toBe("cards");
+  });
+
   it("coerces invalid enum values to defaults", () => {
     const stored = {
       editor_blueprint_grid_intensity: "loud",

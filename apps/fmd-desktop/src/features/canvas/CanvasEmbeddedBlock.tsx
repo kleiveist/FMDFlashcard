@@ -1,10 +1,18 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ModalShell } from "../../components/ModalShell";
 import {
   CanvasEditor,
   type CanvasEditorHandle,
   type PersistCanvasResult,
 } from "./CanvasEditor";
+import {
+  CanvasDeleteConfirmDialog,
+  CanvasExitFullscreenIcon,
+  CanvasFitIcon,
+  CanvasFullscreenIcon,
+  CanvasIconButton,
+  CanvasTrashIcon,
+} from "./CanvasToolbar";
+import type { CanvasCustomColorSlot } from "./canvasSettings";
 import {
   parseMarkdownCanvasBlock,
   replaceMarkdownCanvasBlockSource,
@@ -14,6 +22,8 @@ type CanvasEmbeddedBlockProps = {
   raw: string;
   blockIndex?: number;
   allowEditing?: boolean;
+  canvasCustomColors?: CanvasCustomColorSlot[];
+  onCanvasCustomColorsChange?: (nextSlots: CanvasCustomColorSlot[]) => void;
   onCommitRaw?: (nextRaw: string) => void;
 };
 
@@ -21,6 +31,8 @@ export const CanvasEmbeddedBlock = ({
   raw,
   blockIndex,
   allowEditing = false,
+  canvasCustomColors,
+  onCanvasCustomColorsChange,
   onCommitRaw,
 }: CanvasEmbeddedBlockProps) => {
   const editorRef = useRef<CanvasEditorHandle | null>(null);
@@ -68,31 +80,30 @@ export const CanvasEmbeddedBlock = ({
         forcedMode={canEditBlock ? "edit" : "view"}
         className="canvas-embedded-editor"
         bodyClassName="canvas-embedded-editor-body"
+        canvasCustomColors={canvasCustomColors}
+        onCanvasCustomColorsChange={onCanvasCustomColorsChange}
         toolbarActions={
           <>
-            <button
-              type="button"
-              className="ghost small"
+            <CanvasIconButton
+              label="Fit canvas"
               onClick={() => editorRef.current?.fitToContent()}
               disabled={!parsed.ok}
             >
-              Fit
-            </button>
-            <button
-              type="button"
-              className="ghost small"
+              <CanvasFitIcon />
+            </CanvasIconButton>
+            <CanvasIconButton
+              label={fullscreen ? "Exit fullscreen" : "Fullscreen"}
               onClick={() => setFullscreen((current) => !current)}
             >
-              {fullscreen ? "Exit Fullscreen" : "Fullscreen"}
-            </button>
-            <button
-              type="button"
-              className="ghost small"
+              {fullscreen ? <CanvasExitFullscreenIcon /> : <CanvasFullscreenIcon />}
+            </CanvasIconButton>
+            <CanvasIconButton
+              label="Delete canvas block"
               onClick={() => setDeleteConfirmOpen(true)}
               disabled={!allowEditing || !onCommitRaw}
             >
-              Delete
-            </button>
+              <CanvasTrashIcon />
+            </CanvasIconButton>
           </>
         }
         onPersistSource={persistSource}
@@ -102,36 +113,14 @@ export const CanvasEmbeddedBlock = ({
         <div className="error canvas-embedded-error">{parsed.error}</div>
       )}
 
-      <ModalShell
+      <CanvasDeleteConfirmDialog
         isOpen={deleteConfirmOpen}
         title="Canvas loeschen?"
-        onClose={() => setDeleteConfirmOpen(false)}
-        className="canvas-delete-confirm-modal"
-        bodyClassName="modal-body"
-        initialFocusSelector="[data-canvas-delete-cancel]"
-      >
-        <p>Dieser Canvas-Block wird aus der Markdown-Datei entfernt.</p>
-        <p className="muted">
-          Diese Aktion kann nicht automatisch rueckgaengig gemacht werden.
-        </p>
-        <div className="modal-actions">
-          <button
-            type="button"
-            className="ghost small"
-            data-canvas-delete-cancel
-            onClick={() => setDeleteConfirmOpen(false)}
-          >
-            Abbrechen
-          </button>
-          <button
-            type="button"
-            className="ghost small danger"
-            onClick={confirmDelete}
-          >
-            Canvas loeschen
-          </button>
-        </div>
-      </ModalShell>
+        description="Dieser Canvas-Block wird aus der Markdown-Datei entfernt. Diese Aktion kann nicht automatisch rueckgaengig gemacht werden."
+        confirmLabel="Canvas loeschen"
+        onCancel={() => setDeleteConfirmOpen(false)}
+        onConfirm={confirmDelete}
+      />
     </div>
   );
 };
