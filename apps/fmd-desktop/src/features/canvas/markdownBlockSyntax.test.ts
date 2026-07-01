@@ -79,6 +79,18 @@ describe("markdown Canvas block syntax", () => {
     expect(nextRaw).toContain("\"edges\": []");
   });
 
+  it("preserves directive wrappers when replacing the Canvas JSON body", () => {
+    const raw = ["#canvas", sampleSource, "#endcanvas"].join("\n");
+    const nextRaw = replaceMarkdownCanvasBlockSource(
+      raw,
+      JSON.stringify({ nodes: [], edges: [] }, null, 2),
+    );
+
+    expect(nextRaw.startsWith("#canvas\n")).toBe(true);
+    expect(nextRaw.endsWith("\n#endcanvas")).toBe(true);
+    expect(nextRaw).toContain("\"nodes\": []");
+  });
+
   it("extracts and masks multiple Canvas blocks", () => {
     const lines = [
       "Before",

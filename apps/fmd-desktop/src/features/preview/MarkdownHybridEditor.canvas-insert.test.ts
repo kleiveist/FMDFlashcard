@@ -120,8 +120,13 @@ describe("MarkdownHybridEditor Canvas insert menu", () => {
       expect(markdownValue).toContain("\"text\": \"Neue Karte\"");
       expect(markdownValue).toContain("#canvasend");
       expect(container.querySelector(".canvas-embedded-block")).not.toBeNull();
-      expect(container.querySelector(".canvas-content-node")).not.toBeNull();
+      expect(container.querySelector(".business-canvas-editor")).not.toBeNull();
+      expect(container.querySelector(".business-canvas-viewport")).not.toBeNull();
+      expect(container.querySelector(".business-canvas-card-node")).not.toBeNull();
       expect(container.textContent).toContain("Neue Karte");
+      expect(findButtonByExactText(container, "View")).toBeNull();
+      expect(findButtonByExactText(container, "Edit")).toBeNull();
+      expect(findButtonByExactText(container, "Code")).toBeNull();
 
       cleanup();
     });

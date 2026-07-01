@@ -102,6 +102,9 @@ describe("CanvasPanel", () => {
     expect(container.querySelector(".business-canvas-content")).not.toBeNull();
     expect(container.querySelector(".business-canvas-toolbar-layer")).not.toBeNull();
     expect(container.querySelector(".business-canvas-edges")).not.toBeNull();
+    expect(buttonWithText(container, "View")).toBeDefined();
+    expect(buttonWithText(container, "Edit")).toBeDefined();
+    expect(buttonWithText(container, "Code")).toBeDefined();
     expect(
       container.querySelector<HTMLElement>(".business-canvas-content")?.style.transform,
     ).toBe("translate(-900px, -1020px) scale(1)");

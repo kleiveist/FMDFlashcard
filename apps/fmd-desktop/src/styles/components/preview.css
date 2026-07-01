@@ -1944,11 +1944,36 @@ textarea.preview-editor {
   z-index: 80;
   background: var(--panel);
   box-shadow: var(--shadow-modal);
+  min-height: 0;
 }
 
-.canvas-embedded-block.is-fullscreen .canvas-embedded-viewport {
+.canvas-embedded-block .canvas-embedded-editor {
+  margin: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.canvas-embedded-block .canvas-embedded-editor-body {
+  min-height: 0;
+}
+
+.canvas-embedded-block .business-canvas-viewport {
+  height: 480px;
+  min-height: 360px;
+}
+
+.canvas-embedded-block.is-fullscreen .canvas-embedded-editor,
+.canvas-embedded-block.is-fullscreen .canvas-embedded-editor-body,
+.canvas-embedded-block.is-fullscreen .business-canvas-workbench,
+.canvas-embedded-block.is-fullscreen .business-canvas-viewport {
   flex: 1;
   min-height: 0;
+}
+
+.canvas-embedded-block.is-fullscreen .business-canvas-viewport {
   height: auto;
 }
 
@@ -1977,6 +2002,11 @@ textarea.preview-editor {
 
 .canvas-embedded-error {
   margin: 0;
+}
+
+.canvas-delete-confirm-modal {
+  width: min(420px, 100%);
+  max-height: none;
 }
 
 .canvas-embedded-code-shell {

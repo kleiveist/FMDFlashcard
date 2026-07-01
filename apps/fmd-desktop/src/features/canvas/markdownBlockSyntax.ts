@@ -205,14 +205,18 @@ export const replaceMarkdownCanvasBlockSource = (
   nextSource: string,
 ) => {
   const parsed = parseMarkdownCanvasBlock(raw);
-  const format = parsed.ok ? parsed.block.format : parsed.block?.format ?? "directive";
+  const block = parsed.ok ? parsed.block : parsed.block;
+  const format = block?.format ?? "directive";
   if (format === "fenced") {
-    const block = parsed.ok ? parsed.block : parsed.block;
     return [
       block?.openLine ?? "```canvas",
       nextSource.trimEnd(),
       block?.closeLine ?? "```",
     ].join("\n");
   }
-  return [CANVAS_BLOCK_START, nextSource.trimEnd(), CANVAS_BLOCK_END].join("\n");
+  return [
+    block?.openLine ?? CANVAS_BLOCK_START,
+    nextSource.trimEnd(),
+    block?.closeLine ?? CANVAS_BLOCK_END,
+  ].join("\n");
 };
