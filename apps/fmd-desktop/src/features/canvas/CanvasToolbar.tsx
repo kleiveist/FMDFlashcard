@@ -1,12 +1,15 @@
 import {
   type CSSProperties,
+  type RefObject,
   type ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { ModalShell } from "../../components/ModalShell";
 import {
   type CanvasCustomColorSlot,
@@ -16,6 +19,26 @@ import { type CanvasNodeShape } from "./document";
 
 type IconProps = {
   className?: string;
+};
+
+type CanvasPopoverPosition = {
+  top: number;
+  left: number;
+};
+
+const POPOVER_OFFSET = 6;
+
+const resolvePopoverPosition = (
+  anchor: HTMLElement | null,
+): CanvasPopoverPosition => {
+  const rect = anchor?.getBoundingClientRect();
+  if (!rect) {
+    return { top: 0, left: 0 };
+  }
+  return {
+    top: rect.bottom + POPOVER_OFFSET,
+    left: rect.left,
+  };
 };
 
 const SvgIcon = ({
@@ -290,6 +313,83 @@ export const CanvasFloatingToolbar = ({
   </div>
 );
 
+const CanvasToolbarPortalPopover = ({
+  anchorRef,
+  className,
+  role,
+  onClose,
+  children,
+}: {
+  anchorRef: RefObject<HTMLElement | null>;
+  className: string;
+  role?: string;
+  onClose: () => void;
+  children: ReactNode;
+}) => {
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+  const [position, setPosition] = useState<CanvasPopoverPosition>(() =>
+    resolvePopoverPosition(anchorRef.current),
+  );
+
+  const updatePosition = useCallback(() => {
+    setPosition(resolvePopoverPosition(anchorRef.current));
+  }, [anchorRef]);
+
+  useLayoutEffect(() => {
+    updatePosition();
+  }, [updatePosition]);
+
+  useEffect(() => {
+    updatePosition();
+    const frame = window.requestAnimationFrame(updatePosition);
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (
+        target &&
+        (anchorRef.current?.contains(target) || popoverRef.current?.contains(target))
+      ) {
+        return;
+      }
+      onClose();
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [anchorRef, onClose, updatePosition]);
+
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      ref={popoverRef}
+      className={`canvas-toolbar-popover canvas-toolbar-popover-portal ${className}`}
+      style={{ top: position.top, left: position.left }}
+      role={role}
+      data-md-block-control="true"
+    >
+      {children}
+    </div>,
+    document.body,
+  );
+};
+
 export const CanvasShapePicker = ({
   value,
   shapes,
@@ -302,19 +402,6 @@ export const CanvasShapePicker = ({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node | null)) {
-        setOpen(false);
-      }
-    };
-    window.addEventListener("pointerdown", onPointerDown);
-    return () => window.removeEventListener("pointerdown", onPointerDown);
-  }, [open]);
-
   return (
     <div className="canvas-toolbar-picker" ref={rootRef}>
       <CanvasIconButton
@@ -325,7 +412,12 @@ export const CanvasShapePicker = ({
         <ShapeIcon shape={value} />
       </CanvasIconButton>
       {open ? (
-        <div className="canvas-toolbar-popover canvas-shape-popover" role="menu">
+        <CanvasToolbarPortalPopover
+          anchorRef={rootRef}
+          className="canvas-shape-popover"
+          role="menu"
+          onClose={() => setOpen(false)}
+        >
           {shapes.map((shape) => (
             <CanvasIconButton
               key={shape}
@@ -339,7 +431,7 @@ export const CanvasShapePicker = ({
               <ShapeIcon shape={shape} />
             </CanvasIconButton>
           ))}
-        </div>
+        </CanvasToolbarPortalPopover>
       ) : null}
     </div>
   );
@@ -393,19 +485,10 @@ export const CanvasColorPalette = ({
   const [draftColor, setDraftColor] = useState("#64748b");
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node | null)) {
-        setOpen(false);
-        setEditingSlot(null);
-      }
-    };
-    window.addEventListener("pointerdown", onPointerDown);
-    return () => window.removeEventListener("pointerdown", onPointerDown);
-  }, [open]);
+  const closePopover = useCallback(() => {
+    setOpen(false);
+    setEditingSlot(null);
+  }, []);
 
   const startSlotEditing = useCallback((slot: CanvasCustomColorSlot) => {
     setEditingSlot(slot);
@@ -438,7 +521,11 @@ export const CanvasColorPalette = ({
         <CanvasPaletteIcon />
       </CanvasIconButton>
       {open ? (
-        <div className="canvas-toolbar-popover canvas-color-popover">
+        <CanvasToolbarPortalPopover
+          anchorRef={rootRef}
+          className="canvas-color-popover"
+          onClose={closePopover}
+        >
           <div className="canvas-color-palette-row" aria-label="Standard colors">
             {standardColors.map((color) => (
               <button
@@ -510,7 +597,7 @@ export const CanvasColorPalette = ({
               </CanvasIconButton>
             </div>
           ) : null}
-        </div>
+        </CanvasToolbarPortalPopover>
       ) : null}
     </div>
   );

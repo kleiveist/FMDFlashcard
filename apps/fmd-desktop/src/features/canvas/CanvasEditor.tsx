@@ -137,6 +137,8 @@ type EdgeRenderRow = {
   labelPoint: CanvasPoint;
   fromPoint: CanvasPoint;
   toPoint: CanvasPoint;
+  fromSide: CanvasSide;
+  toSide: CanvasSide;
 };
 
 type ConnectionDragState = {
@@ -338,17 +340,87 @@ const sampleCubic = (
   };
 };
 
+const resolveNodeCenterPoint = (node: CanvasNode): CanvasPoint => ({
+  x: getNodeContentX(node) + node.width / 2,
+  y: getNodeContentY(node) + node.height / 2,
+});
+
+const resolveBoundaryAnchor = (
+  node: CanvasNode,
+  targetPoint: CanvasPoint,
+): { point: CanvasPoint; side: CanvasSide } => {
+  const center = resolveNodeCenterPoint(node);
+  const deltaX = targetPoint.x - center.x;
+  const deltaY = targetPoint.y - center.y;
+  if (Math.abs(deltaX) < 0.001 && Math.abs(deltaY) < 0.001) {
+    return {
+      point: resolveAnchorPoint(node, "right"),
+      side: "right",
+    };
+  }
+
+  const halfWidth = Math.max(1, node.width / 2);
+  const halfHeight = Math.max(1, node.height / 2);
+  const horizontalT =
+    Math.abs(deltaX) < 0.001
+      ? Number.POSITIVE_INFINITY
+      : halfWidth / Math.abs(deltaX);
+  const verticalT =
+    Math.abs(deltaY) < 0.001
+      ? Number.POSITIVE_INFINITY
+      : halfHeight / Math.abs(deltaY);
+  const usesHorizontalEdge = horizontalT <= verticalT;
+  const t = usesHorizontalEdge ? horizontalT : verticalT;
+  const side: CanvasSide = usesHorizontalEdge
+    ? deltaX >= 0
+      ? "right"
+      : "left"
+    : deltaY >= 0
+      ? "bottom"
+      : "top";
+  return {
+    point: {
+      x: center.x + deltaX * t,
+      y: center.y + deltaY * t,
+    },
+    side,
+  };
+};
+
+const resolveAutoEdgeAnchors = (
+  fromNode: CanvasNode,
+  toNode: CanvasNode,
+): {
+  fromPoint: CanvasPoint;
+  toPoint: CanvasPoint;
+  fromSide: CanvasSide;
+  toSide: CanvasSide;
+} => {
+  const fromCenter = resolveNodeCenterPoint(fromNode);
+  const toCenter = resolveNodeCenterPoint(toNode);
+  const fromAnchor = resolveBoundaryAnchor(fromNode, toCenter);
+  const toAnchor = resolveBoundaryAnchor(toNode, fromCenter);
+  return {
+    fromPoint: fromAnchor.point,
+    toPoint: toAnchor.point,
+    fromSide: fromAnchor.side,
+    toSide: toAnchor.side,
+  };
+};
+
 const buildEdgeRenderRow = (
   edge: CanvasEdge,
   fromNode: CanvasNode,
   toNode: CanvasNode,
 ): EdgeRenderRow => {
-  const fromPoint = resolveAnchorPoint(fromNode, edge.fromSide);
-  const toPoint = resolveAnchorPoint(toNode, edge.toSide);
+  const { fromPoint, toPoint, fromSide, toSide } = resolveAutoEdgeAnchors(
+    fromNode,
+    toNode,
+  );
   const distance = Math.hypot(toPoint.x - fromPoint.x, toPoint.y - fromPoint.y);
   const controlDistance = clamp(distance * 0.45, 80, 220);
-  const fromVector = sideVector(edge.fromSide);
-  const toVector = sideVector(edge.toSide);
+  const fromVector = sideVector(fromSide);
+  const toVector = sideVector(toSide);
   const controlOne = {
     x: fromPoint.x + fromVector.x * controlDistance,
     y: fromPoint.y + fromVector.y * controlDistance,
@@ -368,28 +440,9 @@ const buildEdgeRenderRow = (
     labelPoint: sampleCubic(fromPoint, controlOne, controlTwo, toPoint, 0.5),
     fromPoint,
     toPoint,
+    fromSide,
+    toSide,
   };
-};
-
-const resolveShortestSides = (
-  fromNode: CanvasNode,
-  toNode: CanvasNode,
-): { fromSide: CanvasSide; toSide: CanvasSide } => {
-  const sides: CanvasSide[] = ["top", "right", "bottom", "left"];
-  let best = { fromSide: "right" as CanvasSide, toSide: "left" as CanvasSide };
-  let bestDistance = Number.POSITIVE_INFINITY;
-  sides.forEach((fromSide) => {
-    sides.forEach((toSide) => {
-      const fromPoint = resolveAnchorPoint(fromNode, fromSide);
-      const toPoint = resolveAnchorPoint(toNode, toSide);
-      const distance = Math.hypot(toPoint.x - fromPoint.x, toPoint.y - fromPoint.y);
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        best = { fromSide, toSide };
-      }
-    });
-  });
-  return best;
 };
 
 const normalizeEdgeSides = (document: CanvasDocument): CanvasDocument => {
@@ -402,11 +455,11 @@ const normalizeEdgeSides = (document: CanvasDocument): CanvasDocument => {
       if (!fromNode || !toNode) {
         return edge;
       }
-      const shortest = resolveShortestSides(fromNode, toNode);
+      const autoAnchors = resolveAutoEdgeAnchors(fromNode, toNode);
       return {
         ...edge,
-        fromSide: edge.fromSide ?? shortest.fromSide,
-        toSide: edge.toSide ?? shortest.toSide,
+        fromSide: autoAnchors.fromSide,
+        toSide: autoAnchors.toSide,
       };
     }),
   };
@@ -791,43 +844,6 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
     [gridSize, snapEnabled],
   );
 
-  const oppositeSide = useCallback((side: CanvasSide): CanvasSide => {
-    switch (side) {
-      case "top":
-        return "bottom";
-      case "right":
-        return "left";
-      case "bottom":
-        return "top";
-      case "left":
-        return "right";
-    }
-  }, []);
-
-  const resolveNearestSide = useCallback(
-    (node: CanvasNode, point: CanvasPoint): CanvasSide => {
-      const contentPoint = {
-        x: INTERNAL_ORIGIN + point.x,
-        y: INTERNAL_ORIGIN + point.y,
-      };
-      let bestSide: CanvasSide = "left";
-      let bestDistance = Number.POSITIVE_INFINITY;
-      CANVAS_SIDES.forEach((side) => {
-        const anchorPoint = resolveAnchorPoint(node, side);
-        const distance = Math.hypot(
-          contentPoint.x - anchorPoint.x,
-          contentPoint.y - anchorPoint.y,
-        );
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          bestSide = side;
-        }
-      });
-      return bestSide;
-    },
-    [],
-  );
-
   const createNodeAtPoint = useCallback(
     (kind: "text" | "group", point: CanvasPoint) => {
       if (mode !== "edit") {
@@ -1140,11 +1156,7 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
   );
 
   const addConnection = useCallback(
-    (
-      fromNodeId: string,
-      toNodeId: string,
-      sides?: { fromSide?: CanvasSide; toSide?: CanvasSide },
-    ) => {
+    (fromNodeId: string, toNodeId: string) => {
       if (fromNodeId === toNodeId) {
         return;
       }
@@ -1155,16 +1167,13 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
         if (!fromNode || !toNode || isGroupNode(fromNode) || isGroupNode(toNode)) {
           return current;
         }
-        const shortestPair = resolveShortestSides(fromNode, toNode);
-        const sidePair = {
-          fromSide: sides?.fromSide ?? shortestPair.fromSide,
-          toSide: sides?.toSide ?? shortestPair.toSide,
-        };
+        const sidePair = resolveAutoEdgeAnchors(fromNode, toNode);
         const edge: CanvasEdge = {
           id: createId("edge", ids),
           fromNode: fromNodeId,
           toNode: toNodeId,
-          ...sidePair,
+          fromSide: sidePair.fromSide,
+          toSide: sidePair.toSide,
           fromEnd: "none",
           toEnd: "arrow",
         };
@@ -1204,12 +1213,13 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
           color: "1",
           shape: "rounded-rectangle",
         };
+        const sidePair = resolveAutoEdgeAnchors(fromNode, newNode);
         const edge: CanvasEdge = {
           id: createdEdgeId,
           fromNode: prompt.fromNodeId,
           toNode: createdNodeId,
-          fromSide: prompt.fromSide,
-          toSide: oppositeSide(prompt.fromSide),
+          fromSide: sidePair.fromSide,
+          toSide: sidePair.toSide,
           fromEnd: "none",
           toEnd: "arrow",
         };
@@ -1224,7 +1234,7 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
       setSelectedNodeIds(createdNodeId ? [createdNodeId] : []);
       setSelectedEdgeId(null);
     },
-    [applyDraftChange, mode, oppositeSide, toSnappedCanvasPoint],
+    [applyDraftChange, mode, toSnappedCanvasPoint],
   );
 
   const updateEdgeDirection = useCallback(
@@ -1323,10 +1333,7 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
         handleNodeId !== activeDrag.fromNodeId &&
         CANVAS_SIDES.includes(handleSide as CanvasSide)
       ) {
-        addConnection(activeDrag.fromNodeId, handleNodeId, {
-          fromSide: activeDrag.fromSide,
-          toSide: handleSide as CanvasSide,
-        });
+        addConnection(activeDrag.fromNodeId, handleNodeId);
         setConnectionDrag(null);
         return;
       }
@@ -1341,10 +1348,7 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
         targetNode.id !== activeDrag.fromNodeId &&
         !isGroupNode(targetNode)
       ) {
-        addConnection(activeDrag.fromNodeId, targetNode.id, {
-          fromSide: activeDrag.fromSide,
-          toSide: resolveNearestSide(targetNode, dropPoint),
-        });
+        addConnection(activeDrag.fromNodeId, targetNode.id);
         setConnectionDrag(null);
         return;
       }
@@ -1367,7 +1371,6 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
     addConnection,
     connectionDrag?.fromNodeId,
     connectionDrag?.fromSide,
-    resolveNearestSide,
     viewportToCanvasPoint,
   ]);
 
@@ -1617,6 +1620,10 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
       if (target?.closest("[data-canvas-node-id], .canvas-edge-hit, .canvas-floating-toolbar, .business-canvas-context-menu, .canvas-connection-drop-popup")) {
         return;
       }
+      if (event.button === 0 && !isEditableTarget(event.target)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       setContextMenu(null);
       setEditingNodeId(null);
       setEditingEdgeId(null);
@@ -1649,6 +1656,7 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
         return;
       }
       event.preventDefault();
+      event.stopPropagation();
       const target = event.target as HTMLElement | null;
       const nodeElement = target?.closest<HTMLElement>("[data-canvas-node-id]");
       const nodeId = nodeElement?.dataset.canvasNodeId;
@@ -1671,6 +1679,7 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
       if (target?.closest("[data-canvas-connection-side]")) {
         return;
       }
+      event.preventDefault();
       event.stopPropagation();
       setContextMenu(null);
       setEditingEdgeId(null);
@@ -1989,6 +1998,7 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
     <section
       className={rootClassName}
       data-canvas-mode={mode}
+      data-md-block-control="true"
     >
       <div className="panel-header">
         <div>
@@ -2236,6 +2246,7 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
                               if (mode !== "edit") {
                                 return;
                               }
+                              event.preventDefault();
                               event.stopPropagation();
                               setSelectedEdgeId(edge.id);
                               setSelectedNodeIds([]);
@@ -2271,6 +2282,7 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
                                 if (mode !== "edit") {
                                   return;
                                 }
+                                event.preventDefault();
                                 event.stopPropagation();
                                 setSelectedEdgeId(edge.id);
                                 setSelectedNodeIds([]);

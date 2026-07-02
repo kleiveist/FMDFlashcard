@@ -52,4 +52,33 @@ describe("business canvas editor CSS", () => {
     expect(previewCss).toContain(".business-canvas-edges .canvas-edge-hit");
     expect(previewCss).toContain("pointer-events: stroke;");
   });
+
+  it("keeps canvas popovers above canvas layers and suppresses native selection", () => {
+    expect(previewCss).toMatch(/\.canvas-toolbar-popover\s*\{[\s\S]*?position:\s*fixed;/);
+    expect(previewCss).toMatch(/\.canvas-toolbar-popover\s*\{[\s\S]*?z-index:\s*68;/);
+    expect(previewCss).toMatch(/\.canvas-embedded-block\.is-fullscreen\s*\{[\s\S]*?z-index:\s*60;/);
+    for (const selector of [
+      ".canvas-board-viewport",
+      ".canvas-board-stage",
+      ".business-canvas-workbench",
+      ".business-canvas-content",
+      ".business-canvas-node",
+      ".business-canvas-anchor",
+    ]) {
+      const escapedSelector = selector.split(".").join("\\.");
+      expect(previewCss).toMatch(
+        new RegExp(`${escapedSelector}\\s*\\{[\\s\\S]*?user-select:\\s*none;`),
+      );
+    }
+    expect(previewCss).toMatch(/\.canvas-node-editable\s*\{[\s\S]*?user-select:\s*text;/);
+  });
+
+  it("keeps the canvas mode switch aligned to the header actions edge", () => {
+    expect(previewCss).toMatch(
+      /\.business-canvas-editor \.preview-actions\s*\{[\s\S]*?margin-left:\s*auto;[\s\S]*?justify-content:\s*flex-end;/,
+    );
+    expect(previewCss).toMatch(
+      /\.business-canvas-editor \.preview-mode-toggle\s*\{[\s\S]*?margin-left:\s*auto;[\s\S]*?justify-content:\s*flex-end;/,
+    );
+  });
 });

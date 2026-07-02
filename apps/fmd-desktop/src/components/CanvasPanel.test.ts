@@ -186,4 +186,145 @@ describe("CanvasPanel", () => {
 
     cleanup();
   });
+
+  it("renders edge anchors from current card geometry instead of stored sides", async () => {
+    const { container, cleanup } = renderCanvasPanel({
+      nodes: [
+        {
+          id: "left",
+          type: "text",
+          text: "Left",
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 100,
+        },
+        {
+          id: "right",
+          type: "text",
+          text: "Right",
+          x: 300,
+          y: 50,
+          width: 100,
+          height: 100,
+        },
+      ],
+      edges: [
+        {
+          id: "edge-1",
+          fromNode: "left",
+          toNode: "right",
+          fromSide: "top",
+          toSide: "bottom",
+          fromEnd: "none",
+          toEnd: "arrow",
+        },
+      ],
+    });
+    await flush();
+
+    const edgeLine = container.querySelector<SVGPathElement>(
+      ".canvas-edge-row .canvas-edge-line",
+    );
+    const path = edgeLine?.getAttribute("d") ?? "";
+    expect(path).toMatch(/^M 1300 1258\./);
+    expect(path).toContain("1500 1291.");
+    expect(path).not.toContain("M 1250 1200");
+
+    cleanup();
+  });
+
+  it("normalizes stored edge sides on persist", async () => {
+    const onPersistSource = vi.fn().mockResolvedValue({ ok: true });
+    const { container, cleanup } = renderCanvasPanel({
+      nodes: [
+        {
+          id: "left",
+          type: "text",
+          text: "Left",
+          x: 0,
+          y: 0,
+          width: 120,
+          height: 100,
+        },
+        {
+          id: "right",
+          type: "text",
+          text: "Right",
+          x: 320,
+          y: 0,
+          width: 120,
+          height: 100,
+        },
+      ],
+      edges: [
+        {
+          id: "edge-1",
+          fromNode: "left",
+          toNode: "right",
+          fromSide: "top",
+          toSide: "bottom",
+          fromEnd: "none",
+          toEnd: "arrow",
+        },
+      ],
+    }, onPersistSource);
+    await flush();
+
+    await clickButton(buttonWithLabel(container, "Canvas edit mode"));
+    await flush();
+    await clickButton(buttonWithLabel(container, "Canvas view mode"));
+    await flush();
+
+    const savedSource = onPersistSource.mock.calls[
+      onPersistSource.mock.calls.length - 1
+    ]?.[0] as string;
+    const savedDocument = JSON.parse(savedSource) as CanvasDocument;
+    expect(savedDocument.edges[0]).toMatchObject({
+      fromSide: "right",
+      toSide: "left",
+    });
+
+    cleanup();
+  });
+
+  it("renders shape and color popovers through body portals", async () => {
+    const { container, cleanup } = renderCanvasPanel({
+      nodes: [
+        {
+          id: "node-1",
+          type: "text",
+          text: "Card",
+          x: 0,
+          y: 0,
+          width: 160,
+          height: 100,
+        },
+      ],
+      edges: [],
+    });
+    await flush();
+
+    await clickButton(buttonWithLabel(container, "Canvas edit mode"));
+    await flush();
+    const card = container.querySelector<HTMLElement>(".business-canvas-card-node");
+    act(() => {
+      card?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    });
+    await flush();
+
+    await clickButton(buttonWithLabel(container, "Card shape"));
+    const shapePopover = document.body.querySelector(".canvas-shape-popover");
+    expect(shapePopover).not.toBeNull();
+    expect(container.querySelector(".canvas-shape-popover")).toBeNull();
+    expect(shapePopover?.closest(".business-canvas-floating-toolbar")).toBeNull();
+
+    await clickButton(buttonWithLabel(document.body, "Canvas color"));
+    const colorPopover = document.body.querySelector(".canvas-color-popover");
+    expect(colorPopover).not.toBeNull();
+    expect(container.querySelector(".canvas-color-popover")).toBeNull();
+    expect(colorPopover?.closest(".business-canvas-floating-toolbar")).toBeNull();
+
+    cleanup();
+  });
 });

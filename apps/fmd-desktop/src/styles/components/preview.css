@@ -1790,6 +1790,9 @@ textarea.preview-editor {
   position: relative;
   overflow: hidden;
   cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .canvas-board-viewport.is-panning {
@@ -1801,6 +1804,9 @@ textarea.preview-editor {
   inset: 0 auto auto 0;
   transform-origin: 0 0;
   will-change: transform;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .canvas-board-edges {
@@ -1941,7 +1947,7 @@ textarea.preview-editor {
 .canvas-embedded-block.is-fullscreen {
   position: fixed;
   inset: 18px;
-  z-index: 80;
+  z-index: 60;
   background: var(--panel);
   box-shadow: var(--shadow-modal);
   min-height: 0;
@@ -2080,12 +2086,27 @@ textarea.preview-editor {
   min-height: 0;
 }
 
+.business-canvas-editor .preview-actions {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+.business-canvas-editor .preview-mode-toggle {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
 .business-canvas-workbench {
   position: relative;
   display: flex;
   flex: 1;
   min-width: 0;
   min-height: 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .business-canvas-viewport {
@@ -2107,6 +2128,9 @@ textarea.preview-editor {
   width: 2600px;
   height: 1900px;
   transform-origin: 0 0;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .business-canvas-toolbar-layer {
@@ -2114,6 +2138,9 @@ textarea.preview-editor {
   inset: 0;
   z-index: 40;
   pointer-events: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .business-canvas-floating-toolbar {
@@ -2130,6 +2157,9 @@ textarea.preview-editor {
   background: color-mix(in srgb, var(--panel) 96%, transparent);
   box-shadow: var(--ui-shadow-flyout);
   overflow-x: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .canvas-toolbar-picker {
@@ -2138,10 +2168,8 @@ textarea.preview-editor {
 }
 
 .canvas-toolbar-popover {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 20;
+  position: fixed;
+  z-index: 68;
   display: flex;
   gap: 5px;
   padding: 6px;
@@ -2149,6 +2177,15 @@ textarea.preview-editor {
   border-radius: var(--ui-radius-menu);
   background: var(--panel);
   box-shadow: var(--ui-shadow-flyout);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.canvas-toolbar-popover-portal {
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow: auto;
 }
 
 .canvas-shape-popover,
@@ -2181,6 +2218,13 @@ textarea.preview-editor {
   border: 1px solid var(--line-soft);
   border-radius: var(--ui-radius-control);
   background: transparent;
+  touch-action: auto;
+}
+
+.canvas-color-editor input {
+  user-select: text;
+  -webkit-user-select: text;
+  touch-action: auto;
 }
 
 .canvas-edge-direction-icons {
@@ -2197,6 +2241,9 @@ textarea.preview-editor {
   border-radius: var(--ui-radius-menu);
   background: var(--panel);
   box-shadow: var(--ui-shadow-flyout);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .business-canvas-context-menu {
@@ -2290,6 +2337,9 @@ textarea.preview-editor {
   --business-canvas-node-border: color-mix(in srgb, var(--business-canvas-node-color) 62%, var(--line-soft));
   border-color: var(--business-canvas-node-border);
   background: var(--business-canvas-node-fill);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .business-canvas-group-node {
@@ -2401,6 +2451,8 @@ textarea.preview-editor {
 .canvas-node-editable {
   outline: none;
   user-select: text;
+  -webkit-user-select: text;
+  touch-action: auto;
 }
 
 .canvas-group-name-input {
@@ -2408,6 +2460,9 @@ textarea.preview-editor {
   z-index: 2;
   width: calc(100% - 16px);
   margin: 8px;
+  user-select: text;
+  -webkit-user-select: text;
+  touch-action: auto;
 }
 
 .canvas-node-resize-handle {
@@ -2425,6 +2480,9 @@ textarea.preview-editor {
     var(--panel);
   color: var(--muted);
   cursor: nwse-resize;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .business-canvas-anchor {
@@ -2440,6 +2498,9 @@ textarea.preview-editor {
   pointer-events: none;
   cursor: crosshair;
   transition: opacity 0.12s ease;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .business-canvas-anchor-top {
@@ -2512,6 +2573,9 @@ textarea.preview-editor {
 .canvas-edge-label-input {
   min-height: 28px;
   font-size: 0.74rem;
+  user-select: text;
+  -webkit-user-select: text;
+  touch-action: auto;
 }
 
 .canvas-empty-state {
