@@ -2251,18 +2251,24 @@ textarea.preview-editor {
   z-index: 90;
   display: flex;
   flex-direction: column;
+  gap: 2px;
   min-width: 150px;
   padding: 5px;
   border: 1px solid var(--line-soft);
   border-radius: var(--ui-radius-menu);
   background: var(--panel);
   box-shadow: var(--ui-shadow-flyout);
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .business-canvas-context-menu button {
   display: flex;
   align-items: center;
   justify-content: flex-start;
+  gap: 8px;
   width: 100%;
   padding: 7px 9px;
   border: 0;
@@ -2272,6 +2278,26 @@ textarea.preview-editor {
   font: inherit;
   font-size: 0.78rem;
   cursor: pointer;
+}
+
+.business-canvas-context-menu-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+}
+
+.business-canvas-context-menu-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.business-canvas-context-menu-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .business-canvas-context-menu button:hover:not(:disabled),

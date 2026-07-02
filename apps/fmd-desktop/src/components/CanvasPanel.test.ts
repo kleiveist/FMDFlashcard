@@ -327,4 +327,79 @@ describe("CanvasPanel", () => {
 
     cleanup();
   });
+
+  it("renders right-click context menus through a body portal at the pointer position with icons", async () => {
+    const { container, cleanup } = renderCanvasPanel({
+      nodes: [
+        {
+          id: "node-1",
+          type: "text",
+          text: "Card",
+          x: 0,
+          y: 0,
+          width: 160,
+          height: 100,
+        },
+      ],
+      edges: [],
+    });
+    await flush();
+
+    await clickButton(buttonWithLabel(container, "Canvas edit mode"));
+    await flush();
+
+    const viewport = container.querySelector<HTMLElement>(".business-canvas-viewport");
+    expect(viewport).not.toBeNull();
+    act(() => {
+      viewport?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 240,
+          clientY: 180,
+          button: 2,
+        }),
+      );
+    });
+    await flush();
+
+    let menu = document.body.querySelector<HTMLElement>(".business-canvas-context-menu");
+    expect(menu).not.toBeNull();
+    expect(container.querySelector(".business-canvas-context-menu")).toBeNull();
+    expect(menu?.style.left).toBe("240px");
+    expect(menu?.style.top).toBe("180px");
+    for (const label of ["New card", "New group", "Paste here"]) {
+      const button = menu?.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+      expect(button).not.toBeNull();
+      expect(button?.getAttribute("title")).toBe(label);
+      expect(button?.querySelector("svg")).not.toBeNull();
+    }
+
+    const card = container.querySelector<HTMLElement>(".business-canvas-card-node");
+    expect(card).not.toBeNull();
+    act(() => {
+      card?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 321,
+          clientY: 210,
+          button: 2,
+        }),
+      );
+    });
+    await flush();
+
+    menu = document.body.querySelector<HTMLElement>(".business-canvas-context-menu");
+    expect(menu?.style.left).toBe("321px");
+    expect(menu?.style.top).toBe("210px");
+    for (const label of ["Edit", "Copy", "Delete"]) {
+      const button = menu?.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
+      expect(button).not.toBeNull();
+      expect(button?.getAttribute("title")).toBe(label);
+      expect(button?.querySelector("svg")).not.toBeNull();
+    }
+
+    cleanup();
+  });
 });

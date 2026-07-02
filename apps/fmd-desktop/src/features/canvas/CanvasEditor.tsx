@@ -7,10 +7,12 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { type LoadState } from "../../lib/types";
 import {
   createEmptyCanvasDocument,
@@ -130,6 +132,34 @@ type ContextMenuState = {
   canvasPoint: CanvasPoint;
   nodeId?: string;
 };
+
+const CONTEXT_MENU_VIEWPORT_MARGIN = 8;
+
+const CanvasContextMenuItem = ({
+  label,
+  icon,
+  disabled = false,
+  onClick,
+}: {
+  label: string;
+  icon: ReactNode;
+  disabled?: boolean;
+  onClick: () => void;
+}) => (
+  <button
+    type="button"
+    role="menuitem"
+    aria-label={label}
+    title={label}
+    disabled={disabled}
+    onClick={onClick}
+  >
+    <span className="business-canvas-context-menu-icon" aria-hidden="true">
+      {icon}
+    </span>
+    <span className="business-canvas-context-menu-label">{label}</span>
+  </button>
+);
 
 type EdgeRenderRow = {
   edge: CanvasEdge;
@@ -585,11 +615,13 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
     useState<ConnectionDropPromptState | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [contextMenuStyle, setContextMenuStyle] = useState<CSSProperties | null>(null);
   const [spacePressed, setSpacePressed] = useState(false);
   const draftDocumentRef = useRef(draftDocument);
   const renderDocumentRef = useRef(renderDocument);
   const sourceKeyRef = useRef<string | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const viewportStateRef = useRef(viewport);
   const gridStateRef = useRef({ size: gridSize, snap: snapEnabled });
 
@@ -600,6 +632,63 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
   useEffect(() => {
     renderDocumentRef.current = renderDocument;
   }, [renderDocument]);
+
+  useLayoutEffect(() => {
+    if (!contextMenu || typeof window === "undefined") {
+      setContextMenuStyle(null);
+      return;
+    }
+
+    const updateContextMenuPosition = () => {
+      const menu = contextMenuRef.current;
+      const menuWidth = menu?.offsetWidth ?? 0;
+      const menuHeight = menu?.offsetHeight ?? 0;
+      let left = contextMenu.x;
+      let top = contextMenu.y;
+
+      if (menuWidth > 0 && left + menuWidth > window.innerWidth - CONTEXT_MENU_VIEWPORT_MARGIN) {
+        left = Math.max(
+          CONTEXT_MENU_VIEWPORT_MARGIN,
+          window.innerWidth - menuWidth - CONTEXT_MENU_VIEWPORT_MARGIN,
+        );
+      }
+      if (menuHeight > 0 && top + menuHeight > window.innerHeight - CONTEXT_MENU_VIEWPORT_MARGIN) {
+        top = Math.max(
+          CONTEXT_MENU_VIEWPORT_MARGIN,
+          window.innerHeight - menuHeight - CONTEXT_MENU_VIEWPORT_MARGIN,
+        );
+      }
+
+      setContextMenuStyle({ left, top });
+    };
+
+    updateContextMenuPosition();
+    const frame = window.requestAnimationFrame(updateContextMenuPosition);
+    window.addEventListener("resize", updateContextMenuPosition);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", updateContextMenuPosition);
+    };
+  }, [contextMenu]);
+
+  useEffect(() => {
+    if (!contextMenu || typeof window === "undefined") {
+      return;
+    }
+
+    const closeOnOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (target && contextMenuRef.current?.contains(target)) {
+        return;
+      }
+      setContextMenu(null);
+    };
+
+    window.addEventListener("pointerdown", closeOnOutsidePointerDown);
+    return () => {
+      window.removeEventListener("pointerdown", closeOnOutsidePointerDown);
+    };
+  }, [contextMenu]);
 
   useEffect(() => {
     viewportStateRef.current = viewport;
@@ -1993,6 +2082,78 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
   const bodyClassNames = ["panel-body preview-body", bodyClassName]
     .filter(Boolean)
     .join(" ");
+  const contextMenuLayer = contextMenu ? (
+    <div
+      ref={contextMenuRef}
+      className="business-canvas-context-menu"
+      style={contextMenuStyle ?? { left: contextMenu.x, top: contextMenu.y }}
+      role="menu"
+      data-md-block-control="true"
+      onPointerDown={(event) => event.stopPropagation()}
+      onContextMenu={(event) => event.preventDefault()}
+    >
+      {contextMenuNode ? (
+        <>
+          <CanvasContextMenuItem
+            label="Edit"
+            icon={<CanvasEditIcon />}
+            onClick={() => {
+              startNodeEditing(contextMenuNode);
+            }}
+          />
+          {!isGroupNode(contextMenuNode) ? (
+            <CanvasContextMenuItem
+              label="Copy"
+              icon={<CanvasCopyIcon />}
+              onClick={() => {
+                copyNodesToClipboard([contextMenuNode]);
+                setSelectedNodeIds([contextMenuNode.id]);
+                setContextMenu(null);
+              }}
+            />
+          ) : null}
+          <CanvasContextMenuItem
+            label="Delete"
+            icon={<CanvasTrashIcon />}
+            onClick={() => {
+              requestDeleteNodeIds([contextMenuNode.id]);
+              setContextMenu(null);
+            }}
+          />
+        </>
+      ) : (
+        <>
+          <CanvasContextMenuItem
+            label="New card"
+            icon={<CanvasPlusIcon />}
+            onClick={() => {
+              createNodeAtPoint("text", contextMenu.canvasPoint);
+              setContextMenu(null);
+            }}
+          />
+          <CanvasContextMenuItem
+            label="New group"
+            icon={<CanvasGroupIcon />}
+            onClick={() => {
+              createNodeAtPoint("group", contextMenu.canvasPoint);
+              setContextMenu(null);
+            }}
+          />
+          <CanvasContextMenuItem
+            label="Paste here"
+            icon={<CanvasPasteIcon />}
+            disabled={clipboardNodes.length === 0}
+            onClick={() => {
+              pasteNodes(contextMenu.canvasPoint);
+              setContextMenu(null);
+            }}
+          />
+        </>
+      )}
+    </div>
+  ) : null;
+  const contextMenuPortalTarget =
+    typeof document === "undefined" ? null : document.body;
 
   return (
     <section
@@ -2555,84 +2716,11 @@ export const CanvasEditor = forwardRef<CanvasEditorHandle, CanvasEditorProps>(({
                 ) : null}
               </div>
 
-              {contextMenu ? (
-                <div
-                  className="business-canvas-context-menu"
-                  style={{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }}
-                  role="menu"
-                >
-                  {contextMenuNode ? (
-                    <>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          startNodeEditing(contextMenuNode);
-                        }}
-                      >
-                        Edit
-                      </button>
-                      {!isGroupNode(contextMenuNode) ? (
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => {
-                            copyNodesToClipboard([contextMenuNode]);
-                            setSelectedNodeIds([contextMenuNode.id]);
-                            setContextMenu(null);
-                          }}
-                        >
-                          Copy
-                        </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          requestDeleteNodeIds([contextMenuNode.id]);
-                          setContextMenu(null);
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          createNodeAtPoint("text", contextMenu.canvasPoint);
-                          setContextMenu(null);
-                        }}
-                      >
-                        New card
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          createNodeAtPoint("group", contextMenu.canvasPoint);
-                          setContextMenu(null);
-                        }}
-                      >
-                        New group
-                      </button>
-                      <button
-                        type="button"
-                        role="menuitem"
-                        disabled={clipboardNodes.length === 0}
-                        onClick={() => {
-                          pasteNodes(contextMenu.canvasPoint);
-                          setContextMenu(null);
-                        }}
-                      >
-                        Paste here
-                      </button>
-                    </>
-                  )}
-                </div>
-              ) : null}
+              {contextMenuLayer
+                ? contextMenuPortalTarget
+                  ? createPortal(contextMenuLayer, contextMenuPortalTarget)
+                  : contextMenuLayer
+                : null}
             </>
           )}
         </div>
