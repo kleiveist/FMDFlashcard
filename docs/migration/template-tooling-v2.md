@@ -79,6 +79,12 @@ The actual initial product layout matched the proposed legacy shape:
 | FMD-only extensions, if any survive review | project-specific tooling | `project-tools/fmdflashcard/` | FMDFlashcard | low | focused tests |
 | build output, caches, `.BAK`, environments | old/generated data | do not migrate | none | low | ignored/untracked audit |
 
+The legacy toolbox review found no FMD-specific implementation to preserve. Its package builders,
+platform installers, environment bootstrap, doctor, and runner functions are general-purpose and
+overlap the pinned central payload. `project-tools/fmdflashcard/` is therefore established as an
+explicit extension boundary without copying obsolete scripts; later FMD-only acceptance helpers
+may live there without modifying central files.
+
 The committed `UserGlobal` files are not examples: they contain personal names, absolute local
 paths, profile selections, identifiers, and learning/exam history. Before any mutation, all seven
 files were copied outside the repository to a permission-restricted migration backup and a
