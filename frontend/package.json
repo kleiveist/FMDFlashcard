@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri",
+    "tauri": "cd .. && node frontend/node_modules/@tauri-apps/cli/tauri.js",
     "test": "vitest"
   },
   "dependencies": {

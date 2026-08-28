@@ -4,10 +4,16 @@
   "version": "0.2.0",
   "identifier": "com.blobbite.fmdflashcard",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": {
+      "script": "pnpm dev",
+      "cwd": "../frontend"
+    },
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
-    "frontendDist": "../dist"
+    "beforeBuildCommand": {
+      "script": "pnpm build",
+      "cwd": "../frontend"
+    },
+    "frontendDist": "../frontend/dist"
   },
   "app": {
     "windows": [
