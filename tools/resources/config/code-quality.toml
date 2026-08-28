@@ -1,0 +1,100 @@
+schema_version = 1
+
+[source]
+extensions = [".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".rs"]
+exclude_directories = [
+  ".cache",
+  ".dist",
+  ".generated",
+  ".git",
+  ".pytest_cache",
+  ".venv",
+  "__pycache__",
+  "coverage",
+  "dist",
+  "generated",
+  "node_modules",
+  "target",
+  "vendor",
+]
+exclude_files = ["Cargo.lock", "package-lock.json"]
+exclude_paths = [
+  "build/**",
+  "backend/build/**",
+  "frontend/dist/**",
+  "src-tauri/gen/**",
+  "src-tauri/target/**",
+]
+
+[file]
+warning = 600
+strong_warning = 750
+max_code_lines = 900
+physical_lines_warning = 1200
+
+[function]
+warning = 50
+strong_warning = 80
+max_lines = 120
+
+[class]
+warning = 300
+strong_warning = 500
+max_lines = 700
+
+[complexity]
+warning = 10
+strong_warning = 15
+max = 20
+
+[nesting]
+warning = 4
+strong_warning = 5
+max = 5
+
+[parameters]
+warning = 6
+strong_warning = 8
+max = 10
+
+[architecture.backend]
+root = "backend/app"
+package = "app"
+api_layers = ["api"]
+application_layers = ["application", "services"]
+domain_layers = ["domain"]
+infrastructure_layers = ["db", "infrastructure"]
+support_directories = ["config"]
+composition_files = ["__init__.py", "main.py"]
+forbidden_dependencies = [
+  "api->infrastructure",
+  "application->api",
+  "application->infrastructure",
+  "domain->api",
+  "domain->application",
+  "domain->infrastructure",
+  "infrastructure->api",
+  "infrastructure->application",
+]
+domain_forbidden_imports = [
+  "alembic",
+  "fastapi",
+  "psycopg",
+  "pydantic",
+  "pydantic_settings",
+  "sqlalchemy",
+  "starlette",
+]
+router_business_imports = ["sqlalchemy"]
+router_handler_max_lines = 50
+
+[architecture.frontend]
+root = "frontend/src"
+api_directories = ["api"]
+feature_directories = ["features"]
+shared_directories = ["shared"]
+ui_directories = ["components", "pages", "views"]
+public_module_names = ["index.js", "index.jsx", "index.ts", "index.tsx"]
+
+# Manual exceptions are deliberately absent in the template baseline. Add only
+# narrow [[exceptions]] entries with rule, path, reason, and expires fields.

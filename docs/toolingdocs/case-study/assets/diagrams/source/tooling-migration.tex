@@ -1,0 +1,9 @@
+\begin{tikzpicture}[node distance=13mm]
+  \node[caseNode] (old) {old tools + docs};
+  \node[caseNode,right=of old] (state) {preserved project\\state};
+  \node[caseNode,right=of state] (new) {new tools + docs};
+  \node[caseNode,below=of state] (migration) {registered migration};
+  \draw[caseArrow] (old) -- (state);
+  \draw[caseArrow] (state) -- (new);
+  \draw[caseArrow] (state) -- (migration);
+\end{tikzpicture}

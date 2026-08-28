@@ -1,673 +1,221 @@
 #!/usr/bin/env python3
-"""
-Project control entry point.
-
-Examples:
-    ./control.py --doctor
-    ./control.py --doctor --json
-
-    # Windows build (installer bundles)
-    ./control.py --build-win
-
-    # Windows portable build (no installer; build script decides packaging)
-    ./control.py --build-win -p
-"""
-
 from __future__ import annotations
 
 import argparse
 import importlib
-import inspect
-import os
-import platform
-import shutil
-import subprocess
 import sys
+import traceback
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, cast
 
-SCRIPT_DIR = Path(__file__).resolve().parent
+# ``integrate --check`` promises a byte-for-byte read-only project inspection.
+# Disable local bytecode caches before importing any package from the copied
+# tooling tree so merely starting the command cannot mutate the target.
+sys.dont_write_bytecode = True
 
-# Build scripts (canonical):
-#   tools/inst/build/build_*.py
-# Legacy fallback (optional):
-#   tools/build/build_*.py
-INST_DIR = SCRIPT_DIR / "inst"
-BUILD_DIR = SCRIPT_DIR / "build"
-LEGACY_BUILD_DIR = INST_DIR / "build"
-
-# sys.path bootstrap for tooling modules.
-# insert(0) gives higher precedence to later inserts, so we insert
-# in increasing priority order (last = highest).
-extra_dirs = (
-    INST_DIR,
-    INST_DIR / "linux",
-    INST_DIR / "mac",
-    INST_DIR / "win",
-    BUILD_DIR,
-    LEGACY_BUILD_DIR,
-)
-for extra_dir in extra_dirs:
-    if extra_dir.exists() and str(extra_dir) not in sys.path:
-        sys.path.insert(0, str(extra_dir))
-
-from doctor import run as run_doctor  # type: ignore
-from console import info, section as console_section
-
-RunInstall = Callable[[bool], int]
-RunVsCodeInstall = Callable[[], int]
-run_doctor = cast(Callable[[bool], int], run_doctor)
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+if str(PACKAGE_ROOT) not in sys.path:
+    sys.path.insert(0, str(PACKAGE_ROOT))
 
 
-def _which_pnpm() -> str:
-    """
-    Returns an executable name/path for pnpm that works on Win/macOS/Linux.
-    """
-    exe = shutil.which("pnpm")
-    if exe:
-        return exe
-    if os.name == "nt":
-        exe = shutil.which("pnpm.cmd") or shutil.which("pnpm.exe")
-        if exe:
-            return exe
-    raise SystemExit("pnpm not found in PATH. Install pnpm (or enable corepack) and retry.")
+def _is_direct_integration_invocation(argv: list[str]) -> bool:
+    return bool(argv) and argv[0].lower() in {"integrate", "tooling"}
 
 
-def _run(cmd: list[str], cwd: Path) -> int:
-    """
-    Run a command with streaming stdout/stderr. Returns process returncode.
-    """
-    print(f"[control] cwd={cwd}")
-    print(f"[control] $ {' '.join(cmd)}")
-    p = subprocess.Popen(cmd, cwd=str(cwd))
-    return p.wait()
+# Integration must remain diagnosable even when the project configuration is
+# malformed.  Avoid importing unrelated command modules that eagerly resolve
+# project state before the integration service can report that error safely.
+if __name__ == "__main__" and _is_direct_integration_invocation(sys.argv[1:]):
+    from tools.integration.cli import standalone_main
+
+    raise SystemExit(standalone_main(sys.argv[1:]))
+
+logger = importlib.import_module("tools.logger")
+build = importlib.import_module("tools.inst.build")
+configuration = importlib.import_module("tools.inst.configuration")
+console = importlib.import_module("tools.inst.console")
+container = importlib.import_module("tools.inst.container")
+db = importlib.import_module("tools.inst.db")
+docs_index = importlib.import_module("tools.inst.docs_index")
+doctor = importlib.import_module("tools.inst.doctor")
+install = importlib.import_module("tools.inst.install")
+release = importlib.import_module("tools.inst.release")
+run = importlib.import_module("tools.inst.run")
+run_test = importlib.import_module("tools.inst.run_test")
+stop = importlib.import_module("tools.inst.stop")
+profile_runtime = importlib.import_module("tools.profiles.runtime")
+quality_control = importlib.import_module("tools.quality.control")
+tauri_build = importlib.import_module("tools.tauri.build")
+tauri_control = importlib.import_module("tools.tauri.control")
+integration_cli = importlib.import_module("tools.integration.cli")
+control_parser = importlib.import_module("tools.control_parser")
+
+Handler = Callable[[argparse.Namespace], int]
+HelpFormatter = control_parser.HelpFormatter
+ControlParser = control_parser.ControlParser
+ROOT_HELP = control_parser.ROOT_HELP
+ROOT_EXAMPLES = control_parser.ROOT_EXAMPLES
 
 
-def _repo_root_from_tools_control() -> Path:
-    """
-    tools/control.py -> repo root is one level up from tools/.
-    """
-    return Path(__file__).resolve().parents[1]
+COMMAND_ALIASES: dict[str, str] = {
+    "--doctor": "doctor",
+    "--install": "install",
+    "--run": "run",
+    "--stop": "stop",
+    "--test": "test",
+}
+
+TAURI_COMMAND_ALIASES: dict[str, str] = {
+    "--doctor": "doctor",
+    "--install": "install",
+    "--run": "run",
+    "--build": "build",
+    "--install-appimage": "install-appimage",
+    "--test": "test",
+    "--copy": "copy",
+}
 
 
-def cmd_build_desktop() -> int:
-    """
-    Build Tauri desktop app (release bundles).
-    Equivalent to: cd frontend && pnpm tauri build
-    """
-    repo_root = _repo_root_from_tools_control()
-    app_dir = (repo_root / "apps" / "fmd-desktop").resolve()
-    legacy_dir = (repo_root / "tools" / "apps" / "fmd-desktop").resolve()
-    if not app_dir.exists() and legacy_dir.exists():
-        app_dir = legacy_dir
-    if not app_dir.exists():
-        raise SystemExit(f"Desktop app dir not found: {app_dir}")
+def _normalize_argv(argv: list[str] | None) -> list[str]:
+    normalized = list(sys.argv[1:] if argv is None else argv)
+    if not normalized:
+        return normalized
 
-    pnpm = _which_pnpm()
+    first = normalized[0].lower()
+    if first == "--build":
+        if len(normalized) >= 2 and normalized[1].lower() == "--desktop":
+            return ["build", "desktop", *normalized[2:]]
+        return ["build", "web", *normalized[1:]]
 
-    rc = _run([pnpm, "install"], cwd=app_dir)
-    if rc != 0:
-        return rc
+    if len(normalized) >= 2 and first == "tauri":
+        tauri_alias = TAURI_COMMAND_ALIASES.get(normalized[1].lower())
+        if tauri_alias:
+            normalized[1] = tauri_alias
+            return normalized
 
-    return _run([pnpm, "tauri", "build"], cwd=app_dir)
-
-
-def _detect_installer_module() -> str | None:
-    """Return installer module name (without .py) based on the current OS."""
-    sys_name = platform.system().lower()
-    if sys_name == "windows":
-        return "installwin"
-    if sys_name == "darwin":
-        return "installmac"
-    if sys_name == "linux":
-        return "installuix"
-    return None
+    alias = COMMAND_ALIASES.get(first)
+    if alias:
+        show_test_guide = first == "--test" and len(normalized) == 1
+        normalized[0] = alias
+        if show_test_guide:
+            normalized.append("--suite-help")
+    return normalized
 
 
-def _load_installer_run_install() -> RunInstall | None:
-    mod_name = _detect_installer_module()
-    if not mod_name:
-        return None
-    try:
-        mod = importlib.import_module(mod_name)
-    except Exception as e:
-        print(f"Could not load installer module: {mod_name} ({e})")
-        return None
-
-    fn = getattr(mod, "run_install", None)
-    if not callable(fn):
-        print(f"Installer module '{mod_name}' has no run_install(dry_run=...) function.")
-        return None
-    return cast(RunInstall, fn)
+def _build_parser() -> argparse.ArgumentParser:
+    return control_parser.build_parser()
 
 
-def _load_vscode_run_install() -> RunVsCodeInstall | None:
-    mod_name = "installuixvs"
-    try:
-        mod = importlib.import_module(mod_name)
-    except Exception as e:
-        print(f"Could not load VS Code installer module: {mod_name} ({e})")
-        return None
-
-    fn = getattr(mod, "run_install", None)
-    if not callable(fn):
-        print(f"VS Code installer module '{mod_name}' has no run_install() function.")
-        return None
-    return cast(RunVsCodeInstall, fn)
-
-
-def _load_tauri_run_install() -> Callable[..., int] | None:
-    mod_name = "installuixtauri"
-    if platform.system().lower() != "linux":
-        print("Tauri install routine is Linux-only.")
-        return None
-    try:
-        mod = importlib.import_module(mod_name)
-    except Exception as e:
-        print(f"Could not load Tauri installer module: {mod_name} ({e})")
-        return None
-
-    fn = getattr(mod, "run_install", None)
-    if not callable(fn):
-        print(
-            "Tauri installer module "
-            f"'{mod_name}' has no run_install(dry_run=...) function."
-        )
-        return None
-    return cast(Callable[..., int], fn)
+def _handle_build(args: argparse.Namespace) -> int:
+    if getattr(args, "build_command", None) is None:
+        args.build_parser.print_help()
+        return 0
+    if args.build_command == "web":
+        return build.main(args)
+    if args.build_command == "desktop":
+        project_root = PACKAGE_ROOT
+        if not profile_runtime.feature_enabled("tauri", project_root):
+            profile = profile_runtime.active_profile(project_root)
+            logger.fail(
+                f"Tauri desktop build is disabled by active profile '{profile.profile_id}'."
+            )
+            return 1
+        return tauri_build.main(args)
+    if args.build_command == "container":
+        return container.build(args)
+    logger.fail(f"Unknown build target: {args.build_command}")
+    return 2
 
 
-def _load_run_runner() -> Callable[..., int] | None:
-    """Load tools/inst/run.py (runner for pnpm tauri dev)."""
-    mod_name = "run"
-    try:
-        mod = importlib.import_module(mod_name)
-    except Exception as e:
-        print(f"Could not load run module: {mod_name} ({e})")
-        return None
-
-    fn = getattr(mod, "run_install", None)
-    if not callable(fn):
-        print(f"Run module '{mod_name}' has no run_install(dry_run=...) function.")
-        return None
-    return cast(Callable[..., int], fn)
+def _handle_test(args: argparse.Namespace) -> int:
+    if args.report == "done":
+        return run_test.main(args)
+    if args.suite is None and not args.suite_help:
+        args.test_parser.print_help()
+        return 0
+    if args.suite is None:
+        args.suite = "all"
+    return run_test.main(args)
 
 
-def _load_appimage_install_runner() -> Callable[..., int] | None:
-    """Load tools/inst/linux/installappimage.py (local AppImage installer)."""
-    mod_name = "installappimage"
-    try:
-        mod = importlib.import_module(mod_name)
-    except Exception as e:
-        print(f"Could not load AppImage install module: {mod_name} ({e})")
-        return None
-
-    fn = getattr(mod, "run_install", None)
-    if not callable(fn):
-        print(f"AppImage install module '{mod_name}' has no run_install(...) function.")
-        return None
-    return cast(Callable[..., int], fn)
+def _handle_console(_args: argparse.Namespace) -> int:
+    return console.main()
 
 
-def _load_build_lin_runner() -> Callable[..., int] | None:
-    """Load tools/inst/build/build_lin.py (runner for pnpm tauri build)."""
-    mod_name = "build_lin"
-    try:
-        mod = importlib.import_module(mod_name)
-    except Exception as e:
-        print(f"Could not load Linux build module: {mod_name} ({e})")
-        return None
-
-    fn = getattr(mod, "run_install", None)
-    if not callable(fn):
-        print(f"Linux build module '{mod_name}' has no run_install(dry_run=...) function.")
-        return None
-    return cast(Callable[..., int], fn)
+def _handle_docs(args: argparse.Namespace) -> int:
+    if getattr(args, "docs_command", None) is None:
+        args.docs_parser.print_help()
+        return 0
+    if args.docs_command == "check":
+        return docs_index.check(args)
+    if args.docs_command == "index":
+        return docs_index.main(args)
+    logger.fail(f"Unknown documentation action: {args.docs_command}")
+    return 2
 
 
-def _load_test_runner() -> Callable[..., int] | None:
-    """Load tools/inst/run_test.py (runner for pnpm tests)."""
-    mod_name = "run_test"
-    try:
-        mod = importlib.import_module(mod_name)
-    except Exception as e:
-        print(f"Could not load test module: {mod_name} ({e})")
-        return None
-
-    fn = getattr(mod, "run_install", None)
-    if not callable(fn):
-        print(f"Test module '{mod_name}' has no run_install(dry_run=...) function.")
-        return None
-    return cast(Callable[..., int], fn)
+def _handle_container(args: argparse.Namespace) -> int:
+    command = getattr(args, "container_command", None)
+    if command is None:
+        args.container_parser.print_help()
+        return 0
+    if command == "doctor":
+        return container.doctor(args)
+    if command == "validate":
+        return container.validate(args)
+    logger.fail(f"Unknown container action: {command}")
+    return 2
 
 
-def _print_build_helper() -> None:
-    console_section("Build helper")
-    info("Available targets:")
-    info("  --build-lin  Linux release (NO_STRIP, CLEAN_BUNDLE).")
-    info("  --build-win  Windows build (default bundles via WIN_BUNDLES). Use -p for portable.")
-    info("  --build-mac  macOS bundles (MAC_BUNDLES=app,dmg, ALLOW_CROSS).")
-    info("  --build --winlinux  Windows cross-compile on Linux (cargo-xwin, portable exe).")
-    info("  --build --copy  Copy produced bundles to AppInsall target folders.")
-
-
-def _load_build_win_runner() -> Callable[..., int] | None:
-    """Load tools/inst/build/build_win.py (runner for Windows build)."""
-    mod_name = "build_win"
-    try:
-        mod = importlib.import_module(mod_name)
-    except Exception as e:
-        print(f"Could not load Windows build module: {mod_name} ({e})")
-        return None
-
-    fn = getattr(mod, "run_install", None)
-    if not callable(fn):
-        print(f"Windows build module '{mod_name}' has no run_install(dry_run=...) function.")
-        return None
-    return cast(Callable[..., int], fn)
-
-
-def _load_build_win_portable_runner() -> Callable[..., int] | None:
-    """Load tools/inst/build/build_win_p.py (runner for Windows portable build)."""
-    mod_name = "build_win_p"
-    try:
-        mod = importlib.import_module(mod_name)
-    except Exception as e:
-        print(f"Could not load Windows portable build module: {mod_name} ({e})")
-        return None
-
-    fn = getattr(mod, "run_install", None)
-    if not callable(fn):
-        print(
-            f"Windows portable build module '{mod_name}' has no run_install(dry_run=...) function."
-        )
-        return None
-    return cast(Callable[..., int], fn)
-
-
-def _load_build_mac_runner() -> Callable[..., int] | None:
-    """Load tools/inst/build/build_mac.py (runner for macOS build)."""
-    mod_name = "build_mac"
-    try:
-        mod = importlib.import_module(mod_name)
-    except Exception as e:
-        print(f"Could not load macOS build module: {mod_name} ({e})")
-        return None
-
-    fn = getattr(mod, "run_install", None)
-    if not callable(fn):
-        print(f"macOS build module '{mod_name}' has no run_install(dry_run=...) function.")
-        return None
-    return cast(Callable[..., int], fn)
-
-
-def _load_build_winlinux_runner() -> Callable[..., int] | None:
-    """Load tools/inst/build/buildwin_linux.py (runner for Windows cross build on Linux)."""
-    mod_name = "buildwin_linux"
-    try:
-        mod = importlib.import_module(mod_name)
-    except Exception as e:
-        print(f"Could not load Windows Linux build module: {mod_name} ({e})")
-        return None
-
-    fn = getattr(mod, "run_install", None)
-    if not callable(fn):
-        print(
-            f"Windows Linux build module '{mod_name}' has no run_install(dry_run=...) function."
-        )
-        return None
-    return cast(Callable[..., int], fn)
-
-
-def _load_build_copy_runner() -> Callable[..., int] | None:
-    """Load tools/inst/build/build_copy.py (runner for bundle copy)."""
-    mod_name = "build_copy"
-    try:
-        mod = importlib.import_module(mod_name)
-    except Exception as e:
-        print(f"Could not load bundle copy module: {mod_name} ({e})")
-        return None
-
-    fn = getattr(mod, "run_install", None)
-    if not callable(fn):
-        print(f"Bundle copy module '{mod_name}' has no run_install(dry_run=...) function.")
-        return None
-    return cast(Callable[..., int], fn)
-
-
-def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Project toolbox launcher.")
-    parser.add_argument(
-        "--doctor",
-        action="store_true",
-        help="Runs the system/tooling check.",
-    )
-    parser.add_argument(
-        "--check",
-        action="store_true",
-        help="Alias for --doctor.",
-    )
-    parser.add_argument(
-        "--json",
-        action="store_true",
-        help="Additional JSON output for --doctor.",
-    )
-    parser.add_argument(
-        "--install",
-        action="store_true",
-        help="Installs missing dependencies via the matching install script (win/uix/mac).",
-    )
-    parser.add_argument(
-        "--VScode",
-        "--vscode",
-        dest="vscode",
-        action="store_true",
-        help="Installs Visual Studio Code (Linux).",
-    )
-    parser.add_argument(
-        "--tauri",
-        action="store_true",
-        help="Installs Tauri prerequisites (Linux).",
-    )
-    parser.add_argument(
-        "--run",
-        "--start",
-        dest="run",
-        action="store_true",
-        help="Runs the Tauri desktop app (pnpm tauri dev).",
-    )
-    parser.add_argument(
-        "--install-appimage",
-        "--appimage",
-        dest="install_appimage",
-        action="store_true",
-        help="Installs the latest local Linux AppImage into ~/Applications with desktop entry.",
-    )
-    parser.add_argument(
-        "--build",
-        action="store_true",
-        help="Build helper output (prints build targets).",
-    )
-    parser.add_argument(
-        "--winlinux",
-        action="store_true",
-        help="Enable Windows cross-compile on Linux (use with --build).",
-    )
-    parser.add_argument(
-        "--copy",
-        action="store_true",
-        help="Copy produced bundles into the AppInsall destination folders (use with --build).",
-    )
-    parser.add_argument(
-        "--build-lin",
-        action="store_true",
-        help="Build Linux desktop bundles (use NO_STRIP/CLEAN_BUNDLE env).",
-    )
-    parser.add_argument(
-        "--build-win",
-        action="store_true",
-        help="Build Windows bundles (use WIN_BUNDLES env). Add -p for portable.",
-    )
-    parser.add_argument(
-        "-p",
-        "--portable",
-        action="store_true",
-        help="Portable mode for --build-win (build exe + package, no installer).",
-    )
-    parser.add_argument(
-        "--build-mac",
-        action="store_true",
-        help="Build macOS bundles (MAC_BUNDLES=app,dmg).",
-    )
-    parser.add_argument(
-        "--test",
-        action="store_true",
-        help="Run pnpm tests for the desktop app.",
-    )
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Only show which commands would run.",
-    )
-    return parser.parse_args(argv)
+def _handlers() -> dict[str, Handler]:
+    return {
+        "doctor": doctor.main,
+        "install": install.main,
+        "console": _handle_console,
+        "build": _handle_build,
+        "container": _handle_container,
+        "config": configuration.main,
+        "db": db.main,
+        "docs": _handle_docs,
+        "quality": quality_control.main,
+        "version": release.version,
+        "release": release.release,
+        "run": run.run_command,
+        "stop": stop.main,
+        "test": _handle_test,
+        "tauri": tauri_control.main,
+        "integrate": integration_cli.main,
+        "tooling": integration_cli.main,
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = parse_args(argv or sys.argv[1:])
-    exit_code = 0
-    handled = False
+    normalized_argv = _normalize_argv(argv)
+    parser = _build_parser()
+    args = parser.parse_args(normalized_argv)
+    if args.command is None:
+        parser.print_help()
+        return 0
 
-    if args.install:
-        handled = True
-        run_install = _load_installer_run_install()
-        if not run_install:
-            print(
-                "No matching installation routine found. "
-                "Expected: tools/inst/win/installwin.py, "
-                "tools/inst/linux/installuix.py, or tools/inst/mac/installmac.py"
-            )
-            exit_code = max(exit_code, 1)
-        else:
-            exit_code = max(exit_code, run_install(args.dry_run))
+    args.display_argv = list(sys.argv[1:] if argv is None else argv)
+    handler = _handlers().get(args.command)
+    if handler is None:
+        logger.fail(f"Unknown command: {args.command}")
+        logger.info(f"Next step: {parser.prog} --help")
+        return 2
 
-    if args.vscode:
-        handled = True
-        run_vscode = _load_vscode_run_install()
-        if not run_vscode:
-            print("No VS Code install routine found. Expected: tools/inst/linux/installuixvs.py")
-            exit_code = max(exit_code, 1)
-        else:
-            exit_code = max(exit_code, run_vscode())
-
-    if args.tauri:
-        handled = True
-        run_tauri = _load_tauri_run_install()
-        if not run_tauri:
-            print("No Tauri install routine found. Expected: tools/inst/linux/installuixtauri.py")
-            exit_code = max(exit_code, 1)
-        else:
-            # Accept run_install() or run_install(dry_run)
-            try:
-                sig = inspect.signature(run_tauri)
-                if len(sig.parameters) == 0:
-                    exit_code = max(exit_code, run_tauri())
-                else:
-                    exit_code = max(exit_code, run_tauri(args.dry_run))
-            except Exception:
-                exit_code = max(exit_code, run_tauri(args.dry_run))
-
-    if args.run:
-        handled = True
-        run_runner = _load_run_runner()
-        if not run_runner:
-            print("No run routine found. Expected: tools/inst/run.py")
-            exit_code = max(exit_code, 1)
-        else:
-            try:
-                sig = inspect.signature(run_runner)
-                if len(sig.parameters) == 0:
-                    exit_code = max(exit_code, run_runner())
-                else:
-                    exit_code = max(exit_code, run_runner(args.dry_run))
-            except Exception:
-                exit_code = max(exit_code, run_runner(args.dry_run))
-
-    if args.install_appimage:
-        handled = True
-        if platform.system().lower() != "linux":
-            print("--install-appimage is Linux-only.")
-            exit_code = max(exit_code, 1)
-        else:
-            run_appimage_install = _load_appimage_install_runner()
-            if not run_appimage_install:
-                print(
-                    "No AppImage install routine found. "
-                    "Expected: tools/inst/linux/installappimage.py"
-                )
-                exit_code = max(exit_code, 1)
-            else:
-                try:
-                    sig = inspect.signature(run_appimage_install)
-                    params = tuple(sig.parameters.keys())
-                    if len(params) == 0:
-                        exit_code = max(exit_code, run_appimage_install())
-                    elif "project_root" in params:
-                        exit_code = max(
-                            exit_code,
-                            run_appimage_install(
-                                dry_run=args.dry_run,
-                                project_root=str(_repo_root_from_tools_control()),
-                            ),
-                        )
-                    else:
-                        exit_code = max(exit_code, run_appimage_install(args.dry_run))
-                except Exception:
-                    exit_code = max(
-                        exit_code,
-                        run_appimage_install(
-                            dry_run=args.dry_run,
-                            project_root=str(_repo_root_from_tools_control()),
-                        ),
-                    )
-
-    if args.build and args.winlinux:
-        handled = True
-        console_section("Windows Build (Linux cross)")
-        run_build_winlinux = _load_build_winlinux_runner()
-        if not run_build_winlinux:
-            print("No Windows cross build routine found. Expected: tools/inst/build/buildwin_linux.py")
-            exit_code = max(exit_code, 1)
-        else:
-            try:
-                sig = inspect.signature(run_build_winlinux)
-                if len(sig.parameters) == 0:
-                    exit_code = max(exit_code, run_build_winlinux())
-                else:
-                    exit_code = max(exit_code, run_build_winlinux(args.dry_run))
-            except Exception:
-                exit_code = max(exit_code, run_build_winlinux(args.dry_run))
-
-    if args.build and args.copy:
-        handled = True
-        console_section("Build Copy")
-        run_build_copy = _load_build_copy_runner()
-        if not run_build_copy:
-            print("No bundle copy routine found. Expected: tools/inst/build/build_copy.py")
-            exit_code = max(exit_code, 1)
-        else:
-            try:
-                sig = inspect.signature(run_build_copy)
-                if len(sig.parameters) == 0:
-                    exit_code = max(exit_code, run_build_copy())
-                else:
-                    exit_code = max(exit_code, run_build_copy(args.dry_run))
-            except Exception:
-                exit_code = max(exit_code, run_build_copy(args.dry_run))
-
-    if args.build and not args.winlinux and not args.copy:
-        handled = True
-        _print_build_helper()
-
-    if args.test:
-        handled = True
-        console_section("Test Suite")
-        run_test = _load_test_runner()
-        if not run_test:
-            print("No test routine found. Expected: tools/inst/run_test.py")
-            exit_code = max(exit_code, 1)
-        else:
-            try:
-                sig = inspect.signature(run_test)
-                if len(sig.parameters) == 0:
-                    exit_code = max(exit_code, run_test())
-                else:
-                    exit_code = max(exit_code, run_test(args.dry_run))
-            except Exception:
-                exit_code = max(exit_code, run_test(args.dry_run))
-
-    if args.build_lin:
-        handled = True
-        console_section("Linux Build")
-        run_build_lin = _load_build_lin_runner()
-        if not run_build_lin:
-            print("No Linux build routine found. Expected: tools/inst/build/build_lin.py")
-            exit_code = max(exit_code, 1)
-        else:
-            try:
-                sig = inspect.signature(run_build_lin)
-                if len(sig.parameters) == 0:
-                    exit_code = max(exit_code, run_build_lin())
-                else:
-                    exit_code = max(exit_code, run_build_lin(args.dry_run))
-            except Exception:
-                exit_code = max(exit_code, run_build_lin(args.dry_run))
-
-    if args.build_win:
-        handled = True
-        console_section("Windows Build")
-        run_build_win = (
-            _load_build_win_portable_runner() if args.portable else _load_build_win_runner()
-        )
-        if not run_build_win:
-            if args.portable:
-                print("No Windows portable build routine found. Expected: tools/inst/build/build_win_p.py")
-            else:
-                print("No Windows build routine found. Expected: tools/inst/build/build_win.py")
-            exit_code = max(exit_code, 1)
-        else:
-            try:
-                sig = inspect.signature(run_build_win)
-                if len(sig.parameters) == 0:
-                    exit_code = max(exit_code, run_build_win())
-                else:
-                    exit_code = max(exit_code, run_build_win(args.dry_run))
-            except Exception:
-                exit_code = max(exit_code, run_build_win(args.dry_run))
-
-    if args.build_mac:
-        handled = True
-        console_section("macOS Build")
-        run_build_mac = _load_build_mac_runner()
-        if not run_build_mac:
-            print("No macOS build routine found. Expected: tools/inst/build/build_mac.py")
-            exit_code = max(exit_code, 1)
-        else:
-            try:
-                sig = inspect.signature(run_build_mac)
-                if len(sig.parameters) == 0:
-                    exit_code = max(exit_code, run_build_mac())
-                else:
-                    exit_code = max(exit_code, run_build_mac(args.dry_run))
-            except Exception:
-                exit_code = max(exit_code, run_build_mac(args.dry_run))
-
-    if args.winlinux and not args.build:
-        handled = True
-        print("Use --winlinux with --build (example: python3 tools/control.py --winlinux --build).")
-        exit_code = max(exit_code, 1)
-
-    if args.copy and not args.build:
-        handled = True
-        print("Use --copy with --build (example: python3 tools/control.py --copy --build).")
-        exit_code = max(exit_code, 1)
-
-    if args.doctor or args.check:
-        handled = True
-        exit_code = max(exit_code, run_doctor(args.json))
-
-    if not handled:
-        print(
-            "Please specify a command (e.g. --doctor, --install, --tauri, "
-            "or --start/--run/--build)."
-        )
+    try:
+        code = handler(args)
+        return 0 if code is None else int(code)
+    except KeyboardInterrupt:
+        logger.warn("Interrupted by user")  # noqa: G010 - project status logger
+        return 130
+    except Exception as exc:  # noqa: BLE001 - final CLI error boundary
+        logger.fail(f"Unhandled error: {exc}")
+        for line in traceback.format_exc().strip().splitlines():
+            logger.info(line)
         return 1
-
-    return exit_code
 
 
 if __name__ == "__main__":
-    try:
-        raise SystemExit(main())
-    except KeyboardInterrupt:
-        print("\n[control] Aborted by user.")
-        raise SystemExit(130)
+    raise SystemExit(main())

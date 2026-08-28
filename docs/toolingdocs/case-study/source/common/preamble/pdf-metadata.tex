@@ -1,0 +1,7 @@
+% Fixed metadata removes local paths, usernames, current wall-clock time, and random IDs.
+\ifdefined\pdfinfoomitdate\pdfinfoomitdate=1\fi
+\ifdefined\pdftrailerid\pdftrailerid{}\fi
+\ifdefined\pdfsuppressptexinfo\pdfsuppressptexinfo=-1\fi
+\newcommand{\CaseStudyPdfMetadata}{%
+  \hypersetup{pdftitle={\CaseStudyTitle},pdfauthor={Portable Tooling},pdfsubject={\CaseStudySubject; tooling version \CaseStudyToolingVersion},pdfkeywords={portable tooling, case study, reproducibility, version \CaseStudyToolingVersion},pdflang={\CaseStudyPdfLanguage}}%
+}

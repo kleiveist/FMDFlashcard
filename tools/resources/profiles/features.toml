@@ -1,0 +1,41 @@
+schema_version = 1
+
+[core]
+adapters = ["quality", "testing", "documentation", "ci", "release"]
+
+[features.frontend]
+name = "Frontend"
+description = "Vite and TypeScript browser frontend"
+adapter = "frontend"
+
+[features.backend]
+name = "Backend"
+description = "FastAPI backend service"
+adapter = "backend"
+
+[features.tauri]
+name = "Tauri"
+description = "Tauri desktop shell and Rust application integration"
+adapter = "tauri"
+requires = ["frontend"]
+
+[features.cloud]
+name = "Cloud"
+description = "Cloud-ready deployment profile metadata"
+adapter = "container"
+requires = ["backend"]
+
+[features.database]
+name = "SQL database"
+description = "SQLAlchemy 2.x database infrastructure and Alembic migrations"
+adapter = "database"
+requires = ["backend"]
+optional = true
+
+[features.postgres]
+name = "PostgreSQL"
+description = "PostgreSQL support through the Psycopg 3 driver"
+adapter = "database"
+requires = ["database"]
+optional = true
+selectable = true

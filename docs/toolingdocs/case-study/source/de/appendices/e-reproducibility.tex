@@ -1,0 +1,8 @@
+\section{Reproduzierbarkeit}
+\label{app:reproducibility}
+
+Ein reproduzierbarer Lauf verwendet einen frischen Checkout, die in
+\texttt{build-config.toml} festgelegte Zeitquelle, eine saubere temporäre Arbeitskopie,
+dieselbe TeX-Distribution sowie zwei Builds je Sprache. PDF-Hash, Seitenzahl, extrahierter
+Text und gerenderte Seiten werden verglichen. Fehlt ein Tool, bricht der Build fehl statt
+einen alternativen Compiler zu wählen.

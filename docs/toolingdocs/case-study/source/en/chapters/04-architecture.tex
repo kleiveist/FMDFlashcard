@@ -1,0 +1,14 @@
+\section{Architecture}
+\label{chap:architecture}
+
+The core comprises \ProjectContext{}, resource and path resolution, persisted state, a
+planner, transaction handling, verification, and reporting. Adapters contribute findings
+and operations; the core does not infer product schemas from speculation. This is an
+\Implemented{} architectural property documented by \evidence{EV-CONTEXT-001}.
+
+Figure~\ref{fig:system-context} shows the system boundary. Figure
+\ref{fig:adapter-orchestration} separates adapter knowledge from shared orchestration.
+Both diagrams use labelled shapes and lines so that their meaning does not depend on
+colour.
+\CaseDiagram{system-context}{System context of portable tooling and its project boundary.}{fig:system-context}
+\CaseDiagram{adapter-orchestration}{Adapters contribute findings and plans to shared orchestration.}{fig:adapter-orchestration}

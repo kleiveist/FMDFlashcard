@@ -1,0 +1,6 @@
+schema_version = 1
+tooling_version = "0.4.0"
+profile = "desktop-local"
+optional_features = []
+applied_migrations = []
+integration_digest = "sha256:32ea536e28bab879db7113232212ada5dbef98ca26726597b1d585253f6a9097"

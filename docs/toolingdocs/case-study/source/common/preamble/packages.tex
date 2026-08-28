@@ -1,0 +1,43 @@
+% Newly authored configuration based on the audited package contract.
+\usepackage[english,ngerman]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{csquotes}
+\usepackage{geometry}
+\geometry{top=2cm,bottom=2cm,left=2cm,right=2cm}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{microtype}
+\usepackage{tgheros}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,backgrounds,calc,fit,matrix,positioning,shapes.geometric}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{float}
+\usepackage{threeparttable}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage[
+  style=apa,
+  backend=biber,
+  sorting=nyt,
+  giveninits=true,
+  maxcitenames=2,
+  maxbibnames=20,
+  doi=true,
+  url=true,
+  isbn=true
+]{biblatex}
+\DeclareLanguageMapping{ngerman}{ngerman-apa}
+\DeclareLanguageMapping{english}{english-apa}
+\setcounter{biburlnumpenalty}{100}
+\setcounter{biburlucpenalty}{100}
+\setcounter{biburllcpenalty}{100}
+\addbibresource{../common/bibliography/references.bib}
+\input{../common/preamble/typography}

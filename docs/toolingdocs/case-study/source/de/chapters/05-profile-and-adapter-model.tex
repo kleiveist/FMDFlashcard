@@ -1,0 +1,27 @@
+\section{Profil- und Adaptermodell}
+\label{chap:profile-adapter-model}
+
+Die fünf Profile \texttt{web-only}, \texttt{web-cloud}, \texttt{desktop-local},
+\texttt{desktop-cloud} und \texttt{full-platform} wählen Fähigkeiten statt eines
+vollständigen Produktbaums. Feature-Abhängigkeiten werden aufgelöst, bevor Adapter
+detektieren, planen, anwenden und verifizieren. Die Profilressourcen und der
+Adaptervertrag sind als \Implemented{} und \Verified{} dokumentiert
+(\evidence{EV-PROFILES-001}).
+
+Abbildung~\ref{fig:profile-resolution} zeigt die Auflösung vom gewählten Profil
+über die Features bis zur Adapterauswahl.
+
+\CaseDiagram{profile-feature-resolution}{Profil- und Feature-Auflösung vor der Adapterauswahl.}{fig:profile-resolution}
+\CaseTable{
+\begin{tabularx}{0.94\textwidth}{@{}lX@{}}
+\toprule
+Profil & Kernfähigkeiten \\
+\midrule
+web-only & Frontend \\
+web-cloud & Frontend, Backend, Cloud \\
+desktop-local & Frontend, Tauri \\
+desktop-cloud & Frontend, Backend, Tauri, Cloud \\
+full-platform & Frontend, Backend, Tauri, Cloud \\
+\bottomrule
+\end{tabularx}
+}{Profile und ihre Basisfähigkeiten.}{tab:profile-matrix}

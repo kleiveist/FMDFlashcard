@@ -1,0 +1,25 @@
+\section{Evaluation}
+\label{chap:evaluation}
+
+The evaluation uses demonstrable properties: stable hashes of product-owned files, a
+read-only check, an empty second plan, restoration after an injected failure, and the
+consistency of an exported payload. Its design separates \Implemented{}, \Verified{},
+and \Measured{}; the last category requires a reproducible run with version, commit,
+runner, and toolchain data. Portable export is registered as \Verified{}
+(\evidence{EV-EXPORT-001}).
+
+Figure~\ref{fig:export-boundary} makes the boundary visible between the exported
+tooling payload and non-portable project or build files.
+
+\CaseDiagram{export-boundary}{Export boundary: only tools and portable documentation are inventoried.}{fig:export-boundary}
+\CaseTable{
+\begin{tabularx}{0.94\textwidth}{@{}lX@{}}
+\toprule
+Observation & Interpretation \\
+\midrule
+Context paths are inside the target project & No source-repository root is required \\
+Second Full-Fix plans nothing & Desired state and state record agree \\
+Failure triggers recovery & Partial publication is not counted as success \\
+\bottomrule
+\end{tabularx}
+}{Evaluation logic without invented metrics.}{tab:evaluation-design}

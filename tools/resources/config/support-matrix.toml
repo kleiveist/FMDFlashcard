@@ -1,0 +1,30 @@
+schema_version = 1
+
+[python]
+minimum = "3.11"
+primary = "3.13"
+maximum = "3.13"
+
+[node]
+# Exact current LTS used for real frontend-capability jobs.
+primary = "24.19.0"
+
+[rust]
+# Kept in lockstep with quality/rust_analyzer/rust-toolchain.toml.
+channel = "1.97.1"
+
+[tex]
+distribution = "texlive"
+release = "2026"
+compiler = "pdflatex"
+
+[runners]
+# Explicit labels prevent image changes hidden behind *-latest aliases.
+linux = "ubuntu-24.04"
+windows = "windows-2025"
+macos = "macos-15"
+
+[upgrade]
+# Immutable historical payload used until the first released baseline tag exists.
+baseline_ref = "30b318c48d8c3d214b208620c8d21f9490136e9b"
+baseline_version = "0.1.0"

@@ -1,0 +1,6 @@
+schema_version = 1
+id = "desktop-cloud"
+order = 40
+name = "Desktop + Cloud"
+description = "Tauri desktop client backed by a FastAPI cloud API."
+features = ["frontend", "backend", "tauri", "cloud"]

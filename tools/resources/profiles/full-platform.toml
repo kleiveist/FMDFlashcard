@@ -1,0 +1,6 @@
+schema_version = 1
+id = "full-platform"
+order = 50
+name = "Full platform"
+description = "Complete baseline with browser frontend, FastAPI backend, Tauri desktop shell, and cloud-ready structure."
+features = ["frontend", "backend", "tauri", "cloud"]

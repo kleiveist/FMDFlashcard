@@ -1,0 +1,123 @@
+schema_version = 1
+tooling_version = "0.4.0"
+baseline_commit = "dd188246ef0715d288b89c8c88361f5ed9b009e0"
+# "committed" claims are attributable to the immutable baseline above.  The
+# "pending-next-commit" rows deliberately remain PLANNED until their source and
+# result can be tied to the commit that introduces them.
+
+[[claims]]
+id = "EV-CONTEXT-001"
+statement = "ProjectContext derives portable roots from the copied tooling location."
+status = "VERIFIED"
+test_file = "tools/tests/core/test_context.py"
+test_name = "test_context_defaults_are_derived_from_copied_tools"
+commit_sha = "dd188246ef0715d288b89c8c88361f5ed9b009e0"
+commit_state = "committed"
+tooling_version = "0.4.0"
+operating_system = "platform-independent fixture"
+artifacts = ["ProjectContext fixture"]
+captured_at = "2026-08-27"
+
+[[claims]]
+id = "EV-PROFILES-001"
+statement = "The portable catalog contains exactly five named profiles."
+status = "VERIFIED"
+test_file = "tools/tests/test_profiles.py"
+test_name = "test_catalog_contains_exactly_five_portable_profiles"
+commit_sha = "dd188246ef0715d288b89c8c88361f5ed9b009e0"
+commit_state = "committed"
+tooling_version = "0.4.0"
+operating_system = "platform-independent fixture"
+artifacts = ["profile catalog"]
+captured_at = "2026-08-27"
+
+[[claims]]
+id = "EV-ROLLBACK-003"
+statement = "A post-verification failure rolls back every affected path."
+status = "VERIFIED"
+test_file = "tools/tests/integration/test_transaction.py"
+test_name = "test_post_verification_failure_rolls_back_every_affected_path"
+commit_sha = "dd188246ef0715d288b89c8c88361f5ed9b009e0"
+commit_state = "committed"
+tooling_version = "0.4.0"
+operating_system = "platform-independent fixture"
+artifacts = ["transaction journal", "rollback fixture"]
+captured_at = "2026-08-27"
+
+[[claims]]
+id = "EV-UPGRADE-001"
+statement = "Copied tooling and documentation can be replaced without touching project content."
+status = "VERIFIED"
+test_file = "tools/tests/acceptance/test_tooling_replacement.py"
+test_name = "test_copied_tooling_and_docs_can_be_replaced_without_touching_project"
+commit_sha = "dd188246ef0715d288b89c8c88361f5ed9b009e0"
+commit_state = "committed"
+tooling_version = "0.4.0"
+operating_system = "platform-independent fixture"
+artifacts = ["copy fixture", "historical migration state"]
+captured_at = "2026-08-27"
+
+[[claims]]
+id = "EV-EXPORT-001"
+statement = "Portable export inventories only the tooling and portable documentation payload."
+status = "VERIFIED"
+test_file = "tools/tests/integration/test_export.py"
+test_name = "test_export_is_reproducible_and_contains_only_the_portable_payload"
+commit_sha = "dd188246ef0715d288b89c8c88361f5ed9b009e0"
+commit_state = "committed"
+tooling_version = "0.4.0"
+operating_system = "platform-independent fixture"
+artifacts = ["PORTABLE-PAYLOAD.json", "export fixture"]
+captured_at = "2026-08-27"
+
+[[claims]]
+id = "EV-CLI-001"
+statement = "Portable documentation commands are parsed by the real control CLI."
+status = "VERIFIED"
+test_file = "tools/tests/test_portable_documentation.py"
+test_name = "test_documented_control_commands_match_the_real_parser"
+commit_sha = "dd188246ef0715d288b89c8c88361f5ed9b009e0"
+commit_state = "committed"
+tooling_version = "0.4.0"
+operating_system = "platform-independent fixture"
+artifacts = ["CLI parser"]
+captured_at = "2026-08-27"
+
+[[claims]]
+id = "EV-DOCS-001"
+statement = "The next committed tooling version will validate the case-study source structure without a TeX installation."
+status = "PLANNED"
+test_file = "docs/toolingdocs/case-study/tests/test_source_structure.py"
+test_name = "test_required_case_study_tree_is_complete_and_source_only"
+commit_sha = "dd188246ef0715d288b89c8c88361f5ed9b009e0"
+commit_state = "pending-next-commit"
+tooling_version = "0.4.0"
+operating_system = "working tree pending commit"
+artifacts = []
+captured_at = "2026-08-27"
+
+[[claims]]
+id = "EV-LATEX-DE-001"
+statement = "The German PDF is built and checked in a provisioned TeX environment."
+status = "PLANNED"
+test_file = "docs/toolingdocs/case-study/tests/test_pdf_integrity.py"
+test_name = "test_built_german_pdf_is_structurally_valid_when_toolchain_is_available"
+commit_sha = "dd188246ef0715d288b89c8c88361f5ed9b009e0"
+commit_state = "pending-next-commit"
+tooling_version = "0.4.0"
+operating_system = "CI runner pending"
+artifacts = []
+captured_at = "2026-08-27"
+
+[[claims]]
+id = "EV-LATEX-EN-001"
+statement = "The English PDF is built and checked in a provisioned TeX environment."
+status = "PLANNED"
+test_file = "docs/toolingdocs/case-study/tests/test_pdf_integrity.py"
+test_name = "test_built_english_pdf_is_structurally_valid_when_toolchain_is_available"
+commit_sha = "dd188246ef0715d288b89c8c88361f5ed9b009e0"
+commit_state = "pending-next-commit"
+tooling_version = "0.4.0"
+operating_system = "CI runner pending"
+artifacts = []
+captured_at = "2026-08-27"

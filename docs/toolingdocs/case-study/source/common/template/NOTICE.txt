@@ -1,0 +1,9 @@
+Template reference audit
+========================
+
+Reference repository: https://github.com/kleiveist/Latex-Template
+Reference commit: 76b8efe19662a378eda568eddcdd4c96a5e649de
+
+No upstream source file is stored in this directory. The audited repository had no
+license declaration, so this case study uses newly authored configuration files that
+implement the observed technical contract. See ../../../../TEMPLATE-COMPATIBILITY.md.

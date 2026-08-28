@@ -1,0 +1,16 @@
+\section{Versioned migration case}
+\label{chap:versioned-migration-case}
+
+The migration case starts with an older tooling version and persisted state. It then
+replaces only the portable directories \texttt{tools/} and \texttt{docs/toolingdocs/}.
+A registered migration reconciles configuration and state with the new version without
+treating product files as tooling-owned content.
+
+The check distinguishes a same-version state, a real version transition, drift, and a
+failure-and-recovery case. The existing historical migration suite is referenced as
+\Verified{} (\evidence{EV-UPGRADE-001}); it does not claim support for every possible
+older version.
+Figure~\ref{fig:tooling-migration} shows the separation of replaceable payload and
+preserved project state during the registered migration.
+
+\CaseDiagram{tooling-migration}{Migration from old payload and state to a registered new version.}{fig:tooling-migration}

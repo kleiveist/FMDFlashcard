@@ -1,0 +1,7 @@
+\begin{tikzpicture}[node distance=16mm]
+  \node[caseNode] (project) {project\\sources and configuration};
+  \node[caseNode,right=of project] (tooling) {portable tooling\\context, profiles, adapters};
+  \node[caseNode,below=of tooling] (state) {external state\\and reports};
+  \draw[caseArrow] (project) -- node[above,font=\scriptsize]{evidence and bounded plans} (tooling);
+  \draw[caseArrow] (tooling) -- node[right,font=\scriptsize]{record} (state);
+\end{tikzpicture}

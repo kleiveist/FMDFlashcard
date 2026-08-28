@@ -1,0 +1,7 @@
+\begin{tikzpicture}[node distance=13mm]
+  \node[caseNode] (tooling) {tooling-managed\\rules and resources};
+  \node[caseNode,right=of tooling] (structured) {structured-managed\\allowlisted keys};
+  \node[caseNode,right=of structured] (product) {project-managed\\source and unknown files};
+  \draw[caseArrow] (tooling) -- node[above,font=\scriptsize]{bounded proposal} (structured);
+  \draw[caseArrow] (structured) -- node[above,font=\scriptsize]{no ownership transfer} (product);
+\end{tikzpicture}

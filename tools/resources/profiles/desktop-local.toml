@@ -1,0 +1,6 @@
+schema_version = 1
+id = "desktop-local"
+order = 30
+name = "Desktop local"
+description = "Local desktop application with Vite, TypeScript, Tauri, Rust, tooling, and documentation."
+features = ["frontend", "tauri"]

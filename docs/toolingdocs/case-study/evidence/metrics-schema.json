@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Portable tooling case-study measurement",
+  "type": "object",
+  "required": ["tooling_version", "commit_sha", "captured_at", "runner_os", "python_version", "fixture", "test_command", "result"],
+  "properties": {
+    "tooling_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "commit_sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "captured_at": {"type": "string", "format": "date"},
+    "runner_os": {"type": "string", "minLength": 1},
+    "python_version": {"type": "string", "minLength": 1},
+    "node_version": {"type": "string"},
+    "rust_version": {"type": "string"},
+    "tex_version": {"type": "string"},
+    "fixture": {"type": "string", "minLength": 1},
+    "test_command": {"type": "string", "minLength": 1},
+    "result": {"type": "string", "minLength": 1},
+    "duration_seconds": {"type": "number", "minimum": 0}
+  },
+  "additionalProperties": false
+}

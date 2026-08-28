@@ -1,0 +1,9 @@
+\begin{tikzpicture}[node distance=13mm]
+  \node[caseNode] (registry) {adapter registry};
+  \node[caseNode,right=of registry] (adapter) {adapter\\detect / plan / verify};
+  \node[caseNode,right=of adapter] (planner) {shared planner};
+  \node[caseNode,below=of planner] (transaction) {transaction boundary};
+  \draw[caseArrow] (registry) -- (adapter);
+  \draw[caseArrow] (adapter) -- (planner);
+  \draw[caseArrow] (planner) -- (transaction);
+\end{tikzpicture}

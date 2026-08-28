@@ -1,0 +1,25 @@
+\section{CI and system testing}
+\label{chap:ci-system-testing}
+
+The test pyramid combines units, adapter contracts, integration cases, copy fixtures, and
+documentation checks. The copy matrix keeps Linux, Windows, and macOS results as
+not-yet-recorded \Measured{} evidence rather than presenting platform-neutral tests as
+real customer-project results. Synthetic fixtures are not described as customer projects.
+
+Figure~\ref{fig:ci-test-pyramid} places the test levels in context; Figure~\ref{fig:os-fixture-matrix}
+shows the outstanding operating-system and fixture evidence.
+
+\CaseDiagram{ci-test-pyramid}{CI test pyramid from module contract to copy fixture.}{fig:ci-test-pyramid}
+\CaseDiagram{os-fixture-matrix}{Operating-system and fixture matrix as an executable evidence plan.}{fig:os-fixture-matrix}
+\CaseTable{
+\begin{tabularx}{0.94\textwidth}{@{}lX@{}}
+\toprule
+Level & Purpose \\
+\midrule
+Unit & Deterministic core and adapter contracts \\
+Integration & Planning, transaction, migration, and rollback \\
+Copy fixture & Portable replacement without product loss \\
+Documentation & Links, source structure, and language parity \\
+\bottomrule
+\end{tabularx}
+}{Test layers of the case study.}{tab:test-matrix}

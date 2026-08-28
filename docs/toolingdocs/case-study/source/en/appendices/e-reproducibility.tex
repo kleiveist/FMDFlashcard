@@ -1,0 +1,7 @@
+\section{Reproducibility}
+\label{app:reproducibility}
+
+A reproducible run uses a fresh checkout, the fixed time source in
+\texttt{build-config.toml}, a clean temporary working copy, the same TeX distribution,
+and two builds for each language. PDF hash, page count, extracted text, and rendered pages
+are compared. If a tool is missing, the build fails instead of selecting another compiler.

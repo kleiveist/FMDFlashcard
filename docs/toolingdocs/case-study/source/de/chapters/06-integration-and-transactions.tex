@@ -1,0 +1,14 @@
+\section{Integration und Transaktionen}
+\label{chap:integration-transactions}
+
+\CheckMode{} beobachtet den Ist-Zustand und erzeugt einen Plan ohne Schreibzugriff.
+\FullFix{} führt nur akzeptierte, strukturierte Operationen aus. Vorbedingungen werden
+vor der Veröffentlichung erneut geprüft; Änderungen werden isoliert gestaged, verifiziert,
+gesichert und erst dann publiziert. Damit ist eine geplante Schreiboperation nicht mit
+einer allgemeinen Generatorberechtigung gleichzusetzen.
+
+Die Sequenzen in Abbildung~\ref{fig:check-sequence} und
+Abbildung~\ref{fig:full-fix-transaction} machen die Trennung sichtbar. Der
+Rollbackpfad ist als \Verified{} Testbezug erfasst (\evidence{EV-ROLLBACK-003}).
+\CaseDiagram{check-sequence}{Read-only Check-Sequenz von Kontext bis Bericht.}{fig:check-sequence}
+\CaseDiagram{full-fix-transaction}{Full-Fix plant, staged, verifiziert und publiziert transaktional.}{fig:full-fix-transaction}

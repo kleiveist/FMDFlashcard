@@ -1,0 +1,9 @@
+\begin{tikzpicture}[node distance=8mm]
+  \node[caseNode] (linux) {Linux\\copy fixtures};
+  \node[caseNode,right=of linux] (windows) {Windows\\copy fixtures};
+  \node[caseNode,right=of windows] (macos) {macOS\\copy fixtures};
+  \node[caseNode,below=of windows] (evidence) {versioned runner evidence};
+  \draw[caseArrow] (linux) -- (evidence);
+  \draw[caseArrow] (windows) -- (evidence);
+  \draw[caseArrow] (macos) -- (evidence);
+\end{tikzpicture}

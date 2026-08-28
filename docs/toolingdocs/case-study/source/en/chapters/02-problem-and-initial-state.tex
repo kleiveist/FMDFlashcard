@@ -1,0 +1,13 @@
+\section{Problem and initial state}
+\label{chap:problem-initial-state}
+
+An earlier lifecycle architecture treated a full-stack template as a master and derived
+product trees from it. That model is not the current target state: fixed roots,
+assumptions about components, and coupling to foreign Git history make it difficult to
+replace a tooling directory in an existing project.
+
+The current approach separates replaceable tooling content from project configuration and
+state. Replacing \texttt{tools/} and \texttt{docs/toolingdocs/} is handled as a versioned
+migration case rather than a same-version copy. Figure~\ref{fig:project-context}
+illustrates derived rather than hard-coded paths.
+\CaseDiagram{project-context-paths}{ProjectContext separates project, tooling, documentation, and state roots.}{fig:project-context}

@@ -1,0 +1,26 @@
+\section{Evaluation}
+\label{chap:evaluation}
+
+Die Evaluation verwendet nachweisbare Eigenschaften: stabile Hashes
+projektverwalteter Dateien, ein schreibfreier Check, ein leerer zweiter Plan,
+Wiederherstellung bei Fehlversuchen und die Konsistenz eines exportierten Payloads. Das
+Design trennt \Implemented{} von \Verified{} und \Measured{}; die letzte Kategorie
+enthält erst nach einem reproduzierbaren Lauf Versions-, Commit-, Runner- und
+Toolchainangaben. Der portable Export ist als \Verified{}
+(\evidence{EV-EXPORT-001}) registriert.
+
+Abbildung~\ref{fig:export-boundary} verdeutlicht die Grenze zwischen dem exportierten
+Toolingbestand und nicht portablen Projekt- oder Builddateien.
+
+\CaseDiagram{export-boundary}{Exportgrenze: nur Tools und portable Dokumentation werden inventarisiert.}{fig:export-boundary}
+\CaseTable{
+\begin{tabularx}{0.94\textwidth}{@{}lX@{}}
+\toprule
+Beobachtung & Interpretation \\
+\midrule
+Kontextpfade liegen im Zielprojekt & Keine Quellrepository-Wurzel erforderlich \\
+Zweiter Full-Fix plant nichts & Gewünschter Zustand und State stimmen überein \\
+Fehler löst Rückgabe aus & Teilveröffentlichung wird nicht als Erfolg gewertet \\
+\bottomrule
+\end{tabularx}
+}{Auswertungslogik ohne erfundene Messwerte.}{tab:evaluation-design}

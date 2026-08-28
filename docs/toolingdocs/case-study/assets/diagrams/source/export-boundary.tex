@@ -1,0 +1,9 @@
+\begin{tikzpicture}[node distance=14mm]
+  \node[caseNode] (project) {source project};
+  \node[caseNode,right=of project] (select) {select tools\\and docs};
+  \node[caseNode,right=of select] (manifest) {hash manifest};
+  \node[caseNode,right=of manifest] (export) {portable export};
+  \draw[caseArrow] (project) -- (select);
+  \draw[caseArrow] (select) -- (manifest);
+  \draw[caseArrow] (manifest) -- (export);
+\end{tikzpicture}

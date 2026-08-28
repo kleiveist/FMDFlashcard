@@ -1,0 +1,6 @@
+schema_version = 1
+id = "web-only"
+order = 10
+name = "Web only"
+description = "Browser application with Vite, TypeScript, shared structure, tooling, and documentation."
+features = ["frontend"]

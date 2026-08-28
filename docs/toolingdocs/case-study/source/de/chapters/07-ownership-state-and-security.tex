@@ -1,0 +1,15 @@
+\section{Eigentum, State und Sicherheit}
+\label{chap:ownership-state-security}
+
+Tooling-verwaltete, strukturiert verwaltete und projektverwaltete Dateien haben getrennte
+Regeln. Produktcode, Geheimnisse und unbekannte Dateien sind nicht automatisch
+veränderbar. Strukturierte Änderungen benötigen deklarierte Zielschlüssel und passende
+Vorabbilder. Symlinks, Pfadausbrüche und unklare Konflikte schlagen fehl statt in eine
+bestmögliche Änderung überzugehen.
+
+\ToolingState{} bewahrt begrenzte Informationen zu Version, Profil, Migrationen und
+verwaltetem Digest außerhalb des austauschbaren Toolingordners. Abbildung
+\ref{fig:ownership-boundaries} und Abbildung~\ref{fig:backup-rollback} ordnen diese
+Grenzen ein.
+\CaseDiagram{ownership-boundaries}{Eigentumsgrenzen zwischen Tooling, strukturierten Dateien und Produktbestand.}{fig:ownership-boundaries}
+\CaseDiagram{backup-rollback}{Backup- und Rollbackablauf für eine fehlgeschlagene Veröffentlichung.}{fig:backup-rollback}

@@ -1,0 +1,9 @@
+\begin{tikzpicture}[node distance=11mm]
+  \node[caseNode] (context) {resolve context};
+  \node[caseNode,right=of context] (detect) {detect};
+  \node[caseNode,right=of detect] (plan) {plan};
+  \node[caseNode,right=of plan] (report) {report};
+  \draw[caseArrow] (context) -- (detect);
+  \draw[caseArrow] (detect) -- (plan);
+  \draw[caseArrow] (plan) -- node[above,font=\scriptsize]{no write} (report);
+\end{tikzpicture}

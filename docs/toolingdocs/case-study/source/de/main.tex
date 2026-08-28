@@ -1,0 +1,66 @@
+% !TeX program = pdflatex
+% Portable tooling case-study orchestration; the independently authored prose stays in chapters.
+\documentclass[11pt,a4paper]{article}
+
+\input{metadata}
+\input{../common/preamble/packages}
+\input{../common/preamble/pdf-metadata}
+\input{../common/macros/terminology}
+\input{../common/macros/evidence}
+\input{../common/macros/formatting}
+\CaseStudyPdfMetadata
+\renewcommand{\thesection}{\ifnum\value{section}<10 0\fi\arabic{section}}
+
+\begin{document}
+\selectlanguage{ngerman}
+\begin{titlepage}
+  \centering
+  {\Large Projektbezogene Fallstudie\par}
+  \vspace{1.8cm}
+  {\bfseries\LARGE \CaseStudyTitle\par}
+  \vspace{0.6cm}
+  {\large \CaseStudySubtitle\par}
+  \vfill
+  \begin{tabularx}{0.82\textwidth}{@{}lX@{}}
+    \textbf{Dokument:} & \CaseStudyAuthor \\
+    \textbf{Stand:} & \CaseStudyDate \\
+    \textbf{Tooling-Version:} & 0.4.0 \\
+  \end{tabularx}
+\end{titlepage}
+
+\pagenumbering{Roman}
+\tableofcontents
+\clearpage
+\listoffigures
+\clearpage
+\listoftables
+\clearpage
+\input{../common/shared/acronyms}
+\clearpage
+\input{../common/shared/glossary}
+\clearpage
+\pagenumbering{arabic}
+
+\input{chapters/00-abstract}
+\input{chapters/01-introduction}
+\input{chapters/02-problem-and-initial-state}
+\input{chapters/03-requirements-and-quality-goals}
+\input{chapters/04-architecture}
+\input{chapters/05-profile-and-adapter-model}
+\input{chapters/06-integration-and-transactions}
+\input{chapters/07-ownership-state-and-security}
+\input{chapters/08-ci-and-system-testing}
+\input{chapters/09-versioned-migration-case}
+\input{chapters/10-evaluation}
+\input{chapters/11-limitations-and-validity}
+\input{chapters/12-conclusion-and-outlook}
+
+\appendix
+\input{appendices/a-cli-reference}
+\input{appendices/b-profile-matrix}
+\input{appendices/c-test-matrix}
+\input{appendices/d-migration-evidence}
+\input{appendices/e-reproducibility}
+
+\printbibliography[heading=bibintoc,title={Literaturverzeichnis}]
+\end{document}

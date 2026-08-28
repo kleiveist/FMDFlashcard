@@ -1,0 +1,38 @@
+# The values in this file are evidence from TEMPLATE-COMPATIBILITY.md, not guesses.
+[template]
+source = "https://github.com/kleiveist/Latex-Template"
+commit_sha = "76b8efe19662a378eda568eddcdd4c96a5e649de"
+reference_tree = "e108ed89f1c539eeb0489cab158205b71d75e0ea"
+audit_status = "audited-no-upstream-files-imported"
+license_status = "no-license-declared-no-upstream-files-imported"
+
+[toolchain]
+engine = "pdflatex"
+bibliography_backend = "biber"
+tex_distribution = "TinyTeX v2026.08 (TeX Live 2026)"
+environment_pinning = "archive and Python packages pinned; supplemental TeX revisions recorded"
+shell_escape = false
+tinytex_release = "v2026.08"
+tinytex_archive = "TinyTeX-linux-x86_64-v2026.08.tar.xz"
+tinytex_sha256 = "59685643fb4160f779df5e3d7d78266a86818ebb86ac25c7900723b0fd73a7cd"
+tinytex_repository = "https://tlnet.yihui.org"
+tinytex_packages = ["babel-german", "biblatex-apa"]
+
+[build]
+source_date_epoch = 1787788800 # 2026-08-27T00:00:00Z
+max_latex_passes = 3
+timeout_seconds = 180
+byte_identical_pdfs = true
+default_output = ".tooling-state/docs/case-study"
+pdf_prefix = "portable-tooling-case-study"
+tooling_version = "0.4.0"
+
+[languages.de]
+main = "source/de/main.tex"
+pdf_language = "de-DE"
+pdf_title = "Portable Toolingarchitektur"
+
+[languages.en]
+main = "source/en/main.tex"
+pdf_language = "en-US"
+pdf_title = "Portable Tooling Architecture"

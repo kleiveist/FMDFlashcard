@@ -1,0 +1,13 @@
+\section{Problem und Ausgangszustand}
+\label{chap:problem-initial-state}
+
+Eine frühere Lifecycle-Architektur behandelte ein Full-Stack-Template als Master und
+leitete daraus Produktbäume ab. Dieses Modell ist kein aktueller Sollzustand: feste
+Wurzeln, Annahmen über Komponenten und Kopplung an eine fremde Git-Historie erschweren
+den Austausch eines Toolingordners in bestehenden Projekten.
+
+Der aktuelle Ansatz trennt austauschbaren Toolingbestand von Projektkonfiguration und
+State. Ein Austausch von \texttt{tools/} und \texttt{docs/toolingdocs/} wird als
+versionierter Migrationsfall behandelt, nicht als gleichversionige Kopie. Abbildung
+\ref{fig:project-context} verdeutlicht die abgeleiteten, statt fest codierten Pfade.
+\CaseDiagram{project-context-paths}{ProjectContext trennt Projekt-, Tooling-, Dokumentations- und State-Wurzeln.}{fig:project-context}

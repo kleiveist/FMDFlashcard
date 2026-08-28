@@ -1,0 +1,6 @@
+schema_version = 1
+id = "web-cloud"
+order = 20
+name = "Web + Cloud"
+description = "Browser application with FastAPI backend and cloud-ready project structure."
+features = ["frontend", "backend", "cloud"]

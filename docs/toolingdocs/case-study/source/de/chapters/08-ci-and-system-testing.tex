@@ -1,0 +1,25 @@
+\section{CI und Systemtests}
+\label{chap:ci-system-testing}
+
+Die Testpyramide verbindet Einheiten, Adapterverträge, Integrationsfälle, Copy-Fixtures
+und Dokumentationsprüfungen. Die Copy-Matrix trennt Linux-, Windows- und macOS-Ergebnisse
+als noch zu erfassende \Measured{} Evidenz von vorhandenen, plattformneutralen Tests.
+Synthetische Fixtures werden dabei nicht als reale Kundenprojekte ausgegeben.
+
+Abbildung~\ref{fig:ci-test-pyramid} ordnet die Testebenen ein; Abbildung~\ref{fig:os-fixture-matrix}
+zeigt die ausstehenden Betriebssystem- und Fixture-Nachweise.
+
+\CaseDiagram{ci-test-pyramid}{CI-Testpyramide vom Modulvertrag bis zur Copy-Fixture.}{fig:ci-test-pyramid}
+\CaseDiagram{os-fixture-matrix}{Betriebssystem- und Fixture-Matrix als auszuführender Nachweisplan.}{fig:os-fixture-matrix}
+\CaseTable{
+\begin{tabularx}{0.94\textwidth}{@{}lX@{}}
+\toprule
+Ebene & Zweck \\
+\midrule
+Unit & Deterministische Kern- und Adapterverträge \\
+Integration & Planung, Transaktion, Migration und Rollback \\
+Copy-Fixture & Portabler Austausch ohne Produktverlust \\
+Dokumentation & Links, Quellenstruktur und Sprachparität \\
+\bottomrule
+\end{tabularx}
+}{Testebenen der Fallstudie.}{tab:test-matrix}

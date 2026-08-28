@@ -1,0 +1,11 @@
+\section{Limitations and validity}
+\label{chap:limitations-validity}
+
+The case study does not cover every technology, filesystem, or real customer environment.
+Package registries, operating-system variation, simulated fixtures, and the semantic
+correctness of an allowlisted adapter are outside the transaction guarantee. Process
+containment is not a complete sandbox either.
+
+Local PDF results are currently a \Limitation{} because the audited TeX environment is
+not installed in this work container. The sources and CI steps are designed to produce
+that evidence reproducibly later; missing metrics are not estimated.

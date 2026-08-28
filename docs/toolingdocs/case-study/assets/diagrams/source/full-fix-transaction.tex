@@ -1,0 +1,9 @@
+\begin{tikzpicture}[node distance=11mm]
+  \node[caseNode] (plan) {accepted plan};
+  \node[caseNode,right=of plan] (stage) {stage};
+  \node[caseNode,right=of stage] (verify) {verify};
+  \node[caseNode,right=of verify] (publish) {publish};
+  \draw[caseArrow] (plan) -- (stage);
+  \draw[caseArrow] (stage) -- (verify);
+  \draw[caseArrow] (verify) -- (publish);
+\end{tikzpicture}

@@ -1,0 +1,15 @@
+\section{Architektur}
+\label{chap:architecture}
+
+Der Kern besteht aus \ProjectContext{}, Ressourcen- und Pfadauflösung, persistiertem
+State, Planner, Transaktion, Verifikation und Reporting. Adapter melden Befunde und
+Operationen; der Kern entscheidet nicht aus Vermutung über Produktschemata. Das ist eine
+\Implemented{} Eigenschaft der dokumentierten Architektur
+(\evidence{EV-CONTEXT-001}).
+
+Abbildung~\ref{fig:system-context} zeigt die Systemgrenze. Abbildung
+\ref{fig:adapter-orchestration} trennt Adapterwissen von der gemeinsamen
+Orchestrierung. Beide Darstellungen verwenden nur beschriftete Formen und Linien, damit
+ihre Aussage nicht von Farbe abhängt.
+\CaseDiagram{system-context}{Systemkontext des portablen Toolings und seiner Projektgrenze.}{fig:system-context}
+\CaseDiagram{adapter-orchestration}{Adapter liefern Befunde und Pläne an eine gemeinsame Orchestrierung.}{fig:adapter-orchestration}

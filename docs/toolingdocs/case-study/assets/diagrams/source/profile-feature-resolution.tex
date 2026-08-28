@@ -1,0 +1,9 @@
+\begin{tikzpicture}[node distance=12mm]
+  \node[caseNode] (profile) {selected profile};
+  \node[caseNode,right=of profile] (features) {resolved features};
+  \node[caseNode,right=of features] (adapters) {selected adapters};
+  \node[caseNode,below=of features] (conflict) {invalid dependency\\fails closed};
+  \draw[caseArrow] (profile) -- (features);
+  \draw[caseArrow] (features) -- (adapters);
+  \draw[caseArrow] (features) -- (conflict);
+\end{tikzpicture}

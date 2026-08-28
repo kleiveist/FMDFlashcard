@@ -1,0 +1,31 @@
+{
+  "analyzer": {
+    "abi_version": 1,
+    "name": "rust-quality-analyzer",
+    "version": "1.0.0"
+  },
+  "artifact": {
+    "path": "dist/rust_quality_analyzer.wasm",
+    "sha256": "7a27cb02a9392b62c487b4ce73a03524d7260b804c0c49eb4520ceb1a1cacfd8",
+    "target": "wasm32-wasip1"
+  },
+  "build": {
+    "cargo_lock_sha256": "0cfc81b3bdf0a70c7c0c3671ae8dbf2d84299dd42bc8149547bd0d6b6ddbc243",
+    "path_remapping": {
+      "cargo_home": "/cargo-home",
+      "cargo_target": "/cargo-target",
+      "dependency_root_template": "/cargo-sources/<name>-<version>-<source-sha256-12>",
+      "precedence": "broad-roots-first-specific-roots-last",
+      "rust_sysroot": "/rust-toolchain",
+      "source_root": "/workspace/rust-quality-analyzer",
+      "transport": "CARGO_ENCODED_RUSTFLAGS",
+      "user_home": "/user-home",
+      "version": 1
+    },
+    "proc_macro2": "1.0.107",
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "source_sha256": "e49f1b8eace9a960fa3817997e104cc60e18d0941c9e7d7680f0394e3ce52799",
+    "syn": "2.0.119"
+  },
+  "schema_version": 1
+}

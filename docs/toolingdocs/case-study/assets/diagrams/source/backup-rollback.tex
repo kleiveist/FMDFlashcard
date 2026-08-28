@@ -1,0 +1,9 @@
+\begin{tikzpicture}[node distance=14mm]
+  \node[caseNode] (preimage) {capture preimage};
+  \node[caseNode,right=of preimage] (apply) {apply candidate};
+  \node[caseNode,right=of apply] (result) {verification result};
+  \node[caseNode,below=of result] (rollback) {restore backup};
+  \draw[caseArrow] (preimage) -- (apply);
+  \draw[caseArrow] (apply) -- (result);
+  \draw[caseArrow] (result) -- node[right,font=\scriptsize]{failure} (rollback);
+\end{tikzpicture}

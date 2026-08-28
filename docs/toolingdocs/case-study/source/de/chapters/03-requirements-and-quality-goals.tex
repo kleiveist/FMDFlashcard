@@ -1,0 +1,24 @@
+\section{Anforderungen und Qualitätsziele}
+\label{chap:requirements-quality-goals}
+
+Die Qualitätsziele sind Portabilität, Produktschutz, Idempotenz, Rollback,
+Plattformunabhängigkeit, reproduzierbarer Export, versionierte Migration und
+überprüfbare Dokumentation. Ein \CheckMode{} muss lesend bleiben; ein \FullFix{} darf
+nur eine zuvor sichtbar geplante Operation ausführen.
+
+\CaseTable{
+\begin{tabularx}{0.94\textwidth}{@{}lX@{}}
+\toprule
+Ziel & Prüfkriterium \\
+\midrule
+Portabilität & Alle Laufzeitpfade stammen aus \ProjectContext{}. \\
+Produktschutz & Unbekannte und produktverwaltete Dateien bleiben unverändert. \\
+Idempotenz & Ein zweiter erfolgreicher \FullFix{} plant keine Operationen. \\
+Rollback & Fehlerhafte Veröffentlichung stellt erfasste Vorzustände wieder her. \\
+\bottomrule
+\end{tabularx}
+}{Qualitätsziele und beobachtbare Prüfkriterien.}{tab:quality-goals}
+
+Diese Ziele beschreiben Anforderungen, keine pauschale Behauptung über jede künftige
+Adapterimplementierung. Die zugehörige Strukturprüfung ist bis zum nächsten
+eindeutigen Commit als \Planned{} (\evidence{EV-DOCS-001}) registriert.

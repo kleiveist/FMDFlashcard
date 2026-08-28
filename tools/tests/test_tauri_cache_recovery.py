@@ -1,0 +1,248 @@
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+import pytest
+
+from tools.profiles import runtime as profile_runtime
+from tools.tauri import cache, common, paths, run
+
+pytestmark = pytest.mark.skipif(
+    not profile_runtime.feature_enabled("tauri"),
+    reason="Tauri feature disabled by active profile",
+)
+
+
+def _configure_project_paths(monkeypatch, tmp_path: Path) -> tuple[Path, Path]:
+    project_root = tmp_path / "relocated-project"
+    tauri_dir = project_root / "src-tauri"
+    tauri_dir.mkdir(parents=True)
+    (tauri_dir / "Cargo.toml").write_text(
+        "[package]\nname = 'fixture'\n", encoding="utf-8"
+    )
+    (tauri_dir / "tauri.conf.json").write_text("{}\n", encoding="utf-8")
+    monkeypatch.setattr(paths, "ROOT", project_root)
+    monkeypatch.setattr(paths, "TAURI_DIR", tauri_dir)
+    monkeypatch.delenv("CARGO_TARGET_DIR", raising=False)
+    return project_root, tauri_dir
+
+
+def _success_result(command: list[str]) -> common.CommandResult:
+    return common.CommandResult(command=command, cwd=paths.ROOT, returncode=0)
+
+
+def test_prepare_dev_cache_cleans_when_origin_has_previous_project_path(
+    monkeypatch, tmp_path
+) -> None:
+    project_root, tauri_dir = _configure_project_paths(monkeypatch, tmp_path)
+    target_dir = tauri_dir / "target"
+    target_dir.mkdir()
+    origin = target_dir / ".tauri-dev-cache-origin"
+    origin.write_text(
+        "/previous/location/src-tauri/tauri.conf.json\n", encoding="utf-8"
+    )
+    commands: list[list[str]] = []
+
+    def fake_run_command(command: list[str], **kwargs) -> common.CommandResult:
+        commands.append(command)
+        assert kwargs["cwd"] == project_root
+        return _success_result(command)
+
+    monkeypatch.setattr(common, "run_command", fake_run_command)
+
+    assert cache.prepare_dev_cache() is True
+    assert commands == [
+        [
+            "cargo",
+            "clean",
+            "--profile",
+            "dev",
+            "--manifest-path",
+            str(tauri_dir / "Cargo.toml"),
+            "--target-dir",
+            str(target_dir),
+        ]
+    ]
+    expected = str((tauri_dir / "tauri.conf.json").resolve())
+    assert origin.read_text(encoding="utf-8").strip() == expected
+
+
+def test_prepare_dev_cache_uses_legacy_cargo_metadata_once(
+    monkeypatch, tmp_path
+) -> None:
+    _project_root, tauri_dir = _configure_project_paths(monkeypatch, tmp_path)
+    output_dir = tauri_dir / "target" / "debug" / "build" / "fixture-build"
+    output_dir.mkdir(parents=True)
+    (output_dir / "output").write_text(
+        "cargo:rerun-if-changed=/previous/location/src-tauri/tauri.conf.json\n",
+        encoding="utf-8",
+    )
+    commands: list[list[str]] = []
+    monkeypatch.setattr(
+        common,
+        "run_command",
+        lambda command, **_kwargs: commands.append(command) or _success_result(command),
+    )
+
+    assert cache.prepare_dev_cache() is True
+    assert commands
+
+
+def test_cargo_metadata_recognizes_foreign_absolute_config_paths() -> None:
+    output = "cargo:rerun-if-changed=C:\\previous\\location\\src-tauri\\tauri.conf.json\n"
+
+    assert cache._tauri_config_paths(output) == {
+        "C:\\previous\\location\\src-tauri\\tauri.conf.json"
+    }
+
+
+def test_prepare_dev_cache_keeps_cache_when_current_metadata_exists(
+    monkeypatch, tmp_path
+) -> None:
+    _project_root, tauri_dir = _configure_project_paths(monkeypatch, tmp_path)
+    expected_config = tauri_dir / "tauri.conf.json"
+    output_dir = tauri_dir / "target" / "debug" / "build" / "fixture-build"
+    output_dir.mkdir(parents=True)
+    (output_dir / "output").write_text(
+        "\n".join(
+            [
+                "cargo:rerun-if-changed=/previous/location/src-tauri/tauri.conf.json",
+                f"cargo:rerun-if-changed={expected_config}",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        common,
+        "run_command",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("must not clean")
+        ),
+    )
+
+    assert cache.prepare_dev_cache() is True
+
+
+def test_prepare_dev_cache_stops_when_cargo_clean_fails(monkeypatch, tmp_path) -> None:
+    _project_root, tauri_dir = _configure_project_paths(monkeypatch, tmp_path)
+    target_dir = tauri_dir / "target"
+    target_dir.mkdir()
+    (target_dir / ".tauri-dev-cache-origin").write_text("/old/path\n", encoding="utf-8")
+    monkeypatch.setattr(
+        common,
+        "run_command",
+        lambda command, **_kwargs: common.CommandResult(
+            command=command,
+            cwd=paths.ROOT,
+            returncode=1,
+            stderr="cargo clean failed",
+        ),
+    )
+
+    assert cache.prepare_dev_cache() is False
+
+
+def test_plugin_permission_cache_failure_requires_exact_diagnostic() -> None:
+    matching = (
+        "failed to read plugin permissions: failed to read file "
+        "'C:\\project\\target\\debug\\build\\tauri\\out\\permissions\\app\\autogenerated\\commands.toml'"
+    )
+
+    assert cache.is_plugin_permission_cache_failure(matching) is True
+    assert cache.is_plugin_permission_cache_failure("error: failed to build") is False
+
+
+def test_foreground_tauri_run_retries_once_after_permission_cache_failure(
+    monkeypatch,
+) -> None:
+    commands: list[list[str]] = []
+    recoveries: list[str] = []
+    failure = (
+        "failed to read plugin permissions: failed to read file "
+        "'/workspace/target/debug/build/tauri/out/permissions/app/autogenerated/commands.toml'"
+    )
+
+    monkeypatch.setattr(cache, "prepare_dev_cache", lambda: True)
+    monkeypatch.setattr(
+        cache, "recover_dev_cache", lambda reason: recoveries.append(reason) or True
+    )
+    monkeypatch.setattr(common, "tauri_cli_command", lambda *args: ["tauri", *args])
+
+    def fake_run_command(command: list[str], **_kwargs) -> common.CommandResult:
+        commands.append(command)
+        if len(commands) == 1:
+            return common.CommandResult(
+                command=command, cwd=paths.ROOT, returncode=101, stderr=failure
+            )
+        return _success_result(command)
+
+    monkeypatch.setattr(common, "run_command", fake_run_command)
+
+    args = argparse.Namespace(foreground=True, frontend_host=None, frontend_port=None)
+    assert run.main(args) == 0
+    assert len(commands) == 2
+    assert recoveries == ["Tauri reported stale generated plugin permissions."]
+
+
+def test_failed_log_recovers_when_plugin_permission_cache_is_stale(
+    monkeypatch, tmp_path
+) -> None:
+    log_path = tmp_path / "tauri.log"
+    log_path.write_text(
+        "failed to read plugin permissions: /target/debug/build/tauri/out/permissions/app/autogenerated/x.toml\n",
+        encoding="utf-8",
+    )
+    recoveries: list[str] = []
+    monkeypatch.setattr(
+        cache, "recover_dev_cache", lambda reason: recoveries.append(reason) or True
+    )
+
+    assert run._recover_failed_log(log_path) is True
+    assert recoveries == ["Tauri reported stale generated plugin permissions."]
+
+
+def test_detached_tauri_run_retries_permission_cache_failure_only_once(
+    monkeypatch, tmp_path
+) -> None:
+    failure = "failed to read plugin permissions: /target/debug/build/tauri/out/permissions/app/autogenerated/x.toml"
+    started: list[int] = []
+    recoveries: list[str] = []
+
+    class FakeProcess:
+        pid = 4321
+
+    def fake_popen(*_args, **_kwargs) -> FakeProcess:
+        started.append(1)
+        return FakeProcess()
+
+    def fake_follow(log_path: Path, _process) -> int:
+        log_path.write_text(failure, encoding="utf-8")
+        return 101
+
+    monkeypatch.setattr(paths, "ROOT", tmp_path)
+    monkeypatch.setattr(run, "_ensure_runtime_dir", lambda: tmp_path)
+    monkeypatch.setattr(run, "_ensure_log_dir", lambda: tmp_path)
+    monkeypatch.setattr(run.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(run, "_follow_log", fake_follow)
+    monkeypatch.setattr(
+        run,
+        "_state_for_process",
+        lambda _process, argv, _log_path: {
+            "schema_version": 1,
+            "pid": 4321,
+            "argv": argv,
+            "process_start_token": "linux:test:100",
+            "process_group_id": 4321,
+            "log": ".tooling-state/runtime/tauri/logs/tauri.log",
+        },
+    )
+    monkeypatch.setattr(run, "_write_detached_state", lambda *_args: None)
+    monkeypatch.setattr(
+        cache, "recover_dev_cache", lambda reason: recoveries.append(reason) or True
+    )
+
+    assert run._run_detached(["tauri", "dev"], follow=True) == 101
+    assert started == [1, 1]
+    assert recoveries == ["Tauri reported stale generated plugin permissions."]

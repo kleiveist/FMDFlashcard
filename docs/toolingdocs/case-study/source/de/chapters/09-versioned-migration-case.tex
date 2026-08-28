@@ -1,0 +1,16 @@
+\section{Versionierte Migrationsfallstudie}
+\label{chap:versioned-migration-case}
+
+Der Migrationsfall beginnt mit einem älteren Toolingstand und seinem persistierten State.
+Danach werden ausschließlich die austauschbaren Verzeichnisse \texttt{tools/} und
+\texttt{docs/toolingdocs/} ersetzt. Eine registrierte Migration stimmt Konfiguration und
+State auf die neue Version ab, ohne Produktdateien als Toolingbestand zu behandeln.
+
+Die Prüfung unterscheidet gleichen Versionsstand, echten Versionssprung, Drift sowie
+Fehler- und Rückgabefall. Die vorhandene historische Migrationssuite ist als \Verified{}
+(\evidence{EV-UPGRADE-001}) referenziert; sie ist keine Behauptung, dass jede beliebige
+Altversion unterstützt wird.
+Abbildung~\ref{fig:tooling-migration} zeigt die Trennung von austauschbarem Payload
+und erhaltenem Projektstate während der registrierten Migration.
+
+\CaseDiagram{tooling-migration}{Migration vom alten Payload und State zu einem registrierten neuen Stand.}{fig:tooling-migration}

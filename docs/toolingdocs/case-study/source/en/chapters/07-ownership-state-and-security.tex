@@ -1,0 +1,13 @@
+\section{Ownership, state, and security}
+\label{chap:ownership-state-security}
+
+Tooling-managed, structured-managed, and project-managed files have separate rules.
+Product code, secrets, and unknown files are not automatically mutable. Structured changes
+need declared target keys and matching preimages. Symlinks, path escapes, and ambiguous
+conflicts fail rather than falling back to a best-effort modification.
+
+\ToolingState{} keeps limited version, profile, migration, and managed-digest information
+outside the replaceable tooling directory. Figure~\ref{fig:ownership-boundaries} and
+Figure~\ref{fig:backup-rollback} place those boundaries in context.
+\CaseDiagram{ownership-boundaries}{Ownership boundaries between tooling, structured files, and product content.}{fig:ownership-boundaries}
+\CaseDiagram{backup-rollback}{Backup and rollback flow for a failed publication.}{fig:backup-rollback}

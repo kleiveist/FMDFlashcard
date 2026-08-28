@@ -1,0 +1,11 @@
+\begin{tikzpicture}[node distance=11mm]
+  \node[caseNode] (context) {ProjectContext};
+  \node[caseNode,below left=of context] (project) {project root};
+  \node[caseNode,below=of context] (tools) {tools root};
+  \node[caseNode,below right=of context] (docs) {docs root};
+  \node[caseNode,below=of tools] (state) {state root};
+  \draw[caseArrow] (context) -- (project);
+  \draw[caseArrow] (context) -- (tools);
+  \draw[caseArrow] (context) -- (docs);
+  \draw[caseArrow] (context) -- (state);
+\end{tikzpicture}

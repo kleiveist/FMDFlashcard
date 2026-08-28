@@ -1,0 +1,24 @@
+\section{Requirements and quality goals}
+\label{chap:requirements-quality-goals}
+
+The quality goals are portability, product protection, idempotence, rollback,
+platform independence, reproducible export, versioned migration, and verifiable
+documentation. A \CheckMode{} must remain read-only; a \FullFix{} may execute only an
+operation that was visible in a prior plan.
+
+\CaseTable{
+\begin{tabularx}{0.94\textwidth}{@{}lX@{}}
+\toprule
+Goal & Observable criterion \\
+\midrule
+Portability & All runtime paths originate in \ProjectContext{}. \\
+Product protection & Unknown and product-owned files stay unchanged. \\
+Idempotence & A second successful \FullFix{} plans no operations. \\
+Rollback & A failed publication restores captured prior states. \\
+\bottomrule
+\end{tabularx}
+}{Quality goals and observable criteria.}{tab:quality-goals}
+
+These goals are requirements, not a blanket claim about every future adapter
+implementation. Their structure check remains \Planned{} until it can be tied to the
+next immutable commit (\evidence{EV-DOCS-001}).

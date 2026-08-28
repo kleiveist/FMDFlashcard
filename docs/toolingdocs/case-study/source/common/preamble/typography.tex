@@ -1,0 +1,21 @@
+\titleformat{\section}{\bfseries\fontsize{12pt}{14pt}\selectfont}{\thesection}{1em}{}
+\titleformat{\subsection}{\bfseries\fontsize{12pt}{14pt}\selectfont}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\bfseries\fontsize{12pt}{14pt}\selectfont}{\thesubsubsection}{1em}{}
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{3}
+\setlength{\parskip}{6pt}
+\setlength{\parindent}{0pt}
+\makeatletter
+\renewcommand\footnotesize{\@setfontsize\footnotesize{10pt}{12pt}}
+\makeatother
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\definecolor{caseInk}{HTML}{202020}
+\definecolor{caseWash}{HTML}{F2F2F2}
+\tikzset{
+  caseNode/.style={draw=caseInk,fill=white,rounded corners=2pt,align=center,font=\sffamily\scriptsize,inner sep=4pt},
+  caseGroup/.style={draw=caseInk,fill=caseWash,rounded corners=3pt,inner sep=5pt},
+  caseArrow/.style={-{Latex[length=2.2mm,width=1.4mm]},draw=caseInk,line width=.7pt}
+}

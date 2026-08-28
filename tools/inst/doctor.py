@@ -1,331 +1,515 @@
-#!/usr/bin/env python3
-"""
-Environment doctor/check script used by `tools/control.py`.
-
-OS-aware behavior
-- Windows:
-  - Does NOT require Unix build tools (make/gcc/pkg-config/file).
-  - DOES require MSVC Build Tools (C++ workload) for Rust/Tauri builds.
-  - Requires pnpm (desktop workflow uses it).
-  - Skips Linux package checks for Tauri system libs.
-- Linux:
-  - Requires Unix build tools and Tauri system libs.
-
-This file is intended to replace: tools/doctor.py
-"""
-
 from __future__ import annotations
 
+import argparse
+import importlib.util
 import json
-import os
-import platform
 import shutil
+import socket
 import subprocess
-from dataclasses import dataclass, asdict
+import sys
+import time
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+
+from tools import logger
+from tools.config import ConfigLoadError, resolve_configuration, validate_configuration
+from tools.core.context import ProjectContext, load_context
+from tools.inst import configuration, container
+from tools.inst.tooling_runtime import TOOLING_RUNTIME_PROBE
+from tools.process import prepare_command
+from tools.profiles import runtime as profile_runtime
+
+TOOLS_ROOT = Path(__file__).resolve().parents[1]
+ROOT = TOOLS_ROOT.parent
 
 
-@dataclass
-class Check:
+def _context(context: ProjectContext | None = None) -> ProjectContext:
+    """Resolve configured target paths for the current project root."""
+
+    if context is not None:
+        return context
+    return load_context(project_root=ROOT, tools_root=TOOLS_ROOT)
+
+
+@dataclass(slots=True)
+class CheckResult:
     name: str
-    ok: bool
-    details: str
-    category: str
+    status: str
+    message: str
 
 
-ICONS = {
-    "ok": "✅",
-    "miss": "❌",
-    "info": "ℹ️",
-    "warn": "⚠️",
-    "dot": "•",
-}
-
-SYSTEM = platform.system().lower()
-
-# Critical categories differ by OS.
-if SYSTEM == "windows":
-    CRITICAL_CATEGORIES = (
-        "Core Tools",
-        "Rust",
-        "Node",
-    )
-else:
-    CRITICAL_CATEGORIES = (
-        "Core Tools",
-        "Rust",
-        "Node",
-        "Tauri System Libs",
-    )
+def _status_priority(status: str) -> int:
+    order = {"OK": 0, "WARN": 1, "FAIL": 2}
+    return order.get(status, 2)
 
 
-def run_cmd(cmd: List[str]) -> Optional[str]:
+def _command_version(command: list[str], cwd: Path | None = None) -> tuple[bool, str]:
     try:
-        out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True)
-        return out.strip()
-    except Exception:
-        return None
-
-
-def which(cmd: str) -> Optional[str]:
-    return shutil.which(cmd)
-
-
-def header(title: str) -> None:
-    line = "═" * (len(title) + 2)
-    print(f"\n{line}\n {title}\n{line}")
-
-
-def print_checks(checks: List[Check]) -> None:
-    cats: Dict[str, List[Check]] = {}
-    for c in checks:
-        cats.setdefault(c.category, []).append(c)
-
-    for cat in cats:
-        print(f"\n{ICONS['dot']} {cat}")
-        for c in cats[cat]:
-            icon = ICONS["ok"] if c.ok else ICONS["miss"]
-            print(f"  {icon} {c.name:<18} {c.details}")
-
-
-def _cargo_home() -> Path:
-    cargo_home = os.environ.get("CARGO_HOME")
-    if cargo_home:
-        return Path(cargo_home).expanduser()
-    return Path.home() / ".cargo"
-
-
-def _resolve_tool_with_cargo_bin(cmd: str, cargo_bin: Path) -> tuple[Optional[str], bool]:
-    found = which(cmd)
-    if found:
-        return found, False
-    candidate = cargo_bin / cmd
-    if candidate.exists() and os.access(candidate, os.X_OK):
-        return str(candidate), True
-    return None, False
-
-
-def _with_path_hint(details: str, from_cargo: bool, cargo_env: Path, cargo_bin: Path) -> str:
-    if not from_cargo:
-        return details
-    if cargo_env.exists():
-        return f"{details} (not in PATH; run 'source {cargo_env}')"
-    return f"{details} (not in PATH; add {cargo_bin} to PATH)"
-
-
-def _vswhere_path() -> Optional[str]:
-    """Locate vswhere.exe (commonly not in PATH)."""
-    p = which("vswhere")
-    if p:
-        return p
-
-    pf86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
-    cand = Path(pf86) / "Microsoft Visual Studio" / "Installer" / "vswhere.exe"
-    if cand.exists():
-        return str(cand)
-    return None
-
-
-def _check_msvc_buildtools() -> tuple[bool, str]:
-    """
-    Check for MSVC Build Tools / Visual Studio C++ toolchain.
-
-    Required for Windows Rust/Tauri builds.
-    """
-    vswhere = _vswhere_path()
-    if not vswhere:
-        return (False, "vswhere.exe not found (install VS Build Tools: C++ workload)")
-
-    out = run_cmd(
-        [
-            vswhere,
-            "-latest",
-            "-products",
-            "*",
-            "-requires",
-            "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
-            "-property",
-            "installationPath",
-        ]
-    )
-    if out:
-        cl = which("cl")
-        if cl:
-            return (True, f"VS/BuildTools: {out} (cl: {cl})")
-        return (True, f"VS/BuildTools: {out} (cl not in PATH; open 'x64 Native Tools' prompt)")
-    return (False, "MSVC C++ tools not detected (install VS Build Tools: C++ workload)")
-
-
-def collect_checks() -> List[Check]:
-    checks: List[Check] = []
-
-    # Shell / PATH info
-    checks.append(Check("SHELL", True, os.environ.get("SHELL", "unknown"), "Shell"))
-    path = os.environ.get("PATH", "")
-    top = (path.split(os.pathsep) if path else [])[:8]
-    checks.append(
-        Check(
-            "PATH (Top 8)",
-            True,
-            "\n" + "\n".join([f"    {i+1}. {p}" for i, p in enumerate(top)]),
-            "Shell",
+        completed = subprocess.run(
+            prepare_command(command),
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            check=False,
         )
+    except OSError as exc:
+        return False, str(exc)
+
+    output = (completed.stdout or completed.stderr).strip()
+    if completed.returncode == 0:
+        return True, output.splitlines()[0] if output else "available"
+    return False, output or f"exit code {completed.returncode}"
+
+
+def _check_binary(name: str, help_text: str, version_cmd: list[str]) -> CheckResult:
+    binary = shutil.which(name)
+    if binary is None:
+        return CheckResult(
+            name=name,
+            status="FAIL",
+            message=f"not found. Action: install {help_text}.",
+        )
+    ok, version = _command_version(version_cmd)
+    if not ok:
+        return CheckResult(
+            name=name,
+            status="WARN",
+            message=f"found at {binary}, version check failed: {version}",
+        )
+    return CheckResult(name=name, status="OK", message=f"{binary} ({version})")
+
+
+def _check_optional_binary(
+    name: str, help_text: str, version_cmd: list[str]
+) -> CheckResult:
+    binary = shutil.which(name)
+    if binary is None:
+        return CheckResult(
+            name=name,
+            status="OK",
+            message=f"not found; optional. Install {help_text} if desired.",
+        )
+    ok, version = _command_version(version_cmd)
+    if not ok:
+        return CheckResult(
+            name=name,
+            status="WARN",
+            message=f"found at {binary}, version check failed: {version}",
+        )
+    return CheckResult(name=name, status="OK", message=f"{binary} ({version})")
+
+
+def _check_current_python() -> CheckResult:
+    ok, version = _command_version([sys.executable, "--version"])
+    if not ok:
+        return CheckResult(
+            "python", "FAIL", f"current interpreter is not executable: {version}"
+        )
+    return CheckResult("python", "OK", f"{sys.executable} ({version})")
+
+
+def _backend_python() -> Path:
+    context = _context()
+    backend_dir = context.paths.backend
+    if backend_dir is None:
+        return context.state_root / "unconfigured-backend" / "python"
+    candidates = [
+        backend_dir / ".venv" / "Scripts" / "python.exe",
+        backend_dir / ".venv" / "bin" / "python",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0] if sys.platform == "win32" else candidates[1]
+
+
+def _tooling_python() -> Path:
+    tooling_venv = _context().venv_root
+    candidates = [
+        tooling_venv / "Scripts" / "python.exe",
+        tooling_venv / "bin" / "python",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0] if sys.platform == "win32" else candidates[1]
+
+
+def _port_is_occupied(host: str, port: int) -> bool:
+    try:
+        addresses = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    except OSError:
+        return False
+    for family, socktype, protocol, _, address in addresses:
+        with socket.socket(family, socktype, protocol) as sock:
+            sock.settimeout(0.3)
+            if sock.connect_ex(address) == 0:
+                return True
+    return False
+
+
+def _check_port(host: str, port: int) -> CheckResult:
+    occupied = _port_is_occupied(host, port)
+    if occupied:
+        return CheckResult(
+            name=f"port:{port}",
+            status="WARN",
+            message=f"occupied on {host} (may be expected if services are already running)",
+        )
+    return CheckResult(name=f"port:{port}", status="OK", message=f"free on {host}")
+
+
+def _check_project_structure() -> list[CheckResult]:
+    results: list[CheckResult] = []
+    profile = profile_runtime.active_profile(ROOT)
+    context = _context()
+
+    frontend = context.paths.frontend
+    backend = context.paths.backend
+    shared = ROOT / "shared"
+
+    if profile.has_feature("frontend"):
+        if frontend.exists() and (frontend / "package.json").exists():
+            results.append(
+                CheckResult("frontend", "OK", "frontend scaffold is present")
+            )
+        else:
+            results.append(
+                CheckResult(
+                    "frontend",
+                    "FAIL",
+                    "frontend scaffold missing (expected frontend/package.json)",
+                )
+            )
+
+        node_modules = frontend / "node_modules"
+        if node_modules.exists():
+            results.append(CheckResult("frontend-deps", "OK", "node_modules found"))
+        else:
+            results.append(
+                CheckResult(
+                    "frontend-deps", "WARN", "node_modules not found (run install)"
+                )
+            )
+    else:
+        results.append(
+            CheckResult(
+                "frontend", "OK", f"disabled by active profile '{profile.profile_id}'"
+            )
+        )
+        results.append(
+            CheckResult(
+                "frontend-deps",
+                "OK",
+                "frontend dependencies not required for this profile",
+            )
+        )
+
+    if profile.has_feature("backend"):
+        if (
+            backend is not None
+            and backend.exists()
+            and (backend / "app" / "main.py").exists()
+        ):
+            results.append(CheckResult("backend", "OK", "backend scaffold is present"))
+        else:
+            results.append(
+                CheckResult(
+                    "backend",
+                    "FAIL",
+                    "backend scaffold missing (expected backend/app/main.py)",
+                )
+            )
+
+        backend_venv = backend / ".venv" if backend is not None else None
+        if backend_venv is not None and backend_venv.exists():
+            results.append(CheckResult("backend-venv", "OK", "backend/.venv found"))
+        else:
+            fastapi_available = importlib.util.find_spec("fastapi") is not None
+            if fastapi_available:
+                results.append(
+                    CheckResult(
+                        "backend-venv",
+                        "WARN",
+                        "backend/.venv missing, but fastapi is importable globally",
+                    )
+                )
+            else:
+                results.append(
+                    CheckResult(
+                        "backend-venv", "WARN", "backend/.venv missing (run install)"
+                    )
+                )
+    else:
+        results.append(
+            CheckResult(
+                "backend", "OK", f"disabled by active profile '{profile.profile_id}'"
+            )
+        )
+        results.append(
+            CheckResult(
+                "backend-venv", "OK", "backend virtualenv not required for this profile"
+            )
+        )
+
+    if shared.exists():
+        results.append(CheckResult("shared", "OK", "shared directory is present"))
+    else:
+        results.append(CheckResult("shared", "WARN", "shared directory missing"))
+
+    return results
+
+
+def _check_backend_runtime() -> CheckResult:
+    profile = profile_runtime.active_profile(ROOT)
+    if not profile.has_feature("backend"):
+        return CheckResult(
+            name="backend-runtime",
+            status="OK",
+            message=f"disabled by active profile '{profile.profile_id}'",
+        )
+
+    backend_python = _backend_python()
+    if not backend_python.exists():
+        return CheckResult(
+            name="backend-runtime",
+            status="WARN",
+            message="backend venv python missing. Action: run 'python tools/control.py install'.",
+        )
+
+    check = subprocess.run(
+        [
+            str(backend_python),
+            "-c",
+            "import fastapi, jsonschema, pydantic_settings, pytest, uvicorn; print('runtime-ok')",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if check.returncode == 0:
+        return CheckResult(
+            name="backend-runtime",
+            status="OK",
+            message="fastapi/jsonschema/pydantic-settings/pytest/uvicorn importable",
+        )
+
+    details = (check.stdout or check.stderr).strip() or f"exit code {check.returncode}"
+    return CheckResult(
+        name="backend-runtime",
+        status="FAIL",
+        message=f"dependency import failed. Action: reinstall backend dependencies. Details: {details}",
     )
 
-    # Core tools: OS-aware
-    if SYSTEM == "windows":
-        for tool in ["git", "curl", "cmake"]:
-            p = which(tool)
-            checks.append(Check(tool, bool(p), p or "not found", "Core Tools"))
 
-        ok, details = _check_msvc_buildtools()
-        checks.append(Check("msvc-buildtools", ok, details, "Core Tools"))
+def _check_tooling_runtime() -> CheckResult:
+    tooling_venv = _context().venv_root
+    python = _tooling_python()
+    if not python.exists():
+        return CheckResult(
+            "tooling-runtime",
+            "WARN",
+            f"dedicated tooling Python is missing at {tooling_venv}. Action: run 'python tools/control.py install'.",
+        )
 
-        # Unix tools: show as skipped (not required on Windows)
-        for tool in ["file", "pkg-config", "make", "gcc", "g++"]:
-            checks.append(Check(tool, True, "skipped (Unix tool; not required on Windows)", "Core Tools"))
-    else:
-        for tool in ["git", "curl", "file", "pkg-config", "cmake", "make", "gcc", "g++"]:
-            p = which(tool)
-            checks.append(Check(tool, bool(p), p or "not found", "Core Tools"))
+    check = subprocess.run(
+        [str(python), "-c", TOOLING_RUNTIME_PROBE],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if check.returncode == 0:
+        return CheckResult(
+            "tooling-runtime",
+            "OK",
+            f"tooling dependencies and the verified Rust WASI analyzer run via {python}",
+        )
+    details = (check.stdout or check.stderr).strip() or f"exit code {check.returncode}"
+    return CheckResult(
+        "tooling-runtime",
+        "FAIL",
+        f"dedicated tooling runtime is incomplete. Action: run 'python tools/control.py install'. Details: {details}",
+    )
 
-    # Rust
-    cargo_home = _cargo_home()
-    cargo_bin = cargo_home / "bin"
-    cargo_env = cargo_home / "env"
-    rustup, rustup_from_cargo = _resolve_tool_with_cargo_bin("rustup", cargo_bin)
-    rustc, rustc_from_cargo = _resolve_tool_with_cargo_bin("rustc", cargo_bin)
-    cargo, cargo_from_cargo = _resolve_tool_with_cargo_bin("cargo", cargo_bin)
 
-    if rustup:
-        v = run_cmd([rustup, "--version"]) or "version unavailable"
-        active = run_cmd([rustup, "show", "active-toolchain"]) or "(active toolchain unknown)"
-        checks.append(Check("rustup", True, _with_path_hint(v, rustup_from_cargo, cargo_env, cargo_bin), "Rust"))
-        checks.append(Check("toolchain", True, _with_path_hint(active, rustup_from_cargo, cargo_env, cargo_bin), "Rust"))
-    else:
-        checks.append(Check("rustup", False, "not found", "Rust"))
+def _check_playwright_browser() -> CheckResult:
+    profile = profile_runtime.active_profile(ROOT)
+    if not profile.has_feature("frontend"):
+        return CheckResult(
+            name="playwright",
+            status="OK",
+            message="frontend disabled by active profile",
+        )
 
-    if rustc:
-        v = run_cmd([rustc, "-V"]) or "version unavailable"
-        checks.append(Check("rustc", True, _with_path_hint(v, rustc_from_cargo, cargo_env, cargo_bin), "Rust"))
-    else:
-        checks.append(Check("rustc", False, "not found", "Rust"))
+    frontend_dir = _context().paths.frontend
+    if not (frontend_dir / "package.json").exists():
+        return CheckResult(
+            name="playwright",
+            status="WARN",
+            message="frontend/package.json missing; check skipped",
+        )
+    if not _playwright_configured():
+        return CheckResult(
+            name="playwright",
+            status="OK",
+            message="not configured; optional check skipped",
+        )
 
-    if cargo:
-        v = run_cmd([cargo, "-V"]) or "version unavailable"
-        checks.append(Check("cargo", True, _with_path_hint(v, cargo_from_cargo, cargo_env, cargo_bin), "Rust"))
-    else:
-        checks.append(Check("cargo", False, "not found", "Rust"))
+    npx = shutil.which("npx")
+    if npx is None:
+        return CheckResult(
+            name="playwright",
+            status="WARN",
+            message="npx not found. Action: install Node.js/npm and rerun install.",
+        )
 
-    # Node (pnpm required)
-    node = which("node")
-    npm = which("npm")
-    pnpm = which("pnpm")
-    corepack = which("corepack")
+    version_ok, version = _command_version(
+        [npx, "playwright", "--version"], cwd=frontend_dir
+    )
+    if not version_ok:
+        return CheckResult(
+            name="playwright",
+            status="WARN",
+            message="playwright cli unavailable. Action: run 'python tools/control.py install'.",
+        )
 
-    checks.append(Check("node", bool(node), (run_cmd(["node", "-v"]) if node else "not found"), "Node"))
-    checks.append(Check("npm", bool(npm), (run_cmd(["npm", "-v"]) if npm else "not found"), "Node"))
+    browser_cache = Path.home() / ".cache" / "ms-playwright"
+    chromium_dirs = [path for path in browser_cache.glob("chromium-*") if path.is_dir()]
+    if chromium_dirs:
+        return CheckResult(
+            name="playwright",
+            status="OK",
+            message=f"{version}; chromium browser cache present",
+        )
 
-    if pnpm:
-        checks.append(Check("pnpm", True, run_cmd(["pnpm", "-v"]) or pnpm, "Node"))
-    else:
-        hint = "not found (required)"
-        if corepack:
-            hint += "; install via: corepack enable && corepack prepare pnpm@latest --activate"
-        checks.append(Check("pnpm", False, hint, "Node"))
+    return CheckResult(
+        name="playwright",
+        status="WARN",
+        message=f"{version}; chromium browser missing. Action: run 'python tools/control.py install'.",
+    )
 
-    # Tauri system libs checks are Linux-only
-    deps = ["gtk3", "webkit2gtk", "libappindicator-gtk3", "librsvg", "openssl"]
-    pacman = which("pacman")
-    dpkg_query = which("dpkg-query")
 
-    debian_pkg = {
-        "gtk3": ["libgtk-3-dev"],
-        "webkit2gtk": ["libwebkit2gtk-4.1-dev", "libwebkit2gtk-4.0-dev"],
-        "libappindicator-gtk3": ["libayatana-appindicator3-dev", "libappindicator3-dev"],
-        "librsvg": ["librsvg2-dev"],
-        "openssl": ["libssl-dev"],
+def _playwright_configured() -> bool:
+    frontend_dir = _context().paths.frontend
+    if (frontend_dir / "tests" / "e2e").exists() or any(
+        frontend_dir.glob("playwright.config.*")
+    ):
+        return True
+    try:
+        payload = json.loads(
+            (frontend_dir / "package.json").read_text(encoding="utf-8")
+        )
+    except (OSError, json.JSONDecodeError):
+        return False
+    dependencies = {
+        **payload.get("dependencies", {}),
+        **payload.get("devDependencies", {}),
     }
-    arch_pkg = {
-        "gtk3": ["gtk3"],
-        "webkit2gtk": ["webkit2gtk-4.1", "webkit2gtk"],
-        "libappindicator-gtk3": ["libappindicator", "libappindicator-gtk3"],
-        "librsvg": ["librsvg"],
-        "openssl": ["openssl"],
-    }
-
-    if SYSTEM == "linux" and pacman:
-        for d in deps:
-            found = None
-            for pkg in arch_pkg.get(d, [d]):
-                q = run_cmd(["pacman", "-Q", pkg])
-                if q:
-                    found = q
-                    break
-            checks.append(Check(d, bool(found), found or "not installed", "Tauri System Libs"))
-    elif SYSTEM == "linux" and dpkg_query:
-        for d in deps:
-            pkgs = debian_pkg[d]
-            found = None
-            found_pkg = None
-            for pkg in pkgs:
-                q = run_cmd(["dpkg-query", "-W", "-f=${Status} ${Version}", pkg])
-                if q and "install ok installed" in q:
-                    found = q
-                    found_pkg = pkg
-                    break
-            checks.append(Check(d, bool(found), f"{found_pkg}: {found}" if found else f"{'/'.join(pkgs)}: not installed", "Tauri System Libs"))
-    else:
-        for d in deps:
-            checks.append(Check(d, True, "skipped (Linux package check only)", "Tauri System Libs"))
-
-    # Optional
-    sqlite = which("sqlite3")
-    if sqlite:
-        checks.append(Check("sqlite3", True, run_cmd(["sqlite3", "--version"]) or sqlite, "Optional"))
-    else:
-        checks.append(Check("sqlite3", True, "not installed (optional)", "Optional"))
-
-    return checks
+    return "@playwright/test" in dependencies or "playwright" in dependencies
 
 
-def missing_checks(checks: List[Check], categories: Optional[List[str] | tuple[str, ...]] = None) -> List[Check]:
-    wanted = categories or CRITICAL_CATEGORIES
-    return [c for c in checks if (not c.ok) and (c.category in wanted)]
+def run_checks() -> tuple[list[CheckResult], str]:
+    profile = profile_runtime.active_profile(ROOT)
+    checks: list[CheckResult] = [
+        _check_current_python(),
+        _check_binary("node", "Node.js (includes npm)", ["node", "--version"]),
+        _check_binary("npm", "npm", ["npm", "--version"]),
+        _check_binary("npx", "npm (includes npx)", ["npx", "--version"]),
+        _check_optional_binary(
+            "uv", "uv for faster Python installs", ["uv", "--version"]
+        ),
+        CheckResult(
+            "project-profile", "OK", f"active profile '{profile.profile_id}' loaded"
+        ),
+    ]
+    checks.extend(
+        CheckResult(item.name, item.status, item.message)
+        for item in configuration.collect_checks()
+    )
+    try:
+        resolved = resolve_configuration(profile, project_root=ROOT)
+    except ConfigLoadError:
+        resolved = None
+    if resolved is not None:
+        invalid_names = {issue.name for issue in validate_configuration(resolved)}
+        if profile.has_feature("frontend") and not {
+            "FRONTEND_HOST",
+            "FRONTEND_PORT",
+        }.intersection(invalid_names):
+            frontend_host = resolved.value("FRONTEND_HOST")
+            frontend_port = resolved.value("FRONTEND_PORT")
+            assert frontend_host is not None and frontend_port is not None
+            checks.append(_check_port(frontend_host, int(frontend_port)))
+        if profile.has_feature("backend") and not {
+            "BACKEND_HOST",
+            "BACKEND_PORT",
+        }.intersection(invalid_names):
+            backend_host = resolved.value("BACKEND_HOST")
+            backend_port = resolved.value("BACKEND_PORT")
+            assert backend_host is not None and backend_port is not None
+            checks.append(_check_port(backend_host, int(backend_port)))
+    checks.extend(_check_project_structure())
+    checks.append(_check_backend_runtime())
+    checks.append(_check_tooling_runtime())
+    checks.append(_check_playwright_browser())
+    if profile.has_feature("cloud"):
+        checks.extend(
+            CheckResult(item.name, item.status, item.message)
+            for item in container.collect_checks(
+                validate_compose=True, require_docker=False
+            )
+        )
+
+    overall = "OK"
+    for item in checks:
+        if _status_priority(item.status) > _status_priority(overall):
+            overall = item.status
+    return checks, overall
 
 
-def summarize(checks: List[Check]) -> None:
-    header("Summary")
-    missing = missing_checks(checks, categories=CRITICAL_CATEGORIES)
-    if not missing:
-        print(f"{ICONS['ok']} All required tools are present.")
-        return
+def _print_report(
+    checks: list[CheckResult], overall: str, previous: dict[str, str] | None = None
+) -> None:
+    timestamp = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S")
+    logger.info(f"Doctor report at {timestamp}")
+    for item in checks:
+        logger.status(item.status, f"{item.name:<14} {item.message}")
 
-    if SYSTEM == "windows":
-        print(f"{ICONS['warn']} Missing / required for Windows dev/build:")
-    elif SYSTEM == "linux":
-        print(f"{ICONS['warn']} Missing / required for Linux dev/build (Tauri):")
-    else:
-        print(f"{ICONS['warn']} Missing / required tools:")
+    if previous is not None:
+        changed = [
+            f"{item.name}: {previous[item.name]} -> {item.status}"
+            for item in checks
+            if previous.get(item.name) != item.status
+        ]
+        if changed:
+            logger.info("Changes since previous run:")
+            for line in changed:
+                logger.info(f"- {line}")
 
-    for c in missing:
-        print(f"  {ICONS['miss']} {c.name}  ({c.category})")
-
-
-def run(want_json: bool = False) -> int:
-    checks = collect_checks()
-    header("Terminal Checkup")
-    print_checks(checks)
-    summarize(checks)
-
-    if want_json:
-        print("\nJSON:")
-        payload = [asdict(c) for c in checks]
-        print(json.dumps(payload, indent=2, ensure_ascii=False))
-
-    return 0
+    logger.status(overall, f"Overall status: {overall}")
 
 
-if __name__ == "__main__":
-    raise SystemExit(run())
+def main(args: argparse.Namespace) -> int:
+    interval = max(1, int(args.interval))
+
+    if not args.watch:
+        checks, overall = run_checks()
+        _print_report(checks, overall)
+        return 1 if overall == "FAIL" else 0
+
+    previous_map: dict[str, str] | None = None
+    logger.info(
+        f"Doctor watch mode enabled (interval={interval}s). Press Ctrl+C to stop."
+    )
+
+    try:
+        while True:
+            checks, overall = run_checks()
+            _print_report(checks, overall, previous_map)
+            previous_map = {item.name: item.status for item in checks}
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        logger.info("Watch stopped by user")
+        return 0

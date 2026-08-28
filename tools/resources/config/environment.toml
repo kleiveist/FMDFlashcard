@@ -1,0 +1,99 @@
+schema_version = 1
+
+[[variables]]
+name = "APP_ENV"
+section = "Application"
+description = "Runtime environment name"
+scope = "shared-runtime"
+kind = "environment"
+default = "development"
+example = "development"
+required_features = []
+secret = false
+
+[[variables]]
+name = "APP_NAME"
+section = "Application"
+description = "Backend service display name"
+scope = "backend"
+kind = "string"
+default = "Template Project API"
+example = "Template Project API"
+required_features = ["backend"]
+secret = false
+
+[[variables]]
+name = "FRONTEND_HOST"
+section = "Frontend Development Server"
+description = "Vite development server bind host"
+scope = "tooling"
+kind = "host"
+default = "127.0.0.1"
+example = "127.0.0.1"
+required_features = ["frontend"]
+secret = false
+
+[[variables]]
+name = "FRONTEND_PORT"
+section = "Frontend Development Server"
+description = "Vite development server port"
+scope = "tooling"
+kind = "port"
+default = "5173"
+example = "5173"
+required_features = ["frontend"]
+secret = false
+
+[[variables]]
+name = "VITE_API_BASE_URL"
+section = "Browser-safe Configuration"
+description = "Public FastAPI base URL embedded in the frontend"
+scope = "public-client"
+kind = "public-url"
+derived = "backend-url"
+example = "http://127.0.0.1:8000"
+required_features = ["frontend", "backend"]
+secret = false
+
+[[variables]]
+name = "BACKEND_HOST"
+section = "Backend"
+description = "FastAPI bind host"
+scope = "backend-tooling"
+kind = "host"
+default = "127.0.0.1"
+example = "127.0.0.1"
+required_features = ["backend"]
+secret = false
+
+[[variables]]
+name = "BACKEND_PORT"
+section = "Backend"
+description = "FastAPI port"
+scope = "backend-tooling"
+kind = "port"
+default = "8000"
+example = "8000"
+required_features = ["backend"]
+secret = false
+
+[[variables]]
+name = "BACKEND_CORS_ORIGINS"
+section = "Backend"
+description = "Comma-separated browser and desktop origins accepted by FastAPI"
+scope = "backend"
+kind = "origins"
+derived = "frontend-origins"
+example = "http://127.0.0.1:5173,http://localhost:5173,http://tauri.localhost,tauri://localhost"
+required_features = ["backend"]
+secret = false
+
+[[variables]]
+name = "DATABASE_URL"
+section = "Database (Optional: postgres)"
+description = "Server-only SQLAlchemy database URL"
+scope = "backend-secret"
+kind = "database-url"
+example = "postgresql+psycopg://app:change-me@127.0.0.1:5432/app"
+required_features = ["postgres"]
+secret = true

@@ -1,0 +1,9 @@
+\begin{tikzpicture}[node distance=6mm]
+  \node[caseNode] (unit) {unit and contract tests};
+  \node[caseNode,above=of unit] (integration) {integration and rollback tests};
+  \node[caseNode,above=of integration] (copy) {copy fixtures and migration};
+  \node[caseNode,above=of copy] (docs) {documentation and PDF checks};
+  \draw[caseArrow] (unit) -- (integration);
+  \draw[caseArrow] (integration) -- (copy);
+  \draw[caseArrow] (copy) -- (docs);
+\end{tikzpicture}

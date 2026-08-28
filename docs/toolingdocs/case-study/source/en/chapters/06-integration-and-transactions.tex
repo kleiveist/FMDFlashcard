@@ -1,0 +1,13 @@
+\section{Integration and transactions}
+\label{chap:integration-transactions}
+
+\CheckMode{} observes the current state and produces a plan without writing. \FullFix{}
+executes only accepted, structured operations. Preconditions are checked again before
+publication; changes are staged, verified, backed up, and only then published. A planned
+write is therefore not a general permission to generate files.
+
+The sequences in Figure~\ref{fig:check-sequence} and Figure
+\ref{fig:full-fix-transaction} make the separation visible. The rollback path is
+registered as a \Verified{} test reference (\evidence{EV-ROLLBACK-003}).
+\CaseDiagram{check-sequence}{Read-only Check sequence from context to report.}{fig:check-sequence}
+\CaseDiagram{full-fix-transaction}{Full-Fix plans, stages, verifies, and publishes transactionally.}{fig:full-fix-transaction}

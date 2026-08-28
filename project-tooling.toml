@@ -1,0 +1,17 @@
+schema_version = 1
+
+[tooling]
+version = "0.4.0"
+
+[project]
+name = "FMDFlashcard"
+profile = "desktop-local"
+
+[paths]
+frontend = "frontend"
+backend = ""
+tauri = "src-tauri"
+docs = "docs"
+
+[features]
+optional = []
