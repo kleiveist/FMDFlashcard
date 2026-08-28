@@ -1,0 +1,203 @@
+name: Migration acceptance
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migration-acceptance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_COLOR: "1"
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  product-baseline:
+    name: Product Baseline
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out FMDFlashcard
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: "22.23.2"
+
+      - name: Enable pinned pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.9 --activate
+
+      - name: Install frontend dependencies from lockfile
+        run: pnpm --dir frontend install --frozen-lockfile
+
+      - name: Lint frontend
+        run: pnpm --dir frontend lint
+
+      - name: Type-check frontend
+        run: pnpm --dir frontend typecheck
+
+      - name: Test frontend
+        run: pnpm --dir frontend test:run
+
+      - name: Build frontend
+        run: pnpm --dir frontend build
+
+      - name: Install Linux desktop prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            build-essential \
+            file \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            patchelf
+
+      - name: Install pinned Rust toolchain
+        run: |
+          rustup toolchain install 1.97.1 --profile minimal --no-self-update
+          rustup default 1.97.1
+          rustc --version
+          cargo --version
+
+      - name: Check Rust application
+        run: cargo check --locked --manifest-path src-tauri/Cargo.toml
+
+      - name: Test Rust application
+        run: cargo test --locked --manifest-path src-tauri/Cargo.toml
+
+      - name: Build debug desktop package
+        run: pnpm --dir frontend tauri build --debug --bundles deb --ci
+
+      - name: Require a Debian package
+        run: test -n "$(find src-tauri/target/debug/bundle/deb -maxdepth 1 -type f -name '*.deb' -print -quit)"
+
+      - name: Upload debug desktop package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fmdflashcard-debug-deb
+          path: src-tauri/target/debug/bundle/deb/*.deb
+          if-no-files-found: error
+
+  tooling-verify:
+    name: Tooling Verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out FMDFlashcard
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Require a clean checkout
+        run: test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - name: Run read-only integration check
+        run: python3 tools/control.py integrate --check --json
+
+      - name: Verify read-only check had no side effects
+        run: |
+          git diff --exit-code
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - name: Verify installed tooling
+        run: python3 tools/control.py tooling verify --json
+
+      - name: Install tooling test environment
+        run: python3 tools/control.py install --skip-frontend --skip-backend --skip-playwright
+
+      - name: Run restored tooling tests
+        run: python3 tools/control.py test --suite tools
+
+      - name: Require no tracked or untracked side effects
+        run: |
+          git diff --exit-code
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+  clean-integration-fixture:
+    name: Clean Integration Fixture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out FMDFlashcard
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Apply and verify a clean integration
+        run: python3 project-tools/fmdflashcard/tooling_acceptance.py clean-integration
+
+  update-fixture:
+    name: Update Fixture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out FMDFlashcard
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Check out exact Template-Tooling 0.3 source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: kleiveist/Template-Tooling
+          ref: ee4d4fee50afddb96e3bf3f7d9caf4c060313d05
+          path: template-tooling-v0.3.0
+          persist-credentials: false
+
+      - name: Update the historical fixture to the pinned release
+        run: >-
+          python3 project-tools/fmdflashcard/tooling_acceptance.py update
+          --legacy-source template-tooling-v0.3.0
+
+  idempotency:
+    name: Idempotency
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out FMDFlashcard
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Apply integration twice
+        run: python3 project-tools/fmdflashcard/tooling_acceptance.py idempotency
+
+  rollback:
+    name: Rollback
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out FMDFlashcard
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Exercise controlled transactional failure
+        run: python3 project-tools/fmdflashcard/tooling_acceptance.py rollback
+
+  path-regression:
+    name: Path Regression
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out FMDFlashcard
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Check old paths and portable payload integrity
+        run: python3 project-tools/fmdflashcard/tooling_acceptance.py path-regression
