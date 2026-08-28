@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "id": "2024-01-01_FixtureUser",
+  "name": "Fixture User",
+  "createdAt": "2024-01-01T00:00:00.000Z",
+  "settings": {
+    "theme": "dark",
+    "vaultPath": "/fixtures/example-vault"
+  }
+}

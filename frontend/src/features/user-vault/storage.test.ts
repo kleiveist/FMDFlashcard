@@ -19,6 +19,7 @@ import {
 } from "./storage";
 import type { ExamRun } from "../../lib/examRuns";
 import type { SpacedRepetitionStorage } from "../spaced-repetition/logic";
+import legacyExamRunFixture from "../../../../fixtures/user-vault/legacy/profiles/2024-01-01_FixtureUser/exam-runs.json";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -28,6 +29,8 @@ vi.mock("@tauri-apps/api/core", () => ({
 const invokeMock = vi.mocked(invoke);
 const files = new Map<string, string>();
 const directories = new Set<string>();
+let failAtomicWriteAtCall: number | null = null;
+let atomicWriteCallCount = 0;
 
 const normalizePath = (value: string) => value.replace(/\\/g, "/").replace(/\/+$/, "");
 
@@ -94,6 +97,8 @@ const buildSrStorage = (
 beforeEach(() => {
   files.clear();
   directories.clear();
+  failAtomicWriteAtCall = null;
+  atomicWriteCallCount = 0;
   invokeMock.mockReset();
   invokeMock.mockImplementation(async (command, args) => {
     if (command === "read_json_file") {
@@ -166,8 +171,14 @@ beforeEach(() => {
       }
       return files.get(path) ?? "";
     }
-    if (command === "write_text_file") {
+    if (command === "write_text_file" || command === "write_text_file_atomic") {
       const { path, contents } = args as { path: string; contents: string };
+      if (command === "write_text_file_atomic") {
+        atomicWriteCallCount += 1;
+        if (atomicWriteCallCount === failAtomicWriteAtCall) {
+          throw new Error("Target path is not writable.");
+        }
+      }
       files.set(path, contents);
       return null;
     }
@@ -207,6 +218,10 @@ describe("ensureProfileRoot", () => {
     const meta = JSON.parse(files.get("/vault/.profile/user-vault.json") ?? "{}");
     expect(meta.schemaVersion).toBe(1);
     expect(meta.activeProfileId).toBeNull();
+    const backupPath = Array.from(files.keys()).find((path) =>
+      path.startsWith("/vault/.profile/user-vault.corrupt."),
+    );
+    expect(files.get(backupPath ?? "")).toBe("{broken");
   });
 
   it("returns an error when the profile root points to a file", async () => {
@@ -224,15 +239,13 @@ describe("loadProfileSettings", () => {
     const profilePath = "/profiles/alpha";
     const profileFile = getProfileFilePath(profilePath);
     const settingsFile = getSettingsFilePath(profilePath);
-    files.set(
-      profileFile,
-      JSON.stringify({
-        id: "alpha",
-        name: "Alpha",
-        createdAt: "2024-01-01T00:00:00.000Z",
-        settings: { theme: "dark" },
-      }),
-    );
+    const legacyContents = JSON.stringify({
+      id: "alpha",
+      name: "Alpha",
+      createdAt: "2024-01-01T00:00:00.000Z",
+      settings: { theme: "dark" },
+    });
+    files.set(profileFile, legacyContents);
 
     const settings = await loadProfileSettings(profilePath);
 
@@ -245,6 +258,10 @@ describe("loadProfileSettings", () => {
       name: "Alpha",
       createdAt: "2024-01-01T00:00:00.000Z",
     });
+    const backupPath = Array.from(files.keys()).find((path) =>
+      path.startsWith("/profiles/alpha/profile.legacy."),
+    );
+    expect(files.get(backupPath ?? "")).toBe(legacyContents);
   });
 
   it("prefers settings.json over legacy embedded profile settings", async () => {
@@ -548,6 +565,113 @@ describe("exam run markdown storage", () => {
     expect(store.runs[0]?.maxPoints).toBe(20);
     expect(store.runs[0]?.achievedPoints).toBe(10);
     expect(store.runs[0]?.statusValue).toBe(5);
+  });
+
+  it("copies the anonymized legacy fixture into atomic markdown entries", async () => {
+    const profileRootPath = "/profiles/fixture";
+    const legacyPath = `${profileRootPath}/exam-runs.json`;
+    const legacyContents = JSON.stringify(legacyExamRunFixture);
+    files.set(legacyPath, legacyContents);
+
+    const migrated = await loadExamRunStore(profileRootPath);
+    const migratedAgain = await loadExamRunStore(profileRootPath);
+
+    expect(migrated.runs).toHaveLength(1);
+    expect(migrated.runs[0]).toMatchObject(legacyExamRunFixture.runs[0]);
+    expect(migrated.runs[0]?.filePath).toMatch(/\/exam-runs\/.*\.md$/);
+    expect(migrated.migratedFromAppData).toBe(true);
+    expect(migratedAgain.runs).toHaveLength(1);
+    expect(migratedAgain.runs[0]).toMatchObject(legacyExamRunFixture.runs[0]);
+    expect(atomicWriteCallCount).toBe(1);
+    expect(files.get(legacyPath)).toBe(legacyContents);
+  });
+
+  it("does not duplicate a legacy run that already has a markdown entry", async () => {
+    const profileRootPath = "/profiles/fixture";
+    const legacyPath = `${profileRootPath}/exam-runs.json`;
+    const currentRun = {
+      ...buildRun("fixture-run-1"),
+      percent: 55,
+    };
+    await appendExamRunStore(profileRootPath, currentRun);
+    files.set(legacyPath, JSON.stringify(legacyExamRunFixture));
+    const writesBeforeLoad = atomicWriteCallCount;
+
+    const store = await loadExamRunStore(profileRootPath);
+
+    expect(store.runs).toHaveLength(1);
+    expect(store.runs[0]?.percent).toBe(55);
+    expect(atomicWriteCallCount).toBe(writesBeforeLoad);
+  });
+
+  it("keeps a corrupt legacy file unchanged", async () => {
+    const profileRootPath = "/profiles/fixture";
+    const legacyPath = `${profileRootPath}/exam-runs.json`;
+    const corruptContents = "{broken";
+    files.set(legacyPath, corruptContents);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const store = await loadExamRunStore(profileRootPath);
+
+    expect(store.runs).toEqual([]);
+    expect(files.get(legacyPath)).toBe(corruptContents);
+    expect(atomicWriteCallCount).toBe(0);
+    warn.mockRestore();
+  });
+
+  it("keeps legacy runs readable when the target is not writable", async () => {
+    const profileRootPath = "/profiles/fixture";
+    const legacyPath = `${profileRootPath}/exam-runs.json`;
+    const legacyContents = JSON.stringify(legacyExamRunFixture);
+    files.set(legacyPath, legacyContents);
+    failAtomicWriteAtCall = 1;
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const store = await loadExamRunStore(profileRootPath);
+
+    expect(store.runs).toHaveLength(1);
+    expect(store.runs[0]).toMatchObject(legacyExamRunFixture.runs[0]);
+    expect(store.runs[0]?.filePath).toBeUndefined();
+    expect(files.get(legacyPath)).toBe(legacyContents);
+    expect(Array.from(files.keys()).filter((path) => path.endsWith(".md"))).toEqual([]);
+    warn.mockRestore();
+  });
+
+  it("resumes an interrupted legacy copy without duplicating completed runs", async () => {
+    const profileRootPath = "/profiles/fixture";
+    const legacyPath = `${profileRootPath}/exam-runs.json`;
+    const secondRun = {
+      ...legacyExamRunFixture.runs[0],
+      id: "fixture-run-2",
+      endedAt: "2024-01-02T11:10:00.000Z",
+    };
+    files.set(
+      legacyPath,
+      JSON.stringify({
+        ...legacyExamRunFixture,
+        runs: [legacyExamRunFixture.runs[0], secondRun],
+      }),
+    );
+    failAtomicWriteAtCall = 2;
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const interrupted = await loadExamRunStore(profileRootPath);
+    failAtomicWriteAtCall = null;
+    const resumed = await loadExamRunStore(profileRootPath);
+
+    expect(interrupted.runs.map((run) => run.id)).toEqual([
+      "fixture-run-1",
+      "fixture-run-2",
+    ]);
+    expect(resumed.runs.map((run) => run.id).sort()).toEqual([
+      "fixture-run-1",
+      "fixture-run-2",
+    ]);
+    expect(
+      Array.from(files.keys()).filter((path) => path.endsWith(".md")),
+    ).toHaveLength(2);
+    expect(files.has(legacyPath)).toBe(true);
+    warn.mockRestore();
   });
 
   it("deletes exam run markdown files by path", async () => {

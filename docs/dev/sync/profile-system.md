@@ -77,11 +77,11 @@ Example (real keys):
 ```json
 {
   "schemaVersion": 1,
-  "activeProfileId": "2026-01-14_Kleif"
+  "activeProfileId": "2024-01-01_FixtureUser"
 }
 ```
 
-Source example: `docs/dev/test/archive/test_editor/user/user-vault.json`.
+Source example: `fixtures/user-vault/legacy/user-vault.json`.
 
 ### 4.2 `profile.json`
 
@@ -132,9 +132,9 @@ Example (shortened, real keys):
 ```json
 {
   "schemaVersion": 1,
-  "id": "2026-01-14_Kleif",
-  "name": "Kleif",
-  "createdAt": "2026-01-14T00:00:00.000Z",
+  "id": "2024-01-01_FixtureUser",
+  "name": "Fixture User",
+  "createdAt": "2024-01-01T00:00:00.000Z",
   "settings": {
     "theme": "light",
     "flashcard_mode": "all",
@@ -145,8 +145,7 @@ Example (shortened, real keys):
 ```
 
 Example sources:
-- `docs/dev/test/archive/test_editor/user/profiles/2026-01-14_Kleif/profile.json`
-- `docs/dev/test/archive/user/profiles/2026-01-14_Kleif/profile.json`
+- `fixtures/user-vault/legacy/profiles/2024-01-01_FixtureUser/profile.json`
 
 ### 4.3 `spaced-repetition.json`
 
@@ -174,7 +173,7 @@ Example (shortened, real keys):
   "schemaVersion": 1,
   "byVaultId": {
     "f636d0e3": {
-      "users": [{ "id": "8968e153-...", "name": "Lysanne", "createdAt": "2026-01-14T13:50:43.668Z" }],
+      "users": [{ "id": "fixture-user", "name": "Fixture User", "createdAt": "2024-01-01T00:00:00.000Z" }],
       "userStateById": {},
       "lastActiveUserId": "8968e153-..."
     }
@@ -183,7 +182,7 @@ Example (shortened, real keys):
 }
 ```
 
-Example source: `docs/dev/test/archive/test_editor/user/profiles/2026-01-14_Kleif/spaced-repetition.json`.
+Example source: `fixtures/user-vault/legacy/profiles/2024-01-01_FixtureUser/spaced-repetition.json`.
 
 ### 4.4 `exam-runs.json`
 
@@ -218,7 +217,7 @@ Example (shortened, real keys):
 }
 ```
 
-Example source: `docs/dev/test/archive/user/profiles/2026-01-14_Kleif/exam-runs.json`.
+Example source: `fixtures/user-vault/legacy/profiles/2024-01-01_FixtureUser/exam-runs.json`.
 
 ### 4.5 `fast-flashcard.json` (present in current system)
 
@@ -238,7 +237,7 @@ Example (shortened, real keys):
 }
 ```
 
-Example source: `docs/dev/test/archive/test_editor/user/profiles/2026-01-14_Kleif/fast-flashcard.json`.
+No legacy fast-flashcard fixture is currently required.
 
 ## 5. Lifecycle / Flows
 

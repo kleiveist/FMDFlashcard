@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "runs": [
+    {
+      "id": "fixture-run-1",
+      "startedAt": "2024-01-02T10:00:00.000Z",
+      "endedAt": "2024-01-02T10:10:00.000Z",
+      "durationMs": 600000,
+      "userId": "fixture-user",
+      "userName": "Fixture User",
+      "examFilePath": "/fixtures/example-vault/exam.md",
+      "tasksDetected": 5,
+      "maxPoints": 20,
+      "achievedPoints": 15,
+      "percent": 75,
+      "passed": true,
+      "grade": "4",
+      "correctedAchievedPoints": 16,
+      "correctedPercent": 80,
+      "correctedPassed": true,
+      "correctedGrade": "2",
+      "statusValue": 3,
+      "gradeScaleId": "standard-1-6",
+      "pointsProfileId": "fixture-points",
+      "pointsProfileName": "Fixture Points",
+      "pointsProfileVersion": 1,
+      "pointsProfileAssignments": [
+        {
+          "examPath": "/fixtures/example-vault/exam.md",
+          "sourceTitle": "Fixture Exam",
+          "requestedName": "Fixture Points",
+          "profileId": "fixture-points",
+          "profileName": "Fixture Points",
+          "profileVersion": 1,
+          "missing": false
+        }
+      ]
+    }
+  ],
+  "migratedFromAppData": true
+}

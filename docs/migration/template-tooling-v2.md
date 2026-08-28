@@ -85,6 +85,27 @@ files were copied outside the repository to a permission-restricted migration ba
 `SHA256SUMS` file was generated. The repository will receive only anonymous, deterministic test
 fixtures. No runtime source is automatically deleted by this migration.
 
+The checksum set was verified immediately before removal from Git. The original working-tree
+directory was then relocated, without content changes, beside the verified backup at
+`/workspace/fmdflashcard-migration-backup.0lwd40/UserGlobal-working-tree-original`; a recursive
+comparison against the checksum-protected copy passed. Both external copies remain available for
+rollback, while the repository now contains only `fixtures/user-vault/legacy/` with synthetic
+identifiers and paths.
+
+The runtime compatibility path now treats the old JSON files conservatively:
+
+- legacy embedded profile settings are copied to `settings.json`, and the original `profile.json`
+  receives a timestamped JSON backup before its metadata is normalized;
+- legacy spaced-repetition data is copied into the folder store while its source JSON remains;
+- legacy `exam-runs.json` records are copied to per-run Markdown using atomic writes, retain a
+  lossless machine-readable payload, and remain readable directly if the target is unavailable;
+- repeat and partial-failure runs skip IDs already copied, so migration can resume without
+  duplicate history.
+
+Focused tests cover valid input, an already migrated run, a missing legacy file, corrupt input,
+an unwritable target, and resumption after an interrupted multi-record copy. No migration path
+deletes a legacy JSON source.
+
 ## Initial path consumers
 
 Active references to `apps/fmd-desktop` occur in the legacy toolbox, product documentation, file

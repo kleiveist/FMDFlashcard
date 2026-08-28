@@ -117,6 +117,7 @@ const USER_VAULT_SPACED_REPETITION_REGISTRY_FILE = "registry.json";
 const USER_VAULT_SPACED_REPETITION_USERS_DIR = "users";
 const USER_VAULT_SPACED_REPETITION_PROGRESS_FILE = "progress.json";
 const USER_VAULT_FAST_FLASHCARD_FILE = "fast-flashcard.json";
+const USER_VAULT_LEGACY_EXAM_RUNS_FILE = "exam-runs.json";
 const USER_VAULT_EXAM_RUNS_DIR = "exam-runs";
 const USER_VAULT_EXAM_POINTS_PROFILES_FILE = "exam-points-profiles.json";
 
@@ -226,6 +227,13 @@ const writeJsonFileAtomic = async (path: string, payload: unknown) => {
   }
 };
 
+const backupJsonFile = async (path: string, label: string) => {
+  const contents = await invoke<string>("read_json_file", { path });
+  const backupPath = buildJsonSiblingPath(path, `.${label}.${Date.now()}`);
+  await invoke("write_json_file", { path: backupPath, contents });
+  return backupPath;
+};
+
 const ensureDirectory = async (path: string) => {
   await invoke("ensure_directory", { path });
 };
@@ -303,6 +311,9 @@ const resolveSpacedRepetitionUserProgressPath = (
 
 const resolveFastFlashcardPath = (profilePath: string) =>
   joinPath(profilePath, USER_VAULT_FAST_FLASHCARD_FILE);
+
+const resolveLegacyExamRunsPath = (profilePath: string) =>
+  joinPath(profilePath, USER_VAULT_LEGACY_EXAM_RUNS_FILE);
 
 const resolveExamRunsDir = (profileRootPath: string) =>
   joinPath(profileRootPath, USER_VAULT_EXAM_RUNS_DIR);
@@ -556,6 +567,9 @@ export const ensureProfileRoot = async (
 
   const metaPath = resolveUserVaultMetaPath(profileRoot);
   const meta = await readJsonFileWithStatus<UserVaultMetaStore>(metaPath);
+  if (meta.error === "unknown") {
+    return { ok: false, reason: "Profile meta could not be read." };
+  }
   if (
     meta.error ||
     !meta.value ||
@@ -563,7 +577,10 @@ export const ensureProfileRoot = async (
     Array.isArray(meta.value)
   ) {
     try {
-      await writeJsonFile(metaPath, createEmptyUserVaultMeta());
+      if (meta.error !== "missing") {
+        await backupJsonFile(metaPath, "corrupt");
+      }
+      await writeJsonFileAtomic(metaPath, createEmptyUserVaultMeta());
     } catch (error) {
       return {
         ok: false,
@@ -583,7 +600,8 @@ export const ensureProfileRoot = async (
       normalizedMeta.activeProfileId !== meta.value.activeProfileId;
     if (needsRewrite) {
       try {
-        await writeJsonFile(metaPath, normalizedMeta);
+        await backupJsonFile(metaPath, "legacy");
+        await writeJsonFileAtomic(metaPath, normalizedMeta);
       } catch (error) {
         return {
           ok: false,
@@ -730,7 +748,14 @@ const migrateProfileMetadataStore = async (
     return migrated;
   }
   try {
-    await writeJsonFile(metaPath, migrated.store);
+    await backupJsonFile(metaPath, "legacy");
+    if (hasNonEmptyProfileSettings(migrated.legacySettings)) {
+      await writeJsonFileAtomic(
+        resolveProfileSettingsPath(profilePath),
+        migrated.legacySettings,
+      );
+    }
+    await writeJsonFileAtomic(metaPath, migrated.store);
   } catch (error) {
     console.warn(
       "Failed to migrate user profile metadata",
@@ -1102,6 +1127,69 @@ const normalizeExamRunUserSlug = (value: string) => {
   return sanitized || "user";
 };
 
+const normalizeStoredExamRun = (value: unknown): ExamRun | null => {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const candidate = value as Partial<ExamRun>;
+  const hasRequiredStrings =
+    typeof candidate.id === "string" &&
+    candidate.id.trim() !== "" &&
+    typeof candidate.startedAt === "string" &&
+    !Number.isNaN(Date.parse(candidate.startedAt)) &&
+    typeof candidate.endedAt === "string" &&
+    !Number.isNaN(Date.parse(candidate.endedAt)) &&
+    typeof candidate.userName === "string" &&
+    typeof candidate.examFilePath === "string";
+  const hasRequiredNumbers =
+    typeof candidate.durationMs === "number" &&
+    Number.isFinite(candidate.durationMs) &&
+    typeof candidate.tasksDetected === "number" &&
+    Number.isFinite(candidate.tasksDetected) &&
+    typeof candidate.maxPoints === "number" &&
+    Number.isFinite(candidate.maxPoints) &&
+    typeof candidate.achievedPoints === "number" &&
+    Number.isFinite(candidate.achievedPoints) &&
+    typeof candidate.percent === "number" &&
+    Number.isFinite(candidate.percent);
+  if (
+    !hasRequiredStrings ||
+    !hasRequiredNumbers ||
+    typeof candidate.passed !== "boolean" ||
+    (candidate.userId !== null && typeof candidate.userId !== "string") ||
+    (candidate.grade !== null && typeof candidate.grade !== "string") ||
+    candidate.gradeScaleId !== "standard-1-6"
+  ) {
+    return null;
+  }
+  return candidate as ExamRun;
+};
+
+const normalizeLegacyExamRunStore = (value: unknown): ExamRunProfileStore | null => {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const candidate = value as Partial<ExamRunProfileStore>;
+  if (!Array.isArray(candidate.runs)) {
+    return null;
+  }
+  const runs = candidate.runs.map(normalizeStoredExamRun);
+  if (runs.some((run) => run === null)) {
+    return null;
+  }
+  return {
+    schemaVersion:
+      typeof candidate.schemaVersion === "number"
+        ? candidate.schemaVersion
+        : USER_VAULT_EXAM_RUNS_SCHEMA_VERSION,
+    runs: runs as ExamRun[],
+    migratedFromAppData:
+      typeof candidate.migratedFromAppData === "boolean"
+        ? candidate.migratedFromAppData
+        : false,
+  };
+};
+
 const formatRunTimestampForFilename = (value: string) => {
   const parsed = Date.parse(value);
   const date = Number.isNaN(parsed) ? new Date() : new Date(parsed);
@@ -1174,6 +1262,8 @@ const resolveExamRunStatusCode = (run: ExamRun) => {
 };
 
 const buildExamRunFrontmatter = (run: ExamRun) => {
+  const persistedRun = { ...run };
+  delete persistedRun.filePath;
   const userValue = run.userName || "Unknown";
   const examFileValue = run.examFilePath || "";
   const scoreValue = `${run.achievedPoints}/${run.maxPoints}`;
@@ -1191,6 +1281,7 @@ const buildExamRunFrontmatter = (run: ExamRun) => {
     `status: ${statusValue}`,
     `duration: ${formatYamlString(durationValue)}`,
     `id: ${formatYamlString(run.id)}`,
+    `run_data: ${formatYamlString(JSON.stringify(persistedRun))}`,
     "---",
     "",
   ].join("\n");
@@ -1212,6 +1303,18 @@ const parseExamRunFrontmatter = (contents: string, filePath: string): ExamRun | 
     const value = map.get(key);
     return typeof value === "number" && Number.isFinite(value) ? value : null;
   };
+
+  const persistedRun = getString("run_data");
+  if (persistedRun) {
+    try {
+      const normalized = normalizeStoredExamRun(JSON.parse(persistedRun));
+      if (normalized) {
+        return { ...normalized, filePath };
+      }
+    } catch {
+      // Fall back to the human-readable frontmatter fields below.
+    }
+  }
 
   const id = getString("id") ?? "";
   const endedAt = getString("date") ?? "";
@@ -1338,7 +1441,7 @@ const writeExamRunMarkdownEntry = async (
 ): Promise<string> => {
   const filePath = await resolveUniqueExamRunPath(profilePath, run);
   const contents = buildExamRunFrontmatter(run);
-  await invoke("write_text_file", { path: filePath, contents });
+  await invoke("write_text_file_atomic", { path: filePath, contents });
   return filePath;
 };
 
@@ -1516,14 +1619,6 @@ export const loadProfileSettings = async (
   const migrated = await migrateProfileMetadataStore(profilePath);
   if (!migrated || !hasNonEmptyProfileSettings(migrated.legacySettings)) {
     return null;
-  }
-  try {
-    await writeJsonFileAtomic(settingsPath, migrated.legacySettings);
-  } catch (error) {
-    console.warn(
-      "Failed to migrate user profile settings",
-      asErrorMessage(error, "Unknown error"),
-    );
   }
   return migrated.legacySettings;
 };
@@ -1845,14 +1940,63 @@ export const saveExamPointsProfileStore = async (
   }
 };
 
+const loadLegacyExamRunStore = async (
+  profileRootPath: string,
+): Promise<ExamRunProfileStore | null> => {
+  const legacyPath = resolveLegacyExamRunsPath(profileRootPath);
+  const result = await readJsonFileWithStatus<unknown>(legacyPath);
+  if (result.error === "missing") {
+    return null;
+  }
+  if (result.error) {
+    console.warn("Failed to read legacy exam run store", legacyPath);
+    return null;
+  }
+  const store = normalizeLegacyExamRunStore(result.value);
+  if (!store) {
+    console.warn("Invalid legacy exam run store", legacyPath);
+    return null;
+  }
+  return store;
+};
+
 export const loadExamRunStore = async (
   profileRootPath: string,
 ): Promise<ExamRunProfileStore> => {
   const runs = await loadExamRunMarkdownEntries(profileRootPath);
+  const legacyStore = await loadLegacyExamRunStore(profileRootPath);
+  if (!legacyStore) {
+    return {
+      schemaVersion: USER_VAULT_EXAM_RUNS_SCHEMA_VERSION,
+      runs,
+      migratedFromAppData: false,
+    };
+  }
+
+  const currentIds = new Set(runs.map((run) => run.id));
+  const pendingRuns = legacyStore.runs.filter((run) => !currentIds.has(run.id));
+  const migratedPaths = new Map<string, string>();
+  for (const run of pendingRuns) {
+    try {
+      const filePath = await writeExamRunMarkdownEntry(profileRootPath, run);
+      migratedPaths.set(run.id, filePath);
+    } catch (error) {
+      console.warn(
+        "Failed to migrate legacy exam run store",
+        asErrorMessage(error, "Unknown error"),
+      );
+      break;
+    }
+  }
+
+  const migratedRuns = pendingRuns.map((run) => {
+    const filePath = migratedPaths.get(run.id);
+    return filePath ? { ...run, filePath } : run;
+  });
   return {
     schemaVersion: USER_VAULT_EXAM_RUNS_SCHEMA_VERSION,
-    runs,
-    migratedFromAppData: false,
+    runs: [...runs, ...migratedRuns],
+    migratedFromAppData: legacyStore.migratedFromAppData,
   };
 };
 

@@ -102,8 +102,8 @@ export const dataAndSyncSection: LoadVaultTabData = {
           de: "Bei haeufigen Vault-Wechseln reduziert Custom path Verwirrung, wo Stats gespeichert sind.",
         },
         {
-          en: "Use clear user names (e.g., “Kleif – Biology”, “Kleif – Languages”).",
-          de: "Nutzer eindeutig benennen (z. B. „Kleif – Bio“, „Kleif – Sprachen“).",
+          en: "Use clear user names (e.g., “Alex – Biology”, “Alex – Languages”).",
+          de: "Nutzer eindeutig benennen (z. B. „Alex – Bio“, „Alex – Sprachen“).",
         },
         {
           en: "Keep periodic JSON exports as safety backups, especially before migrations or refactors.",
