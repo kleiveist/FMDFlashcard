@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/formula/formula-source-resolver.ts
+ * @file frontend/src/features/preview/formula/formula-source-resolver.ts
  *
  * Shared source scoping for aggregation formulas.
  */

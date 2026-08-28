@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/spaced-repetition/hooks/useSrSessionViewModel.ts
+ * @file frontend/src/pages/spaced-repetition/hooks/useSrSessionViewModel.ts
  *
  * Zweck:
  * - Stellt den Hook useSrSessionViewModel fuer Spaced Repetition bereit.
@@ -10,9 +10,9 @@
  * - Bietet konsolidierte Daten fuer Komponenten.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/lib/path.ts: Hilfsfunktionen oder Typen.
- * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ * - frontend/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - frontend/src/lib/path.ts: Hilfsfunktionen oder Typen.
+ * - frontend/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
  *
  * Exportiert:
  * - useSrSessionViewModel: Hook fuer Spaced Repetition.

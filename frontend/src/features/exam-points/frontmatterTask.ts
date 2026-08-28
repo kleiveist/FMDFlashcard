@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/exam-points/frontmatterTask.ts
+ * @file frontend/src/features/exam-points/frontmatterTask.ts
  *
  * Zweck:
  * - Liest und schreibt die Task->Points-Profil-Zuordnung im Frontmatter.

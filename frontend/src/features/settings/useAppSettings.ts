@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/settings/useAppSettings.ts
+ * @file frontend/src/features/settings/useAppSettings.ts
  *
  * Zweck:
  * - Stellt den Hook useAppSettings fuer Settings bereit.
@@ -10,9 +10,9 @@
  * - Bietet konsolidierte Daten fuer Komponenten.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/color.ts: Hilfsfunktionen oder Typen.
- * - apps/fmd-desktop/src/lib/theme.ts: Hilfsfunktionen oder Typen.
- * - apps/fmd-desktop/src/features/flashcards/useFlashcards.ts: Feature-Logik oder Hook.
+ * - frontend/src/lib/color.ts: Hilfsfunktionen oder Typen.
+ * - frontend/src/lib/theme.ts: Hilfsfunktionen oder Typen.
+ * - frontend/src/features/flashcards/useFlashcards.ts: Feature-Logik oder Hook.
  *
  * Exportiert:
  * - DEFAULT_THEME: Zentrale Export-API.

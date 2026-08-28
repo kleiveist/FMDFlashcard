@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/exam-results/frontmatterStats.ts
+ * @file frontend/src/features/exam-results/frontmatterStats.ts
  *
  * Zweck:
  * - Schreibt/aktualisiert Exam-Result-Statistiken im Markdown-Frontmatter.

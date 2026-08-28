@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/settings/DataSyncTabContent.tsx
+ * @file frontend/src/components/settings/DataSyncTabContent.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponenten fuer Profile Source und Export/Import.
@@ -10,8 +10,8 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/settings/VaultIndexSection.tsx: Nutzt dieses Modul.
- * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/components/settings/VaultIndexSection.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - DataSyncSettingsView: React-Komponente.

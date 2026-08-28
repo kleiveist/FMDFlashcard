@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/database-table-layout-profile.ts
+ * @file frontend/src/features/preview/database/database-table-layout-profile.ts
  *
  * Persists database table layout preferences in the vault profile area.
  */

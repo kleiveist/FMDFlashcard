@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/flashcards/FreeTextCard.tsx
+ * @file frontend/src/components/flashcards/FreeTextCard.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente Free Text Card.
@@ -10,8 +10,8 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/flashcards.ts: Typen.
- * - apps/fmd-desktop/src/features/flashcards/logic.ts: Typen.
+ * - frontend/src/lib/flashcards.ts: Typen.
+ * - frontend/src/features/flashcards/logic.ts: Typen.
  *
  * Exportiert:
  * - FreeTextCard: React-Komponente.

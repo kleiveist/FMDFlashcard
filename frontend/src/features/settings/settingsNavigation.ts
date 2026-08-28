@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/settings/settingsNavigation.ts
+ * @file frontend/src/features/settings/settingsNavigation.ts
  *
  * Zweck:
  * - Beschreibt Navigation und Seitenstruktur fuer Settings.
@@ -8,8 +8,8 @@
  * - Stellt das Settings-Navigationsmodell bereit.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
- * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen alle nutzenden Module.

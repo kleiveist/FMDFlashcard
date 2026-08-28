@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/settings/ProfileSetupSections.tsx
+ * @file frontend/src/components/settings/ProfileSetupSections.tsx
  *
  * Zweck:
  * - Wiederverwendbare Profile-Setup-Sektionen fuer Settings und Gate-Modals.

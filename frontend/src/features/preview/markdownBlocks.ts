@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/markdownBlocks.ts
+ * @file frontend/src/features/preview/markdownBlocks.ts
  *
  * Zweck:
  * - Zerlegt Markdown in editierbare Bloecke fuer den Hybrid-Editor.

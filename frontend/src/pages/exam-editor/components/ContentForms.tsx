@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-editor/components/ContentForms.tsx
+ * @file frontend/src/pages/exam-editor/components/ContentForms.tsx
  */
 
 import { useCallback, useMemo, useRef, useState } from "react";

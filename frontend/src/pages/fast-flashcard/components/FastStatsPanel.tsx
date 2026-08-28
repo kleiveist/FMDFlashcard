@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/fast-flashcard/components/FastStatsPanel.tsx
+ * @file frontend/src/pages/fast-flashcard/components/FastStatsPanel.tsx
  *
  * Zweck:
  * - Rendert die Seite Fast Stats Panel.
@@ -10,8 +10,8 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/fast-flashcard/hooks/useFastSession.ts: Typen.
- * - apps/fmd-desktop/src/pages/fast-flashcard/FastFlashcardPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/fast-flashcard/hooks/useFastSession.ts: Typen.
+ * - frontend/src/pages/fast-flashcard/FastFlashcardPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - FastStatsPanel: React-Komponente.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/taskAreaToggle.ts
+ * @file frontend/src/lib/taskAreaToggle.ts
  *
  * Shared task/card area toggle helpers.
  */

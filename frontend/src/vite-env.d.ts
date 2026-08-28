@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 /**
- * @file apps/fmd-desktop/src/vite-env.d.ts
+ * @file frontend/src/vite-env.d.ts
  *
  * Zweck:
  * - Deklariert die Vite-Umgebungstypen fuer das Frontend.

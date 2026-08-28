@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/flashcards/SvgPreviewBlock.tsx
+ * @file frontend/src/components/flashcards/SvgPreviewBlock.tsx
  */
 
 import { useEffect, useMemo, useState } from "react";

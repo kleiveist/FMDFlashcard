@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/flashcards/filterFlashcardFiles.test.ts
+ * @file frontend/src/features/flashcards/filterFlashcardFiles.test.ts
  *
  * Zweck:
  * - Tests fuer filterFlashcardFiles.

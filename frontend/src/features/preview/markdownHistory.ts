@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/markdownHistory.ts
+ * @file frontend/src/features/preview/markdownHistory.ts
  *
  * Zweck:
  * - Snapshot-basierte Undo/Redo-History fuer Markdown-Dokumente.

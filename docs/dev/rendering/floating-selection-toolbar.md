@@ -4,8 +4,8 @@
 # Floating Selection Toolbar (Hybrid Editor)
 
 ## Integration
-- Component logic lives in `apps/fmd-desktop/src/features/preview/MarkdownHybridEditor.tsx`.
-- Visual styles live in `apps/fmd-desktop/src/styles/components/preview.css` under `.markdown-hybrid-inline-toolbar*`.
+- Component logic lives in `frontend/src/features/preview/MarkdownHybridEditor.tsx`.
+- Visual styles live in `frontend/src/styles/components/preview.css` under `.markdown-hybrid-inline-toolbar*`.
 - The toolbar is rendered via Portal (`createPortal`) and only activates for non-collapsed selections in the active hybrid-editor textarea block.
 
 ## Behavior hooks

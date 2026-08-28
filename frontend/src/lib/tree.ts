@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/tree.ts
+ * @file frontend/src/lib/tree.ts
  *
  * Zweck:
  * - Enthaelt Hilfsfunktionen fuer Tree.
@@ -9,8 +9,8 @@
  * - Normalisiert oder validiert Daten, wo erforderlich.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/path.ts: Hilfsfunktionen oder Typen.
- * - apps/fmd-desktop/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
+ * - frontend/src/lib/path.ts: Hilfsfunktionen oder Typen.
+ * - frontend/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen alle nutzenden Module.

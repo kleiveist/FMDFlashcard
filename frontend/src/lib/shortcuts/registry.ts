@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/shortcuts/registry.ts
+ * @file frontend/src/lib/shortcuts/registry.ts
  *
  * Zweck:
  * - Zentrale Quelle fuer Shortcut-Definitionen.

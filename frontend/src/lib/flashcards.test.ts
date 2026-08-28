@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/flashcards.test.ts
+ * @file frontend/src/lib/flashcards.test.ts
  *
  * Zweck:
  * - Testet flashcards.test und zugehoerige Logik.
@@ -9,7 +9,7 @@
  * - Sichert Regressionen fuer zentrale Szenarien.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
+ * - frontend/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
  * - vitest: Externe Bibliothek.
  *
  * Hinweise:

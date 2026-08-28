@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/views/project-view.tsx
+ * @file frontend/src/features/preview/database/views/project-view.tsx
  *
  * Editable block-based project visualization for database records.
  */

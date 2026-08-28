@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/exam-editor/validation.ts
+ * @file frontend/src/features/exam-editor/validation.ts
  *
  * Zweck:
  * - Validiert Exam-Editor Blueprints ohne Help-Content.

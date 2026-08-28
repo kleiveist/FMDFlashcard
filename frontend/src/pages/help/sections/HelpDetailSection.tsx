@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/help/sections/HelpDetailSection.tsx
+ * @file frontend/src/pages/help/sections/HelpDetailSection.tsx
  *
  * Zweck:
  * - Rendert die Seite Help Detail Section.
@@ -10,9 +10,9 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/help/sections/AppSectionsGuidePanel.tsx: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/help/sections/HelpTopicSections.tsx: Seiten-Komponente.
+ * - frontend/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - frontend/src/pages/help/sections/AppSectionsGuidePanel.tsx: Seiten-Komponente.
+ * - frontend/src/pages/help/sections/HelpTopicSections.tsx: Seiten-Komponente.
  *
  * Exportiert:
  * - HelpDetailSection: React-Komponente.

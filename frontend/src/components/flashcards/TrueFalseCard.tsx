@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/flashcards/TrueFalseCard.tsx
+ * @file frontend/src/components/flashcards/TrueFalseCard.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente True False Card.
@@ -10,8 +10,8 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/flashcards.ts: Typen.
- * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ * - frontend/src/lib/flashcards.ts: Typen.
+ * - frontend/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
  *
  * Exportiert:
  * - TrueFalseCard: React-Komponente.

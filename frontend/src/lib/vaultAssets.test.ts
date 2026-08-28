@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/vaultAssets.test.ts
+ * @file frontend/src/lib/vaultAssets.test.ts
  *
  * Zweck:
  * - Tests fuer die Normalisierung von Cover/Asset-Pfaden.

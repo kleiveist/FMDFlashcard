@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/exam-editor/stability.ts
+ * @file frontend/src/features/exam-editor/stability.ts
  *
  * Zweck:
  * - Stabile Fingerprints fuer Exam-Task-Inhalte.

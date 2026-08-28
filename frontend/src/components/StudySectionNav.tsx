@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/StudySectionNav.tsx
+ * @file frontend/src/components/StudySectionNav.tsx
  *
  * Zweck:
  * - Rendert die kompakte Studien-Sektion-Navigation.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/settings/validateExamSettings.ts
+ * @file frontend/src/features/settings/validateExamSettings.ts
  *
  * Zweck:
  * - Validiert Exam-Settings und liefert fehlende Anforderungen.

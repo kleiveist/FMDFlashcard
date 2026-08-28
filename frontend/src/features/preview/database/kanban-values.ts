@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/kanban-values.ts
+ * @file frontend/src/features/preview/database/kanban-values.ts
  *
  * Shared Kanban grouping labels and value-option helpers.
  */

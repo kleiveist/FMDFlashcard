@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/database-sorts.ts
+ * @file frontend/src/features/preview/database/database-sorts.ts
  *
  * Type-aware multi-level sorting for database records.
  */

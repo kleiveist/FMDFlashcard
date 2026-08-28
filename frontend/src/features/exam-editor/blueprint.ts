@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/exam-editor/blueprint.ts
+ * @file frontend/src/features/exam-editor/blueprint.ts
  *
  * Zweck:
  * - Factory-Funktionen fuer Exam-Editor Blueprints.

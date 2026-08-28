@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * @file apps/fmd-desktop/src/pages/help/sections/AppSectionsGuidePanel.test.tsx
+ * @file frontend/src/pages/help/sections/AppSectionsGuidePanel.test.tsx
  *
  * Zweck:
  * - Verifiziert die neue App-Sections-Struktur (Editor/Study/Monitoring)

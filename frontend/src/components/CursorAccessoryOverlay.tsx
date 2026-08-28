@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/CursorAccessoryOverlay.tsx
+ * @file frontend/src/components/CursorAccessoryOverlay.tsx
  *
  * Zweck:
  * - Rendert eine globale Backspace-Hilfstaste als Overlay-Portal.

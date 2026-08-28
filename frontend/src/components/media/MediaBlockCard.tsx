@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/media/MediaBlockCard.tsx
+ * @file frontend/src/components/media/MediaBlockCard.tsx
  */
 
 import { useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from "react";

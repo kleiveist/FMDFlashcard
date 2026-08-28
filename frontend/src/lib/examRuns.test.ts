@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/examRuns.test.ts
+ * @file frontend/src/lib/examRuns.test.ts
  *
  * Zweck:
  * - Testet Exam-Run Hilfsfunktionen fuer Prozent, Status und Filter.

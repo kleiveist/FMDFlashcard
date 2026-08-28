@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/vite.config.ts
+ * @file frontend/vite.config.ts
  *
  * Zweck:
  * - Konfiguriert den Vite-Build fuer das Desktop-Frontend.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/ui/database-gantt-panel.tsx
+ * @file frontend/src/features/preview/database/ui/database-gantt-panel.tsx
  *
  * View configuration panel for timeline/gantt settings.
  */

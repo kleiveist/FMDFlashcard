@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/database-block.tsx
+ * @file frontend/src/features/preview/database/database-block.tsx
  *
  * Main database block renderer for markdown hybrid editor.
  */

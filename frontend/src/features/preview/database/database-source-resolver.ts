@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/database-source-resolver.ts
+ * @file frontend/src/features/preview/database/database-source-resolver.ts
  *
  * Resolves markdown files for database block source scopes.
  */

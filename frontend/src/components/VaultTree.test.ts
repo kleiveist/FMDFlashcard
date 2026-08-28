@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/VaultTree.test.ts
+ * @file frontend/src/components/VaultTree.test.ts
  *
  * Zweck:
  * - Tests fuer VaultTree Hilfsfunktionen.

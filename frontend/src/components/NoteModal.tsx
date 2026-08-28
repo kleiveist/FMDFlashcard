@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/NoteModal.tsx
+ * @file frontend/src/components/NoteModal.tsx
  *
  * Zweck:
  * - Rendert ein kompaktes Note-Modal mit Close-Handling.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/styles/components/controls.test.ts
+ * @file frontend/src/styles/components/controls.test.ts
  *
  * Contract tests fuer das globale Control-Styling.
  */

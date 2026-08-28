@@ -6,7 +6,7 @@ control.py entry:
   python3 tools/control.py --test
 
 Default behavior:
-  - pnpm -C apps/fmd-desktop exec vitest run --watch=false
+  - pnpm -C frontend exec vitest run --watch=false
 """
 
 from __future__ import annotations

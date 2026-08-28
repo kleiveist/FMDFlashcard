@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/CardMonitoringPage.tsx
+ * @file frontend/src/pages/CardMonitoringPage.tsx
  *
  * Central management page for vault-wide #card ... #endcard wrappers.
  */
@@ -92,7 +92,7 @@ export type CardMonitoringPageHandle = {
   requestLeaveCardMonitoring: () => Promise<boolean>;
 };
 
-type CardMonitoringPageProps = {};
+type CardMonitoringPageProps = object;
 
 const pruneSelection = (values: Set<string>, validIds: Set<string>) => {
   const next = new Set<string>();

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/styles/components/help.test.ts
+ * @file frontend/src/styles/components/help.test.ts
  *
  * Zweck:
  * - Verifiziert zentrale CSS-Regeln fuer das Help-Modal (Mask-Token + Groesse).

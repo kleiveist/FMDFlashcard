@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/pie-values.ts
+ * @file frontend/src/features/preview/database/pie-values.ts
  *
  * Shared Pie grouping labels and value-option helpers.
  */

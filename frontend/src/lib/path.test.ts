@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/path.test.ts
+ * @file frontend/src/lib/path.test.ts
  *
  * Zweck:
  * - Testet die Hidden-Path-Logik fuer Vault-Dateien.
@@ -8,8 +8,8 @@
  * - Sichert Hidden-Erkennung und Filterverhalten.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/path.ts: Hilfsfunktionen.
- * - apps/fmd-desktop/src/lib/tree.ts: Filter fuer Vault-Dateien.
+ * - frontend/src/lib/path.ts: Hilfsfunktionen.
+ * - frontend/src/lib/tree.ts: Filter fuer Vault-Dateien.
  *
  * Hinweise:
  * - Nur fuer Testlauf; keine Produktivnutzung.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/actions/actionIds.ts
+ * @file frontend/src/actions/actionIds.ts
  *
  * Zweck:
  * - Exportiert eindeutige Action-IDs fuer globale Befehle.

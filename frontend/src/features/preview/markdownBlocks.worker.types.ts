@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/markdownBlocks.worker.types.ts
+ * @file frontend/src/features/preview/markdownBlocks.worker.types.ts
  *
  * Shared request/response types for markdown parse worker messaging.
  * Keep this separate from the worker entrypoint so the main-thread hook

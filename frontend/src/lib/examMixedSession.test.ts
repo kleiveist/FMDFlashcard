@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/examMixedSession.test.ts
+ * @file frontend/src/lib/examMixedSession.test.ts
  *
  * Zweck:
  * - Tests fuer den Combined-Exam-Session Aggregator.

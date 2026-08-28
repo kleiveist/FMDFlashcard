@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/settings/MarkdownEditorSection.tsx
+ * @file frontend/src/components/settings/MarkdownEditorSection.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente fuer Markdown-Editor-Settings.
@@ -9,7 +9,7 @@
  * - Verdrahtet Props und Callbacks mit Controls.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - ExamEditorSection: React-Komponente.

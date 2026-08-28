@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/FileList.tsx
+ * @file frontend/src/components/FileList.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente File List.
@@ -10,8 +10,8 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/types.ts: Typen.
- * - apps/fmd-desktop/src/lib/tree.ts: Typen.
+ * - frontend/src/lib/types.ts: Typen.
+ * - frontend/src/lib/tree.ts: Typen.
  *
  * Exportiert:
  * - FileList: React-Komponente.

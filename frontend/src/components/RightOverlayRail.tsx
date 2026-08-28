@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/RightOverlayRail.tsx
+ * @file frontend/src/components/RightOverlayRail.tsx
  *
  * Zweck:
  * - Rendert eine rechte Overlay-Toolbar fuer kontextbezogene Zusatzaktionen.

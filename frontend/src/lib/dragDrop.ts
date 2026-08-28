@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/dragDrop.ts
+ * @file frontend/src/lib/dragDrop.ts
  *
  * Shared drag-and-drop helpers with defensive DataTransfer access
  * and in-memory fallback sessions for restricted runtimes.

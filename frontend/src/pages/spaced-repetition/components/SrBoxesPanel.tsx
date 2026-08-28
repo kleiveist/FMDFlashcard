@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/spaced-repetition/components/SrBoxesPanel.tsx
+ * @file frontend/src/pages/spaced-repetition/components/SrBoxesPanel.tsx
  *
  * Zweck:
  * - Rendert die Seite Sr Boxes Panel.
@@ -10,7 +10,7 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/spaced-repetition/components/SrStatsAndChart.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/spaced-repetition/components/SrStatsAndChart.tsx: Nutzt dieses Modul.
  * - react: React-API.
  *
  * Exportiert:

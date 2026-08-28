@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/flashcardKeywords.ts
+ * @file frontend/src/lib/flashcardKeywords.ts
  *
  * Zweck:
  * - Enthaelt Hilfsfunktionen fuer /.
@@ -9,7 +9,7 @@
  * - Normalisiert oder validiert Daten, wo erforderlich.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/flashcards.ts: Nutzt dieses Modul.
+ * - frontend/src/lib/flashcards.ts: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen alle nutzenden Module.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/frontmatter.ts
+ * @file frontend/src/features/preview/frontmatter.ts
  *
  * Zweck:
  * - Erkennung, Parsing und Serialisierung von YAML-Frontmatter
@@ -696,7 +696,14 @@ const parseFrontmatterDocumentInternal = (
     lineEnding: detectLineEnding(rawBlock),
     properties: parsed.properties
       .filter((property) => !property.hidden)
-      .map(({ rawLines, preserveRaw, hidden: _hidden, ...property }) => property),
+      .map(
+        ({
+          rawLines: _rawLines,
+          preserveRaw: _preserveRaw,
+          hidden: _hidden,
+          ...property
+        }) => property,
+      ),
     frontmatterPrefix: safeMarkdown.slice(0, bodyStartOffset),
     parsedProperties: parsed.properties,
   };
@@ -720,7 +727,7 @@ const shouldKeepAsPlainString = (value: string) => {
   if (isAmbiguousPlainString(value)) {
     return false;
   }
-  return /^[A-Za-z0-9 ._/\-]+$/.test(value);
+  return /^[A-Za-z0-9 ._/-]+$/.test(value);
 };
 
 const serializeString = (value: string) => {

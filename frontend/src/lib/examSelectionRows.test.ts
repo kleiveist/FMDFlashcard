@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/examSelectionRows.test.ts
+ * @file frontend/src/lib/examSelectionRows.test.ts
  */
 
 import { describe, expect, it } from "vitest";

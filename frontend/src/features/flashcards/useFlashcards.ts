@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/flashcards/useFlashcards.ts
+ * @file frontend/src/features/flashcards/useFlashcards.ts
  *
  * Zweck:
  * - Stellt den Hook useFlashcards fuer Flashcards bereit.
@@ -10,9 +10,9 @@
  * - Bietet konsolidierte Daten fuer Komponenten.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
- * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
- * - apps/fmd-desktop/src/lib/tree.ts: Typen.
+ * - frontend/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
+ * - frontend/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ * - frontend/src/lib/tree.ts: Typen.
  *
  * Exportiert:
  * - FLASHCARD_PAGE_SIZES: Zentrale Export-API.

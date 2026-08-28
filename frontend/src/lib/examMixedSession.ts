@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/examMixedSession.ts
+ * @file frontend/src/lib/examMixedSession.ts
  *
  * Zweck:
  * - Baut Session-Tasks fuer Single- und Combined-Exam-Laeufe.

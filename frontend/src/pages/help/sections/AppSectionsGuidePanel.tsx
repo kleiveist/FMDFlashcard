@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/help/sections/AppSectionsGuidePanel.tsx
+ * @file frontend/src/pages/help/sections/AppSectionsGuidePanel.tsx
  *
  * Zweck:
  * - Rendert die Seite App Sections Guide Panel.

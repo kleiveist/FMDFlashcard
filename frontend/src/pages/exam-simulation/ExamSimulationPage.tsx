@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-simulation/ExamSimulationPage.tsx
+ * @file frontend/src/pages/exam-simulation/ExamSimulationPage.tsx
  *
  * Zweck:
  * - Rendert die Seite Exam Simulation.
@@ -10,9 +10,9 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/exam-simulation/components/ExamFilePanel.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/pages/exam-simulation/components/ExamIdlePanel.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/pages/exam-simulation/components/ExamResultsPanel.tsx: UI-Komponente.
+ * - frontend/src/pages/exam-simulation/components/ExamFilePanel.tsx: UI-Komponente.
+ * - frontend/src/pages/exam-simulation/components/ExamIdlePanel.tsx: UI-Komponente.
+ * - frontend/src/pages/exam-simulation/components/ExamResultsPanel.tsx: UI-Komponente.
  *
  * Exportiert:
  * - ExamSimulationPage: React-Komponente.

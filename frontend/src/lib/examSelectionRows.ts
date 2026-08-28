@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/examSelectionRows.ts
+ * @file frontend/src/lib/examSelectionRows.ts
  *
  * Zweck:
  * - Hilfsfunktionen fuer die zeilenbasierte Auswahl von Exam-Dateien.

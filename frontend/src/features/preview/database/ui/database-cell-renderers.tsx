@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/ui/database-cell-renderers.tsx
+ * @file frontend/src/features/preview/database/ui/database-cell-renderers.tsx
  *
  * Lightweight cell rendering primitives for database table view.
  */

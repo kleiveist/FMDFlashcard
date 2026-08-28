@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/fast-flashcard/hooks/useFastSession.ts
+ * @file frontend/src/pages/fast-flashcard/hooks/useFastSession.ts
  *
  * Zweck:
  * - Stellt den Hook useFastSession fuer Fast Flashcard bereit.
@@ -10,8 +10,8 @@
  * - Bietet konsolidierte Daten fuer Komponenten.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ * - frontend/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - frontend/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
  *
  * Exportiert:
  * - fastFlashcardStatusLabel: Zentrale Export-API.

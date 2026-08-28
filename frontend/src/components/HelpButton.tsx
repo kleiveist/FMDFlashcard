@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/HelpButton.tsx
+ * @file frontend/src/components/HelpButton.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente Help Button samt Panel.

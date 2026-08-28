@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamIdlePanel.tsx
+ * @file frontend/src/pages/exam-simulation/components/ExamIdlePanel.tsx
  *
  * Zweck:
  * - Rendert die Seite Exam Idle Panel.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/media/VaultPngPicker.tsx
+ * @file frontend/src/components/media/VaultPngPicker.tsx
  */
 
 import type { KeyboardEvent } from "react";

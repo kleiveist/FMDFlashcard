@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/VaultManagerModal.tsx
+ * @file frontend/src/components/VaultManagerModal.tsx
  *
  * Zweck:
  * - Rendert das Vault Manager Modal.

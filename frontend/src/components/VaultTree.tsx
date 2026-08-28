@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/VaultTree.tsx
+ * @file frontend/src/components/VaultTree.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente Vault Tree.
@@ -10,9 +10,9 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/icons.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/components/VaultCreateModal.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/lib/errors.ts: Hilfsfunktionen oder Typen.
+ * - frontend/src/components/icons.tsx: UI-Komponente.
+ * - frontend/src/components/VaultCreateModal.tsx: UI-Komponente.
+ * - frontend/src/lib/errors.ts: Hilfsfunktionen oder Typen.
  *
  * Exportiert:
  * - VaultTree: React-Komponente.

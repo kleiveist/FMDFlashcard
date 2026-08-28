@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/exam.ts
+ * @file frontend/src/lib/exam.ts
  *
  * Zweck:
  * - Enthaelt Hilfsfunktionen fuer Exam.
@@ -9,8 +9,8 @@
  * - Normalisiert oder validiert Daten, wo erforderlich.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
- * - apps/fmd-desktop/src/lib/exam.test.ts: Nutzt dieses Modul.
+ * - frontend/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
+ * - frontend/src/lib/exam.test.ts: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen alle nutzenden Module.

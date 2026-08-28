@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/styles/components/study-ultrawide-layout.test.ts
+ * @file frontend/src/styles/components/study-ultrawide-layout.test.ts
  *
  * Contract tests for ultrawide study layout behavior.
  */

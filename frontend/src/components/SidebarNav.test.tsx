@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * @file apps/fmd-desktop/src/components/SidebarNav.test.tsx
+ * @file frontend/src/components/SidebarNav.test.tsx
  *
  * Zweck:
  * - Tests fuer Active-User-Switcher in der Sidebar.

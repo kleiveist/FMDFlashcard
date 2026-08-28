@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/fast-flashcard/components/FastHistoryPanel.tsx
+ * @file frontend/src/pages/fast-flashcard/components/FastHistoryPanel.tsx
  *
  * Zweck:
  * - Rendert die Seite Fast History Panel.
@@ -10,8 +10,8 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/fast-flashcard/hooks/useFastSession.ts: Typen.
- * - apps/fmd-desktop/src/pages/fast-flashcard/FastFlashcardPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/fast-flashcard/hooks/useFastSession.ts: Typen.
+ * - frontend/src/pages/fast-flashcard/FastFlashcardPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - FastHistoryPanel: React-Komponente.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/MonitoringRulesPage.tsx
+ * @file frontend/src/pages/MonitoringRulesPage.tsx
  *
  * Global manager for monitoring render profiles.
  */

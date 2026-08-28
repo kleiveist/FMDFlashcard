@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/fast-flashcard/components/FastHeader.tsx
+ * @file frontend/src/pages/fast-flashcard/components/FastHeader.tsx
  *
  * Zweck:
  * - Rendert die Seite Fast Header.
@@ -10,8 +10,8 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/fast-flashcard/hooks/useFastSession.ts: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/fast-flashcard/FastFlashcardPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/fast-flashcard/hooks/useFastSession.ts: Seiten-Komponente.
+ * - frontend/src/pages/fast-flashcard/FastFlashcardPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - FastHeader: React-Komponente.

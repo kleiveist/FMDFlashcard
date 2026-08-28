@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/exam/useExamFiles.ts
+ * @file frontend/src/features/exam/useExamFiles.ts
  *
  * Zweck:
  * - Stellt eine zentrale Exam-Datei-Liste aus dem Vault bereit.

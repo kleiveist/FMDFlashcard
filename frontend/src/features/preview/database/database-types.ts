@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/database-types.ts
+ * @file frontend/src/features/preview/database/database-types.ts
  *
  * Shared type system for the markdown database block (phase 1).
  */

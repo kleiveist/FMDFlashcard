@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-editor/components/AutoGrowTextarea.tsx
+ * @file frontend/src/pages/exam-editor/components/AutoGrowTextarea.tsx
  */
 
 import { useEffect, useRef } from "react";

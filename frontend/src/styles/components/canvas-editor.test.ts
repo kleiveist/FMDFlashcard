@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/styles/components/canvas-editor.test.ts
+ * @file frontend/src/styles/components/canvas-editor.test.ts
  *
  * Zweck:
  * - Verifiziert die CSS-Vertraege fuer den generischen Business-Canvas-Editor.

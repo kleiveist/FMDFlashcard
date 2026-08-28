@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * @file apps/fmd-desktop/src/components/HelpButton.test.tsx
+ * @file frontend/src/components/HelpButton.test.tsx
  *
  * Zweck:
  * - Testet HelpButton Rendering und HelpPanel Markdown-Ausgabe.
@@ -114,7 +114,7 @@ describe("HelpButton", () => {
       createElement(HelpPanel, { helpBlocks: [helpContent] }),
     );
 
-    expect(markup.match(/class=\"help-inline-mask/g)?.length ?? 0).toBe(6);
+    expect(markup.match(/class="help-inline-mask/g)?.length ?? 0).toBe(6);
     expect(markup).toContain(">CREATE TABLE<");
     expect(markup).toContain(">FOREIGN<");
     expect(markup).toContain(">NOT NULL<");

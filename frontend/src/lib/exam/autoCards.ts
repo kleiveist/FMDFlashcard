@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/exam/autoCards.ts
+ * @file frontend/src/lib/exam/autoCards.ts
  *
  * Zweck:
  * - Utilities zum Hinzufuegen/Entfernen von #card Wrappern in Exam-Tasks.
@@ -446,7 +446,7 @@ export const normalizeCardWrapperPlacement = (content: string) => {
     return { content, changed: false };
   }
 
-  let lines = normalizeLines(content);
+  const lines = normalizeLines(content);
   let changed = false;
 
   const tasksDescending = [...parsed.tasks].sort(

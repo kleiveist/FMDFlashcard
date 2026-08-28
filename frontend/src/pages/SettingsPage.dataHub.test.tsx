@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/SettingsPage.dataHub.test.tsx
+ * @file frontend/src/pages/SettingsPage.dataHub.test.tsx
  *
  * Zweck:
  * - Regressionstest fuer den kompakten Data-Hub-Tabbereich in Settings.

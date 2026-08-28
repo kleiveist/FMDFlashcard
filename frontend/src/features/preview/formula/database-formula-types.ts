@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/formula/database-formula-types.ts
+ * @file frontend/src/features/preview/formula/database-formula-types.ts
  *
  * Shared type system for structured formula attributes (v1).
  */

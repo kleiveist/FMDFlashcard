@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/database-normalizers.ts
+ * @file frontend/src/features/preview/database/database-normalizers.ts
  *
  * Field type inference and value normalization for database records.
  */

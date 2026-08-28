@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/database-block-parser.ts
+ * @file frontend/src/features/preview/database/database-block-parser.ts
  *
  * Parser/serializer for the standalone markdown database block.
  */

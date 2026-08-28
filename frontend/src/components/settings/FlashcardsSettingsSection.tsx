@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/settings/FlashcardsSettingsSection.tsx
+ * @file frontend/src/components/settings/FlashcardsSettingsSection.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente Flashcards Settings Section.
@@ -10,8 +10,8 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/features/flashcards/useFlashcards.ts: Typen.
- * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/features/flashcards/useFlashcards.ts: Typen.
+ * - frontend/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - FlashcardsSettingsSection: React-Komponente.

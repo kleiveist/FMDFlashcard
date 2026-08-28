@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/database-project-fill-profile.ts
+ * @file frontend/src/features/preview/database/database-project-fill-profile.ts
  *
  * Persists Project view progress fill rules in the vault profile area.
  */

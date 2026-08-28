@@ -3,7 +3,7 @@
 <!-- AUTO-GENERATED:backlink END -->
 
 <!--
-Source of truth: apps/fmd-desktop/src/lib/shortcuts/registry.ts
+Source of truth: frontend/src/lib/shortcuts/registry.ts
 Update the registry first, then refresh this page so the tables stay aligned.
 -->
 

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/ui/database-source-panel.tsx
+ * @file frontend/src/features/preview/database/ui/database-source-panel.tsx
  *
  * Source configuration panel for database block.
  */

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/markdownMedia.ts
+ * @file frontend/src/lib/markdownMedia.ts
  *
  * Zweck:
  * - Gemeinsame Erkennung fuer Obsidian-Style PNG-Embeds und svg-Codefences.

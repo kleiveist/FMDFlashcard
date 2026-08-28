@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/KpiGrid.tsx
+ * @file frontend/src/components/KpiGrid.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente Kpi Grid.
@@ -10,7 +10,7 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/spaced-repetition/components/SrStatsPanel.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/spaced-repetition/components/SrStatsPanel.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - KpiGrid: React-Komponente.

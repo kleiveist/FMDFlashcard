@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/markdownDocumentModel.ts
+ * @file frontend/src/features/preview/markdownDocumentModel.ts
  *
  * Purpose:
  * - Maintains a parse snapshot for markdown blocks.

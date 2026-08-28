@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/database-view-segments.ts
+ * @file frontend/src/features/preview/database/database-view-segments.ts
  *
  * Splits markdown-view content into regular markdown and embedded database blocks.
  */

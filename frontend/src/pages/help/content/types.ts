@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/help/content/types.ts
+ * @file frontend/src/pages/help/content/types.ts
  *
  * Zweck:
  * - Definiert Typen und Schnittstellen fuer Help.
@@ -9,8 +9,8 @@
  * - Sichert konsistente Verwendung in Features und Komponenten.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/content/appSections/index.ts: Nutzt dieses Modul.
- * - apps/fmd-desktop/src/pages/help/content/i18n.ts: Nutzt dieses Modul.
+ * - frontend/src/pages/help/content/appSections/index.ts: Nutzt dieses Modul.
+ * - frontend/src/pages/help/content/i18n.ts: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Typanpassungen koennen mehrere Module betreffen.

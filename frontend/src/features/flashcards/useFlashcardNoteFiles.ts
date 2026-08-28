@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/flashcards/useFlashcardNoteFiles.ts
+ * @file frontend/src/features/flashcards/useFlashcardNoteFiles.ts
  *
  * Zweck:
  * - Liefert eine zentrale Liste von Markdown-Dateien mit gueltigen

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/settings/VaultIndexSection.test.ts
+ * @file frontend/src/components/settings/VaultIndexSection.test.ts
  *
  * Zweck:
  * - Tests fuer den integrierten Data-&-Index-Panelaufbau.

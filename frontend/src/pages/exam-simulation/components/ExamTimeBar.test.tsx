@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamTimeBar.test.tsx
+ * @file frontend/src/pages/exam-simulation/components/ExamTimeBar.test.tsx
  *
  * Zweck:
  * - Tests fuer ExamTimeBar.

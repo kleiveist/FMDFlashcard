@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/user-vault/storage.ts
+ * @file frontend/src/features/user-vault/storage.ts
  *
  * Zweck:
  * - Dateizugriff fuer den User Vault.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/markdownTableCellMedia.ts
+ * @file frontend/src/lib/markdownTableCellMedia.ts
  *
  * Zweck:
  * - Zentralisiert die Segmentierung von Tabellenzelleninhalten fuer

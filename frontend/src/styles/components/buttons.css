@@ -1,6 +1,6 @@
 
 /*
- * @file apps/fmd-desktop/src/styles/components/buttons.css
+ * @file frontend/src/styles/components/buttons.css
  *
  * Zweck:
  * - Definiert Styles fuer buttons.
@@ -10,8 +10,8 @@
  * - Zustands- und Variantenklassen fuer Interaktionen.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
- * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ * - frontend/src/App.css: Nutzt dieses Modul.
+ * - frontend/src/styles/tokens.css: Design-Tokens und Variablen.
  *
  * Hinweise:
  * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.

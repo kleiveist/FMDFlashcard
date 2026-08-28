@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/styles/components/preview-inline-wrapping.test.ts
+ * @file frontend/src/styles/components/preview-inline-wrapping.test.ts
  *
  * Zweck:
  * - Verifiziert Wrapping-Regeln fuer lange Inline-Markdown-Tokens.

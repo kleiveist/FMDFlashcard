@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/InlineRenameLabel.tsx
+ * @file frontend/src/components/InlineRenameLabel.tsx
  */
 
 import { useEffect, useRef } from "react";

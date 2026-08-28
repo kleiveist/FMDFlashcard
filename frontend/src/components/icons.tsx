@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/icons.tsx
+ * @file frontend/src/components/icons.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente icons.
@@ -10,8 +10,8 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/SidebarNav.tsx: Nutzt dieses Modul.
- * - apps/fmd-desktop/src/components/VaultTree.tsx: Nutzt dieses Modul.
+ * - frontend/src/components/SidebarNav.tsx: Nutzt dieses Modul.
+ * - frontend/src/components/VaultTree.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - FolderIcon: React-Komponente.

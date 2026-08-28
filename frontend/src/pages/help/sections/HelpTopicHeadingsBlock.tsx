@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/help/sections/HelpTopicHeadingsBlock.tsx
+ * @file frontend/src/pages/help/sections/HelpTopicHeadingsBlock.tsx
  *
  * Zweck:
  * - Rendert die Seite Help Topic Headings Block.
@@ -10,8 +10,8 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/HelpPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - frontend/src/pages/HelpPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - HelpTopicHeadingsBlock: React-Komponente.

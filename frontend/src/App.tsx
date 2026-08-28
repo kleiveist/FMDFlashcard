@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/App.tsx
+ * @file frontend/src/App.tsx
  *
  * Zweck:
  * - Rendert die App-Shell und routet zwischen Hauptseiten.
@@ -10,9 +10,9 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/components/AppErrorBoundary.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/components/SidebarNav.tsx: UI-Komponente.
+ * - frontend/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - frontend/src/components/AppErrorBoundary.tsx: UI-Komponente.
+ * - frontend/src/components/SidebarNav.tsx: UI-Komponente.
  *
  * Exportiert:
  * - App: React-Komponente.

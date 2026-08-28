@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/views/kanban-view.tsx
+ * @file frontend/src/features/preview/database/views/kanban-view.tsx
  *
  * Kanban visualization for grouped database records.
  */

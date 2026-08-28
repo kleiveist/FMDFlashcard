@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/formula/formula-attribute-builder.tsx
+ * @file frontend/src/features/preview/formula/formula-attribute-builder.tsx
  *
  * Shared builder UI for structured aggregation formulas.
  */

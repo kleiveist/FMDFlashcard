@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/theme.ts
+ * @file frontend/src/lib/theme.ts
  *
  * Zweck:
  * - Enthaelt Hilfsfunktionen fuer Theme.
@@ -9,8 +9,8 @@
  * - Normalisiert oder validiert Daten, wo erforderlich.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/color.ts: Hilfsfunktionen oder Typen.
- * - apps/fmd-desktop/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
+ * - frontend/src/lib/color.ts: Hilfsfunktionen oder Typen.
+ * - frontend/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen alle nutzenden Module.

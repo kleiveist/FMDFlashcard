@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/HelpPage.tsx
+ * @file frontend/src/pages/HelpPage.tsx
  *
  * Zweck:
  * - Rendert die Seite Help.
@@ -10,9 +10,9 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/help/sections/HelpDetailSection.tsx: Seiten-Komponente.
+ * - frontend/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - frontend/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - frontend/src/pages/help/sections/HelpDetailSection.tsx: Seiten-Komponente.
  *
  * Exportiert:
  * - HelpPage: React-Komponente.

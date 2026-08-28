@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/ui/database-kanban-panel.tsx
+ * @file frontend/src/features/preview/database/ui/database-kanban-panel.tsx
  *
  * View configuration panel for Kanban grouping and visible values.
  */

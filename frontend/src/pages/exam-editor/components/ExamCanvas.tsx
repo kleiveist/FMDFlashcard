@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-editor/components/ExamCanvas.tsx
+ * @file frontend/src/pages/exam-editor/components/ExamCanvas.tsx
  */
 
 import {

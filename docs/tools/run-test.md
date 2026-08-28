@@ -28,7 +28,7 @@ python3 tools/control.py --start --dry-run
 Direct fallback command:
 
 ```bash
-pnpm -C apps/fmd-desktop tauri dev
+pnpm -C frontend tauri dev
 ```
 
 ## Run test suite
@@ -48,13 +48,13 @@ python3 tools/control.py --test --dry-run
 Direct fallback command (runner-equivalent base):
 
 ```bash
-pnpm -C apps/fmd-desktop exec vitest run --watch=false
+pnpm -C frontend exec vitest run --watch=false
 ```
 
 Alternative package-script shortcut:
 
 ```bash
-pnpm -C apps/fmd-desktop test
+pnpm -C frontend test
 ```
 
 ## Optional test environment controls

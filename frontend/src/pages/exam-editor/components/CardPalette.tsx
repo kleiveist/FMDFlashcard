@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-editor/components/CardPalette.tsx
+ * @file frontend/src/pages/exam-editor/components/CardPalette.tsx
  */
 
 import type { DragEvent } from "react";

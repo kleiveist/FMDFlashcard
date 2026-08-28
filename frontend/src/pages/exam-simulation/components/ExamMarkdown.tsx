@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamMarkdown.tsx
+ * @file frontend/src/pages/exam-simulation/components/ExamMarkdown.tsx
  *
  * Zweck:
  * - Rendert die Seite Exam Markdown.

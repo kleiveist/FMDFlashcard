@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/views/gantt-view.tsx
+ * @file frontend/src/features/preview/database/views/gantt-view.tsx
  *
  * Editable timeline/gantt visualization for database records.
  */

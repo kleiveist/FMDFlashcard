@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/markdownEditorColors.test.ts
+ * @file frontend/src/lib/markdownEditorColors.test.ts
  */
 
 import { describe, expect, it } from "vitest";

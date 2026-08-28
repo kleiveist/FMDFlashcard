@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamResultsPanel.test.tsx
+ * @file frontend/src/pages/exam-simulation/components/ExamResultsPanel.test.tsx
  *
  * Zweck:
  * - UI-Smoke-Tests fuer das Exam Results Popup inkl. Card-Wrap Toggle.

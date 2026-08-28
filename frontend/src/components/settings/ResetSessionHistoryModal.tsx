@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/settings/ResetSessionHistoryModal.tsx
+ * @file frontend/src/components/settings/ResetSessionHistoryModal.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente Reset Session History Modal.
@@ -10,7 +10,7 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - ResetSessionHistoryModal: React-Komponente.

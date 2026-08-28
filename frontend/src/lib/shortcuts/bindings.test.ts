@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/shortcuts/bindings.test.ts
+ * @file frontend/src/lib/shortcuts/bindings.test.ts
  *
  * Zweck:
  * - Tests fuer Shortcut-Normalisierung, Konflikte und Migration.

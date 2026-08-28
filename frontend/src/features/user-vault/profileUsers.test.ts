@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/user-vault/profileUsers.test.ts
+ * @file frontend/src/features/user-vault/profileUsers.test.ts
  *
  * Zweck:
  * - Tests fuer das Laden von Usern innerhalb des Profile-Roots.

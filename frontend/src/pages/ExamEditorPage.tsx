@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/ExamEditorPage.tsx
+ * @file frontend/src/pages/ExamEditorPage.tsx
  *
  * Zweck:
  * - Rendert die Seite Exam Editor.

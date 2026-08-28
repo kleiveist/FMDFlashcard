@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/PointsProfilesPage.tsx
+ * @file frontend/src/pages/PointsProfilesPage.tsx
  *
  * Dedicated management page for points profiles and profile usage monitoring.
  */

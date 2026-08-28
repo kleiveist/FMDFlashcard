@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamCorrectionHost.test.tsx
+ * @file frontend/src/pages/exam-simulation/components/ExamCorrectionHost.test.tsx
  *
  * Zweck:
  * - Verifiziert die Quellen-Badge-Steuerung im Correction-Host.

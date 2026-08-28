@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/AppStateProvider.tsx
+ * @file frontend/src/components/AppStateProvider.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente App State Provider.
@@ -10,9 +10,9 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/color.ts: Hilfsfunktionen oder Typen.
- * - apps/fmd-desktop/src/lib/path.ts: Hilfsfunktionen oder Typen.
- * - apps/fmd-desktop/src/lib/theme.ts: Typen.
+ * - frontend/src/lib/color.ts: Hilfsfunktionen oder Typen.
+ * - frontend/src/lib/path.ts: Hilfsfunktionen oder Typen.
+ * - frontend/src/lib/theme.ts: Typen.
  *
  * Exportiert:
  * - AppStateProvider: React-Komponente.

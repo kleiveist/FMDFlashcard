@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/settings/normalizeSettings.test.ts
+ * @file frontend/src/features/settings/normalizeSettings.test.ts
  *
  * Zweck:
  * - Tests fuer normalizeSettings (Defaults + Validierung).

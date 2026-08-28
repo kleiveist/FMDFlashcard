@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/user-vault/storage.test.ts
+ * @file frontend/src/features/user-vault/storage.test.ts
  *
  * Zweck:
  * - Tests fuer User-Vault Persistenz (Profile Settings + Exam Runs).

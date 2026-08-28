@@ -6,7 +6,7 @@ control.py entry:
   python3 tools/control.py --start (alias: --run)
 
 What it does (default):
-  cd <repo>/apps/fmd-desktop
+  cd <repo>/frontend
   (optional) pnpm install (if node_modules missing)
   pnpm tauri dev
 """

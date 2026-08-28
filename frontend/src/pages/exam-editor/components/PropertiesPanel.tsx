@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-editor/components/PropertiesPanel.tsx
+ * @file frontend/src/pages/exam-editor/components/PropertiesPanel.tsx
  */
 
 import type { ExamBlueprint, CardType } from "../../../features/exam-editor/types";

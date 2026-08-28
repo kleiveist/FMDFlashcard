@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/exam-editor/blueprint.test.ts
+ * @file frontend/src/features/exam-editor/blueprint.test.ts
  */
 
 import { describe, expect, it } from "vitest";

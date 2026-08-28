@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/styles/components/desktop.test.ts
+ * @file frontend/src/styles/components/desktop.test.ts
  *
  * Zweck:
  * - Tests fuer Desktop-CSS-Overrides (kompakte Radien + Fokusverhalten).

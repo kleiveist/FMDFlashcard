@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/settings/KeyboardShortcutsSection.tsx
+ * @file frontend/src/components/settings/KeyboardShortcutsSection.tsx
  *
  * Zweck:
  * - Rendert die Keyboard Shortcuts Settings Seite.

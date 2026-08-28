@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * @file apps/fmd-desktop/src/components/RightOverlayRail.test.tsx
+ * @file frontend/src/components/RightOverlayRail.test.tsx
  *
  * Zweck:
  * - Tests fuer RightOverlayRail Sichtbarkeit und Pinning.

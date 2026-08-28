@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/help/sections/LoadVaultGuidePanel.tsx
+ * @file frontend/src/pages/help/sections/LoadVaultGuidePanel.tsx
  *
  * Zweck:
  * - Rendert die Seite Load Vault Guide Panel.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/help/content/syntax/overview.ts
+ * @file frontend/src/pages/help/content/syntax/overview.ts
  *
  * Zweck:
  * - Enthaelt Hilfsfunktionen fuer Help.
@@ -9,7 +9,7 @@
  * - Normalisiert oder validiert Daten, wo erforderlich.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/helpContent.ts: Nutzt dieses Modul.
+ * - frontend/src/pages/help/helpContent.ts: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen alle nutzenden Module.

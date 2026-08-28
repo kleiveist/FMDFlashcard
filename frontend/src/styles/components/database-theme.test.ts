@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/styles/components/database-theme.test.ts
+ * @file frontend/src/styles/components/database-theme.test.ts
  *
  * Contract tests for accent- and design-mode-driven database styling.
  */

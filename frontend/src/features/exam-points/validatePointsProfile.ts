@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/exam-points/validatePointsProfile.ts
+ * @file frontend/src/features/exam-points/validatePointsProfile.ts
  *
  * Zweck:
  * - Validiert ein Points-Profil fuer die Exam-Simulation.

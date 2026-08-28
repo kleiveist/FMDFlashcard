@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-simulation/hooks/useExamSimulationViewModel.ts
+ * @file frontend/src/pages/exam-simulation/hooks/useExamSimulationViewModel.ts
  *
  * Zweck:
  * - Stellt den Hook useExamSimulationViewModel fuer Exam Simulation bereit.
@@ -10,9 +10,9 @@
  * - Bietet konsolidierte Daten fuer Komponenten.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
- * - apps/fmd-desktop/src/features/settings/useAppSettings.ts: Typen.
+ * - frontend/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - frontend/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ * - frontend/src/features/settings/useAppSettings.ts: Typen.
  *
  * Exportiert:
  * - useExamSimulationViewModel: Hook fuer Exam Simulation.

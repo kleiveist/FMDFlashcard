@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/settings/validateExamSettings.test.ts
+ * @file frontend/src/features/settings/validateExamSettings.test.ts
  *
  * Zweck:
  * - Tests fuer validateExamSettings.

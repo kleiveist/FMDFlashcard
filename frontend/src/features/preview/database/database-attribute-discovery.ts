@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/database-attribute-discovery.ts
+ * @file frontend/src/features/preview/database/database-attribute-discovery.ts
  *
  * Vault-bound discovery/indexing for database attribute suggestions.
  */

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/attribute-type-catalog.ts
+ * @file frontend/src/features/preview/attribute-type-catalog.ts
  *
  * Shared attribute-type catalog used by frontmatter and database add flows.
  */

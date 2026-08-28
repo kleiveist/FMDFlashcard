@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/databaseBlockSyntax.ts
+ * @file frontend/src/lib/databaseBlockSyntax.ts
  *
  * Shared helpers for database block marker detection and line masking.
  */

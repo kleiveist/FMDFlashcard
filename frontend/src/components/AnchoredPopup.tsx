@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/AnchoredPopup.tsx
+ * @file frontend/src/components/AnchoredPopup.tsx
  *
  * Zweck:
  * - Rendert ein verankertes Popup-Fenster mit Close-Handling.

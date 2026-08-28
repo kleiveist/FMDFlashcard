@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamTaskRunner.tsx
+ * @file frontend/src/pages/exam-simulation/components/ExamTaskRunner.tsx
  *
  * Zweck:
  * - Rendert die Seite Exam Task Runner.
@@ -10,9 +10,9 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/flashcards/CompositeCard.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
- * - apps/fmd-desktop/src/lib/exam.ts: Typen.
+ * - frontend/src/components/flashcards/CompositeCard.tsx: UI-Komponente.
+ * - frontend/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ * - frontend/src/lib/exam.ts: Typen.
  *
  * Exportiert:
  * - ExamTaskRunner: React-Komponente.

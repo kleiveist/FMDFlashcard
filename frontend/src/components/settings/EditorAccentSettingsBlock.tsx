@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/settings/EditorAccentSettingsBlock.tsx
+ * @file frontend/src/components/settings/EditorAccentSettingsBlock.tsx
  *
  * Zweck:
  * - Rendert den Bereich fuer Editor-Akzent und Blueprint-Grid.

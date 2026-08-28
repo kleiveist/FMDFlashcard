@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/auxiliaryBlocks.ts
+ * @file frontend/src/lib/auxiliaryBlocks.ts
  *
  * Zweck:
  * - Extrahiert Help-Bloecke, ohne regulaere Syntaxerkennung zu stoeren.

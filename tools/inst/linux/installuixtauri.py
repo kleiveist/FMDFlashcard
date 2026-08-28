@@ -214,7 +214,7 @@ def scaffold_project(target_dir: Path, template: str, identifier: str) -> None:
 
 def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description="Prepare Linux for Tauri (WASD libs, pnpm, rustup, scaffold).")
-    ap.add_argument("--target", default="apps/fmd-desktop")
+    ap.add_argument("--target", default="frontend")
     ap.add_argument("--template", default="react-ts")
     ap.add_argument("--identifier", default="com.fmd.flashcard")
     ap.add_argument("--repo-root", default=None)

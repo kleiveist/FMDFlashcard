@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/LargeVaultWarningModal.tsx
+ * @file frontend/src/components/LargeVaultWarningModal.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente Large Vault Warning Modal.
@@ -10,7 +10,7 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
+ * - frontend/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - LargeVaultWarningModal: React-Komponente.

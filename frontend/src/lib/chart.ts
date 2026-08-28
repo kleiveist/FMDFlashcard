@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/chart.ts
+ * @file frontend/src/lib/chart.ts
  *
  * Zweck:
  * - Enthaelt Hilfsfunktionen fuer Chart.
@@ -9,7 +9,7 @@
  * - Normalisiert oder validiert Daten, wo erforderlich.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/spaced-repetition/components/SrStatsAndChart.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/spaced-repetition/components/SrStatsAndChart.tsx: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen alle nutzenden Module.

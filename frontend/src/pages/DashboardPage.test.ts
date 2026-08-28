@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/DashboardPage.test.ts
+ * @file frontend/src/pages/DashboardPage.test.ts
  *
  * Zweck:
  * - Tests fuer DashboardPage Preview-Default-Logik.

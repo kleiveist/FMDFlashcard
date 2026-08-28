@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/VaultDeleteModal.tsx
+ * @file frontend/src/components/VaultDeleteModal.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente Vault Delete Modal.
@@ -8,7 +8,7 @@
  * - Bietet eine Bestaetigung zum Loeschen von Dateien an.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/VaultTree.tsx: Nutzt dieses Modul.
+ * - frontend/src/components/VaultTree.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - VaultDeleteModal: React-Komponente.

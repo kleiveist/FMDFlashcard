@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/markdownBlocks.worker.ts
+ * @file frontend/src/features/preview/markdownBlocks.worker.ts
  *
  * Purpose:
  * - Runs markdown block parsing off the main thread.

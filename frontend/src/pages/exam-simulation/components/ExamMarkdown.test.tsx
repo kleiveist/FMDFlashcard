@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamMarkdown.test.tsx
+ * @file frontend/src/pages/exam-simulation/components/ExamMarkdown.test.tsx
  */
 
 import { createElement } from "react";

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/ui/database-filter-panel.tsx
+ * @file frontend/src/features/preview/database/ui/database-filter-panel.tsx
  *
  * Filter panel for type-aware database conditions.
  */

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/user-vault/useUserVault.ts
+ * @file frontend/src/features/user-vault/useUserVault.ts
  *
  * Zweck:
  * - Verwaltet User Vault State und Aktionen fuer die UI.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/main.tsx
+ * @file frontend/src/main.tsx
  *
  * Zweck:
  * - Startet die React-App, mountet die Root-Komponente und setzt globale Handler.
@@ -10,7 +10,7 @@
  * - Startet das Rendering unter React.StrictMode.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/App.tsx: Direkte Abhaengigkeit.
+ * - frontend/src/App.tsx: Direkte Abhaengigkeit.
  * - react: React-API.
  *
  * Hinweise:

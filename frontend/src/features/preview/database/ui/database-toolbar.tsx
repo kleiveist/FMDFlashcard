@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/ui/database-toolbar.tsx
+ * @file frontend/src/features/preview/database/ui/database-toolbar.tsx
  *
  * Unified toolbar shell for database block interactions.
  */

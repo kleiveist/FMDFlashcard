@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/vitest.config.ts
+ * @file frontend/vitest.config.ts
  *
  * Zweck:
  * - Konfiguriert den Vitest-Testlauf fuer das Frontend.

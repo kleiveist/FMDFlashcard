@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/fast-flashcard/constants.ts
+ * @file frontend/src/features/fast-flashcard/constants.ts
  *
  * Zweck:
  * - Definiert zentrale Konstanten fuer Fast Flashcard.
@@ -9,8 +9,8 @@
  * - Sichert konsistente Nutzung ueber Module hinweg.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/features/settings/useAppSettings.ts: Nutzt dieses Modul.
- * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/features/settings/useAppSettings.ts: Nutzt dieses Modul.
+ * - frontend/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen wirken sich auf mehrere Module aus.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/settings/settingsDeepLink.ts
+ * @file frontend/src/features/settings/settingsDeepLink.ts
  *
  * Zweck:
  * - Ermoeglicht Deep-Links/Fokus in Settings ohne Router.

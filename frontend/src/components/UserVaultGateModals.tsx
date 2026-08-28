@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/UserVaultGateModals.tsx
+ * @file frontend/src/components/UserVaultGateModals.tsx
  *
  * Zweck:
  * - Rendert Onboarding-Gates fuer den Wallet-Flow.

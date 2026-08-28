@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/StatsPanel.tsx
+ * @file frontend/src/components/StatsPanel.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente Stats Panel.
@@ -10,7 +10,7 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/FlashcardPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/FlashcardPage.tsx: Nutzt dieses Modul.
  * - react: React-API.
  *
  * Exportiert:

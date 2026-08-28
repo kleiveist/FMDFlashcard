@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/flashcards/MarkdownBlocks.tsx
+ * @file frontend/src/components/flashcards/MarkdownBlocks.tsx
  *
  * Zweck:
  * - Rendert Markdown-Inhalte in Flashcards konsistent mit der Preview-Pipeline.

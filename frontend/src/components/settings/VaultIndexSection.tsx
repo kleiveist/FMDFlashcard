@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/settings/VaultIndexSection.tsx
+ * @file frontend/src/components/settings/VaultIndexSection.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente Vault Index Section.
@@ -10,8 +10,8 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/types.ts: Typen.
- * - apps/fmd-desktop/src/components/settings/DataSyncTabContent.tsx: UI-Komponente.
+ * - frontend/src/lib/types.ts: Typen.
+ * - frontend/src/components/settings/DataSyncTabContent.tsx: UI-Komponente.
  *
  * Exportiert:
  * - VaultIndexSection: React-Komponente.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-editor/ExamEditorView.tsx
+ * @file frontend/src/pages/exam-editor/ExamEditorView.tsx
  */
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";

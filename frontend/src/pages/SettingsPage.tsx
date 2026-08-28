@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/SettingsPage.tsx
+ * @file frontend/src/pages/SettingsPage.tsx
  *
  * Zweck:
  * - Rendert die Seite Settings.
@@ -10,9 +10,9 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/components/settings/AppearanceSection.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/components/settings/ExamSettingsSection.tsx: UI-Komponente.
+ * - frontend/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - frontend/src/components/settings/AppearanceSection.tsx: UI-Komponente.
+ * - frontend/src/components/settings/ExamSettingsSection.tsx: UI-Komponente.
  *
  * Exportiert:
  * - SettingsPage: React-Komponente.

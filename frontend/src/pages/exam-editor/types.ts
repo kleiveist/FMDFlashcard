@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-editor/types.ts
+ * @file frontend/src/pages/exam-editor/types.ts
  */
 
 import type { CardType } from "../../features/exam-editor/types";

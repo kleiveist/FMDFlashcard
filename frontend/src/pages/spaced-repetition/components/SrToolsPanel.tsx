@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/spaced-repetition/components/SrToolsPanel.tsx
+ * @file frontend/src/pages/spaced-repetition/components/SrToolsPanel.tsx
  *
  * Zweck:
  * - Rendert die Seite Sr Tools Panel.
@@ -10,8 +10,8 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/features/spaced-repetition/useSpacedRepetition.ts: Feature-Logik oder Hook.
- * - apps/fmd-desktop/src/pages/spaced-repetition/SpacedRepetitionPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/features/spaced-repetition/useSpacedRepetition.ts: Feature-Logik oder Hook.
+ * - frontend/src/pages/spaced-repetition/SpacedRepetitionPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - SrToolsPanel: React-Komponente.

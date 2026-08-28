@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/VaultCreateModal.tsx
+ * @file frontend/src/components/VaultCreateModal.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente Vault Create Modal.
@@ -10,7 +10,7 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/VaultTree.tsx: Nutzt dieses Modul.
+ * - frontend/src/components/VaultTree.tsx: Nutzt dieses Modul.
  * - react: React-API.
  *
  * Exportiert:

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/flashcards/FlashcardAreaMenu.tsx
+ * @file frontend/src/components/flashcards/FlashcardAreaMenu.tsx
  */
 
 import { useId } from "react";

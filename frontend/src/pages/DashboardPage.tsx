@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/DashboardPage.tsx
+ * @file frontend/src/pages/DashboardPage.tsx
  *
  * Zweck:
  * - Rendert die Seite Dashboard.
@@ -10,9 +10,9 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/FileList.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/components/PreviewPanel.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/components/AppStateProvider.tsx: UI-Komponente.
+ * - frontend/src/components/FileList.tsx: UI-Komponente.
+ * - frontend/src/components/PreviewPanel.tsx: UI-Komponente.
+ * - frontend/src/components/AppStateProvider.tsx: UI-Komponente.
  *
  * Exportiert:
  * - DashboardPage: React-Komponente.

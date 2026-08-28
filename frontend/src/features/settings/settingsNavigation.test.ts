@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/settings/settingsNavigation.test.ts
+ * @file frontend/src/features/settings/settingsNavigation.test.ts
  *
  * Zweck:
  * - Regressionstests fuer die Settings-Navigation.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/examRuns.ts
+ * @file frontend/src/lib/examRuns.ts
  *
  * Zweck:
  * - Typen und Hilfsfunktionen fuer Exam-Run Historien.

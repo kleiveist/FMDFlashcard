@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/settings/AppearanceSection.test.ts
+ * @file frontend/src/components/settings/AppearanceSection.test.ts
  *
  * Zweck:
  * - Tests fuer AppearanceSection Rendering (Designmodus-Auswahl).

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/SpacedRepetitionPage.tsx
+ * @file frontend/src/pages/SpacedRepetitionPage.tsx
  *
  * Zweck:
  * - Rendert die Seite Spaced Repetition.
@@ -10,8 +10,8 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/spaced-repetition/SpacedRepetitionPage.tsx: Seiten-Komponente.
- * - apps/fmd-desktop/src/App.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/spaced-repetition/SpacedRepetitionPage.tsx: Seiten-Komponente.
+ * - frontend/src/App.tsx: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.

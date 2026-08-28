@@ -93,7 +93,7 @@ def _repo_root_from_tools_control() -> Path:
 def cmd_build_desktop() -> int:
     """
     Build Tauri desktop app (release bundles).
-    Equivalent to: cd apps/fmd-desktop && pnpm tauri build
+    Equivalent to: cd frontend && pnpm tauri build
     """
     repo_root = _repo_root_from_tools_control()
     app_dir = (repo_root / "apps" / "fmd-desktop").resolve()

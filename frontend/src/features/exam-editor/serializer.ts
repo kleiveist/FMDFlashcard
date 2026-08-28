@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/exam-editor/serializer.ts
+ * @file frontend/src/features/exam-editor/serializer.ts
  *
  * Zweck:
  * - Serialisiert Exam-Blueprints zu Exam-Markdown.

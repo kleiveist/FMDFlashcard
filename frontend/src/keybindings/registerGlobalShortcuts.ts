@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/keybindings/registerGlobalShortcuts.ts
+ * @file frontend/src/keybindings/registerGlobalShortcuts.ts
  *
  * Zweck:
  * - Registriert globale Shortcuts und verbindet sie mit Actions.

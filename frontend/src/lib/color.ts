@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/color.ts
+ * @file frontend/src/lib/color.ts
  *
  * Zweck:
  * - Enthaelt Hilfsfunktionen fuer Color.
@@ -9,8 +9,8 @@
  * - Normalisiert oder validiert Daten, wo erforderlich.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
- * - apps/fmd-desktop/src/features/settings/useAppSettings.ts: Nutzt dieses Modul.
+ * - frontend/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
+ * - frontend/src/features/settings/useAppSettings.ts: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen alle nutzenden Module.

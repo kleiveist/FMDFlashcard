@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/path.ts
+ * @file frontend/src/lib/path.ts
  *
  * Zweck:
  * - Enthaelt Hilfsfunktionen fuer Path.
@@ -9,8 +9,8 @@
  * - Normalisiert oder validiert Daten, wo erforderlich.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
- * - apps/fmd-desktop/src/components/SidebarNav.tsx: Nutzt dieses Modul.
+ * - frontend/src/components/AppStateProvider.tsx: Nutzt dieses Modul.
+ * - frontend/src/components/SidebarNav.tsx: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen alle nutzenden Module.

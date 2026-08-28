@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/flashcards.ts
+ * @file frontend/src/lib/flashcards.ts
  *
  * Zweck:
  * - Enthaelt Hilfsfunktionen fuer Flashcards.
@@ -9,8 +9,8 @@
  * - Normalisiert oder validiert Daten, wo erforderlich.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/flashcardKeywords.ts: Hilfsfunktionen oder Typen.
- * - apps/fmd-desktop/src/components/flashcards/ClozeCard.tsx: Nutzt dieses Modul.
+ * - frontend/src/lib/flashcardKeywords.ts: Hilfsfunktionen oder Typen.
+ * - frontend/src/components/flashcards/ClozeCard.tsx: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen alle nutzenden Module.
@@ -398,7 +398,7 @@ export const stripInlineCodeFromLine = (line: string) =>
     .join("");
 
 const hasPercentMarker = (line: string) => {
-  let cursor = 0;
+  const cursor = 0;
   while (cursor < line.length) {
     const start = line.indexOf("%", cursor);
     if (start === -1) {
@@ -414,7 +414,7 @@ const hasPercentMarker = (line: string) => {
 };
 
 const hasQuotedToken = (line: string) => {
-  let cursor = 0;
+  const cursor = 0;
   while (cursor < line.length) {
     const quoteIndex = findNextQuoteIndex(line, cursor);
     if (quoteIndex === -1) {
@@ -715,7 +715,7 @@ const findAnswerMarkerAtColon = (
     }
   }
 
-  let wordEnd = prefixEnd;
+  const wordEnd = prefixEnd;
   let wordStart = wordEnd;
   while (wordStart > 0 && isWordChar(line[wordStart - 1] ?? "")) {
     wordStart -= 1;

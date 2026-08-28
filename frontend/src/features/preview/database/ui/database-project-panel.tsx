@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/ui/database-project-panel.tsx
+ * @file frontend/src/features/preview/database/ui/database-project-panel.tsx
  *
  * View configuration panel for block-based project settings.
  */

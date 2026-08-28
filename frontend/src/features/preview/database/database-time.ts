@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/database-time.ts
+ * @file frontend/src/features/preview/database/database-time.ts
  *
  * Shared temporal helpers for database time/date/datetime behavior.
  */

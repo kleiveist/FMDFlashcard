@@ -24,8 +24,8 @@ STABLE_APPIMAGE_NAME = "FMDFlashcard.AppImage"
 STABLE_ICON_BASENAME = "fmdflashcard"
 NAME_PREFERENCE_TOKEN = "fmdflashcard"
 
-BUILD_APPIMAGE_REL = Path("apps/fmd-desktop/src-tauri/target/release/bundle/appimage")
-ICON_SOURCE_REL = Path("apps/fmd-desktop/src-tauri/icons")
+BUILD_APPIMAGE_REL = Path("frontend/src-tauri/target/release/bundle/appimage")
+ICON_SOURCE_REL = Path("frontend/src-tauri/icons")
 
 TARGET_APPIMAGE_PATH = Path.home() / "Applications" / STABLE_APPIMAGE_NAME
 TARGET_DESKTOP_PATH = Path.home() / ".local" / "share" / "applications" / DESKTOP_FILE_NAME

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamTimeBar.tsx
+ * @file frontend/src/pages/exam-simulation/components/ExamTimeBar.tsx
  *
  * Zweck:
  * - Zeigt die Exam-Zeitleiste mit Restzeit.

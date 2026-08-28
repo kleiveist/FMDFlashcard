@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/flashcards/CompositeCard.tsx
+ * @file frontend/src/components/flashcards/CompositeCard.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente Composite Card.
@@ -10,9 +10,9 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/flashcards/ClozeCard.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/components/flashcards/FreeTextCard.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/components/flashcards/MultipleChoiceCard.tsx: UI-Komponente.
+ * - frontend/src/components/flashcards/ClozeCard.tsx: UI-Komponente.
+ * - frontend/src/components/flashcards/FreeTextCard.tsx: UI-Komponente.
+ * - frontend/src/components/flashcards/MultipleChoiceCard.tsx: UI-Komponente.
  *
  * Exportiert:
  * - CompositeCard: React-Komponente.

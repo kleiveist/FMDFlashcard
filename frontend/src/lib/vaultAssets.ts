@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/vaultAssets.ts
+ * @file frontend/src/lib/vaultAssets.ts
  *
  * Zweck:
  * - Hilfsfunktionen zur robusten Aufloesung von Vault-Asset-Pfaden und Bildquellen.

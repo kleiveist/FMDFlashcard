@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/exam.test.ts
+ * @file frontend/src/lib/exam.test.ts
  *
  * Zweck:
  * - Testet exam.test und zugehoerige Logik.
@@ -9,7 +9,7 @@
  * - Sichert Regressionen fuer zentrale Szenarien.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/exam.ts: Hilfsfunktionen oder Typen.
+ * - frontend/src/lib/exam.ts: Hilfsfunktionen oder Typen.
  * - vitest: Externe Bibliothek.
  *
  * Hinweise:

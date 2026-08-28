@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/markdownTables.ts
+ * @file frontend/src/lib/markdownTables.ts
  *
  * Zweck:
  * - Hilfsfunktionen fuer Markdown-Tabellen und -Blockaufteilung.

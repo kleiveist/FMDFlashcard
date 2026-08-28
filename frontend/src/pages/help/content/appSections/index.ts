@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/help/content/appSections/index.ts
+ * @file frontend/src/pages/help/content/appSections/index.ts
  *
  * Purpose:
  * - Provides the "App Sections" guide content for Help.

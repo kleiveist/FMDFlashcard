@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/ui/database-sort-panel.tsx
+ * @file frontend/src/features/preview/database/ui/database-sort-panel.tsx
  *
  * Multi-level sort panel for database block.
  */

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/exam-editor/choiceRawBody.ts
+ * @file frontend/src/features/exam-editor/choiceRawBody.ts
  *
  * Zweck:
  * - Parser/Serializer fuer den rohen M1/M2-Body im Exam-Editor.

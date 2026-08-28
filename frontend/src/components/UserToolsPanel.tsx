@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/UserToolsPanel.tsx
+ * @file frontend/src/components/UserToolsPanel.tsx
  *
  * Zweck:
  * - Rendert die User Tools fuer Study/Spaced Repetition und Exam.

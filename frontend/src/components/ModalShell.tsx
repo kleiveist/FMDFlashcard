@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/ModalShell.tsx
+ * @file frontend/src/components/ModalShell.tsx
  *
  * Zweck:
  * - Rendert eine wiederverwendbare Modal-Huelle mit Close-Handling.

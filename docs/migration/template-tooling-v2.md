@@ -153,6 +153,33 @@ pre-existing synchronous-unmount warning while still passing. Neither warning is
 the migration. The absent lint command and inactive `.md` workflow are explicit acceptance gaps,
 not silently green checks.
 
+## Product layout acceptance
+
+The product now runs from `frontend/` with the Tauri crate at root-level `src-tauri/`.
+Tauri build hooks use explicit working directories, and the frontend launcher enters the
+repository root before invoking the CLI. The obsolete path-derived Rust package name was replaced
+with `fmd-flashcard-desktop`; the lockfile was regenerated offline and then accepted by
+`cargo --locked`.
+
+ESLint 10 with the TypeScript parser is locked in `pnpm-lock.yaml`. The frontend now exposes
+deterministic `lint`, `typecheck`, and `test:run` scripts. After the complete path rewrite, the
+following acceptance passed:
+
+| Check | Result |
+| --- | --- |
+| `pnpm install --frozen-lockfile` | pass |
+| `pnpm lint` | pass, zero warnings allowed |
+| `pnpm typecheck` | pass |
+| `pnpm test:run` | pass; 109 files, 1,092 tests |
+| `pnpm build` | pass |
+| `cargo check --locked` | pass |
+| `cargo test --locked` | pass; 3 tests |
+| headless Tauri development launch | pass; Vite ready and renamed binary launched |
+| debug Debian desktop bundle | pass; real `.deb` produced |
+
+Outside this historical report, a tracked-content search finds no remaining literal reference to
+the old desktop or user-data paths.
+
 ## Commit and rollback checkpoints
 
 Each migration phase is committed separately. Structural product commits precede the portable

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamIdlePanel.test.tsx
+ * @file frontend/src/pages/exam-simulation/components/ExamIdlePanel.test.tsx
  *
  * Zweck:
  * - Tests fuer ExamIdlePanel 5-Step Setup.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/help/content/syntax/index.ts
+ * @file frontend/src/pages/help/content/syntax/index.ts
  *
  * Purpose:
  * - Public entry for flashcard syntax help content.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/flashcards/ClozeCard.tsx
+ * @file frontend/src/components/flashcards/ClozeCard.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente Cloze Card.
@@ -10,8 +10,8 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
- * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ * - frontend/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
+ * - frontend/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
  *
  * Exportiert:
  * - ClozeCard: React-Komponente.

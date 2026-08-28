@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/settings/SpacedRepetitionSettingsSection.tsx
+ * @file frontend/src/components/settings/SpacedRepetitionSettingsSection.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente Spaced Repetition Settings Section.
@@ -10,8 +10,8 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/features/spaced-repetition/useSpacedRepetition.ts: Typen.
- * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/features/spaced-repetition/useSpacedRepetition.ts: Typen.
+ * - frontend/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - SpacedRepetitionSettingsSection: React-Komponente.

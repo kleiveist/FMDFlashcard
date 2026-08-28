@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/help/sections/HelpHeaderSection.tsx
+ * @file frontend/src/pages/help/sections/HelpHeaderSection.tsx
  *
  * Zweck:
  * - Rendert die Seite Help Header Section.
@@ -10,7 +10,7 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/HelpPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/HelpPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - HelpHeaderSection: React-Komponente.

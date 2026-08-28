@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/spaced-repetition/components/SrDeleteModal.tsx
+ * @file frontend/src/pages/spaced-repetition/components/SrDeleteModal.tsx
  *
  * Zweck:
  * - Rendert die Seite Sr Delete Modal.
@@ -10,7 +10,7 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/spaced-repetition/SpacedRepetitionPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/spaced-repetition/SpacedRepetitionPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - SrDeleteModal: React-Komponente.

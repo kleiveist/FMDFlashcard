@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/exam-editor/importer.ts
+ * @file frontend/src/features/exam-editor/importer.ts
  *
  * Zweck:
  * - Importiert Exam-Markdown in Exam-Editor Blueprints.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/theme.test.ts
+ * @file frontend/src/lib/theme.test.ts
  *
  * Zweck:
  * - Tests fuer Theme-Helfer (Design-Mode Datensatz).

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/fast-flashcard/components/FastToolsPanel.tsx
+ * @file frontend/src/pages/fast-flashcard/components/FastToolsPanel.tsx
  *
  * Zweck:
  * - Rendert die Seite Fast Tools Panel.
@@ -10,8 +10,8 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/settings/FastFlashcardToolsSettings.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/features/fast-flashcard/constants.ts: Feature-Logik oder Hook.
+ * - frontend/src/components/settings/FastFlashcardToolsSettings.tsx: UI-Komponente.
+ * - frontend/src/features/fast-flashcard/constants.ts: Feature-Logik oder Hook.
  *
  * Exportiert:
  * - FastToolsPanel: React-Komponente.

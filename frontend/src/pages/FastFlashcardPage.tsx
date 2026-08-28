@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/FastFlashcardPage.tsx
+ * @file frontend/src/pages/FastFlashcardPage.tsx
  *
  * Zweck:
  * - Rendert die Seite Fast Flashcard.
@@ -10,8 +10,8 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/fast-flashcard/FastFlashcardPage.tsx: Seiten-Komponente.
- * - apps/fmd-desktop/src/App.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/fast-flashcard/FastFlashcardPage.tsx: Seiten-Komponente.
+ * - frontend/src/App.tsx: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.

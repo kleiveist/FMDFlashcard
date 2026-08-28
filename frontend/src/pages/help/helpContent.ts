@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/help/helpContent.ts
+ * @file frontend/src/pages/help/helpContent.ts
  *
  * Zweck:
  * - Enthaelt Hilfsfunktionen fuer Help.
@@ -9,9 +9,9 @@
  * - Normalisiert oder validiert Daten, wo erforderlich.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/content/types.ts: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/help/content/i18n.ts: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/help/content/labels.ts: Seiten-Komponente.
+ * - frontend/src/pages/help/content/types.ts: Seiten-Komponente.
+ * - frontend/src/pages/help/content/i18n.ts: Seiten-Komponente.
+ * - frontend/src/pages/help/content/labels.ts: Seiten-Komponente.
  *
  * Hinweise:
  * - Aenderungen beeinflussen alle nutzenden Module.

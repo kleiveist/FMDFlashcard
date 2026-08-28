@@ -1,5 +1,5 @@
 /*
- * @file apps/fmd-desktop/src/styles/layout.css
+ * @file frontend/src/styles/layout.css
  *
  * Zweck:
  * - Definiert Layout- und Shell-Styles fuer die App.
@@ -9,8 +9,8 @@
  * - Basis fuer Sidebar-, Content- und Panel-Anordnung.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/App.css: Nutzt dieses Modul.
- * - apps/fmd-desktop/src/styles/tokens.css: Design-Tokens und Variablen.
+ * - frontend/src/App.css: Nutzt dieses Modul.
+ * - frontend/src/styles/tokens.css: Design-Tokens und Variablen.
  *
  * Hinweise:
  * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.

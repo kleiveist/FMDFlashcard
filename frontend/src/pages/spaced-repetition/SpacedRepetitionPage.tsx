@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/spaced-repetition/SpacedRepetitionPage.tsx
+ * @file frontend/src/pages/spaced-repetition/SpacedRepetitionPage.tsx
  *
  * Zweck:
  * - Rendert die Seite Spaced Repetition.
@@ -10,8 +10,8 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/spaced-repetition/components/SrCardHost.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/pages/spaced-repetition/components/SrHeader.tsx: UI-Komponente.
+ * - frontend/src/pages/spaced-repetition/components/SrCardHost.tsx: UI-Komponente.
+ * - frontend/src/pages/spaced-repetition/components/SrHeader.tsx: UI-Komponente.
  *
  * Exportiert:
  * - SpacedRepetitionPage: React-Komponente.

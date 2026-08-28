@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/FlashcardPage.tsx
+ * @file frontend/src/pages/FlashcardPage.tsx
  *
  * Zweck:
  * - Rendert die Seite Flashcard.
@@ -10,9 +10,9 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/components/flashcards/ClozeCard.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/components/flashcards/CompositeCard.tsx: UI-Komponente.
- * - apps/fmd-desktop/src/components/flashcards/FreeTextCard.tsx: UI-Komponente.
+ * - frontend/src/components/flashcards/ClozeCard.tsx: UI-Komponente.
+ * - frontend/src/components/flashcards/CompositeCard.tsx: UI-Komponente.
+ * - frontend/src/components/flashcards/FreeTextCard.tsx: UI-Komponente.
  *
  * Exportiert:
  * - FlashcardPage: React-Komponente.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/useMarkdownDocumentModel.ts
+ * @file frontend/src/features/preview/useMarkdownDocumentModel.ts
  *
  * Purpose:
  * - Provides a markdown block document model backed by an optional web worker.

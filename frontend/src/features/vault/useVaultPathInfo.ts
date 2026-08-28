@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/vault/useVaultPathInfo.ts
+ * @file frontend/src/features/vault/useVaultPathInfo.ts
  *
  * Zweck:
  * - Stellt Pfad-Infos fuer Vaults bereit.

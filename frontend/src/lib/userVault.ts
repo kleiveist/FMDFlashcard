@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/userVault.ts
+ * @file frontend/src/lib/userVault.ts
  *
  * Zweck:
  * - Hilfsfunktionen und Typen fuer User Vault.

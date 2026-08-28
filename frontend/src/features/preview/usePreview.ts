@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/usePreview.ts
+ * @file frontend/src/features/preview/usePreview.ts
  *
  * Zweck:
  * - Stellt den Hook usePreview fuer Preview bereit.
@@ -10,9 +10,9 @@
  * - Bietet konsolidierte Daten fuer Komponenten.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/errors.ts: Hilfsfunktionen oder Typen.
- * - apps/fmd-desktop/src/lib/types.ts: Typen.
- * - apps/fmd-desktop/src/lib/tree.ts: Typen.
+ * - frontend/src/lib/errors.ts: Hilfsfunktionen oder Typen.
+ * - frontend/src/lib/types.ts: Typen.
+ * - frontend/src/lib/tree.ts: Typen.
  *
  * Exportiert:
  * - usePreview: Hook fuer Preview.

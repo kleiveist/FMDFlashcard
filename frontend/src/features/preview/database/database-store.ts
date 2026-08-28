@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/database-store.ts
+ * @file frontend/src/features/preview/database/database-store.ts
  *
  * Derives database registry and visible rows from records + config/UI state.
  */

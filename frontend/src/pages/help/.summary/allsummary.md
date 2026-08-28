@@ -1,9 +1,9 @@
-# Gesamtinhalte – Root: /home/kleif/Projects/FMDFlashcard/apps/fmd-desktop/src/pages/help
+# Gesamtinhalte – Root: /home/kleif/Projects/FMDFlashcard/frontend/src/pages/help
 
 ## 📝 appSections.ts — ./content/appSections.ts
 
 /**
- * @file apps/fmd-desktop/src/pages/help/content/appSections.ts
+ * @file frontend/src/pages/help/content/appSections.ts
  *
  * Zweck:
  * - Enthaelt Hilfsfunktionen fuer Help.
@@ -13,8 +13,8 @@
  * - Normalisiert oder validiert Daten, wo erforderlich.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/content/types.ts: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/help/helpContent.ts: Nutzt dieses Modul.
+ * - frontend/src/pages/help/content/types.ts: Seiten-Komponente.
+ * - frontend/src/pages/help/helpContent.ts: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen alle nutzenden Module.
@@ -256,7 +256,7 @@ export const APP_SECTION_DATA: Record<AppSectionId, AppSectionData> = {
 ## 📝 i18n.ts — ./content/i18n.ts
 
 /**
- * @file apps/fmd-desktop/src/pages/help/content/i18n.ts
+ * @file frontend/src/pages/help/content/i18n.ts
  *
  * Zweck:
  * - Enthaelt Hilfsfunktionen fuer Help.
@@ -266,8 +266,8 @@ export const APP_SECTION_DATA: Record<AppSectionId, AppSectionData> = {
  * - Normalisiert oder validiert Daten, wo erforderlich.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/content/types.ts: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/help/helpContent.ts: Nutzt dieses Modul.
+ * - frontend/src/pages/help/content/types.ts: Seiten-Komponente.
+ * - frontend/src/pages/help/helpContent.ts: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen alle nutzenden Module.
@@ -292,7 +292,7 @@ export const resolveList = (items: LocalizedText[] | undefined, language: AppLan
 ## 📝 labels.ts — ./content/labels.ts
 
 /**
- * @file apps/fmd-desktop/src/pages/help/content/labels.ts
+ * @file frontend/src/pages/help/content/labels.ts
  *
  * Zweck:
  * - Enthaelt Hilfsfunktionen fuer Help.
@@ -302,7 +302,7 @@ export const resolveList = (items: LocalizedText[] | undefined, language: AppLan
  * - Normalisiert oder validiert Daten, wo erforderlich.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/helpContent.ts: Nutzt dieses Modul.
+ * - frontend/src/pages/help/helpContent.ts: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen alle nutzenden Module.
@@ -1281,7 +1281,7 @@ export const trueFalseEntry: SyntaxEntry = {
 ## 📝 overview.ts — ./content/syntax/overview.ts
 
 /**
- * @file apps/fmd-desktop/src/pages/help/content/syntax/overview.ts
+ * @file frontend/src/pages/help/content/syntax/overview.ts
  *
  * Zweck:
  * - Enthaelt Hilfsfunktionen fuer Help.
@@ -1291,7 +1291,7 @@ export const trueFalseEntry: SyntaxEntry = {
  * - Normalisiert oder validiert Daten, wo erforderlich.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/helpContent.ts: Nutzt dieses Modul.
+ * - frontend/src/pages/help/helpContent.ts: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen alle nutzenden Module.
@@ -1324,7 +1324,7 @@ export const flashcardSyntaxOverview = {
 ## 📝 topics.ts — ./content/topics.ts
 
 /**
- * @file apps/fmd-desktop/src/pages/help/content/topics.ts
+ * @file frontend/src/pages/help/content/topics.ts
  *
  * Zweck:
  * - Enthaelt Hilfsfunktionen fuer Help.
@@ -1334,8 +1334,8 @@ export const flashcardSyntaxOverview = {
  * - Normalisiert oder validiert Daten, wo erforderlich.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/content/types.ts: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/help/helpContent.ts: Nutzt dieses Modul.
+ * - frontend/src/pages/help/content/types.ts: Seiten-Komponente.
+ * - frontend/src/pages/help/helpContent.ts: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen alle nutzenden Module.
@@ -1552,7 +1552,7 @@ export const helpTopics: HelpTopic[] = [
 ## 📝 types.ts — ./content/types.ts
 
 /**
- * @file apps/fmd-desktop/src/pages/help/content/types.ts
+ * @file frontend/src/pages/help/content/types.ts
  *
  * Zweck:
  * - Definiert Typen und Schnittstellen fuer Help.
@@ -1562,8 +1562,8 @@ export const helpTopics: HelpTopic[] = [
  * - Sichert konsistente Verwendung in Features und Komponenten.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/content/appSections.ts: Nutzt dieses Modul.
- * - apps/fmd-desktop/src/pages/help/content/i18n.ts: Nutzt dieses Modul.
+ * - frontend/src/pages/help/content/appSections.ts: Nutzt dieses Modul.
+ * - frontend/src/pages/help/content/i18n.ts: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Typanpassungen koennen mehrere Module betreffen.
@@ -1641,7 +1641,7 @@ export type AppSectionData = {
 ## 📝 helpContent.ts — ./helpContent.ts
 
 /**
- * @file apps/fmd-desktop/src/pages/help/helpContent.ts
+ * @file frontend/src/pages/help/helpContent.ts
  *
  * Zweck:
  * - Enthaelt Hilfsfunktionen fuer Help.
@@ -1651,9 +1651,9 @@ export type AppSectionData = {
  * - Normalisiert oder validiert Daten, wo erforderlich.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/content/types.ts: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/help/content/i18n.ts: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/help/content/labels.ts: Seiten-Komponente.
+ * - frontend/src/pages/help/content/types.ts: Seiten-Komponente.
+ * - frontend/src/pages/help/content/i18n.ts: Seiten-Komponente.
+ * - frontend/src/pages/help/content/labels.ts: Seiten-Komponente.
  *
  * Hinweise:
  * - Aenderungen beeinflussen alle nutzenden Module.
@@ -1672,7 +1672,7 @@ export * from "./content/syntax/entries";
 ## 📝 AppSectionsGuidePanel.tsx — ./sections/AppSectionsGuidePanel.tsx
 
 /**
- * @file apps/fmd-desktop/src/pages/help/sections/AppSectionsGuidePanel.tsx
+ * @file frontend/src/pages/help/sections/AppSectionsGuidePanel.tsx
  *
  * Zweck:
  * - Rendert die Seite App Sections Guide Panel.
@@ -1683,8 +1683,8 @@ export * from "./content/syntax/entries";
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/help/sections/HelpDetailSection.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - frontend/src/pages/help/sections/HelpDetailSection.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - AppSectionsGuidePanel: React-Komponente.
@@ -1873,7 +1873,7 @@ export const AppSectionsGuidePanel = ({ language }: AppSectionsGuidePanelProps) 
 ## 📝 HelpDetailSection.tsx — ./sections/HelpDetailSection.tsx
 
 /**
- * @file apps/fmd-desktop/src/pages/help/sections/HelpDetailSection.tsx
+ * @file frontend/src/pages/help/sections/HelpDetailSection.tsx
  *
  * Zweck:
  * - Rendert die Seite Help Detail Section.
@@ -1884,9 +1884,9 @@ export const AppSectionsGuidePanel = ({ language }: AppSectionsGuidePanelProps) 
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/help/sections/AppSectionsGuidePanel.tsx: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/help/sections/HelpTopicSections.tsx: Seiten-Komponente.
+ * - frontend/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - frontend/src/pages/help/sections/AppSectionsGuidePanel.tsx: Seiten-Komponente.
+ * - frontend/src/pages/help/sections/HelpTopicSections.tsx: Seiten-Komponente.
  *
  * Exportiert:
  * - HelpDetailSection: React-Komponente.
@@ -2021,7 +2021,7 @@ export const HelpDetailSection = ({
 ## 📝 HelpHeaderSection.tsx — ./sections/HelpHeaderSection.tsx
 
 /**
- * @file apps/fmd-desktop/src/pages/help/sections/HelpHeaderSection.tsx
+ * @file frontend/src/pages/help/sections/HelpHeaderSection.tsx
  *
  * Zweck:
  * - Rendert die Seite Help Header Section.
@@ -2032,7 +2032,7 @@ export const HelpDetailSection = ({
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/HelpPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/HelpPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - HelpHeaderSection: React-Komponente.
@@ -2066,7 +2066,7 @@ export const HelpHeaderSection = ({
 ## 📝 HelpOverviewSection.tsx — ./sections/HelpOverviewSection.tsx
 
 /**
- * @file apps/fmd-desktop/src/pages/help/sections/HelpOverviewSection.tsx
+ * @file frontend/src/pages/help/sections/HelpOverviewSection.tsx
  *
  * Zweck:
  * - Rendert die Seite Help Overview Section.
@@ -2077,8 +2077,8 @@ export const HelpHeaderSection = ({
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/HelpPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - frontend/src/pages/HelpPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - HelpOverviewSection: React-Komponente.
@@ -2135,7 +2135,7 @@ export const HelpOverviewSection = ({
 ## 📝 HelpTopicHeadingsBlock.tsx — ./sections/HelpTopicHeadingsBlock.tsx
 
 /**
- * @file apps/fmd-desktop/src/pages/help/sections/HelpTopicHeadingsBlock.tsx
+ * @file frontend/src/pages/help/sections/HelpTopicHeadingsBlock.tsx
  *
  * Zweck:
  * - Rendert die Seite Help Topic Headings Block.
@@ -2146,8 +2146,8 @@ export const HelpOverviewSection = ({
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/HelpPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - frontend/src/pages/HelpPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - HelpTopicHeadingsBlock: React-Komponente.
@@ -2191,7 +2191,7 @@ export const HelpTopicHeadingsBlock = ({
 ## 📝 HelpTopicSections.tsx — ./sections/HelpTopicSections.tsx
 
 /**
- * @file apps/fmd-desktop/src/pages/help/sections/HelpTopicSections.tsx
+ * @file frontend/src/pages/help/sections/HelpTopicSections.tsx
  *
  * Zweck:
  * - Rendert die Seite Help Topic Sections.
@@ -2202,8 +2202,8 @@ export const HelpTopicHeadingsBlock = ({
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/help/sections/HelpDetailSection.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - frontend/src/pages/help/sections/HelpDetailSection.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - HelpTopicSections: React-Komponente.
@@ -2307,7 +2307,7 @@ export const HelpTopicSections = ({
 ## 📝 SyntaxSection.tsx — ./sections/SyntaxSection.tsx
 
 /**
- * @file apps/fmd-desktop/src/pages/help/sections/SyntaxSection.tsx
+ * @file frontend/src/pages/help/sections/SyntaxSection.tsx
  *
  * Zweck:
  * - Rendert die Seite Syntax Section.
@@ -2318,8 +2318,8 @@ export const HelpTopicSections = ({
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/helpContent.ts: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/help/sections/HelpDetailSection.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/help/helpContent.ts: Seiten-Komponente.
+ * - frontend/src/pages/help/sections/HelpDetailSection.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - SyntaxSection: React-Komponente.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/flashcards/useFlashcardAreaToggle.ts
+ * @file frontend/src/features/flashcards/useFlashcardAreaToggle.ts
  *
  * Shared staged area-toggle state for Flashcard/Fast/Repetition result headers.
  */

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * @file apps/fmd-desktop/src/components/flashcards/ClozeCard.test.tsx
+ * @file frontend/src/components/flashcards/ClozeCard.test.tsx
  *
  * Zweck:
  * - Testet Rendering und Feedback fuer Cloze-Karten.

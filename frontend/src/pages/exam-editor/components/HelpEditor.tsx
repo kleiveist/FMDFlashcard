@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-editor/components/HelpEditor.tsx
+ * @file frontend/src/pages/exam-editor/components/HelpEditor.tsx
  */
 
 import { useState } from "react";

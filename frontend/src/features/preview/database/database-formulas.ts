@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/database-formulas.ts
+ * @file frontend/src/features/preview/database/database-formulas.ts
  *
  * Aggregation-only formula engine for structured formula definitions.
  */

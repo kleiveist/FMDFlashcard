@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/shortcuts/closeOrBack.ts
+ * @file frontend/src/lib/shortcuts/closeOrBack.ts
  *
  * Zweck:
  * - Registriert schliessbare UI-Layer fuer den zentralen Esc-Handler.

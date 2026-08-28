@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/cardMedia.ts
+ * @file frontend/src/lib/cardMedia.ts
  *
  * Zweck:
  * - Definiert Medienmodelle fuer PNG-Embeds und svg-Codefences.

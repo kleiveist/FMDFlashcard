@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/settings/ExamSettingsSection.tsx
+ * @file frontend/src/components/settings/ExamSettingsSection.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente Exam Settings Section.
@@ -10,8 +10,8 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/features/settings/useAppSettings.ts: Typen.
- * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/features/settings/useAppSettings.ts: Typen.
+ * - frontend/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - ExamSettingsPanel: React-Komponente.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/styles/components/preview-list-markers.test.ts
+ * @file frontend/src/styles/components/preview-list-markers.test.ts
  *
  * Zweck:
  * - Verifiziert globale Listen-Marker-Regeln und Hybrid-List-Variant-Selektoren.

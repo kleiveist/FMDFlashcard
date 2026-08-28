@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/exam/pointsProfiles.ts
+ * @file frontend/src/lib/exam/pointsProfiles.ts
  *
  * Zweck:
  * - Typen und Normalisierung fuer Exam Points-Profile.

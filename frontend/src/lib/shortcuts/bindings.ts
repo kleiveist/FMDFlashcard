@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/shortcuts/bindings.ts
+ * @file frontend/src/lib/shortcuts/bindings.ts
  *
  * Zweck:
  * - Normalisiert und vergleicht Shortcut-Bindings.

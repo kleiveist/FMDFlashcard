@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/styles/components/responsive.test.ts
+ * @file frontend/src/styles/components/responsive.test.ts
  *
  * Contract tests for responsive study/exam panel width behavior under 1200px.
  */

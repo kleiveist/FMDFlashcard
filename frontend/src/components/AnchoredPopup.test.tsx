@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * @file apps/fmd-desktop/src/components/AnchoredPopup.test.tsx
+ * @file frontend/src/components/AnchoredPopup.test.tsx
  *
  * Zweck:
  * - Tests fuer AnchoredPopup Interaktionen (X, ESC, Outside-Click, Fokus).

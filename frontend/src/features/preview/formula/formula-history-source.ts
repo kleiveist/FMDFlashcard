@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/formula/formula-history-source.ts
+ * @file frontend/src/features/preview/formula/formula-history-source.ts
  *
  * Shared loader for History formula source files.
  */

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/views/pie-view.tsx
+ * @file frontend/src/features/preview/database/views/pie-view.tsx
  *
  * Pie/donut visualization with type-aware aggregations.
  */

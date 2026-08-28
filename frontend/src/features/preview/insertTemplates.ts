@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/insertTemplates.ts
+ * @file frontend/src/features/preview/insertTemplates.ts
  *
  * Zweck:
  * - Zentrale, datengetriebene Insert-Template-Registry fuer den Hybrid-Editor.

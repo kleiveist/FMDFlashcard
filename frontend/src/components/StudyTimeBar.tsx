@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/StudyTimeBar.tsx
+ * @file frontend/src/components/StudyTimeBar.tsx
  *
  * Zweck:
  * - Schlanker Progress-Bar fuer Study-View-Header.

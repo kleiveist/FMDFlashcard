@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/views/table-view.tsx
+ * @file frontend/src/features/preview/database/views/table-view.tsx
  *
  * Virtualized table view for database records.
  */

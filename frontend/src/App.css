@@ -1,5 +1,5 @@
 /*
- * @file apps/fmd-desktop/src/App.css
+ * @file frontend/src/App.css
  *
  * Zweck:
  * - Bietet den zentralen Stylesheet-Entry fuer das Frontend.
@@ -9,9 +9,9 @@
  * - Zustands- und Variantenklassen fuer Interaktionen.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/styles/tokens.css: Styles.
- * - apps/fmd-desktop/src/styles/base.css: Styles.
- * - apps/fmd-desktop/src/styles/layout.css: Styles.
+ * - frontend/src/styles/tokens.css: Styles.
+ * - frontend/src/styles/base.css: Styles.
+ * - frontend/src/styles/layout.css: Styles.
  *
  * Hinweise:
  * - Nutzt CSS-Variablen aus styles/tokens.css fuer konsistente Farben und Abstaende.

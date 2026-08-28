@@ -6,10 +6,10 @@ control.py entry:
   python3 tools/control.py --build --copy
 
 Sources:
-  - apps/fmd-desktop/src-tauri/target/release/bundle/appimage
-  - apps/fmd-desktop/src-tauri/target/release/bundle/deb
-  - apps/fmd-desktop/src-tauri/target/release/bundle/rpm
-  - apps/fmd-desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/portable
+  - frontend/src-tauri/target/release/bundle/appimage
+  - frontend/src-tauri/target/release/bundle/deb
+  - frontend/src-tauri/target/release/bundle/rpm
+  - frontend/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/portable
 
 Destination:
   - /run/media/kleif/Samsung USB/education/.archive/bundle

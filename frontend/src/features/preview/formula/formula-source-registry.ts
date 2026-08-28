@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/formula/formula-source-registry.ts
+ * @file frontend/src/features/preview/formula/formula-source-registry.ts
  *
  * Shared registry/helpers for formula source options.
  */

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * @file apps/fmd-desktop/src/lib/cardMedia.test.ts
+ * @file frontend/src/lib/cardMedia.test.ts
  */
 
 import { describe, expect, it } from "vitest";

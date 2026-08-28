@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/flashcards/logic.ts
+ * @file frontend/src/features/flashcards/logic.ts
  *
  * Zweck:
  * - Enthaelt domanenspezifische Logik fuer Flashcards.
@@ -9,8 +9,8 @@
  * - Normalisiert Eingaben und Ergebnisse fuer die UI.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
- * - apps/fmd-desktop/src/components/flashcards/ClozeCard.tsx: Nutzt dieses Modul.
+ * - frontend/src/lib/flashcards.ts: Hilfsfunktionen oder Typen.
+ * - frontend/src/components/flashcards/ClozeCard.tsx: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen Auswertung und Bewertung im Feature.

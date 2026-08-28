@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/keybindings/registry.ts
+ * @file frontend/src/keybindings/registry.ts
  *
  * Zweck:
  * - Verknuepft Shortcut-IDs mit den dazugehoerigen Actions.

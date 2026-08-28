@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/spaced-repetition/components/SrStatsAndChart.tsx
+ * @file frontend/src/pages/spaced-repetition/components/SrStatsAndChart.tsx
  *
  * Zweck:
  * - Rendert die Seite Sr Stats And Chart.
@@ -10,9 +10,9 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/chart.ts: Hilfsfunktionen oder Typen.
- * - apps/fmd-desktop/src/features/spaced-repetition/useSpacedRepetition.ts: Typen.
- * - apps/fmd-desktop/src/pages/spaced-repetition/components/SrBoxesPanel.tsx: UI-Komponente.
+ * - frontend/src/lib/chart.ts: Hilfsfunktionen oder Typen.
+ * - frontend/src/features/spaced-repetition/useSpacedRepetition.ts: Typen.
+ * - frontend/src/pages/spaced-repetition/components/SrBoxesPanel.tsx: UI-Komponente.
  *
  * Exportiert:
  * - SrStatsAndChart: React-Komponente.

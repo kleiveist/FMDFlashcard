@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/spaced-repetition/logic.ts
+ * @file frontend/src/features/spaced-repetition/logic.ts
  *
  * Zweck:
  * - Enthaelt domanenspezifische Logik fuer Spaced Repetition.
@@ -9,8 +9,8 @@
  * - Normalisiert Eingaben und Ergebnisse fuer die UI.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/flashcards.ts: Typen.
- * - apps/fmd-desktop/src/features/flashcards/logic.ts: Typen.
+ * - frontend/src/lib/flashcards.ts: Typen.
+ * - frontend/src/features/flashcards/logic.ts: Typen.
  *
  * Hinweise:
  * - Aenderungen beeinflussen Auswertung und Bewertung im Feature.

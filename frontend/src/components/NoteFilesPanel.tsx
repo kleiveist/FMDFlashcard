@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/NoteFilesPanel.tsx
+ * @file frontend/src/components/NoteFilesPanel.tsx
  *
  * Zweck:
  * - Rendert eine Liste von Notizdateien mit Flashcards.

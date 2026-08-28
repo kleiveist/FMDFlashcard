@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/exam/autoCards.test.ts
+ * @file frontend/src/lib/exam/autoCards.test.ts
  *
  * Zweck:
  * - Tests fuer Auto-Card Wrapper Utilities.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/exam-points/useExamPointsProfiles.ts
+ * @file frontend/src/features/exam-points/useExamPointsProfiles.ts
  *
  * Zweck:
  * - Verwaltet Points-Profile pro User-Profil.
@@ -153,7 +153,7 @@ export const useExamPointsProfiles = ({
           return;
         }
         const loaded = await loadExamPointsProfileStore(profilePath);
-        let next = normalizeStoreWithFallback(loaded, legacyDefaults);
+        const next = normalizeStoreWithFallback(loaded, legacyDefaults);
         const needsWrite =
           loaded.profiles.length !== next.profiles.length ||
           loaded.defaultProfileId !== next.defaultProfileId;

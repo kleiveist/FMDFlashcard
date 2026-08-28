@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/ui/database-properties-panel.tsx
+ * @file frontend/src/features/preview/database/ui/database-properties-panel.tsx
  *
  * Properties panel for visible database columns.
  */

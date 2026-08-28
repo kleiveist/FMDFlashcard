@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamResultsPanel.tsx
+ * @file frontend/src/pages/exam-simulation/components/ExamResultsPanel.tsx
  *
  * Zweck:
  * - Rendert die Seite Exam Results Panel.
@@ -10,7 +10,7 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/exam-simulation/ExamSimulationPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/exam-simulation/ExamSimulationPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - ExamResultsPanel: React-Komponente.

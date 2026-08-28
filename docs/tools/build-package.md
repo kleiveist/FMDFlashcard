@@ -20,7 +20,7 @@ python3 tools/control.py --build-lin
 ```
 
 Typical output root:
-- `apps/fmd-desktop/src-tauri/target/release/bundle`
+- `frontend/src-tauri/target/release/bundle`
 
 Common toggles:
 - `NO_STRIP=true|false`
@@ -52,7 +52,7 @@ Common toggles:
 - `ALLOW_CROSS=1`
 
 Typical output:
-- `apps/fmd-desktop/src-tauri/target/release/bundle/portable`
+- `frontend/src-tauri/target/release/bundle/portable`
 
 ## Windows cross-compile on Linux
 
@@ -68,7 +68,7 @@ Common toggles:
 - `CLEAN_PORTABLE=0`
 
 Typical output:
-- `apps/fmd-desktop/src-tauri/target/<target>/release/bundle/portable`
+- `frontend/src-tauri/target/<target>/release/bundle/portable`
 
 ## macOS bundles
 

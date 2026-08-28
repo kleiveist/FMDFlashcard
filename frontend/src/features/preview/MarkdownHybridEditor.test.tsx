@@ -8407,7 +8407,6 @@ describe("MarkdownHybridEditor", () => {
           Object.defineProperty(HTMLTextAreaElement.prototype, "scrollHeight", originalScrollHeight);
         } else {
           // jsdom exposes it on the prototype; delete is safe here if we created the descriptor.
-          // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
           delete (HTMLTextAreaElement.prototype as { scrollHeight?: number }).scrollHeight;
         }
       }

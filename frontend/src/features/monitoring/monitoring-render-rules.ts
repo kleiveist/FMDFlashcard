@@ -992,7 +992,7 @@ export const renderMonitoringValue = ({
   const parsed = parseProfileInput(profile.inputFormat, value);
   let displayText = parsed.textValue || parsed.rawText.trim();
   let symbol: string | null = null;
-  let badge: string | null = null;
+  const badge: string | null = null;
   let percentValue: number | null = null;
   let progressVisual: MonitoringRenderResult["progressVisual"] = null;
 

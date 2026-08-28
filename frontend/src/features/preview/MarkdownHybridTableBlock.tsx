@@ -305,7 +305,7 @@ const resolveTextareaCaretAnchor = (
 
   const beforeText = escapeHtmlForMirror(textarea.value.slice(0, safeCaret))
     .replace(/\n$/g, "\n ");
-  mirror.innerHTML = `${beforeText}<span data-md-caret-anchor=\"true\">&#8203;</span>`;
+  mirror.innerHTML = `${beforeText}<span data-md-caret-anchor="true">&#8203;</span>`;
   document.body.appendChild(mirror);
 
   const marker = mirror.querySelector<HTMLElement>("[data-md-caret-anchor='true']");

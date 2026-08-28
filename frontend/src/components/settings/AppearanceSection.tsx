@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/settings/AppearanceSection.tsx
+ * @file frontend/src/components/settings/AppearanceSection.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente Appearance Section.
@@ -10,8 +10,8 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/theme.ts: Typen.
- * - apps/fmd-desktop/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/lib/theme.ts: Typen.
+ * - frontend/src/pages/SettingsPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - AppearanceSection: React-Komponente.

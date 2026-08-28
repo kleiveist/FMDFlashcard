@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/spaced-repetition/useSpacedRepetition.ts
+ * @file frontend/src/features/spaced-repetition/useSpacedRepetition.ts
  *
  * Zweck:
  * - Stellt den Hook useSpacedRepetition fuer Spaced Repetition bereit.
@@ -10,9 +10,9 @@
  * - Bietet konsolidierte Daten fuer Komponenten.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
- * - apps/fmd-desktop/src/features/flashcards/useFlashcards.ts: Typen.
- * - apps/fmd-desktop/src/lib/flashcards.ts: Typen.
+ * - frontend/src/features/flashcards/logic.ts: Feature-Logik oder Hook.
+ * - frontend/src/features/flashcards/useFlashcards.ts: Typen.
+ * - frontend/src/lib/flashcards.ts: Typen.
  *
  * Exportiert:
  * - SPACED_REPETITION_PAGE_SIZES: Zentrale Export-API.

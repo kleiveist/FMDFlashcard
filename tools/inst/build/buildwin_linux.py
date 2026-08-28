@@ -328,7 +328,7 @@ def run_install(dry_run: bool = False) -> int:
     info(f"Repo root: {repo_root}")
     info(f"App dir:   {app_dir}")
     if using_legacy:
-        warn("Using legacy path: consider migrating to /apps/fmd-desktop")
+        warn("Using legacy path: consider migrating to /frontend")
 
     section("Settings")
     kv("WIN_LINUX_TARGET", target)

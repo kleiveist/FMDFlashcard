@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/database-filters.ts
+ * @file frontend/src/features/preview/database/database-filters.ts
  *
  * Type-aware filtering for database block records.
  */

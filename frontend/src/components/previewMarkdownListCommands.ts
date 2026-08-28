@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/previewMarkdownListCommands.ts
+ * @file frontend/src/components/previewMarkdownListCommands.ts
  *
  * Zweck:
  * - Kapselt listenbewusste DOM-Kommandos fuer den contentEditable-Markdown-Editor.

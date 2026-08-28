@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/featureFlags.ts
+ * @file frontend/src/lib/featureFlags.ts
  *
  * Purpose:
  * - Central place for feature toggles.

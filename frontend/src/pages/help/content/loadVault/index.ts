@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/help/content/loadVault/index.ts
+ * @file frontend/src/pages/help/content/loadVault/index.ts
  *
  * Purpose:
  * - Provides the "Load a vault" guide content for Help.

@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/fastFlashcard.ts
+ * @file frontend/src/lib/fastFlashcard.ts
  *
  * Zweck:
  * - Typen fuer Fast Flashcard Sessions und Storage.

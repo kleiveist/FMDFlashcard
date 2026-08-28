@@ -17,7 +17,7 @@ FMDFlashcard is local-first. The frontend owns most data modeling, while Tauri/R
 
 ## Tauri App Data Files
 
-The Rust backend resolves these under `app.path().app_data_dir()` in [`src-tauri/src/lib.rs`](../../../apps/fmd-desktop/src-tauri/src/lib.rs).
+The Rust backend resolves these under `app.path().app_data_dir()` in [`src-tauri/src/lib.rs`](../../../frontend/src-tauri/src/lib.rs).
 
 | File | Command path | Current role |
 | --- | --- | --- |
@@ -45,7 +45,7 @@ The Rust side validates file extensions and path boundaries for vault-relative o
 
 ## Profile Root Resolution
 
-Profile root resolution is implemented in [`lib/userVault.ts`](../../../apps/fmd-desktop/src/lib/userVault.ts).
+Profile root resolution is implemented in [`lib/userVault.ts`](../../../frontend/src/lib/userVault.ts).
 
 | Mode | Resolution |
 | --- | --- |
@@ -87,8 +87,8 @@ The current write target defaults to `users/`, while legacy reads also support `
 
 | Domain | Owner module | Notes |
 | --- | --- | --- |
-| Profile root, active profile, migration. | [`features/user-vault/useUserVault.ts`](../../../apps/fmd-desktop/src/features/user-vault/useUserVault.ts), [`features/user-vault/storage.ts`](../../../apps/fmd-desktop/src/features/user-vault/storage.ts). | Bootstraps root, lists profiles, manages active profile, imports/exports. |
-| Profile settings. | [`features/settings/useAppSettings.ts`](../../../apps/fmd-desktop/src/features/settings/useAppSettings.ts). | Loads/saves app settings through profile context when available. |
+| Profile root, active profile, migration. | [`features/user-vault/useUserVault.ts`](../../../frontend/src/features/user-vault/useUserVault.ts), [`features/user-vault/storage.ts`](../../../frontend/src/features/user-vault/storage.ts). | Bootstraps root, lists profiles, manages active profile, imports/exports. |
+| Profile settings. | [`features/settings/useAppSettings.ts`](../../../frontend/src/features/settings/useAppSettings.ts). | Loads/saves app settings through profile context when available. |
 | Spaced repetition state. | Spaced repetition feature plus user-vault storage. | Stores per-profile SR users and card state. |
 | Fast flashcard sessions. | Fast flashcard hooks plus user-vault storage. | Stores per-profile session summaries. |
 | Exam runs. | Exam simulation view model plus user-vault storage. | Stores profile-scoped exam history and status-derived metadata. |

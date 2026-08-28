@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/frontmatter-update.ts
+ * @file frontend/src/features/preview/database/frontmatter-update.ts
  *
  * Safe frontmatter upsert helpers used by the database block.
  */

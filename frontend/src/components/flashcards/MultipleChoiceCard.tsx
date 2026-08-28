@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/flashcards/MultipleChoiceCard.tsx
+ * @file frontend/src/components/flashcards/MultipleChoiceCard.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente Multiple Choice Card.
@@ -10,8 +10,8 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/flashcards.ts: Typen.
- * - apps/fmd-desktop/src/components/flashcards/CompositeCard.tsx: Nutzt dieses Modul.
+ * - frontend/src/lib/flashcards.ts: Typen.
+ * - frontend/src/components/flashcards/CompositeCard.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - MultipleChoiceCard: React-Komponente.

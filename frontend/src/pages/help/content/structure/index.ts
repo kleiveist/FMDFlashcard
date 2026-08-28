@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/help/content/structure/index.ts
+ * @file frontend/src/pages/help/content/structure/index.ts
  *
  * Purpose:
  * - Public entry for structured syntax help content.

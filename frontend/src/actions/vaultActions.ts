@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/actions/vaultActions.ts
+ * @file frontend/src/actions/vaultActions.ts
  *
  * Zweck:
  * - Uebernimmt Vault-bezogene Aktionen fuer die Keybinding-Registry.

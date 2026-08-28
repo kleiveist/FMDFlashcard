@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-editor/components/ContentMode.test.ts
+ * @file frontend/src/pages/exam-editor/components/ContentMode.test.ts
  */
 
 import { createElement } from "react";

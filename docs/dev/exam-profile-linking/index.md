@@ -9,7 +9,7 @@ This section documents the current implementation of `Task` frontmatter linking 
 
 - Covers mapping from markdown `Task` attribute to run profile behavior.
 - Covers auto-profile selection, manual override behavior, points/time calculation rules, and UI touchpoints.
-- Aligned with current implementation in `apps/fmd-desktop/src/pages/exam-simulation/hooks/useExamSimulationViewModel.ts`.
+- Aligned with current implementation in `frontend/src/pages/exam-simulation/hooks/useExamSimulationViewModel.ts`.
 
 ## Documentation Map
 

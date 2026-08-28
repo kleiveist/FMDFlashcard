@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/settings/FastFlashcardToolsSettings.tsx
+ * @file frontend/src/components/settings/FastFlashcardToolsSettings.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente Fast Flashcard Tools Settings.
@@ -10,8 +10,8 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/features/flashcards/useFlashcards.ts: Typen.
- * - apps/fmd-desktop/src/pages/fast-flashcard/components/FastToolsPanel.tsx: Nutzt dieses Modul.
+ * - frontend/src/features/flashcards/useFlashcards.ts: Typen.
+ * - frontend/src/pages/fast-flashcard/components/FastToolsPanel.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - FastFlashcardToolsSettings: React-Komponente.

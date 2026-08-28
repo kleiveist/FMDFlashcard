@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/database-panel-layer-style.ts
+ * @file frontend/src/features/preview/database/database-panel-layer-style.ts
  *
  * Utility helpers for desktop database panel layer positioning.
  */

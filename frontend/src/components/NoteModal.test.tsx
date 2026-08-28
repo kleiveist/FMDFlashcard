@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * @file apps/fmd-desktop/src/components/NoteModal.test.tsx
+ * @file frontend/src/components/NoteModal.test.tsx
  *
  * Zweck:
  * - Tests fuer NoteModal Interaktionen (ESC, Backdrop, aria-expanded).

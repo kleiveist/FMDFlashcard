@@ -19,10 +19,10 @@ SVG fences (`language-svg`) still use the dedicated SVG preview path.
 
 ## Architecture
 
-- Core engine: `apps/fmd-desktop/src/lib/markdownCodeHighlight.ts`
-- Config flags: `apps/fmd-desktop/src/lib/markdownCodeHighlightConfig.ts`
-- Shared pre renderer: `apps/fmd-desktop/src/components/MarkdownHighlightedPre.tsx`
-- Shared styles: `apps/fmd-desktop/src/styles/components/code-highlighting.css`
+- Core engine: `frontend/src/lib/markdownCodeHighlight.ts`
+- Config flags: `frontend/src/lib/markdownCodeHighlightConfig.ts`
+- Shared pre renderer: `frontend/src/components/MarkdownHighlightedPre.tsx`
+- Shared styles: `frontend/src/styles/components/code-highlighting.css`
 
 Code blocks are rendered as `<pre><code class="language-*">...</code></pre>` and highlighted with `highlight.js` core + language modules loaded lazily on demand.
 

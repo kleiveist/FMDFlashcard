@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * @file apps/fmd-desktop/src/lib/useMobileSafeInput.test.tsx
+ * @file frontend/src/lib/useMobileSafeInput.test.tsx
  *
  * Zweck:
  * - Verifiziert beforeinput/deleteContentBackward Handling fuer virtuelle Tastaturen.

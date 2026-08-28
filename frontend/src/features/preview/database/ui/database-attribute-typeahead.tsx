@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/ui/database-attribute-typeahead.tsx
+ * @file frontend/src/features/preview/database/ui/database-attribute-typeahead.tsx
  *
  * Shared attribute typeahead input for database panels.
  */

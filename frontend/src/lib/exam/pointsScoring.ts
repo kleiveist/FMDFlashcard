@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/exam/pointsScoring.ts
+ * @file frontend/src/lib/exam/pointsScoring.ts
  *
  * Zweck:
  * - Gemeinsame Hilfsfunktionen fuer Punkteprofile im Exam-Scoring.

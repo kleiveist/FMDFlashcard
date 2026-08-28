@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/markdownEditorColors.ts
+ * @file frontend/src/lib/markdownEditorColors.ts
  *
  * Zweck:
  * - Leitet Markdown-Editor-Farben aus einer Akzentfarbe ab.

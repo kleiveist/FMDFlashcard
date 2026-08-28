@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/lib/userVault.test.ts
+ * @file frontend/src/lib/userVault.test.ts
  *
  * Zweck:
  * - Tests fuer User Vault Hilfsfunktionen.

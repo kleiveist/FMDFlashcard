@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/exam/useExamFiles.test.ts
+ * @file frontend/src/features/exam/useExamFiles.test.ts
  *
  * Zweck:
  * - Tests fuer Exam-Datei-Klassifizierung.

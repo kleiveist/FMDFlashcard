@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamFilePanel.test.tsx
+ * @file frontend/src/pages/exam-simulation/components/ExamFilePanel.test.tsx
  *
  * Zweck:
  * - UI-Tests fuer ExamFilePanel (Filter, Auswahl, Reorder).

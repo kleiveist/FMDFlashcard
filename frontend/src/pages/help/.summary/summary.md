@@ -1,4 +1,4 @@
-Markdown-Scan – Root: /home/kleif/Projects/FMDFlashcard/apps/fmd-desktop/src/pages/help
+Markdown-Scan – Root: /home/kleif/Projects/FMDFlashcard/frontend/src/pages/help
 Erzeugt: 2026-01-15T12:19:26
 Einstellungen: content=snippet, snippet_chars=800, toc_depth=3, types=.css, .ts, .tsx
 

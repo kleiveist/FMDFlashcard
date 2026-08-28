@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/frontmatter-property-icons.tsx
+ * @file frontend/src/features/preview/frontmatter-property-icons.tsx
  *
  * Shared icon set for frontmatter and database property type UIs.
  */

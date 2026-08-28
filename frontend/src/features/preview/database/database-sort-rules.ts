@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/preview/database/database-sort-rules.ts
+ * @file frontend/src/features/preview/database/database-sort-rules.ts
  *
  * Header-sort rule helpers for database table interactions.
  */

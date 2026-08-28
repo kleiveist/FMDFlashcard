@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * @file apps/fmd-desktop/src/components/PreviewPanel.test.ts
+ * @file frontend/src/components/PreviewPanel.test.ts
  *
  * Zweck:
  * - Tests fuer PreviewPanel Markdown-Hilfslogik.

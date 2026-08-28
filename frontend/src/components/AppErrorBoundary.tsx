@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/AppErrorBoundary.tsx
+ * @file frontend/src/components/AppErrorBoundary.tsx
  *
  * Zweck:
  * - Rendert die UI-Komponente App Error Boundary.
@@ -10,7 +10,7 @@
  * - Stellt Inhalts- und Statusvarianten dar.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/App.tsx: Nutzt dieses Modul.
+ * - frontend/src/App.tsx: Nutzt dieses Modul.
  * - react: React-API.
  *
  * Exportiert:

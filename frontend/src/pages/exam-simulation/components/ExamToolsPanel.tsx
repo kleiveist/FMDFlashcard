@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamToolsPanel.tsx
+ * @file frontend/src/pages/exam-simulation/components/ExamToolsPanel.tsx
  *
  * Zweck:
  * - Rendert die Seite Exam Tools Panel.
@@ -10,7 +10,7 @@
  * - Reicht App-State und Handler an Unterkomponenten weiter.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/exam-simulation/ExamSimulationPage.tsx: Nutzt dieses Modul.
+ * - frontend/src/pages/exam-simulation/ExamSimulationPage.tsx: Nutzt dieses Modul.
  *
  * Exportiert:
  * - ExamToolsPanel: React-Komponente.

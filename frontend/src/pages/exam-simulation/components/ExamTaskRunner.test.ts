@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/exam-simulation/components/ExamTaskRunner.test.ts
+ * @file frontend/src/pages/exam-simulation/components/ExamTaskRunner.test.ts
  *
  * Zweck:
  * - Testet Exam Task Runner.test und zugehoerige Logik.
@@ -9,8 +9,8 @@
  * - Sichert Regressionen fuer zentrale Szenarien.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/lib/exam.ts: Typen.
- * - apps/fmd-desktop/src/pages/exam-simulation/components/ExamTaskRunner.tsx: UI-Komponente.
+ * - frontend/src/lib/exam.ts: Typen.
+ * - frontend/src/pages/exam-simulation/components/ExamTaskRunner.tsx: UI-Komponente.
  *
  * Hinweise:
  * - Nur fuer Testlauf; keine Produktivnutzung.

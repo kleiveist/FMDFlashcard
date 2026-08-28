@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/pages/help/content/i18n.ts
+ * @file frontend/src/pages/help/content/i18n.ts
  *
  * Zweck:
  * - Enthaelt Hilfsfunktionen fuer Help.
@@ -9,8 +9,8 @@
  * - Normalisiert oder validiert Daten, wo erforderlich.
  *
  * Verbunden mit:
- * - apps/fmd-desktop/src/pages/help/content/types.ts: Seiten-Komponente.
- * - apps/fmd-desktop/src/pages/help/helpContent.ts: Nutzt dieses Modul.
+ * - frontend/src/pages/help/content/types.ts: Seiten-Komponente.
+ * - frontend/src/pages/help/helpContent.ts: Nutzt dieses Modul.
  *
  * Hinweise:
  * - Aenderungen beeinflussen alle nutzenden Module.

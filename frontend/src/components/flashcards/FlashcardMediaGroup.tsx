@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/components/flashcards/FlashcardMediaGroup.tsx
+ * @file frontend/src/components/flashcards/FlashcardMediaGroup.tsx
  */
 
 import type { MediaItem } from "../../lib/cardMedia";

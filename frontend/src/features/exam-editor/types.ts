@@ -1,5 +1,5 @@
 /**
- * @file apps/fmd-desktop/src/features/exam-editor/types.ts
+ * @file frontend/src/features/exam-editor/types.ts
  *
  * Zweck:
  * - Definiert Exam-Editor Blueprint-Typen.

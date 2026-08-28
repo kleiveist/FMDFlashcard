@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * @file apps/fmd-desktop/src/components/flashcards/ClozeCard.pointer.test.tsx
+ * @file frontend/src/components/flashcards/ClozeCard.pointer.test.tsx
  *
  * Zweck:
  * - Verifiziert Pointer-DnD fuer Cloze Drag-Tokens.
