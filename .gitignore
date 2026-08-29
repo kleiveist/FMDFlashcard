@@ -18,6 +18,7 @@ Thumbs.db
 .idea/
 .obsidian/
 .tempFix/
+**/.summary/
 
 # Python / virtualenv
 __pycache__/

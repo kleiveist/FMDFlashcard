@@ -417,6 +417,10 @@ def run_path_regression() -> dict[str, Any]:
     for relative in tracked:
         if relative.startswith("apps/"):
             violations.append(f"tracked legacy path: {relative}")
+        if "/.summary/" in f"/{relative}" or Path(relative).name.startswith(
+            "folderlist_"
+        ):
+            violations.append(f"tracked generated inventory: {relative}")
         path = PROJECT_ROOT / relative
         if relative in allowed or not path.is_file():
             continue
