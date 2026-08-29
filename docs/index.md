@@ -13,12 +13,12 @@
 - 📝 [Architecture overview](dev/architecture.md)
 - 📝 [Developer ↔ Codex Workflow](dev/codex-workflow.md)
 
-## 📁 Data Processing
-- 🗂️ [Overview](dev/data-processing/data-processing.md)
-- 📝 [Database Blocks and Views](dev/data-processing/database-blocks-and-views.md)
-- 📝 [Filtering, Sorting, and Normalization](dev/data-processing/filtering-sorting-and-normalization.md)
-- 📝 [Markdown and Frontmatter](dev/data-processing/markdown-and-frontmatter.md)
-- 📝 [Persistence and Profile Data](dev/data-processing/persistence-and-profile-data.md)
+## 📁 Migration
+- 🗂️ [Overview](migration/migration.md)
+- 📝 [Template-Tooling migration report](migration/template-tooling-v2.md)
+
+## 📁 Toolingdocs
+- 🗂️ [Portable Tooling overview](toolingdocs/toolingdocs.md)
 
 ## 📁 Tools
 - 🗂️ [Overview](tools/tools.md)
@@ -34,6 +34,8 @@
 - 📝 [Spaced repetition](usr/spaced-repetition.md)
 - 📝 [Troubleshooting](usr/troubleshooting.md)
 - 📝 [User Vault (Statistiken)](usr/user-vault.md)
-- 📝 [Canvas Syntax](usr/syntax/canvas-syntax.md)
 
 <!-- AUTO-GENERATED:docs-index END -->
+
+For the full central navigation, start at the
+[pinned Template-Tooling documentation](toolingdocs/README.md).

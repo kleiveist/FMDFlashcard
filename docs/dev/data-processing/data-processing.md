@@ -45,7 +45,7 @@ Important: the current app does not use SQLite, IndexedDB, or a SQL query engine
 
 | Concern | Primary modules |
 | --- | --- |
-| Tauri filesystem bridge | [`src-tauri/src/lib.rs`](../../../frontend/src-tauri/src/lib.rs) |
+| Tauri filesystem bridge | [`src-tauri/src/lib.rs`](../../../src-tauri/src/lib.rs) |
 | Vault scanning hook | [`features/vault/useVault.ts`](../../../frontend/src/features/vault/useVault.ts) |
 | Markdown block segmentation | [`features/preview/markdownBlocks.ts`](../../../frontend/src/features/preview/markdownBlocks.ts) |
 | Frontmatter parsing and updates | [`features/preview/frontmatter.ts`](../../../frontend/src/features/preview/frontmatter.ts), [`features/preview/database/frontmatter-update.ts`](../../../frontend/src/features/preview/database/frontmatter-update.ts) |

@@ -1,10 +1,15 @@
+<!-- AUTO-GENERATED:backlink START -->
+[← Back](migration.md)
+<!-- AUTO-GENERATED:backlink END -->
 # Template-Tooling migration report
 
-Status: in progress
+Status: local implementation complete; pull-request CI and independent review pending
 
 Plan version: 2.0
 
 Started: 2026-08-28
+
+Local implementation completed: 2026-08-29
 
 ## Immutable inputs
 
@@ -185,6 +190,76 @@ following acceptance passed:
 
 Outside this historical report, a tracked-content search finds no remaining literal reference to
 the old desktop or user-data paths.
+
+## Tooling integration evidence
+
+The release payload was first copied to an external staging directory. Before and after the
+read-only integration check, a full-tree digest was identical. The plan contained exactly one
+addition, `.tooling-state/state.toml`, and no conflict, product edit, deletion, backend, or cloud
+component. Staged Full-Fix, verification, and a second check all passed.
+
+The same sequence was then applied to the clean migration branch. The live Full-Fix added only
+the state file. A second integration check was a verified no-op, and `tooling verify` passed. The
+committed state payload digest is
+`sha256:32ea536e28bab879db7113232212ada5dbef98ca26726597b1d585253f6a9097`.
+
+The manifest lists 399 content files; Git tracks exactly those files plus
+`tools/PORTABLE-PAYLOAD.json`. Every listed size, executable bit, and SHA-256 digest is checked in
+the Path Regression job. This includes the centrally supplied
+`tools/quality/rust_analyzer/dist/rust_quality_analyzer.wasm`, which requires a narrow `.gitignore`
+exception because product `dist/` directories remain ignored. The complete restored Tooling test
+suite passed locally.
+
+The optional generic `quality --release` command is not an acceptance gate for this product at
+Tooling `0.4.0`: its default source scan reaches the WASI fuel bound on the existing large Rust
+module, and the portable payload does not supply the product-specific frontend AST adapter that
+would be needed by this repository. Central files were not patched to hide that incompatibility.
+The Product Baseline instead runs real locked ESLint, TypeScript, Vitest, Cargo, and Tauri build
+commands. This limitation is explicit rather than reported as a false green check.
+
+## Update and rollback pilot
+
+The update fixture begins with the real Template-Tooling `0.3.0` source at immutable commit
+`ee4d4fee50afddb96e3bf3f7d9caf4c060313d05`. The fixture is integrated at that version, its
+managed payload pair is replaced by `0.4.0`, and the confirmed migration command plans only
+`project-tooling.toml` and `.tooling-state/state.toml`. Applying the registered
+`reconcile-managed-payload-0-3-0-to-0-4-0` migration updates both version records, preserves all
+product files, and passes verification. A second check and second apply are no-ops.
+
+The rollback fixture uses the actual central transaction engine. It adds two controlled temporary
+Tooling files and forces post-apply verification to fail. The transaction removes both additions,
+restores the complete managed and product digests, and retains its rollback journal. This tests a
+real failure after writing has begun rather than accepting a mocked success code.
+
+## CI acceptance design
+
+`.github/workflows/ci.yml` grants only `contents: read` and defines seven independent jobs:
+
+| Job | Evidence |
+| --- | --- |
+| Product Baseline | locked install, lint, typecheck, 1,092 frontend tests, web build, Cargo check/test, and real debug Debian package |
+| Tooling Verify | side-effect-free integration check, state verification, and restored Tooling tests |
+| Clean Integration Fixture | apply and verify against a product copy without state |
+| Update Fixture | update from exact `0.3.0` SHA to pinned `0.4.0` |
+| Idempotency | run Full-Fix twice and compare the complete fixture digest |
+| Rollback | force post-write failure and prove transaction restoration |
+| Path Regression | reject active old paths and verify every portable payload file |
+
+The former `.github/workflows/build-pdf.md` was inactive because GitHub does not load Markdown as
+a workflow. It also contained a direct automation push to `main` and referenced absent LaTeX
+sources, so it was removed rather than activated. No replacement workflow has write permission.
+Remote results will be recorded on the pull request; review remains intentionally external to the
+implementation author.
+
+## Final structure cleanup
+
+The active `apps/` tree is gone. Obsolete generated root folder listings, a generated frontend
+`.summary` snapshot containing a personal absolute path, and the legacy Python toolbox reference
+pages were removed because they described caches, personal paths, deleted commands, and the
+superseded layout. `.summary` output is now ignored. Current project command pages defer to
+executable help from the pinned release, while centrally maintained documentation stays under
+`docs/toolingdocs/`. Runtime profile documentation now describes separate settings, SR folders,
+and per-run Markdown storage, including conservative legacy-source retention.
 
 ## Commit and rollback checkpoints
 

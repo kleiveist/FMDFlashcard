@@ -1,69 +1,49 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back](tools.md)
 <!-- AUTO-GENERATED:backlink END -->
-# Setup and Bootstrap
+# Setup and bootstrap
 
-This page covers environment checks and bootstrap commands handled by `tools/control.py`.
+The reproducible CI environment uses Node.js 22.23.2, pnpm 9.15.9, Python
+3.11, and Rust 1.97.1. Keep both committed lockfiles and do not change package
+manager as part of ordinary setup.
 
-## 1) Health checks
+## Inspect first
 
-```bash
-python3 tools/control.py --doctor
-```
-
-Alias:
+The doctor is read-only:
 
 ```bash
-python3 tools/control.py --check
+python3 tools/control.py doctor
+python3 tools/control.py tauri doctor
 ```
 
-Optional JSON output:
+Review the desktop installation plan before allowing host changes:
 
 ```bash
-python3 tools/control.py --doctor --json
+python3 tools/control.py tauri install --dry-run
 ```
 
-## 2) Install base dependencies
+After reviewing that plan, install or verify OS packages, Rust, Node, and the
+frontend dependencies with:
 
 ```bash
-python3 tools/control.py --install
+python3 tools/control.py tauri install
 ```
 
-Dry-run:
+For a manually prepared host, install only the locked frontend dependencies:
 
 ```bash
-python3 tools/control.py --install --dry-run
+corepack enable
+corepack prepare pnpm@9.15.9 --activate
+pnpm --dir frontend install --frozen-lockfile
 ```
 
-## 3) Optional Linux bootstrap helpers
-
-Install VS Code helper (Linux only):
+Template-Tooling keeps its Python test environment below the ignored
+`.tooling-state/venv/` directory. Prepare only that environment with:
 
 ```bash
-python3 tools/control.py --vscode
+python3 tools/control.py install \
+  --skip-frontend --skip-backend --skip-playwright
 ```
 
-Install Tauri prerequisites (Linux only):
-
-```bash
-python3 tools/control.py --tauri
-```
-
-Dry-run for Tauri bootstrap:
-
-```bash
-python3 tools/control.py --tauri --dry-run
-```
-
-## Recommended bootstrap order
-
-1. `--doctor`
-2. `--install`
-3. `--tauri` (Linux)
-4. continue with [Run and test](run-test.md)
-
-## Notes
-
-- `--install`, `--tauri`, and most runner-backed commands support `--dry-run`.
-- If `pnpm` is missing, follow the hint from the tooling output (corepack/pnpm installation).
-- If rust toolchain checks fail, re-run `--tauri` on Linux or install Rust/Tauri prerequisites for your host OS.
+Real vaults and profiles are runtime data. Do not copy them into `profiles/`,
+`config/`, or `fixtures/`; repository fixtures must be anonymous.

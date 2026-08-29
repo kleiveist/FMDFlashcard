@@ -1,8 +1,6 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back](../usr.md)
 <!-- AUTO-GENERATED:backlink END -->
-[← Back](../user.md)
-
 # Syntax
 
 <!-- AUTO-GENERATED:docs-index START -->

@@ -32,17 +32,18 @@ A repeatable workflow for turning ideas/bugs into tested changes using Codex, wi
 ## Quality gates (minimum DoD)
 - Acceptance criteria met  
 - No regression in core paths (manual smoke + automated tests where available)  
-- If parser/rendering changed: add/update a reproducible `.md` test file in `docs/dev/test/`  
-- Docs updated when behavior/syntax changes (including `docs/dev/de/` mirrors for changed developer docs)
+- If parser/rendering changed: add or update an anonymous reproducible fixture
+  under `fixtures/` and its automated test.
+- Docs updated when behavior or syntax changes.
 
 ## Where things go
 - **Process docs:** `docs/dev/` (this file)
-- **User syntax/source of truth:** `docs/user/` and `docs/user/examples/`
-- **Repro test markdown (“golden files”):** `docs/dev/test/`
-- **Issue tracking notes (if used):** `docs/issus/`
+- **User syntax/source of truth:** `docs/usr/`
+- **Repro test data (“golden files”):** `fixtures/`
+- **Product-specific automation:** `project-tools/fmdflashcard/`
 
 ## Packaging-related tasks
 - Keep command-level tooling documentation in `docs/tools/`.
 - If packaging or execution commands change, update the corresponding page in `docs/tools/`.
 
-![Workflow diagram](docs/assets/codex-workflow.svg)
+![Workflow diagram](assets/codex-workflow.svg)

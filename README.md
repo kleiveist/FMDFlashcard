@@ -21,13 +21,11 @@ while adding a dedicated review experience and study progress tracking.
 ## 📄 Files
 - 📝 [Changelog](CHANGELOG.md)
 - 📝 [Contributing](CONTRIBUTING.md)
-- 📝 [Folderlist docs](folderlist_docs.md)
-- 📝 [Folderlist fdm desktop](folderlist_fdm-desktop.md)
-- 📝 [Folderlist tools](folderlist_tools.md)
 - 📝 [Security Policy](SECURITY.md)
 
 # DOCS
 - 📚 [Docs Home](docs/index.md)
+- 📝 [Template-Tooling migration report](docs/migration/template-tooling-v2.md)
 - 📝 [Refactor notes](docs/refactor-notes.md)
 
 ## 📁 DEV
@@ -48,6 +46,7 @@ while adding a dedicated review experience and study progress tracking.
 - 📝 [Control Script Reference](docs/tools/control-reference.md)
 - 📝 [Run and Test](docs/tools/run-test.md)
 - 📝 [Setup and Bootstrap](docs/tools/setup-bootstrap.md)
+- 🧰 [Pinned Template-Tooling documentation](docs/toolingdocs/README.md)
 
 ## 📁 USER
 - 🗂️ [Overview](docs/usr/usr.md)
@@ -63,11 +62,16 @@ If GitHub’s repository navigation feels slow, use these direct links:
 
 ## Quickstart (run from source)
 
-If you want to run the desktop app from source, use the Tools docs lifecycle:
+If you want to run the desktop app from source, use the project tooling
+lifecycle:
 
 1. [Setup and bootstrap](docs/tools/setup-bootstrap.md)
 2. [Run and test](docs/tools/run-test.md)
 3. [Build and packaging](docs/tools/build-package.md)
+
+The application lives in `frontend/`, and the Tauri crate lives in
+`src-tauri/`. Runtime profiles and vaults stay outside the repository; only
+anonymous examples belong in `fixtures/`.
 
 ## Contributing
 
@@ -75,4 +79,5 @@ See the [Contributing guide](CONTRIBUTING.md) for development workflow and pull 
 
 ## License
 
-See [License](LICENSE) (if present in this repository).
+No project-wide license file is currently published. The pinned central
+Tooling payload carries its own license under `tools/LICENSE`.

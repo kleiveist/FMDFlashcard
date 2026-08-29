@@ -1,69 +1,46 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back](tools.md)
 <!-- AUTO-GENERATED:backlink END -->
-# Run and Test
-
-This page covers local app execution and test execution via `tools/control.py`.
+# Run and test
 
 ## Start the desktop app
 
-Primary command:
+After setup, start Tauri in the foreground so the terminal owns the process:
 
 ```bash
-python3 tools/control.py --start
+python3 tools/control.py tauri run --foreground
 ```
 
-Alias:
+The direct project command is:
 
 ```bash
-python3 tools/control.py --run
+pnpm --dir frontend tauri dev --no-watch
 ```
 
-Dry-run:
+## Product checks
+
+Run the same deterministic checks used by the Product Baseline CI job:
 
 ```bash
-python3 tools/control.py --start --dry-run
+pnpm --dir frontend install --frozen-lockfile
+pnpm --dir frontend lint
+pnpm --dir frontend typecheck
+pnpm --dir frontend test:run
+pnpm --dir frontend build
+cargo check --locked --manifest-path src-tauri/Cargo.toml
+cargo test --locked --manifest-path src-tauri/Cargo.toml
 ```
 
-Direct fallback command:
+## Tooling checks
+
+The installed Tooling state must be a read-only no-op:
 
 ```bash
-pnpm -C frontend tauri dev
+python3 tools/control.py integrate --check --json
+python3 tools/control.py tooling verify --json
+python3 tools/control.py test --suite tools
 ```
 
-## Run test suite
-
-Primary command:
-
-```bash
-python3 tools/control.py --test
-```
-
-Dry-run:
-
-```bash
-python3 tools/control.py --test --dry-run
-```
-
-Direct fallback command (runner-equivalent base):
-
-```bash
-pnpm -C frontend exec vitest run --watch=false
-```
-
-Alternative package-script shortcut:
-
-```bash
-pnpm -C frontend test
-```
-
-## Optional test environment controls
-
-The test runner supports environment toggles:
-- `FMD_TEST_TIMEOUT_SECONDS`
-- `FMD_TEST_ISOLATE_ON_TIMEOUT`
-- `FMD_TEST_ISOLATE_ON_FAILURE`
-- `FMD_TEST_ISOLATE_ONLY`
-- `FMD_TEST_FILE_TIMEOUT_SECONDS`
-
-Use these only when debugging hangs/timeouts in CI or local runs.
+FMDFlashcard's isolated migration cases are documented in
+[`project-tools/fmdflashcard/README.md`](../../project-tools/fmdflashcard/README.md).
+The CI workflow runs each case as its own required job.

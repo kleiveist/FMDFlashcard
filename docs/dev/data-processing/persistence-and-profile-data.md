@@ -17,7 +17,7 @@ FMDFlashcard is local-first. The frontend owns most data modeling, while Tauri/R
 
 ## Tauri App Data Files
 
-The Rust backend resolves these under `app.path().app_data_dir()` in [`src-tauri/src/lib.rs`](../../../frontend/src-tauri/src/lib.rs).
+The Rust backend resolves these under `app.path().app_data_dir()` in [`src-tauri/src/lib.rs`](../../../src-tauri/src/lib.rs).
 
 | File | Command path | Current role |
 | --- | --- | --- |
@@ -65,11 +65,14 @@ The current write target defaults to `users/`, while legacy reads also support `
   users/
     <profile-id>/
       profile.json
-      spaced-repetition.json
+      settings.json
       fast-flashcard.json
       exam-points-profiles.json
+      spaced-repetition/
+        registry.json
+        users/<encoded-user-id>/progress.json
       exam-runs/
-        <exam-run-entry files>
+        <exam-run>.md
 ```
 
 ## Profile Files
@@ -77,11 +80,16 @@ The current write target defaults to `users/`, while legacy reads also support `
 | File | Scope | Content |
 | --- | --- | --- |
 | `user-vault.json` | Profile root. | Schema version and active profile id. |
-| `profile.json` | One profile. | Profile metadata plus profile-scoped app settings. |
-| `spaced-repetition.json` | One profile. | SR users and card state, grouped under profile/vault keys. |
+| `profile.json` | One profile. | Profile identity metadata only. |
+| `settings.json` | One profile. | Profile-scoped app settings. |
+| `spaced-repetition/` | One profile. | Registry plus one atomic progress file per SR user. |
 | `fast-flashcard.json` | One profile. | Fast flashcard session summaries. |
 | `exam-points-profiles.json` | One profile. | Exam point/scoring profile definitions. |
-| `exam-runs/` | One profile. | Exam run history entries and migration-compatible run data. |
+| `exam-runs/` | One profile. | One Markdown file per exam run, including lossless `run_data`. |
+
+Legacy `spaced-repetition.json` and `exam-runs.json` files are compatibility
+sources. Loads copy their still-missing entries into the current stores and
+leave the source files in place for rollback.
 
 ## Profile Data Ownership
 
@@ -116,7 +124,7 @@ Those entries are runtime indexes. They are rebuilt by rescanning; they are not 
 | JSON writes | Restricted to `.json`; profile code can write temp files and rename for migration-sensitive stores. |
 | Vault-relative file moves/deletes | Rust checks that target paths remain inside the selected vault. |
 | Corrupt JSON handling | Some profile stores back up corrupt files and recreate empty stores. |
-| Profile migrations | Legacy `user`/`profiles` layouts and app-data stores are read for compatibility. |
+| Profile migrations | Legacy `user`/`profiles` layouts and JSON stores are copied conservatively; source data is retained. |
 
 ## Developer Guidance
 

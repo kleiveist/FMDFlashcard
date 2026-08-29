@@ -22,7 +22,6 @@ nav:
       - Run and test: tools/run-test.md
       - Build and packaging: tools/build-package.md
       - Control script reference: tools/control-reference.md
-  - ADRs:
-      - ADR index: adr/adr.md
-      - ADR 0001: adr/0001-documentation-source-of-truth.md
-      - ADR 0002: adr/0002-hybrid-editor-performance-redesign.md
+      - Pinned Template-Tooling: toolingdocs/README.md
+  - Migration:
+      - Template-Tooling v2: migration/template-tooling-v2.md

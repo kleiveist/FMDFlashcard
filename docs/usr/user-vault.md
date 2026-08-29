@@ -3,38 +3,65 @@
 <!-- AUTO-GENERATED:backlink END -->
 # User Vault (Statistiken)
 
-Der User Vault speichert deine Lernstatistiken lokal, damit sie nach einem Neustart erhalten bleiben.
+Der User Vault speichert Profile, Einstellungen und Lernfortschritt lokal.
+Diese Daten liegen nicht im Programm-Repository und bleiben beim Neustart
+erhalten.
 
-## Was ist ein Profil?
+## Profile und SR-User
 
-Ein **Profil** ist der Container fuer alle Statistiken. Du kannst mehrere Profile anlegen und zwischen ihnen wechseln (z.B. pro Person oder pro Kurs).
+Ein **Profil** ist der gemeinsame Speichercontainer für Einstellungen,
+Fast-Flashcard-Sitzungen, Prüfungsverläufe und Spaced Repetition. Innerhalb
+eines Profils können mehrere **SR-User** mit getrenntem Kartenfortschritt
+existieren.
 
-Beispielpfad:
-- Auto-Mode: `<VAULT_ROOT>/user/profiles/2026-01-14_MeinLoard/`
-- Custom-Mode: `<CUSTOM_PATH>/profiles/2026-01-14_MeinLoard/`
+Neue Profilordner erhalten eine Datums-ID, zum Beispiel
+`2026-08-29_Lernprofil`.
 
-## Unterschied zwischen Profile und User
+## Speicherort
 
-- **Profil**: Gesamt-Container fuer alle Statistiken.
-- **User**: Nur innerhalb der Spaced-Repetition-Logik genutzt (mehrere SR-User innerhalb eines Profils moeglich).
+- **Auto (empfohlen):** `<VAULT_ROOT>/.profile/users/<PROFIL-ID>/`
+- **Custom:** `<AUSGEWÄHLTER_ORDNER>/.profile/users/<PROFIL-ID>/`
 
-Kurz: Profile steuern den Speicherort, User steuern SR-Logik.
+Wird bereits ein vorhandener Profilwurzelordner ausgewählt, verwendet die App
+diesen direkt. Beim Wechsel des Vaults wechselt im Auto-Modus auch der
+Profilwurzelordner; ein Custom-Pfad bleibt gleich.
 
-## Was wird gespeichert?
+## Gespeicherte Daten
 
-Pro Profil werden JSON-Dateien abgelegt:
-- `profile.json`: Profil-Metadaten und Settings
-- `spaced-repetition.json`: SR-Fortschritt (pro Vault-ID)
-- `fast-flashcard.json`: Fast-Flashcard Session-Historie
-- `exam-runs.json`: Exam-Simulation Runs
+```text
+<PROFIL-ID>/
+  profile.json
+  settings.json
+  fast-flashcard.json
+  exam-points-profiles.json
+  spaced-repetition/
+    registry.json
+    users/<SR-USER>/progress.json
+  exam-runs/<PRÜFUNGSLAUF>.md
+```
 
-## Mode: Auto vs Custom
+- `profile.json` enthält nur die Profilidentität.
+- `settings.json` enthält die Einstellungen des Profils.
+- Spaced Repetition speichert pro SR-User eine eigene Fortschrittsdatei.
+- Jeder Prüfungslauf wird als lesbare Markdown-Datei gespeichert.
 
-- **Auto (empfohlen):** Speichert unter `<VAULT_ROOT>/user/`. Beim Vault-Wechsel wechselt auch der User Vault.
-- **Custom path:** Speichert in einem von dir gewaehlten Ordner. Bleibt gleich, auch wenn du den Vault wechselst.
+## Bestehende Daten
 
-## Export / Import
+Ältere Profilordner und die Dateien `spaced-repetition.json` sowie
+`exam-runs.json` werden weiterhin gelesen. Die App kopiert noch fehlende
+Einträge in die neue Struktur, löscht die Quelldateien aber nicht automatisch.
+Ein unterbrochener Kopiervorgang kann beim nächsten Start fortgesetzt werden.
 
-Du kannst das aktive Profil oder alle Profile als JSON exportieren und wieder importieren.
-- **Merge:** fuegt neue Eintraege hinzu, laesst vorhandene bestehen.
-- **Overwrite:** ersetzt die vorhandenen Daten komplett.
+Vor einer manuellen Bereinigung sollte der gesamte Profilwurzelordner gesichert
+und der Inhalt in der App geprüft werden.
+
+## Export und Import
+
+Das aktive Profil oder alle Profile können als JSON exportiert und wieder
+importiert werden:
+
+- **Merge** ergänzt neue Einträge und behält vorhandene Daten.
+- **Overwrite** ersetzt die vorhandenen Profildaten durch den Import.
+
+Exporte können private Pfade, Namen und Lernverläufe enthalten. Sie gehören
+nicht in Git, Issues oder öffentliche Anhänge.

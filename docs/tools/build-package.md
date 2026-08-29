@@ -1,110 +1,36 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back](tools.md)
 <!-- AUTO-GENERATED:backlink END -->
-# Build and Packaging
+# Build and packaging
 
-This page documents packaging flows provided by `tools/control.py`.
-
-## Build helper overview
-
-List available build targets:
+Inspect a native build without changing files:
 
 ```bash
-python3 tools/control.py --build --dry-run
+python3 tools/control.py build desktop --dry-run
 ```
 
-## Linux bundles
+Build Linux bundles through the pinned Tooling:
 
 ```bash
-python3 tools/control.py --build-lin
+python3 tools/control.py build desktop --target linux --bundles deb,rpm
 ```
 
-Typical output root:
-- `frontend/src-tauri/target/release/bundle`
-
-Common toggles:
-- `NO_STRIP=true|false`
-- `CLEAN_BUNDLE=1|0`
-
-## Windows installer bundles
+The Product Baseline CI job uses this explicit debug-package command after
+all frontend and Rust tests pass:
 
 ```bash
-python3 tools/control.py --build-win
+pnpm --dir frontend tauri build --debug --bundles deb --ci
 ```
 
-Common toggles:
-- `WIN_BUNDLES=nsis,msi`
-- `ALLOW_CROSS=1`
-- `CLEAN_BUNDLE=1|0`
-
-Typical output locations:
-- `.../bundle/nsis`
-- `.../bundle/msi`
-
-## Windows portable ZIP (Windows host)
+Desktop outputs are generated below `src-tauri/target/` and remain ignored.
+CI requires a real Debian package and uploads it as a build artifact. Use the
+target-specific help before Windows, portable Windows, macOS, or AppImage
+builds:
 
 ```bash
-python3 tools/control.py --build-win -p
+python3 tools/control.py build desktop --help
+python3 tools/control.py tauri build --help
 ```
 
-Common toggles:
-- `CLEAN_PORTABLE=0`
-- `ALLOW_CROSS=1`
-
-Typical output:
-- `frontend/src-tauri/target/release/bundle/portable`
-
-## Windows cross-compile on Linux
-
-```bash
-python3 tools/control.py --build --winlinux
-```
-
-Common toggles:
-- `WIN_LINUX_TARGET`
-- `WIN_LINUX_RUNNER`
-- `WIN_LINUX_BUNDLES`
-- `WIN_LINUX_ZIP=0`
-- `CLEAN_PORTABLE=0`
-
-Typical output:
-- `frontend/src-tauri/target/<target>/release/bundle/portable`
-
-## macOS bundles
-
-```bash
-python3 tools/control.py --build-mac
-```
-
-Common toggles:
-- `MAC_BUNDLES=app,dmg`
-- `ALLOW_CROSS=1`
-- `CLEAN_BUNDLE=1|0`
-
-## Linux AppImage local installation
-
-Install latest local AppImage into a stable launcher target:
-
-```bash
-python3 tools/control.py --install-appimage
-```
-
-Installs/updates:
-- `~/Applications/FMDFlashcard.AppImage`
-- `~/.local/share/applications/fmdflashcard.desktop`
-- `~/.local/share/icons/fmdflashcard.*`
-
-## Artifact copy helper
-
-Project-specific external copy flow:
-
-```bash
-python3 tools/control.py --build --copy
-```
-
-This copies built artifacts into configured external `AppInsall` destination folders.
-
-## Recommended packaging practice
-
-- Use OS-native hosts whenever possible.
-- Prefer CI-driven release packaging and artifact publication.
+Build on the native target host whenever possible. Packaging must not copy
+artifacts to personal or undocumented external directories.

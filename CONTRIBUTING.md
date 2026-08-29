@@ -7,14 +7,15 @@ Thanks for your interest in contributing.
 
 ## Development quickstart
 
-Follow the full setup guide:
-
-- `docs/dev/setup.md`
+Follow [Setup and bootstrap](docs/tools/setup-bootstrap.md), then use the
+locked dependencies already committed to `frontend/` and `src-tauri/`.
 
 ## Branch / PR workflow
 
 - Create a feature branch from the default branch.
 - Keep PRs focused (one feature/fix per PR).
+- Merge into `main` only through a pull request after all required CI jobs pass
+  and an independent reviewer approves it.
 - Describe:
   - what changed,
   - why it changed,
@@ -25,6 +26,8 @@ Follow the full setup guide:
 - If you change evaluation/scoring logic, add tests.
 - Avoid UI regressions: keep layout changes intentional and minimal.
 - Update documentation when behavior changes (especially parsing and review rules).
+- Never commit real vaults, profiles, settings, or learning history. Use
+  anonymous deterministic fixtures.
 
 ## Reporting issues
 

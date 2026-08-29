@@ -1,54 +1,43 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back](../index.md)
 <!-- AUTO-GENERATED:backlink END -->
-# Tools
+# Project tooling
 
 <!-- AUTO-GENERATED:docs-index START -->
 
-## 📄 Pages
-- 📝 [Build and Packaging](build-package.md)
-- 📝 [Control Script Reference](control-reference.md)
-- 📝 [Run and Test](run-test.md)
-- 📝 [Setup and Bootstrap](setup-bootstrap.md)
+## Pages
 
-## 📁 Python Tooling Code
-- 🗂️ [Overview](python-code/python-code.md)
-- 📝 [Python Tooling Extension Guide](python-code/extension-guide.md)
-- 📝 [Python Tooling Module Reference](python-code/module-reference.md)
+- [Build and packaging](build-package.md)
+- [Control script reference](control-reference.md)
+- [Run and test](run-test.md)
+- [Setup and bootstrap](setup-bootstrap.md)
 
 <!-- AUTO-GENERATED:docs-index END -->
 
-This section is the single source of truth for repository tooling.
+FMDFlashcard uses Template-Tooling `0.4.0`, pinned by full source revision in
+the [migration report](../migration/template-tooling-v2.md). The centrally
+managed payload is `tools/` plus `docs/toolingdocs/`; product-specific helpers
+belong in `project-tools/fmdflashcard/`.
 
-Scope:
-- `tools/control.py` command entrypoint
-- Tool runners under `tools/inst/`
-- Python tooling source documentation under `docs/tools/python-code/`
-- Setup/bootstrap, run/test, build/packaging, and command reference
+Run commands from the repository root. On this project, use `python3` on Unix
+systems or `py -3` on Windows.
 
-Important:
-- Run all `python3 tools/control.py ...` commands from the repository root (`/home/kleif/Projects/FMDFlashcard`).
-- On Windows PowerShell, use `py -3 .\tools\control.py ...`.
+## Lifecycle
 
-## Lifecycle navigation
+1. [Set up and diagnose the environment](setup-bootstrap.md).
+2. [Run and test the application](run-test.md).
+3. [Build desktop artifacts](build-package.md).
+4. Consult the [confirmed command map](control-reference.md).
 
-- [Setup and bootstrap](setup-bootstrap.md)
-- [Run and test](run-test.md)
-- [Build and packaging](build-package.md)
-- [Control script reference](control-reference.md)
-- [Python tooling code](python-code/python-code.md)
-
-## Quick start
-
-```bash
-python3 tools/control.py --doctor
-python3 tools/control.py --install
-python3 tools/control.py --tauri
-python3 tools/control.py --start
-```
-
-For all available flags and aliases, use:
+The portable Tooling documentation is available at
+[`docs/toolingdocs/README.md`](../toolingdocs/README.md). Before using an
+unfamiliar command, inspect the help for the exact pinned version:
 
 ```bash
 python3 tools/control.py --help
+python3 tools/control.py <command> --help
 ```
+
+Do not modify central payload files for FMDFlashcard-specific behavior. The
+CI fixtures under `project-tools/fmdflashcard/` exercise clean integration,
+updates, idempotency, rollback, old-path removal, and payload integrity.

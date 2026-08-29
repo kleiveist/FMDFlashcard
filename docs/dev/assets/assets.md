@@ -1,8 +1,6 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back](../dev.md)
 <!-- AUTO-GENERATED:backlink END -->
-[← Back](../index.md)
-
 # Assets
 
 <!-- AUTO-GENERATED:docs-index START -->

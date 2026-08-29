@@ -1,62 +1,43 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back](tools.md)
 <!-- AUTO-GENERATED:backlink END -->
-# Control Script Reference
+# Control script reference
 
-Source: `python3 tools/control.py --help`
-
-## Usage
-
-```bash
-python3 tools/control.py [flags]
-```
-
-Windows PowerShell equivalent:
-
-```powershell
-py -3 .\tools\control.py [flags]
-```
-
-## Flags
-
-- `-h`, `--help`: show help.
-- `--doctor`: run system/tooling checks.
-- `--check`: alias for `--doctor`.
-- `--json`: additional JSON output for `--doctor`.
-- `--install`: run OS-matched install routine.
-- `--VScode`, `--vscode`: install Visual Studio Code helper (Linux).
-- `--tauri`: install Tauri prerequisites (Linux).
-- `--run`, `--start`: run desktop app in dev mode.
-- `--install-appimage`, `--appimage`: install latest local Linux AppImage.
-- `--build`: build helper output (target overview); dispatcher for build subflows.
-- `--winlinux`: enable Windows cross-compile on Linux (use with `--build`).
-- `--copy`: copy built artifacts to configured external destinations (use with `--build`).
-- `--build-lin`: build Linux bundles.
-- `--build-win`: build Windows bundles.
-- `-p`, `--portable`: portable mode for `--build-win`.
-- `--build-mac`: build macOS bundles.
-- `--test`: run desktop app tests.
-- `--dry-run`: print intended actions without executing.
-
-## Valid combinations and constraints
-
-- `--winlinux` requires `--build`.
-- `--copy` requires `--build`.
-- `--portable` is intended with `--build-win`.
-- `--install-appimage` is Linux-only.
-- `--tauri` and `--vscode` routines are Linux-only.
-
-## Examples
+This page records the command groups confirmed against pinned Template-Tooling
+`0.4.0`. The executable help remains authoritative:
 
 ```bash
-python3 tools/control.py --doctor
-python3 tools/control.py --install
-python3 tools/control.py --start
-python3 tools/control.py --test
-python3 tools/control.py --build --dry-run
-python3 tools/control.py --build-lin
-python3 tools/control.py --build-win -p
-python3 tools/control.py --build --winlinux
-python3 tools/control.py --build --copy
-python3 tools/control.py --install-appimage
+python3 tools/control.py --help
+python3 tools/control.py <command> --help
 ```
+
+| Purpose | Command |
+| --- | --- |
+| Diagnose | `python3 tools/control.py doctor` |
+| Prepare dependencies | `python3 tools/control.py install` |
+| Run configured services | `python3 tools/control.py run` |
+| Run desktop development | `python3 tools/control.py tauri run --foreground` |
+| Select a test suite | `python3 tools/control.py test --suite <suite>` |
+| Build the web app | `python3 tools/control.py build web` |
+| Plan a desktop build | `python3 tools/control.py build desktop --dry-run` |
+| Build desktop artifacts | `python3 tools/control.py build desktop` |
+| Read-only integration plan | `python3 tools/control.py integrate --check --json` |
+| Transactional integration | `python3 tools/control.py integrate --full-fix --json` |
+| Verify installed Tooling | `python3 tools/control.py tooling verify --json` |
+| Read-only update plan | `python3 tools/control.py tooling migrate --check --json` |
+| Apply registered updates | `python3 tools/control.py tooling migrate --json` |
+| Export a portable payload | `python3 tools/control.py tooling export --output PATH` |
+
+An integration or update check exits with status `1` when a supported change
+is required and `0` for a verified no-op. A check must not modify the working
+tree. Writing integration and migration commands are transactional, but still
+require a clean branch, reviewed plan, and a Git rollback point.
+
+Supported test suite names are shown by:
+
+```bash
+python3 tools/control.py test --help
+```
+
+The current map includes `frontend`, `tools`, `tauri`, and `all`; backend and
+cloud capabilities are not enabled by FMDFlashcard's `desktop-local` profile.
