@@ -10,6 +10,14 @@ from tools.paths import ProjectPaths, project_paths
 from tools.project_config import application_version
 
 
+@pytest.fixture(autouse=True)
+def _isolate_release_ref_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep temporary version projects independent of the outer CI ref."""
+
+    for name in ("GITHUB_REF", "GITHUB_REF_NAME", "GITHUB_REF_TYPE"):
+        monkeypatch.delenv(name, raising=False)
+
+
 def _version_project(tmp_path: Path, *, changelog_version: str = "1.2.3-rc.1") -> ProjectPaths:
     desktop = tmp_path / "apps" / "fmd-desktop"
     tauri = desktop / "src-tauri"
