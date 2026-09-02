@@ -468,9 +468,10 @@ def test_publication_uses_an_existing_verified_tag_and_never_creates_one() -> No
     assert "source_sha" in workflow_text and '"source_sha": head_commit' in gate_text
     assert '"ls-remote", "--tags"' in verifier_text
     assert 'peeled_ref = f"{direct_ref}^{{}}"' in verifier_text
-    assert "gh api --method GET" in workflow_text
-    assert "releases?per_page=100" in workflow_text
-    assert "ConvertFrom-Json" in workflow_text
+    assert "gh api --include" in workflow_text
+    assert "releases/tags/${FMD_RELEASE_TAG}" in workflow_text
+    assert "query_status" in workflow_text
+    assert "404" in workflow_text
     assert '"--verify-tag"' in workflow_text or "--verify-tag" in workflow_text
     assert "refs/tags/{tag}^{{commit}}" in gate_text
     assert "release tag does not exist locally" in gate_text
