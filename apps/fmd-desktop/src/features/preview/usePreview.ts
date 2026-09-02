@@ -29,14 +29,11 @@ import { type VaultFile } from "../../lib/tree";
 
 export type PreviewEditorMode = "code" | "markdown" | "hybrid";
 
-const resolveDefaultEditEnabledForEditorMode = (
-  editorMode: PreviewEditorMode,
-) => editorMode !== "markdown";
+const resolveDefaultEditEnabledForEditorMode = (editorMode: PreviewEditorMode) =>
+  editorMode !== "markdown";
 
-const normalizeEditEnabledForEditorMode = (
-  editorMode: PreviewEditorMode,
-  editEnabled: boolean,
-) => (editorMode === "hybrid" ? true : Boolean(editEnabled));
+const normalizeEditEnabledForEditorMode = (editorMode: PreviewEditorMode, editEnabled: boolean) =>
+  editorMode === "hybrid" ? true : Boolean(editEnabled);
 
 export type PreviewSnapshot = {
   selectedFile: VaultFile | null;
@@ -62,6 +59,7 @@ export const usePreview = () => {
   const [editEnabled, setEditEnabledState] = useState(
     resolveDefaultEditEnabledForEditorMode("markdown"),
   );
+  const editorModeRef = useRef<PreviewEditorMode>("markdown");
   const selectRequestIdRef = useRef(0);
 
   const takeSnapshot = useCallback(
@@ -92,12 +90,10 @@ export const usePreview = () => {
     setPreview(snapshot.preview);
     setPreviewState(snapshot.previewState);
     setPreviewError(snapshot.previewError);
+    editorModeRef.current = snapshot.editorMode;
     setEditorModeState(snapshot.editorMode);
     setEditEnabledState(
-      normalizeEditEnabledForEditorMode(
-        snapshot.editorMode,
-        snapshot.editEnabled,
-      ),
+      normalizeEditEnabledForEditorMode(snapshot.editorMode, snapshot.editEnabled),
     );
   }, []);
 
@@ -138,15 +134,12 @@ export const usePreview = () => {
   }, []);
 
   const setEditorMode = useCallback(
-    (
-      value:
-        | PreviewEditorMode
-        | ((current: PreviewEditorMode) => PreviewEditorMode),
-    ) => {
+    (value: PreviewEditorMode | ((current: PreviewEditorMode) => PreviewEditorMode)) => {
       setEditorModeState((current) => {
         const nextMode = typeof value === "function" ? value(current) : value;
+        editorModeRef.current = nextMode;
         setEditEnabledState((currentEditEnabled) =>
-          normalizeEditEnabledForEditorMode(nextMode, currentEditEnabled)
+          normalizeEditEnabledForEditorMode(nextMode, currentEditEnabled),
         );
         return nextMode;
       });
@@ -155,19 +148,17 @@ export const usePreview = () => {
   );
 
   const setEditorModeWithDefaults = useCallback((nextMode: PreviewEditorMode) => {
+    editorModeRef.current = nextMode;
     setEditorModeState(nextMode);
     setEditEnabledState(resolveDefaultEditEnabledForEditorMode(nextMode));
   }, []);
 
-  const setEditEnabled = useCallback(
-    (value: boolean | ((current: boolean) => boolean)) => {
-      setEditEnabledState((current) => {
-        const nextEditEnabled = typeof value === "function" ? value(current) : value;
-        return normalizeEditEnabledForEditorMode(editorMode, nextEditEnabled);
-      });
-    },
-    [editorMode],
-  );
+  const setEditEnabled = useCallback((value: boolean | ((current: boolean) => boolean)) => {
+    setEditEnabledState((current) => {
+      const nextEditEnabled = typeof value === "function" ? value(current) : value;
+      return normalizeEditEnabledForEditorMode(editorModeRef.current, nextEditEnabled);
+    });
+  }, []);
 
   return {
     editEnabled,

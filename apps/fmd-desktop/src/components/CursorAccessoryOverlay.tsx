@@ -49,9 +49,7 @@ type CursorAccessoryButtonStyle = CSSProperties & {
   "--cursor-accessory-icon-size"?: string;
 };
 
-const resolveCursorAccessoryViewportConfig = (
-  width: number,
-): CursorAccessoryViewportConfig => {
+const resolveCursorAccessoryViewportConfig = (width: number): CursorAccessoryViewportConfig => {
   if (width > CURSOR_ACCESSORY_MAX_VISIBLE_VIEWPORT_WIDTH) {
     return {
       isVisibleViewport: false,
@@ -114,24 +112,24 @@ const resolveSelectionCaretRect = (target: HTMLElement) => {
   }
   const caretRange = range.cloneRange();
   caretRange.collapse(false);
-  const clientRects = caretRange.getClientRects();
-  if (clientRects.length > 0) {
+  const clientRects =
+    typeof caretRange.getClientRects === "function" ? caretRange.getClientRects() : null;
+  if (clientRects && clientRects.length > 0) {
     return clientRects.item(clientRects.length - 1);
   }
-  const rect = caretRange.getBoundingClientRect();
+  const rect =
+    typeof caretRange.getBoundingClientRect === "function"
+      ? caretRange.getBoundingClientRect()
+      : null;
   if (!rect || (rect.width <= 0 && rect.height <= 0)) {
     return null;
   }
   return rect;
 };
 
-export const CursorAccessoryOverlay = ({
-  enabled,
-}: CursorAccessoryOverlayProps) => {
+export const CursorAccessoryOverlay = ({ enabled }: CursorAccessoryOverlayProps) => {
   const [overlayRoot, setOverlayRoot] = useState<HTMLElement | null>(null);
-  const [activeTarget, setActiveTarget] = useState<TabletAccessoryTarget | null>(
-    null,
-  );
+  const [activeTarget, setActiveTarget] = useState<TabletAccessoryTarget | null>(null);
   const [position, setPosition] = useState<OverlayPosition | null>(null);
   const [viewportConfig, setViewportConfig] = useState(() => {
     if (typeof window === "undefined") {
@@ -192,25 +190,16 @@ export const CursorAccessoryOverlay = ({
       return;
     }
     const caretRect =
-      resolvedTarget instanceof HTMLInputElement ||
-      resolvedTarget instanceof HTMLTextAreaElement
+      resolvedTarget instanceof HTMLInputElement || resolvedTarget instanceof HTMLTextAreaElement
         ? null
         : resolveSelectionCaretRect(resolvedTarget);
 
     const viewport = resolveViewportBounds();
     const buttonSize = viewportConfigRef.current.buttonSize;
     const minLeft = viewport.left + CURSOR_ACCESSORY_EDGE_PADDING;
-    const maxLeft =
-      viewport.left +
-      viewport.width -
-      buttonSize -
-      CURSOR_ACCESSORY_EDGE_PADDING;
+    const maxLeft = viewport.left + viewport.width - buttonSize - CURSOR_ACCESSORY_EDGE_PADDING;
     const minTop = viewport.top + CURSOR_ACCESSORY_EDGE_PADDING;
-    const maxTop =
-      viewport.top +
-      viewport.height -
-      buttonSize -
-      CURSOR_ACCESSORY_EDGE_PADDING;
+    const maxTop = viewport.top + viewport.height - buttonSize - CURSOR_ACCESSORY_EDGE_PADDING;
     const safeMaxLeft = Math.max(minLeft, maxLeft);
     const safeMaxTop = Math.max(minTop, maxTop);
 
@@ -220,9 +209,7 @@ export const CursorAccessoryOverlay = ({
     );
     const nextTop = Math.min(
       Math.max(
-        (caretRect
-          ? caretRect.top + caretRect.height / 2
-          : rect.top + rect.height / 2) -
+        (caretRect ? caretRect.top + caretRect.height / 2 : rect.top + rect.height / 2) -
           buttonSize / 2,
         minTop,
       ),
@@ -232,11 +219,7 @@ export const CursorAccessoryOverlay = ({
     const roundedLeft = Math.round(nextLeft);
     const roundedTop = Math.round(nextTop);
     setPosition((previous) => {
-      if (
-        previous &&
-        previous.left === roundedLeft &&
-        previous.top === roundedTop
-      ) {
+      if (previous && previous.left === roundedLeft && previous.top === roundedTop) {
         return previous;
       }
       return {
@@ -250,10 +233,17 @@ export const CursorAccessoryOverlay = ({
     if (scrollFrameRef.current !== null) {
       return;
     }
-    scrollFrameRef.current = window.requestAnimationFrame(() => {
+    // Mark the frame as pending before scheduling it. Besides preventing
+    // duplicate browser frames, this keeps the state correct for synchronous
+    // RAF implementations used by embedded webviews and deterministic tests.
+    scrollFrameRef.current = -1;
+    const frame = window.requestAnimationFrame(() => {
       scrollFrameRef.current = null;
       syncOverlayPosition();
     });
+    if (scrollFrameRef.current !== null) {
+      scrollFrameRef.current = frame;
+    }
   }, [syncOverlayPosition]);
 
   useEffect(() => {
@@ -368,11 +358,7 @@ export const CursorAccessoryOverlay = ({
   }, [activeTarget, schedulePositionSync]);
 
   const isVisible = useMemo(
-    () =>
-      enabled &&
-      viewportConfig.isVisibleViewport &&
-      Boolean(activeTarget) &&
-      position !== null,
+    () => enabled && viewportConfig.isVisibleViewport && Boolean(activeTarget) && position !== null,
     [activeTarget, enabled, position, viewportConfig.isVisibleViewport],
   );
 
@@ -403,9 +389,7 @@ export const CursorAccessoryOverlay = ({
       }
       const selection = window.getSelection();
       const fallbackRange =
-        selection && selection.rangeCount > 0
-          ? selection.getRangeAt(0).cloneRange()
-          : null;
+        selection && selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null;
       deleteBackwardAtTarget(target, { fallbackRange });
 
       focusTabletAccessoryTarget(target);

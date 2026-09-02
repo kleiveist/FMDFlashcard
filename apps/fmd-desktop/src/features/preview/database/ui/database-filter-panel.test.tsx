@@ -8,6 +8,7 @@ import {
   type DatabaseFilterGroup,
   type DatabaseViewType,
 } from "../database-types";
+import { setNativeValue } from "../../../../../test/dom";
 
 const render = (element: ReactElement) => {
   const container = document.createElement("div");
@@ -194,7 +195,7 @@ describe("DatabaseFilterPanel", () => {
       valueInput?.focus();
       valueInput?.dispatchEvent(new Event("focus", { bubbles: true }));
       if (valueInput) {
-        valueInput.value = "abc";
+        setNativeValue(valueInput, "abc");
       }
       valueInput?.dispatchEvent(new Event("input", { bubbles: true }));
       valueInput?.dispatchEvent(new Event("change", { bubbles: true }));

@@ -92,7 +92,7 @@ export type CardMonitoringPageHandle = {
   requestLeaveCardMonitoring: () => Promise<boolean>;
 };
 
-type CardMonitoringPageProps = {};
+type CardMonitoringPageProps = Record<never, never>;
 
 const pruneSelection = (values: Set<string>, validIds: Set<string>) => {
   const next = new Set<string>();
@@ -367,10 +367,7 @@ const CardMonitoringPageComponent = (
 
   const selectedFilteredCount = useMemo(
     () =>
-      Array.from(selectedIds).reduce(
-        (count, id) => (filteredIdSet.has(id) ? count + 1 : count),
-        0,
-      ),
+      Array.from(selectedIds).reduce((count, id) => (filteredIdSet.has(id) ? count + 1 : count), 0),
     [filteredIdSet, selectedIds],
   );
 
@@ -729,13 +726,9 @@ const CardMonitoringPageComponent = (
 
         <div
           ref={listViewportRef}
-          className={`card-monitoring-list-viewport ${
-            useVirtualRows ? "is-virtual" : ""
-          }`.trim()}
+          className={`card-monitoring-list-viewport ${useVirtualRows ? "is-virtual" : ""}`.trim()}
           onScroll={
-            useVirtualRows
-              ? (event) => setListScrollTop(event.currentTarget.scrollTop)
-              : undefined
+            useVirtualRows ? (event) => setListScrollTop(event.currentTarget.scrollTop) : undefined
           }
         >
           {scanState === "loading" ? (
@@ -775,7 +768,10 @@ const CardMonitoringPageComponent = (
                           />
                           <span>
                             {row.file.fileName}
-                            <span className="muted"> ({row.file.entries.length} shown / {row.file.fileCardCount} total)</span>
+                            <span className="muted">
+                              {" "}
+                              ({row.file.entries.length} shown / {row.file.fileCardCount} total)
+                            </span>
                           </span>
                         </label>
                         <span className="muted">
@@ -823,10 +819,7 @@ const CardMonitoringPageComponent = (
               {rows.map((row) => {
                 if (row.kind === "folder") {
                   return (
-                    <div
-                      key={row.key}
-                      className="card-monitoring-row card-monitoring-row-folder"
-                    >
+                    <div key={row.key} className="card-monitoring-row card-monitoring-row-folder">
                       <span>{row.displayName}</span>
                       <span className="muted">
                         {row.fileCount} files • {row.cardCount} cards
@@ -837,10 +830,7 @@ const CardMonitoringPageComponent = (
 
                 if (row.kind === "file") {
                   return (
-                    <div
-                      key={row.key}
-                      className="card-monitoring-row card-monitoring-row-file"
-                    >
+                    <div key={row.key} className="card-monitoring-row card-monitoring-row-file">
                       <label className="choice-row card-monitoring-file-selector">
                         <input
                           type="checkbox"
@@ -852,7 +842,10 @@ const CardMonitoringPageComponent = (
                         />
                         <span>
                           {row.file.fileName}
-                          <span className="muted"> ({row.file.entries.length} shown / {row.file.fileCardCount} total)</span>
+                          <span className="muted">
+                            {" "}
+                            ({row.file.entries.length} shown / {row.file.fileCardCount} total)
+                          </span>
                         </span>
                       </label>
                       <span className="muted">
@@ -875,7 +868,9 @@ const CardMonitoringPageComponent = (
                         checked={row.isSelected}
                         onChange={() => toggleCardSelection(row.entry.id)}
                       />
-                      <span className="card-monitoring-card-order">#{row.entry.cardIndexInFile}</span>
+                      <span className="card-monitoring-card-order">
+                        #{row.entry.cardIndexInFile}
+                      </span>
                       <span className="card-monitoring-card-type chip">
                         {CARD_TYPE_LABELS[row.entry.cardType]}
                       </span>
@@ -906,14 +901,11 @@ const CardMonitoringPageComponent = (
       >
         <div className="hub-modal-scroll card-monitoring-leave-modal">
           <p>
-            You have staged card-wrapper removals that are not saved yet. Leave this page and discard staged changes?
+            You have staged card-wrapper removals that are not saved yet. Leave this page and
+            discard staged changes?
           </p>
           <div className="card-monitoring-leave-actions">
-            <button
-              type="button"
-              className="ghost"
-              onClick={() => resolveLeaveDecision(false)}
-            >
+            <button type="button" className="ghost" onClick={() => resolveLeaveDecision(false)}>
               Stay
             </button>
             <button
@@ -934,10 +926,7 @@ const CardMonitoringPageComponent = (
   );
 };
 
-export const CardMonitoringPage = forwardRef<
-  CardMonitoringPageHandle,
-  CardMonitoringPageProps
->(
+export const CardMonitoringPage = forwardRef<CardMonitoringPageHandle, CardMonitoringPageProps>(
   CardMonitoringPageComponent,
 );
 

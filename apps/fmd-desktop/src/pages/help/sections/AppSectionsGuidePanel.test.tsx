@@ -32,7 +32,9 @@ const render = (element: ReactElement) => {
 
 const clickButtonByText = (container: HTMLElement, text: string) => {
   const target = Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find(
-    (button) => button.textContent?.trim() === text,
+    (button) =>
+      button.textContent?.trim() === text ||
+      button.querySelector(".help-syntax-card-title")?.textContent?.trim() === text,
   );
   expect(target, `Missing button "${text}"`).toBeTruthy();
   act(() => {

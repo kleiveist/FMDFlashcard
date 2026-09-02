@@ -9,10 +9,7 @@ type VaultActionHandlers = {
   handleRescanVault: (source?: string) => Promise<boolean>;
 };
 
-export const refreshActiveVault = async (
-  actions: VaultActionHandlers,
-  source = "unknown",
-) => {
+export const refreshActiveVault = async (actions: VaultActionHandlers, source = "unknown") => {
   if (import.meta.env.DEV) {
     console.info("[vault] Refresh trigger received", { source });
   }

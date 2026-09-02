@@ -27,7 +27,9 @@ const sanitizeCodeClassNames = (
     .split(/\s+/)
     .map((entry) => entry.trim())
     .filter(Boolean)
-    .filter((entry) => !entry.startsWith("hljs") && !/^language-/i.test(entry) && !/^lang-/i.test(entry));
+    .filter(
+      (entry) => !entry.startsWith("hljs") && !/^language-/i.test(entry) && !/^lang-/i.test(entry),
+    );
 
   if (highlighted) {
     base.unshift("hljs");
@@ -41,7 +43,8 @@ const sanitizeCodeClassNames = (
 
 const resolveCodeElement = (children: ReactNode) =>
   Children.toArray(children).find(
-    (node) => isValidElement(node) && typeof node.type === "string" && node.type.toLowerCase() === "code",
+    (node) =>
+      isValidElement(node) && typeof node.type === "string" && node.type.toLowerCase() === "code",
   ) ?? null;
 
 export const MarkdownHighlightedPre = ({
@@ -54,36 +57,32 @@ export const MarkdownHighlightedPre = ({
   ...preProps
 }: MarkdownHighlightedPreProps) => {
   const codeElement = resolveCodeElement(children);
-  if (!codeElement || !isValidElement(codeElement)) {
-    return (
-      <pre {...preProps} className={className}>
-        {children}
-      </pre>
-    );
-  }
-
-  const codeProps = codeElement.props as ComponentPropsWithoutRef<"code">;
-  const codeText = flattenCodeTextContent(codeProps.children ?? null);
-  if (codeText === null) {
-    return (
-      <pre {...preProps} className={className}>
-        {children}
-      </pre>
-    );
-  }
+  const codeProps =
+    codeElement && isValidElement(codeElement)
+      ? (codeElement.props as ComponentPropsWithoutRef<"code">)
+      : null;
+  const codeText = codeProps ? flattenCodeTextContent(codeProps.children ?? null) : null;
 
   const requestedLanguageRaw =
-    extractRawLanguageFromClassName(codeProps.className) ??
+    extractRawLanguageFromClassName(codeProps?.className) ??
     extractRawLanguageFromClassName(className);
   const requestedLanguage = normalizeLanguage(requestedLanguageRaw);
 
   const result = useMarkdownCodeHighlight({
-    code: codeText,
+    code: codeText ?? "",
     language: requestedLanguageRaw,
     autoDetectWithoutLanguage,
     autoDetectCandidateLanguages,
     schedule: highlightSchedule,
   });
+
+  if (!codeProps || codeText === null) {
+    return (
+      <pre {...preProps} className={className}>
+        {children}
+      </pre>
+    );
+  }
 
   const effectiveLanguage = result.language ?? requestedLanguage;
   const languageLabel =
@@ -110,7 +109,9 @@ export const MarkdownHighlightedPre = ({
       data-md-code-language={effectiveLanguage ?? undefined}
       data-md-code-language-label={languageLabel ?? undefined}
       data-md-code-highlighted={result.highlighted ? "true" : "false"}
-      aria-label={effectiveLanguage ? `Code block (${languageLabel ?? effectiveLanguage})` : "Code block"}
+      aria-label={
+        effectiveLanguage ? `Code block (${languageLabel ?? effectiveLanguage})` : "Code block"
+      }
     >
       <code
         {...restCodeProps}

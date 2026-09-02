@@ -3,6 +3,7 @@ import { act, createElement, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { DatabaseAttributeTypeahead } from "./database-attribute-typeahead";
+import { setNativeValue } from "../../../../../test/dom";
 
 const suggestions = [
   { key: "status", normalizedKey: "status", count: 4 },
@@ -53,7 +54,7 @@ describe("DatabaseAttributeTypeahead", () => {
 
     act(() => {
       if (input) {
-        input.value = "ta";
+        setNativeValue(input, "ta");
       }
       input?.dispatchEvent(new Event("input", { bubbles: true }));
     });
@@ -87,14 +88,16 @@ describe("DatabaseAttributeTypeahead", () => {
 
     act(() => {
       if (input) {
-        input.value = "sta";
+        setNativeValue(input, "sta");
       }
       input?.dispatchEvent(new Event("input", { bubbles: true }));
     });
 
     expect(onValueChange).not.toHaveBeenCalledWith("sta");
 
-    const firstOption = container.querySelector<HTMLButtonElement>(".database-attribute-typeahead-option");
+    const firstOption = container.querySelector<HTMLButtonElement>(
+      ".database-attribute-typeahead-option",
+    );
     expect(firstOption).toBeTruthy();
 
     act(() => {
@@ -127,7 +130,7 @@ describe("DatabaseAttributeTypeahead", () => {
 
     act(() => {
       if (input) {
-        input.value = "zzz";
+        setNativeValue(input, "zzz");
       }
       input?.dispatchEvent(new Event("input", { bubbles: true }));
     });

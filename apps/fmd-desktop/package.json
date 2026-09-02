@@ -3,6 +3,12 @@
   "private": true,
   "version": "0.2.0",
   "description": "Local-first Markdown flashcards and study tools for the desktop.",
+  "author": "FMDFlashcard contributors",
+  "homepage": "https://github.com/kleiveist/FMDFlashcard",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kleiveist/FMDFlashcard.git"
+  },
   "type": "module",
   "packageManager": "pnpm@10.17.1",
   "engines": {
@@ -10,10 +16,18 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write . --ignore-unknown",
+    "format:check": "prettier --check . --ignore-unknown",
     "preview": "vite preview",
     "tauri": "tauri",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:run": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@cortex-js/compute-engine": "^0.30.2",
@@ -30,11 +44,18 @@
     "@tauri-apps/plugin-opener": "^2"
   },
   "devDependencies": {
+    "@eslint/js": "9.39.5",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
+    "@vitest/coverage-v8": "2.1.9",
+    "eslint": "9.39.5",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.5",
     "jsdom": "^24.1.3",
-    "vitest": "^2.0.5",
+    "prettier": "3.9.6",
+    "typescript-eslint": "8.69.0",
+    "vitest": "2.1.9",
     "typescript": "~5.8.3",
     "vite": "^7.3.2",
     "@tauri-apps/cli": "^2"

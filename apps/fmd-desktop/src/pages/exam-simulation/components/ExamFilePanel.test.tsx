@@ -113,9 +113,7 @@ describe("ExamFilePanel", () => {
     );
     expect(profileSelect).toBeTruthy();
     expect(profileSelect?.value).toBe("");
-    const options = Array.from(profileSelect?.options ?? []).map(
-      (option) => option.textContent,
-    );
+    const options = Array.from(profileSelect?.options ?? []).map((option) => option.textContent);
     expect(options).toContain("Standard (no profile)");
 
     cleanup();
@@ -789,6 +787,8 @@ describe("ExamFilePanel", () => {
     );
     act(() => {
       chips[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    act(() => {
       chips[2]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
@@ -890,6 +890,8 @@ describe("ExamFilePanel", () => {
     );
     act(() => {
       chips[0]?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    act(() => {
       chips[1]?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     });
 
@@ -939,6 +941,8 @@ describe("ExamFilePanel", () => {
     );
     act(() => {
       chips[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    act(() => {
       chips[0]?.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete", bubbles: true }));
     });
 
@@ -1546,13 +1550,15 @@ describe("ExamFilePanel", () => {
 
     const sourceChip = Array.from(
       container.querySelectorAll<HTMLButtonElement>(".exam-selected-chip"),
-    ).find((button) => button.getAttribute("title")?.endsWith("b.md"));
+    ).find((button) => button.getAttribute("title") === "folder/B.md");
+    act(() => {
+      sourceChip?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
     const targetSlot = container.querySelector<HTMLButtonElement>(
       'button.exam-selected-slot[aria-label="Insert at start of row 2"]',
     );
-
     act(() => {
-      sourceChip?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       targetSlot?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 

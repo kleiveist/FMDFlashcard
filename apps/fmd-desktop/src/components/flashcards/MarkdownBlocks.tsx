@@ -59,9 +59,7 @@ type PlaceholderRenderContextValue = {
   renderPlaceholderRef: { current: PlaceholderRenderer };
 };
 
-const PlaceholderRenderContext = createContext<PlaceholderRenderContextValue | null>(
-  null,
-);
+const PlaceholderRenderContext = createContext<PlaceholderRenderContextValue | null>(null);
 
 const PlaceholderSlot = ({ id }: { id: string }) => {
   const context = useContext(PlaceholderRenderContext);
@@ -116,9 +114,7 @@ const readMarkdownElementProperty = (node: unknown, key: string) => {
   if (key in properties) {
     return properties[key];
   }
-  const camelKey = key.replace(/-([a-z])/g, (_match, character: string) =>
-    character.toUpperCase()
-  );
+  const camelKey = key.replace(/-([a-z])/g, (_match, character: string) => character.toUpperCase());
   return properties[camelKey];
 };
 
@@ -194,12 +190,14 @@ const readMarkdownNodeSource = (node: unknown, source: string): string => {
       start?: { offset?: number; line?: number; column?: number };
       end?: { offset?: number; line?: number; column?: number };
     };
-    const startOffset = typeof position.start?.offset === "number"
-      ? position.start.offset
-      : resolveOffsetFromLineColumn(position.start?.line, position.start?.column);
-    const endOffset = typeof position.end?.offset === "number"
-      ? position.end.offset
-      : resolveOffsetFromLineColumn(position.end?.line, position.end?.column);
+    const startOffset =
+      typeof position.start?.offset === "number"
+        ? position.start.offset
+        : resolveOffsetFromLineColumn(position.start?.line, position.start?.column);
+    const endOffset =
+      typeof position.end?.offset === "number"
+        ? position.end.offset
+        : resolveOffsetFromLineColumn(position.end?.line, position.end?.column);
     if (
       typeof startOffset === "number" &&
       typeof endOffset === "number" &&
@@ -232,10 +230,7 @@ const hasClozePlaceholderToken = (value: string) => {
   return placeholderTokenPattern.test(value);
 };
 
-const renderTextWithPlaceholders = (
-  value: string,
-  keyPrefix: string,
-): ReactNode[] => {
+const renderTextWithPlaceholders = (value: string, keyPrefix: string): ReactNode[] => {
   const nodes: ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null = null;
@@ -264,9 +259,12 @@ const renderTextWithPlaceholders = (
   return nodes;
 };
 
-const resolveCodeElement = (children: ReactNode): ReactElement<ComponentPropsWithoutRef<"code">> | null => {
+const resolveCodeElement = (
+  children: ReactNode,
+): ReactElement<ComponentPropsWithoutRef<"code">> | null => {
   const codeNode = Children.toArray(children).find(
-    (node) => isValidElement(node) && typeof node.type === "string" && node.type.toLowerCase() === "code",
+    (node) =>
+      isValidElement(node) && typeof node.type === "string" && node.type.toLowerCase() === "code",
   );
   if (!codeNode || !isValidElement<ComponentPropsWithoutRef<"code">>(codeNode)) {
     return null;
@@ -283,10 +281,7 @@ const resolveCodeText = (children: ReactNode): string | null => {
   return flattenCodeTextContent(codeProps.children ?? null);
 };
 
-const renderTextWithMathAndPlaceholders = (
-  value: string,
-  keyPrefix: string,
-): ReactNode[] => {
+const renderTextWithMathAndPlaceholders = (value: string, keyPrefix: string): ReactNode[] => {
   const nodes: ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null = null;
@@ -328,10 +323,7 @@ const renderTextWithMathAndPlaceholders = (
   return nodes;
 };
 
-const renderFlashcardRichNode = (
-  node: ReactNode,
-  keyPrefix: string,
-): ReactNode => {
+const renderFlashcardRichNode = (node: ReactNode, keyPrefix: string): ReactNode => {
   if (typeof node === "string") {
     const rendered = renderTextWithMathAndPlaceholders(node, keyPrefix);
     if (rendered.length === 1) {
@@ -360,9 +352,7 @@ const renderFlashcardRichNode = (
 };
 
 const renderFlashcardRichChildren = (children: ReactNode, keyPrefix: string) =>
-  Children.map(children, (child, index) =>
-    renderFlashcardRichNode(child, `${keyPrefix}-${index}`),
-  );
+  Children.map(children, (child, index) => renderFlashcardRichNode(child, `${keyPrefix}-${index}`));
 
 type MarkdownBlocksProps = {
   text: string;
@@ -373,25 +363,16 @@ type MarkdownBlocksProps = {
   vaultPngAssets?: VaultPngAsset[] | null;
 };
 
-const renderFlashcardInlineMarkdown = (
-  source: string,
-  keyPrefix: string,
-) => {
+const renderFlashcardInlineMarkdown = (source: string, keyPrefix: string) => {
   const normalizedSource = normalizeInlineFormattingForPreview(source);
   return (
     <ReactMarkdown
       key={`${keyPrefix}-markdown`}
-      remarkPlugins={[
-        remarkGfm,
-        remarkPreserveSoftBreaks,
-        remarkPreserveOrderedListDelimiters,
-      ]}
+      remarkPlugins={[remarkGfm, remarkPreserveSoftBreaks, remarkPreserveOrderedListDelimiters]}
       rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
       components={{
         p: ({ node: _node, children, ...props }) => (
-          <p {...props}>
-            {renderFlashcardRichChildren(children, `${keyPrefix}-p`)}
-          </p>
+          <p {...props}>{renderFlashcardRichChildren(children, `${keyPrefix}-p`)}</p>
         ),
         ol: ({ node, ...props }) => {
           const delimiterFromNode = readMarkdownElementProperty(node, "data-md-ordered-delimiter");
@@ -403,9 +384,8 @@ const renderFlashcardInlineMarkdown = (
             return <ol {...props} />;
           }
           const startRaw = props.start;
-          const startValue = typeof startRaw === "number"
-            ? startRaw
-            : Number.parseInt(String(startRaw ?? "1"), 10);
+          const startValue =
+            typeof startRaw === "number" ? startRaw : Number.parseInt(String(startRaw ?? "1"), 10);
           const previous = Number.isNaN(startValue) ? 0 : Math.max(0, startValue - 1);
           const style = {
             ...(props.style ?? {}),
@@ -414,9 +394,7 @@ const renderFlashcardInlineMarkdown = (
           return <ol {...props} style={style} data-md-ordered-delimiter=")" />;
         },
         li: ({ node: _node, children, ...props }) => (
-          <li {...props}>
-            {renderFlashcardRichChildren(children, `${keyPrefix}-li`)}
-          </li>
+          <li {...props}>{renderFlashcardRichChildren(children, `${keyPrefix}-li`)}</li>
         ),
       }}
     >
@@ -440,7 +418,22 @@ export const MarkdownBlocks = ({
     [renderPlaceholder],
   );
   const segments = useMemo(
-    () => splitMarkdownMediaSegments(text, "flashcard-markdown"),
+    () =>
+      splitMarkdownMediaSegments(text, "flashcard-markdown").flatMap((segment) => {
+        if (
+          segment.kind === "markdown" ||
+          !segment.items.some(
+            (item) => item.type === "svg" && hasClozePlaceholderToken(item.inlineSvg ?? ""),
+          )
+        ) {
+          return [segment];
+        }
+        return segment.items.map((item) =>
+          item.type === "svg" && hasClozePlaceholderToken(item.inlineSvg ?? "")
+            ? { kind: "markdown" as const, source: item.rawBlock }
+            : { kind: "media" as const, items: [item], raw: item.rawBlock },
+        );
+      }),
     [text],
   );
   const containerClass = useMemo(
@@ -476,9 +469,7 @@ export const MarkdownBlocks = ({
         cellText,
         scope: `flashcard-table-cell-${keyPrefix}`,
       });
-      const hasMediaSegments = resolvedSegments.some(
-        (segment) => segment.kind !== "text",
-      );
+      const hasMediaSegments = resolvedSegments.some((segment) => segment.kind !== "text");
       if (!hasMediaSegments) {
         return renderFlashcardRichChildren(children, keyPrefix);
       }
@@ -488,10 +479,7 @@ export const MarkdownBlocks = ({
         if (segment.kind === "text") {
           return (
             <Fragment key={segmentKey}>
-              {renderFlashcardInlineMarkdown(
-                segment.text,
-                `${segmentKey}-text`,
-              )}
+              {renderFlashcardInlineMarkdown(segment.text, `${segmentKey}-text`)}
             </Fragment>
           );
         }
@@ -533,47 +521,29 @@ export const MarkdownBlocks = ({
       return (
         <ReactMarkdown
           key={`${keyPrefix}-markdown`}
-          remarkPlugins={[
-            remarkGfm,
-            remarkPreserveSoftBreaks,
-            remarkPreserveOrderedListDelimiters,
-          ]}
+          remarkPlugins={[remarkGfm, remarkPreserveSoftBreaks, remarkPreserveOrderedListDelimiters]}
           rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
           components={{
             h1: ({ node: _node, children, ...props }) => (
-              <h1 {...props}>
-                {renderFlashcardRichChildren(children, `${keyPrefix}-h1`)}
-              </h1>
+              <h1 {...props}>{renderFlashcardRichChildren(children, `${keyPrefix}-h1`)}</h1>
             ),
             h2: ({ node: _node, children, ...props }) => (
-              <h2 {...props}>
-                {renderFlashcardRichChildren(children, `${keyPrefix}-h2`)}
-              </h2>
+              <h2 {...props}>{renderFlashcardRichChildren(children, `${keyPrefix}-h2`)}</h2>
             ),
             h3: ({ node: _node, children, ...props }) => (
-              <h3 {...props}>
-                {renderFlashcardRichChildren(children, `${keyPrefix}-h3`)}
-              </h3>
+              <h3 {...props}>{renderFlashcardRichChildren(children, `${keyPrefix}-h3`)}</h3>
             ),
             h4: ({ node: _node, children, ...props }) => (
-              <h4 {...props}>
-                {renderFlashcardRichChildren(children, `${keyPrefix}-h4`)}
-              </h4>
+              <h4 {...props}>{renderFlashcardRichChildren(children, `${keyPrefix}-h4`)}</h4>
             ),
             h5: ({ node: _node, children, ...props }) => (
-              <h5 {...props}>
-                {renderFlashcardRichChildren(children, `${keyPrefix}-h5`)}
-              </h5>
+              <h5 {...props}>{renderFlashcardRichChildren(children, `${keyPrefix}-h5`)}</h5>
             ),
             h6: ({ node: _node, children, ...props }) => (
-              <h6 {...props}>
-                {renderFlashcardRichChildren(children, `${keyPrefix}-h6`)}
-              </h6>
+              <h6 {...props}>{renderFlashcardRichChildren(children, `${keyPrefix}-h6`)}</h6>
             ),
             p: ({ node: _node, children, ...props }) => (
-              <p {...props}>
-                {renderFlashcardRichChildren(children, `${keyPrefix}-p`)}
-              </p>
+              <p {...props}>{renderFlashcardRichChildren(children, `${keyPrefix}-p`)}</p>
             ),
             ol: ({ node, ...props }) => {
               const delimiterFromNode = readMarkdownElementProperty(
@@ -588,24 +558,19 @@ export const MarkdownBlocks = ({
                 return <ol {...props} />;
               }
               const startRaw = props.start;
-              const startValue = typeof startRaw === "number"
-                ? startRaw
-                : Number.parseInt(String(startRaw ?? "1"), 10);
-              const previous = Number.isNaN(startValue)
-                ? 0
-                : Math.max(0, startValue - 1);
+              const startValue =
+                typeof startRaw === "number"
+                  ? startRaw
+                  : Number.parseInt(String(startRaw ?? "1"), 10);
+              const previous = Number.isNaN(startValue) ? 0 : Math.max(0, startValue - 1);
               const style = {
                 ...(props.style ?? {}),
                 "--md-ordered-start": String(previous),
               } as CSSProperties;
-              return (
-                <ol {...props} style={style} data-md-ordered-delimiter=")" />
-              );
+              return <ol {...props} style={style} data-md-ordered-delimiter=")" />;
             },
             li: ({ node: _node, children, ...props }) => (
-              <li {...props}>
-                {renderFlashcardRichChildren(children, `${keyPrefix}-li`)}
-              </li>
+              <li {...props}>{renderFlashcardRichChildren(children, `${keyPrefix}-li`)}</li>
             ),
             blockquote: ({ node: _node, children, ...props }) => (
               <blockquote {...props}>
@@ -614,23 +579,19 @@ export const MarkdownBlocks = ({
             ),
             pre: ({ node: _node, children, ...props }) => {
               const codeText = resolveCodeText(children);
-              const hasClozePlaceholders = typeof codeText === "string" &&
-                hasClozePlaceholderToken(codeText);
+              const hasClozePlaceholders =
+                typeof codeText === "string" && hasClozePlaceholderToken(codeText);
               const svgSource = hasClozePlaceholders ? null : extractSvgCodeBlockSource(children);
               if (svgSource !== null) {
-                return (
-                  <SvgPreviewBlock
-                    source={svgSource}
-                    className="md-svg-preview-block"
-                  />
-                );
+                return <SvgPreviewBlock source={svgSource} className="md-svg-preview-block" />;
               }
               const preClassName = ["flashcard-code-block", props.className]
                 .filter(Boolean)
                 .join(" ");
               if (hasClozePlaceholders && typeof codeText === "string") {
                 const codeElement = resolveCodeElement(children);
-                const codeProps = codeElement?.props as ComponentPropsWithoutRef<"code"> | undefined;
+                const codeProps = codeElement?.props as
+                  ComponentPropsWithoutRef<"code"> | undefined;
                 if (codeProps) {
                   const {
                     className: codeClassName,

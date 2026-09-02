@@ -14,6 +14,7 @@ vi.mock("../components/AppStateProvider", () => ({
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
+  convertFileSrc: vi.fn((path: string) => path),
 }));
 
 vi.mock("../components/ModalShell", () => ({
@@ -137,12 +138,7 @@ describe("CardMonitoringPage", () => {
 
     const files = [{ path: "/vault/a.md", relative_path: "a.md" }];
     const contentsByPath: Record<string, string> = {
-      "/vault/a.md": [
-        "#card",
-        "Question A",
-        "Answer: value",
-        "#endcard",
-      ].join("\n"),
+      "/vault/a.md": ["#card", "Question A", "Answer: value", "#endcard"].join("\n"),
     };
 
     mockUseAppState.mockReturnValue({
@@ -199,13 +195,9 @@ describe("CardMonitoringPage", () => {
       (call) => call[0] === "write_text_file_atomic",
     );
     expect(writesAfterSave).toHaveLength(1);
-    expect(contentsByPath["/vault/a.md"]).toBe(
-      ["Question A", "Answer: value"].join("\n"),
-    );
+    expect(contentsByPath["/vault/a.md"]).toBe(["Question A", "Answer: value"].join("\n"));
     expect(handleRescanVault).toHaveBeenCalledWith("card-monitoring-save");
-    expect(setPreview).toHaveBeenCalledWith(
-      ["Question A", "Answer: value"].join("\n"),
-    );
+    expect(setPreview).toHaveBeenCalledWith(["Question A", "Answer: value"].join("\n"));
 
     cleanup();
   });

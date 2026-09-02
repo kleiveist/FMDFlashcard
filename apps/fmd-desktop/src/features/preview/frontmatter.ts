@@ -43,7 +43,8 @@ export type FrontmatterPropertyIcon =
   | "formula"
   | "unknown";
 
-export type FrontmatterPropertyValue = string | number | boolean | string[] | DatabaseFormulaDefinitionV1 | null;
+export type FrontmatterPropertyValue =
+  string | number | boolean | string[] | DatabaseFormulaDefinitionV1 | null;
 
 export type FrontmatterProperty = {
   key: string;
@@ -98,8 +99,7 @@ type ParsedFrontmatterDocumentInternal = FrontmatterDocument & {
   parsedProperties: ParsedFrontmatterProperty[];
 };
 
-const FRONTMATTER_PATTERN =
-  /^(?:\uFEFF)?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/;
+const FRONTMATTER_PATTERN = /^(?:\uFEFF)?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/;
 
 const IMAGE_EXTENSION_PATTERN = /\.(png|jpe?g|webp|gif|svg)$/i;
 const LINK_KEY_PATTERN = /^link\d+$/i;
@@ -113,8 +113,7 @@ const PROPERTY_SCHEMA: Record<string, FrontmatterSchemaEntry> = {
   thumbnail: { kind: "cover", icon: "cover" },
 };
 
-const asMarkdownString = (value: unknown): string =>
-  typeof value === "string" ? value : "";
+const asMarkdownString = (value: unknown): string => (typeof value === "string" ? value : "");
 
 const detectLineEnding = (value: string | null | undefined): "\n" | "\r\n" =>
   typeof value === "string" && value.includes("\r\n") ? "\r\n" : "\n";
@@ -146,7 +145,7 @@ const parseSingleQuoted = (value: string): string | null => {
 };
 
 const parseDoubleQuoted = (value: string): string | null => {
-  if (!value.startsWith("\"") || !value.endsWith("\"")) {
+  if (!value.startsWith('"') || !value.endsWith('"')) {
     return null;
   }
   try {
@@ -199,12 +198,12 @@ const parseFlowStringArray = (rawValue: string): string[] | null => {
 
   const tokens: string[] = [];
   let current = "";
-  let quote: "\"" | "'" | null = null;
+  let quote: '"' | "'" | null = null;
   let escaped = false;
 
   for (let index = 0; index < inner.length; index += 1) {
     const char = inner[index] ?? "";
-    if (quote === "\"") {
+    if (quote === '"') {
       current += char;
       if (escaped) {
         escaped = false;
@@ -214,7 +213,7 @@ const parseFlowStringArray = (rawValue: string): string[] | null => {
         escaped = true;
         continue;
       }
-      if (char === "\"") {
+      if (char === '"') {
         quote = null;
       }
       continue;
@@ -233,7 +232,7 @@ const parseFlowStringArray = (rawValue: string): string[] | null => {
       continue;
     }
     current += char;
-    if (char === "\"" || char === "'") {
+    if (char === '"' || char === "'") {
       quote = char;
     }
   }
@@ -341,7 +340,9 @@ const isImageWikilink = (value: string) => {
 const normalizeSchemaKey = (key: string) => key.trim().toLowerCase();
 const isFormulaKey = (key: string) => normalizeSchemaKey(key).startsWith("f-");
 
-const parseFormulaDefinitionFromUnknownRaw = (rawValue: string): DatabaseFormulaDefinitionV1 | null => {
+const parseFormulaDefinitionFromUnknownRaw = (
+  rawValue: string,
+): DatabaseFormulaDefinitionV1 | null => {
   const source = normalizeNewlines(rawValue);
   const lines = source.split("\n");
   const root: Record<string, unknown> = {};
@@ -629,13 +630,13 @@ const parseYamlFrontmatter = (
 
     const rawLines = [line, ...continuationLines];
     const parsedValue = parsePropertyValue(tail, continuationLines);
-    const parsedFormulaValue = parsedValue.type === "unknown" && isFormulaKey(key)
-      ? parseFormulaDefinitionFromUnknownRaw(parsedValue.rawValue)
-      : null;
-    const value: FrontmatterPropertyValue =
-      parsedFormulaValue
-        ? parsedFormulaValue
-        : parsedValue.type === "scalar"
+    const parsedFormulaValue =
+      parsedValue.type === "unknown" && isFormulaKey(key)
+        ? parseFormulaDefinitionFromUnknownRaw(parsedValue.rawValue)
+        : null;
+    const value: FrontmatterPropertyValue = parsedFormulaValue
+      ? parsedFormulaValue
+      : parsedValue.type === "scalar"
         ? parsedValue.value
         : parsedValue.type === "string-array"
           ? parsedValue.value
@@ -646,7 +647,8 @@ const parseYamlFrontmatter = (
       value,
       yamlValueType: parsedValue.type,
     });
-    const preserveRaw = (parsedValue.type === "unknown" && !parsedFormulaValue) ||
+    const preserveRaw =
+      (parsedValue.type === "unknown" && !parsedFormulaValue) ||
       (kind === "formula" && !normalizeDatabaseFormulaDefinitionV1(value));
     properties.push({
       key,
@@ -663,9 +665,7 @@ const parseYamlFrontmatter = (
   return { properties, error: null };
 };
 
-const parseFrontmatterDocumentInternal = (
-  markdown: string,
-): ParsedFrontmatterDocumentInternal => {
+const parseFrontmatterDocumentInternal = (markdown: string): ParsedFrontmatterDocumentInternal => {
   const safeMarkdown = asMarkdownString(markdown);
   const lineEnding = detectLineEnding(safeMarkdown);
   const match = safeMarkdown.match(FRONTMATTER_PATTERN);
@@ -696,7 +696,10 @@ const parseFrontmatterDocumentInternal = (
     lineEnding: detectLineEnding(rawBlock),
     properties: parsed.properties
       .filter((property) => !property.hidden)
-      .map(({ rawLines, preserveRaw, hidden: _hidden, ...property }) => property),
+      .map(
+        ({ rawLines: _rawLines, preserveRaw: _preserveRaw, hidden: _hidden, ...property }) =>
+          property,
+      ),
     frontmatterPrefix: safeMarkdown.slice(0, bodyStartOffset),
     parsedProperties: parsed.properties,
   };
@@ -788,10 +791,12 @@ const normalizePropertyUpdateValue = (
     if (!trimmed) {
       return null;
     }
-    return normalizeDateTimeValue(trimmed) ??
+    return (
+      normalizeDateTimeValue(trimmed) ??
       normalizeDateValue(trimmed) ??
       normalizeTimeValue(trimmed) ??
-      null;
+      null
+    );
   }
 
   if (typeof value !== "string") {
@@ -895,9 +900,10 @@ const applyFrontmatterUpdate = ({
     includeBodySeparator: parsed.body.length > 0,
   });
   const hasBom = markdown.startsWith("\uFEFF");
-  const bodyWithoutLeadingBom = !parsed.hasFrontmatter && hasBom && parsed.body.startsWith("\uFEFF")
-    ? parsed.body.slice(1)
-    : parsed.body;
+  const bodyWithoutLeadingBom =
+    !parsed.hasFrontmatter && hasBom && parsed.body.startsWith("\uFEFF")
+      ? parsed.body.slice(1)
+      : parsed.body;
   const bom = hasBom ? "\uFEFF" : "";
   const nextMarkdown = `${bom}${nextFrontmatterBlock}${bodyWithoutLeadingBom}`;
   return { markdown: nextMarkdown, error: null };
@@ -953,10 +959,7 @@ const serializeProperty = (property: ParsedFrontmatterProperty): string[] => {
     if (!Array.isArray(value) || value.length === 0) {
       return [`${key}: null`];
     }
-    return [
-      `${key}:`,
-      ...value.map((tag) => `  - ${serializeString(tag)}`),
-    ];
+    return [`${key}:`, ...value.map((tag) => `  - ${serializeString(tag)}`)];
   }
 
   if (value === null) {
@@ -991,9 +994,7 @@ const serializeFrontmatterBlock = ({
   return block;
 };
 
-export const parseFrontmatterDocument = (
-  markdown: string,
-): FrontmatterDocument => {
+export const parseFrontmatterDocument = (markdown: string): FrontmatterDocument => {
   const parsed = parseFrontmatterDocumentInternal(markdown);
   return {
     hasFrontmatter: parsed.hasFrontmatter,
@@ -1145,9 +1146,8 @@ const parseDraftValueForKind = (
     if (trimmed === "") {
       return { value: null, error: null };
     }
-    const normalized = normalizeDateTimeValue(trimmed) ??
-      normalizeDateValue(trimmed) ??
-      normalizeTimeValue(trimmed);
+    const normalized =
+      normalizeDateTimeValue(trimmed) ?? normalizeDateValue(trimmed) ?? normalizeTimeValue(trimmed);
     if (!normalized) {
       return {
         value: null,
@@ -1166,8 +1166,7 @@ const parseDraftValueForKind = (
 const isLinksArrayKey = (key: string) => normalizeSchemaKey(key) === "links";
 const isLinkSequenceKey = (key: string) => LINK_KEY_PATTERN.test(key.trim());
 
-export const isLinkPropertyKey = (key: string) =>
-  isLinkSequenceKey(key) || isLinksArrayKey(key);
+export const isLinkPropertyKey = (key: string) => isLinkSequenceKey(key) || isLinksArrayKey(key);
 
 export const extractWikilinkTarget = (value: string) => getWikilinkTarget(value);
 
@@ -1186,9 +1185,7 @@ const dedupeStable = (values: string[]) => {
 
 const normalizeWikilinkList = (values: string[]) =>
   dedupeStable(
-    values
-      .map((value) => normalizeWikilinkValue(value))
-      .filter((value) => value.trim() !== ""),
+    values.map((value) => normalizeWikilinkValue(value)).filter((value) => value.trim() !== ""),
   );
 
 const collectWikilinksFromProperty = (property: ParsedFrontmatterProperty) => {
@@ -1351,9 +1348,7 @@ export const buildFrontmatterSuggestionIndex = (markdownDocuments: string[]) => 
 export const buildFrontmatterKeySuggestionList = (markdownDocuments: string[]) =>
   sortFrontmatterKeySuggestions(buildFrontmatterSuggestionIndex(markdownDocuments).keyIndex);
 
-export const collectFrontmatterValueSuggestions = (
-  properties: FrontmatterProperty[],
-) => {
+export const collectFrontmatterValueSuggestions = (properties: FrontmatterProperty[]) => {
   const index = collectFrontmatterSuggestionIndex(properties);
   return buildFrontmatterValueSuggestionMapFromIndex(index.valueIndex);
 };
@@ -1450,17 +1445,14 @@ export const updateFrontmatterLinks = ({
   });
 
   const layout: FrontmatterLinksLayout =
-    linksArrayIndices.length > 0 && linkSequenceIndices.length === 0
-      ? "links-array"
-      : "link-keys";
+    linksArrayIndices.length > 0 && linkSequenceIndices.length === 0 ? "links-array" : "link-keys";
   const sourceIndices = [...linkSequenceIndices, ...linksArrayIndices, ...looseLinkIndices];
   const removedIndices = new Set(sourceIndices);
   const nextProperties = parsed.parsedProperties.filter(
     (_property, index) => !removedIndices.has(index),
   );
-  const insertionSourceIndex = sourceIndices.length > 0
-    ? Math.min(...sourceIndices)
-    : parsed.parsedProperties.length;
+  const insertionSourceIndex =
+    sourceIndices.length > 0 ? Math.min(...sourceIndices) : parsed.parsedProperties.length;
   const insertionIndex = resolveLinkInsertionIndex({
     removedIndices,
     insertionSourceIndex,
@@ -1531,9 +1523,7 @@ export const updateFrontmatterProperty = ({
     };
   }
 
-  const propertyIndex = parsed.parsedProperties.findIndex(
-    (property) => property.key === key,
-  );
+  const propertyIndex = parsed.parsedProperties.findIndex((property) => property.key === key);
   if (propertyIndex === -1) {
     return {
       markdown,
@@ -1581,9 +1571,7 @@ export const removeFrontmatterProperty = ({
     };
   }
 
-  const propertyIndex = parsed.parsedProperties.findIndex(
-    (property) => property.key === key,
-  );
+  const propertyIndex = parsed.parsedProperties.findIndex((property) => property.key === key);
   if (propertyIndex === -1) {
     return {
       markdown,
@@ -1629,9 +1617,7 @@ export const addFrontmatterProperty = ({
     };
   }
   const existingProperties = parsed.hasFrontmatter ? parsed.parsedProperties : [];
-  const hasDuplicate = existingProperties.some(
-    (property) => property.key === nextKey,
-  );
+  const hasDuplicate = existingProperties.some((property) => property.key === nextKey);
   if (hasDuplicate) {
     return {
       markdown,
@@ -1711,9 +1697,7 @@ export const reorderFrontmatterProperties = ({
     };
   }
 
-  const sourceIndex = parsed.parsedProperties.findIndex(
-    (property) => property.key === fromKey,
-  );
+  const sourceIndex = parsed.parsedProperties.findIndex((property) => property.key === fromKey);
   if (sourceIndex === -1) {
     return {
       markdown,
@@ -1727,9 +1711,7 @@ export const reorderFrontmatterProperties = ({
     return { markdown, error: "Failed to resolve dragged property." };
   }
 
-  const targetIndex = nextProperties.findIndex(
-    (property) => property.key === toKey,
-  );
+  const targetIndex = nextProperties.findIndex((property) => property.key === toKey);
   if (targetIndex === -1) {
     return {
       markdown,

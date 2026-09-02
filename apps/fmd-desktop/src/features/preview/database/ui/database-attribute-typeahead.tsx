@@ -5,9 +5,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  type DatabaseVaultAttributeSuggestion,
-} from "../database-types";
+import { type DatabaseVaultAttributeSuggestion } from "../database-types";
 
 type DatabaseAttributeTypeaheadProps = {
   value: string;
@@ -30,10 +28,7 @@ const sortForDisplay = (suggestions: DatabaseVaultAttributeSuggestion[]) =>
     return left.key.localeCompare(right.key, undefined, { sensitivity: "base" });
   });
 
-const rankSuggestions = (
-  suggestions: DatabaseVaultAttributeSuggestion[],
-  rawQuery: string,
-) => {
+const rankSuggestions = (suggestions: DatabaseVaultAttributeSuggestion[], rawQuery: string) => {
   const query = toNormalized(rawQuery);
   if (!query) {
     return sortForDisplay(suggestions);
@@ -54,10 +49,7 @@ const rankSuggestions = (
     substringMatches.push(suggestion);
   });
 
-  return [
-    ...sortForDisplay(prefixMatches),
-    ...sortForDisplay(substringMatches),
-  ];
+  return [...sortForDisplay(prefixMatches), ...sortForDisplay(substringMatches)];
 };
 
 export const DatabaseAttributeTypeahead = ({
@@ -75,22 +67,25 @@ export const DatabaseAttributeTypeahead = ({
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (!isOpen || !strictSelection) {
+    if (!isOpen) {
       setQuery(value);
     }
-  }, [isOpen, strictSelection, value]);
+  }, [isOpen, value]);
 
   const filteredSuggestions = useMemo(
-    () => suggestionFilter ? suggestions.filter((suggestion) => suggestionFilter(suggestion)) : suggestions,
+    () =>
+      suggestionFilter
+        ? suggestions.filter((suggestion) => suggestionFilter(suggestion))
+        : suggestions,
     [suggestionFilter, suggestions],
   );
 
   const ranked = useMemo(
-    () => rankSuggestions(filteredSuggestions, strictSelection ? query : value),
-    [filteredSuggestions, query, strictSelection, value],
+    () => rankSuggestions(filteredSuggestions, isOpen ? query : value),
+    [filteredSuggestions, isOpen, query, value],
   );
 
-  const displayValue = strictSelection && isOpen ? query : value;
+  const displayValue = isOpen ? query : value;
 
   const close = () => {
     setIsOpen(false);
@@ -133,7 +128,8 @@ export const DatabaseAttributeTypeahead = ({
           }
 
           const normalized = toNormalized(query);
-          const exact = filteredSuggestions.find((entry) => entry.normalizedKey === normalized) ?? null;
+          const exact =
+            filteredSuggestions.find((entry) => entry.normalizedKey === normalized) ?? null;
           if (exact) {
             onValueChange(exact.key);
             setQuery(exact.key);

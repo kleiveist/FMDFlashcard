@@ -3,10 +3,7 @@ import { act, createElement, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { DatabaseKanbanView } from "./kanban-view";
-import {
-  type DatabaseAttributeMeta,
-  type DatabaseRecord,
-} from "../database-types";
+import { type DatabaseAttributeMeta, type DatabaseRecord } from "../database-types";
 
 const render = (element: ReactElement) => {
   const container = document.createElement("div");
@@ -174,13 +171,15 @@ const clickElement = (target: Element | null) => {
 };
 
 const findColumnByLabel = (container: HTMLElement, label: string) =>
-  Array.from(container.querySelectorAll<HTMLElement>(".database-kanban-column"))
-    .find((column) => column.textContent?.includes(label));
+  Array.from(container.querySelectorAll<HTMLElement>(".database-kanban-column")).find((column) =>
+    column.textContent?.includes(label),
+  );
 
 const findCardByTitle = (container: HTMLElement, title: string) => {
-  const titleButton = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-kanban-card-title"))
-    .find((button) => button.textContent?.trim() === title);
-  return titleButton?.closest(".database-kanban-card") as HTMLElement | null;
+  const titleButton = Array.from(
+    container.querySelectorAll<HTMLButtonElement>(".database-kanban-card-title"),
+  ).find((button) => button.textContent?.trim() === title);
+  return (titleButton?.closest(".database-kanban-card") as HTMLElement | null) ?? null;
 };
 
 describe("DatabaseKanbanView", () => {
@@ -271,10 +270,12 @@ describe("DatabaseKanbanView", () => {
       }),
     );
 
-    const sourceCard = Array.from(container.querySelectorAll(".database-kanban-card"))
-      .find((card) => card.textContent?.includes("a"));
-    const targetColumn = Array.from(container.querySelectorAll(".database-kanban-column"))
-      .find((column) => column.textContent?.includes("Done"));
+    const sourceCard = Array.from(container.querySelectorAll(".database-kanban-card")).find(
+      (card) => card.textContent?.includes("a"),
+    );
+    const targetColumn = Array.from(container.querySelectorAll(".database-kanban-column")).find(
+      (column) => column.textContent?.includes("Done"),
+    );
 
     const dataTransfer = {
       effectAllowed: "move",
@@ -321,10 +322,12 @@ describe("DatabaseKanbanView", () => {
       }),
     );
 
-    const sourceCard = Array.from(container.querySelectorAll(".database-kanban-card"))
-      .find((card) => card.textContent?.includes("a"));
-    const targetColumn = Array.from(container.querySelectorAll(".database-kanban-column"))
-      .find((column) => column.textContent?.includes("Done"));
+    const sourceCard = Array.from(container.querySelectorAll(".database-kanban-card")).find(
+      (card) => card.textContent?.includes("a"),
+    );
+    const targetColumn = Array.from(container.querySelectorAll(".database-kanban-column")).find(
+      (column) => column.textContent?.includes("Done"),
+    );
 
     const dataTransfer = {
       effectAllowed: "move",
@@ -603,8 +606,9 @@ describe("DatabaseKanbanView", () => {
       }),
     );
 
-    const titleButton = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-kanban-card-title"))
-      .find((button) => button.textContent?.trim() === "a");
+    const titleButton = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".database-kanban-card-title"),
+    ).find((button) => button.textContent?.trim() === "a");
 
     clickElement(titleButton ?? null);
 
@@ -671,10 +675,12 @@ describe("DatabaseKanbanView", () => {
       }),
     );
 
-    const openColumn = Array.from(container.querySelectorAll(".database-kanban-column"))
-      .find((column) => column.textContent?.includes("Open"));
-    const titles = Array.from(openColumn?.querySelectorAll(".database-kanban-card-title") ?? [])
-      .map((node) => node.textContent?.trim());
+    const openColumn = Array.from(container.querySelectorAll(".database-kanban-column")).find(
+      (column) => column.textContent?.includes("Open"),
+    );
+    const titles = Array.from(
+      openColumn?.querySelectorAll(".database-kanban-card-title") ?? [],
+    ).map((node) => node.textContent?.trim());
     expect(titles).toEqual(["z", "a"]);
 
     cleanup();
@@ -714,10 +720,12 @@ describe("DatabaseKanbanView", () => {
       }),
     );
 
-    const openColumn = Array.from(container.querySelectorAll(".database-kanban-column"))
-      .find((column) => column.textContent?.includes("Open"));
-    const titles = Array.from(openColumn?.querySelectorAll(".database-kanban-card-title") ?? [])
-      .map((node) => node.textContent?.trim());
+    const openColumn = Array.from(container.querySelectorAll(".database-kanban-column")).find(
+      (column) => column.textContent?.includes("Open"),
+    );
+    const titles = Array.from(
+      openColumn?.querySelectorAll(".database-kanban-card-title") ?? [],
+    ).map((node) => node.textContent?.trim());
     expect(titles).toEqual(["a", "z"]);
 
     cleanup();
@@ -756,7 +764,9 @@ describe("DatabaseKanbanView", () => {
     );
 
     const orderButtons = Array.from(
-      container.querySelectorAll<HTMLButtonElement>(".database-kanban-card-order-actions .database-block-toolbar-button"),
+      container.querySelectorAll<HTMLButtonElement>(
+        ".database-kanban-card-order-actions .database-block-toolbar-button",
+      ),
     );
 
     act(() => {

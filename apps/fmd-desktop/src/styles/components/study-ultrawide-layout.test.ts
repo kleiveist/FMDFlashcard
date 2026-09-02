@@ -10,6 +10,8 @@ import { readFileSync } from "node:fs";
 
 const contentCss = readFileSync(new URL("./content.css", import.meta.url), "utf8");
 const flashcardsCss = readFileSync(new URL("./flashcards.css", import.meta.url), "utf8");
+const compactContentCss = contentCss.replace(/\s+/g, "");
+const compactFlashcardsCss = flashcardsCss.replace(/\s+/g, "");
 
 describe("ultrawide study container contract", () => {
   it("registers study layouts as named inline-size containers", () => {
@@ -32,9 +34,7 @@ describe("ultrawide study container contract", () => {
       /@container\s+study-layout\s*\(min-width:\s*2400px\)\s*\{[\s\S]*?\.flashcard-list\s*\{[\s\S]*?display:\s*grid;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);[\s\S]*?\}/,
     );
     expect(flashcardsCss).toContain(".study-ultrawide-preview-pane");
-    expect(flashcardsCss).toContain(
-      ".flashcard-list > .study-ultrawide-preview-pane",
-    );
+    expect(compactFlashcardsCss).toContain(".flashcard-list>.study-ultrawide-preview-pane");
   });
 
   it("defines an ultrawide container-query task pair for exam", () => {
@@ -42,7 +42,9 @@ describe("ultrawide study container contract", () => {
       /@container\s+study-layout\s*\(min-width:\s*2400px\)\s*\{[\s\S]*?\.study-ultrawide-task-pair\s*\{[\s\S]*?display:\s*grid;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);[\s\S]*?\}/,
     );
     expect(contentCss).toContain(".study-ultrawide-task-secondary");
-    expect(contentCss).toContain(".study-ultrawide-task-pair > .study-ultrawide-task-secondary");
+    expect(compactContentCss).toContain(
+      ".study-ultrawide-task-pair>.study-ultrawide-task-secondary",
+    );
   });
 
   it("keeps exam navigation right-aligned across exam, scoring, and correction panels", () => {

@@ -69,9 +69,7 @@ describe("HelpButton", () => {
 | Key | Value |
 | --- | --- |
 | A | 1 |`;
-    const markup = renderToStaticMarkup(
-      createElement(HelpPanel, { helpBlocks: [helpContent] }),
-    );
+    const markup = renderToStaticMarkup(createElement(HelpPanel, { helpBlocks: [helpContent] }));
 
     expect(markup).toContain("<ul>");
     expect(markup).toContain("<table>");
@@ -110,11 +108,9 @@ describe("HelpButton", () => {
       "| --- | --- |",
       "| id | [NOT NULL] [ UNIQUE ] |",
     ].join("\n");
-    const markup = renderToStaticMarkup(
-      createElement(HelpPanel, { helpBlocks: [helpContent] }),
-    );
+    const markup = renderToStaticMarkup(createElement(HelpPanel, { helpBlocks: [helpContent] }));
 
-    expect(markup.match(/class=\"help-inline-mask/g)?.length ?? 0).toBe(6);
+    expect(markup.match(/class=\"help-inline-mask\"/g)?.length ?? 0).toBe(6);
     expect(markup).toContain(">CREATE TABLE<");
     expect(markup).toContain(">FOREIGN<");
     expect(markup).toContain(">NOT NULL<");
@@ -125,13 +121,11 @@ describe("HelpButton", () => {
 
   it("masks bracket tokens in headings without showing delimiters", () => {
     const helpContent = "## Hinweis [WICHTIG]";
-    const markup = renderToStaticMarkup(
-      createElement(HelpPanel, { helpBlocks: [helpContent] }),
-    );
+    const markup = renderToStaticMarkup(createElement(HelpPanel, { helpBlocks: [helpContent] }));
 
     expect(markup).toContain(">WICHTIG<");
     expect(markup).not.toContain("[WICHTIG]");
-    expect(markup).toContain("class=\"help-inline-mask");
+    expect(markup).toContain('class="help-inline-mask');
   });
 
   it("keeps inline and fenced code with bracket text unchanged", () => {
@@ -144,9 +138,7 @@ describe("HelpButton", () => {
       "[FENCED_CODE]",
       "```",
     ].join("\n");
-    const markup = renderToStaticMarkup(
-      createElement(HelpPanel, { helpBlocks: [helpContent] }),
-    );
+    const markup = renderToStaticMarkup(createElement(HelpPanel, { helpBlocks: [helpContent] }));
 
     expect(markup).toContain(">VISIBLE<");
     expect(markup).toContain("[INLINE_CODE]");

@@ -36,6 +36,7 @@ const createMockState = () => {
       language: "en",
       setLanguage: noop,
       recentVaults: [] as Array<{ path: string }>,
+      currentSystemRecentVaults: [] as Array<{ path: string }>,
       showHiddenFolders: false,
       showEmptyFolders: true,
       setShowHiddenFolders: noop,
@@ -103,7 +104,7 @@ describe("SettingsPage Data Hub", () => {
     expect(markup).toContain('aria-label="Data &amp; Index pages"');
     expect(markup).toContain(">Data &amp; Index<");
     expect(markup).toContain(">Profile Source<");
-    expect(markup).toContain(">Ex- Import<");
+    expect(markup).toContain(">Export / Import<");
     expect(markup).toContain("vault-index-panel");
     expect(markup).toContain(">Actions<");
   });

@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { DatabasePropertiesPanel } from "./database-properties-panel";
 import { type DatabaseAttributeMeta } from "../database-types";
+import { setNativeValue } from "../../../../../test/dom";
 
 const render = (element: ReactElement) => {
   const container = document.createElement("div");
@@ -118,18 +119,14 @@ describe("DatabasePropertiesPanel", () => {
       ...buildProps(),
       viewType: "kanban" as const,
     };
-    const { container, cleanup } = render(
-      createElement(DatabasePropertiesPanel, props),
-    );
+    const { container, cleanup } = render(createElement(DatabasePropertiesPanel, props));
 
-    const toggle = Array.from(container.querySelectorAll<HTMLInputElement>("input[type='checkbox']"))
-      .find((input) => input.parentElement?.textContent?.includes("Cover anzeigen"));
+    const toggle = Array.from(
+      container.querySelectorAll<HTMLInputElement>("input[type='checkbox']"),
+    ).find((input) => input.parentElement?.textContent?.includes("Cover anzeigen"));
 
     act(() => {
-      if (toggle) {
-        toggle.checked = true;
-      }
-      toggle?.dispatchEvent(new Event("change", { bubbles: true }));
+      toggle?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     expect(props.onKanbanShowCoverChange).toHaveBeenCalledWith(true);
@@ -139,9 +136,7 @@ describe("DatabasePropertiesPanel", () => {
 
   it("removes legacy formula section and exposes unified core labels", () => {
     const props = buildProps();
-    const { container, cleanup } = render(
-      createElement(DatabasePropertiesPanel, props),
-    );
+    const { container, cleanup } = render(createElement(DatabasePropertiesPanel, props));
 
     expect(container.textContent).not.toContain("Formel hinzufügen");
     expect(container.textContent).toContain("Zahlen");
@@ -153,13 +148,13 @@ describe("DatabasePropertiesPanel", () => {
 
   it("filters attribute-key suggestions to f-* when formula type is selected", () => {
     const props = buildProps();
-    const { container, cleanup } = render(
-      createElement(DatabasePropertiesPanel, props),
-    );
+    const { container, cleanup } = render(createElement(DatabasePropertiesPanel, props));
 
     const createSection = container.querySelector(".database-block-properties-create");
     const typeSelect = createSection?.querySelector<HTMLSelectElement>("select");
-    const keyInput = createSection?.querySelector<HTMLInputElement>(".database-attribute-typeahead input");
+    const keyInput = createSection?.querySelector<HTMLInputElement>(
+      ".database-attribute-typeahead input",
+    );
     expect(typeSelect).toBeTruthy();
     expect(keyInput).toBeTruthy();
 
@@ -167,7 +162,7 @@ describe("DatabasePropertiesPanel", () => {
       if (!typeSelect) {
         return;
       }
-      typeSelect.value = "core:formula";
+      setNativeValue(typeSelect, "core:formula");
       typeSelect.dispatchEvent(new Event("change", { bubbles: true }));
     });
 
@@ -196,9 +191,7 @@ describe("DatabasePropertiesPanel", () => {
       attributes: [sampleAttribute, formulaAttribute],
       visibleColumnKeys: ["status", "f-score"],
     };
-    const { container, cleanup } = render(
-      createElement(DatabasePropertiesPanel, props),
-    );
+    const { container, cleanup } = render(createElement(DatabasePropertiesPanel, props));
 
     const formulaDeleteButton = container.querySelector<HTMLButtonElement>(
       'button[aria-label="Formel-Property f-score entfernen"]',
@@ -210,8 +203,12 @@ describe("DatabasePropertiesPanel", () => {
     expect(textDeleteButton).toBeNull();
 
     act(() => {
-      formulaDeleteButton?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
-      formulaDeleteButton?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      formulaDeleteButton?.dispatchEvent(
+        new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+      );
+      formulaDeleteButton?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
     });
 
     expect(props.onRemoveFormula).toHaveBeenCalledWith("f-score");

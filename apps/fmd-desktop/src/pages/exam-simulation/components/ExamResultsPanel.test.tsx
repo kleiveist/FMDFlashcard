@@ -113,9 +113,7 @@ describe("ExamResultsPanel", () => {
     expect(container.textContent).toContain("3 / 5");
     expect(container.textContent).not.toContain("Corrected");
 
-    const correctionButton = container.querySelector<HTMLButtonElement>(
-      "button.primary.small",
-    );
+    const correctionButton = container.querySelector<HTMLButtonElement>("button.primary.small");
     expect(correctionButton?.textContent).toContain("Correction");
 
     act(() => {
@@ -138,9 +136,7 @@ describe("ExamResultsPanel", () => {
     };
     const { container, cleanup } = render(createElement(ExamResultsPanel, props));
 
-    const correctionButton = container.querySelector<HTMLButtonElement>(
-      "button.primary.small",
-    );
+    const correctionButton = container.querySelector<HTMLButtonElement>("button.primary.small");
     expect(correctionButton?.disabled).toBe(true);
     expect(correctionButton?.title).toBe("No incorrect cards");
 
@@ -170,16 +166,11 @@ describe("ExamResultsPanel", () => {
     expect(toggle?.checked).toBe(false);
 
     act(() => {
-      if (toggle) {
-        toggle.checked = true;
-      }
-      toggle?.dispatchEvent(new Event("change", { bubbles: true }));
+      toggle?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(props.onToggleTaskCardWrapper).toHaveBeenCalledWith("session-task-1", true);
 
-    const closeButton = document.body.querySelector<HTMLButtonElement>(
-      "button.modal-panel-close",
-    );
+    const closeButton = document.body.querySelector<HTMLButtonElement>("button.modal-panel-close");
     act(() => {
       closeButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -191,7 +182,8 @@ describe("ExamResultsPanel", () => {
   it("shows disabled reason and disables popup toggle when source is unavailable", () => {
     const props = {
       ...buildResultsProps(),
-      getTaskCardWrapDisabledReason: () => "Task source file is not uniquely available in this exam session.",
+      getTaskCardWrapDisabledReason: () =>
+        "Task source file is not uniquely available in this exam session.",
     };
     const { container, cleanup } = render(createElement(ExamResultsPanel, props));
 
@@ -233,10 +225,9 @@ describe("ExamResultsPanel", () => {
                   id: "media-1",
                   type: "svg",
                   src: "inline",
-                  inlineSvg:
-                    "<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>",
+                  inlineSvg: '<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" /></svg>',
                   rawBlock:
-                    "```svg\n<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>\n```",
+                    '```svg\n<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" /></svg>\n```',
                 },
               ],
             },
@@ -261,7 +252,7 @@ describe("ExamResultsPanel", () => {
     const heading = card?.querySelector(".flashcard-question");
     const mediaGroup = heading?.nextElementSibling;
     expect(mediaGroup?.classList.contains("flashcard-media-group")).toBe(true);
-    expect(mediaGroup?.querySelector(".svg-preview-surface svg")).toBeTruthy();
+    expect(mediaGroup?.querySelector(".flashcard-media-svg-surface svg")).toBeTruthy();
 
     cleanup();
   });

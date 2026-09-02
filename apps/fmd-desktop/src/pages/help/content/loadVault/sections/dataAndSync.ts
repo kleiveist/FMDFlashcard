@@ -46,8 +46,8 @@ export const dataAndSyncSection: LoadVaultTabData = {
           de: "Profile mode: Auto (Vault/profile), Custom path und Sync provider (Platzhalter).",
         },
         {
-          en: "Active path: the current stats folder (Example: /Users/kleif/Vaults/FMD/profile).",
-          de: "Active path: der aktuelle Stats-Ordner (Beispiel: /Users/kleif/Vaults/FMD/profile).",
+          en: "Active path: the current stats folder (Example: /Users/alex/Vaults/FMD/profile).",
+          de: "Active path: der aktuelle Stats-Ordner (Beispiel: /Users/alex/Vaults/FMD/profile).",
         },
         {
           en: "Change: selects a different folder when using Custom path.",
@@ -121,8 +121,14 @@ export const dataAndSyncSection: LoadVaultTabData = {
         },
         { en: "Verify the active path.", de: "Active path kontrollieren." },
         { en: "Create or load the intended profile.", de: "Profil erstellen oder laden." },
-        { en: "Review normally; stats update automatically.", de: "Normal arbeiten; Stats werden automatisch aktualisiert." },
-        { en: "Export JSON regularly; import via Merge/Overwrite when restoring or moving devices.", de: "JSON regelmaessig exportieren; bei Restore/Geraetewechsel per Merge/Overwrite importieren." },
+        {
+          en: "Review normally; stats update automatically.",
+          de: "Normal arbeiten; Stats werden automatisch aktualisiert.",
+        },
+        {
+          en: "Export JSON regularly; import via Merge/Overwrite when restoring or moving devices.",
+          de: "JSON regelmaessig exportieren; bei Restore/Geraetewechsel per Merge/Overwrite importieren.",
+        },
       ],
     },
   ],

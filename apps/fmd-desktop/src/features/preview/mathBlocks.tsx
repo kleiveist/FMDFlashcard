@@ -8,7 +8,7 @@ export const isMathBlockDelimiterLine = (line: string) => /^\s*\$\$\s*$/.test(li
 export const isSingleLineMathBlockLine = (line: string) =>
   !isMathBlockDelimiterLine(line) && /^\s*\$\$[\s\S]*\$\$\s*$/.test(line);
 
-const singleLineMathBlockPattern = /^\s*\$\$([\s\S]*?)\$\$\s*$/;
+const singleLineMathBlockPattern = /^[ \t]*\$\$([^\r\n]*?)\$\$[ \t]*$/;
 
 type MathBlockBoundaries = {
   body: string;
@@ -21,27 +21,20 @@ type MathBlockBoundaries = {
 
 type MathRenderResult =
   | {
-    status: "empty";
-  }
+      status: "empty";
+    }
   | {
-    status: "success";
-    html: string;
-  }
+      status: "success";
+      html: string;
+    }
   | {
-    status: "error";
-    message: string;
-    raw: string;
-  };
+      status: "error";
+      message: string;
+      raw: string;
+    };
 
 export type MathToolboxCategoryId =
-  | "fractions"
-  | "scripts"
-  | "roots"
-  | "operators"
-  | "brackets"
-  | "alignment"
-  | "matrices"
-  | "cases";
+  "fractions" | "scripts" | "roots" | "operators" | "brackets" | "alignment" | "matrices" | "cases";
 
 export type MathToolboxTemplate = {
   id: string;
@@ -261,7 +254,9 @@ export const resolveMathBlockBoundaries = (raw: string): MathBlockBoundaries => 
   }
 
   const contentStart = starts[1] ?? raw.length;
-  const closingLineStart = hasClosingDelimiter ? (starts[closingLineIndex] ?? raw.length) : raw.length;
+  const closingLineStart = hasClosingDelimiter
+    ? (starts[closingLineIndex] ?? raw.length)
+    : raw.length;
   const contentEnd = hasClosingDelimiter
     ? Math.max(contentStart, closingLineStart - 1)
     : raw.length;
@@ -273,8 +268,8 @@ export const resolveMathBlockBoundaries = (raw: string): MathBlockBoundaries => 
     hasOpeningDelimiter: true,
     hasClosingDelimiter,
     closingLineIndex,
-    };
   };
+};
 
 type MathRenderRuntime = {
   renderToString: (
@@ -319,9 +314,8 @@ const resolveTemplateSnippet = (template: MathToolboxTemplate): ResolvedTemplate
   if (selectionOpenIndex >= 0 && selectionCloseIndex > selectionOpenIndex) {
     const cursorIndex = text.indexOf(cursorMarker);
     text = text.replace(cursorMarker, "").replace(selectionOpen, "").replace(selectionClose, "");
-    const cursorAdjustment = cursorIndex >= 0 && cursorIndex < selectionOpenIndex
-      ? cursorMarker.length
-      : 0;
+    const cursorAdjustment =
+      cursorIndex >= 0 && cursorIndex < selectionOpenIndex ? cursorMarker.length : 0;
     selectionStart = selectionOpenIndex - cursorAdjustment;
     selectionEnd = selectionCloseIndex - selectionOpen.length - cursorAdjustment;
     return {
@@ -374,9 +368,9 @@ export const insertMathTemplateIntoRaw = (
 ) => {
   const resolvedSelection = clampMathBlockSelection(raw, selectionStart, selectionEnd);
   const snippet = resolveTemplateSnippet(template);
-  const nextValue = `${raw.slice(0, resolvedSelection.start)}${snippet.text}${
-    raw.slice(resolvedSelection.end)
-  }`;
+  const nextValue = `${raw.slice(0, resolvedSelection.start)}${snippet.text}${raw.slice(
+    resolvedSelection.end,
+  )}`;
   const insertionStart = resolvedSelection.start;
   return {
     value: nextValue,
@@ -430,8 +424,10 @@ export const renderMathBlockMarkup = (
         return {
           status: "success",
           html: lines
-            .map((line) =>
-              `<div class="markdown-hybrid-math-render-line">${renderKatex(runtime, line)}</div>`)
+            .map(
+              (line) =>
+                `<div class="markdown-hybrid-math-render-line">${renderKatex(runtime, line)}</div>`,
+            )
             .join(""),
         };
       } catch {

@@ -22,6 +22,7 @@ vi.mock("../../../components/AppStateProvider", () => ({
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
+  convertFileSrc: vi.fn((path: string) => path),
 }));
 
 const mockUseAppState = vi.mocked(useAppState);
@@ -50,11 +51,7 @@ const resolveInvokePath = (args?: InvokeArgs) => {
   return typeof candidate === "string" ? candidate : "";
 };
 
-const Probe = ({
-  onValue,
-}: {
-  onValue: (value: ExamSimulationViewModelSnapshot) => void;
-}) => {
+const Probe = ({ onValue }: { onValue: (value: ExamSimulationViewModelSnapshot) => void }) => {
   onValue(useExamSimulationViewModel() as ExamSimulationViewModelSnapshot);
   return null;
 };
@@ -209,8 +206,7 @@ const createMockAppState = ({
     }
     const normalized = name.trim().toLocaleLowerCase();
     return (
-      profiles.find((profile) => profile.name.trim().toLocaleLowerCase() === normalized) ??
-      null
+      profiles.find((profile) => profile.name.trim().toLocaleLowerCase() === normalized) ?? null
     );
   };
   return {

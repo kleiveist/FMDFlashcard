@@ -124,37 +124,37 @@ type TableContextMenuState = {
 
 type TablePointerDragState =
   | {
-    type: "row";
-    sourceIndex: number;
-    startX: number;
-    startY: number;
-    shiftKey: boolean;
-    additiveKey: boolean;
-    isMove: boolean;
-    canMove: boolean;
-  }
+      type: "row";
+      sourceIndex: number;
+      startX: number;
+      startY: number;
+      shiftKey: boolean;
+      additiveKey: boolean;
+      isMove: boolean;
+      canMove: boolean;
+    }
   | {
-    type: "column";
-    sourceIndex: number;
-    startX: number;
-    startY: number;
-    shiftKey: boolean;
-    additiveKey: boolean;
-    isMove: boolean;
-    canMove: boolean;
-  };
+      type: "column";
+      sourceIndex: number;
+      startX: number;
+      startY: number;
+      shiftKey: boolean;
+      additiveKey: boolean;
+      isMove: boolean;
+      canMove: boolean;
+    };
 
 type TableDropIndicator =
   | {
-    type: "row";
-    index: number;
-    offset: number;
-  }
+      type: "row";
+      index: number;
+      offset: number;
+    }
   | {
-    type: "column";
-    index: number;
-    offset: number;
-  };
+      type: "column";
+      index: number;
+      offset: number;
+    };
 
 type TableCellImageReplacePickerState = {
   location: MarkdownHybridTableCellLocation;
@@ -206,10 +206,10 @@ const isSameCell = (
 ) =>
   Boolean(
     left &&
-      right &&
-      left.rowBand === right.rowBand &&
-      left.rowIndex === right.rowIndex &&
-      left.columnIndex === right.columnIndex,
+    right &&
+    left.rowBand === right.rowBand &&
+    left.rowIndex === right.rowIndex &&
+    left.columnIndex === right.columnIndex,
   );
 
 const resolveStandaloneCellPngEmbed = (source: string, scope: string) => {
@@ -261,10 +261,7 @@ const resolveStandaloneCellPngEmbed = (source: string, scope: string) => {
 };
 
 const escapeHtmlForMirror = (value: string) =>
-  value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 const resolveTextareaCaretAnchor = (
   textarea: HTMLTextAreaElement,
@@ -303,8 +300,7 @@ const resolveTextareaCaretAnchor = (
   (mirrorStyle as CSSStyleDeclaration & { tabSize?: string }).tabSize =
     (computed as CSSStyleDeclaration & { tabSize?: string }).tabSize ?? "8";
 
-  const beforeText = escapeHtmlForMirror(textarea.value.slice(0, safeCaret))
-    .replace(/\n$/g, "\n ");
+  const beforeText = escapeHtmlForMirror(textarea.value.slice(0, safeCaret)).replace(/\n$/g, "\n ");
   mirror.innerHTML = `${beforeText}<span data-md-caret-anchor=\"true\">&#8203;</span>`;
   document.body.appendChild(mirror);
 
@@ -314,14 +310,24 @@ const resolveTextareaCaretAnchor = (
   const textareaRect = textarea.getBoundingClientRect();
   const containerRect = container.getBoundingClientRect();
   const resolvedLineHeight = Number.parseFloat(computed.lineHeight);
-  const lineHeight = Number.isFinite(resolvedLineHeight) && resolvedLineHeight > 0
-    ? resolvedLineHeight
-    : (Number.parseFloat(computed.fontSize) || 16) * 1.4;
+  const lineHeight =
+    Number.isFinite(resolvedLineHeight) && resolvedLineHeight > 0
+      ? resolvedLineHeight
+      : (Number.parseFloat(computed.fontSize) || 16) * 1.4;
 
-  const anchorLeft = textareaRect.left - containerRect.left + container.scrollLeft +
-    (markerRect.left - mirrorRect.left) - textarea.scrollLeft;
-  const anchorTop = textareaRect.top - containerRect.top + container.scrollTop +
-    (markerRect.top - mirrorRect.top) - textarea.scrollTop + lineHeight;
+  const anchorLeft =
+    textareaRect.left -
+    containerRect.left +
+    container.scrollLeft +
+    (markerRect.left - mirrorRect.left) -
+    textarea.scrollLeft;
+  const anchorTop =
+    textareaRect.top -
+    containerRect.top +
+    container.scrollTop +
+    (markerRect.top - mirrorRect.top) -
+    textarea.scrollTop +
+    lineHeight;
 
   mirror.remove();
   return {
@@ -345,15 +351,15 @@ const resolveTextareaSelectionToolbarAnchor = (
   const endAnchor = resolveTextareaCaretAnchor(textarea, container, normalized.end);
   const computed = window.getComputedStyle(textarea);
   const rawLineHeight = Number.parseFloat(computed.lineHeight);
-  const lineHeight = Number.isFinite(rawLineHeight) && rawLineHeight > 0
-    ? rawLineHeight
-    : (Number.parseFloat(computed.fontSize) || 16) * 1.4;
+  const lineHeight =
+    Number.isFinite(rawLineHeight) && rawLineHeight > 0
+      ? rawLineHeight
+      : (Number.parseFloat(computed.fontSize) || 16) * 1.4;
   const sameLine = Math.abs(startAnchor.top - endAnchor.top) <= lineHeight * 0.5;
   const topLocal = Math.min(startAnchor.top, endAnchor.top) - lineHeight;
   const bottomLocal = Math.max(startAnchor.top, endAnchor.top);
-  const leftOnSelectionStartLine = normalized.start <= normalized.end
-    ? startAnchor.left
-    : endAnchor.left;
+  const leftOnSelectionStartLine =
+    normalized.start <= normalized.end ? startAnchor.left : endAnchor.left;
   const centerLocalX = sameLine
     ? (startAnchor.left + endAnchor.left) / 2
     : leftOnSelectionStartLine;
@@ -430,16 +436,11 @@ const getColumnTemplate = (model: MarkdownPipeTableModel) => {
   return `${TABLE_ROW_GUTTER_WIDTH_PX}px ${tracks}`;
 };
 
-const toCellStorageValue = (value: string) =>
-  value.replace(/\r\n?/g, "\n").replace(/\n/g, "<br>");
+const toCellStorageValue = (value: string) => value.replace(/\r\n?/g, "\n").replace(/\n/g, "<br>");
 
-const fromCellStorageValue = (value: string) =>
-  value.replace(/<br\s*\/?>/gi, "\n");
+const fromCellStorageValue = (value: string) => value.replace(/<br\s*\/?>/gi, "\n");
 
-const getCellValue = (
-  model: MarkdownPipeTableModel,
-  location: MarkdownHybridTableCellLocation,
-) => {
+const getCellValue = (model: MarkdownPipeTableModel, location: MarkdownHybridTableCellLocation) => {
   if (location.rowBand === "header") {
     return model.header[location.columnIndex]?.raw ?? "";
   }
@@ -581,7 +582,10 @@ export const MarkdownHybridTableBlock = ({
   const inlineFormattingToolbarPendingSignatureRef = useRef<string | null>(null);
   const inlineFormattingToolbarRangeRef = useRef<InlineFormattingToolbarRange | null>(null);
   const tablePointerDragRef = useRef<TablePointerDragState | null>(null);
-  const pendingCellCommitRef = useRef<{ location: MarkdownHybridTableCellLocation; value: string } | null>(null);
+  const pendingCellCommitRef = useRef<{
+    location: MarkdownHybridTableCellLocation;
+    value: string;
+  } | null>(null);
   const columnLaneRefs = useRef<Array<HTMLElement | null>>([]);
   const bodyRowLaneRefs = useRef<Array<HTMLElement | null>>([]);
 
@@ -596,12 +600,16 @@ export const MarkdownHybridTableBlock = ({
   const [codeDirty, setCodeDirty] = useState(false);
   const [codeError, setCodeError] = useState<string | null>(null);
   const [repairNotice, setRepairNotice] = useState<string | null>(null);
-  const [dragSource, setDragSource] = useState<{ type: "row" | "column"; index: number } | null>(null);
+  const [dragSource, setDragSource] = useState<{ type: "row" | "column"; index: number } | null>(
+    null,
+  );
   const [dropIndicator, setDropIndicator] = useState<TableDropIndicator | null>(null);
   const [cellImageReplacePickerState, setCellImageReplacePickerState] =
     useState<TableCellImageReplacePickerState | null>(null);
-  const [cellPageLinkPickerState, setCellPageLinkPickerState] = useState<TableCellPageLinkPickerState | null>(null);
-  const [cellImageLinkPickerState, setCellImageLinkPickerState] = useState<TableCellImageLinkPickerState | null>(null);
+  const [cellPageLinkPickerState, setCellPageLinkPickerState] =
+    useState<TableCellPageLinkPickerState | null>(null);
+  const [cellImageLinkPickerState, setCellImageLinkPickerState] =
+    useState<TableCellImageLinkPickerState | null>(null);
   const [inlineFormattingToolbarSelection, setInlineFormattingToolbarSelection] =
     useState<TableInlineFormattingToolbarSelection | null>(null);
   const [inlineFormattingToolbarMenu, setInlineFormattingToolbarMenu] =
@@ -966,7 +974,8 @@ export const MarkdownHybridTableBlock = ({
         const activeState = resolveInlineFormattingToolbarActiveState(value, normalizedSelection);
         const linkActive = Boolean(findInlineMarkdownLinkAtRange(value, normalizedSelection));
         const targetActive = action === "cd" ? activeState.cd : activeState.cl;
-        const hasOtherFormatting = activeState.highlight ||
+        const hasOtherFormatting =
+          activeState.highlight ||
           activeState.bold ||
           activeState.italic ||
           activeState.underline ||
@@ -981,7 +990,17 @@ export const MarkdownHybridTableBlock = ({
           return applyInlineFormattingToActiveSelection(toggled);
         }
         const replaced = stripInlineFormattingAroundRange(value, normalizedSelection, {
-          actions: ["highlight", "strikethrough", "underline", "bold", "italic", "inline-code", "math", "cd", "cl"],
+          actions: [
+            "highlight",
+            "strikethrough",
+            "underline",
+            "bold",
+            "italic",
+            "inline-code",
+            "math",
+            "cd",
+            "cl",
+          ],
           removeLink: true,
         });
         const wrapped = toggleInlineFormattingWrapper(replaced.value, replaced.selection, wrapper);
@@ -991,11 +1010,18 @@ export const MarkdownHybridTableBlock = ({
       const withoutCdCl = stripInlineFormattingAroundRange(value, normalizedSelection, {
         actions: ["cd", "cl"],
       });
-      if (action === "math" && rangeIntersectsMarkdownCodeContext(withoutCdCl.value, withoutCdCl.selection)) {
+      if (
+        action === "math" &&
+        rangeIntersectsMarkdownCodeContext(withoutCdCl.value, withoutCdCl.selection)
+      ) {
         return false;
       }
       const wrapper = INLINE_FORMATTING_WRAPPERS[action];
-      const nextResult = toggleInlineFormattingWrapper(withoutCdCl.value, withoutCdCl.selection, wrapper);
+      const nextResult = toggleInlineFormattingWrapper(
+        withoutCdCl.value,
+        withoutCdCl.selection,
+        wrapper,
+      );
       return applyInlineFormattingToActiveSelection(nextResult);
     },
     [applyInlineFormattingToActiveSelection, restoreInlineFormattingToolbarSelection],
@@ -1023,9 +1049,9 @@ export const MarkdownHybridTableBlock = ({
           return false;
         }
         const targetDelimiter = targetType === "inline-math" ? "$" : "$$";
-        const nextValue = `${value.slice(0, token.start)}${targetDelimiter}${token.value}${targetDelimiter}${
-          value.slice(token.end)
-        }`;
+        const nextValue = `${value.slice(0, token.start)}${targetDelimiter}${token.value}${targetDelimiter}${value.slice(
+          token.end,
+        )}`;
         const delimiterLength = targetDelimiter.length;
         return applyInlineFormattingToActiveSelection({
           value: nextValue,
@@ -1045,9 +1071,9 @@ export const MarkdownHybridTableBlock = ({
           return false;
         }
         const selectedText = value.slice(normalizedSelection.start, normalizedSelection.end);
-        const nextValue = `${value.slice(0, normalizedSelection.start)}$${selectedText}$${
-          value.slice(normalizedSelection.end)
-        }`;
+        const nextValue = `${value.slice(0, normalizedSelection.start)}$${selectedText}$${value.slice(
+          normalizedSelection.end,
+        )}`;
         return applyInlineFormattingToActiveSelection({
           value: nextValue,
           selection: {
@@ -1071,9 +1097,9 @@ export const MarkdownHybridTableBlock = ({
       if (!activeMathToken) {
         return false;
       }
-      const nextValue = `${value.slice(0, activeMathToken.start)}${activeMathToken.value}${
-        value.slice(activeMathToken.end)
-      }`;
+      const nextValue = `${value.slice(0, activeMathToken.start)}${activeMathToken.value}${value.slice(
+        activeMathToken.end,
+      )}`;
       return applyInlineFormattingToActiveSelection({
         value: nextValue,
         selection: {
@@ -1097,7 +1123,17 @@ export const MarkdownHybridTableBlock = ({
     let nextRange = normalizedSelection;
     let hasChanged = false;
     const strippedAroundSelection = stripInlineFormattingAroundRange(nextValue, nextRange, {
-      actions: ["highlight", "strikethrough", "underline", "bold", "italic", "inline-code", "math", "cd", "cl"],
+      actions: [
+        "highlight",
+        "strikethrough",
+        "underline",
+        "bold",
+        "italic",
+        "inline-code",
+        "math",
+        "cd",
+        "cl",
+      ],
       removeLink: true,
     });
     if (strippedAroundSelection.changed) {
@@ -1150,9 +1186,8 @@ export const MarkdownHybridTableBlock = ({
       if (!normalizedSelection || !textarea) {
         return false;
       }
-      const nextUrl = typeof urlValue === "string"
-        ? urlValue
-        : (inlineFormattingToolbarLinkState?.url ?? "");
+      const nextUrl =
+        typeof urlValue === "string" ? urlValue : (inlineFormattingToolbarLinkState?.url ?? "");
       const strippedCloze = stripInlineFormattingAroundRange(textarea.value, normalizedSelection, {
         actions: ["cd", "cl"],
       });
@@ -1212,9 +1247,12 @@ export const MarkdownHybridTableBlock = ({
     [],
   );
 
-  useEffect(() => () => {
-    clearInlineFormattingToolbarTimer();
-  }, [clearInlineFormattingToolbarTimer]);
+  useEffect(
+    () => () => {
+      clearInlineFormattingToolbarTimer();
+    },
+    [clearInlineFormattingToolbarTimer],
+  );
 
   useEffect(() => {
     if (!active || disabled || viewMode !== "grid" || !activeCell) {
@@ -1243,7 +1281,8 @@ export const MarkdownHybridTableBlock = ({
         return;
       }
       const activeElement = document.activeElement;
-      const isToolbarFocused = activeElement instanceof Node &&
+      const isToolbarFocused =
+        activeElement instanceof Node &&
         inlineFormattingToolbarRef.current?.contains(activeElement);
       if (activeElement === textarea) {
         scheduleInlineFormattingToolbarVisibility();
@@ -1366,17 +1405,25 @@ export const MarkdownHybridTableBlock = ({
       setRowSelection(null);
     }
     onConsumePendingActivation();
-  }, [active, allowCodeView, codeViewPolicy, onConsumePendingActivation, parsedModel, pendingActivation]);
+  }, [
+    active,
+    allowCodeView,
+    codeViewPolicy,
+    onConsumePendingActivation,
+    parsedModel,
+    pendingActivation,
+  ]);
 
   useLayoutEffect(() => {
     if (!active || disabled) {
       return;
     }
-    const target = viewMode === "code"
-      ? codeTextareaRef.current
-      : activeCell
-      ? cellTextareaRef.current
-      : tableRootRef.current;
+    const target =
+      viewMode === "code"
+        ? codeTextareaRef.current
+        : activeCell
+          ? cellTextareaRef.current
+          : tableRootRef.current;
     if (!target) {
       return;
     }
@@ -1438,9 +1485,8 @@ export const MarkdownHybridTableBlock = ({
       return;
     }
     const handle = window.requestAnimationFrame(() => {
-      const input = cellImageReplacePickerRef.current?.querySelector<HTMLInputElement>(
-        "input[type='search']",
-      );
+      const input =
+        cellImageReplacePickerRef.current?.querySelector<HTMLInputElement>("input[type='search']");
       if (!input) {
         return;
       }
@@ -1476,6 +1522,9 @@ export const MarkdownHybridTableBlock = ({
       if (!nextSrc || (currentSrc && currentSrc !== nextSrc)) {
         return null;
       }
+      if (current.src === embed.src && current.label === embed.label) {
+        return current;
+      }
       return {
         ...current,
         src: embed.src,
@@ -1495,7 +1544,14 @@ export const MarkdownHybridTableBlock = ({
     ) {
       closeCellImageReplacePicker();
     }
-  }, [active, activeCell, cellImageReplacePickerState, closeCellImageReplacePicker, disabled, viewMode]);
+  }, [
+    active,
+    activeCell,
+    cellImageReplacePickerState,
+    closeCellImageReplacePicker,
+    disabled,
+    viewMode,
+  ]);
 
   useEffect(() => {
     if (!cellImageReplacePickerState) {
@@ -1575,9 +1631,10 @@ export const MarkdownHybridTableBlock = ({
       return;
     }
     const handle = window.requestAnimationFrame(() => {
-      const input = cellTypedImageLinkPickerRef.current?.querySelector<HTMLInputElement>(
-        "input[type='search']",
-      );
+      const input =
+        cellTypedImageLinkPickerRef.current?.querySelector<HTMLInputElement>(
+          "input[type='search']",
+        );
       if (!input) {
         return;
       }
@@ -1747,14 +1804,21 @@ export const MarkdownHybridTableBlock = ({
     setCellImageLinkPickerState(null);
   }, [hideInlineFormattingToolbar]);
 
-  const selectRow = useCallback((rowIndex: number, options?: { shiftKey?: boolean; additiveKey?: boolean }) => {
-    setRowSelection((current) => resolveSelectionState(current, rowIndex, visualRowCount, options));
-    setColumnSelection(null);
-  }, [visualRowCount]);
+  const selectRow = useCallback(
+    (rowIndex: number, options?: { shiftKey?: boolean; additiveKey?: boolean }) => {
+      setRowSelection((current) =>
+        resolveSelectionState(current, rowIndex, visualRowCount, options),
+      );
+      setColumnSelection(null);
+    },
+    [visualRowCount],
+  );
 
   const selectColumn = useCallback(
     (columnIndex: number, options?: { shiftKey?: boolean; additiveKey?: boolean }) => {
-      setColumnSelection((current) => resolveSelectionState(current, columnIndex, columnCount, options));
+      setColumnSelection((current) =>
+        resolveSelectionState(current, columnIndex, columnCount, options),
+      );
       setRowSelection(null);
     },
     [columnCount],
@@ -1777,7 +1841,8 @@ export const MarkdownHybridTableBlock = ({
       bodyRows: parsedModel.bodyRows.map((row, rowIndex) =>
         row.map((cell) => ({
           raw: selectedRows.has(rowIndex + 1) ? "" : cell.raw,
-        }))),
+        })),
+      ),
       columnCount: parsedModel.columnCount,
     };
     commitModel(nextModel);
@@ -1803,7 +1868,8 @@ export const MarkdownHybridTableBlock = ({
       bodyRows: parsedModel.bodyRows.map((row) =>
         row.map((cell, columnIndex) => ({
           raw: selectedColumns.has(columnIndex) ? "" : cell.raw,
-        }))),
+        })),
+      ),
       columnCount: parsedModel.columnCount,
     };
     commitModel(nextModel);
@@ -1838,7 +1904,15 @@ export const MarkdownHybridTableBlock = ({
       setCellDirty(false);
       setCodeError(null);
     },
-    [active, activeCell, clearSelections, disabled, flushActiveCell, onRequestActivate, parsedModel],
+    [
+      active,
+      activeCell,
+      clearSelections,
+      disabled,
+      flushActiveCell,
+      onRequestActivate,
+      parsedModel,
+    ],
   );
 
   const moveCellFocus = useCallback(
@@ -1928,9 +2002,6 @@ export const MarkdownHybridTableBlock = ({
       if (!flushActiveCell()) {
         return;
       }
-      if (!active) {
-        onRequestActivate({ focusTarget: "frame" });
-      }
       const cellValue = getCellValue(parsedModel, location);
       const cellSource = normalizeMarkdownTableCellPreviewValue(cellValue);
       const embed = resolveStandaloneCellPngEmbed(
@@ -1953,17 +2024,10 @@ export const MarkdownHybridTableBlock = ({
               label: embed.label,
               query: "",
               highlightedIndex: 0,
-            }
+            },
       );
     },
-    [
-      active,
-      closeCellImageReplacePicker,
-      disabled,
-      flushActiveCell,
-      onRequestActivate,
-      parsedModel,
-    ],
+    [closeCellImageReplacePicker, disabled, flushActiveCell, parsedModel],
   );
 
   const handleCellImageReplaceQueryChange = useCallback((value: string) => {
@@ -1974,7 +2038,7 @@ export const MarkdownHybridTableBlock = ({
             query: value,
             highlightedIndex: 0,
           }
-        : current
+        : current,
     );
   }, []);
 
@@ -2004,12 +2068,14 @@ export const MarkdownHybridTableBlock = ({
         return;
       }
       const nextTokenRaw = serializePngEmbed(candidate.relPath, embed.label);
-      const nextCellSource = embed.segments.map((segment, segmentIndex) => {
-        if (segmentIndex === embed.mediaSegmentIndex) {
-          return nextTokenRaw;
-        }
-        return segment.kind === "media" ? segment.raw : segment.source;
-      }).join("");
+      const nextCellSource = embed.segments
+        .map((segment, segmentIndex) => {
+          if (segmentIndex === embed.mediaSegmentIndex) {
+            return nextTokenRaw;
+          }
+          return segment.kind === "media" ? segment.raw : segment.source;
+        })
+        .join("");
       const nextCellValue = toCellStorageValue(nextCellSource);
       closeCellImageReplacePicker();
       if (nextCellValue === cellValue) {
@@ -2096,18 +2162,28 @@ export const MarkdownHybridTableBlock = ({
             query: value,
             highlightedIndex: 0,
           }
-        : current
+        : current,
     );
   }, []);
 
   const handleCellPageLinkPickerSelectCandidate = useCallback(
     (candidate: TableCellPageLinkCandidate) => {
-      if (!cellPageLinkPickerState || !activeCell || !isSameCell(activeCell, cellPageLinkPickerState.location)) {
+      if (
+        !cellPageLinkPickerState ||
+        !activeCell ||
+        !isSameCell(activeCell, cellPageLinkPickerState.location)
+      ) {
         closeCellPageLinkPicker();
         return;
       }
-      const replaceStart = Math.max(0, Math.min(cellPageLinkPickerState.replaceRange.start, cellDraft.length));
-      const replaceEnd = Math.max(replaceStart, Math.min(cellPageLinkPickerState.replaceRange.end, cellDraft.length));
+      const replaceStart = Math.max(
+        0,
+        Math.min(cellPageLinkPickerState.replaceRange.start, cellDraft.length),
+      );
+      const replaceEnd = Math.max(
+        replaceStart,
+        Math.min(cellPageLinkPickerState.replaceRange.end, cellDraft.length),
+      );
       const nextToken = candidate.wikilink;
       const nextDraft = `${cellDraft.slice(0, replaceStart)}${nextToken}${cellDraft.slice(replaceEnd)}`;
       const nextCaret = replaceStart + nextToken.length;
@@ -2157,7 +2233,8 @@ export const MarkdownHybridTableBlock = ({
           if (!current) {
             return current;
           }
-          const nextIndex = (current.highlightedIndex + delta + filteredCellPageLinkCandidates.length) %
+          const nextIndex =
+            (current.highlightedIndex + delta + filteredCellPageLinkCandidates.length) %
             filteredCellPageLinkCandidates.length;
           return {
             ...current,
@@ -2194,18 +2271,28 @@ export const MarkdownHybridTableBlock = ({
             query: value,
             highlightedIndex: 0,
           }
-        : current
+        : current,
     );
   }, []);
 
   const handleCellImageLinkPickerSelectCandidate = useCallback(
     (candidate: VaultImageCandidate) => {
-      if (!cellImageLinkPickerState || !activeCell || !isSameCell(activeCell, cellImageLinkPickerState.location)) {
+      if (
+        !cellImageLinkPickerState ||
+        !activeCell ||
+        !isSameCell(activeCell, cellImageLinkPickerState.location)
+      ) {
         closeCellImageLinkPicker();
         return;
       }
-      const replaceStart = Math.max(0, Math.min(cellImageLinkPickerState.replaceRange.start, cellDraft.length));
-      const replaceEnd = Math.max(replaceStart, Math.min(cellImageLinkPickerState.replaceRange.end, cellDraft.length));
+      const replaceStart = Math.max(
+        0,
+        Math.min(cellImageLinkPickerState.replaceRange.start, cellDraft.length),
+      );
+      const replaceEnd = Math.max(
+        replaceStart,
+        Math.min(cellImageLinkPickerState.replaceRange.end, cellDraft.length),
+      );
       const nextToken = serializePngEmbed(candidate.relPath);
       const nextDraft = `${cellDraft.slice(0, replaceStart)}${nextToken}${cellDraft.slice(replaceEnd)}`;
       const nextCaret = replaceStart + nextToken.length;
@@ -2255,7 +2342,8 @@ export const MarkdownHybridTableBlock = ({
           if (!current) {
             return current;
           }
-          const nextIndex = (current.highlightedIndex + delta + filteredCellImageLinkCandidates.length) %
+          const nextIndex =
+            (current.highlightedIndex + delta + filteredCellImageLinkCandidates.length) %
             filteredCellImageLinkCandidates.length;
           return {
             ...current,
@@ -2284,11 +2372,14 @@ export const MarkdownHybridTableBlock = ({
     ],
   );
 
-  const handleCodeChange = useCallback((value: string) => {
-    setCodeDraft(value);
-    setCodeDirty(value !== raw);
-    setCodeError(null);
-  }, [raw]);
+  const handleCodeChange = useCallback(
+    (value: string) => {
+      setCodeDraft(value);
+      setCodeDirty(value !== raw);
+      setCodeError(null);
+    },
+    [raw],
+  );
 
   const handleDeleteColumnSelection = useCallback(() => {
     if (!columnSelection) {
@@ -2304,10 +2395,15 @@ export const MarkdownHybridTableBlock = ({
     const nextModel = deleteTableColumns(parsedModel, indices);
     commitModel(nextModel);
     setColumnSelection((current) =>
-      normalizeColumnSelectionAfterMutation(current, {
-        kind: "delete",
-        removedIndices: indices,
-      }, nextModel.columnCount));
+      normalizeColumnSelectionAfterMutation(
+        current,
+        {
+          kind: "delete",
+          removedIndices: indices,
+        },
+        nextModel.columnCount,
+      ),
+    );
     if (activeCell) {
       if (indices.includes(activeCell.columnIndex)) {
         setActiveCell({
@@ -2319,11 +2415,13 @@ export const MarkdownHybridTableBlock = ({
         setActiveCell((current) =>
           current
             ? {
-              ...current,
-              columnIndex: current.columnIndex -
-                indices.filter((index) => index < current.columnIndex).length,
-            }
-            : current);
+                ...current,
+                columnIndex:
+                  current.columnIndex -
+                  indices.filter((index) => index < current.columnIndex).length,
+              }
+            : current,
+        );
       }
     }
   }, [activeCell, columnSelection, commitModel, flushActiveCell, parsedModel]);
@@ -2344,10 +2442,15 @@ export const MarkdownHybridTableBlock = ({
     const nextModel = deleteTableRows(parsedModel, bodyIndices);
     commitModel(nextModel);
     setRowSelection((current) =>
-      normalizeRowSelectionAfterMutation(current, {
-        kind: "delete",
-        removedIndices: bodyIndices.map((index) => index + 1),
-      }, nextModel.bodyRows.length + 1));
+      normalizeRowSelectionAfterMutation(
+        current,
+        {
+          kind: "delete",
+          removedIndices: bodyIndices.map((index) => index + 1),
+        },
+        nextModel.bodyRows.length + 1,
+      ),
+    );
     if (activeCell?.rowBand === "body") {
       if (bodyIndices.includes(activeCell.rowIndex)) {
         if (nextModel.bodyRows.length === 0) {
@@ -2364,10 +2467,12 @@ export const MarkdownHybridTableBlock = ({
         setActiveCell((current) =>
           current && current.rowBand === "body"
             ? {
-              ...current,
-              rowIndex: current.rowIndex - bodyIndices.filter((index) => index < current.rowIndex).length,
-            }
-            : current);
+                ...current,
+                rowIndex:
+                  current.rowIndex - bodyIndices.filter((index) => index < current.rowIndex).length,
+              }
+            : current,
+        );
       }
     }
   }, [activeCell, commitModel, flushActiveCell, parsedModel, rowSelection]);
@@ -2473,53 +2578,61 @@ export const MarkdownHybridTableBlock = ({
     [active, disabled, flushActiveCell, onRequestActivate],
   );
 
-  const resolveColumnDropBoundaryFromPointer = useCallback((clientX: number): TableDropIndicator | null => {
-    const lanes = columnLaneRefs.current.filter(Boolean);
-    const shell = tableShellRef.current;
-    if (!shell || lanes.length === 0) {
-      return null;
-    }
-    const shellRect = shell.getBoundingClientRect();
-    const laneRects = lanes.map((lane) => lane!.getBoundingClientRect());
-    const midpoints = laneRects.map((rect) => rect.left + rect.width / 2);
-    let index = laneRects.length;
-    for (let laneIndex = 0; laneIndex < midpoints.length; laneIndex += 1) {
-      if (clientX < midpoints[laneIndex]!) {
-        index = laneIndex;
-        break;
+  const resolveColumnDropBoundaryFromPointer = useCallback(
+    (clientX: number): TableDropIndicator | null => {
+      const lanes = columnLaneRefs.current.filter(Boolean);
+      const shell = tableShellRef.current;
+      if (!shell || lanes.length === 0) {
+        return null;
       }
-    }
-    const offset = index <= 0
-      ? laneRects[0]!.left - shellRect.left
-      : index >= laneRects.length
-      ? laneRects[laneRects.length - 1]!.right - shellRect.left
-      : laneRects[index]!.left - shellRect.left;
-    return { type: "column", index, offset };
-  }, []);
+      const shellRect = shell.getBoundingClientRect();
+      const laneRects = lanes.map((lane) => lane!.getBoundingClientRect());
+      const midpoints = laneRects.map((rect) => rect.left + rect.width / 2);
+      let index = laneRects.length;
+      for (let laneIndex = 0; laneIndex < midpoints.length; laneIndex += 1) {
+        if (clientX < midpoints[laneIndex]!) {
+          index = laneIndex;
+          break;
+        }
+      }
+      const offset =
+        index <= 0
+          ? laneRects[0]!.left - shellRect.left
+          : index >= laneRects.length
+            ? laneRects[laneRects.length - 1]!.right - shellRect.left
+            : laneRects[index]!.left - shellRect.left;
+      return { type: "column", index, offset };
+    },
+    [],
+  );
 
-  const resolveRowDropBoundaryFromPointer = useCallback((clientY: number): TableDropIndicator | null => {
-    const lanes = bodyRowLaneRefs.current.filter(Boolean);
-    const shell = tableShellRef.current;
-    if (!shell || lanes.length === 0) {
-      return null;
-    }
-    const shellRect = shell.getBoundingClientRect();
-    const laneRects = lanes.map((lane) => lane!.getBoundingClientRect());
-    const midpoints = laneRects.map((rect) => rect.top + rect.height / 2);
-    let index = laneRects.length;
-    for (let laneIndex = 0; laneIndex < midpoints.length; laneIndex += 1) {
-      if (clientY < midpoints[laneIndex]!) {
-        index = laneIndex;
-        break;
+  const resolveRowDropBoundaryFromPointer = useCallback(
+    (clientY: number): TableDropIndicator | null => {
+      const lanes = bodyRowLaneRefs.current.filter(Boolean);
+      const shell = tableShellRef.current;
+      if (!shell || lanes.length === 0) {
+        return null;
       }
-    }
-    const offset = index <= 0
-      ? laneRects[0]!.top - shellRect.top
-      : index >= laneRects.length
-      ? laneRects[laneRects.length - 1]!.bottom - shellRect.top
-      : laneRects[index]!.top - shellRect.top;
-    return { type: "row", index, offset };
-  }, []);
+      const shellRect = shell.getBoundingClientRect();
+      const laneRects = lanes.map((lane) => lane!.getBoundingClientRect());
+      const midpoints = laneRects.map((rect) => rect.top + rect.height / 2);
+      let index = laneRects.length;
+      for (let laneIndex = 0; laneIndex < midpoints.length; laneIndex += 1) {
+        if (clientY < midpoints[laneIndex]!) {
+          index = laneIndex;
+          break;
+        }
+      }
+      const offset =
+        index <= 0
+          ? laneRects[0]!.top - shellRect.top
+          : index >= laneRects.length
+            ? laneRects[laneRects.length - 1]!.bottom - shellRect.top
+            : laneRects[index]!.top - shellRect.top;
+      return { type: "row", index, offset };
+    },
+    [],
+  );
 
   useEffect(() => {
     const handleMouseMove = (event: globalThis.MouseEvent) => {
@@ -2579,9 +2692,10 @@ export const MarkdownHybridTableBlock = ({
         return;
       }
 
-      const resolvedDropIndicator = dragState.type === "row"
-        ? resolveRowDropBoundaryFromPointer(event.clientY)
-        : resolveColumnDropBoundaryFromPointer(event.clientX);
+      const resolvedDropIndicator =
+        dragState.type === "row"
+          ? resolveRowDropBoundaryFromPointer(event.clientY)
+          : resolveColumnDropBoundaryFromPointer(event.clientX);
 
       setDragSource(null);
       setDropIndicator(null);
@@ -2592,9 +2706,10 @@ export const MarkdownHybridTableBlock = ({
 
       if (dragState.type === "row") {
         const fromIndex = dragState.sourceIndex - 1;
-        const targetIndex = resolvedDropIndicator.index > fromIndex
-          ? resolvedDropIndicator.index - 1
-          : resolvedDropIndicator.index;
+        const targetIndex =
+          resolvedDropIndicator.index > fromIndex
+            ? resolvedDropIndicator.index - 1
+            : resolvedDropIndicator.index;
         if (targetIndex !== fromIndex) {
           const nextModel = moveTableRow(parsedModel, fromIndex, targetIndex);
           commitModel(nextModel);
@@ -2613,18 +2728,27 @@ export const MarkdownHybridTableBlock = ({
         return;
       }
 
-      const targetIndex = resolvedDropIndicator.index > dragState.sourceIndex
-        ? resolvedDropIndicator.index - 1
-        : resolvedDropIndicator.index;
+      const targetIndex =
+        resolvedDropIndicator.index > dragState.sourceIndex
+          ? resolvedDropIndicator.index - 1
+          : resolvedDropIndicator.index;
       if (targetIndex !== dragState.sourceIndex) {
-        const nextModel = moveTableColumn(parsedModel, dragState.sourceIndex, resolvedDropIndicator.index);
+        const nextModel = moveTableColumn(
+          parsedModel,
+          dragState.sourceIndex,
+          resolvedDropIndicator.index,
+        );
         commitModel(nextModel);
         setColumnSelection({ anchorIndex: targetIndex, selectedIndices: [targetIndex] });
         setRowSelection(null);
         if (activeCell) {
           setActiveCell({
             ...activeCell,
-            columnIndex: remapMovedIndex(activeCell.columnIndex, dragState.sourceIndex, targetIndex),
+            columnIndex: remapMovedIndex(
+              activeCell.columnIndex,
+              dragState.sourceIndex,
+              targetIndex,
+            ),
           });
         }
       } else {
@@ -2756,7 +2880,9 @@ export const MarkdownHybridTableBlock = ({
         const lineBreak = event.shiftKey ? "\n\n" : "\n";
         textarea.setRangeText(lineBreak, nextSelectionStart, nextSelectionEnd, "end");
         setCellDraft(textarea.value);
-        setCellDirty(textarea.value !== fromCellStorageValue(getCellValue(parsedModel, activeCell)));
+        setCellDirty(
+          textarea.value !== fromCellStorageValue(getCellValue(parsedModel, activeCell)),
+        );
         textarea.style.height = "0px";
         textarea.style.height = `${textarea.scrollHeight}px`;
         return;
@@ -2815,7 +2941,11 @@ export const MarkdownHybridTableBlock = ({
         setContextMenuState(null);
         return;
       }
-      if ((event.key === "Delete" || event.key === "Backspace") && !event.metaKey && !event.ctrlKey) {
+      if (
+        (event.key === "Delete" || event.key === "Backspace") &&
+        !event.metaKey &&
+        !event.ctrlKey
+      ) {
         if (columnSelection) {
           event.preventDefault();
           handleDeleteColumnSelection();
@@ -2827,7 +2957,12 @@ export const MarkdownHybridTableBlock = ({
         }
         return;
       }
-      if (!event.shiftKey && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z" && !isDirty) {
+      if (
+        !event.shiftKey &&
+        (event.metaKey || event.ctrlKey) &&
+        event.key.toLowerCase() === "z" &&
+        !isDirty
+      ) {
         if (onGlobalUndo()) {
           event.preventDefault();
           event.stopPropagation();
@@ -2882,11 +3017,14 @@ export const MarkdownHybridTableBlock = ({
           onChange={(event) => {
             const nextValue = event.currentTarget.value;
             const nextSelectionStart = event.currentTarget.selectionStart ?? nextValue.length;
-            const typedLinkTrigger = cellPageLinkPickerState || cellImageLinkPickerState
-              ? null
-              : resolveTypedLinkPickerTriggerAtCaret(nextValue, nextSelectionStart);
-            const typedPageLinkTrigger = typedLinkTrigger?.mode === "page" ? typedLinkTrigger : null;
-            const typedImageLinkTrigger = typedLinkTrigger?.mode === "image" ? typedLinkTrigger : null;
+            const typedLinkTrigger =
+              cellPageLinkPickerState || cellImageLinkPickerState
+                ? null
+                : resolveTypedLinkPickerTriggerAtCaret(nextValue, nextSelectionStart);
+            const typedPageLinkTrigger =
+              typedLinkTrigger?.mode === "page" ? typedLinkTrigger : null;
+            const typedImageLinkTrigger =
+              typedLinkTrigger?.mode === "image" ? typedLinkTrigger : null;
 
             setCellDraft(nextValue);
             setCellDirty(nextValue !== fromCellStorageValue(getCellValue(parsedModel, location)));
@@ -2935,8 +3073,15 @@ export const MarkdownHybridTableBlock = ({
           }}
           onBlur={(event) => {
             const nextFocus = event.relatedTarget;
-            if (nextFocus instanceof Node && inlineFormattingToolbarRef.current?.contains(nextFocus)) {
-              return;
+            if (nextFocus instanceof Node) {
+              const focusStaysInCellControl =
+                inlineFormattingToolbarRef.current?.contains(nextFocus) ||
+                cellPageLinkPickerRef.current?.contains(nextFocus) ||
+                cellTypedImageLinkPickerRef.current?.contains(nextFocus) ||
+                cellImageReplacePickerRef.current?.contains(nextFocus);
+              if (focusStaysInCellControl) {
+                return;
+              }
             }
             hideInlineFormattingToolbar();
             flushActiveCell();
@@ -2971,8 +3116,7 @@ export const MarkdownHybridTableBlock = ({
       `markdown-hybrid-table-cell-replace-render-${location.rowBand}-${location.rowIndex}-${location.columnIndex}`,
     );
     const isReplacePickerOpen = Boolean(
-      cellImageReplacePickerState &&
-      isSameCell(cellImageReplacePickerState.location, location),
+      cellImageReplacePickerState && isSameCell(cellImageReplacePickerState.location, location),
     );
     return (
       <div className="markdown-table-cell-preview markdown-hybrid-table-cell-preview">
@@ -3019,9 +3163,7 @@ export const MarkdownHybridTableBlock = ({
                   highlightedIndex={cellImageReplacePickerState?.highlightedIndex ?? 0}
                   onHighlightedIndexChange={(nextIndex) =>
                     setCellImageReplacePickerState((current) =>
-                      current
-                        ? { ...current, highlightedIndex: nextIndex }
-                        : current
+                      current ? { ...current, highlightedIndex: nextIndex } : current,
                     )
                   }
                   selectedRelPath={standaloneEmbed.src}
@@ -3085,49 +3227,55 @@ export const MarkdownHybridTableBlock = ({
           <div className="markdown-hybrid-page-link-picker-empty" aria-live="polite">
             No pages found
           </div>
-        ) : filteredCellPageLinkCandidates.map((candidate, index) => {
-          const isActive = index === cellPageLinkPickerState.highlightedIndex;
-          return (
-            <button
-              key={candidate.id}
-              id={`markdown-hybrid-table-cell-page-link-picker-option-${index}`}
-              type="button"
-              role="option"
-              aria-selected={isActive}
-              className={`markdown-hybrid-page-link-picker-option${isActive ? " is-active" : ""}`}
-              onMouseDown={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-              }}
-              onMouseEnter={() => {
-                setCellPageLinkPickerState((current) => {
-                  if (!current) {
-                    return current;
-                  }
-                  if (current.highlightedIndex === index) {
-                    return current;
-                  }
-                  return {
-                    ...current,
-                    highlightedIndex: index,
-                  };
-                });
-              }}
-              onClick={() => handleCellPageLinkPickerSelectCandidate(candidate)}
-              title={candidate.target}
-            >
-              <span className="markdown-hybrid-page-link-picker-option-icon" aria-hidden="true">
-                <TablePagePickerFileIcon />
-              </span>
-              <span className="markdown-hybrid-page-link-picker-option-text">
-                <span className="markdown-hybrid-page-link-picker-option-label">{candidate.label}</span>
-                {candidate.sublabel ? (
-                  <span className="markdown-hybrid-page-link-picker-option-meta">{candidate.sublabel}</span>
-                ) : null}
-              </span>
-            </button>
-          );
-        })}
+        ) : (
+          filteredCellPageLinkCandidates.map((candidate, index) => {
+            const isActive = index === cellPageLinkPickerState.highlightedIndex;
+            return (
+              <button
+                key={candidate.id}
+                id={`markdown-hybrid-table-cell-page-link-picker-option-${index}`}
+                type="button"
+                role="option"
+                aria-selected={isActive}
+                className={`markdown-hybrid-page-link-picker-option${isActive ? " is-active" : ""}`}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                }}
+                onMouseEnter={() => {
+                  setCellPageLinkPickerState((current) => {
+                    if (!current) {
+                      return current;
+                    }
+                    if (current.highlightedIndex === index) {
+                      return current;
+                    }
+                    return {
+                      ...current,
+                      highlightedIndex: index,
+                    };
+                  });
+                }}
+                onClick={() => handleCellPageLinkPickerSelectCandidate(candidate)}
+                title={candidate.target}
+              >
+                <span className="markdown-hybrid-page-link-picker-option-icon" aria-hidden="true">
+                  <TablePagePickerFileIcon />
+                </span>
+                <span className="markdown-hybrid-page-link-picker-option-text">
+                  <span className="markdown-hybrid-page-link-picker-option-label">
+                    {candidate.label}
+                  </span>
+                  {candidate.sublabel ? (
+                    <span className="markdown-hybrid-page-link-picker-option-meta">
+                      {candidate.sublabel}
+                    </span>
+                  ) : null}
+                </span>
+              </button>
+            );
+          })
+        )}
       </div>
     </div>
   ) : null;
@@ -3167,8 +3315,9 @@ export const MarkdownHybridTableBlock = ({
                     ...current,
                     highlightedIndex: nextIndex,
                   }
-                : current
-            )}
+                : current,
+            )
+          }
           selectedRelPath={null}
           emptyLabel="No PNG files found in the current vault."
           className="markdown-hybrid-insert-image-picker"
@@ -3240,7 +3389,8 @@ export const MarkdownHybridTableBlock = ({
             className="markdown-hybrid-table-context-menu-item"
             onClick={() => {
               const anchor = rowSelection
-                ? rowSelection.selectedIndices[rowSelection.selectedIndices.length - 1] ?? visualRowCount - 1
+                ? (rowSelection.selectedIndices[rowSelection.selectedIndices.length - 1] ??
+                  visualRowCount - 1)
                 : visualRowCount - 1;
               handleInsertRowAt(Math.max(0, anchor));
               setContextMenuState(null);
@@ -3277,7 +3427,8 @@ export const MarkdownHybridTableBlock = ({
             className="markdown-hybrid-table-context-menu-item"
             onClick={() => {
               const anchor = columnSelection
-                ? columnSelection.selectedIndices[columnSelection.selectedIndices.length - 1] ?? columnCount - 1
+                ? (columnSelection.selectedIndices[columnSelection.selectedIndices.length - 1] ??
+                  columnCount - 1)
                 : columnCount - 1;
               handleInsertColumnAt(anchor + 1);
               setContextMenuState(null);
@@ -3346,9 +3497,7 @@ export const MarkdownHybridTableBlock = ({
       ) : null}
       {allowCodeView && viewMode === "code" ? (
         <div className="markdown-hybrid-table-code-shell">
-          {codeError ? (
-            <div className="markdown-hybrid-table-code-error">{codeError}</div>
-          ) : null}
+          {codeError ? <div className="markdown-hybrid-table-code-error">{codeError}</div> : null}
           <textarea
             ref={codeTextareaRef}
             className="markdown-hybrid-table-code-editor"
@@ -3379,10 +3528,7 @@ export const MarkdownHybridTableBlock = ({
                 style={{ top: dropIndicator.offset }}
               />
             ) : null}
-            <div
-              className="markdown-hybrid-table-grid"
-              style={{ gridTemplateColumns }}
-            >
+            <div className="markdown-hybrid-table-grid" style={{ gridTemplateColumns }}>
               <div className="markdown-hybrid-table-corner" />
               {parsedModel.header.map((_headerCell, columnIndex) => {
                 const isSelected = Boolean(columnSelection?.selectedIndices.includes(columnIndex));
@@ -3393,7 +3539,9 @@ export const MarkdownHybridTableBlock = ({
                       columnLaneRefs.current[columnIndex] = node;
                     }}
                     className={`markdown-hybrid-table-column-lane${isSelected ? " is-selected" : ""}${
-                      dragSource?.type === "column" && dragSource.index === columnIndex ? " is-drag-source" : ""
+                      dragSource?.type === "column" && dragSource.index === columnIndex
+                        ? " is-drag-source"
+                        : ""
                     }`}
                   >
                     <button
@@ -3456,7 +3604,9 @@ export const MarkdownHybridTableBlock = ({
                 className={`markdown-hybrid-table-row-lane markdown-hybrid-table-row-lane-header${
                   rowSelection?.selectedIndices.includes(0) ? " is-selected" : ""
                 }${dragSource?.type === "row" && dragSource.index === 0 ? " is-drag-source" : ""}${
-                  dropIndicator?.type === "row" && dropIndicator.index === 0 ? " has-drop-indicator" : ""
+                  dropIndicator?.type === "row" && dropIndicator.index === 0
+                    ? " has-drop-indicator"
+                    : ""
                 }`}
               >
                 <button
@@ -3476,7 +3626,12 @@ export const MarkdownHybridTableBlock = ({
                     };
                     if (!active) {
                       onRequestActivate({
-                        rowSelection: resolveSelectionState(rowSelection, 0, visualRowCount, selectionOptions) ?? {
+                        rowSelection: resolveSelectionState(
+                          rowSelection,
+                          0,
+                          visualRowCount,
+                          selectionOptions,
+                        ) ?? {
                           anchorIndex: 0,
                           selectedIndices: [0],
                         },
@@ -3502,7 +3657,9 @@ export const MarkdownHybridTableBlock = ({
                   columnIndex,
                 };
                 const isRowSelected = Boolean(rowSelection?.selectedIndices.includes(0));
-                const isColumnSelected = Boolean(columnSelection?.selectedIndices.includes(columnIndex));
+                const isColumnSelected = Boolean(
+                  columnSelection?.selectedIndices.includes(columnIndex),
+                );
                 return (
                   <div
                     key={`header-cell-${columnIndex}`}

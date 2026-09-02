@@ -38,8 +38,8 @@ export const vaultAndIndexSection: LoadVaultTabData = {
       title: { en: "What you see there", de: "Was du dort siehst" },
       bullets: [
         {
-          en: "Current vault path: the folder currently loaded (Example: /Users/kleif/Vaults/FMD).",
-          de: "Current vault path: der aktuell geladene Ordner (Beispiel: /Users/kleif/Vaults/FMD).",
+          en: "Current vault path: the folder currently loaded (Example: /Users/alex/Vaults/FMD).",
+          de: "Current vault path: der aktuell geladene Ordner (Beispiel: /Users/alex/Vaults/FMD).",
         },
         {
           en: "Last opened: the most recent note you opened (Example: Biology/Cell-Membrane.md).",
@@ -104,10 +104,22 @@ export const vaultAndIndexSection: LoadVaultTabData = {
       title: { en: "Core workflow", de: "Core-Workflow" },
       bullets: [
         { en: "Load a vault.", de: "Vault laden." },
-        { en: "Confirm the current vault path is correct.", de: "Current vault path kontrollieren." },
-        { en: "Wait for “Fully processed” (or run Rescan vault).", de: "Auf „Fully processed“ warten (oder Rescan vault ausfuehren)." },
-        { en: "Start review/search once indexing is stable.", de: "Reviews/Suche erst starten, wenn der Index stabil ist." },
-        { en: "If issues persist: Reset index, then rescan.", de: "Wenn Probleme bleiben: Reset index, dann erneut scannen." },
+        {
+          en: "Confirm the current vault path is correct.",
+          de: "Current vault path kontrollieren.",
+        },
+        {
+          en: "Wait for “Fully processed” (or run Rescan vault).",
+          de: "Auf „Fully processed“ warten (oder Rescan vault ausfuehren).",
+        },
+        {
+          en: "Start review/search once indexing is stable.",
+          de: "Reviews/Suche erst starten, wenn der Index stabil ist.",
+        },
+        {
+          en: "If issues persist: Reset index, then rescan.",
+          de: "Wenn Probleme bleiben: Reset index, dann erneut scannen.",
+        },
       ],
     },
   ],

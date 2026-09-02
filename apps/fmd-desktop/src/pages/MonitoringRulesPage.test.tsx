@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
 import { MonitoringRulesPage } from "./MonitoringRulesPage";
 import { useAppState } from "../components/AppStateProvider";
+import { setNativeValue } from "../../test/dom";
 
 vi.mock("../components/AppStateProvider", () => ({
   useAppState: vi.fn(),
@@ -110,7 +111,7 @@ const changeSelect = async (element: HTMLSelectElement | null, value: string) =>
     if (!element) {
       return;
     }
-    element.value = value;
+    setNativeValue(element, value);
     element.dispatchEvent(new Event("change", { bubbles: true }));
   });
 };
@@ -121,7 +122,7 @@ const changeTextarea = async (element: HTMLTextAreaElement | null, value: string
     if (!element) {
       return;
     }
-    element.value = value;
+    setNativeValue(element, value);
     element.dispatchEvent(new Event("input", { bubbles: true }));
   });
 };
@@ -132,7 +133,7 @@ const changeInput = async (element: HTMLInputElement | null, value: string) => {
     if (!element) {
       return;
     }
-    element.value = value;
+    setNativeValue(element, value);
     element.dispatchEvent(new Event("input", { bubbles: true }));
   });
 };
@@ -263,7 +264,9 @@ describe("MonitoringRulesPage", () => {
     await click(container.querySelector(".monitoring-rules-rule-button"));
     expect(container.querySelector("[data-testid='mock-modal-panel']")).toBeTruthy();
 
-    await click(container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"));
+    await click(
+      container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"),
+    );
     expect(container.querySelector("[data-testid='mock-modal-panel']")).toBeNull();
 
     await click(container.querySelector(".monitoring-rules-rule-button"));
@@ -306,7 +309,9 @@ describe("MonitoringRulesPage", () => {
     );
     expect(container.querySelector("[data-testid='mock-modal-panel']")).toBeTruthy();
 
-    await click(container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"));
+    await click(
+      container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"),
+    );
     expect(container.querySelector("[data-testid='mock-modal-panel']")).toBeNull();
 
     const removeButtonsBefore = container.querySelectorAll<HTMLButtonElement>(
@@ -349,7 +354,8 @@ describe("MonitoringRulesPage", () => {
       ">= 80 ⭐",
     );
 
-    const firstButtonText = container.querySelector(".monitoring-rules-rule-button")?.textContent ?? "";
+    const firstButtonText =
+      container.querySelector(".monitoring-rules-rule-button")?.textContent ?? "";
     expect(firstButtonText).toContain("Regel 1 Threshold Symbol");
     expect(firstButtonText).not.toContain("[");
 
@@ -430,7 +436,9 @@ describe("MonitoringRulesPage", () => {
       modalPanel?.querySelector(".monitoring-rules-rule-preview-value .monitoring-render-pie"),
     ).toBeTruthy();
 
-    await click(container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"));
+    await click(
+      container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"),
+    );
 
     expect(
       container.querySelector(
@@ -467,7 +475,9 @@ describe("MonitoringRulesPage", () => {
         (button) => button.textContent?.trim() === "Regel hinzufuegen",
       ) ?? null,
     );
-    await click(container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"));
+    await click(
+      container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"),
+    );
 
     const ruleButtonsBefore = container.querySelectorAll(".monitoring-rules-rule-button");
     expect(ruleButtonsBefore).toHaveLength(2);
@@ -480,7 +490,9 @@ describe("MonitoringRulesPage", () => {
       modalPanel?.querySelector<HTMLInputElement>(".monitoring-rules-rule-preview-raw") ?? null,
       "3",
     );
-    await click(container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"));
+    await click(
+      container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"),
+    );
 
     const ruleButtonsAfter = container.querySelectorAll(".monitoring-rules-rule-button");
     expect(ruleButtonsAfter[0]?.textContent ?? "").toContain("3");
@@ -498,7 +510,9 @@ describe("MonitoringRulesPage", () => {
         (button) => button.textContent?.trim() === "Regel hinzufuegen",
       ) ?? null,
     );
-    await click(container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"));
+    await click(
+      container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"),
+    );
 
     const before = Array.from(
       container.querySelectorAll(".monitoring-rules-rule-button"),
@@ -530,7 +544,7 @@ describe("MonitoringRulesPage", () => {
     const switchBeforeHeading = Boolean(
       switchElement &&
       heading &&
-      (switchElement.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING),
+      switchElement.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING,
     );
     expect(switchBeforeHeading).toBe(true);
 
@@ -609,13 +623,7 @@ describe("MonitoringRulesPage", () => {
 
   it("shows f-* formula keys even when definition is not a valid formula object", async () => {
     const markdownByPath: Record<string, string> = {
-      "/vault/source-a.md": [
-        "---",
-        "score: 42",
-        "f-score: true",
-        "---",
-        "# Demo",
-      ].join("\n"),
+      "/vault/source-a.md": ["---", "score: 42", "f-score: true", "---", "# Demo"].join("\n"),
     };
 
     mockInvoke.mockImplementation(async (command, payload) => {
@@ -654,9 +662,7 @@ describe("MonitoringRulesPage", () => {
       },
       vault: {
         vaultPath: "/vault",
-        files: [
-          { path: "/vault/source-a.md", relative_path: "source-a.md" },
-        ],
+        files: [{ path: "/vault/source-a.md", relative_path: "source-a.md" }],
       },
     } as unknown as ReturnType<typeof useAppState>);
 
@@ -741,9 +747,7 @@ describe("MonitoringRulesPage", () => {
       },
       vault: {
         vaultPath: "/vault",
-        files: [
-          { path: "/vault/source-a.md", relative_path: "source-a.md" },
-        ],
+        files: [{ path: "/vault/source-a.md", relative_path: "source-a.md" }],
       },
     } as unknown as ReturnType<typeof useAppState>);
 
@@ -810,9 +814,7 @@ describe("MonitoringRulesPage", () => {
       },
       vault: {
         vaultPath: "/vault",
-        files: [
-          { path: "/vault/source-a.md", relative_path: "source-a.md" },
-        ],
+        files: [{ path: "/vault/source-a.md", relative_path: "source-a.md" }],
       },
     } as unknown as ReturnType<typeof useAppState>);
 
@@ -826,8 +828,8 @@ describe("MonitoringRulesPage", () => {
     );
     await flush();
 
-    const sourceSelect = Array.from(container.querySelectorAll<HTMLSelectElement>("select")).find((select) =>
-      Array.from(select.options).some((option) => option.value === "current-folder"),
+    const sourceSelect = Array.from(container.querySelectorAll<HTMLSelectElement>("select")).find(
+      (select) => Array.from(select.options).some((option) => option.value === "current-folder"),
     );
     expect(sourceSelect).toBeTruthy();
     expect(Array.from(sourceSelect?.options ?? []).map((option) => option.value)).toEqual([
@@ -885,9 +887,7 @@ describe("MonitoringRulesPage", () => {
       },
       vault: {
         vaultPath: "/vault",
-        files: [
-          { path: "/vault/source-a.md", relative_path: "source-a.md" },
-        ],
+        files: [{ path: "/vault/source-a.md", relative_path: "source-a.md" }],
       },
     } as unknown as ReturnType<typeof useAppState>);
 
@@ -970,9 +970,7 @@ describe("MonitoringRulesPage", () => {
       },
       vault: {
         vaultPath: "/vault",
-        files: [
-          { path: "/vault/source-a.md", relative_path: "source-a.md" },
-        ],
+        files: [{ path: "/vault/source-a.md", relative_path: "source-a.md" }],
       },
     } as unknown as ReturnType<typeof useAppState>);
 
@@ -1047,9 +1045,7 @@ describe("MonitoringRulesPage", () => {
       },
       vault: {
         vaultPath: "/vault",
-        files: [
-          { path: "/vault/source-a.md", relative_path: "source-a.md" },
-        ],
+        files: [{ path: "/vault/source-a.md", relative_path: "source-a.md" }],
       },
     } as unknown as ReturnType<typeof useAppState>);
 
@@ -1156,7 +1152,11 @@ describe("MonitoringRulesPage", () => {
     await flush();
 
     await changeInput(
-      Array.from(container.querySelectorAll<HTMLInputElement>(".monitoring-rules-formula-meta-grid .text-input"))[0] ?? null,
+      Array.from(
+        container.querySelectorAll<HTMLInputElement>(
+          ".monitoring-rules-formula-meta-grid .text-input",
+        ),
+      )[0] ?? null,
       "f-score-renamed",
     );
     await click(
@@ -1337,9 +1337,7 @@ describe("MonitoringRulesPage", () => {
       },
       vault: {
         vaultPath: "/vault",
-        files: [
-          { path: "/vault/source-a.md", relative_path: "source-a.md" },
-        ],
+        files: [{ path: "/vault/source-a.md", relative_path: "source-a.md" }],
       },
     } as unknown as ReturnType<typeof useAppState>);
 
@@ -1355,7 +1353,9 @@ describe("MonitoringRulesPage", () => {
 
     await click(container.querySelector(".monitoring-rules-list-item-delete"));
     expect(container.querySelector("[aria-label='Formel loeschen']")).toBeTruthy();
-    await click(container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"));
+    await click(
+      container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"),
+    );
     expect(container.querySelector("[aria-label='Formel loeschen']")).toBeNull();
 
     await click(container.querySelector(".monitoring-rules-list-item-delete"));
@@ -1473,9 +1473,7 @@ describe("MonitoringRulesPage", () => {
       },
       vault: {
         vaultPath: "/vault",
-        files: [
-          { path: "/vault/source-a.md", relative_path: "source-a.md" },
-        ],
+        files: [{ path: "/vault/source-a.md", relative_path: "source-a.md" }],
       },
     } as unknown as ReturnType<typeof useAppState>);
 
@@ -1571,7 +1569,9 @@ describe("MonitoringRulesPage", () => {
 
     await click(container.querySelector(".monitoring-rules-list-item-delete"));
     expect(container.querySelector("[aria-label='Profil loeschen']")).toBeTruthy();
-    await click(container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"));
+    await click(
+      container.querySelector("[data-testid='mock-modal-panel'] button[aria-label='Close']"),
+    );
     expect(container.querySelector("[aria-label='Profil loeschen']")).toBeNull();
 
     await click(container.querySelector(".monitoring-rules-list-item-delete"));

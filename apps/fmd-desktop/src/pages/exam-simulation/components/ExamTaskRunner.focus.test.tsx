@@ -131,9 +131,7 @@ const noopOptionSelect: ExamTaskRunnerProps["onOptionSelect"] = (...args) => {
 const noopTrueFalseSelect: ExamTaskRunnerProps["onTrueFalseSelect"] = (...args) => {
   void args;
 };
-const noopClozeInputChange: ExamTaskRunnerProps["onClozeInputChange"] = (
-  ...args
-) => {
+const noopClozeInputChange: ExamTaskRunnerProps["onClozeInputChange"] = (...args) => {
   void args;
 };
 const noopClozeTokenDrop: ExamTaskRunnerProps["onClozeTokenDrop"] = (...args) => {
@@ -142,9 +140,7 @@ const noopClozeTokenDrop: ExamTaskRunnerProps["onClozeTokenDrop"] = (...args) =>
 const noopClozeTokenRemove: ExamTaskRunnerProps["onClozeTokenRemove"] = (...args) => {
   void args;
 };
-const noopClozeTokenDragStart: ExamTaskRunnerProps["onClozeTokenDragStart"] = (
-  ...args
-) => {
+const noopClozeTokenDragStart: ExamTaskRunnerProps["onClozeTokenDragStart"] = (...args) => {
   void args;
 };
 const noopBlankDragOver: ExamTaskRunnerProps["onBlankDragOver"] = (...args) => {
@@ -153,14 +149,10 @@ const noopBlankDragOver: ExamTaskRunnerProps["onBlankDragOver"] = (...args) => {
 const noopTextInputChange: ExamTaskRunnerProps["onTextInputChange"] = (...args) => {
   void args;
 };
-const noopAwardedPointsChange: ExamTaskRunnerProps["onAwardedPointsChange"] = (
-  ...args
-) => {
+const noopAwardedPointsChange: ExamTaskRunnerProps["onAwardedPointsChange"] = (...args) => {
   void args;
 };
-const noopAutoGradeDecision: ExamTaskRunnerProps["onAutoGradeDecision"] = (
-  ...args
-) => {
+const noopAutoGradeDecision: ExamTaskRunnerProps["onAutoGradeDecision"] = (...args) => {
   void args;
 };
 const noopNavigate = (...args: unknown[]) => {
@@ -214,11 +206,10 @@ describe("ExamTaskRunner focus stability", () => {
     };
 
     const { container, cleanup } = render(createElement(Harness));
-    const tickButton = container.querySelector<HTMLButtonElement>(
-      '[data-testid="tick"]',
+    const tickButton = container.querySelector<HTMLButtonElement>('[data-testid="tick"]');
+    const svgNodeBeforeTick = container.querySelector<SVGSVGElement>(
+      ".flashcard-media-svg-surface svg",
     );
-    const svgNodeBeforeTick =
-      container.querySelector<SVGSVGElement>(".svg-preview-surface svg");
     expect(tickButton).toBeTruthy();
     expect(svgNodeBeforeTick).toBeTruthy();
 
@@ -232,8 +223,9 @@ describe("ExamTaskRunner focus stability", () => {
       tickButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    const svgNodeAfterTicks =
-      container.querySelector<SVGSVGElement>(".svg-preview-surface svg");
+    const svgNodeAfterTicks = container.querySelector<SVGSVGElement>(
+      ".flashcard-media-svg-surface svg",
+    );
     expect(svgNodeAfterTicks).toBe(svgNodeBeforeTick);
     cleanup();
   });
@@ -305,9 +297,7 @@ describe("ExamTaskRunner focus stability", () => {
 
     const { container, cleanup } = render(createElement(Harness));
     const input = container.querySelector<HTMLInputElement>(".cloze-input");
-    const tickButton = container.querySelector<HTMLButtonElement>(
-      '[data-testid="tick"]',
-    );
+    const tickButton = container.querySelector<HTMLButtonElement>('[data-testid="tick"]');
     expect(input).toBeTruthy();
     expect(tickButton).toBeTruthy();
 
@@ -329,8 +319,7 @@ describe("ExamTaskRunner focus stability", () => {
       tickButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    const inputAfterFirstTick =
-      container.querySelector<HTMLInputElement>(".cloze-input");
+    const inputAfterFirstTick = container.querySelector<HTMLInputElement>(".cloze-input");
     expect(document.activeElement).toBe(inputAfterFirstTick);
 
     typeInto(inputAfterFirstTick as HTMLInputElement, "on");
@@ -341,8 +330,7 @@ describe("ExamTaskRunner focus stability", () => {
       tickButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    const inputAfterSecondTick =
-      container.querySelector<HTMLInputElement>(".cloze-input");
+    const inputAfterSecondTick = container.querySelector<HTMLInputElement>(".cloze-input");
     expect(document.activeElement).toBe(inputAfterSecondTick);
     expect(inputAfterSecondTick?.value).toBe("on");
     cleanup();
@@ -460,9 +448,7 @@ describe("ExamTaskRunner focus stability", () => {
     expect(document.activeElement).toBe(input);
 
     act(() => {
-      input.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }),
-      );
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
     });
 
     expect(document.activeElement).toBe(input);

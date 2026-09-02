@@ -6,10 +6,7 @@
  *   Obsidian-PNG-Embeds und standalone Markdown-Bilder.
  */
 
-import {
-  splitMarkdownMediaSegments,
-  type MediaItem,
-} from "./cardMedia";
+import { splitMarkdownMediaSegments, type MediaItem } from "./cardMedia";
 import { normalizeMarkdownTableCellPreviewValue } from "./markdownTables";
 
 export type MarkdownTableCellSegment =
@@ -43,9 +40,7 @@ type ParsedMarkdownImage = {
 
 const standaloneMarkdownImagePattern = /^\s*!\[([^\]\n]*)\]\((.+)\)\s*$/;
 
-const parseMarkdownImageTarget = (
-  rawTarget: string,
-): { src: string; title?: string } | null => {
+const parseMarkdownImageTarget = (rawTarget: string): { src: string; title?: string } | null => {
   const target = rawTarget.trim();
   if (!target) {
     return null;
@@ -80,7 +75,7 @@ const parseMarkdownImageTarget = (
   }
 
   const quote = remainder[0];
-  if ((quote === "\"" || quote === "'") && remainder.endsWith(quote)) {
+  if ((quote === '"' || quote === "'") && remainder.endsWith(quote)) {
     const title = remainder.slice(1, -1).trim();
     return title ? { src, title } : { src };
   }
@@ -111,9 +106,7 @@ const parseStandaloneMarkdownImageLine = (line: string): ParsedMarkdownImage | n
   };
 };
 
-const splitMarkdownImageLines = (
-  source: string,
-): MarkdownTableCellSegment[] => {
+const splitMarkdownImageLines = (source: string): MarkdownTableCellSegment[] => {
   if (!source) {
     return [];
   }
@@ -157,6 +150,17 @@ const splitMarkdownImageLines = (
   return segments;
 };
 
+const stripMarkdownTableCellBoundaries = (source: string) => {
+  let normalized = source.trim();
+  if (normalized.startsWith("|")) {
+    normalized = normalized.slice(1).trimStart();
+  }
+  if (normalized.endsWith("|") && !normalized.endsWith("\\|")) {
+    normalized = normalized.slice(0, -1).trimEnd();
+  }
+  return normalized;
+};
+
 export const splitMarkdownTableCellSegments = (
   cellRaw: string,
   scope: string,
@@ -195,7 +199,10 @@ export const resolveMarkdownTableCellSegments = ({
   cellText: string;
   scope: string;
 }): MarkdownTableCellSegment[] => {
-  const sourceSegments = splitMarkdownTableCellSegments(cellSource, `${scope}-source`);
+  const sourceSegments = splitMarkdownTableCellSegments(
+    stripMarkdownTableCellBoundaries(cellSource),
+    `${scope}-source`,
+  );
   if (sourceSegments.some((segment) => segment.kind !== "text")) {
     return sourceSegments;
   }

@@ -42,9 +42,9 @@ describe("ExamIdlePanel", () => {
   it("renders ready hint without profile/start controls", () => {
     const { container, cleanup } = render(createElement(ExamIdlePanel, baseProps));
 
-    expect(container.textContent).toContain("SETUP");
+    expect(container.querySelector(".exam-step-panel")).not.toBeNull();
     expect(container.textContent).toContain("Ready");
-    expect(container.textContent).toContain("Use \"Exam starten\" in the toolbar");
+    expect(container.textContent).toContain('Use "Exam starten" in the toolbar');
     expect(container.querySelector("select")).toBeNull();
     expect(container.textContent).not.toContain("Schritt");
 

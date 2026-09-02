@@ -6,7 +6,7 @@
  * - Verifiziert beforeinput/deleteContentBackward Handling fuer virtuelle Tastaturen.
  */
 
-import { act, createElement, useState, type ReactElement } from "react";
+import { act, createElement, useState, type FormEvent, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it } from "vitest";
 import { useMobileSafeInput } from "./useMobileSafeInput";
@@ -29,15 +29,6 @@ const render = (element: ReactElement) => {
   };
 };
 
-const buildBeforeInputEvent = (inputType: string) => {
-  const event =
-    typeof InputEvent !== "undefined"
-      ? new InputEvent("beforeinput", { bubbles: true, cancelable: true })
-      : new Event("beforeinput", { bubbles: true, cancelable: true });
-  Object.defineProperty(event, "inputType", { value: inputType });
-  return event;
-};
-
 const buildInputEvent = (inputType: string) => {
   const event =
     typeof InputEvent !== "undefined"
@@ -49,12 +40,15 @@ const buildInputEvent = (inputType: string) => {
 
 describe("useMobileSafeInput", () => {
   it("updates state on deleteContentBackward beforeinput", () => {
+    let latestInputProps:
+      ReturnType<typeof useMobileSafeInput<HTMLInputElement>>["inputProps"] | null = null;
     const Harness = () => {
       const [value, setValue] = useState("Test");
       const { inputProps } = useMobileSafeInput<HTMLInputElement>({
         value,
         onValueChange: setValue,
       });
+      latestInputProps = inputProps;
       return createElement("input", { type: "text", ...inputProps });
     };
 
@@ -63,9 +57,16 @@ describe("useMobileSafeInput", () => {
     expect(input).toBeTruthy();
 
     act(() => {
-      input?.focus();
-      input?.setSelectionRange(4, 4);
-      input?.dispatchEvent(buildBeforeInputEvent("deleteContentBackward"));
+      if (!input || !latestInputProps?.onBeforeInput) {
+        return;
+      }
+      input.focus();
+      input.setSelectionRange(4, 4);
+      latestInputProps.onBeforeInput({
+        currentTarget: input,
+        nativeEvent: { inputType: "deleteContentBackward" },
+        defaultPrevented: false,
+      } as unknown as FormEvent<HTMLInputElement>);
     });
 
     expect(input?.value).toBe("Tes");

@@ -9,10 +9,11 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 
 const controlsCss = readFileSync(new URL("./controls.css", import.meta.url), "utf8");
+const compactControlsCss = controlsCss.replace(/\s+/g, "");
 
 describe("controls.css", () => {
   it("defines a shared text-control baseline", () => {
-    expect(controlsCss).toContain(
+    expect(compactControlsCss).toContain(
       'input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="hidden"]):not([data-input-scope="editor"])',
     );
     expect(controlsCss).toContain('select:not([data-input-scope="editor"])');
@@ -24,7 +25,9 @@ describe("controls.css", () => {
   it("excludes editor-scoped controls from global hover and focus states", () => {
     expect(controlsCss).toMatch(/textarea:not\(\[data-input-scope="editor"\]\)[\s\S]*\):hover/);
     expect(controlsCss).toMatch(/textarea:not\(\[data-input-scope="editor"\]\)[\s\S]*\):active/);
-    expect(controlsCss).toMatch(/textarea:not\(\[data-input-scope="editor"\]\)[\s\S]*\):focus-visible/);
+    expect(controlsCss).toMatch(
+      /textarea:not\(\[data-input-scope="editor"\]\)[\s\S]*\):focus-visible/,
+    );
     expect(controlsCss).not.toContain("textarea):focus-visible");
   });
 
@@ -46,8 +49,10 @@ describe("controls.css", () => {
     expect(controlsCss).toContain(".monitoring-rules-profile-control select");
     expect(controlsCss).toContain("appearance: none;");
     expect(controlsCss).toContain("--ui-select-arrow-color");
-    expect(controlsCss).toContain("padding-inline-end: calc(var(--ui-control-padding-x) + 1.35rem);");
-    expect(controlsCss).toContain(":where(:not([size]), [size=\"0\"], [size=\"1\"])");
+    expect(controlsCss).toContain(
+      "padding-inline-end: calc(var(--ui-control-padding-x) + 1.35rem);",
+    );
+    expect(controlsCss).toContain(':where(:not([size]), [size="0"], [size="1"])');
     expect(controlsCss).toContain("background-image:");
     expect(controlsCss).toContain(":open");
   });

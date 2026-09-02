@@ -2,14 +2,8 @@
 import { act, createElement, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it } from "vitest";
-import {
-  DatabasePieView,
-  resolveDatabasePieLayoutProfile,
-} from "./pie-view";
-import {
-  type DatabaseAttributeMeta,
-  type DatabaseRecord,
-} from "../database-types";
+import { DatabasePieView, resolveDatabasePieLayoutProfile } from "./pie-view";
+import { type DatabaseAttributeMeta, type DatabaseRecord } from "../database-types";
 
 const render = (element: ReactElement) => {
   const container = document.createElement("div");
@@ -229,8 +223,9 @@ describe("DatabasePieView", () => {
       }),
     );
 
-    const labels = Array.from(container.querySelectorAll(".database-pie-legend-label"))
-      .map((node) => node.textContent?.trim());
+    const labels = Array.from(container.querySelectorAll(".database-pie-legend-label")).map(
+      (node) => node.textContent?.trim(),
+    );
     expect(labels).toEqual(["Open"]);
     expect(container.textContent).not.toContain("Done");
 
@@ -289,8 +284,9 @@ describe("DatabasePieView", () => {
       }),
     );
 
-    const labels = Array.from(container.querySelectorAll(".database-pie-legend-label"))
-      .map((node) => node.textContent?.trim());
+    const labels = Array.from(container.querySelectorAll(".database-pie-legend-label")).map(
+      (node) => node.textContent?.trim(),
+    );
     expect(labels).toEqual(["beta"]);
     expect(container.textContent).toContain("2");
     expect(container.textContent).not.toContain("alpha");
@@ -493,8 +489,9 @@ describe("DatabasePieView", () => {
       }),
     );
 
-    const labels = Array.from(container.querySelectorAll(".database-pie-legend-label"))
-      .map((node) => node.textContent?.trim());
+    const labels = Array.from(container.querySelectorAll(".database-pie-legend-label")).map(
+      (node) => node.textContent?.trim(),
+    );
     expect(labels).toEqual(["Open", "Done"]);
 
     cleanup();
@@ -522,8 +519,9 @@ describe("DatabasePieView", () => {
       }),
     );
 
-    expect(container.querySelector(".database-pie-legend-details")?.textContent ?? "")
-      .not.toContain("Exam");
+    expect(
+      container.querySelector(".database-pie-legend-details")?.textContent ?? "",
+    ).not.toContain("Exam");
 
     cleanup();
   });
@@ -553,7 +551,9 @@ describe("DatabasePieView", () => {
     const segmentStrokes = Array.from(container.querySelectorAll(".database-pie-chart circle"))
       .slice(1)
       .map((node) => node.getAttribute("stroke") ?? "");
-    const legendDots = Array.from(container.querySelectorAll<HTMLElement>(".database-pie-legend-dot"));
+    const legendDots = Array.from(
+      container.querySelectorAll<HTMLElement>(".database-pie-legend-dot"),
+    );
 
     expect(segmentStrokes.length).toBeGreaterThan(0);
     expect(legendDots.length).toBe(segmentStrokes.length);
@@ -681,77 +681,99 @@ describe("DatabasePieView", () => {
     expect(resizeGrip).toBeTruthy();
 
     act(() => {
-      resizeGrip?.dispatchEvent(new MouseEvent("mousedown", {
-        bubbles: true,
-        button: 0,
-        buttons: 1,
-        clientX: 100,
-        clientY: 100,
-      }));
-      window.dispatchEvent(new MouseEvent("mousemove", {
-        bubbles: true,
-        buttons: 1,
-        clientX: 220,
-        clientY: 100,
-      }));
-      window.dispatchEvent(new MouseEvent("mouseup", {
-        bubbles: true,
-        button: 0,
-        buttons: 0,
-        clientX: 220,
-        clientY: 100,
-      }));
+      resizeGrip?.dispatchEvent(
+        new MouseEvent("mousedown", {
+          bubbles: true,
+          button: 0,
+          buttons: 1,
+          clientX: 100,
+          clientY: 100,
+        }),
+      );
+    });
+    act(() => {
+      window.dispatchEvent(
+        new MouseEvent("mousemove", {
+          bubbles: true,
+          buttons: 1,
+          clientX: 220,
+          clientY: 100,
+        }),
+      );
+      window.dispatchEvent(
+        new MouseEvent("mouseup", {
+          bubbles: true,
+          button: 0,
+          buttons: 0,
+          clientX: 220,
+          clientY: 100,
+        }),
+      );
     });
 
     expect(chartWrap?.classList.contains("is-resizing")).toBe(false);
     expect(view?.style.getPropertyValue("--db-pie-chart-size").trim()).toBe("448px");
 
     act(() => {
-      resizeGrip?.dispatchEvent(new MouseEvent("mousedown", {
-        bubbles: true,
-        button: 0,
-        buttons: 1,
-        clientX: 220,
-        clientY: 100,
-      }));
-      window.dispatchEvent(new MouseEvent("mousemove", {
-        bubbles: true,
-        buttons: 1,
-        clientX: -100,
-        clientY: 100,
-      }));
-      window.dispatchEvent(new MouseEvent("mouseup", {
-        bubbles: true,
-        button: 0,
-        buttons: 0,
-        clientX: -100,
-        clientY: 100,
-      }));
+      resizeGrip?.dispatchEvent(
+        new MouseEvent("mousedown", {
+          bubbles: true,
+          button: 0,
+          buttons: 1,
+          clientX: 220,
+          clientY: 100,
+        }),
+      );
+    });
+    act(() => {
+      window.dispatchEvent(
+        new MouseEvent("mousemove", {
+          bubbles: true,
+          buttons: 1,
+          clientX: -100,
+          clientY: 100,
+        }),
+      );
+      window.dispatchEvent(
+        new MouseEvent("mouseup", {
+          bubbles: true,
+          button: 0,
+          buttons: 0,
+          clientX: -100,
+          clientY: 100,
+        }),
+      );
     });
 
     expect(view?.style.getPropertyValue("--db-pie-chart-size").trim()).toBe("224px");
 
     act(() => {
-      resizeGrip?.dispatchEvent(new MouseEvent("mousedown", {
-        bubbles: true,
-        button: 2,
-        buttons: 2,
-        clientX: 100,
-        clientY: 100,
-      }));
-      window.dispatchEvent(new MouseEvent("mousemove", {
-        bubbles: true,
-        buttons: 2,
-        clientX: 260,
-        clientY: 100,
-      }));
-      window.dispatchEvent(new MouseEvent("mouseup", {
-        bubbles: true,
-        button: 2,
-        buttons: 0,
-        clientX: 260,
-        clientY: 100,
-      }));
+      resizeGrip?.dispatchEvent(
+        new MouseEvent("mousedown", {
+          bubbles: true,
+          button: 2,
+          buttons: 2,
+          clientX: 100,
+          clientY: 100,
+        }),
+      );
+      window.dispatchEvent(
+        new MouseEvent("mousemove", {
+          bubbles: true,
+          buttons: 2,
+          clientX: 260,
+          clientY: 100,
+        }),
+      );
+      window.dispatchEvent(
+        new MouseEvent("mouseup", {
+          bubbles: true,
+          button: 2,
+          buttons: 0,
+          clientX: 260,
+          clientY: 100,
+        }),
+      );
     });
 
     // Right-click drag must not resize.
@@ -775,24 +797,28 @@ describe("DatabasePieView", () => {
     const resizeGrip = container.querySelector<HTMLButtonElement>(".database-pie-resize-grip");
 
     act(() => {
-      resizeGrip?.dispatchEvent(new MouseEvent("mousedown", {
-        bubbles: true,
-        button: 0,
-        buttons: 1,
-        clientX: 120,
-        clientY: 100,
-      }));
+      resizeGrip?.dispatchEvent(
+        new MouseEvent("mousedown", {
+          bubbles: true,
+          button: 0,
+          buttons: 1,
+          clientX: 120,
+          clientY: 100,
+        }),
+      );
     });
     expect(chartWrap?.classList.contains("is-resizing")).toBe(true);
 
     act(() => {
-      window.dispatchEvent(new MouseEvent("mouseup", {
-        bubbles: true,
-        button: 0,
-        buttons: 0,
-        clientX: 120,
-        clientY: 100,
-      }));
+      window.dispatchEvent(
+        new MouseEvent("mouseup", {
+          bubbles: true,
+          button: 0,
+          buttons: 0,
+          clientX: 120,
+          clientY: 100,
+        }),
+      );
     });
     expect(chartWrap?.classList.contains("is-resizing")).toBe(false);
 

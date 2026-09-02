@@ -8,6 +8,7 @@ import {
   type DatabaseRecord,
   type DatabaseSortRule,
 } from "../database-types";
+import { setNativeValue } from "../../../../../test/dom";
 
 const render = (element: ReactElement) => {
   const container = document.createElement("div");
@@ -169,9 +170,14 @@ const buildProps = (overrides: Partial<ComponentProps<typeof DatabaseTableView>>
 describe("DatabaseTableView", () => {
   it("starts inline editing on double click for editable cells", () => {
     const onStartCellEdit = vi.fn();
-    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
-      onStartCellEdit,
-    })));
+    const { container, cleanup } = render(
+      createElement(
+        DatabaseTableView,
+        buildProps({
+          onStartCellEdit,
+        }),
+      ),
+    );
 
     const cell = container.querySelector(".database-table-cell");
     act(() => {
@@ -187,10 +193,15 @@ describe("DatabaseTableView", () => {
 
   it("does not start inline editing when table editing is disabled", () => {
     const onStartCellEdit = vi.fn();
-    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
-      editable: false,
-      onStartCellEdit,
-    })));
+    const { container, cleanup } = render(
+      createElement(
+        DatabaseTableView,
+        buildProps({
+          editable: false,
+          onStartCellEdit,
+        }),
+      ),
+    );
 
     const cell = container.querySelector(".database-table-cell");
     act(() => {
@@ -215,11 +226,16 @@ describe("DatabaseTableView", () => {
         "f-%": 20,
       },
     };
-    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
-      columns: [formulaAttribute],
-      records: [formulaRecord],
-      onStartCellEdit,
-    })));
+    const { container, cleanup } = render(
+      createElement(
+        DatabaseTableView,
+        buildProps({
+          columns: [formulaAttribute],
+          records: [formulaRecord],
+          onStartCellEdit,
+        }),
+      ),
+    );
 
     const cell = container.querySelector<HTMLElement>(".database-table-cell");
     expect(cell?.classList.contains("is-inert")).toBe(true);
@@ -236,14 +252,19 @@ describe("DatabaseTableView", () => {
 
   it("commits active inline edit on Enter", () => {
     const onCommitCellEdit = vi.fn();
-    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
-      activeEditCell: {
-        recordId: record.fileId,
-        fieldKey: "Task",
-        draftValue: "Alpha",
-      },
-      onCommitCellEdit,
-    })));
+    const { container, cleanup } = render(
+      createElement(
+        DatabaseTableView,
+        buildProps({
+          activeEditCell: {
+            recordId: record.fileId,
+            fieldKey: "Task",
+            draftValue: "Alpha",
+          },
+          onCommitCellEdit,
+        }),
+      ),
+    );
 
     const input = container.querySelector<HTMLInputElement>(".database-table-cell-editor");
     act(() => {
@@ -259,10 +280,15 @@ describe("DatabaseTableView", () => {
 
   it("opens record from filename system cell in same flow", () => {
     const onOpenRecord = vi.fn();
-    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
-      columns: [fileNameAttribute],
-      onOpenRecord,
-    })));
+    const { container, cleanup } = render(
+      createElement(
+        DatabaseTableView,
+        buildProps({
+          columns: [fileNameAttribute],
+          onOpenRecord,
+        }),
+      ),
+    );
 
     const button = container.querySelector<HTMLButtonElement>(".database-table-open-record");
     act(() => {
@@ -277,11 +303,18 @@ describe("DatabaseTableView", () => {
 
   it("toggles column sort when clicking a header cell", () => {
     const onToggleColumnSort = vi.fn();
-    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
-      onToggleColumnSort,
-    })));
+    const { container, cleanup } = render(
+      createElement(
+        DatabaseTableView,
+        buildProps({
+          onToggleColumnSort,
+        }),
+      ),
+    );
 
-    const headerButton = container.querySelector<HTMLButtonElement>(".database-table-header-button");
+    const headerButton = container.querySelector<HTMLButtonElement>(
+      ".database-table-header-button",
+    );
     act(() => {
       headerButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -294,10 +327,15 @@ describe("DatabaseTableView", () => {
 
   it("reorders columns via header drag and drop", () => {
     const onReorderColumns = vi.fn();
-    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
-      columns: [taskAttribute, fileNameAttribute],
-      onReorderColumns,
-    })));
+    const { container, cleanup } = render(
+      createElement(
+        DatabaseTableView,
+        buildProps({
+          columns: [taskAttribute, fileNameAttribute],
+          onReorderColumns,
+        }),
+      ),
+    );
 
     const headerCells = container.querySelectorAll<HTMLDivElement>(".database-table-header-cell");
     const source = headerCells[0];
@@ -326,20 +364,29 @@ describe("DatabaseTableView", () => {
 
   it("resizes columns from the header resize handle", () => {
     const onResizeColumn = vi.fn();
-    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
-      columns: [taskAttribute, fileNameAttribute],
-      columnWidths: {
-        Task: 180,
-        Dateiname: 180,
-      },
-      onResizeColumn,
-    })));
+    const { container, cleanup } = render(
+      createElement(
+        DatabaseTableView,
+        buildProps({
+          columns: [taskAttribute, fileNameAttribute],
+          columnWidths: {
+            Task: 180,
+            Dateiname: 180,
+          },
+          onResizeColumn,
+        }),
+      ),
+    );
 
-    const resizeHandle = container.querySelector<HTMLButtonElement>(".database-table-column-resize-handle");
+    const resizeHandle = container.querySelector<HTMLButtonElement>(
+      ".database-table-column-resize-handle",
+    );
     expect(resizeHandle).toBeTruthy();
 
     act(() => {
       resizeHandle?.dispatchEvent(createPointerLikeEvent("pointerdown", 200));
+    });
+    act(() => {
       window.dispatchEvent(createPointerLikeEvent("pointermove", 240));
       window.dispatchEvent(createPointerLikeEvent("pointerup", 240));
     });
@@ -354,9 +401,14 @@ describe("DatabaseTableView", () => {
 
   it("uses a max viewport of 50 visible rows", () => {
     const records = Array.from({ length: 60 }, (_, index) => buildRecord(index));
-    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
-      records,
-    })));
+    const { container, cleanup } = render(
+      createElement(
+        DatabaseTableView,
+        buildProps({
+          records,
+        }),
+      ),
+    );
 
     const scroll = container.querySelector<HTMLDivElement>(".database-table-scroll");
     expect(scroll?.style.maxHeight).toBe(`${50 * 34}px`);
@@ -404,11 +456,16 @@ describe("DatabaseTableView", () => {
         Exam: false,
       },
     };
-    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
-      columns: [fileNameAttribute, examAttribute],
-      records: [examRecord, nonExamRecord],
-      onOpenExamFromRecord,
-    })));
+    const { container, cleanup } = render(
+      createElement(
+        DatabaseTableView,
+        buildProps({
+          columns: [fileNameAttribute, examAttribute],
+          records: [examRecord, nonExamRecord],
+          onOpenExamFromRecord,
+        }),
+      ),
+    );
 
     const examButtons = container.querySelectorAll<HTMLButtonElement>(".database-exam-action");
     expect(examButtons).toHaveLength(1);
@@ -426,19 +483,26 @@ describe("DatabaseTableView", () => {
   it("bulk edits selected cells in one column", async () => {
     const firstRecord = buildRecord(1);
     const secondRecord = buildRecord(2);
-    const onBulkCommitCellEdit = vi.fn(async (
-      _records: DatabaseRecord[],
-      _column: DatabaseAttributeMeta,
-      _draftValue: string | boolean,
-    ) => ({
-      updated: 2,
-      failed: 0,
-      failedRecordIds: [],
-    }));
-    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
-      records: [firstRecord, secondRecord],
-      onBulkCommitCellEdit,
-    })));
+    const onBulkCommitCellEdit = vi.fn(
+      async (
+        _records: DatabaseRecord[],
+        _column: DatabaseAttributeMeta,
+        _draftValue: string | boolean,
+      ) => ({
+        updated: 2,
+        failed: 0,
+        failedRecordIds: [],
+      }),
+    );
+    const { container, cleanup } = render(
+      createElement(
+        DatabaseTableView,
+        buildProps({
+          records: [firstRecord, secondRecord],
+          onBulkCommitCellEdit,
+        }),
+      ),
+    );
 
     expect(container.querySelector(".database-table-cell-select")).toBeNull();
     const cells = container.querySelectorAll<HTMLElement>(".database-table-cell");
@@ -455,13 +519,14 @@ describe("DatabaseTableView", () => {
     expect(bulkEditor).toBeTruthy();
     await act(async () => {
       if (bulkEditor) {
-        bulkEditor.value = "Shared";
+        setNativeValue(bulkEditor, "Shared");
         bulkEditor.dispatchEvent(new Event("input", { bubbles: true }));
       }
     });
 
-    const applyButton = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-table-bulk-edit button"))
-      .find((button) => button.textContent?.includes("Anwenden"));
+    const applyButton = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".database-table-bulk-edit button"),
+    ).find((button) => button.textContent?.includes("Anwenden"));
     await act(async () => {
       applyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -491,10 +556,15 @@ describe("DatabaseTableView", () => {
       failed: 1,
       failedRecordIds: [secondRecord.fileId],
     }));
-    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
-      records: [firstRecord, secondRecord],
-      onBulkCommitCellEdit,
-    })));
+    const { container, cleanup } = render(
+      createElement(
+        DatabaseTableView,
+        buildProps({
+          records: [firstRecord, secondRecord],
+          onBulkCommitCellEdit,
+        }),
+      ),
+    );
 
     const cells = container.querySelectorAll<HTMLElement>(".database-table-cell");
     await act(async () => {
@@ -504,12 +574,13 @@ describe("DatabaseTableView", () => {
     const bulkEditor = container.querySelector<HTMLInputElement>(".database-table-bulk-editor");
     await act(async () => {
       if (bulkEditor) {
-        bulkEditor.value = "Shared";
+        setNativeValue(bulkEditor, "Shared");
         bulkEditor.dispatchEvent(new Event("input", { bubbles: true }));
       }
     });
-    const applyButton = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-table-bulk-edit button"))
-      .find((button) => button.textContent?.includes("Anwenden"));
+    const applyButton = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".database-table-bulk-edit button"),
+    ).find((button) => button.textContent?.includes("Anwenden"));
 
     await act(async () => {
       applyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -526,19 +597,26 @@ describe("DatabaseTableView", () => {
     const firstRecord = buildRecord(1);
     const secondRecord = buildRecord(2);
     const thirdRecord = buildRecord(3);
-    const onBulkCommitCellEdit = vi.fn(async (
-      _records: DatabaseRecord[],
-      _column: DatabaseAttributeMeta,
-      _draftValue: string | boolean,
-    ) => ({
-      updated: 3,
-      failed: 0,
-      failedRecordIds: [],
-    }));
-    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
-      records: [firstRecord, secondRecord, thirdRecord],
-      onBulkCommitCellEdit,
-    })));
+    const onBulkCommitCellEdit = vi.fn(
+      async (
+        _records: DatabaseRecord[],
+        _column: DatabaseAttributeMeta,
+        _draftValue: string | boolean,
+      ) => ({
+        updated: 3,
+        failed: 0,
+        failedRecordIds: [],
+      }),
+    );
+    const { container, cleanup } = render(
+      createElement(
+        DatabaseTableView,
+        buildProps({
+          records: [firstRecord, secondRecord, thirdRecord],
+          onBulkCommitCellEdit,
+        }),
+      ),
+    );
 
     const cells = container.querySelectorAll<HTMLElement>(".database-table-cell");
     await act(async () => {
@@ -554,12 +632,13 @@ describe("DatabaseTableView", () => {
     const bulkEditor = container.querySelector<HTMLInputElement>(".database-table-bulk-editor");
     await act(async () => {
       if (bulkEditor) {
-        bulkEditor.value = "Range";
+        setNativeValue(bulkEditor, "Range");
         bulkEditor.dispatchEvent(new Event("input", { bubbles: true }));
       }
     });
-    const applyButton = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-table-bulk-edit button"))
-      .find((button) => button.textContent?.includes("Anwenden"));
+    const applyButton = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".database-table-bulk-edit button"),
+    ).find((button) => button.textContent?.includes("Anwenden"));
 
     await act(async () => {
       applyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -610,10 +689,15 @@ describe("DatabaseTableView", () => {
         },
       },
     };
-    const { container, cleanup } = render(createElement(DatabaseTableView, buildProps({
-      records: [firstRecord, secondRecord],
-      columns: [taskAttribute, statusAttribute],
-    })));
+    const { container, cleanup } = render(
+      createElement(
+        DatabaseTableView,
+        buildProps({
+          records: [firstRecord, secondRecord],
+          columns: [taskAttribute, statusAttribute],
+        }),
+      ),
+    );
 
     const cells = container.querySelectorAll<HTMLElement>(".database-table-cell");
     act(() => {

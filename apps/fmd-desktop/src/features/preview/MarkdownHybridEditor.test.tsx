@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, createElement, useState, type ReactElement } from "react";
+import { act as reactAct, createElement, useState, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MarkdownHybridEditor } from "./MarkdownHybridEditor";
@@ -14,9 +14,38 @@ import {
   DRAG_CHANNELS,
   startInternalDrag,
 } from "../../lib/dragDrop";
+import { setNativeValue } from "../../../test/dom";
 
 const INTERNAL_BLOCK_CLIPBOARD_MIME = "application/x-fmd-markdown-hybrid-blocks+json";
 const INTERNAL_BLOCK_REORDER_DRAG_MIME = "application/x-fmd-markdown-hybrid-block-reorder";
+
+type QueuedAnimationFrame = {
+  callback: FrameRequestCallback;
+  id: number;
+};
+
+let queuedAnimationFrames: QueuedAnimationFrame[] | null = null;
+let nextQueuedAnimationFrameId = 1;
+
+const flushQueuedAnimationFrame = () => {
+  if (!queuedAnimationFrames || queuedAnimationFrames.length === 0) {
+    return;
+  }
+  const currentFrame = queuedAnimationFrames.splice(0);
+  reactAct(() => {
+    currentFrame.forEach(({ callback }) => callback(0));
+  });
+};
+
+const act = <T,>(run: () => T): T => {
+  let result!: T;
+  reactAct(() => {
+    result = run();
+  });
+  flushQueuedAnimationFrame();
+  flushQueuedAnimationFrame();
+  return result;
+};
 
 beforeEach(() => {
   __resetInternalDragSessionsForTest();
@@ -303,10 +332,15 @@ const setTextareaSelection = (
   textarea: HTMLTextAreaElement | null,
   start: number,
   end = start,
+  signal: "select" | "keyup" = "select",
 ) => {
   act(() => {
     textarea?.setSelectionRange(start, end);
-    textarea?.dispatchEvent(new Event("select", { bubbles: true }));
+    textarea?.dispatchEvent(
+      signal === "keyup"
+        ? new KeyboardEvent("keyup", { bubbles: true, key: "ArrowRight" })
+        : new Event("select", { bubbles: true }),
+    );
   });
 };
 
@@ -319,7 +353,7 @@ const applyTextareaInput = (
     if (!textarea) {
       return;
     }
-    textarea.value = nextValue;
+    setNativeValue(textarea, nextValue);
     textarea.setSelectionRange(caret, caret);
     textarea.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
   });
@@ -330,7 +364,7 @@ const applyInputValue = (input: HTMLInputElement | null, nextValue: string) => {
     if (!input) {
       return;
     }
-    input.value = nextValue;
+    setNativeValue(input, nextValue);
     input.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
     input.dispatchEvent(new Event("change", { bubbles: true, cancelable: true }));
   });
@@ -338,7 +372,7 @@ const applyInputValue = (input: HTMLInputElement | null, nextValue: string) => {
 
 const blurTextarea = (textarea: HTMLTextAreaElement | null) => {
   act(() => {
-    textarea?.dispatchEvent(new FocusEvent("blur", { bubbles: true, cancelable: true }));
+    textarea?.dispatchEvent(new FocusEvent("focusout", { bubbles: true, cancelable: true }));
   });
 };
 
@@ -384,7 +418,7 @@ const applyTextInput = (
     if (!input) {
       return;
     }
-    input.value = nextValue;
+    setNativeValue(input, nextValue);
     if ("setSelectionRange" in input) {
       input.setSelectionRange(caret, caret);
     }
@@ -397,7 +431,7 @@ const applySelectValue = (select: HTMLSelectElement | null, nextValue: string) =
     if (!select) {
       return;
     }
-    select.value = nextValue;
+    setNativeValue(select, nextValue);
     select.dispatchEvent(new Event("change", { bubbles: true, cancelable: true }));
   });
 };
@@ -406,16 +440,38 @@ const withImmediateRaf = <T,>(run: () => T) => {
   const originalRaf = window.requestAnimationFrame;
   const originalCancelRaf = window.cancelAnimationFrame;
   window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
-    callback(0);
-    return 1;
+    const id = nextQueuedAnimationFrameId;
+    nextQueuedAnimationFrameId += 1;
+    queuedAnimationFrames?.push({ callback, id });
+    return id;
   }) as typeof window.requestAnimationFrame;
-  window.cancelAnimationFrame = (() => undefined) as typeof window.cancelAnimationFrame;
+  window.cancelAnimationFrame = ((id: number) => {
+    if (!queuedAnimationFrames) {
+      return;
+    }
+    const index = queuedAnimationFrames.findIndex((entry) => entry.id === id);
+    if (index >= 0) {
+      queuedAnimationFrames.splice(index, 1);
+    }
+  }) as typeof window.cancelAnimationFrame;
+  queuedAnimationFrames = [];
   try {
-    return run();
+    const result = run();
+    flushQueuedAnimationFrame();
+    return result;
   } finally {
+    queuedAnimationFrames = null;
     window.requestAnimationFrame = originalRaf;
     window.cancelAnimationFrame = originalCancelRaf;
   }
+};
+
+const flushAnimationFrame = async () => {
+  await reactAct(async () => {
+    await new Promise<void>((resolve) => {
+      window.requestAnimationFrame(() => resolve());
+    });
+  });
 };
 
 const createMockRect = (height: number, width = 320): DOMRect =>
@@ -505,8 +561,8 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
-  it("supports Shift+drag range selection across blocks using global mouse tracking", () => {
-    const initialMarkdown = ["Alpha", "Beta", "Gamma", "Delta"].join("\n");
+  it("supports Shift+drag range selection across blocks using global mouse tracking", async () => {
+    const initialMarkdown = ["# Alpha", "# Beta", "# Gamma", "# Delta"].join("\n");
 
     const Harness = () => {
       const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -522,6 +578,7 @@ describe("MarkdownHybridEditor", () => {
     };
 
     const { container, cleanup } = render(createElement(Harness));
+    await flushAnimationFrame();
     const blocks = Array.from(
       container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
     );
@@ -562,11 +619,15 @@ describe("MarkdownHybridEditor", () => {
         );
       });
 
+      await flushAnimationFrame();
+
       act(() => {
         window.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
       });
 
-      expect(container.querySelectorAll(".markdown-hybrid-block.is-range-selected")).toHaveLength(3);
+      expect(container.querySelectorAll(".markdown-hybrid-block.is-range-selected")).toHaveLength(
+        3,
+      );
     } finally {
       Object.defineProperty(document, "elementFromPoint", {
         configurable: true,
@@ -688,6 +749,8 @@ describe("MarkdownHybridEditor", () => {
 
     ctrlSelectBlock(blocks[0]);
     ctrlSelectBlock(blocks[1]);
+    expect(container.querySelectorAll(".markdown-hybrid-block.is-range-selected")).toHaveLength(2);
+    expect(container.querySelector("textarea.markdown-hybrid-block-editor")).toBeNull();
 
     dispatchKeyDown(editor, "ArrowRight", { ctrlKey: true });
     expect(readMarkdown()).toBe(["  - Alpha", "  Paragraph", "- Gamma"].join("\n"));
@@ -699,7 +762,7 @@ describe("MarkdownHybridEditor", () => {
   });
 
   it("supports Cmd+ArrowLeft/ArrowRight alias for selection inline shifting", () => {
-    const initialMarkdown = ["Alpha", "Beta"].join("\n");
+    const initialMarkdown = ["# Alpha", "# Beta"].join("\n");
 
     const Harness = () => {
       const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -732,7 +795,7 @@ describe("MarkdownHybridEditor", () => {
     ctrlSelectBlock(blocks[1]);
 
     dispatchKeyDown(editor, "ArrowRight", { metaKey: true });
-    expect(readMarkdown()).toBe(["  Alpha", "  Beta"].join("\n"));
+    expect(readMarkdown()).toBe(["  # Alpha", "  # Beta"].join("\n"));
 
     dispatchKeyDown(editor, "ArrowLeft", { metaKey: true });
     expect(readMarkdown()).toBe(initialMarkdown);
@@ -808,14 +871,18 @@ describe("MarkdownHybridEditor", () => {
       setTextareaSelection(textarea, 0, 0);
 
       dispatchKeyDown(textarea, "ArrowRight", { ctrlKey: true });
-      textarea = container.querySelector<HTMLTextAreaElement>("textarea.markdown-hybrid-block-editor");
+      textarea = container.querySelector<HTMLTextAreaElement>(
+        "textarea.markdown-hybrid-block-editor",
+      );
       expect(textarea?.value).toBe("  - Alpha");
       expect(textarea?.selectionStart).toBe(2);
       expect(textarea?.selectionEnd).toBe(2);
       expect(readMarkdown()).toBe(initialMarkdown);
 
       dispatchKeyDown(textarea, "ArrowLeft", { metaKey: true });
-      textarea = container.querySelector<HTMLTextAreaElement>("textarea.markdown-hybrid-block-editor");
+      textarea = container.querySelector<HTMLTextAreaElement>(
+        "textarea.markdown-hybrid-block-editor",
+      );
       expect(textarea?.value).toBe("- Alpha");
       expect(textarea?.selectionStart).toBe(0);
       expect(textarea?.selectionEnd).toBe(0);
@@ -825,7 +892,7 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
-  it("supports right-click drag range selection with delete and undo", () => {
+  it("supports right-click drag range selection with delete and undo", async () => {
     const initialMarkdown = ["# Alpha", "# Beta", "# Gamma", "# Delta"].join("\n");
 
     const Harness = () => {
@@ -845,10 +912,13 @@ describe("MarkdownHybridEditor", () => {
     };
 
     const { container, cleanup } = render(createElement(Harness));
+    await flushAnimationFrame();
     const editor = container.querySelector(".markdown-hybrid-editor");
     expect(editor).toBeTruthy();
     const getBlocks = () =>
-      Array.from(container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"));
+      Array.from(
+        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+      );
     const readMarkdown = () =>
       container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
@@ -879,6 +949,7 @@ describe("MarkdownHybridEditor", () => {
         }),
       );
     });
+    await flushAnimationFrame();
 
     act(() => {
       window.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
@@ -1069,7 +1140,15 @@ describe("MarkdownHybridEditor", () => {
         },
         {
           kind: "paragraph",
-          raw: ["Question", "Answer: 42", "-true", "a) option", "-a", "%%cloze%%", "tocken \"drag\""].join("\n"),
+          raw: [
+            "Question",
+            "Answer: 42",
+            "-true",
+            "a) option",
+            "-a",
+            "%%cloze%%",
+            'tocken "drag"',
+          ].join("\n"),
         },
         {
           kind: "card-end",
@@ -1077,11 +1156,7 @@ describe("MarkdownHybridEditor", () => {
         },
         {
           kind: "table",
-          raw: [
-            "| A | B |",
-            "| --- | --- |",
-            "| 1 | 2 |",
-          ].join("\n"),
+          raw: ["| A | B |", "| --- | --- |", "| 1 | 2 |"].join("\n"),
         },
       ];
       const pastedMarkdown = internalBlocks.map((block) => block.raw).join("\n");
@@ -1192,7 +1267,7 @@ describe("MarkdownHybridEditor", () => {
         { kind: "heading", raw: "# Inserted" },
         {
           kind: "paragraph",
-          raw: ["Answer: 42", "-true", "a) one", "-a", "%%hole%%", "tocken \"drag\""].join("\n"),
+          raw: ["Answer: 42", "-true", "a) one", "-a", "%%hole%%", 'tocken "drag"'].join("\n"),
         },
       ];
       const internalPayload = JSON.stringify({
@@ -1231,16 +1306,22 @@ describe("MarkdownHybridEditor", () => {
         "text/plain": internalBlocks.map((block) => block.raw).join("\n"),
         [INTERNAL_BLOCK_CLIPBOARD_MIME]: internalPayload,
       });
-      const internalPasteEvent = dispatchClipboardEvent(cleanTextarea, "paste", internalClipboardData);
+      const internalPasteEvent = dispatchClipboardEvent(
+        cleanTextarea,
+        "paste",
+        internalClipboardData,
+      );
       expect(internalPasteEvent.defaultPrevented).toBe(true);
 
       const pastedMarkdown = readMarkdown();
       expect(pastedMarkdown.indexOf("# A")).toBeLessThan(pastedMarkdown.indexOf("# Inserted"));
       expect(pastedMarkdown.indexOf("# Inserted")).toBeLessThan(pastedMarkdown.indexOf("# B"));
       expect(pastedMarkdown).toContain("Answer: 42");
-      expect(pastedMarkdown).toContain("tocken \"drag\"");
+      expect(pastedMarkdown).toContain('tocken "drag"');
 
-      const insertedTextarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      const insertedTextarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-block-editor",
+      );
       expect(insertedTextarea?.value).toBe("# Inserted");
 
       const dirtyTextarea = insertedTextarea;
@@ -1255,7 +1336,10 @@ describe("MarkdownHybridEditor", () => {
 
   it("auto-scrolls during right-drag and selects blocks beyond the initial viewport", () => {
     withImmediateRaf(() => {
-      const initialMarkdown = Array.from({ length: 40 }, (_value, index) => `# Item ${index + 1}`).join("\n");
+      const initialMarkdown = Array.from(
+        { length: 40 },
+        (_value, index) => `# Item ${index + 1}`,
+      ).join("\n");
 
       const Harness = () => {
         const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -1310,7 +1394,11 @@ describe("MarkdownHybridEditor", () => {
         });
         Object.defineProperty(editor, "getBoundingClientRect", {
           configurable: true,
-          value: () => createRect(-(scrollHost as HTMLElement).scrollTop, 1200 - (scrollHost as HTMLElement).scrollTop),
+          value: () =>
+            createRect(
+              -(scrollHost as HTMLElement).scrollTop,
+              1200 - (scrollHost as HTMLElement).scrollTop,
+            ),
         });
       }
 
@@ -1344,13 +1432,15 @@ describe("MarkdownHybridEditor", () => {
       });
 
       expect((scrollHost as HTMLElement | null)?.scrollTop ?? 0).toBeGreaterThan(0);
-      expect(container.querySelectorAll(".markdown-hybrid-block.is-range-selected").length).toBeGreaterThan(3);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block.is-range-selected").length,
+      ).toBeGreaterThan(3);
 
       cleanup();
     });
   });
 
-  it("marks ordered-list rows via right-drag even when hovering nested list content", () => {
+  it("marks ordered-list rows via right-drag even when hovering nested list content", async () => {
     const initialMarkdown = ["Alpha", "1. One", "2. Two", "Omega"].join("\n");
 
     const Harness = () => {
@@ -1378,6 +1468,7 @@ describe("MarkdownHybridEditor", () => {
     };
 
     const { container, cleanup } = render(createElement(Harness));
+    await flushAnimationFrame();
     const editor = container.querySelector(".markdown-hybrid-editor");
     const blocks = Array.from(
       container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
@@ -1392,70 +1483,53 @@ describe("MarkdownHybridEditor", () => {
     expect(orderedListBlock).toBeTruthy();
     expect(nestedListNode).toBeTruthy();
 
-    const originalElementFromPoint = document.elementFromPoint;
-    let currentPointerTarget: Element | null = null;
-    Object.defineProperty(document, "elementFromPoint", {
-      configurable: true,
-      value: () => currentPointerTarget,
+    act(() => {
+      blocks[0]?.dispatchEvent(
+        new MouseEvent("mousedown", {
+          bubbles: true,
+          cancelable: true,
+          button: 2,
+          buttons: 2,
+        }),
+      );
     });
 
-    try {
-      act(() => {
-        blocks[0]?.dispatchEvent(
-          new MouseEvent("mousedown", {
-            bubbles: true,
-            cancelable: true,
-            button: 2,
-            buttons: 2,
-          }),
-        );
-      });
+    act(() => {
+      nestedListNode?.dispatchEvent(
+        new MouseEvent("mouseover", {
+          bubbles: true,
+          cancelable: true,
+          buttons: 2,
+          clientX: 10,
+          clientY: 10,
+        }),
+      );
+    });
 
-      currentPointerTarget = nestedListNode ?? null;
-      act(() => {
-        window.dispatchEvent(
-          new MouseEvent("mousemove", {
-            bubbles: true,
-            cancelable: true,
-            buttons: 2,
-            clientX: 10,
-            clientY: 10,
-          }),
-        );
-      });
+    act(() => {
+      window.dispatchEvent(
+        new MouseEvent("mousemove", {
+          bubbles: true,
+          cancelable: true,
+          buttons: 2,
+          clientX: 20,
+          clientY: 20,
+        }),
+      );
+    });
+    await flushAnimationFrame();
 
-      currentPointerTarget = blocks[2] ?? null;
-      act(() => {
-        window.dispatchEvent(
-          new MouseEvent("mousemove", {
-            bubbles: true,
-            cancelable: true,
-            buttons: 2,
-            clientX: 20,
-            clientY: 20,
-          }),
-        );
-      });
+    act(() => {
+      window.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+    });
 
-      act(() => {
-        window.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
-      });
-
-      expect(
-        container.querySelectorAll(".markdown-hybrid-block.is-range-selected"),
-      ).toHaveLength(3);
-      expect(orderedListBlock?.classList.contains("is-range-selected")).toBe(true);
-    } finally {
-      Object.defineProperty(document, "elementFromPoint", {
-        configurable: true,
-        value: originalElementFromPoint,
-      });
-    }
+    expect(container.querySelectorAll(".markdown-hybrid-block.is-range-selected")).toHaveLength(3);
+    expect(orderedListBlock?.classList.contains("is-range-selected")).toBe(true);
 
     cleanup();
   });
 
-  it("does not start block range selection from gutter controls", () => {
+  it("does not start block range selection from gutter controls", async () => {
     const Harness = () => {
       const [markdown, setMarkdown] = useState("# One\n# Two");
       return (
@@ -1470,8 +1544,11 @@ describe("MarkdownHybridEditor", () => {
     };
 
     const { container, cleanup } = render(createElement(Harness));
+    await flushAnimationFrame();
     const dragHandle = container.querySelector<HTMLElement>(".markdown-hybrid-block-drag-handle");
-    const insertButton = container.querySelector<HTMLElement>(".markdown-hybrid-block-insert-button");
+    const insertButton = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block-insert-button",
+    );
     expect(dragHandle).toBeTruthy();
     expect(insertButton).toBeTruthy();
 
@@ -1525,7 +1602,7 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
-  it("selects a single block on plain drag-handle click", () => {
+  it("selects a single block on plain drag-handle click", async () => {
     const Harness = () => {
       const [markdown, setMarkdown] = useState("# One\n# Two");
       return (
@@ -1540,6 +1617,7 @@ describe("MarkdownHybridEditor", () => {
     };
 
     const { container, cleanup } = render(createElement(Harness));
+    await flushAnimationFrame();
     const dragHandle = container.querySelector<HTMLElement>(".markdown-hybrid-block-drag-handle");
     expect(dragHandle).toBeTruthy();
 
@@ -1548,16 +1626,16 @@ describe("MarkdownHybridEditor", () => {
     const selectedBlocks = container.querySelectorAll(".markdown-hybrid-block.is-range-selected");
     expect(selectedBlocks).toHaveLength(1);
     expect(
-      container.querySelector(".markdown-hybrid-block[data-md-block-index='0']")?.classList.contains(
-        "is-range-selected",
-      ),
+      container
+        .querySelector(".markdown-hybrid-block[data-md-block-index='0']")
+        ?.classList.contains("is-range-selected"),
     ).toBe(true);
     expect(container.querySelectorAll("textarea.markdown-hybrid-block-editor")).toHaveLength(0);
 
     cleanup();
   });
 
-  it("reveals left overlay controls on block hover and hides them after leaving block/rail", () => {
+  it("reveals left overlay controls on block hover and hides them after leaving block/rail", async () => {
     const Harness = () => {
       const [markdown, setMarkdown] = useState("# One\n# Two");
       return (
@@ -1572,6 +1650,7 @@ describe("MarkdownHybridEditor", () => {
     };
 
     const { container, cleanup } = render(createElement(Harness));
+    await flushAnimationFrame();
     const overlayRow = container.querySelector<HTMLElement>(
       ".markdown-hybrid-overlay-row[data-md-block-index='0']",
     );
@@ -1614,7 +1693,9 @@ describe("MarkdownHybridEditor", () => {
     const overlayRow = container.querySelector<HTMLElement>(
       ".markdown-hybrid-overlay-row[data-md-block-index='0']",
     );
-    const block = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='0']");
+    const block = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block[data-md-block-index='0']",
+    );
     const leftRail = overlayRow?.querySelector<HTMLElement>(".markdown-hybrid-overlay-rail-left");
     expect(overlayRow).toBeTruthy();
     expect(block).toBeTruthy();
@@ -1633,7 +1714,7 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
-  it("keeps left overlay controls stable when pointer moves between block and handle controls", () => {
+  it("keeps left overlay controls stable when pointer moves between block and handle controls", async () => {
     const Harness = () => {
       const [markdown, setMarkdown] = useState("# One\n# Two");
       return (
@@ -1648,6 +1729,7 @@ describe("MarkdownHybridEditor", () => {
     };
 
     const { container, cleanup } = render(createElement(Harness));
+    await flushAnimationFrame();
     const overlayRow = container.querySelector<HTMLElement>(
       ".markdown-hybrid-overlay-row[data-md-block-index='0']",
     );
@@ -1655,7 +1737,9 @@ describe("MarkdownHybridEditor", () => {
       ".markdown-hybrid-block[data-md-block-index='0']",
     );
     const dragHandle = overlayRow?.querySelector<HTMLElement>(".markdown-hybrid-block-drag-handle");
-    const insertButton = overlayRow?.querySelector<HTMLElement>(".markdown-hybrid-block-insert-button");
+    const insertButton = overlayRow?.querySelector<HTMLElement>(
+      ".markdown-hybrid-block-insert-button",
+    );
     const secondBlock = container.querySelector<HTMLElement>(
       ".markdown-hybrid-block[data-md-block-index='1']",
     );
@@ -1680,7 +1764,7 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
-  it("keeps left overlay controls visible while the insert menu is open", () => {
+  it("keeps left overlay controls visible while the insert menu is open", async () => {
     const Harness = () => {
       const [markdown, setMarkdown] = useState("# One\n# Two");
       return (
@@ -1695,6 +1779,7 @@ describe("MarkdownHybridEditor", () => {
     };
 
     const { container, cleanup } = render(createElement(Harness));
+    await flushAnimationFrame();
     const overlayRow = container.querySelector<HTMLElement>(
       ".markdown-hybrid-overlay-row[data-md-block-index='0']",
     );
@@ -1702,7 +1787,9 @@ describe("MarkdownHybridEditor", () => {
       ".markdown-hybrid-block[data-md-block-index='0']",
     );
     const leftRail = overlayRow?.querySelector<HTMLElement>(".markdown-hybrid-overlay-rail-left");
-    const insertButton = overlayRow?.querySelector<HTMLButtonElement>(".markdown-hybrid-block-insert-button");
+    const insertButton = overlayRow?.querySelector<HTMLButtonElement>(
+      ".markdown-hybrid-block-insert-button",
+    );
     expect(overlayRow).toBeTruthy();
     expect(block).toBeTruthy();
     expect(leftRail).toBeTruthy();
@@ -1916,7 +2003,8 @@ describe("MarkdownHybridEditor", () => {
         clientY: 120,
       });
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue).toBe("# Two\n# Three\n# One");
       expect(container.querySelector(".markdown-hybrid-drag-preview")).toBeNull();
       expect(container.querySelector(".markdown-hybrid-block.is-dragging")).toBeNull();
@@ -1986,7 +2074,8 @@ describe("MarkdownHybridEditor", () => {
         clientY: 120,
       });
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue).toBe("# Two\n# Three\n# One");
       cleanup();
     });
@@ -2054,7 +2143,7 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
-  it("opens a block selection context menu on right click and suppresses it after right-drag", () => {
+  it("opens a block selection context menu on right click and suppresses it after right-drag", async () => {
     const Harness = () => {
       const [markdown, setMarkdown] = useState(["# One", "# Two", "# Three"].join("\n"));
       return (
@@ -2069,6 +2158,7 @@ describe("MarkdownHybridEditor", () => {
     };
 
     const { container, cleanup } = render(createElement(Harness));
+    await flushAnimationFrame();
     const blocks = Array.from(
       container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
     );
@@ -2151,6 +2241,7 @@ describe("MarkdownHybridEditor", () => {
           }),
         );
       });
+      await flushAnimationFrame();
 
       act(() => {
         window.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
@@ -2166,7 +2257,9 @@ describe("MarkdownHybridEditor", () => {
       });
 
       expect(container.querySelector(".markdown-hybrid-selection-menu")).toBeNull();
-      expect(container.querySelectorAll(".markdown-hybrid-block.is-range-selected")).toHaveLength(3);
+      expect(container.querySelectorAll(".markdown-hybrid-block.is-range-selected")).toHaveLength(
+        3,
+      );
     } finally {
       Object.defineProperty(document, "elementFromPoint", {
         configurable: true,
@@ -2193,18 +2286,26 @@ describe("MarkdownHybridEditor", () => {
       };
 
       const { container, cleanup } = render(createElement(Harness));
-      const insertButton = container.querySelector<HTMLButtonElement>(".markdown-hybrid-block-insert-button");
+      const insertButton = container.querySelector<HTMLButtonElement>(
+        ".markdown-hybrid-block-insert-button",
+      );
       expect(insertButton).toBeTruthy();
 
       dispatchClick(insertButton);
 
-      const menu = container.querySelector<HTMLElement>(".markdown-hybrid-insert-menu[role='menu']");
+      const menu = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-insert-menu[role='menu']",
+      );
       expect(menu).toBeTruthy();
       const categoryButtons = Array.from(
-        container.querySelectorAll<HTMLButtonElement>(".markdown-hybrid-insert-menu-item[role='menuitem']"),
+        container.querySelectorAll<HTMLButtonElement>(
+          ".markdown-hybrid-insert-menu-item[role='menuitem']",
+        ),
       );
       const categoryLabels = categoryButtons.map(
-        (button) => button.querySelector(".markdown-hybrid-insert-menu-item-label")?.textContent?.trim() ?? "",
+        (button) =>
+          button.querySelector(".markdown-hybrid-insert-menu-item-label")?.textContent?.trim() ??
+          "",
       );
       expect(categoryLabels).toEqual([
         "Standard Blocks",
@@ -2215,9 +2316,13 @@ describe("MarkdownHybridEditor", () => {
         "Advanced",
       ]);
       expect(categoryButtons.some((button) => button.textContent?.trim() === "Page")).toBe(false);
-      expect(categoryButtons.some((button) => button.textContent?.trim() === "Text & Headings")).toBe(false);
+      expect(
+        categoryButtons.some((button) => button.textContent?.trim() === "Text & Headings"),
+      ).toBe(false);
       expect(categoryButtons.some((button) => button.textContent?.trim() === "Lists")).toBe(false);
-      expect(categoryButtons.some((button) => button.textContent?.trim() === "Standard Blocks")).toBe(true);
+      expect(
+        categoryButtons.some((button) => button.textContent?.trim() === "Standard Blocks"),
+      ).toBe(true);
       expect(categoryButtons.some((button) => button.textContent?.trim() === "Canvas")).toBe(true);
 
       const advancedButton = findButtonByExactText(container, "Advanced");
@@ -2281,10 +2386,11 @@ describe("MarkdownHybridEditor", () => {
 
       dispatchClick(canvasButton);
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue).toContain("#canvas");
-      expect(markdownValue).toContain("\"id\": \"node-1\"");
-      expect(markdownValue).toContain("\"text\": \"Neue Karte\"");
+      expect(markdownValue).toContain('"id": "node-1"');
+      expect(markdownValue).toContain('"text": "Neue Karte"');
       expect(markdownValue).toContain("#canvasend");
       expect(container.querySelector(".canvas-embedded-block")).not.toBeNull();
       expect(container.querySelector(".canvas-content-node")).not.toBeNull();
@@ -2341,15 +2447,22 @@ describe("MarkdownHybridEditor", () => {
       );
       expect(menuButtons).toHaveLength(expectedLabels.length);
 
-      const labels = menuButtons.map((button) =>
-        button.querySelector(".markdown-hybrid-insert-menu-item-label")?.textContent?.trim() ?? "",
+      const labels = menuButtons.map(
+        (button) =>
+          button.querySelector(".markdown-hybrid-insert-menu-item-label")?.textContent?.trim() ??
+          "",
       );
       expect(labels).toEqual(expectedLabels);
 
-      const iconNodes = container.querySelectorAll(
-        ".markdown-hybrid-insert-menu-item-icon[data-md-insert-menu-icon]",
-      );
-      expect(iconNodes).toHaveLength(expectedLabels.length);
+      expect(
+        menuButtons.every((button) =>
+          Boolean(
+            button.querySelector(
+              ".markdown-hybrid-insert-menu-item-icon[data-md-insert-menu-icon]",
+            ),
+          ),
+        ),
+      ).toBe(true);
 
       cleanup();
     });
@@ -2371,7 +2484,7 @@ describe("MarkdownHybridEditor", () => {
           label: "Toggle List",
           markdown: "<details>\n<summary>Toggle title</summary>\n\nToggle content\n</details>",
         },
-        { label: "Divider", markdown: "---" },
+        { label: "Divider", markdown: "\n---\n" },
         { label: "Quote", markdown: "> Quote text" },
         { label: "Nested Quote", markdown: ">> Nested quote text" },
       ];
@@ -2398,7 +2511,8 @@ describe("MarkdownHybridEditor", () => {
         dispatchClick(findButtonByExactText(container, "Standard Blocks"));
         dispatchClick(findMenuItemButtonByLabel(container, entry.label));
 
-        const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        const markdownValue =
+          container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
         expect(markdownValue).toBe(entry.markdown);
 
         cleanup();
@@ -2449,7 +2563,8 @@ describe("MarkdownHybridEditor", () => {
 
       dispatchClick(codeBlockButton);
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue).toBe("```txt\nCODE HERE\n```");
 
       cleanup();
@@ -2479,7 +2594,8 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findButtonByExactText(container, "Structure"));
       dispatchClick(findMenuItemButtonByLabel(container, "Math Block"));
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue).toBe("$$\n\n$$");
 
       const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-math-editor");
@@ -2520,10 +2636,19 @@ describe("MarkdownHybridEditor", () => {
           ".markdown-hybrid-insert-menu-item[role='menuitem']",
         ),
       );
-      const labels = menuButtons.map((button) =>
-        button.querySelector(".markdown-hybrid-insert-menu-item-label")?.textContent?.trim() ?? "",
+      const labels = menuButtons.map(
+        (button) =>
+          button.querySelector(".markdown-hybrid-insert-menu-item-label")?.textContent?.trim() ??
+          "",
       );
-      expect(labels).toEqual(["Attributes", "DB-Table", "DB-Kanban", "DB-Timeline", "DB-Pie", "DB-Project"]);
+      expect(labels).toEqual([
+        "Attributes",
+        "DB-Table",
+        "DB-Kanban",
+        "DB-Timeline",
+        "DB-Pie",
+        "DB-Project",
+      ]);
 
       cleanup();
     });
@@ -2561,9 +2686,10 @@ describe("MarkdownHybridEditor", () => {
         dispatchClick(findButtonByExactText(container, "Database"));
         dispatchClick(findMenuItemButtonByLabel(container, entry.label));
 
-        const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        const markdownValue =
+          container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
         expect(markdownValue.startsWith("::::\n")).toBe(true);
-        expect(markdownValue).toContain(`view:\n  type: ${entry.viewType}`);
+        expect(markdownValue).toMatch(new RegExp(`view:\\n\\s+type: ${entry.viewType}`));
         expect(markdownValue).not.toContain("Section: IUFS");
         expect(markdownValue).not.toContain("Projekt: IDBS01");
 
@@ -2575,7 +2701,7 @@ describe("MarkdownHybridEditor", () => {
   it("inserts the Attributes block always at document top", () => {
     withImmediateRaf(() => {
       const Harness = () => {
-        const [markdown, setMarkdown] = useState("alpha\nbeta");
+        const [markdown, setMarkdown] = useState("# alpha\n# beta");
         return (
           <div>
             <div data-testid="markdown-value">{markdown}</div>
@@ -2599,15 +2725,20 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findButtonByExactText(container, "Database"));
       dispatchClick(findMenuItemButtonByLabel(container, "Attributes"));
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
-      expect(markdownValue.startsWith("---\nSection: IUFS\nRank: SE1\nProjekt: IDBS01\nTask: Exam\nText: text\n---\n")).toBe(true);
-      expect(markdownValue).toContain("\nalpha\nbeta");
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(
+        markdownValue.startsWith(
+          "---\nSection: IUFS\nRank: SE1\nProjekt: IDBS01\nTask: Exam\nText: text\n---\n",
+        ),
+      ).toBe(true);
+      expect(markdownValue).toContain("\n# alpha\n# beta");
       expect(markdownValue.startsWith("\n---")).toBe(false);
       expect(markdownValue.includes("---\n\nSection: IUFS")).toBe(false);
       const parsed = parseFrontmatterDocument(markdownValue);
       expect(parsed.hasFrontmatter).toBe(true);
       expect(parsed.error).toBeNull();
-      expect(parsed.body).toBe("alpha\nbeta");
+      expect(parsed.body).toBe("# alpha\n# beta");
 
       cleanup();
     });
@@ -2638,7 +2769,8 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findButtonByExactText(container, "Database"));
       dispatchClick(findMenuItemButtonByLabel(container, "Attributes"));
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue).toBe(initialMarkdown);
       expect(container.querySelector(".markdown-hybrid-insert-menu")).toBeNull();
 
@@ -2648,13 +2780,9 @@ describe("MarkdownHybridEditor", () => {
 
   it("keeps markdown unchanged when body already starts with frontmatter and Attributes is clicked", () => {
     withImmediateRaf(() => {
-      const initialMarkdown = [
-        "---",
-        "Cover: '[[Exam/IDBS01-Exam.png]]'",
-        "---",
-        "",
-        "alpha",
-      ].join("\n");
+      const initialMarkdown = ["---", "Cover: '[[Exam/IDBS01-Exam.png]]'", "---", "", "alpha"].join(
+        "\n",
+      );
       const Harness = () => {
         const [markdown, setMarkdown] = useState(initialMarkdown);
         return (
@@ -2676,7 +2804,8 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findButtonByExactText(container, "Database"));
       dispatchClick(findMenuItemButtonByLabel(container, "Attributes"));
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue).toBe(initialMarkdown);
       expect(container.querySelector(".markdown-hybrid-insert-menu")).toBeNull();
 
@@ -2702,7 +2831,9 @@ describe("MarkdownHybridEditor", () => {
       const { container, cleanup } = render(createElement(Harness));
       dispatchClick(container.querySelector(".markdown-hybrid-block-insert-button"));
 
-      const menu = container.querySelector<HTMLElement>(".markdown-hybrid-insert-menu[role='menu']");
+      const menu = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-insert-menu[role='menu']",
+      );
       expect(menu).toBeTruthy();
       const menuItems = Array.from(
         container.querySelectorAll<HTMLButtonElement>("button[role='menuitem']"),
@@ -2764,9 +2895,12 @@ describe("MarkdownHybridEditor", () => {
         const templateButton = findMenuItemButtonByLabel(container, template.label);
         expect(templateButton).toBeTruthy();
         expect(
-          templateButton?.querySelector(".markdown-hybrid-insert-menu-item-icon[data-md-insert-menu-icon]"),
+          templateButton?.querySelector(
+            ".markdown-hybrid-insert-menu-item-icon[data-md-insert-menu-icon]",
+          ),
         ).toBeTruthy();
-        const markdownBeforeInsert = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        const markdownBeforeInsert =
+          container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
         expect(markdownBeforeInsert).toBe("");
         dispatchClick(templateButton);
 
@@ -2775,21 +2909,26 @@ describe("MarkdownHybridEditor", () => {
           expect(findMenuItemButtonByLabel(container, "Card")).toBeNull();
           expect(container.querySelector("input[aria-label='Task number']")).toBeNull();
 
-          const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+          const markdownValue =
+            container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
           expect(markdownValue).toBe(template.payload);
 
-          const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+          const textarea = container.querySelector<HTMLTextAreaElement>(
+            ".markdown-hybrid-block-editor",
+          );
           expect(textarea).toBeTruthy();
-          const selectedText = textarea && textarea.selectionStart !== null && textarea.selectionEnd !== null
-            ? textarea.value.slice(textarea.selectionStart, textarea.selectionEnd)
-            : "";
+          const selectedText =
+            textarea && textarea.selectionStart !== null && textarea.selectionEnd !== null
+              ? textarea.value.slice(textarea.selectionStart, textarea.selectionEnd)
+              : "";
           expect(selectedText).toBe(template.firstPlaceholder);
 
           cleanup();
           continue;
         }
 
-        const markdownBeforeVariant = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        const markdownBeforeVariant =
+          container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
         expect(markdownBeforeVariant).toBe("");
         expect(findMenuItemButtonByLabel(container, "Task")).toBeTruthy();
         expect(findMenuItemButtonByLabel(container, "Card")).toBeTruthy();
@@ -2798,15 +2937,19 @@ describe("MarkdownHybridEditor", () => {
         const expectedCardVariant = buildAdvancedInsertTemplateVariant(template, "card", {
           sequenceNumber: 1,
         });
-        const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        const markdownValue =
+          container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
         expect(markdownValue).toBe(expectedCardVariant.payload);
         expect(markdownValue).toContain("1) CARD HEADING");
 
-        const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+        const textarea = container.querySelector<HTMLTextAreaElement>(
+          ".markdown-hybrid-block-editor",
+        );
         expect(textarea).toBeTruthy();
-        const selectedText = textarea && textarea.selectionStart !== null && textarea.selectionEnd !== null
-          ? textarea.value.slice(textarea.selectionStart, textarea.selectionEnd)
-          : "";
+        const selectedText =
+          textarea && textarea.selectionStart !== null && textarea.selectionEnd !== null
+            ? textarea.value.slice(textarea.selectionStart, textarea.selectionEnd)
+            : "";
         expect(selectedText).toBe(template.firstPlaceholder);
 
         cleanup();
@@ -2816,7 +2959,9 @@ describe("MarkdownHybridEditor", () => {
 
   it("inserts every Advanced template as a numbered task and selects the task heading", () => {
     withImmediateRaf(() => {
-      for (const template of ADVANCED_INSERT_TEMPLATE_CATALOG.filter((entry) => entry.insertBehavior !== "direct")) {
+      for (const template of ADVANCED_INSERT_TEMPLATE_CATALOG.filter(
+        (entry) => entry.insertBehavior !== "direct",
+      )) {
         const expectedTaskVariant = buildAdvancedInsertTemplateVariant(template, "task", {
           sequenceNumber: 1,
         });
@@ -2843,7 +2988,8 @@ describe("MarkdownHybridEditor", () => {
         dispatchClick(findMenuItemButtonByLabel(container, template.label));
         dispatchClick(findMenuItemButtonByLabel(container, "Task"));
 
-        const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        const markdownValue =
+          container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
         expect(markdownValue).toContain("#exam");
         expect(markdownValue).toContain(expectedTaskVariant.payload);
         expect(markdownValue).toContain("#endexam");
@@ -2852,11 +2998,14 @@ describe("MarkdownHybridEditor", () => {
         expect(markdownValue.startsWith("#exam\n")).toBe(true);
         expect(markdownValue).not.toContain("----------------------------\n#exam");
 
-        const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+        const textarea = container.querySelector<HTMLTextAreaElement>(
+          ".markdown-hybrid-block-editor",
+        );
         expect(textarea).toBeTruthy();
-        const selectedText = textarea && textarea.selectionStart !== null && textarea.selectionEnd !== null
-          ? textarea.value.slice(textarea.selectionStart, textarea.selectionEnd)
-          : "";
+        const selectedText =
+          textarea && textarea.selectionStart !== null && textarea.selectionEnd !== null
+            ? textarea.value.slice(textarea.selectionStart, textarea.selectionEnd)
+            : "";
         expect(selectedText).toBe(expectedTaskVariant.firstPlaceholder);
 
         cleanup();
@@ -2907,7 +3056,8 @@ describe("MarkdownHybridEditor", () => {
       expect(findMenuItemButtonByLabel(container, "Task")?.textContent).toContain("2)");
       dispatchClick(findMenuItemButtonByLabel(container, "Task"));
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue).toContain(expectedTaskVariant.payload);
       expect(markdownValue.match(/^2\) TASK HEADING$/m)).toHaveLength(1);
       expect(markdownValue).toContain("#endexam");
@@ -2954,7 +3104,9 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findButtonByExactText(container, "Advanced"));
       dispatchClick(findMenuItemButtonByLabel(container, "Answer Marker"));
 
-      const sequenceInput = container.querySelector<HTMLInputElement>("input[aria-label='Task number']");
+      const sequenceInput = container.querySelector<HTMLInputElement>(
+        "input[aria-label='Task number']",
+      );
       const decreaseButton = findButtonByAriaLabel(container, "Decrease task number");
       expect(sequenceInput).toBeTruthy();
       expect(decreaseButton).toBeTruthy();
@@ -2971,7 +3123,8 @@ describe("MarkdownHybridEditor", () => {
 
       dispatchClick(findMenuItemButtonByLabel(container, "Task"));
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue).toContain("1) TASK HEADING");
       expect(markdownValue.match(/^1\) /gm)).toHaveLength(2);
       expect(markdownValue.match(/^#exam$/gm)).toHaveLength(1);
@@ -3010,7 +3163,9 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findButtonByExactText(container, "Advanced"));
       dispatchClick(findMenuItemButtonByLabel(container, template?.label ?? ""));
 
-      const sequenceInput = container.querySelector<HTMLInputElement>("input[aria-label='Task number']");
+      const sequenceInput = container.querySelector<HTMLInputElement>(
+        "input[aria-label='Task number']",
+      );
       expect(sequenceInput).toBeTruthy();
       expect(sequenceInput?.value).toBe("1");
       applyInputValue(sequenceInput, "4");
@@ -3020,7 +3175,8 @@ describe("MarkdownHybridEditor", () => {
 
       dispatchClick(findMenuItemButtonByLabel(container, "Card"));
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue).toBe(expectedCardVariant.payload);
 
       cleanup();
@@ -3029,11 +3185,7 @@ describe("MarkdownHybridEditor", () => {
 
   it("wraps first inserted task in existing markdown and keeps insertion order between surrounding content", () => {
     withImmediateRaf(() => {
-      const initialMarkdown = [
-        "Intro paragraph",
-        "",
-        "Footer paragraph",
-      ].join("\n");
+      const initialMarkdown = ["Intro paragraph", "", "Footer paragraph"].join("\n");
 
       const Harness = () => {
         const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -3062,7 +3214,8 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findMenuItemButtonByLabel(container, "Answer Marker"));
       dispatchClick(findMenuItemButtonByLabel(container, "Task"));
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue.startsWith("#exam\n")).toBe(true);
       const introIndex = markdownValue.indexOf("Intro paragraph");
       const taskHeadingIndex = markdownValue.indexOf("1) TASK HEADING");
@@ -3078,12 +3231,9 @@ describe("MarkdownHybridEditor", () => {
 
   it("adds only #endexam when inserting a task into markdown that already starts with #exam", () => {
     withImmediateRaf(() => {
-      const initialMarkdown = [
-        "#exam",
-        "1) Existing task",
-        "Answer: Existing answer",
-        "---",
-      ].join("\n");
+      const initialMarkdown = ["#exam", "1) Existing task", "Answer: Existing answer", "---"].join(
+        "\n",
+      );
 
       const Harness = () => {
         const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -3112,7 +3262,8 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findMenuItemButtonByLabel(container, "Answer Marker"));
       dispatchClick(findMenuItemButtonByLabel(container, "Task"));
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue.match(/^#exam$/gm)).toHaveLength(1);
       expect(markdownValue.match(/^#endexam$/gm)).toHaveLength(1);
       expect(markdownValue.startsWith("#exam\n")).toBe(true);
@@ -3158,7 +3309,8 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findMenuItemButtonByLabel(container, "Answer Marker"));
       dispatchClick(findMenuItemButtonByLabel(container, "Task"));
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue.match(/^#exam$/gm)).toHaveLength(1);
       expect(markdownValue.match(/^#endexam$/gm)).toHaveLength(1);
       expect(markdownValue.startsWith("#exam\n")).toBe(true);
@@ -3191,10 +3343,13 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findButtonByExactText(container, "Advanced"));
       dispatchClick(findMenuItemButtonByLabel(container, "Multiple Choice (1)"));
       dispatchClick(findMenuItemButtonByLabel(container, "Task"));
-      const taskTextarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      const taskTextarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-block-editor",
+      );
       expect(taskTextarea).toBeTruthy();
       blurTextarea(taskTextarea);
-      const markdownAfterTaskBlur = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownAfterTaskBlur =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownAfterTaskBlur.match(/^1\) TASK HEADING$/m)).toHaveLength(1);
 
       const hrInsertButton = container.querySelector<HTMLButtonElement>(
@@ -3207,7 +3362,8 @@ describe("MarkdownHybridEditor", () => {
       expect(findMenuItemButtonByLabel(container, "Card")?.textContent).toContain("2)");
       dispatchClick(findMenuItemButtonByLabel(container, "Card"));
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue.match(/^1\) TASK HEADING$/m)).toHaveLength(1);
       expect(markdownValue.match(/^2\) CARD HEADING$/m)).toHaveLength(1);
       expect(markdownValue.match(/^#exam$/gm)).toHaveLength(1);
@@ -3244,7 +3400,7 @@ describe("MarkdownHybridEditor", () => {
         "1) TASK HEADING",
         "TASK DESCRIPTION WITH %ANSWER1% AND %ANSWER2%",
         "",
-        "TOKEN BANK \"TOKENA\", \"TOKENB\", \"TOKENC\"",
+        'TOKEN BANK "TOKENA", "TOKENB", "TOKENC"',
         "",
         "---",
         "",
@@ -3296,10 +3452,13 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findMenuItemButtonByLabel(container, "Answer Marker"));
       expect(findMenuItemButtonByLabel(container, "Task")?.textContent).toContain("4)");
       dispatchClick(findMenuItemButtonByLabel(container, "Task"));
-      const taskTextarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      const taskTextarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-block-editor",
+      );
       expect(taskTextarea).toBeTruthy();
       blurTextarea(taskTextarea);
-      const markdownAfterTaskBlur = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownAfterTaskBlur =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownAfterTaskBlur).toContain(expectedTaskVariant.payload);
       expect(markdownAfterTaskBlur.match(/^4\) TASK HEADING$/m)).toHaveLength(1);
       expect(markdownAfterTaskBlur.match(/^1\) TASK HEADING$/m)).toHaveLength(1);
@@ -3315,7 +3474,8 @@ describe("MarkdownHybridEditor", () => {
       expect(findMenuItemButtonByLabel(container, "Card")?.textContent).toContain("5)");
       dispatchClick(findMenuItemButtonByLabel(container, "Card"));
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue).toContain(expectedTaskVariant.payload);
       expect(markdownValue).toContain(expectedCardVariant.payload);
       expect(markdownValue.match(/^4\) TASK HEADING$/m)).toHaveLength(1);
@@ -3350,7 +3510,8 @@ describe("MarkdownHybridEditor", () => {
       expect(textarea).toBeTruthy();
       blurTextarea(textarea);
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue).toBe(["1. Outside exam A", "2. Outside exam B"].join("\n"));
 
       cleanup();
@@ -3382,7 +3543,8 @@ describe("MarkdownHybridEditor", () => {
       expect(textarea).toBeTruthy();
       blurTextarea(textarea);
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue).toBe(initialMarkdown);
 
       cleanup();
@@ -3421,17 +3583,24 @@ describe("MarkdownHybridEditor", () => {
 
       const { container, cleanup } = render(createElement(Harness));
       const taskHeadingBlock = Array.from(
-        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-kind='ordered-list']"),
+        container.querySelectorAll<HTMLElement>(
+          ".markdown-hybrid-block[data-md-block-kind='ordered-list']",
+        ),
       ).find((block) => block.textContent?.includes("TASK HEADING"));
       expect(taskHeadingBlock).toBeTruthy();
-      const taskHeadingBlockIndex = Number.parseInt(taskHeadingBlock?.dataset.mdBlockIndex ?? "-1", 10);
-      const textarea = Number.isInteger(taskHeadingBlockIndex) && taskHeadingBlockIndex >= 0
-        ? activateBlockEditor(container, taskHeadingBlockIndex)
-        : null;
+      const taskHeadingBlockIndex = Number.parseInt(
+        taskHeadingBlock?.dataset.mdBlockIndex ?? "-1",
+        10,
+      );
+      const textarea =
+        Number.isInteger(taskHeadingBlockIndex) && taskHeadingBlockIndex >= 0
+          ? activateBlockEditor(container, taskHeadingBlockIndex)
+          : null;
       expect(textarea).toBeTruthy();
       blurTextarea(textarea);
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue).toContain("4) TASK HEADING");
       expect(markdownValue).not.toContain("   4) TASK HEADING");
 
@@ -3468,17 +3637,24 @@ describe("MarkdownHybridEditor", () => {
 
       const { container, cleanup } = render(createElement(Harness));
       const cardHeadingBlock = Array.from(
-        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-kind='ordered-list']"),
+        container.querySelectorAll<HTMLElement>(
+          ".markdown-hybrid-block[data-md-block-kind='ordered-list']",
+        ),
       ).find((block) => block.textContent?.includes("CARD HEADING"));
       expect(cardHeadingBlock).toBeTruthy();
-      const cardHeadingBlockIndex = Number.parseInt(cardHeadingBlock?.dataset.mdBlockIndex ?? "-1", 10);
-      const textarea = Number.isInteger(cardHeadingBlockIndex) && cardHeadingBlockIndex >= 0
-        ? activateBlockEditor(container, cardHeadingBlockIndex)
-        : null;
+      const cardHeadingBlockIndex = Number.parseInt(
+        cardHeadingBlock?.dataset.mdBlockIndex ?? "-1",
+        10,
+      );
+      const textarea =
+        Number.isInteger(cardHeadingBlockIndex) && cardHeadingBlockIndex >= 0
+          ? activateBlockEditor(container, cardHeadingBlockIndex)
+          : null;
       expect(textarea).toBeTruthy();
       blurTextarea(textarea);
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue).toBe(initialMarkdown);
 
       cleanup();
@@ -3514,15 +3690,14 @@ describe("MarkdownHybridEditor", () => {
       expect(textarea).toBeTruthy();
       blurTextarea(textarea);
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
-      expect(markdownValue).toBe([
-        "- Root",
-        "    - Child",
-        "        - Grandchild",
-      ].join("\n"));
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toBe(["- Root", "    - Child", "        - Grandchild"].join("\n"));
 
       const unorderedBlocks = Array.from(
-        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-kind='unordered-list']"),
+        container.querySelectorAll<HTMLElement>(
+          ".markdown-hybrid-block[data-md-block-kind='unordered-list']",
+        ),
       );
       expect(unorderedBlocks).toHaveLength(3);
       expect(unorderedBlocks[0]?.dataset.mdListDepth).toBe("0");
@@ -3563,16 +3738,16 @@ describe("MarkdownHybridEditor", () => {
       expect(textarea).toBeTruthy();
       blurTextarea(textarea);
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
-      expect(markdownValue).toBe([
-        "- Root A",
-        "    - Child A",
-        "- Root B",
-        "    - Child B",
-      ].join("\n"));
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toBe(
+        ["- Root A", "    - Child A", "- Root B", "    - Child B"].join("\n"),
+      );
 
       const blocks = Array.from(
-        container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-kind='unordered-list']"),
+        container.querySelectorAll<HTMLElement>(
+          ".markdown-hybrid-block[data-md-block-kind='unordered-list']",
+        ),
       );
       expect(blocks).toHaveLength(4);
       expect(blocks[0]?.dataset.mdListDepth).toBe("0");
@@ -3619,15 +3794,18 @@ describe("MarkdownHybridEditor", () => {
       expect(textarea).toBeTruthy();
       blurTextarea(textarea);
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
-      expect(markdownValue).toBe([
-        "Paragraph line",
-        "      continuation with spaces",
-        "- Root",
-        "    - Child",
-        "",
-        "> Quote line",
-      ].join("\n"));
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toBe(
+        [
+          "Paragraph line",
+          "      continuation with spaces",
+          "- Root",
+          "    - Child",
+          "",
+          "> Quote line",
+        ].join("\n"),
+      );
       expect(markdownValue).toContain("      continuation with spaces");
 
       cleanup();
@@ -3636,12 +3814,9 @@ describe("MarkdownHybridEditor", () => {
 
   it("renders list items as separate hybrid blocks with hierarchy metadata", () => {
     withImmediateRaf(() => {
-      const initialMarkdown = [
-        "1. Parent",
-        "   - Child A",
-        "   - Child B",
-        "2. Parent 2",
-      ].join("\n");
+      const initialMarkdown = ["1. Parent", "   - Child A", "   - Child B", "2. Parent 2"].join(
+        "\n",
+      );
 
       const Harness = () => {
         const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -3667,10 +3842,18 @@ describe("MarkdownHybridEditor", () => {
         "ordered-list",
       ]);
 
-      const root = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='0']");
-      const childA = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='1']");
-      const childB = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='2']");
-      const rootTwo = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='3']");
+      const root = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-index='0']",
+      );
+      const childA = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-index='1']",
+      );
+      const childB = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-index='2']",
+      );
+      const rootTwo = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-index='3']",
+      );
       expect(root?.dataset.mdListDepth).toBe("0");
       expect(childA?.dataset.mdListDepth).toBe("1");
       expect(childA?.dataset.mdListParentStartLine).toBe("0");
@@ -3736,12 +3919,7 @@ describe("MarkdownHybridEditor", () => {
 
   it("marks consecutive list item blocks from the same group for compact visual grouping", () => {
     withImmediateRaf(() => {
-      const initialMarkdown = [
-        "1. Root",
-        "   1. Child A",
-        "   2. Child B",
-        "2. Root 2",
-      ].join("\n");
+      const initialMarkdown = ["1. Root", "   1. Child A", "   2. Child B", "2. Root 2"].join("\n");
 
       const Harness = () => {
         const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -3757,10 +3935,18 @@ describe("MarkdownHybridEditor", () => {
       };
 
       const { container, cleanup } = render(createElement(Harness));
-      const first = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='0']");
-      const second = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='1']");
-      const third = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='2']");
-      const fourth = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='3']");
+      const first = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-index='0']",
+      );
+      const second = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-index='1']",
+      );
+      const third = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-index='2']",
+      );
+      const fourth = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-index='3']",
+      );
       expect(first?.classList.contains("is-list-group-continuation")).toBe(false);
       expect(second?.classList.contains("is-list-group-continuation")).toBe(true);
       expect(third?.classList.contains("is-list-group-continuation")).toBe(true);
@@ -3806,7 +3992,8 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findMenuItemButtonByLabel(container, "Image embed"));
       dispatchClick(container.querySelector<HTMLButtonElement>(".vault-png-picker-item"));
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue).toContain("![[images/example.png]]");
       expect(/(?:^|\n)!\[\[images\/example\.png\]\](?:\n|$)/.test(markdownValue)).toBe(true);
 
@@ -3837,11 +4024,13 @@ describe("MarkdownHybridEditor", () => {
 
     const { container, cleanup } = render(createElement(Harness));
     expect(container.querySelector(".markdown-hybrid-editor")).toBeTruthy();
-    expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]").length).toBeGreaterThan(0);
+    expect(
+      container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]").length,
+    ).toBeGreaterThan(0);
     cleanup();
   });
 
-  it("renders #card/#endcard as separate blocks and keeps card group metadata on inner blocks", () => {
+  it("renders #card/#endcard as separate blocks and keeps card group metadata on inner blocks", async () => {
     const markdown = [
       "Before",
       "#card",
@@ -3870,6 +4059,7 @@ describe("MarkdownHybridEditor", () => {
     };
 
     const { container, cleanup } = render(createElement(Harness));
+    await flushAnimationFrame();
     const blocks = Array.from(
       container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
     );
@@ -3928,12 +4118,7 @@ describe("MarkdownHybridEditor", () => {
   });
 
   it("keeps #helpend outside help-block blockquotes in preview rendering", () => {
-    const markdown = [
-      "#help",
-      "> **Wichtiger Hinweis:**",
-      "> Hinweistext",
-      "#helpend",
-    ].join("\n");
+    const markdown = ["#help", "> **Wichtiger Hinweis:**", "> Hinweistext", "#helpend"].join("\n");
 
     const { container, cleanup } = render(
       <MarkdownHybridEditor
@@ -3941,7 +4126,19 @@ describe("MarkdownHybridEditor", () => {
         markdown={markdown}
         mode="edit"
         onChange={() => undefined}
-        renderPreview={(previewValue) => <div>{previewValue}</div>}
+        renderPreview={(previewValue) => {
+          const lines = previewValue.split("\n");
+          const quotedLines = lines.filter((line) => line.startsWith(">"));
+          const nonQuotedLines = lines.filter((line) => !line.startsWith(">"));
+          return (
+            <div>
+              {quotedLines.length > 0 ? <blockquote>{quotedLines.join("\n")}</blockquote> : null}
+              {nonQuotedLines.map((line, index) => (
+                <p key={`${index}:${line}`}>{line}</p>
+              ))}
+            </div>
+          );
+        }}
       />,
     );
 
@@ -3954,8 +4151,9 @@ describe("MarkdownHybridEditor", () => {
     expect(blockquote).toBeTruthy();
     expect((blockquote?.textContent ?? "").toLowerCase()).not.toContain("helpend");
 
-    const helpEnd = Array.from(helpBlock?.querySelectorAll<HTMLElement>("p,h1,h2,h3,h4,h5,h6,span") ?? [])
-      .find((node) => (node.textContent ?? "").toLowerCase().includes("helpend"));
+    const helpEnd = Array.from(
+      helpBlock?.querySelectorAll<HTMLElement>("p,h1,h2,h3,h4,h5,h6,span") ?? [],
+    ).find((node) => (node.textContent ?? "").toLowerCase().includes("helpend"));
     expect(helpEnd).toBeTruthy();
     if (blockquote && helpEnd) {
       expect(blockquote.contains(helpEnd)).toBe(false);
@@ -4006,14 +4204,8 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
-  it("renders the card group rail in write mode from #card to #endcard", () => {
-    const markdown = [
-      "Before",
-      "#card",
-      "Inner line",
-      "#endcard",
-      "After",
-    ].join("\n");
+  it("renders the card group rail in write mode from #card to #endcard", async () => {
+    const markdown = ["Before", "#card", "Inner line", "#endcard", "After"].join("\n");
 
     const { container, cleanup } = render(
       <MarkdownHybridEditor
@@ -4024,6 +4216,7 @@ describe("MarkdownHybridEditor", () => {
         renderPreview={(previewValue) => <div>{previewValue}</div>}
       />,
     );
+    await flushAnimationFrame();
 
     const startBlock = container.querySelector<HTMLElement>(
       ".markdown-hybrid-block[data-md-block-kind='card-start'][data-md-card-group-role='start']",
@@ -4047,13 +4240,8 @@ describe("MarkdownHybridEditor", () => {
     cleanup();
   });
 
-  it("keeps a single card rail for open card groups through EOF", () => {
-    const markdown = [
-      "#card",
-      "Open question",
-      "",
-      "1) Item",
-    ].join("\n");
+  it("keeps a single card rail for open card groups through EOF", async () => {
+    const markdown = ["#card", "Open question", "", "1) Item"].join("\n");
 
     const { container, cleanup } = render(
       <MarkdownHybridEditor
@@ -4064,10 +4252,13 @@ describe("MarkdownHybridEditor", () => {
         renderPreview={(previewValue) => <div>{previewValue}</div>}
       />,
     );
+    await flushAnimationFrame();
 
-    const groupId = container.querySelector<HTMLElement>(
-      ".markdown-hybrid-block[data-md-block-kind='card-start'][data-md-card-group-role='start']",
-    )?.getAttribute("data-md-card-group-id");
+    const groupId = container
+      .querySelector<HTMLElement>(
+        ".markdown-hybrid-block[data-md-block-kind='card-start'][data-md-card-group-role='start']",
+      )
+      ?.getAttribute("data-md-card-group-id");
     expect(groupId).toBeTruthy();
     if (!groupId) {
       throw new Error("Expected open card group id");
@@ -4179,8 +4370,8 @@ describe("MarkdownHybridEditor", () => {
       const markdown = [
         "```svg",
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">',
-        "  <path d=\"M1 1 L15 1 L15 15 L1 15 Z\" />",
-        "  <text x=\"2\" y=\"10\">VERY_LONG_UNBROKEN_LINE_FOR_SCROLL_BEHAVIOR_TEST</text>",
+        '  <path d="M1 1 L15 1 L15 15 L1 15 Z" />',
+        '  <text x="2" y="10">VERY_LONG_UNBROKEN_LINE_FOR_SCROLL_BEHAVIOR_TEST</text>',
         "</svg>",
         "```",
       ].join("\n");
@@ -4327,7 +4518,9 @@ describe("MarkdownHybridEditor", () => {
       const readMarkdown = () =>
         container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       const editor = container.querySelector<HTMLElement>(".markdown-hybrid-editor");
-      const replaceShell = container.querySelector<HTMLElement>(".markdown-hybrid-image-embed-replace-shell");
+      const replaceShell = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-image-embed-replace-shell",
+      );
       expect(replaceShell).toBeTruthy();
       expect(replaceShell?.classList.contains("is-open")).toBe(false);
 
@@ -4344,11 +4537,17 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(picker?.querySelector<HTMLButtonElement>(".vault-png-picker-item") ?? null);
 
       expect(container.querySelector(".markdown-hybrid-image-embed-picker")).toBeNull();
-      expect(replaceShell?.classList.contains("is-open")).toBe(false);
+      expect(
+        container
+          .querySelector(".markdown-hybrid-image-embed-replace-shell")
+          ?.classList.contains("is-open"),
+      ).toBe(false);
       expect(readMarkdown()).toContain("![[images/new.png|Old label]]");
       expect(readMarkdown()).not.toContain("![[images/old.png|Old label]]");
       expect(readMarkdown().match(/!\[\[[^\]]+\.png(?:\|[^\]]+)?\]\]/g)).toHaveLength(1);
-      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='image-embed']")).toHaveLength(1);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='image-embed']"),
+      ).toHaveLength(1);
       expect(container.querySelector(".flashcard-media-image")).toBeTruthy();
 
       dispatchKeyDown(editor, "z", { ctrlKey: true });
@@ -4451,7 +4650,9 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findImageEmbedReplaceTrigger(container, 0));
       expect(container.querySelector(".markdown-hybrid-image-embed-picker")).toBeTruthy();
       act(() => {
-        document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+        document.body.dispatchEvent(
+          new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+        );
       });
       expect(container.querySelector(".markdown-hybrid-image-embed-picker")).toBeNull();
       expect(readMarkdown()).toBe(initialMarkdown);
@@ -4510,7 +4711,11 @@ describe("MarkdownHybridEditor", () => {
         const [markdown, setMarkdown] = useState(initialMarkdown);
         return (
           <div>
-            <button type="button" data-testid="remove-image-embed" onClick={() => setMarkdown("Removed")}>
+            <button
+              type="button"
+              data-testid="remove-image-embed"
+              onClick={() => setMarkdown("Removed")}
+            >
               Remove embed
             </button>
             <MarkdownHybridEditor
@@ -4573,7 +4778,9 @@ describe("MarkdownHybridEditor", () => {
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
       expect(textarea?.value).toBe("QUESTION TEXT\n");
       expect(readMarkdown()).toBe(initialMarkdown);
-      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(3);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]"),
+      ).toHaveLength(3);
 
       blurTextarea(textarea);
       expect(readMarkdown()).toBe(["#card", "QUESTION TEXT", "", "#endcard"].join("\n"));
@@ -4623,20 +4830,16 @@ describe("MarkdownHybridEditor", () => {
 
       expect(textarea?.value).toBe("QUESTION TEXT\n\n");
       expect(readMarkdown()).toBe(initialMarkdown);
-      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(3);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]"),
+      ).toHaveLength(3);
 
       blurTextarea(textarea);
       expect(readMarkdown()).toBe(["#card", "QUESTION TEXT", "", "", "#endcard"].join("\n"));
       const blockKinds = Array.from(
         container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
       ).map((block) => block.getAttribute("data-md-block-kind"));
-      expect(blockKinds).toEqual([
-        "card-start",
-        "paragraph",
-        "blank",
-        "blank",
-        "card-end",
-      ]);
+      expect(blockKinds).toEqual(["card-start", "paragraph", "blank", "blank", "card-end"]);
 
       cleanup();
     });
@@ -4674,7 +4877,9 @@ describe("MarkdownHybridEditor", () => {
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
       expect(textarea?.value).toBe("#endcard\n");
       expect(readMarkdown()).toBe(initialMarkdown);
-      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(3);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]"),
+      ).toHaveLength(3);
 
       blurTextarea(textarea);
       expect(readMarkdown()).toBe(`${initialMarkdown}\n`);
@@ -4719,7 +4924,9 @@ describe("MarkdownHybridEditor", () => {
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
       expect(textarea?.value).toBe("#endcard\n");
       expect(readMarkdown()).toBe(initialMarkdown);
-      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(3);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]"),
+      ).toHaveLength(3);
 
       blurTextarea(textarea);
       expect(readMarkdown()).toBe(`${initialMarkdown}\n`);
@@ -4764,7 +4971,9 @@ describe("MarkdownHybridEditor", () => {
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
       expect(textarea?.value).toBe(`${initialMarkdown}\n`);
       expect(readMarkdown()).toBe(initialMarkdown);
-      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(1);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]"),
+      ).toHaveLength(1);
 
       blurTextarea(textarea);
       expect(readMarkdown()).toBe(`${initialMarkdown}\n`);
@@ -4816,7 +5025,9 @@ describe("MarkdownHybridEditor", () => {
       ).toBeTruthy();
 
       dispatchClick(findButtonByExactText(document.body, "Apply"));
-      const committedTextarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      const committedTextarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-block-editor",
+      );
       expect(committedTextarea?.value).toBe("$$\n\\frac{}{}\n$$");
       blurTextarea(committedTextarea);
       expect(readMarkdown()).toBe("$$\n\\frac{}{}\n$$");
@@ -4853,7 +5064,9 @@ describe("MarkdownHybridEditor", () => {
       dispatchClick(findButtonByAriaLabel(document.body, "Fraction (Bruch)"));
       dispatchClick(findButtonByExactText(document.body, "Cancel"));
 
-      const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      const textarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-block-editor",
+      );
       expect(textarea?.value).toBe(initialMarkdown);
       blurTextarea(textarea);
       expect(readMarkdown()).toBe(initialMarkdown);
@@ -4864,10 +5077,7 @@ describe("MarkdownHybridEditor", () => {
 
   it("restores the opening math snapshot on close icon, backdrop, and Escape", () => {
     withImmediateRaf(() => {
-      const runCancelCase = (
-        historyKey: string,
-        closeDialog: () => void,
-      ) => {
+      const runCancelCase = (historyKey: string, closeDialog: () => void) => {
         const initialMarkdown = "$$\na+b\n$$";
         const Harness = () => {
           const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -4894,7 +5104,9 @@ describe("MarkdownHybridEditor", () => {
         dispatchClick(findButtonByAriaLabel(document.body, "Fraction (Bruch)"));
         closeDialog();
 
-        const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+        const textarea = container.querySelector<HTMLTextAreaElement>(
+          ".markdown-hybrid-block-editor",
+        );
         expect(textarea?.value).toBe(initialMarkdown);
         blurTextarea(textarea);
         expect(readMarkdown()).toBe(initialMarkdown);
@@ -4940,10 +5152,14 @@ describe("MarkdownHybridEditor", () => {
       activateBlockEditor(container, 0);
       dispatchClick(container.querySelector(".markdown-hybrid-math-toolbox-trigger"));
 
-      const zoomSelect = document.body.querySelector<HTMLSelectElement>("select[aria-label='Canvas zoom']");
+      const zoomSelect = document.body.querySelector<HTMLSelectElement>(
+        "select[aria-label='Canvas zoom']",
+      );
       expect(zoomSelect?.value).toBe("125");
 
-      const canvas = document.body.querySelector<HTMLElement>(".markdown-hybrid-structural-math-canvas");
+      const canvas = document.body.querySelector<HTMLElement>(
+        ".markdown-hybrid-structural-math-canvas",
+      );
       expect(canvas?.style.getPropertyValue("--md-math-canvas-scale")).toBe("1.25");
 
       applySelectValue(zoomSelect, "150");
@@ -4973,7 +5189,9 @@ describe("MarkdownHybridEditor", () => {
       activateBlockEditor(container, 0);
       dispatchClick(container.querySelector(".markdown-hybrid-math-toolbox-trigger"));
 
-      const canvas = document.body.querySelector<HTMLElement>(".markdown-hybrid-structural-math-canvas");
+      const canvas = document.body.querySelector<HTMLElement>(
+        ".markdown-hybrid-structural-math-canvas",
+      );
       expect(canvas?.textContent).toContain("π");
       expect(canvas?.textContent).not.toContain("\\pi");
 
@@ -5047,8 +5265,7 @@ describe("MarkdownHybridEditor", () => {
 
   it("converts single-line $$ ... $$ input into the persisted multiline math block form", () => {
     withImmediateRaf(() => {
-      const initialMarkdown =
-        String.raw`$$ \text{RECHNUNGSADRESSE.PK} = \text{KUNDEID} + \text{ADRESSEID} $$`;
+      const initialMarkdown = String.raw`$$ \text{RECHNUNGSADRESSE.PK} = \text{KUNDEID} + \text{ADRESSEID} $$`;
 
       const Harness = () => {
         const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -5076,15 +5293,18 @@ describe("MarkdownHybridEditor", () => {
       expect(textarea?.classList.contains("markdown-hybrid-math-editor")).toBe(true);
 
       act(() => {
-        textarea?.dispatchEvent(new FocusEvent("blur", { bubbles: true, cancelable: true }));
+        textarea?.dispatchEvent(new FocusEvent("focusout", { bubbles: true, cancelable: true }));
       });
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
-      expect(markdownValue).toBe([
-        "$$",
-        String.raw`\text{RECHNUNGSADRESSE.PK} = \text{KUNDEID} + \text{ADRESSEID}`,
-        "$$",
-      ].join("\n"));
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      expect(markdownValue).toBe(
+        [
+          "$$",
+          String.raw`\text{RECHNUNGSADRESSE.PK} = \text{KUNDEID} + \text{ADRESSEID}`,
+          "$$",
+        ].join("\n"),
+      );
 
       cleanup();
     });
@@ -5136,7 +5356,7 @@ describe("MarkdownHybridEditor", () => {
       const committedKinds = Array.from(
         container.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
       ).map((block) => block.getAttribute("data-md-block-kind"));
-      expect(committedKinds).toEqual(["card-start", "paragraph", "paragraph", "card-end"]);
+      expect(committedKinds).toEqual(["card-start", "paragraph", "card-end"]);
 
       cleanup();
     });
@@ -5261,7 +5481,9 @@ describe("MarkdownHybridEditor", () => {
       applyTextareaInput(textarea, "");
 
       expect(readMarkdown()).toBe(initialMarkdown);
-      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-end']")).toHaveLength(1);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='card-end']"),
+      ).toHaveLength(1);
 
       blurTextarea(textarea);
       expect(readMarkdown()).toBe(["#card", "## Heading", "Body text", ""].join("\n"));
@@ -5297,7 +5519,9 @@ describe("MarkdownHybridEditor", () => {
     const { container, cleanup } = render(createElement(Harness));
     const readMarkdown = () =>
       container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
-    const block = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='0']");
+    const block = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block[data-md-block-index='0']",
+    );
     expect(block).toBeTruthy();
 
     act(() => {
@@ -5317,7 +5541,7 @@ describe("MarkdownHybridEditor", () => {
     act(() => {
       const pos = (textarea?.value.indexOf("Other line") ?? 0) + 1;
       textarea?.setSelectionRange(pos, pos);
-      textarea?.dispatchEvent(new FocusEvent("blur", { bubbles: true, cancelable: true }));
+      textarea?.dispatchEvent(new FocusEvent("focusout", { bubbles: true, cancelable: true }));
     });
 
     expect(readMarkdown()).toBe(initialMarkdown);
@@ -5336,12 +5560,16 @@ describe("MarkdownHybridEditor", () => {
       );
     });
 
-    const secondTextarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+    const secondTextarea = container.querySelector<HTMLTextAreaElement>(
+      ".markdown-hybrid-block-editor",
+    );
     expect(secondTextarea).toBeTruthy();
 
     act(() => {
       secondTextarea?.setSelectionRange(2, 2);
-      secondTextarea?.dispatchEvent(new FocusEvent("blur", { bubbles: true, cancelable: true }));
+      secondTextarea?.dispatchEvent(
+        new FocusEvent("focusout", { bubbles: true, cancelable: true }),
+      );
     });
 
     expect(readMarkdown()).toBe(["## HeadingNoSpace", "Other line"].join("\n"));
@@ -5375,7 +5603,7 @@ describe("MarkdownHybridEditor", () => {
 
     act(() => {
       textarea?.setSelectionRange(3, 3);
-      textarea?.dispatchEvent(new FocusEvent("blur", { bubbles: true, cancelable: true }));
+      textarea?.dispatchEvent(new FocusEvent("focusout", { bubbles: true, cancelable: true }));
     });
 
     expect(readMarkdown()).toBe("### Titel");
@@ -5409,7 +5637,7 @@ describe("MarkdownHybridEditor", () => {
 
       act(() => {
         textarea?.setSelectionRange(marker.length, marker.length);
-        textarea?.dispatchEvent(new FocusEvent("blur", { bubbles: true, cancelable: true }));
+        textarea?.dispatchEvent(new FocusEvent("focusout", { bubbles: true, cancelable: true }));
       });
 
       expect(readMarkdown()).toBe(marker);
@@ -5488,7 +5716,7 @@ describe("MarkdownHybridEditor", () => {
 
     act(() => {
       textarea?.setSelectionRange(4, 4);
-      textarea?.dispatchEvent(new FocusEvent("blur", { bubbles: true, cancelable: true }));
+      textarea?.dispatchEvent(new FocusEvent("focusout", { bubbles: true, cancelable: true }));
     });
 
     expect(readMarkdown()).toBe("## #");
@@ -5510,9 +5738,9 @@ describe("MarkdownHybridEditor", () => {
       />,
     );
 
-    expect(
-      previewValues.some((value) => value.includes("&#35;&#35;&#35;&#35;&#35; Heading")),
-    ).toBe(true);
+    expect(previewValues.some((value) => value.includes("&#35;&#35;&#35;&#35;&#35; Heading"))).toBe(
+      true,
+    );
     expect(
       previewValues.some((value) => value.includes("&#35;&#35;&#35;&#35;&#35;&#35; Heading")),
     ).toBe(true);
@@ -5546,7 +5774,7 @@ describe("MarkdownHybridEditor", () => {
 
     act(() => {
       textarea?.setSelectionRange(7, 7);
-      textarea?.dispatchEvent(new FocusEvent("blur", { bubbles: true, cancelable: true }));
+      textarea?.dispatchEvent(new FocusEvent("focusout", { bubbles: true, cancelable: true }));
     });
 
     expect(readMarkdown()).toBe("#######Titel");
@@ -5743,7 +5971,9 @@ describe("MarkdownHybridEditor", () => {
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
       expect(textarea?.value).toBe("Alpha\n Beta");
       expect(readMarkdown()).toBe(initialMarkdown);
-      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(1);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]"),
+      ).toHaveLength(1);
 
       blurTextarea(textarea);
       expect(readMarkdown()).toBe("Alpha\n Beta");
@@ -5983,7 +6213,8 @@ describe("MarkdownHybridEditor", () => {
       };
 
       const { container, cleanup } = render(createElement(Harness));
-      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
       let textarea = activateBlockEditor(container, 0);
       expect(textarea).toBeTruthy();
@@ -6042,7 +6273,9 @@ describe("MarkdownHybridEditor", () => {
       const markdownValueBeforeCommit =
         container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValueBeforeCommit).toBe(initialMarkdown);
-      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(1);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]"),
+      ).toHaveLength(1);
 
       blurTextarea(textarea);
       const blockKinds = Array.from(
@@ -6123,7 +6356,8 @@ describe("MarkdownHybridEditor", () => {
       };
 
       const { container, cleanup } = render(createElement(Harness));
-      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
       let textarea = activateBlockEditor(container, 0);
       expect(textarea).toBeTruthy();
@@ -6150,7 +6384,9 @@ describe("MarkdownHybridEditor", () => {
       expect(
         container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='blockquote']"),
       ).toHaveLength(1);
-      expect(container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]")).toHaveLength(1);
+      expect(
+        container.querySelectorAll(".markdown-hybrid-block[data-md-block-index]"),
+      ).toHaveLength(1);
 
       blurTextarea(textarea);
       expect(readMarkdown()).toBe("> Quote\n> A\n> B\n> C");
@@ -6159,8 +6395,8 @@ describe("MarkdownHybridEditor", () => {
     });
   });
 
-  it("shows inline hash syntax highlighting in non-active editor lines only", () => {
-    const initialMarkdown = ["#endcard", "#test", "#irgendwas"].join("\n");
+  it("shows inline hash syntax highlighting in non-active editor lines only", async () => {
+    const initialMarkdown = ["#first", "#test", "#irgendwas"].join("\n");
 
     const Harness = () => {
       const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -6176,7 +6412,9 @@ describe("MarkdownHybridEditor", () => {
     };
 
     const { container, cleanup } = render(createElement(Harness));
-    const block = container.querySelector<HTMLElement>(".markdown-hybrid-block[data-md-block-index='0']");
+    const block = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-block[data-md-block-index='0']",
+    );
     expect(block).toBeTruthy();
 
     act(() => {
@@ -6189,6 +6427,7 @@ describe("MarkdownHybridEditor", () => {
         }),
       );
     });
+    await flushAnimationFrame();
 
     const overlay = container.querySelector<HTMLElement>(".markdown-hybrid-block-editor-overlay");
     expect(overlay).toBeTruthy();
@@ -6198,22 +6437,23 @@ describe("MarkdownHybridEditor", () => {
       ),
     );
     // Caret starts at the end of the block, so the last line stays raw.
-    expect(hashSpans.map((node) => node.textContent)).toEqual(["#endcard", "#test"]);
+    expect(hashSpans.map((node) => node.textContent)).toEqual(["#first", "#test"]);
 
     const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
     expect(textarea).toBeTruthy();
     act(() => {
-      const line2Start = (textarea?.value.indexOf("#test") ?? 0);
+      const line2Start = textarea?.value.indexOf("#test") ?? 0;
       textarea?.setSelectionRange(line2Start, line2Start);
-      textarea?.dispatchEvent(new Event("select", { bubbles: true }));
+      textarea?.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "ArrowUp" }));
     });
+    await flushAnimationFrame();
 
     hashSpans = Array.from(
       container.querySelectorAll<HTMLElement>(
         ".markdown-hybrid-block-editor-overlay [data-md-inline-syntax='hash-tag']",
       ),
     );
-    expect(hashSpans.map((node) => node.textContent)).toEqual(["#endcard", "#irgendwas"]);
+    expect(hashSpans.map((node) => node.textContent)).toEqual(["#first", "#irgendwas"]);
 
     cleanup();
   });
@@ -6268,7 +6508,7 @@ describe("MarkdownHybridEditor", () => {
 
     const minusALineStart = textarea?.value.indexOf("-a") ?? -1;
     expect(minusALineStart).toBeGreaterThanOrEqual(0);
-    setTextareaSelection(textarea, minusALineStart, minusALineStart);
+    setTextareaSelection(textarea, minusALineStart, minusALineStart, "keyup");
 
     let syntaxNodes = Array.from(
       container.querySelectorAll<HTMLElement>(
@@ -6302,12 +6542,13 @@ describe("MarkdownHybridEditor", () => {
     expect(allInlineSyntaxPayload).toContainEqual({ kind: "cloze", text: clozeToken });
     expect(allInlineSyntaxPayload).toContainEqual({ kind: "quoted-token", text: quotedToken });
     expect(allInlineSyntaxPayload.some((entry) => entry.text === singleQuotedText)).toBe(false);
-    const overlayText = container.querySelector(".markdown-hybrid-block-editor-overlay")?.textContent ?? "";
+    const overlayText =
+      container.querySelector(".markdown-hybrid-block-editor-overlay")?.textContent ?? "";
     expect(overlayText).toContain(singleQuotedText);
 
     const italicLineStart = textarea?.value.indexOf(`c) ${italicToken} C`) ?? -1;
     expect(italicLineStart).toBeGreaterThanOrEqual(0);
-    setTextareaSelection(textarea, italicLineStart, italicLineStart);
+    setTextareaSelection(textarea, italicLineStart, italicLineStart, "keyup");
 
     syntaxNodes = Array.from(
       container.querySelectorAll<HTMLElement>(
@@ -6331,7 +6572,7 @@ describe("MarkdownHybridEditor", () => {
 
     const codeLineStart = textarea?.value.indexOf(`f) ${inlineCodeToken} B`) ?? -1;
     expect(codeLineStart).toBeGreaterThanOrEqual(0);
-    setTextareaSelection(textarea, codeLineStart, codeLineStart);
+    setTextareaSelection(textarea, codeLineStart, codeLineStart, "keyup");
 
     syntaxNodes = Array.from(
       container.querySelectorAll<HTMLElement>(
@@ -6413,7 +6654,8 @@ describe("MarkdownHybridEditor", () => {
       };
 
       const { container, cleanup } = render(createElement(Harness));
-      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
       dispatchClick(container.querySelector(".markdown-hybrid-block-insert-button"));
       dispatchClick(findButtonByExactText(container, "Links"));
@@ -6426,7 +6668,9 @@ describe("MarkdownHybridEditor", () => {
 
       dispatchClick(findPageLinkPickerOptionByLabel(container, "Alpha"));
 
-      const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
+      const textarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-block-editor",
+      );
       expect(readMarkdown()).not.toContain("[[Alpha]]");
       expect(textarea?.value).toBe("[[Alpha]]");
       expect(textarea?.selectionStart).toBe("[[Alpha]]".length);
@@ -6464,7 +6708,8 @@ describe("MarkdownHybridEditor", () => {
       };
 
       const { container, cleanup } = render(createElement(Harness));
-      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
       let textarea = activateBlockEditor(container, 0);
       expect(textarea).toBeTruthy();
@@ -6522,7 +6767,8 @@ describe("MarkdownHybridEditor", () => {
       };
 
       const { container, cleanup } = render(createElement(Harness));
-      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
       let textarea = activateBlockEditor(container, 0);
       expect(textarea).toBeTruthy();
@@ -6626,7 +6872,8 @@ describe("MarkdownHybridEditor", () => {
       };
 
       const { container, cleanup } = render(createElement(Harness));
-      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
       let textarea = activateBlockEditor(container, 0);
       expect(textarea).toBeTruthy();
@@ -6703,7 +6950,9 @@ describe("MarkdownHybridEditor", () => {
         expect(document.body.querySelector(".markdown-hybrid-inline-toolbar")).toBeTruthy();
 
         act(() => {
-          document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+          document.body.dispatchEvent(
+            new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+          );
         });
         expect(document.body.querySelector(".markdown-hybrid-inline-toolbar")).toBeNull();
 
@@ -6749,7 +6998,8 @@ describe("MarkdownHybridEditor", () => {
         };
 
         const { container, cleanup } = render(createElement(Harness));
-        const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        const readMarkdown = () =>
+          container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
         const textarea = activateBlockEditor(container, 0);
         const start = textarea?.value.indexOf("Beta") ?? -1;
         expect(start).toBeGreaterThanOrEqual(0);
@@ -6799,7 +7049,8 @@ describe("MarkdownHybridEditor", () => {
         };
 
         const { container, cleanup } = render(createElement(Harness));
-        const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        const readMarkdown = () =>
+          container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
         const textarea = activateBlockEditor(container, 0);
         const start = textarea?.value.indexOf("Beta") ?? -1;
         expect(start).toBeGreaterThanOrEqual(0);
@@ -6945,7 +7196,8 @@ describe("MarkdownHybridEditor", () => {
         };
 
         const { container, cleanup } = render(createElement(Harness));
-        const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        const readMarkdown = () =>
+          container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
         let textarea = activateBlockEditor(container, 0);
         expect(textarea).toBeTruthy();
 
@@ -6960,7 +7212,9 @@ describe("MarkdownHybridEditor", () => {
           );
           expect(moreButton).toBeTruthy();
           dispatchClick(moreButton);
-          expect(document.body.querySelector(".markdown-hybrid-inline-toolbar-menu-more")).toBeTruthy();
+          expect(
+            document.body.querySelector(".markdown-hybrid-inline-toolbar-menu-more"),
+          ).toBeTruthy();
           expect(container.querySelector(".markdown-hybrid-insert-menu")).toBeNull();
         };
 
@@ -6973,15 +7227,25 @@ describe("MarkdownHybridEditor", () => {
         openOnCurrentBeta();
         dispatchClick(document.body.querySelector("button[aria-label='Wrap as CD token']"));
         textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
-        expect(textarea?.value).toBe("Alpha \"Beta\"");
+        expect(textarea?.value).toBe('Alpha "Beta"');
         expect(readMarkdown()).toBe("Alpha Beta");
 
         openOnCurrentBeta();
-        expect(document.body.querySelector("button[aria-label='Wrap as CD token']")?.classList.contains("is-active"))
-          .toBe(true);
-        expect(document.body.querySelector("button[aria-label='Wrap as CL cloze']")?.classList.contains("is-active"))
-          .toBe(false);
-        dispatchClick(document.body.querySelector(".markdown-hybrid-inline-toolbar button[aria-label='Bold text']"));
+        expect(
+          document.body
+            .querySelector("button[aria-label='Wrap as CD token']")
+            ?.classList.contains("is-active"),
+        ).toBe(true);
+        expect(
+          document.body
+            .querySelector("button[aria-label='Wrap as CL cloze']")
+            ?.classList.contains("is-active"),
+        ).toBe(false);
+        dispatchClick(
+          document.body.querySelector(
+            ".markdown-hybrid-inline-toolbar button[aria-label='Bold text']",
+          ),
+        );
         textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
         expect(textarea?.value).toBe("Alpha **Beta**");
         expect(readMarkdown()).toBe("Alpha Beta");
@@ -6993,11 +7257,21 @@ describe("MarkdownHybridEditor", () => {
         expect(readMarkdown()).toBe("Alpha Beta");
 
         openOnCurrentBeta();
-        expect(document.body.querySelector("button[aria-label='Wrap as CD token']")?.classList.contains("is-active"))
-          .toBe(false);
-        expect(document.body.querySelector("button[aria-label='Wrap as CL cloze']")?.classList.contains("is-active"))
-          .toBe(true);
-        dispatchClick(document.body.querySelector(".markdown-hybrid-inline-toolbar button[aria-label='Bold text']"));
+        expect(
+          document.body
+            .querySelector("button[aria-label='Wrap as CD token']")
+            ?.classList.contains("is-active"),
+        ).toBe(false);
+        expect(
+          document.body
+            .querySelector("button[aria-label='Wrap as CL cloze']")
+            ?.classList.contains("is-active"),
+        ).toBe(true);
+        dispatchClick(
+          document.body.querySelector(
+            ".markdown-hybrid-inline-toolbar button[aria-label='Bold text']",
+          ),
+        );
         textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
         expect(textarea?.value).toBe("Alpha **Beta**");
         expect(readMarkdown()).toBe("Alpha Beta");
@@ -7011,7 +7285,7 @@ describe("MarkdownHybridEditor", () => {
         openOnCurrentBeta();
         dispatchClick(document.body.querySelector("button[aria-label='Wrap as CD token']"));
         textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-block-editor");
-        expect(textarea?.value).toBe("Alpha \"Beta\"");
+        expect(textarea?.value).toBe('Alpha "Beta"');
         expect(readMarkdown()).toBe("Alpha Beta");
 
         openOnCurrentBeta();
@@ -7059,7 +7333,9 @@ describe("MarkdownHybridEditor", () => {
         const { container, cleanup } = render(createElement(Harness));
         const getMathMenuItem = (label: string) =>
           Array.from(
-            document.body.querySelectorAll<HTMLButtonElement>(".markdown-hybrid-inline-toolbar-menu-item"),
+            document.body.querySelectorAll<HTMLButtonElement>(
+              ".markdown-hybrid-inline-toolbar-menu-item",
+            ),
           ).find((button) => button.textContent?.includes(label));
         const openMathMenu = (textarea: HTMLTextAreaElement, start: number, end: number) => {
           setTextareaSelection(textarea, start, end);
@@ -7135,7 +7411,9 @@ describe("MarkdownHybridEditor", () => {
         );
         dispatchClick(mathButton);
         const wrapButton = Array.from(
-          document.body.querySelectorAll<HTMLButtonElement>(".markdown-hybrid-inline-toolbar-menu-item"),
+          document.body.querySelectorAll<HTMLButtonElement>(
+            ".markdown-hybrid-inline-toolbar-menu-item",
+          ),
         ).find((button) => button.textContent?.includes("Mark as Inline Math"));
         dispatchClick(wrapButton ?? null);
 
@@ -7229,7 +7507,8 @@ describe("MarkdownHybridEditor", () => {
         };
 
         const { container, cleanup } = render(createElement(Harness));
-        const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        const readMarkdown = () =>
+          container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
         const textarea = activateBlockEditor(container, 0);
         expect(textarea).toBeTruthy();
         setTextareaSelection(textarea, 0, textarea?.value.length ?? 0);
@@ -7278,7 +7557,8 @@ describe("MarkdownHybridEditor", () => {
         };
 
         const { container, cleanup } = render(createElement(Harness));
-        const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+        const readMarkdown = () =>
+          container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
         const textarea = activateBlockEditor(container, 0);
         expect(textarea).toBeTruthy();
         const start = textarea?.value.indexOf("OPTION") ?? -1;
@@ -7312,7 +7592,7 @@ describe("MarkdownHybridEditor", () => {
     withImmediateRaf(() => {
       vi.useFakeTimers();
       try {
-        for (const initialMarkdown of ["Alpha \"Beta\"", "Alpha %Beta%"]) {
+        for (const initialMarkdown of ['Alpha "Beta"', "Alpha %Beta%"]) {
           const Harness = () => {
             const [markdown, setMarkdown] = useState(initialMarkdown);
             return (
@@ -7330,7 +7610,8 @@ describe("MarkdownHybridEditor", () => {
           };
 
           const { container, cleanup } = render(createElement(Harness));
-          const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+          const readMarkdown = () =>
+            container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
           const textarea = activateBlockEditor(container, 0);
           expect(textarea).toBeTruthy();
           const start = textarea?.value.indexOf("Beta") ?? -1;
@@ -7379,7 +7660,8 @@ describe("MarkdownHybridEditor", () => {
       };
 
       const { container, cleanup } = render(createElement(Harness));
-      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       const textarea = activateBlockEditor(container, 0);
       const start = textarea?.value.indexOf("Beta") ?? -1;
       expect(start).toBeGreaterThanOrEqual(0);
@@ -7416,7 +7698,8 @@ describe("MarkdownHybridEditor", () => {
       };
 
       const { container, cleanup } = render(createElement(Harness));
-      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       const textarea = activateBlockEditor(container, 0);
       expect(textarea).toBeTruthy();
       setTextareaSelection(textarea, 0, "OPTION".length);
@@ -7454,7 +7737,9 @@ describe("MarkdownHybridEditor", () => {
             renderPreview: (value: string) => <p>{value}</p>,
           }),
         );
-        const previewTextNode = container.querySelector(".markdown-hybrid-block-preview")?.firstChild;
+        const previewTextNode = container.querySelector(
+          ".markdown-hybrid-block-preview",
+        )?.firstChild;
         const selection = window.getSelection();
         if (previewTextNode && selection) {
           const range = document.createRange();
@@ -7477,7 +7762,7 @@ describe("MarkdownHybridEditor", () => {
   });
 
   it("marks active block and math textareas with editor input scope", () => {
-    const paragraphHarness = () => {
+    const ParagraphHarness = () => {
       const [markdown, setMarkdown] = useState("Alpha");
       return (
         <MarkdownHybridEditor
@@ -7490,13 +7775,13 @@ describe("MarkdownHybridEditor", () => {
       );
     };
 
-    const blockRender = render(createElement(paragraphHarness));
+    const blockRender = render(createElement(ParagraphHarness));
     const blockTextarea = activateBlockEditor(blockRender.container, 0);
     expect(blockTextarea).toBeTruthy();
     expect(blockTextarea?.dataset.inputScope).toBe("editor");
     blockRender.cleanup();
 
-    const mathHarness = () => {
+    const MathHarness = () => {
       const [markdown, setMarkdown] = useState(["$$", "x + y", "$$"].join("\n"));
       return (
         <MarkdownHybridEditor
@@ -7509,7 +7794,7 @@ describe("MarkdownHybridEditor", () => {
       );
     };
 
-    const mathRender = render(createElement(mathHarness));
+    const mathRender = render(createElement(MathHarness));
     const mathBlock = mathRender.container.querySelector<HTMLElement>(
       ".markdown-hybrid-block[data-md-block-index='0']",
     );
@@ -7523,11 +7808,7 @@ describe("MarkdownHybridEditor", () => {
   });
 
   it("renders tables as interactive blocks and commits cell edits", () => {
-    let latestMarkdown = [
-      "| A | B |",
-      "| --- | --- |",
-      "| 1 | 2 |",
-    ].join("\n");
+    let latestMarkdown = ["| A | B |", "| --- | --- |", "| 1 | 2 |"].join("\n");
 
     const Harness = () => {
       const [markdown, setMarkdown] = useState(latestMarkdown);
@@ -7550,17 +7831,21 @@ describe("MarkdownHybridEditor", () => {
     expect(container.querySelector(".markdown-hybrid-table-edge-strip-left")).toBeNull();
     expect(container.querySelector(".markdown-hybrid-table-edge-strip-right")).toBeNull();
     expect(container.querySelector(".markdown-hybrid-table-edge-strip-bottom")).toBeNull();
-    const firstHeaderCell = container.querySelector<HTMLElement>(".markdown-hybrid-table-cell-header");
+    const firstHeaderCell = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-table-cell-header",
+    );
     expect(firstHeaderCell).toBeTruthy();
 
     dispatchMouseDown(firstHeaderCell);
 
-    const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+    const textarea = container.querySelector<HTMLTextAreaElement>(
+      ".markdown-hybrid-table-cell-editor",
+    );
     expect(textarea).toBeTruthy();
     expect(textarea?.dataset.inputScope).toBe("editor");
     applyTextInput(textarea, "Renamed");
     act(() => {
-      textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+      textarea?.dispatchEvent(new Event("focusout", { bubbles: true }));
     });
 
     expect(latestMarkdown).toContain("| Renamed | B |");
@@ -7571,11 +7856,7 @@ describe("MarkdownHybridEditor", () => {
     withImmediateRaf(() => {
       vi.useFakeTimers();
       try {
-        let latestMarkdown = [
-          "| A | B |",
-          "| --- | --- |",
-          "| one | two |",
-        ].join("\n");
+        let latestMarkdown = ["| A | B |", "| --- | --- |", "| one | two |"].join("\n");
 
         const Harness = () => {
           const [markdown, setMarkdown] = useState(latestMarkdown);
@@ -7595,12 +7876,16 @@ describe("MarkdownHybridEditor", () => {
 
         const { container, cleanup } = render(createElement(Harness));
         let bodyCells = Array.from(
-          container.querySelectorAll<HTMLElement>(".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)"),
+          container.querySelectorAll<HTMLElement>(
+            ".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)",
+          ),
         );
         expect(bodyCells.length).toBeGreaterThanOrEqual(2);
 
         dispatchMouseDown(bodyCells[0] ?? null);
-        let textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        let textarea = container.querySelector<HTMLTextAreaElement>(
+          ".markdown-hybrid-table-cell-editor",
+        );
         expect(textarea).toBeTruthy();
         setTextareaSelection(textarea, 0, 3);
         act(() => {
@@ -7612,25 +7897,33 @@ describe("MarkdownHybridEditor", () => {
           ".markdown-hybrid-inline-toolbar button[aria-label='Bold text']",
         );
         dispatchClick(boldButton);
-        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        textarea = container.querySelector<HTMLTextAreaElement>(
+          ".markdown-hybrid-table-cell-editor",
+        );
         expect(textarea?.value).toBe("**one**");
         act(() => {
-          textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+          textarea?.dispatchEvent(new Event("focusout", { bubbles: true }));
         });
         expect(latestMarkdown).toContain("| **one** | two |");
 
         bodyCells = Array.from(
-          container.querySelectorAll<HTMLElement>(".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)"),
+          container.querySelectorAll<HTMLElement>(
+            ".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)",
+          ),
         );
         dispatchMouseDown(bodyCells[1] ?? null);
-        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        textarea = container.querySelector<HTMLTextAreaElement>(
+          ".markdown-hybrid-table-cell-editor",
+        );
         expect(textarea).toBeTruthy();
         setTextareaSelection(textarea, 0, 3);
         dispatchKeyDown(textarea, "b", { ctrlKey: true });
-        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        textarea = container.querySelector<HTMLTextAreaElement>(
+          ".markdown-hybrid-table-cell-editor",
+        );
         expect(textarea?.value).toBe("**two**");
         act(() => {
-          textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+          textarea?.dispatchEvent(new Event("focusout", { bubbles: true }));
         });
         expect(latestMarkdown).toContain("| **one** | **two** |");
 
@@ -7645,11 +7938,7 @@ describe("MarkdownHybridEditor", () => {
     withImmediateRaf(() => {
       vi.useFakeTimers();
       try {
-        let latestMarkdown = [
-          "| A | B |",
-          "| --- | --- |",
-          "| **one** | two |",
-        ].join("\n");
+        let latestMarkdown = ["| A | B |", "| --- | --- |", "| **one** | two |"].join("\n");
 
         const Harness = () => {
           const [markdown, setMarkdown] = useState(latestMarkdown);
@@ -7669,12 +7958,16 @@ describe("MarkdownHybridEditor", () => {
 
         const { container, cleanup } = render(createElement(Harness));
         const bodyCells = Array.from(
-          container.querySelectorAll<HTMLElement>(".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)"),
+          container.querySelectorAll<HTMLElement>(
+            ".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)",
+          ),
         );
         expect(bodyCells.length).toBeGreaterThanOrEqual(1);
 
         dispatchMouseDown(bodyCells[0] ?? null);
-        let textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        let textarea = container.querySelector<HTMLTextAreaElement>(
+          ".markdown-hybrid-table-cell-editor",
+        );
         expect(textarea).toBeTruthy();
         const openMoreMenuForSelection = () => {
           const start = textarea?.value.indexOf("one") ?? -1;
@@ -7684,30 +7977,52 @@ describe("MarkdownHybridEditor", () => {
             window.dispatchEvent(new Event("pointerup"));
             vi.advanceTimersByTime(350);
           });
-          dispatchClick(document.body.querySelector(".markdown-hybrid-inline-toolbar button[aria-label='More actions']"));
-          expect(document.body.querySelector(".markdown-hybrid-inline-toolbar-menu-more")).toBeTruthy();
+          dispatchClick(
+            document.body.querySelector(
+              ".markdown-hybrid-inline-toolbar button[aria-label='More actions']",
+            ),
+          );
+          expect(
+            document.body.querySelector(".markdown-hybrid-inline-toolbar-menu-more"),
+          ).toBeTruthy();
         };
 
         openMoreMenuForSelection();
         dispatchClick(document.body.querySelector("button[aria-label='Wrap as CD token']"));
-        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
-        expect(textarea?.value).toBe("\"one\"");
+        textarea = container.querySelector<HTMLTextAreaElement>(
+          ".markdown-hybrid-table-cell-editor",
+        );
+        expect(textarea?.value).toBe('"one"');
 
-        dispatchClick(document.body.querySelector(".markdown-hybrid-inline-toolbar button[aria-label='Bold text']"));
-        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        dispatchClick(
+          document.body.querySelector(
+            ".markdown-hybrid-inline-toolbar button[aria-label='Bold text']",
+          ),
+        );
+        textarea = container.querySelector<HTMLTextAreaElement>(
+          ".markdown-hybrid-table-cell-editor",
+        );
         expect(textarea?.value).toBe("**one**");
 
         openMoreMenuForSelection();
         dispatchClick(document.body.querySelector("button[aria-label='Wrap as CL cloze']"));
-        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        textarea = container.querySelector<HTMLTextAreaElement>(
+          ".markdown-hybrid-table-cell-editor",
+        );
         expect(textarea?.value).toBe("%one%");
 
-        dispatchClick(document.body.querySelector(".markdown-hybrid-inline-toolbar button[aria-label='Text format menu']"));
-        textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        dispatchClick(
+          document.body.querySelector(
+            ".markdown-hybrid-inline-toolbar button[aria-label='Text format menu']",
+          ),
+        );
+        textarea = container.querySelector<HTMLTextAreaElement>(
+          ".markdown-hybrid-table-cell-editor",
+        );
         expect(textarea?.value).toBe("one");
 
         act(() => {
-          textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+          textarea?.dispatchEvent(new Event("focusout", { bubbles: true }));
         });
         expect(latestMarkdown).toContain("| one | two |");
         cleanup();
@@ -7735,7 +8050,9 @@ describe("MarkdownHybridEditor", () => {
           ".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)",
         );
         dispatchMouseDown(firstBodyCell);
-        const cellEditor = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        const cellEditor = container.querySelector<HTMLTextAreaElement>(
+          ".markdown-hybrid-table-cell-editor",
+        );
         expect(cellEditor).toBeTruthy();
 
         setTextareaSelection(cellEditor, 0, 0);
@@ -7745,9 +8062,13 @@ describe("MarkdownHybridEditor", () => {
         });
         expect(document.body.querySelector(".markdown-hybrid-inline-toolbar")).toBeNull();
 
-        const toggle = container.querySelector<HTMLButtonElement>(".markdown-hybrid-table-view-toggle");
+        const toggle = container.querySelector<HTMLButtonElement>(
+          ".markdown-hybrid-table-view-toggle",
+        );
         dispatchClick(toggle);
-        const codeEditor = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-code-editor");
+        const codeEditor = container.querySelector<HTMLTextAreaElement>(
+          ".markdown-hybrid-table-code-editor",
+        );
         expect(codeEditor).toBeTruthy();
         setTextareaSelection(codeEditor, 0, Math.min(5, codeEditor?.value.length ?? 0));
         act(() => {
@@ -7820,13 +8141,9 @@ describe("MarkdownHybridEditor", () => {
 
   it("commits table cell edits inside a card using the standard table block path", () => {
     withImmediateRaf(() => {
-      const initialMarkdown = [
-        "#card",
-        "| A | B |",
-        "| --- | --- |",
-        "| 1 | 2 |",
-        "#endcard",
-      ].join("\n");
+      const initialMarkdown = ["#card", "| A | B |", "| --- | --- |", "| 1 | 2 |", "#endcard"].join(
+        "\n",
+      );
 
       const Harness = () => {
         const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -7859,14 +8176,16 @@ describe("MarkdownHybridEditor", () => {
       expect(textarea).toBeTruthy();
       applyTextInput(textarea, "Renamed card header");
       act(() => {
-        textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+        textarea?.dispatchEvent(new Event("focusout", { bubbles: true }));
       });
 
       expect(readMarkdown()).toContain("| Renamed card header | B |");
       expect(readMarkdown().match(/#card/g)).toHaveLength(1);
       expect(readMarkdown().match(/#endcard/g)).toHaveLength(1);
       expect(
-        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner']"),
+        container.querySelectorAll(
+          ".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner']",
+        ),
       ).toHaveLength(1);
       cleanup();
     });
@@ -7901,12 +8220,17 @@ describe("MarkdownHybridEditor", () => {
       };
 
       const { container, cleanup } = render(createElement(Harness));
-      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
       dispatchMouseDown(
-        container.querySelector<HTMLElement>(".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)"),
+        container.querySelector<HTMLElement>(
+          ".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)",
+        ),
       );
-      let textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+      let textarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-table-cell-editor",
+      );
       expect(textarea).toBeTruthy();
 
       applyTextareaInput(textarea, "Alpha [[");
@@ -7919,7 +8243,7 @@ describe("MarkdownHybridEditor", () => {
       expect(container.querySelector(".markdown-hybrid-page-link-picker")).toBeNull();
 
       act(() => {
-        textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+        textarea?.dispatchEvent(new Event("focusout", { bubbles: true }));
       });
       expect(readMarkdown()).toContain("[[Folder/Beta]]");
 
@@ -7960,12 +8284,17 @@ describe("MarkdownHybridEditor", () => {
       };
 
       const { container, cleanup } = render(createElement(Harness));
-      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
       dispatchMouseDown(
-        container.querySelector<HTMLElement>(".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)"),
+        container.querySelector<HTMLElement>(
+          ".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)",
+        ),
       );
-      let textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+      let textarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-table-cell-editor",
+      );
       expect(textarea).toBeTruthy();
 
       applyTextareaInput(textarea, "Alpha ![[");
@@ -7978,11 +8307,14 @@ describe("MarkdownHybridEditor", () => {
       textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
       expect(textarea?.value).toBe("Alpha ![[images/new.png]]");
       expect(textarea?.selectionStart).toBe("Alpha ![[images/new.png]]".length);
-      expect(container.querySelector(".markdown-hybrid-table-block .markdown-hybrid-insert-menu .vault-png-picker"))
-        .toBeNull();
+      expect(
+        container.querySelector(
+          ".markdown-hybrid-table-block .markdown-hybrid-insert-menu .vault-png-picker",
+        ),
+      ).toBeNull();
 
       act(() => {
-        textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+        textarea?.dispatchEvent(new Event("focusout", { bubbles: true }));
       });
       expect(readMarkdown()).toContain("![[images/new.png]]");
 
@@ -8021,7 +8353,8 @@ describe("MarkdownHybridEditor", () => {
       };
 
       const { container, cleanup } = render(createElement(Harness));
-      const readMarkdown = () => container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const readMarkdown = () =>
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
       dispatchMouseDown(
         container.querySelector<HTMLElement>(
@@ -8044,13 +8377,15 @@ describe("MarkdownHybridEditor", () => {
       expect(textarea?.selectionStart).toBe("Alpha [[Folder/Beta]]".length);
 
       act(() => {
-        textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+        textarea?.dispatchEvent(new Event("focusout", { bubbles: true }));
       });
       expect(readMarkdown()).toContain("[[Folder/Beta]]");
       expect(readMarkdown().match(/#card/g)).toHaveLength(1);
       expect(readMarkdown().match(/#endcard/g)).toHaveLength(1);
       expect(
-        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner']"),
+        container.querySelectorAll(
+          ".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner']",
+        ),
       ).toHaveLength(1);
 
       cleanup();
@@ -8181,7 +8516,9 @@ describe("MarkdownHybridEditor", () => {
       expect(readMarkdown()).not.toContain("![[images/old.png|Cell label]]");
       expect(readMarkdown().match(/!\[\[[^\]]+\.png(?:\|[^\]]+)?\]\]/g)).toHaveLength(1);
       expect(
-        container.querySelectorAll(".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner']"),
+        container.querySelectorAll(
+          ".markdown-hybrid-block[data-md-block-kind='table'][data-md-card-group-role='inner']",
+        ),
       ).toHaveLength(1);
 
       cleanup();
@@ -8189,12 +8526,7 @@ describe("MarkdownHybridEditor", () => {
   });
 
   it("keeps invalid pipe-like content inside #card on markdown fallback instead of table mode", () => {
-    const markdown = [
-      "#card",
-      "| A | B |",
-      "| not-a-separator |",
-      "#endcard",
-    ].join("\n");
+    const markdown = ["#card", "| A | B |", "| not-a-separator |", "#endcard"].join("\n");
 
     const { container, cleanup } = render(
       <MarkdownHybridEditor
@@ -8221,11 +8553,7 @@ describe("MarkdownHybridEditor", () => {
 
   it("closes the table-cell image replace picker via Escape/outside click without markdown changes", () => {
     withImmediateRaf(() => {
-      const initialMarkdown = [
-        "| Visual |",
-        "| --- |",
-        "| ![[images/example.png]] |",
-      ].join("\n");
+      const initialMarkdown = ["| Visual |", "| --- |", "| ![[images/example.png]] |"].join("\n");
 
       const Harness = () => {
         const [markdown, setMarkdown] = useState(initialMarkdown);
@@ -8256,17 +8584,27 @@ describe("MarkdownHybridEditor", () => {
         container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
 
       dispatchClick(findTableCellImageReplaceTrigger(container));
-      expect(container.querySelector(".markdown-hybrid-table-cell-image-replace-picker")).toBeTruthy();
+      expect(
+        container.querySelector(".markdown-hybrid-table-cell-image-replace-picker"),
+      ).toBeTruthy();
       dispatchWindowKeyDown("Escape");
-      expect(container.querySelector(".markdown-hybrid-table-cell-image-replace-picker")).toBeNull();
+      expect(
+        container.querySelector(".markdown-hybrid-table-cell-image-replace-picker"),
+      ).toBeNull();
       expect(readMarkdown()).toBe(initialMarkdown);
 
       dispatchClick(findTableCellImageReplaceTrigger(container));
-      expect(container.querySelector(".markdown-hybrid-table-cell-image-replace-picker")).toBeTruthy();
+      expect(
+        container.querySelector(".markdown-hybrid-table-cell-image-replace-picker"),
+      ).toBeTruthy();
       act(() => {
-        document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+        document.body.dispatchEvent(
+          new MouseEvent("mousedown", { bubbles: true, cancelable: true }),
+        );
       });
-      expect(container.querySelector(".markdown-hybrid-table-cell-image-replace-picker")).toBeNull();
+      expect(
+        container.querySelector(".markdown-hybrid-table-cell-image-replace-picker"),
+      ).toBeNull();
       expect(readMarkdown()).toBe(initialMarkdown);
 
       cleanup();
@@ -8327,12 +8665,7 @@ describe("MarkdownHybridEditor", () => {
       const { container, cleanup } = render(
         createElement(MarkdownHybridEditor, {
           historyKey: "table-compact-lane-labels",
-          markdown: [
-            "| A | B |",
-            "| --- | --- |",
-            "| 1 | 2 |",
-            "| 3 | 4 |",
-          ].join("\n"),
+          markdown: ["| A | B |", "| --- | --- |", "| 1 | 2 |", "| 3 | 4 |"].join("\n"),
           mode: "edit",
           onChange: () => undefined,
           renderPreview: (value: string) => <div>{value}</div>,
@@ -8367,7 +8700,10 @@ describe("MarkdownHybridEditor", () => {
 
   it("auto-expands the table cell editor for multiline cell content", () => {
     withImmediateRaf(() => {
-      const originalScrollHeight = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "scrollHeight");
+      const originalScrollHeight = Object.getOwnPropertyDescriptor(
+        HTMLTextAreaElement.prototype,
+        "scrollHeight",
+      );
       Object.defineProperty(HTMLTextAreaElement.prototype, "scrollHeight", {
         configurable: true,
         get() {
@@ -8397,17 +8733,22 @@ describe("MarkdownHybridEditor", () => {
 
         dispatchMouseDown(firstBodyCell);
 
-        const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+        const textarea = container.querySelector<HTMLTextAreaElement>(
+          ".markdown-hybrid-table-cell-editor",
+        );
         expect(textarea).toBeTruthy();
         expect(textarea?.value).toBe("Erste Zeile\nZweite Zeile\nDritte Zeile");
         expect(textarea?.style.height).toBe("96px");
         cleanup();
       } finally {
         if (originalScrollHeight) {
-          Object.defineProperty(HTMLTextAreaElement.prototype, "scrollHeight", originalScrollHeight);
+          Object.defineProperty(
+            HTMLTextAreaElement.prototype,
+            "scrollHeight",
+            originalScrollHeight,
+          );
         } else {
           // jsdom exposes it on the prototype; delete is safe here if we created the descriptor.
-          // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
           delete (HTMLTextAreaElement.prototype as { scrollHeight?: number }).scrollHeight;
         }
       }
@@ -8420,11 +8761,9 @@ describe("MarkdownHybridEditor", () => {
       const { cleanup } = render(
         createElement(MarkdownHybridEditor, {
           historyKey: "table-cell-paragraph-render",
-          markdown: [
-            "| A | B |",
-            "| --- | --- |",
-            "| Erste Zeile<br><br>Zweite Zeile | 2 |",
-          ].join("\n"),
+          markdown: ["| A | B |", "| --- | --- |", "| Erste Zeile<br><br>Zweite Zeile | 2 |"].join(
+            "\n",
+          ),
           mode: "edit",
           onChange: () => undefined,
           renderPreview: (value: string) => {
@@ -8441,11 +8780,7 @@ describe("MarkdownHybridEditor", () => {
 
   it("inserts a multiline break inside a table cell on Enter and persists it", () => {
     withImmediateRaf(() => {
-      let latestMarkdown = [
-        "| A | B |",
-        "| --- | --- |",
-        "| Erste Zeile | 2 |",
-      ].join("\n");
+      let latestMarkdown = ["| A | B |", "| --- | --- |", "| Erste Zeile | 2 |"].join("\n");
 
       const Harness = () => {
         const [markdown, setMarkdown] = useState(latestMarkdown);
@@ -8471,7 +8806,9 @@ describe("MarkdownHybridEditor", () => {
 
       dispatchMouseDown(firstBodyCell);
 
-      const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+      const textarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-table-cell-editor",
+      );
       expect(textarea).toBeTruthy();
       setTextareaSelection(textarea, textarea?.value.length ?? 0);
 
@@ -8480,7 +8817,7 @@ describe("MarkdownHybridEditor", () => {
       expect(textarea?.value).toBe("Erste Zeile\n");
 
       act(() => {
-        textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+        textarea?.dispatchEvent(new Event("focusout", { bubbles: true }));
       });
 
       expect(latestMarkdown).toContain("Erste Zeile<br>");
@@ -8490,11 +8827,7 @@ describe("MarkdownHybridEditor", () => {
 
   it("keeps deleted table cell text removed after the editor loses focus", () => {
     withImmediateRaf(() => {
-      let latestMarkdown = [
-        "| A | B |",
-        "| --- | --- |",
-        "| Alpha Beta | 2 |",
-      ].join("\n");
+      let latestMarkdown = ["| A | B |", "| --- | --- |", "| Alpha Beta | 2 |"].join("\n");
 
       const Harness = () => {
         const [markdown, setMarkdown] = useState(latestMarkdown);
@@ -8520,13 +8853,15 @@ describe("MarkdownHybridEditor", () => {
 
       dispatchMouseDown(firstBodyCell);
 
-      const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+      const textarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-table-cell-editor",
+      );
       expect(textarea).toBeTruthy();
 
       applyTextareaInput(textarea, "Alpha");
 
       act(() => {
-        textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+        textarea?.dispatchEvent(new Event("focusout", { bubbles: true }));
       });
 
       expect(latestMarkdown).toContain("| Alpha | 2 |");
@@ -8573,16 +8908,20 @@ describe("MarkdownHybridEditor", () => {
       );
       dispatchMouseDown(firstBodyCell);
 
-      const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+      const textarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-table-cell-editor",
+      );
       expect(textarea).toBeTruthy();
       applyTextareaInput(textarea, "Edited answer token");
 
       act(() => {
-        textarea?.dispatchEvent(new Event("blur", { bubbles: true }));
+        textarea?.dispatchEvent(new Event("focusout", { bubbles: true }));
       });
 
       const nextMarkdown = readMarkdown();
-      expect(nextMarkdown).toContain("| Edited answer token | ![[png/IDBS01-Notation04-T1.png|Martin N:M]] |");
+      expect(nextMarkdown).toContain(
+        "| Edited answer token | ![[png/IDBS01-Notation04-T1.png|Martin N:M]] |",
+      );
       expect(nextMarkdown).toContain(
         "| The graphic shows an optional C:CN relationship. | ![[png/IDBS01-Notation02-T5.png|Optional C:CN]] |",
       );
@@ -8593,11 +8932,7 @@ describe("MarkdownHybridEditor", () => {
 
   it("persists multiline table cell edits when switching to another cell", () => {
     withImmediateRaf(() => {
-      let latestMarkdown = [
-        "| A | B |",
-        "| --- | --- |",
-        "| Alpha Beta | Ziel |",
-      ].join("\n");
+      let latestMarkdown = ["| A | B |", "| --- | --- |", "| Alpha Beta | Ziel |"].join("\n");
 
       const Harness = () => {
         const [markdown, setMarkdown] = useState(latestMarkdown);
@@ -8626,11 +8961,17 @@ describe("MarkdownHybridEditor", () => {
 
       dispatchMouseDown(firstBodyCell);
 
-      const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+      const textarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-table-cell-editor",
+      );
       expect(textarea).toBeTruthy();
 
       applyTextareaInput(textarea, "Alpha\n\nGamma");
-      dispatchMouseDown(secondBodyCell);
+      const currentSecondBodyCell =
+        container.querySelectorAll<HTMLElement>(
+          ".markdown-hybrid-table-cell:not(.markdown-hybrid-table-cell-header)",
+        )[1] ?? null;
+      dispatchMouseDown(currentSecondBodyCell);
 
       expect(latestMarkdown).toContain("| Alpha<br><br>Gamma | Ziel |");
       expect(latestMarkdown).not.toContain("Alpha Beta");
@@ -8643,11 +8984,7 @@ describe("MarkdownHybridEditor", () => {
 
   it("keeps the caret position when clicking inside an already active table cell editor", () => {
     withImmediateRaf(() => {
-      let latestMarkdown = [
-        "| Alpha | Beta |",
-        "| --- | --- |",
-        "| 1 | 2 |",
-      ].join("\n");
+      let latestMarkdown = ["| Alpha | Beta |", "| --- | --- |", "| 1 | 2 |"].join("\n");
 
       const Harness = () => {
         const [markdown, setMarkdown] = useState(latestMarkdown);
@@ -8666,12 +9003,16 @@ describe("MarkdownHybridEditor", () => {
       };
 
       const { container, cleanup } = render(createElement(Harness));
-      const firstHeaderCell = container.querySelector<HTMLElement>(".markdown-hybrid-table-cell-header");
+      const firstHeaderCell = container.querySelector<HTMLElement>(
+        ".markdown-hybrid-table-cell-header",
+      );
       expect(firstHeaderCell).toBeTruthy();
 
       dispatchMouseDown(firstHeaderCell);
 
-      const textarea = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-cell-editor");
+      const textarea = container.querySelector<HTMLTextAreaElement>(
+        ".markdown-hybrid-table-cell-editor",
+      );
       expect(textarea).toBeTruthy();
       setTextareaSelection(textarea, 2);
 
@@ -8684,11 +9025,7 @@ describe("MarkdownHybridEditor", () => {
   });
 
   it("toggles table code view and repairs boundary pipes on return to grid", () => {
-    let latestMarkdown = [
-      "| A | B |",
-      "| --- | --- |",
-      "| 1 | 2 |",
-    ].join("\n");
+    let latestMarkdown = ["| A | B |", "| --- | --- |", "| 1 | 2 |"].join("\n");
 
     const Harness = () => {
       const [markdown, setMarkdown] = useState(latestMarkdown);
@@ -8707,27 +9044,26 @@ describe("MarkdownHybridEditor", () => {
     };
 
     const { container, cleanup } = render(createElement(Harness));
-    const firstHeaderCell = container.querySelector<HTMLElement>(".markdown-hybrid-table-cell-header");
+    const firstHeaderCell = container.querySelector<HTMLElement>(
+      ".markdown-hybrid-table-cell-header",
+    );
     dispatchMouseDown(firstHeaderCell);
 
     const toggle = container.querySelector<HTMLButtonElement>(".markdown-hybrid-table-view-toggle");
     expect(toggle).toBeTruthy();
     dispatchClick(toggle);
 
-    const codeEditor = container.querySelector<HTMLTextAreaElement>(".markdown-hybrid-table-code-editor");
+    const codeEditor = container.querySelector<HTMLTextAreaElement>(
+      ".markdown-hybrid-table-code-editor",
+    );
     expect(codeEditor).toBeTruthy();
     expect(codeEditor?.dataset.inputScope).toBe("editor");
-    applyTextInput(
-      codeEditor,
-      ["A | B", "--- | ---", "1 | 2"].join("\n"),
-    );
+    applyTextInput(codeEditor, ["A | B", "--- | ---", "1 | 2"].join("\n"));
 
     dispatchClick(container.querySelector(".markdown-hybrid-table-view-toggle"));
 
     expect(container.querySelector(".markdown-hybrid-table-code-editor")).toBeNull();
-    expect(latestMarkdown).toBe(
-      ["| A | B |", "| --- | --- |", "| 1 | 2 |"].join("\n"),
-    );
+    expect(latestMarkdown).toBe(["| A | B |", "| --- | --- |", "| 1 | 2 |"].join("\n"));
     cleanup();
   });
 
@@ -8763,39 +9099,51 @@ describe("MarkdownHybridEditor", () => {
       expect(firstTable).toBeTruthy();
       expect(secondTable).toBeTruthy();
 
-      const firstHeaderCell = firstTable?.querySelector<HTMLElement>(".markdown-hybrid-table-cell-header");
-      const secondHeaderCell = secondTable?.querySelector<HTMLElement>(".markdown-hybrid-table-cell-header");
+      const firstHeaderCell = firstTable?.querySelector<HTMLElement>(
+        ".markdown-hybrid-table-cell-header",
+      );
+      const secondHeaderCell = secondTable?.querySelector<HTMLElement>(
+        ".markdown-hybrid-table-cell-header",
+      );
       expect(firstHeaderCell).toBeTruthy();
       expect(secondHeaderCell).toBeTruthy();
 
       dispatchMouseDown(firstHeaderCell);
-      expect(firstTable?.querySelector(".markdown-hybrid-table-code-editor")).toBeNull();
+      let currentTables = container.querySelectorAll<HTMLElement>(".markdown-hybrid-table-block");
+      expect(currentTables[0]?.querySelector(".markdown-hybrid-table-code-editor")).toBeNull();
 
-      const firstToggle = firstTable?.querySelector<HTMLButtonElement>(".markdown-hybrid-table-view-toggle");
+      const firstToggle = currentTables[0]?.querySelector<HTMLButtonElement>(
+        ".markdown-hybrid-table-view-toggle",
+      );
       expect(firstToggle).toBeTruthy();
       dispatchClick(firstToggle);
-      expect(firstTable?.querySelector(".markdown-hybrid-table-code-editor")).toBeTruthy();
+      currentTables = container.querySelectorAll<HTMLElement>(".markdown-hybrid-table-block");
+      expect(currentTables[0]?.querySelector(".markdown-hybrid-table-code-editor")).toBeTruthy();
 
-      dispatchMouseDown(secondHeaderCell);
-      expect(firstTable?.querySelector(".markdown-hybrid-table-code-editor")).toBeNull();
+      dispatchMouseDown(
+        currentTables[1]?.querySelector<HTMLElement>(".markdown-hybrid-table-cell-header"),
+      );
+      currentTables = container.querySelectorAll<HTMLElement>(".markdown-hybrid-table-block");
+      expect(currentTables[0]?.querySelector(".markdown-hybrid-table-code-editor")).toBeNull();
 
-      dispatchMouseDown(firstHeaderCell);
-      expect(firstTable?.querySelector(".markdown-hybrid-table-code-editor")).toBeNull();
+      dispatchMouseDown(
+        currentTables[0]?.querySelector<HTMLElement>(".markdown-hybrid-table-cell-header"),
+      );
+      currentTables = container.querySelectorAll<HTMLElement>(".markdown-hybrid-table-block");
+      expect(currentTables[0]?.querySelector(".markdown-hybrid-table-code-editor")).toBeNull();
 
-      dispatchClick(firstTable?.querySelector<HTMLButtonElement>(".markdown-hybrid-table-view-toggle") ?? null);
-      expect(firstTable?.querySelector(".markdown-hybrid-table-code-editor")).toBeTruthy();
+      dispatchClick(
+        currentTables[0]?.querySelector<HTMLButtonElement>(".markdown-hybrid-table-view-toggle"),
+      );
+      currentTables = container.querySelectorAll<HTMLElement>(".markdown-hybrid-table-block");
+      expect(currentTables[0]?.querySelector(".markdown-hybrid-table-code-editor")).toBeTruthy();
 
       cleanup();
     });
   });
 
   it("deletes selected table rows with the Delete key while preserving header and separator", () => {
-    let latestMarkdown = [
-      "| A | B |",
-      "| --- | --- |",
-      "| 1 | 2 |",
-      "| 3 | 4 |",
-    ].join("\n");
+    let latestMarkdown = ["| A | B |", "| --- | --- |", "| 1 | 2 |", "| 3 | 4 |"].join("\n");
 
     const Harness = () => {
       const [markdown, setMarkdown] = useState(latestMarkdown);
@@ -8821,11 +9169,10 @@ describe("MarkdownHybridEditor", () => {
     );
     expect(firstBodyRowButton).toBeTruthy();
     dispatchMouseDown(firstBodyRowButton);
+    dispatchWindowMouseUp();
     dispatchKeyDown(container.querySelector(".markdown-hybrid-table-block"), "Delete");
 
-    expect(latestMarkdown).toBe(
-      ["| A | B |", "| --- | --- |", "| 3 | 4 |"].join("\n"),
-    );
+    expect(latestMarkdown).toBe(["| A | B |", "| --- | --- |", "| 3 | 4 |"].join("\n"));
     cleanup();
   });
 
@@ -8869,7 +9216,9 @@ describe("MarkdownHybridEditor", () => {
     dispatchContextMenu(firstColumnButton, { clientX: 220, clientY: 120 });
     dispatchContextMenu(thirdColumnButton, { shiftKey: true, clientX: 360, clientY: 120 });
 
-    expect(container.querySelectorAll(".markdown-hybrid-table-column-lane.is-selected")).toHaveLength(3);
+    expect(
+      container.querySelectorAll(".markdown-hybrid-table-column-lane.is-selected"),
+    ).toHaveLength(3);
 
     const firstBodyRowButton = container.querySelector<HTMLButtonElement>(
       ".markdown-hybrid-table-row-select[data-md-table-row-index='1']",
@@ -8883,8 +9232,12 @@ describe("MarkdownHybridEditor", () => {
     dispatchContextMenu(firstBodyRowButton, { clientX: 120, clientY: 220 });
     dispatchContextMenu(thirdBodyRowButton, { ctrlKey: true, clientX: 120, clientY: 300 });
 
-    expect(container.querySelectorAll(".markdown-hybrid-table-row-lane.is-selected")).toHaveLength(2);
-    expect(container.querySelectorAll(".markdown-hybrid-table-column-lane.is-selected")).toHaveLength(0);
+    expect(container.querySelectorAll(".markdown-hybrid-table-row-lane.is-selected")).toHaveLength(
+      2,
+    );
+    expect(
+      container.querySelectorAll(".markdown-hybrid-table-column-lane.is-selected"),
+    ).toHaveLength(0);
     cleanup();
   });
 
@@ -8982,11 +9335,7 @@ describe("MarkdownHybridEditor", () => {
   });
 
   it("reorders columns by dragging the column label and shows a drop indicator", () => {
-    let latestMarkdown = [
-      "| A | B |",
-      "| --- | --- |",
-      "| 1 | 2 |",
-    ].join("\n");
+    let latestMarkdown = ["| A | B |", "| --- | --- |", "| 1 | 2 |"].join("\n");
 
     const Harness = () => {
       const [markdown, setMarkdown] = useState(latestMarkdown);
@@ -9053,19 +9402,12 @@ describe("MarkdownHybridEditor", () => {
 
     dispatchWindowMouseUp({ clientX: 380, clientY: 220 });
 
-    expect(latestMarkdown).toBe(
-      ["| B | A |", "| --- | --- |", "| 2 | 1 |"].join("\n"),
-    );
+    expect(latestMarkdown).toBe(["| B | A |", "| --- | --- |", "| 2 | 1 |"].join("\n"));
     cleanup();
   });
 
   it("reorders body rows by dragging the row label and shows a drop indicator", () => {
-    let latestMarkdown = [
-      "| A | B |",
-      "| --- | --- |",
-      "| 1 | 2 |",
-      "| 3 | 4 |",
-    ].join("\n");
+    let latestMarkdown = ["| A | B |", "| --- | --- |", "| 1 | 2 |", "| 3 | 4 |"].join("\n");
 
     const Harness = () => {
       const [markdown, setMarkdown] = useState(latestMarkdown);
@@ -9100,7 +9442,9 @@ describe("MarkdownHybridEditor", () => {
 
     const shell = container.querySelector<HTMLElement>(".markdown-hybrid-table-shell");
     const rowLanes = Array.from(
-      container.querySelectorAll<HTMLElement>(".markdown-hybrid-table-row-lane:not(.markdown-hybrid-table-row-lane-header)"),
+      container.querySelectorAll<HTMLElement>(
+        ".markdown-hybrid-table-row-lane:not(.markdown-hybrid-table-row-lane-header)",
+      ),
     );
     const firstRowButton = container.querySelector<HTMLButtonElement>(
       ".markdown-hybrid-table-row-select[data-md-table-row-index='1']",
@@ -9165,15 +9509,25 @@ describe("MarkdownHybridEditor", () => {
       container.querySelectorAll<HTMLElement>(".markdown-hybrid-block-preview .exam-markdown"),
     );
     expect(previews.length).toBeGreaterThan(0);
-    expect(previews.some((preview) => preview.querySelector("strong")?.textContent === "Bold")).toBe(true);
-    expect(previews.some((preview) => preview.querySelector("em")?.textContent === "Italic")).toBe(true);
-    expect(previews.some((preview) => preview.querySelector("del")?.textContent === "Strike")).toBe(true);
+    expect(
+      previews.some((preview) => preview.querySelector("strong")?.textContent === "Bold"),
+    ).toBe(true);
+    expect(previews.some((preview) => preview.querySelector("em")?.textContent === "Italic")).toBe(
+      true,
+    );
+    expect(previews.some((preview) => preview.querySelector("del")?.textContent === "Strike")).toBe(
+      true,
+    );
     expect(
       previews.some(
         (preview) => preview.querySelector("mark.md-inline-highlight")?.textContent === "Mark",
       ),
     ).toBe(true);
-    expect(previews.some((preview) => Boolean(preview.querySelector("ol[data-md-ordered-delimiter=')']")))).toBe(true);
+    expect(
+      previews.some((preview) =>
+        Boolean(preview.querySelector("ol[data-md-ordered-delimiter=')']")),
+      ),
+    ).toBe(true);
     expect(previews.some((preview) => Boolean(preview.querySelector("li br")))).toBe(true);
 
     cleanup();

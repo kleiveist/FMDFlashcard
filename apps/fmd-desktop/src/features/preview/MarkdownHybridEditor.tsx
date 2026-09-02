@@ -84,11 +84,7 @@ import {
   type AdvancedInsertTemplateIconId,
   type AdvancedInsertTemplateVariant,
 } from "./insertTemplates";
-import {
-  extractMathBlockBody,
-  MathBlockRenderer,
-  normalizeMathBlockSource,
-} from "./mathBlocks";
+import { extractMathBlockBody, MathBlockRenderer, normalizeMathBlockSource } from "./mathBlocks";
 import {
   MarkdownHybridTableBlock,
   type MarkdownHybridTableActivationRequest,
@@ -258,12 +254,7 @@ type BlockReorderDragSessionState = {
   startedAt: number;
 };
 
-type InsertMenuCategoryId =
-  | "standard-blocks"
-  | "structure"
-  | "links"
-  | "database"
-  | "advanced";
+type InsertMenuCategoryId = "standard-blocks" | "structure" | "links" | "database" | "advanced";
 
 type InsertMenuItemId = string;
 
@@ -415,10 +406,24 @@ const DATABASE_ATTRIBUTES_BLOCK_TEMPLATE = [
   "",
 ].join("\n");
 
-const buildDatabaseInsertTemplate = (viewType: "table" | "kanban" | "gantt" | "pie" | "project") => {
+const buildDatabaseInsertTemplate = (
+  viewType: "table" | "kanban" | "gantt" | "pie" | "project",
+) => {
   const config = createDefaultDatabaseBlockConfig();
-  config.view = { type: viewType };
   config.columns = ["Dateiname"];
+  config.view = { ...config.view, type: viewType };
+  config.views = {
+    ...config.views,
+    items: config.views.items.map((item) =>
+      item.id === config.views.activeViewId
+        ? {
+            ...item,
+            view: { ...item.view, type: viewType },
+            properties: [...config.columns],
+          }
+        : item,
+    ),
+  };
   return serializeDatabaseBlockConfig(config);
 };
 
@@ -516,8 +521,7 @@ const INSERT_MENU_ITEMS_BY_CATEGORY: Record<InsertMenuCategoryId, InsertMenuItem
     {
       id: "toggle-list",
       label: "Toggle List",
-      template:
-        "<details>\n<summary>Toggle title</summary>\n\nToggle content\n</details>",
+      template: "<details>\n<summary>Toggle title</summary>\n\nToggle content\n</details>",
       firstPlaceholder: "Toggle title",
       icon: "toggle-list",
     },
@@ -990,7 +994,6 @@ type ImageEmbedReplacePickerState = {
   highlightedIndex: number;
 };
 
-
 type ResolvedInlinePageLink = {
   wikilink: string;
   label: string;
@@ -1080,7 +1083,6 @@ const findAdjacentWikilinkRange = (
   return null;
 };
 
-
 type PageLinkLookup = {
   byTarget: Map<string, PageLinkCandidate>;
   byRelativeWithExtension: Map<string, PageLinkCandidate>;
@@ -1120,14 +1122,19 @@ const resolvePageLinkCandidate = (
   const lowerWithoutExtension = withoutExtension.toLowerCase();
   const lowerWithExtension = normalizedTarget.toLowerCase();
   const basenameWithoutExtension = resolveWikilinkLabelFromTarget(normalizedTarget).toLowerCase();
-  return lookup.byTarget.get(lowerWithoutExtension) ??
+  return (
+    lookup.byTarget.get(lowerWithoutExtension) ??
     lookup.byRelativeWithExtension.get(lowerWithExtension) ??
     lookup.byBasename.get(basenameWithoutExtension) ??
-    null;
+    null
+  );
 };
 
 const extractImageEmbedTokenFromRaw = (blockRaw: string) => {
-  const firstMediaItem = splitMarkdownMediaSegments(blockRaw, "markdown-hybrid-image-embed-replace-token")
+  const firstMediaItem = splitMarkdownMediaSegments(
+    blockRaw,
+    "markdown-hybrid-image-embed-replace-token",
+  )
     .flatMap((segment) => (segment.kind === "media" ? segment.items : []))
     .find((item) => item.type === "png");
   if (!firstMediaItem || firstMediaItem.type !== "png") {
@@ -1140,10 +1147,7 @@ const extractImageEmbedTokenFromRaw = (blockRaw: string) => {
 };
 
 const escapeHtmlForMirror = (value: string) =>
-  value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 const resolveTextareaCaretAnchor = (
   textarea: HTMLTextAreaElement,
@@ -1182,8 +1186,7 @@ const resolveTextareaCaretAnchor = (
   (mirrorStyle as CSSStyleDeclaration & { tabSize?: string }).tabSize =
     (computed as CSSStyleDeclaration & { tabSize?: string }).tabSize ?? "8";
 
-  const beforeText = escapeHtmlForMirror(textarea.value.slice(0, safeCaret))
-    .replace(/\n$/g, "\n ");
+  const beforeText = escapeHtmlForMirror(textarea.value.slice(0, safeCaret)).replace(/\n$/g, "\n ");
   mirror.innerHTML = `${beforeText}<span data-md-caret-anchor=\"true\">&#8203;</span>`;
   document.body.appendChild(mirror);
 
@@ -1193,14 +1196,24 @@ const resolveTextareaCaretAnchor = (
   const textareaRect = textarea.getBoundingClientRect();
   const containerRect = container.getBoundingClientRect();
   const resolvedLineHeight = Number.parseFloat(computed.lineHeight);
-  const lineHeight = Number.isFinite(resolvedLineHeight) && resolvedLineHeight > 0
-    ? resolvedLineHeight
-    : (Number.parseFloat(computed.fontSize) || 16) * 1.4;
+  const lineHeight =
+    Number.isFinite(resolvedLineHeight) && resolvedLineHeight > 0
+      ? resolvedLineHeight
+      : (Number.parseFloat(computed.fontSize) || 16) * 1.4;
 
-  const anchorLeft = textareaRect.left - containerRect.left + container.scrollLeft +
-    (markerRect.left - mirrorRect.left) - textarea.scrollLeft;
-  const anchorTop = textareaRect.top - containerRect.top + container.scrollTop +
-    (markerRect.top - mirrorRect.top) - textarea.scrollTop + lineHeight;
+  const anchorLeft =
+    textareaRect.left -
+    containerRect.left +
+    container.scrollLeft +
+    (markerRect.left - mirrorRect.left) -
+    textarea.scrollLeft;
+  const anchorTop =
+    textareaRect.top -
+    containerRect.top +
+    container.scrollTop +
+    (markerRect.top - mirrorRect.top) -
+    textarea.scrollTop +
+    lineHeight;
 
   mirror.remove();
   return {
@@ -1222,15 +1235,15 @@ const resolveTextareaSelectionToolbarAnchor = (
   const endAnchor = resolveTextareaCaretAnchor(textarea, container, normalized.end);
   const computed = window.getComputedStyle(textarea);
   const rawLineHeight = Number.parseFloat(computed.lineHeight);
-  const lineHeight = Number.isFinite(rawLineHeight) && rawLineHeight > 0
-    ? rawLineHeight
-    : (Number.parseFloat(computed.fontSize) || 16) * 1.4;
+  const lineHeight =
+    Number.isFinite(rawLineHeight) && rawLineHeight > 0
+      ? rawLineHeight
+      : (Number.parseFloat(computed.fontSize) || 16) * 1.4;
   const sameLine = Math.abs(startAnchor.top - endAnchor.top) <= lineHeight * 0.5;
   const topLocal = Math.min(startAnchor.top, endAnchor.top) - lineHeight;
   const bottomLocal = Math.max(startAnchor.top, endAnchor.top);
-  const leftOnSelectionStartLine = normalized.start <= normalized.end
-    ? startAnchor.left
-    : endAnchor.left;
+  const leftOnSelectionStartLine =
+    normalized.start <= normalized.end ? startAnchor.left : endAnchor.left;
   const centerLocalX = sameLine
     ? (startAnchor.left + endAnchor.left) / 2
     : leftOnSelectionStartLine;
@@ -1290,7 +1303,9 @@ const renderPreviewTextWithAtomicWikilinks = (
         data-md-inline-page-link-wikilink={resolved.wikilink}
         data-md-inline-page-link-missing={resolved.exists ? undefined : "true"}
         title={resolved.exists ? resolved.wikilink : `${resolved.label} (Missing page)`}
-        aria-label={resolved.exists ? `Open page ${resolved.label}` : `Missing page ${resolved.label}`}
+        aria-label={
+          resolved.exists ? `Open page ${resolved.label}` : `Missing page ${resolved.label}`
+        }
         onMouseDown={(event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -1333,7 +1348,8 @@ const transformPreviewNodeWikilinks = (
   }
   if (Array.isArray(node)) {
     return node.map((child, index) =>
-      transformPreviewNodeWikilinks(child, `${keyPrefix}:${index}`, options));
+      transformPreviewNodeWikilinks(child, `${keyPrefix}:${index}`, options),
+    );
   }
   if (!isValidElement(node)) {
     return node;
@@ -1345,7 +1361,8 @@ const transformPreviewNodeWikilinks = (
   if (!tagName) {
     const originalChildren = elementProps.children;
     const originalComponents = elementProps.components;
-    const looksLikeReactMarkdown = typeof originalChildren === "string" &&
+    const looksLikeReactMarkdown =
+      typeof originalChildren === "string" &&
       originalComponents &&
       typeof originalComponents === "object" &&
       ("remarkPlugins" in elementProps || "rehypePlugins" in elementProps);
@@ -1395,7 +1412,8 @@ const transformPreviewNodeWikilinks = (
     transformPreviewNodeWikilinks(child, `${keyPrefix}:${index}`, {
       ...options,
       skipTransform: nextSkip,
-    }));
+    }),
+  );
   return cloneElement(typedElement, undefined, nextChildren);
 };
 
@@ -1550,9 +1568,7 @@ const isMarkdownBlockKind = (value: unknown): value is MarkdownBlock["kind"] =>
 const isLegacyClipboardCardBlockKind = (value: unknown): value is "card-block" =>
   value === "card-block";
 
-const serializeInternalBlockClipboardPayload = (
-  blocks: ClipboardBlockEntry[],
-) =>
+const serializeInternalBlockClipboardPayload = (blocks: ClipboardBlockEntry[]) =>
   JSON.stringify({
     version: INTERNAL_BLOCK_CLIPBOARD_VERSION,
     source: INTERNAL_BLOCK_CLIPBOARD_SOURCE,
@@ -1560,7 +1576,9 @@ const serializeInternalBlockClipboardPayload = (
     blocks,
   } as InternalBlockClipboardPayload);
 
-const parseInternalBlockClipboardPayload = (rawPayload: string): InternalBlockClipboardPayload | null => {
+const parseInternalBlockClipboardPayload = (
+  rawPayload: string,
+): InternalBlockClipboardPayload | null => {
   if (!rawPayload) {
     return null;
   }
@@ -1603,8 +1621,8 @@ const parseInternalBlockClipboardPayload = (rawPayload: string): InternalBlockCl
     const blockKind = isMarkdownBlockKind(blockEntry.kind)
       ? blockEntry.kind
       : isLegacyClipboardCardBlockKind(blockEntry.kind)
-      ? "paragraph"
-      : null;
+        ? "paragraph"
+        : null;
     if (!blockKind) {
       return null;
     }
@@ -1790,7 +1808,9 @@ const moveBlockSelectionInList = <T,>(
   }
 
   const selectedSet = new Set(normalizedSelected);
-  const movingItems = normalizedSelected.map((index) => items[index]!).filter((item) => item !== undefined);
+  const movingItems = normalizedSelected
+    .map((index) => items[index]!)
+    .filter((item) => item !== undefined);
   if (movingItems.length === 0) {
     return { items, insertIndex: 0, movedIndices: [] as number[] };
   }
@@ -1805,11 +1825,7 @@ const moveBlockSelectionInList = <T,>(
   return { items: nextItems, insertIndex, movedIndices };
 };
 
-const withInsertedRawBlock = (
-  blocks: MarkdownBlock[],
-  atIndex: number,
-  insertedRaw: string,
-) => {
+const withInsertedRawBlock = (blocks: MarkdownBlock[], atIndex: number, insertedRaw: string) => {
   const nextRawBlocks = blocks.map((block) => block.raw);
   const targetIndex = Math.max(0, Math.min(atIndex, nextRawBlocks.length));
   if (insertedRaw.trim().length === 0) {
@@ -1838,6 +1854,7 @@ const resolveInsertedBlockActivationIndex = (
   nextBlocks: MarkdownBlock[],
   insertedRaw: string,
   targetIndex: number,
+  preferredInsertedBlock?: MarkdownBlock,
 ) => {
   if (nextBlocks.length === 0) {
     return -1;
@@ -1859,7 +1876,10 @@ const resolveInsertedBlockActivationIndex = (
   }
 
   const insertedBlocks = parseHybridMarkdownBlocks(applyEditorMarkdownNormalization(insertedRaw));
-  const primaryInsertedBlock = insertedBlocks.find((block) => block.kind !== "blank") ?? insertedBlocks[0];
+  const primaryInsertedBlock =
+    preferredInsertedBlock ??
+    insertedBlocks.find((block) => block.kind !== "blank") ??
+    insertedBlocks[0];
   if (!primaryInsertedBlock) {
     return Math.max(0, Math.min(targetIndex, nextBlocks.length - 1));
   }
@@ -1895,9 +1915,10 @@ const resolveInsertMenuContextForSlot = (
   atIndex: number,
 ): AdvancedInsertTemplateContext => {
   const normalizedAtIndex = Math.max(0, Math.min(atIndex, blocks.length));
-  const insertionOffset = normalizedAtIndex >= blocks.length
-    ? markdown.length
-    : (blocks[normalizedAtIndex]?.startOffset ?? markdown.length);
+  const insertionOffset =
+    normalizedAtIndex >= blocks.length
+      ? markdown.length
+      : (blocks[normalizedAtIndex]?.startOffset ?? markdown.length);
   const textBeforeSlot = markdown.slice(0, insertionOffset);
   const lines = textBeforeSlot.length === 0 ? [] : textBeforeSlot.split("\n");
 
@@ -2001,7 +2022,10 @@ const ensureExamWrapperBoundaryMarkers = (markdown: string) => {
   }
 
   const hasExamStartMarkerAtTop = isStandaloneDirectiveLine(lines[0] ?? "", "#exam");
-  const hasExamEndMarkerAtBottom = isStandaloneDirectiveLine(lines[lines.length - 1] ?? "", "#endexam");
+  const hasExamEndMarkerAtBottom = isStandaloneDirectiveLine(
+    lines[lines.length - 1] ?? "",
+    "#endexam",
+  );
 
   if (!hasExamStartMarkerAtTop) {
     lines.unshift("#exam");
@@ -2036,8 +2060,7 @@ type ListMarkerVariant =
   | "ordered-lower-alpha"
   | "ordered-lower-roman";
 
-const resolveOrderedListDelimiter = (raw: string): "." | ")" =>
-  raw === "." ? "." : ")";
+const resolveOrderedListDelimiter = (raw: string): "." | ")" => (raw === "." ? "." : ")");
 
 const UNORDERED_MARKER_VARIANTS = ["disc", "circle", "square"] as const;
 const ORDERED_MARKER_VARIANTS = ["decimal", "lower-alpha", "lower-roman"] as const;
@@ -2085,10 +2108,7 @@ const stripIndentWidthFromLine = (line: string, indentWidth: number) => {
 };
 
 const dedentListBlockPreviewSource = (block: MarkdownBlock, previewSource: string) => {
-  if (
-    (block.kind !== "ordered-list" && block.kind !== "unordered-list") ||
-    !previewSource
-  ) {
+  if ((block.kind !== "ordered-list" && block.kind !== "unordered-list") || !previewSource) {
     return previewSource;
   }
   const baseIndentWidth = block.meta?.listIndentWidth ?? 0;
@@ -2156,9 +2176,7 @@ const isListItemRawEffectivelyEmpty = (blockRaw: string, lineInfo: ListLineInfo 
 const buildSiblingListItemRaw = (lineInfo: ListLineInfo) => {
   if (lineInfo.kind === "ordered-list") {
     const baseNumber = Math.max(1, lineInfo.orderedNumber ?? 1);
-    const nextNumber = lineInfo.orderedDelimiter === ")"
-      ? baseNumber
-      : Math.max(1, baseNumber + 1);
+    const nextNumber = lineInfo.orderedDelimiter === ")" ? baseNumber : Math.max(1, baseNumber + 1);
     return `${lineInfo.indent}${nextNumber}${lineInfo.orderedDelimiter ?? "."}${lineInfo.spacing}${
       lineInfo.isTaskList ? "[ ] " : ""
     }`;
@@ -2175,10 +2193,7 @@ const resolveOutdentedListIndent = (lineInfo: ListLineInfo, parentIndent: string
   return stripIndentWidthFromLine(lineInfo.indent, 2);
 };
 
-const buildOutdentedListItemRaw = (
-  lineInfo: ListLineInfo,
-  parentIndent: string | null,
-) => {
+const buildOutdentedListItemRaw = (lineInfo: ListLineInfo, parentIndent: string | null) => {
   const nextIndent = resolveOutdentedListIndent(lineInfo, parentIndent);
   if (lineInfo.kind === "ordered-list") {
     return `${nextIndent}${lineInfo.orderedNumber ?? 1}${lineInfo.orderedDelimiter ?? "."}${lineInfo.spacing}${
@@ -2193,18 +2208,16 @@ const buildOutdentedListItemRaw = (
 const isInlineShiftableBlockKind = (kind: MarkdownBlock["kind"]) =>
   INLINE_SHIFTABLE_BLOCK_KIND_SET.has(kind);
 
-const shiftBlockRawInlineIndent = (
-  blockRaw: string,
-  direction: "left" | "right",
-) => blockRaw
-  .split("\n")
-  .map((line) => {
-    if (direction === "right") {
-      return line.length > 0 ? `${" ".repeat(LIST_INLINE_SHIFT_WIDTH)}${line}` : line;
-    }
-    return stripIndentWidthFromLine(line, LIST_INLINE_SHIFT_WIDTH);
-  })
-  .join("\n");
+const shiftBlockRawInlineIndent = (blockRaw: string, direction: "left" | "right") =>
+  blockRaw
+    .split("\n")
+    .map((line) => {
+      if (direction === "right") {
+        return line.length > 0 ? `${" ".repeat(LIST_INLINE_SHIFT_WIDTH)}${line}` : line;
+      }
+      return stripIndentWidthFromLine(line, LIST_INLINE_SHIFT_WIDTH);
+    })
+    .join("\n");
 
 const buildLineStartOffsets = (lines: string[]) => {
   const offsets: number[] = [];
@@ -2259,7 +2272,7 @@ const resolveShiftedSelectionOffset = (
       continue;
     }
     if (safeOffset > start) {
-      delta -= (safeOffset - start);
+      delta -= safeOffset - start;
     }
     break;
   }
@@ -2456,12 +2469,14 @@ const normalizeUnorderedListIndentationInMarkdown = (sourceMarkdown: string) => 
     if (block.kind !== "unordered-list") {
       return block;
     }
-    const listDepth = typeof block.meta?.listDepth === "number"
-      ? Math.max(0, Math.floor(block.meta.listDepth))
-      : null;
-    const currentIndentWidth = typeof block.meta?.listIndentWidth === "number"
-      ? Math.max(0, Math.floor(block.meta.listIndentWidth))
-      : null;
+    const listDepth =
+      typeof block.meta?.listDepth === "number"
+        ? Math.max(0, Math.floor(block.meta.listDepth))
+        : null;
+    const currentIndentWidth =
+      typeof block.meta?.listIndentWidth === "number"
+        ? Math.max(0, Math.floor(block.meta.listIndentWidth))
+        : null;
     if (listDepth === null || currentIndentWidth === null) {
       return block;
     }
@@ -2859,16 +2874,13 @@ const resolveDragPreviewPayload = (
   fromIndex: number,
   selection: BlockSelectionState | null,
 ) => {
-  const movingSelection =
-    Boolean(
-      selection &&
-        selection.selectedIndices.length > 1 &&
-        isBlockIndexSelected(selection, fromIndex),
-    );
+  const movingSelection = Boolean(
+    selection && selection.selectedIndices.length > 1 && isBlockIndexSelected(selection, fromIndex),
+  );
   const movedIndices = movingSelection
     ? [...(selection?.selectedIndices ?? [])]
-      .sort((left, right) => left - right)
-      .filter((index) => index >= 0 && index < blocks.length)
+        .sort((left, right) => left - right)
+        .filter((index) => index >= 0 && index < blocks.length)
     : [fromIndex];
   const leadBlock = blocks[movedIndices[0] ?? fromIndex] ?? blocks[fromIndex] ?? null;
   const leadKindLabel = resolveDragPreviewKindLabel(leadBlock?.kind ?? "paragraph");
@@ -2967,11 +2979,9 @@ const normalizeHelpBlockPreviewSource = (blockRaw: string) => {
   return previewLines.join("\n");
 };
 
-const isUnderscoreRuleLikeLine = (line: string) =>
-  /^\s{0,3}(?:_\s*){3,}$/.test(line);
+const isUnderscoreRuleLikeLine = (line: string) => /^\s{0,3}(?:_\s*){3,}$/.test(line);
 
-const isUnsupportedHeadingLine = (line: string) =>
-  /^\s{0,3}#{5,6}(?:\s+|$)/.test(line);
+const isUnsupportedHeadingLine = (line: string) => /^\s{0,3}#{5,6}(?:\s+|$)/.test(line);
 
 const isSupportedHeadingHashOnlyContentLine = (line: string) =>
   /^\s{0,3}#{2,4}\s+#+\s*$/.test(line);
@@ -3111,10 +3121,7 @@ const renderEditorInlineSyntaxSegments = (
   return parts;
 };
 
-const renderEditorInlineSyntaxOverlay = (
-  text: string,
-  activeSelectionStart: number | null,
-) => {
+const renderEditorInlineSyntaxOverlay = (text: string, activeSelectionStart: number | null) => {
   if (!text) {
     return null;
   }
@@ -3128,16 +3135,13 @@ const renderEditorInlineSyntaxOverlay = (
   const nodes: ReactNode[] = [];
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
     const line = lines[lineIndex] ?? "";
-    const lineNode = activeLineIndex === lineIndex
-      ? renderEditorInlineSyntaxSegments(
-        line,
-        `mdh-editor-inline-line-${lineIndex}`,
-        {
-          shouldRenderKind: (kind) => kind === "markdown-inline-code",
-          getClassName: (kind) => kind === "markdown-inline-code" ? "is-active-line" : null,
-        },
-      )
-      : renderEditorInlineSyntaxSegments(line, `mdh-editor-inline-line-${lineIndex}`);
+    const lineNode =
+      activeLineIndex === lineIndex
+        ? renderEditorInlineSyntaxSegments(line, `mdh-editor-inline-line-${lineIndex}`, {
+            shouldRenderKind: (kind) => kind === "markdown-inline-code",
+            getClassName: (kind) => (kind === "markdown-inline-code" ? "is-active-line" : null),
+          })
+        : renderEditorInlineSyntaxSegments(line, `mdh-editor-inline-line-${lineIndex}`);
     nodes.push(lineNode);
     if (lineIndex < lines.length - 1) {
       nodes.push("\n");
@@ -3199,16 +3203,20 @@ const normalizeLeadingHeadingSpacing = (
   blockKind: MarkdownBlock["kind"] | null | undefined,
   selectionOffset?: number | null,
 ) => {
-  if (!blockKind || (blockKind !== "blank" && blockKind !== "paragraph" && blockKind !== "heading")) {
+  if (
+    !blockKind ||
+    (blockKind !== "blank" && blockKind !== "paragraph" && blockKind !== "heading")
+  ) {
     return null;
   }
-  const lineRange = typeof selectionOffset === "number"
-    ? getLineRangeAtOffset(value, selectionOffset)
-    : {
-      start: 0,
-      end: value.indexOf("\n") >= 0 ? value.indexOf("\n") : value.length,
-      line: value.split("\n")[0] ?? "",
-    };
+  const lineRange =
+    typeof selectionOffset === "number"
+      ? getLineRangeAtOffset(value, selectionOffset)
+      : {
+          start: 0,
+          end: value.indexOf("\n") >= 0 ? value.indexOf("\n") : value.length,
+          line: value.split("\n")[0] ?? "",
+        };
   const line = lineRange.line;
   // Pure hash marker runs (e.g. ###, ####) are valid and must not be split
   // by backtracking the final # into heading content during normalization.
@@ -3240,32 +3248,25 @@ const normalizeLeadingHeadingSpacing = (
   };
 };
 
-const toEditorDraftForBlock = (
-  block: Pick<MarkdownBlock, "kind" | "raw">,
-) =>
+const toEditorDraftForBlock = (block: Pick<MarkdownBlock, "kind" | "raw">) =>
   block.kind === "hr"
     ? extractHorizontalRuleEditorDraft(block.raw)
     : block.kind === "math-block"
-    ? normalizeMathBlockSource(block.raw)
-    : block.raw;
+      ? normalizeMathBlockSource(block.raw)
+      : block.raw;
 
-const toPersistedBlockRawForDraft = (
-  block: Pick<MarkdownBlock, "kind">,
-  draft: string,
-) =>
+const toPersistedBlockRawForDraft = (block: Pick<MarkdownBlock, "kind">, draft: string) =>
   block.kind === "hr"
     ? serializeHorizontalRuleEditorDraft(draft)
     : block.kind === "math-block"
-    ? normalizeMathBlockSource(draft)
-    : block.kind === "card-end"
-    ? normalizeCardBlockSource(draft)
-    : draft;
+      ? normalizeMathBlockSource(draft)
+      : block.kind === "card-end"
+        ? normalizeCardBlockSource(draft)
+        : draft;
 
 const applyEditorMarkdownNormalization = (value: string) =>
   normalizeUnorderedListIndentationInMarkdown(
-    normalizeExamTaskHeadingIndentationInMarkdown(
-      normalizeHorizontalRuleSpacingInMarkdown(value),
-    ),
+    normalizeExamTaskHeadingIndentationInMarkdown(normalizeHorizontalRuleSpacingInMarkdown(value)),
   );
 
 const createActiveEditSnapshotFromBlock = (
@@ -3306,7 +3307,8 @@ const mergeDeferredEditAction = (
   if (current.kind === "discard" || nextAction.kind === "discard") {
     return { kind: "discard" };
   }
-  const nextActivation = nextAction.options?.nextActivation ?? current.options?.nextActivation ?? null;
+  const nextActivation =
+    nextAction.options?.nextActivation ?? current.options?.nextActivation ?? null;
   return {
     kind: "commit",
     options: {
@@ -3316,1822 +3318,857 @@ const mergeDeferredEditAction = (
   };
 };
 
-export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, MarkdownHybridEditorProps>(
-({
-  historyKey,
-  markdown,
-  mode,
-  tableCodeViewPolicy = "default",
-  disabled = false,
-  vaultFiles,
-  vaultPngAssets,
-  vaultPath,
-  sourceHasFrontmatter = false,
-  sourceRelativePath,
-  onNavigateWikilink,
-  runnableExamRelativePaths,
-  onOpenExamFromDatabaseRecord,
-  monitoringProfiles = [],
-  canvasCustomColors,
-  onCanvasCustomColorsChange,
-  onChange,
-  onCommit,
-  onDirtyChange,
-  renderPreview,
-}: MarkdownHybridEditorProps, ref) => {
-  const { snapshot: markdownDocumentSnapshot } = useMarkdownDocumentModel(markdown, {
-    profile: HYBRID_MARKDOWN_PARSE_OPTIONS.profile,
-  });
-  const blocks = markdownDocumentSnapshot.markdown === markdown
-    ? markdownDocumentSnapshot.blocks
-    : parseHybridMarkdownBlocks(markdown);
-  const [activeBlockIndex, setActiveBlockIndex] = useState<number | null>(null);
-  const [activeDraft, setActiveDraft] = useState("");
-  const [activeDirty, setActiveDirty] = useState(false);
-  const [activeEditSnapshot, setActiveEditSnapshot] = useState<ActiveEditSnapshot | null>(null);
-  const [activeComposing, setActiveComposing] = useState(false);
-  const [activeTableDirty, setActiveTableDirty] = useState(false);
-  const [history, setHistory] = useState<MarkdownHistoryState>(() =>
-    createMarkdownHistory(markdown),
-  );
-  const [pendingActivation, setPendingActivation] = useState<PendingActivation | null>(
-    null,
-  );
-  const [pendingTableActivation, setPendingTableActivation] = useState<PendingTableActivation | null>(null);
-  const [selectedBlockSelection, setSelectedBlockSelection] = useState<BlockSelectionState | null>(
-    null,
-  );
-  const [isSelectionDragging, setIsSelectionDragging] = useState(false);
-  const [draggedBlockIndex, setDraggedBlockIndex] = useState<number | null>(null);
-  const [dropIndicatorIndex, setDropIndicatorIndex] = useState<number | null>(null);
-  const [hoveredOverlayBlockIndex, setHoveredOverlayBlockIndex] = useState<number | null>(null);
-  const [dragPreviewState, setDragPreviewState] = useState<DragPreviewState | null>(null);
-  const [insertMenuState, setInsertMenuState] = useState<InsertMenuState | null>(null);
-  const [mathToolboxState, setMathToolboxState] = useState<MathToolboxState | null>(null);
-  const [selectionContextMenuState, setSelectionContextMenuState] =
-    useState<SelectionContextMenuState | null>(null);
-  const [selectionMarqueeRect, setSelectionMarqueeRect] = useState<SelectionMarqueeRect | null>(
-    null,
-  );
-  const [pendingTypedImageLinkPickerRequest, setPendingTypedImageLinkPickerRequest] =
-    useState<PendingTypedImageLinkPickerRequest | null>(null);
-  const [typedImageLinkPickerState, setTypedImageLinkPickerState] = useState<TypedImageLinkPickerState | null>(null);
-  const [pendingPageLinkPickerRequest, setPendingPageLinkPickerRequest] =
-    useState<PendingPageLinkPickerRequest | null>(null);
-  const [pageLinkPickerState, setPageLinkPickerState] = useState<PageLinkPickerState | null>(null);
-  const [imageEmbedReplacePickerState, setImageEmbedReplacePickerState] =
-    useState<ImageEmbedReplacePickerState | null>(null);
-  const [inlineFormattingToolbarSelection, setInlineFormattingToolbarSelection] =
-    useState<InlineFormattingToolbarSelection | null>(null);
-  const [inlineFormattingToolbarMenu, setInlineFormattingToolbarMenu] =
-    useState<InlineFormattingToolbarMenu>(null);
-  const [inlineFormattingToolbarLinkState, setInlineFormattingToolbarLinkState] =
-    useState<InlineFormattingToolbarLinkState | null>(null);
-  const [editorOverlaySelectionStart, setEditorOverlaySelectionStart] = useState<number | null>(
-    null,
-  );
-  const deviceMemoryGb = useMemo(() => resolveDeviceMemoryInGb(), []);
-  const [overlayLayout, setOverlayLayout] = useState<OverlayLayoutState>(() => ({
-    byIndex: new Map(),
-    contentPaddingLeft: OVERLAY_LEFT_GUTTER_WIDTH,
-    contentPaddingRight: OVERLAY_RIGHT_GUTTER_WIDTH,
-  }));
-  const [virtualViewport, setVirtualViewport] = useState<{ top: number; bottom: number }>({
-    top: 0,
-    bottom: Number.POSITIVE_INFINITY,
-  });
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const contentLayerRef = useRef<HTMLDivElement | null>(null);
-  const insertMenuRef = useRef<HTMLDivElement | null>(null);
-  const mathToolboxRef = useRef<HTMLDivElement | null>(null);
-  const selectionContextMenuRef = useRef<HTMLDivElement | null>(null);
-  const pageLinkPickerRef = useRef<HTMLDivElement | null>(null);
-  const pageLinkPickerSearchInputRef = useRef<HTMLInputElement | null>(null);
-  const typedImageLinkPickerRef = useRef<HTMLDivElement | null>(null);
-  const imageEmbedReplacePickerRef = useRef<HTMLDivElement | null>(null);
-  const inlineFormattingToolbarRef = useRef<HTMLDivElement | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const editorSyntaxOverlayContentRef = useRef<HTMLDivElement | null>(null);
-  const pendingCaretRef = useRef<"start" | "end" | null>(null);
-  const pendingTextareaSelectionRef = useRef<{ start: number; end: number } | null>(null);
-  const autoActivatedWriteKeyRef = useRef<string | null>(null);
-  const selectionGestureRef = useRef<SelectionGestureState | null>(null);
-  const suppressNextBlockContextMenuRef = useRef(false);
-  const overlayMeasureFrameRef = useRef<number | null>(null);
-  const virtualViewportFrameRef = useRef<number | null>(null);
-  const selectionAutoScrollFrameRef = useRef<number | null>(null);
-  const selectionDragUpdateFrameRef = useRef<number | null>(null);
-  const dragPreviewFrameRef = useRef<number | null>(null);
-  const dragPreviewPointerRef = useRef<{ x: number; y: number } | null>(null);
-  const dragImageElementRef = useRef<HTMLDivElement | null>(null);
-  const blockReorderDragSessionRef = useRef<BlockReorderDragSessionState>(
-    createInactiveBlockReorderDragSession(),
-  );
-  const activeTextareaLayoutFrameRef = useRef<number | null>(null);
-  const selectionDragPointerRef = useRef<{ x: number; y: number } | null>(null);
-  const inlineFormattingToolbarTimerRef = useRef<number | null>(null);
-  const inlineFormattingToolbarPendingSignatureRef = useRef<string | null>(null);
-  const inlineFormattingToolbarRangeRef = useRef<{
-    blockIndex: number;
-    start: number;
-    end: number;
-  } | null>(null);
-  const activeDraftRef = useRef("");
-  const activeComposingRef = useRef(false);
-  const activeEditSnapshotRef = useRef<ActiveEditSnapshot | null>(null);
-  const deferredEditActionRef = useRef<DeferredEditAction | null>(null);
-  const deferredEditRequestsRef = useRef<DeferredEditRequest[]>([]);
-  const deferredEditFlushFrameRef = useRef<number | null>(null);
-  const stableBlockRenderTokensRef = useRef<StableRenderKeyToken[]>([]);
-  const stableBlockRenderKeyCounterRef = useRef(0);
-  const pendingActivationMarkdownRef = useRef<string | null>(null);
-  const activeTableSessionRef = useRef<MarkdownHybridTableSessionController | null>(null);
-  const codeFencePreviewHeightsRef = useRef<Map<string, number>>(new Map());
-  const blockHeightCacheRef = useRef<Map<string, number>>(new Map());
+export const MarkdownHybridEditor = forwardRef<
+  MarkdownHybridEditorHandle,
+  MarkdownHybridEditorProps
+>(
+  (
+    {
+      historyKey,
+      markdown,
+      mode,
+      tableCodeViewPolicy = "default",
+      disabled = false,
+      vaultFiles,
+      vaultPngAssets,
+      vaultPath,
+      sourceHasFrontmatter = false,
+      sourceRelativePath,
+      onNavigateWikilink,
+      runnableExamRelativePaths,
+      onOpenExamFromDatabaseRecord,
+      monitoringProfiles = [],
+      canvasCustomColors,
+      onCanvasCustomColorsChange,
+      onChange,
+      onCommit,
+      onDirtyChange,
+      renderPreview,
+    }: MarkdownHybridEditorProps,
+    ref,
+  ) => {
+    const { snapshot: markdownDocumentSnapshot } = useMarkdownDocumentModel(markdown, {
+      profile: HYBRID_MARKDOWN_PARSE_OPTIONS.profile,
+    });
+    const blocks =
+      markdownDocumentSnapshot.markdown === markdown
+        ? markdownDocumentSnapshot.blocks
+        : parseHybridMarkdownBlocks(markdown);
+    const [activeBlockIndex, setActiveBlockIndex] = useState<number | null>(null);
+    const [activeDraft, setActiveDraft] = useState("");
+    const [activeDirty, setActiveDirty] = useState(false);
+    const [activeEditSnapshot, setActiveEditSnapshot] = useState<ActiveEditSnapshot | null>(null);
+    const [activeComposing, setActiveComposing] = useState(false);
+    const [activeTableDirty, setActiveTableDirty] = useState(false);
+    const [history, setHistory] = useState<MarkdownHistoryState>(() =>
+      createMarkdownHistory(markdown),
+    );
+    const [pendingActivation, setPendingActivation] = useState<PendingActivation | null>(null);
+    const [pendingTableActivation, setPendingTableActivation] =
+      useState<PendingTableActivation | null>(null);
+    const [selectedBlockSelection, setSelectedBlockSelection] =
+      useState<BlockSelectionState | null>(null);
+    const [isSelectionDragging, setIsSelectionDragging] = useState(false);
+    const [draggedBlockIndex, setDraggedBlockIndex] = useState<number | null>(null);
+    const [dropIndicatorIndex, setDropIndicatorIndex] = useState<number | null>(null);
+    const [hoveredOverlayBlockIndex, setHoveredOverlayBlockIndex] = useState<number | null>(null);
+    const [dragPreviewState, setDragPreviewState] = useState<DragPreviewState | null>(null);
+    const [insertMenuState, setInsertMenuState] = useState<InsertMenuState | null>(null);
+    const [mathToolboxState, setMathToolboxState] = useState<MathToolboxState | null>(null);
+    const [selectionContextMenuState, setSelectionContextMenuState] =
+      useState<SelectionContextMenuState | null>(null);
+    const [selectionMarqueeRect, setSelectionMarqueeRect] = useState<SelectionMarqueeRect | null>(
+      null,
+    );
+    const [pendingTypedImageLinkPickerRequest, setPendingTypedImageLinkPickerRequest] =
+      useState<PendingTypedImageLinkPickerRequest | null>(null);
+    const [typedImageLinkPickerState, setTypedImageLinkPickerState] =
+      useState<TypedImageLinkPickerState | null>(null);
+    const [pendingPageLinkPickerRequest, setPendingPageLinkPickerRequest] =
+      useState<PendingPageLinkPickerRequest | null>(null);
+    const [pageLinkPickerState, setPageLinkPickerState] = useState<PageLinkPickerState | null>(
+      null,
+    );
+    const [imageEmbedReplacePickerState, setImageEmbedReplacePickerState] =
+      useState<ImageEmbedReplacePickerState | null>(null);
+    const [inlineFormattingToolbarSelection, setInlineFormattingToolbarSelection] =
+      useState<InlineFormattingToolbarSelection | null>(null);
+    const [inlineFormattingToolbarMenu, setInlineFormattingToolbarMenu] =
+      useState<InlineFormattingToolbarMenu>(null);
+    const [inlineFormattingToolbarLinkState, setInlineFormattingToolbarLinkState] =
+      useState<InlineFormattingToolbarLinkState | null>(null);
+    const [editorOverlaySelectionStart, setEditorOverlaySelectionStart] = useState<number | null>(
+      null,
+    );
+    const deviceMemoryGb = useMemo(() => resolveDeviceMemoryInGb(), []);
+    const [overlayLayout, setOverlayLayout] = useState<OverlayLayoutState>(() => ({
+      byIndex: new Map(),
+      contentPaddingLeft: OVERLAY_LEFT_GUTTER_WIDTH,
+      contentPaddingRight: OVERLAY_RIGHT_GUTTER_WIDTH,
+    }));
+    const [virtualViewport, setVirtualViewport] = useState<{ top: number; bottom: number }>({
+      top: 0,
+      bottom: Number.POSITIVE_INFINITY,
+    });
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const contentLayerRef = useRef<HTMLDivElement | null>(null);
+    const insertMenuRef = useRef<HTMLDivElement | null>(null);
+    const mathToolboxRef = useRef<HTMLDivElement | null>(null);
+    const selectionContextMenuRef = useRef<HTMLDivElement | null>(null);
+    const pageLinkPickerRef = useRef<HTMLDivElement | null>(null);
+    const pageLinkPickerSearchInputRef = useRef<HTMLInputElement | null>(null);
+    const typedImageLinkPickerRef = useRef<HTMLDivElement | null>(null);
+    const imageEmbedReplacePickerRef = useRef<HTMLDivElement | null>(null);
+    const inlineFormattingToolbarRef = useRef<HTMLDivElement | null>(null);
+    const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+    const editorSyntaxOverlayContentRef = useRef<HTMLDivElement | null>(null);
+    const pendingCaretRef = useRef<"start" | "end" | null>(null);
+    const pendingTextareaSelectionRef = useRef<{ start: number; end: number } | null>(null);
+    const autoActivatedWriteKeyRef = useRef<string | null>(null);
+    const selectionGestureRef = useRef<SelectionGestureState | null>(null);
+    const suppressNextBlockContextMenuRef = useRef(false);
+    const overlayMeasureFrameRef = useRef<number | null>(null);
+    const virtualViewportFrameRef = useRef<number | null>(null);
+    const selectionAutoScrollFrameRef = useRef<number | null>(null);
+    const selectionDragUpdateFrameRef = useRef<number | null>(null);
+    const dragPreviewFrameRef = useRef<number | null>(null);
+    const dragPreviewPointerRef = useRef<{ x: number; y: number } | null>(null);
+    const dragImageElementRef = useRef<HTMLDivElement | null>(null);
+    const blockReorderDragSessionRef = useRef<BlockReorderDragSessionState>(
+      createInactiveBlockReorderDragSession(),
+    );
+    const activeTextareaLayoutFrameRef = useRef<number | null>(null);
+    const selectionDragPointerRef = useRef<{ x: number; y: number } | null>(null);
+    const inlineFormattingToolbarTimerRef = useRef<number | null>(null);
+    const inlineFormattingToolbarPendingSignatureRef = useRef<string | null>(null);
+    const inlineFormattingToolbarRangeRef = useRef<{
+      blockIndex: number;
+      start: number;
+      end: number;
+    } | null>(null);
+    const activeDraftRef = useRef("");
+    const activeComposingRef = useRef(false);
+    const activeEditSnapshotRef = useRef<ActiveEditSnapshot | null>(null);
+    const deferredEditActionRef = useRef<DeferredEditAction | null>(null);
+    const deferredEditRequestsRef = useRef<DeferredEditRequest[]>([]);
+    const deferredEditFlushFrameRef = useRef<number | null>(null);
+    const stableBlockRenderTokensRef = useRef<StableRenderKeyToken[]>([]);
+    const stableBlockRenderKeyCounterRef = useRef(0);
+    const pendingActivationMarkdownRef = useRef<string | null>(null);
+    const activeTableSessionRef = useRef<MarkdownHybridTableSessionController | null>(null);
+    const codeFencePreviewHeightsRef = useRef<Map<string, number>>(new Map());
+    const blockHeightCacheRef = useRef<Map<string, number>>(new Map());
 
-  useEffect(() => {
-    activeDraftRef.current = activeDraft;
-  }, [activeDraft]);
+    useEffect(() => {
+      activeDraftRef.current = activeDraft;
+    }, [activeDraft]);
 
-  useEffect(() => {
-    activeComposingRef.current = activeComposing;
-  }, [activeComposing]);
+    useEffect(() => {
+      activeComposingRef.current = activeComposing;
+    }, [activeComposing]);
 
-  useEffect(() => {
-    activeEditSnapshotRef.current = activeEditSnapshot;
-  }, [activeEditSnapshot]);
+    useEffect(() => {
+      activeEditSnapshotRef.current = activeEditSnapshot;
+    }, [activeEditSnapshot]);
 
-  const updateActiveDraftState = useCallback((nextDraft: string) => {
-    activeDraftRef.current = nextDraft;
-    setActiveDraft(nextDraft);
-  }, []);
+    const updateActiveDraftState = useCallback((nextDraft: string) => {
+      activeDraftRef.current = nextDraft;
+      setActiveDraft(nextDraft);
+    }, []);
 
-  const removeDragImageElement = useCallback(() => {
-    const current = dragImageElementRef.current;
-    if (current && current.parentNode) {
-      current.parentNode.removeChild(current);
-    }
-    dragImageElementRef.current = null;
-  }, []);
+    const removeDragImageElement = useCallback(() => {
+      const current = dragImageElementRef.current;
+      if (current && current.parentNode) {
+        current.parentNode.removeChild(current);
+      }
+      dragImageElementRef.current = null;
+    }, []);
 
-  const createDragImageElement = useCallback(() => {
-    if (typeof document === "undefined") {
-      return null;
-    }
-    removeDragImageElement();
-    const element = document.createElement("div");
-    element.className = "markdown-hybrid-block-drag-image";
-    document.body.appendChild(element);
-    dragImageElementRef.current = element;
-    return element;
-  }, [removeDragImageElement]);
+    const createDragImageElement = useCallback(() => {
+      if (typeof document === "undefined") {
+        return null;
+      }
+      removeDragImageElement();
+      const element = document.createElement("div");
+      element.className = "markdown-hybrid-block-drag-image";
+      document.body.appendChild(element);
+      dragImageElementRef.current = element;
+      return element;
+    }, [removeDragImageElement]);
 
-  const startBlockReorderDragSession = useCallback((sourceIndex: number) => {
-    blockReorderDragSessionRef.current = {
-      active: true,
-      sourceIndex,
-      startedAt: Date.now(),
-    };
-  }, []);
+    const startBlockReorderDragSession = useCallback((sourceIndex: number) => {
+      blockReorderDragSessionRef.current = {
+        active: true,
+        sourceIndex,
+        startedAt: Date.now(),
+      };
+    }, []);
 
-  const clearBlockReorderDragSession = useCallback(() => {
-    blockReorderDragSessionRef.current = createInactiveBlockReorderDragSession();
-  }, []);
+    const clearBlockReorderDragSession = useCallback(() => {
+      blockReorderDragSessionRef.current = createInactiveBlockReorderDragSession();
+    }, []);
 
-  const resolveActiveDraggedBlockIndex = useCallback(() => {
-    if (draggedBlockIndex !== null) {
-      return draggedBlockIndex;
-    }
-    const session = blockReorderDragSessionRef.current;
-    return session.active ? session.sourceIndex : null;
-  }, [draggedBlockIndex]);
+    const resolveActiveDraggedBlockIndex = useCallback(() => {
+      if (draggedBlockIndex !== null) {
+        return draggedBlockIndex;
+      }
+      const session = blockReorderDragSessionRef.current;
+      return session.active ? session.sourceIndex : null;
+    }, [draggedBlockIndex]);
 
-  const clearBlockReorderDragVisualState = useCallback(() => {
-    setDraggedBlockIndex(null);
-    setDropIndicatorIndex(null);
-    setDragPreviewState(null);
-    dragPreviewPointerRef.current = null;
-    removeDragImageElement();
-    clearBlockReorderDragSession();
-    endInternalDrag(DRAG_CHANNELS.MARKDOWN_BLOCK);
-  }, [clearBlockReorderDragSession, removeDragImageElement]);
+    const clearBlockReorderDragVisualState = useCallback(() => {
+      setDraggedBlockIndex(null);
+      setDropIndicatorIndex(null);
+      setDragPreviewState(null);
+      dragPreviewPointerRef.current = null;
+      removeDragImageElement();
+      clearBlockReorderDragSession();
+      endInternalDrag(DRAG_CHANNELS.MARKDOWN_BLOCK);
+    }, [clearBlockReorderDragSession, removeDragImageElement]);
 
-  const scheduleDragPreviewPointerUpdate = useCallback((clientX: number, clientY: number) => {
-    dragPreviewPointerRef.current = { x: clientX, y: clientY };
-    if (dragPreviewFrameRef.current !== null) {
-      return;
-    }
-    dragPreviewFrameRef.current = window.requestAnimationFrame(() => {
-      dragPreviewFrameRef.current = null;
-      const point = dragPreviewPointerRef.current;
-      if (!point) {
+    const scheduleDragPreviewPointerUpdate = useCallback((clientX: number, clientY: number) => {
+      dragPreviewPointerRef.current = { x: clientX, y: clientY };
+      if (dragPreviewFrameRef.current !== null) {
         return;
       }
-      setDragPreviewState((current) =>
-        current
-          ? {
-              ...current,
-              pointerX: point.x,
-              pointerY: point.y,
-            }
-          : current,
-      );
-    });
-  }, []);
+      dragPreviewFrameRef.current = window.requestAnimationFrame(() => {
+        dragPreviewFrameRef.current = null;
+        const point = dragPreviewPointerRef.current;
+        if (!point) {
+          return;
+        }
+        setDragPreviewState((current) =>
+          current
+            ? {
+                ...current,
+                pointerX: point.x,
+                pointerY: point.y,
+              }
+            : current,
+        );
+      });
+    }, []);
 
-  useEffect(
-    () => () => {
+    useEffect(
+      () => () => {
+        if (dragPreviewFrameRef.current !== null) {
+          window.cancelAnimationFrame(dragPreviewFrameRef.current);
+          dragPreviewFrameRef.current = null;
+        }
+        dragPreviewPointerRef.current = null;
+        removeDragImageElement();
+        clearBlockReorderDragSession();
+      },
+      [clearBlockReorderDragSession, removeDragImageElement],
+    );
+
+    useEffect(() => {
+      if (draggedBlockIndex !== null) {
+        return;
+      }
+      setDragPreviewState(null);
+      dragPreviewPointerRef.current = null;
       if (dragPreviewFrameRef.current !== null) {
         window.cancelAnimationFrame(dragPreviewFrameRef.current);
         dragPreviewFrameRef.current = null;
       }
-      dragPreviewPointerRef.current = null;
       removeDragImageElement();
       clearBlockReorderDragSession();
-    },
-    [clearBlockReorderDragSession, removeDragImageElement],
-  );
+    }, [clearBlockReorderDragSession, draggedBlockIndex, removeDragImageElement]);
 
-  useEffect(() => {
-    if (draggedBlockIndex !== null) {
-      return;
-    }
-    setDragPreviewState(null);
-    dragPreviewPointerRef.current = null;
-    if (dragPreviewFrameRef.current !== null) {
-      window.cancelAnimationFrame(dragPreviewFrameRef.current);
-      dragPreviewFrameRef.current = null;
-    }
-    removeDragImageElement();
-    clearBlockReorderDragSession();
-  }, [clearBlockReorderDragSession, draggedBlockIndex, removeDragImageElement]);
-
-  const resolveCodeFencePreviewItems = useCallback(
-    (raw: string): MediaItem[] =>
-      splitMarkdownMediaSegments(raw, "markdown-hybrid-code-fence-preview")
-        .flatMap((segment) => (segment.kind === "media" ? segment.items : [])),
-    [],
-  );
-
-  const isSvgCodeFencePreviewBlock = useCallback(
-    (block: MarkdownBlock | null | undefined) => {
-      if (!block || block.kind !== "code-fence") {
-        return false;
-      }
-      return resolveCodeFencePreviewItems(block.raw).some((item) => item.type === "svg");
-    },
-    [resolveCodeFencePreviewItems],
-  );
-
-  const resolveStoredSvgCodeFencePreviewHeight = useCallback(
-    (block: MarkdownBlock | null | undefined) => {
-      if (!block || !isSvgCodeFencePreviewBlock(block)) {
-        return null;
-      }
-      const height = codeFencePreviewHeightsRef.current.get(block.id);
-      if (typeof height !== "number" || !Number.isFinite(height) || height <= 0) {
-        return null;
-      }
-      return height;
-    },
-    [isSvgCodeFencePreviewBlock],
-  );
-
-  const cacheSvgCodeFencePreviewHeightForBlock = useCallback(
-    (blockIndex: number, block?: MarkdownBlock | null) => {
-      const targetBlock = block ?? blocks[blockIndex];
-      if (!targetBlock || !isSvgCodeFencePreviewBlock(targetBlock)) {
-        return null;
-      }
-      const contentLayer = contentLayerRef.current;
-      if (!contentLayer) {
-        return null;
-      }
-      const blockElement = contentLayer.querySelector<HTMLElement>(
-        `.markdown-hybrid-block[data-md-block-index="${blockIndex}"]`,
-      );
-      const previewElement = blockElement?.querySelector<HTMLElement>(
-        ".markdown-hybrid-block-preview.markdown-hybrid-media-block-preview",
-      );
-      if (!previewElement) {
-        return null;
-      }
-      const nextHeight = Math.max(
-        1,
-        Math.round(previewElement.getBoundingClientRect().height),
-      );
-      codeFencePreviewHeightsRef.current.set(targetBlock.id, nextHeight);
-      return nextHeight;
-    },
-    [blocks, isSvgCodeFencePreviewBlock],
-  );
-
-  const blockRenderKeys = useMemo(() => {
-    const assigned = assignStableRenderKeys(
-      blocks,
-      stableBlockRenderTokensRef.current,
-      stableBlockRenderKeyCounterRef,
-      activeBlockIndex,
+    const resolveCodeFencePreviewItems = useCallback(
+      (raw: string): MediaItem[] =>
+        splitMarkdownMediaSegments(raw, "markdown-hybrid-code-fence-preview").flatMap((segment) =>
+          segment.kind === "media" ? segment.items : [],
+        ),
+      [],
     );
-    stableBlockRenderTokensRef.current = assigned.tokens;
-    return assigned.keys;
-  }, [activeBlockIndex, blocks]);
-  const overlayRows = useMemo(
-    () => Array.from(overlayLayout.byIndex.values()),
-    [overlayLayout.byIndex],
-  );
-  const cardGroupRails = useMemo(() => {
-    if (blocks.length === 0 || overlayLayout.byIndex.size === 0) {
-      return [] as CardGroupOverlayRail[];
-    }
 
-    const fullBoundsByGroupId = new Map<string, {
-      firstIndex: number;
-      lastIndex: number;
-      hasStart: boolean;
-    }>();
-    for (let index = 0; index < blocks.length; index += 1) {
-      const groupId = blocks[index]?.meta?.cardGroupId;
-      if (!groupId) {
-        continue;
-      }
-      const role = blocks[index]?.meta?.cardGroupRole;
-      const current = fullBoundsByGroupId.get(groupId);
-      if (!current) {
-        fullBoundsByGroupId.set(groupId, {
-          firstIndex: index,
-          lastIndex: index,
-          hasStart: role === "start",
-        });
-        continue;
-      }
-      if (index < current.firstIndex) {
-        current.firstIndex = index;
-      }
-      if (index > current.lastIndex) {
-        current.lastIndex = index;
-      }
-      if (role === "start") {
-        current.hasStart = true;
-      }
-    }
-
-    const visibleBoundsByGroupId = new Map<string, {
-      top: number;
-      bottom: number;
-      firstIndex: number;
-      lastIndex: number;
-    }>();
-    for (const [index, row] of overlayLayout.byIndex) {
-      const groupId = blocks[index]?.meta?.cardGroupId;
-      if (!groupId) {
-        continue;
-      }
-      const current = visibleBoundsByGroupId.get(groupId);
-      const rowTop = row.top;
-      const rowBottom = row.top + row.height;
-      if (!current) {
-        visibleBoundsByGroupId.set(groupId, {
-          top: rowTop,
-          bottom: rowBottom,
-          firstIndex: index,
-          lastIndex: index,
-        });
-        continue;
-      }
-      if (rowTop < current.top) {
-        current.top = rowTop;
-      }
-      if (rowBottom > current.bottom) {
-        current.bottom = rowBottom;
-      }
-      if (index < current.firstIndex) {
-        current.firstIndex = index;
-      }
-      if (index > current.lastIndex) {
-        current.lastIndex = index;
-      }
-    }
-
-    const nextRails: CardGroupOverlayRail[] = [];
-    for (const [groupId, visible] of visibleBoundsByGroupId) {
-      const full = fullBoundsByGroupId.get(groupId);
-      const top = Math.max(0, visible.top);
-      const height = Math.max(1, visible.bottom - visible.top);
-      nextRails.push({
-        groupId,
-        top,
-        height,
-        showStartCap: full
-          ? visible.firstIndex === full.firstIndex && full.hasStart
-          : true,
-        showEndCap: full
-          ? visible.lastIndex === full.lastIndex
-          : true,
-      });
-    }
-
-    nextRails.sort((left, right) => (
-      left.top - right.top || left.groupId.localeCompare(right.groupId)
-    ));
-    return nextRails;
-  }, [blocks, overlayLayout.byIndex]);
-
-  useEffect(() => {
-    const knownBlockIds = new Set(blocks.map((block) => block.id));
-    const cachedHeights = codeFencePreviewHeightsRef.current;
-    for (const blockId of Array.from(cachedHeights.keys())) {
-      if (!knownBlockIds.has(blockId)) {
-        cachedHeights.delete(blockId);
-      }
-    }
-    const blockHeights = blockHeightCacheRef.current;
-    for (const blockId of Array.from(blockHeights.keys())) {
-      if (!knownBlockIds.has(blockId)) {
-        blockHeights.delete(blockId);
-      }
-    }
-  }, [blocks]);
-
-  useEffect(() => {
-    const blockHeights = blockHeightCacheRef.current;
-    for (const row of overlayRows) {
-      const block = blocks[row.index];
-      if (!block) {
-        continue;
-      }
-      blockHeights.set(block.id, Math.max(1, Math.round(row.height)));
-    }
-  }, [blocks, overlayRows]);
-
-  const resolveEstimatedBlockHeight = useCallback(
-    (blockIndex: number, block: MarkdownBlock) => {
-      const fromOverlay = overlayLayout.byIndex.get(blockIndex)?.height;
-      if (typeof fromOverlay === "number" && Number.isFinite(fromOverlay) && fromOverlay > 0) {
-        return fromOverlay;
-      }
-      const fromCache = blockHeightCacheRef.current.get(block.id);
-      if (typeof fromCache === "number" && Number.isFinite(fromCache) && fromCache > 0) {
-        return fromCache;
-      }
-      const fromSvgCache = resolveStoredSvgCodeFencePreviewHeight(block);
-      if (typeof fromSvgCache === "number" && Number.isFinite(fromSvgCache) && fromSvgCache > 0) {
-        return fromSvgCache;
-      }
-      return resolveVirtualizationFallbackHeight(block.kind);
-    },
-    [overlayLayout.byIndex, resolveStoredSvgCodeFencePreviewHeight],
-  );
-
-  const allowVirtualizationByMemory =
-    typeof deviceMemoryGb === "number" &&
-    deviceMemoryGb > VIRTUALIZATION_MIN_DEVICE_MEMORY_GB;
-  const shouldVirtualizeBlocks =
-    allowVirtualizationByMemory &&
-    blocks.length >= VIRTUALIZATION_BLOCK_THRESHOLD;
-  const pinnedVirtualizedIndices = useMemo(() => {
-    const pinned = new Set<number>();
-    if (typeof activeBlockIndex === "number" && activeBlockIndex >= 0) {
-      pinned.add(activeBlockIndex);
-    }
-    if (selectedBlockSelection) {
-      for (const selectedIndex of selectedBlockSelection.selectedIndices) {
-        pinned.add(selectedIndex);
-      }
-    }
-    if (typeof draggedBlockIndex === "number" && draggedBlockIndex >= 0) {
-      pinned.add(draggedBlockIndex);
-    }
-    if (typeof dropIndicatorIndex === "number") {
-      pinned.add(dropIndicatorIndex);
-      pinned.add(Math.max(0, dropIndicatorIndex - 1));
-    }
-    return pinned;
-  }, [activeBlockIndex, draggedBlockIndex, dropIndicatorIndex, selectedBlockSelection]);
-
-  const visibleVirtualizedIndices = useMemo(() => {
-    if (!shouldVirtualizeBlocks) {
-      return null;
-    }
-    if (!Number.isFinite(virtualViewport.bottom) || virtualViewport.bottom <= 0) {
-      return null;
-    }
-    const top = Math.max(0, virtualViewport.top - VIRTUALIZATION_OVERSCAN_PX);
-    const bottom = Math.max(top, virtualViewport.bottom + VIRTUALIZATION_OVERSCAN_PX);
-    const visible = new Set<number>();
-    let fallbackTop = 0;
-
-    for (let index = 0; index < blocks.length; index += 1) {
-      const block = blocks[index]!;
-      const row = overlayLayout.byIndex.get(index);
-      const height = resolveEstimatedBlockHeight(index, block);
-      const rowTop = row ? row.top : fallbackTop;
-      const rowBottom = rowTop + height;
-      if (rowBottom >= top && rowTop <= bottom) {
-        visible.add(index);
-      }
-      fallbackTop = rowTop + height + VIRTUALIZATION_FALLBACK_ROW_GAP;
-    }
-    return visible;
-  }, [
-    blocks,
-    overlayLayout.byIndex,
-    resolveEstimatedBlockHeight,
-    shouldVirtualizeBlocks,
-    virtualViewport.bottom,
-    virtualViewport.top,
-  ]);
-
-  const editorSurfaceStyle = useMemo<CSSProperties>(
-    () =>
-      ({
-        "--mdh-left-gutter-width": `${overlayLayout.contentPaddingLeft}px`,
-        "--mdh-right-gutter-width": `${overlayLayout.contentPaddingRight}px`,
-      }) as CSSProperties,
-    [overlayLayout.contentPaddingLeft, overlayLayout.contentPaddingRight],
-  );
-  const activeInsertMenuContext = useMemo<AdvancedInsertTemplateContext>(() => {
-    if (!insertMenuState) {
-      return { insideCard: false, insideExam: false };
-    }
-    const targetIndex = insertMenuState.insertAbove
-      ? insertMenuState.blockIndex
-      : insertMenuState.blockIndex + 1;
-    return resolveInsertMenuContextForSlot(markdown, blocks, targetIndex);
-  }, [blocks, insertMenuState, markdown]);
-  const activeEditorSyntaxOverlayContent = useMemo(
-    () => renderEditorInlineSyntaxOverlay(activeDraft, editorOverlaySelectionStart),
-    [activeDraft, editorOverlaySelectionStart],
-  );
-  const pageLinkCandidates = useMemo(() => buildPageLinkCandidates(vaultFiles), [vaultFiles]);
-  const imageLinkCandidates = useMemo(
-    () => buildVaultImageCandidates(vaultPngAssets),
-    [vaultPngAssets],
-  );
-  const pageLinkLookup = useMemo(() => buildPageLinkLookup(pageLinkCandidates), [pageLinkCandidates]);
-  const filteredPageLinkCandidates = useMemo(
-    () => filterPageLinkCandidates(pageLinkCandidates, pageLinkPickerState?.query ?? ""),
-    [pageLinkCandidates, pageLinkPickerState?.query],
-  );
-  const filteredImageLinkCandidates = useMemo(() => {
-    const query = insertMenuState?.phase === "image-link-picker"
-      ? (insertMenuState.query ?? "")
-      : "";
-    return filterVaultImageCandidates(imageLinkCandidates, query);
-  }, [imageLinkCandidates, insertMenuState]);
-  const filteredTypedImageLinkCandidates = useMemo(
-    () => filterVaultImageCandidates(imageLinkCandidates, typedImageLinkPickerState?.query ?? ""),
-    [imageLinkCandidates, typedImageLinkPickerState?.query],
-  );
-  const filteredImageEmbedReplaceCandidates = useMemo(
-    () => filterVaultImageCandidates(imageLinkCandidates, imageEmbedReplacePickerState?.query ?? ""),
-    [imageEmbedReplacePickerState?.query, imageLinkCandidates],
-  );
-  const resolveInlinePageLink = useCallback(
-    (rawWikilink: string): ResolvedInlinePageLink => {
-      const parsed = parseInlineWikilink(rawWikilink);
-      if (!parsed) {
-        return {
-          wikilink: rawWikilink,
-          label: rawWikilink,
-          exists: false,
-        };
-      }
-      const candidate = resolvePageLinkCandidate(pageLinkLookup, parsed.target);
-      if (!candidate) {
-        return {
-          wikilink: `[[${parsed.alias ? `${parsed.target}|${parsed.alias}` : parsed.target}]]`,
-          label: parsed.alias || parsed.label,
-          exists: false,
-        };
-      }
-      const wikilink = parsed.alias ? `[[${candidate.target}|${parsed.alias}]]` : candidate.wikilink;
-      return {
-        wikilink,
-        label: parsed.alias || candidate.label,
-        exists: true,
-      };
-    },
-    [pageLinkLookup],
-  );
-  const handleInlinePageLinkClick = useCallback(
-    (wikilink: string, exists: boolean, event: MouseEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (!exists) {
-        return;
-      }
-      onNavigateWikilink?.(wikilink);
-    },
-    [onNavigateWikilink],
-  );
-  const renderPreviewWithPageLinks = useCallback(
-    (source: string) =>
-      transformPreviewNodeWikilinks(renderPreview(source), "mdh-preview", {
-        resolveLink: resolveInlinePageLink,
-        onClick: handleInlinePageLinkClick,
-      }),
-    [handleInlinePageLinkClick, renderPreview, resolveInlinePageLink],
-  );
-
-  const measureOverlayLayout = useCallback(() => {
-    const contentLayer = contentLayerRef.current;
-    if (!contentLayer) {
-      setOverlayLayout((current) => {
-        if (current.byIndex.size === 0) {
-          return current;
+    const isSvgCodeFencePreviewBlock = useCallback(
+      (block: MarkdownBlock | null | undefined) => {
+        if (!block || block.kind !== "code-fence") {
+          return false;
         }
-        return {
-          ...current,
-          byIndex: new Map(),
-        };
-      });
-      return;
-    }
-
-    const rowElements = Array.from(
-      contentLayer.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+        return resolveCodeFencePreviewItems(block.raw).some((item) => item.type === "svg");
+      },
+      [resolveCodeFencePreviewItems],
     );
-    const nextByIndex = new Map<number, OverlayBlockRect>();
-    let fallbackTopCursor = 0;
-    let lastMeasuredTop = Number.NEGATIVE_INFINITY;
-    const fallbackRowGap = 6;
 
-    for (const rowElement of rowElements) {
-      const indexRaw = rowElement.dataset.mdBlockIndex;
-      const kindRaw = rowElement.dataset.mdBlockKind;
-      if (typeof indexRaw !== "string" || typeof kindRaw !== "string") {
-        continue;
-      }
-      const parsedIndex = Number.parseInt(indexRaw, 10);
-      if (!Number.isFinite(parsedIndex)) {
-        continue;
-      }
-      // Use layout-tree offsets (scroll-independent) to avoid expensive viewport rect reads
-      // on frequent overlay updates.
-      const measuredTop = Math.max(0, rowElement.offsetTop);
-      const height = Math.max(1, rowElement.offsetHeight);
-      const top = measuredTop > lastMeasuredTop ? measuredTop : fallbackTopCursor;
-      fallbackTopCursor = top + height + fallbackRowGap;
-      lastMeasuredTop = top;
-      nextByIndex.set(parsedIndex, {
-        index: parsedIndex,
-        top,
-        height,
-        kind: kindRaw as MarkdownBlock["kind"],
-      });
-    }
-
-    const nextLayout: OverlayLayoutState = {
-      byIndex: nextByIndex,
-      contentPaddingLeft: OVERLAY_LEFT_GUTTER_WIDTH,
-      contentPaddingRight: OVERLAY_RIGHT_GUTTER_WIDTH,
-    };
-
-    setOverlayLayout((current) => (areOverlayLayoutsEqual(current, nextLayout) ? current : nextLayout));
-  }, []);
-
-  const scheduleOverlayLayoutMeasure = useCallback(() => {
-    if (overlayMeasureFrameRef.current !== null) {
-      return;
-    }
-    overlayMeasureFrameRef.current = window.requestAnimationFrame(() => {
-      overlayMeasureFrameRef.current = null;
-      measureOverlayLayout();
-    });
-  }, [measureOverlayLayout]);
-
-  const measureVirtualViewport = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
-    const scrollHost = findScrollableAncestor(container);
-    if (!scrollHost) {
-      setVirtualViewport({
-        top: 0,
-        bottom: Number.POSITIVE_INFINITY,
-      });
-      return;
-    }
-    const hostRect = scrollHost.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
-    const top = Math.max(0, hostRect.top - containerRect.top);
-    const bottom = Math.max(top, top + scrollHost.clientHeight);
-    setVirtualViewport((current) => (
-      current.top === top && current.bottom === bottom
-        ? current
-        : { top, bottom }
-    ));
-  }, []);
-
-  const scheduleVirtualViewportMeasure = useCallback(() => {
-    if (virtualViewportFrameRef.current !== null) {
-      return;
-    }
-    virtualViewportFrameRef.current = window.requestAnimationFrame(() => {
-      virtualViewportFrameRef.current = null;
-      measureVirtualViewport();
-    });
-  }, [measureVirtualViewport]);
-
-  const getContainerLocalPoint = useCallback((clientX: number, clientY: number) => {
-    const container = containerRef.current;
-    if (!container) {
-      return null;
-    }
-    const rect = container.getBoundingClientRect();
-    return {
-      x: clientX - rect.left + container.scrollLeft,
-      y: clientY - rect.top + container.scrollTop,
-    };
-  }, []);
-
-  const setSelectionMarqueeFromContentPoints = useCallback(
-    (startX: number, startY: number, endX: number, endY: number) => {
-      const nextRect = {
-        left: Math.min(startX, endX),
-        top: Math.min(startY, endY),
-        width: Math.abs(endX - startX),
-        height: Math.abs(endY - startY),
-      };
-      setSelectionMarqueeRect((current) => {
-        if (
-          current &&
-          current.left === nextRect.left &&
-          current.top === nextRect.top &&
-          current.width === nextRect.width &&
-          current.height === nextRect.height
-        ) {
-          return current;
-        }
-        return nextRect;
-      });
-    },
-    [],
-  );
-
-  const updateSelectionFromMarqueeContentPoints = useCallback(
-    (startX: number, startY: number, endX: number, endY: number) => {
-      if (blocks.length === 0 || overlayRows.length === 0) {
-        return;
-      }
-      const contentLayer = contentLayerRef.current;
-      const contentWidth = Math.max(contentLayer?.scrollWidth ?? 0, contentLayer?.clientWidth ?? 0, 1);
-      const left = Math.max(0, Math.min(contentWidth, Math.min(startX, endX)));
-      const right = Math.max(0, Math.min(contentWidth, Math.max(startX, endX)));
-      const top = Math.min(startY, endY);
-      const bottom = Math.max(startY, endY);
-      const rowLeft = 0;
-      const rowRight = contentWidth;
-      const intersectedIndices: number[] = [];
-
-      for (const row of overlayRows) {
-        const nextIndex = clampIndex(row.index, blocks.length);
-        if (
-          blocks[nextIndex]?.kind === "blank" &&
-          isStructuralSeparatorBlankBlock(blocks, nextIndex)
-        ) {
-          continue;
-        }
-        const rowTop = row.top;
-        const rowBottom = row.top + row.height;
-        const intersects =
-          rowRight >= left &&
-          rowLeft <= right &&
-          rowBottom >= top &&
-          rowTop <= bottom;
-        if (!intersects) {
-          continue;
-        }
-        intersectedIndices.push(nextIndex);
-      }
-
-      const selectedIndices = sortUniqueSelectionIndices(intersectedIndices);
-      const gestureAnchor = selectionGestureRef.current?.anchorIndex;
-      setSelectedBlockSelection((current) => {
-        if (selectedIndices.length === 0) {
+    const resolveStoredSvgCodeFencePreviewHeight = useCallback(
+      (block: MarkdownBlock | null | undefined) => {
+        if (!block || !isSvgCodeFencePreviewBlock(block)) {
           return null;
         }
-        const nextAnchor = typeof gestureAnchor === "number" && selectedIndices.includes(gestureAnchor)
-          ? gestureAnchor
-          : (current && selectedIndices.includes(current.anchorIndex)
-            ? current.anchorIndex
-            : selectedIndices[0]!);
-        if (
-          current &&
-          current.anchorIndex === nextAnchor &&
-          current.selectedIndices.length === selectedIndices.length &&
-          current.selectedIndices.every((value, index) => value === selectedIndices[index])
-        ) {
-          return current;
+        const height = codeFencePreviewHeightsRef.current.get(block.id);
+        if (typeof height !== "number" || !Number.isFinite(height) || height <= 0) {
+          return null;
         }
-        return {
-          anchorIndex: nextAnchor,
-          selectedIndices,
-        };
-      });
-    },
-    [blocks, overlayRows],
-  );
-
-  const editorDirty = activeDirty || activeTableDirty;
-
-  useEffect(() => {
-    onDirtyChange?.(editorDirty);
-  }, [editorDirty, onDirtyChange]);
-
-  useEffect(() => {
-    setHistory((current) => {
-      if (current.present.markdown === markdown) {
-        return current;
-      }
-      if (editorDirty) {
-        return current;
-      }
-      return resetMarkdownHistory(markdown, "external-load");
-    });
-  }, [editorDirty, markdown]);
-
-  useEffect(() => {
-    setActiveBlockIndex(null);
-    updateActiveDraftState("");
-    setActiveDirty(false);
-    setActiveEditSnapshot(null);
-    setActiveComposing(false);
-    setActiveTableDirty(false);
-    setPendingActivation(null);
-    setPendingTableActivation(null);
-    pendingActivationMarkdownRef.current = null;
-    activeTableSessionRef.current = null;
-    deferredEditActionRef.current = null;
-    deferredEditRequestsRef.current.splice(0).forEach((request) => {
-      request.resolve(false);
-    });
-    if (deferredEditFlushFrameRef.current !== null) {
-      window.cancelAnimationFrame(deferredEditFlushFrameRef.current);
-      deferredEditFlushFrameRef.current = null;
-    }
-    setSelectedBlockSelection(null);
-    setIsSelectionDragging(false);
-    setDraggedBlockIndex(null);
-    setDropIndicatorIndex(null);
-    setInsertMenuState(null);
-    setSelectionContextMenuState(null);
-    setSelectionMarqueeRect(null);
-    setInlineFormattingToolbarSelection(null);
-    setInlineFormattingToolbarMenu(null);
-    setInlineFormattingToolbarLinkState(null);
-    setImageEmbedReplacePickerState(null);
-    setHistory(createMarkdownHistory(markdown));
-    setOverlayLayout((current) => ({
-      ...current,
-      byIndex: new Map(),
-    }));
-    autoActivatedWriteKeyRef.current = null;
-    if (selectionAutoScrollFrameRef.current !== null) {
-      window.cancelAnimationFrame(selectionAutoScrollFrameRef.current);
-      selectionAutoScrollFrameRef.current = null;
-    }
-    if (selectionDragUpdateFrameRef.current !== null) {
-      window.cancelAnimationFrame(selectionDragUpdateFrameRef.current);
-      selectionDragUpdateFrameRef.current = null;
-    }
-    if (virtualViewportFrameRef.current !== null) {
-      window.cancelAnimationFrame(virtualViewportFrameRef.current);
-      virtualViewportFrameRef.current = null;
-    }
-    if (activeTextareaLayoutFrameRef.current !== null) {
-      window.cancelAnimationFrame(activeTextareaLayoutFrameRef.current);
-      activeTextareaLayoutFrameRef.current = null;
-    }
-    selectionDragPointerRef.current = null;
-    selectionGestureRef.current = null;
-    suppressNextBlockContextMenuRef.current = false;
-    stableBlockRenderTokensRef.current = [];
-    pendingActivationMarkdownRef.current = null;
-    inlineFormattingToolbarRangeRef.current = null;
-    inlineFormattingToolbarPendingSignatureRef.current = null;
-    if (inlineFormattingToolbarTimerRef.current !== null) {
-      window.clearTimeout(inlineFormattingToolbarTimerRef.current);
-      inlineFormattingToolbarTimerRef.current = null;
-    }
-  }, [historyKey]);
-
-  useEffect(
-    () => () => {
-      if (overlayMeasureFrameRef.current !== null) {
-        window.cancelAnimationFrame(overlayMeasureFrameRef.current);
-        overlayMeasureFrameRef.current = null;
-      }
-      if (virtualViewportFrameRef.current !== null) {
-        window.cancelAnimationFrame(virtualViewportFrameRef.current);
-        virtualViewportFrameRef.current = null;
-      }
-      if (activeTextareaLayoutFrameRef.current !== null) {
-        window.cancelAnimationFrame(activeTextareaLayoutFrameRef.current);
-        activeTextareaLayoutFrameRef.current = null;
-      }
-      if (selectionAutoScrollFrameRef.current !== null) {
-        window.cancelAnimationFrame(selectionAutoScrollFrameRef.current);
-        selectionAutoScrollFrameRef.current = null;
-      }
-      if (selectionDragUpdateFrameRef.current !== null) {
-        window.cancelAnimationFrame(selectionDragUpdateFrameRef.current);
-        selectionDragUpdateFrameRef.current = null;
-      }
-      selectionDragPointerRef.current = null;
-      if (inlineFormattingToolbarTimerRef.current !== null) {
-        window.clearTimeout(inlineFormattingToolbarTimerRef.current);
-        inlineFormattingToolbarTimerRef.current = null;
-      }
-      if (deferredEditFlushFrameRef.current !== null) {
-        window.cancelAnimationFrame(deferredEditFlushFrameRef.current);
-        deferredEditFlushFrameRef.current = null;
-      }
-      deferredEditActionRef.current = null;
-      deferredEditRequestsRef.current.splice(0).forEach((request) => {
-        request.resolve(false);
-      });
-      inlineFormattingToolbarPendingSignatureRef.current = null;
-      inlineFormattingToolbarRangeRef.current = null;
-    },
-    [],
-  );
-
-  useLayoutEffect(() => {
-    scheduleOverlayLayoutMeasure();
-    scheduleVirtualViewportMeasure();
-  }, [
-    blocks,
-    activeBlockIndex,
-    selectedBlockSelection,
-    draggedBlockIndex,
-    dropIndicatorIndex,
-    insertMenuState,
-    isSelectionDragging,
-    scheduleOverlayLayoutMeasure,
-    scheduleVirtualViewportMeasure,
-  ]);
-
-  useEffect(() => {
-    const contentLayer = contentLayerRef.current;
-    if (!contentLayer || typeof ResizeObserver === "undefined") {
-      return;
-    }
-    const observer = new ResizeObserver(() => {
-      scheduleOverlayLayoutMeasure();
-    });
-    observer.observe(contentLayer);
-    return () => observer.disconnect();
-  }, [scheduleOverlayLayoutMeasure]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
-    const scrollHost = findScrollableAncestor(container);
-    if (!scrollHost) {
-      return;
-    }
-    const handleScroll = () => {
-      scheduleVirtualViewportMeasure();
-    };
-    const handleResize = () => {
-      scheduleVirtualViewportMeasure();
-    };
-    scheduleVirtualViewportMeasure();
-    scrollHost.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", handleResize);
-    return () => {
-      scrollHost.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleResize);
-    };
-  }, [scheduleVirtualViewportMeasure]);
-
-  useEffect(() => {
-    if (!selectedBlockSelection) {
-      return;
-    }
-    if (blocks.length === 0) {
-      setSelectedBlockSelection(null);
-      setIsSelectionDragging(false);
-      setSelectionContextMenuState(null);
-      setSelectionMarqueeRect(null);
-      selectionGestureRef.current = null;
-      return;
-    }
-    const validSelectedIndices = sortUniqueSelectionIndices(
-      selectedBlockSelection.selectedIndices.filter((index) =>
-        Number.isInteger(index) && index >= 0 && index < blocks.length
-      ),
+        return height;
+      },
+      [isSvgCodeFencePreviewBlock],
     );
-    if (validSelectedIndices.length === 0) {
-      setSelectedBlockSelection(null);
-      setIsSelectionDragging(false);
-      setSelectionContextMenuState(null);
-      setSelectionMarqueeRect(null);
-      selectionGestureRef.current = null;
-      return;
-    }
-    const nextAnchor = validSelectedIndices.includes(selectedBlockSelection.anchorIndex)
-      ? selectedBlockSelection.anchorIndex
-      : validSelectedIndices[0]!;
-    const didChange = nextAnchor !== selectedBlockSelection.anchorIndex ||
-      validSelectedIndices.length !== selectedBlockSelection.selectedIndices.length ||
-      validSelectedIndices.some((value, index) => value !== selectedBlockSelection.selectedIndices[index]);
-    if (didChange) {
-      setSelectedBlockSelection({
-        anchorIndex: nextAnchor,
-        selectedIndices: validSelectedIndices,
-      });
-    }
-  }, [blocks.length, selectedBlockSelection]);
 
-  useEffect(() => {
-    if (!isSelectionDragging) {
-      return;
-    }
-
-    const stopSelectionAutoScroll = () => {
-      if (selectionAutoScrollFrameRef.current !== null) {
-        window.cancelAnimationFrame(selectionAutoScrollFrameRef.current);
-        selectionAutoScrollFrameRef.current = null;
-      }
-    };
-
-    const stopSelectionDragUpdate = () => {
-      if (selectionDragUpdateFrameRef.current !== null) {
-        window.cancelAnimationFrame(selectionDragUpdateFrameRef.current);
-        selectionDragUpdateFrameRef.current = null;
-      }
-    };
-
-    const isDragThresholdExceeded = (gesture: SelectionGestureState, clientX: number, clientY: number) =>
-      Math.abs(clientX - gesture.startClientX) > SELECTION_DRAG_THRESHOLD_PX ||
-      Math.abs(clientY - gesture.startClientY) > SELECTION_DRAG_THRESHOLD_PX;
-
-    const applySelectionFromPointer = (
-      gesture: SelectionGestureState,
-      pointer: { x: number; y: number },
-      forceSelectionUpdate = false,
-    ) => {
-      const endPoint = getContainerLocalPoint(pointer.x, pointer.y);
-      if (!endPoint) {
-        return;
-      }
-
-      if (gesture.source === "shift-left") {
-        setSelectionMarqueeFromContentPoints(
-          gesture.startContentX,
-          gesture.startContentY,
-          endPoint.x,
-          endPoint.y,
+    const cacheSvgCodeFencePreviewHeightForBlock = useCallback(
+      (blockIndex: number, block?: MarkdownBlock | null) => {
+        const targetBlock = block ?? blocks[blockIndex];
+        if (!targetBlock || !isSvgCodeFencePreviewBlock(targetBlock)) {
+          return null;
+        }
+        const contentLayer = contentLayerRef.current;
+        if (!contentLayer) {
+          return null;
+        }
+        const blockElement = contentLayer.querySelector<HTMLElement>(
+          `.markdown-hybrid-block[data-md-block-index="${blockIndex}"]`,
         );
-      }
+        const previewElement = blockElement?.querySelector<HTMLElement>(
+          ".markdown-hybrid-block-preview.markdown-hybrid-media-block-preview",
+        );
+        if (!previewElement) {
+          return null;
+        }
+        const nextHeight = Math.max(1, Math.round(previewElement.getBoundingClientRect().height));
+        codeFencePreviewHeightsRef.current.set(targetBlock.id, nextHeight);
+        return nextHeight;
+      },
+      [blocks, isSvgCodeFencePreviewBlock],
+    );
 
-      if (!gesture.didDrag && !forceSelectionUpdate) {
-        return;
-      }
-
-      updateSelectionFromMarqueeContentPoints(
-        gesture.startContentX,
-        gesture.startContentY,
-        endPoint.x,
-        endPoint.y,
+    const blockRenderKeys = useMemo(() => {
+      const assigned = assignStableRenderKeys(
+        blocks,
+        stableBlockRenderTokensRef.current,
+        stableBlockRenderKeyCounterRef,
+        activeBlockIndex,
       );
-    };
-
-    const flushSelectionDragUpdate = () => {
-      selectionDragUpdateFrameRef.current = null;
-      const gesture = selectionGestureRef.current;
-      const pointer = selectionDragPointerRef.current;
-      if (!gesture?.active || !pointer || disabled || blocks.length === 0) {
-        return;
-      }
-      applySelectionFromPointer(gesture, pointer);
-    };
-
-    const scheduleSelectionDragUpdate = () => {
-      if (selectionDragUpdateFrameRef.current !== null) {
-        return;
-      }
-      selectionDragUpdateFrameRef.current = window.requestAnimationFrame(flushSelectionDragUpdate);
-    };
-
-    const resolveAutoScrollDeltaY = () => {
-      const pointer = selectionDragPointerRef.current;
-      if (!pointer) {
-        return 0;
-      }
-      const container = containerRef.current;
-      const scrollHost = findScrollableAncestor(container);
-      if (!container || !scrollHost) {
-        return 0;
-      }
-      const hostRect = scrollHost.getBoundingClientRect();
-      if (hostRect.height <= 0) {
-        return 0;
-      }
-      const edgeSize = Math.min(
-        SELECTION_AUTO_SCROLL_EDGE_PX,
-        Math.max(16, Math.floor(hostRect.height * 0.18)),
-      );
-      if (pointer.y < hostRect.top + edgeSize) {
-        const distance = hostRect.top + edgeSize - pointer.y;
-        const intensity = Math.max(0, Math.min(1, distance / edgeSize));
-        return -Math.max(1, Math.round(SELECTION_AUTO_SCROLL_MAX_STEP_PX * intensity));
-      }
-      if (pointer.y > hostRect.bottom - edgeSize) {
-        const distance = pointer.y - (hostRect.bottom - edgeSize);
-        const intensity = Math.max(0, Math.min(1, distance / edgeSize));
-        return Math.max(1, Math.round(SELECTION_AUTO_SCROLL_MAX_STEP_PX * intensity));
-      }
-      return 0;
-    };
-
-    const stepSelectionAutoScroll = () => {
-      selectionAutoScrollFrameRef.current = null;
-      const gesture = selectionGestureRef.current;
-      if (!gesture?.active) {
-        return;
-      }
-      if (disabled || blocks.length === 0) {
-        return;
-      }
-      if (!gesture.didDrag) {
-        return;
-      }
-      const pointer = selectionDragPointerRef.current;
-      if (!pointer) {
-        return;
-      }
-      const container = containerRef.current;
-      const scrollHost = findScrollableAncestor(container);
-      if (!container || !scrollHost) {
-        return;
+      stableBlockRenderTokensRef.current = assigned.tokens;
+      return assigned.keys;
+    }, [activeBlockIndex, blocks]);
+    const overlayRows = useMemo(
+      () => Array.from(overlayLayout.byIndex.values()),
+      [overlayLayout.byIndex],
+    );
+    const cardGroupRails = useMemo(() => {
+      if (blocks.length === 0 || overlayLayout.byIndex.size === 0) {
+        return [] as CardGroupOverlayRail[];
       }
 
-      const deltaY = resolveAutoScrollDeltaY();
-      let didScroll = false;
-      if (deltaY !== 0) {
-        const prevScrollTop = scrollHost.scrollTop;
-        const maxScrollTop = Math.max(0, scrollHost.scrollHeight - scrollHost.clientHeight);
-        const nextScrollTop = Math.max(0, Math.min(maxScrollTop, prevScrollTop + deltaY));
-        if (nextScrollTop !== prevScrollTop) {
-          scrollHost.scrollTop = nextScrollTop;
-          didScroll = true;
+      const fullBoundsByGroupId = new Map<
+        string,
+        {
+          firstIndex: number;
+          lastIndex: number;
+          hasStart: boolean;
+        }
+      >();
+      for (let index = 0; index < blocks.length; index += 1) {
+        const groupId = blocks[index]?.meta?.cardGroupId;
+        if (!groupId) {
+          continue;
+        }
+        const role = blocks[index]?.meta?.cardGroupRole;
+        const current = fullBoundsByGroupId.get(groupId);
+        if (!current) {
+          fullBoundsByGroupId.set(groupId, {
+            firstIndex: index,
+            lastIndex: index,
+            hasStart: role === "start",
+          });
+          continue;
+        }
+        if (index < current.firstIndex) {
+          current.firstIndex = index;
+        }
+        if (index > current.lastIndex) {
+          current.lastIndex = index;
+        }
+        if (role === "start") {
+          current.hasStart = true;
         }
       }
 
-      applySelectionFromPointer(gesture, pointer, didScroll);
+      const visibleBoundsByGroupId = new Map<
+        string,
+        {
+          top: number;
+          bottom: number;
+          firstIndex: number;
+          lastIndex: number;
+        }
+      >();
+      for (const [index, row] of overlayLayout.byIndex) {
+        const groupId = blocks[index]?.meta?.cardGroupId;
+        if (!groupId) {
+          continue;
+        }
+        const current = visibleBoundsByGroupId.get(groupId);
+        const rowTop = row.top;
+        const rowBottom = row.top + row.height;
+        if (!current) {
+          visibleBoundsByGroupId.set(groupId, {
+            top: rowTop,
+            bottom: rowBottom,
+            firstIndex: index,
+            lastIndex: index,
+          });
+          continue;
+        }
+        if (rowTop < current.top) {
+          current.top = rowTop;
+        }
+        if (rowBottom > current.bottom) {
+          current.bottom = rowBottom;
+        }
+        if (index < current.firstIndex) {
+          current.firstIndex = index;
+        }
+        if (index > current.lastIndex) {
+          current.lastIndex = index;
+        }
+      }
 
-      if (resolveAutoScrollDeltaY() !== 0) {
-        selectionAutoScrollFrameRef.current = window.requestAnimationFrame(stepSelectionAutoScroll);
+      const nextRails: CardGroupOverlayRail[] = [];
+      for (const [groupId, visible] of visibleBoundsByGroupId) {
+        const full = fullBoundsByGroupId.get(groupId);
+        const top = Math.max(0, visible.top);
+        const height = Math.max(1, visible.bottom - visible.top);
+        nextRails.push({
+          groupId,
+          top,
+          height,
+          showStartCap: full ? visible.firstIndex === full.firstIndex && full.hasStart : true,
+          showEndCap: full ? visible.lastIndex === full.lastIndex : true,
+        });
       }
-    };
 
-    const syncSelectionAutoScrollLoop = () => {
-      const gesture = selectionGestureRef.current;
-      if (!gesture?.active) {
-        stopSelectionAutoScroll();
-        return;
-      }
-      if (!gesture.didDrag) {
-        stopSelectionAutoScroll();
-        return;
-      }
-      if (resolveAutoScrollDeltaY() === 0) {
-        stopSelectionAutoScroll();
-        return;
-      }
-      if (selectionAutoScrollFrameRef.current !== null) {
-        return;
-      }
-      selectionAutoScrollFrameRef.current = window.requestAnimationFrame(stepSelectionAutoScroll);
-    };
+      nextRails.sort(
+        (left, right) => left.top - right.top || left.groupId.localeCompare(right.groupId),
+      );
+      return nextRails;
+    }, [blocks, overlayLayout.byIndex]);
 
-    const endSelectionGesture = (reason: "mouseup" | "button-release") => {
-      const gesture = selectionGestureRef.current;
-      if (gesture && gesture.source === "right" && gesture.didDrag) {
-        suppressNextBlockContextMenuRef.current = true;
-      } else if (reason === "mouseup") {
-        suppressNextBlockContextMenuRef.current = false;
+    useEffect(() => {
+      const knownBlockIds = new Set(blocks.map((block) => block.id));
+      const cachedHeights = codeFencePreviewHeightsRef.current;
+      for (const blockId of Array.from(cachedHeights.keys())) {
+        if (!knownBlockIds.has(blockId)) {
+          cachedHeights.delete(blockId);
+        }
       }
-      if (gesture) {
-        gesture.active = false;
+      const blockHeights = blockHeightCacheRef.current;
+      for (const blockId of Array.from(blockHeights.keys())) {
+        if (!knownBlockIds.has(blockId)) {
+          blockHeights.delete(blockId);
+        }
       }
-      selectionDragPointerRef.current = null;
-      stopSelectionAutoScroll();
-      stopSelectionDragUpdate();
-      selectionGestureRef.current = null;
-      setIsSelectionDragging(false);
-      setSelectionMarqueeRect(null);
-    };
+    }, [blocks]);
 
-    const handleMouseMove = (event: globalThis.MouseEvent) => {
-      if (disabled || blocks.length === 0) {
-        return;
+    useEffect(() => {
+      const blockHeights = blockHeightCacheRef.current;
+      for (const row of overlayRows) {
+        const block = blocks[row.index];
+        if (!block) {
+          continue;
+        }
+        blockHeights.set(block.id, Math.max(1, Math.round(row.height)));
       }
-      const gesture = selectionGestureRef.current;
-      if (!gesture?.active) {
-        return;
+    }, [blocks, overlayRows]);
+
+    const resolveEstimatedBlockHeight = useCallback(
+      (blockIndex: number, block: MarkdownBlock) => {
+        const fromOverlay = overlayLayout.byIndex.get(blockIndex)?.height;
+        if (typeof fromOverlay === "number" && Number.isFinite(fromOverlay) && fromOverlay > 0) {
+          return fromOverlay;
+        }
+        const fromCache = blockHeightCacheRef.current.get(block.id);
+        if (typeof fromCache === "number" && Number.isFinite(fromCache) && fromCache > 0) {
+          return fromCache;
+        }
+        const fromSvgCache = resolveStoredSvgCodeFencePreviewHeight(block);
+        if (typeof fromSvgCache === "number" && Number.isFinite(fromSvgCache) && fromSvgCache > 0) {
+          return fromSvgCache;
+        }
+        return resolveVirtualizationFallbackHeight(block.kind);
+      },
+      [overlayLayout.byIndex, resolveStoredSvgCodeFencePreviewHeight],
+    );
+
+    const allowVirtualizationByMemory =
+      typeof deviceMemoryGb === "number" && deviceMemoryGb > VIRTUALIZATION_MIN_DEVICE_MEMORY_GB;
+    const shouldVirtualizeBlocks =
+      allowVirtualizationByMemory && blocks.length >= VIRTUALIZATION_BLOCK_THRESHOLD;
+    const pinnedVirtualizedIndices = useMemo(() => {
+      const pinned = new Set<number>();
+      if (typeof activeBlockIndex === "number" && activeBlockIndex >= 0) {
+        pinned.add(activeBlockIndex);
       }
-      selectionDragPointerRef.current = { x: event.clientX, y: event.clientY };
-      const expectedButtonMask = gesture.source === "right" ? 2 : 1;
-      if ((event.buttons & expectedButtonMask) !== expectedButtonMask) {
-        endSelectionGesture("button-release");
-        return;
+      if (selectedBlockSelection) {
+        for (const selectedIndex of selectedBlockSelection.selectedIndices) {
+          pinned.add(selectedIndex);
+        }
       }
-      if (isDragThresholdExceeded(gesture, event.clientX, event.clientY)) {
-        gesture.didDrag = true;
+      if (typeof draggedBlockIndex === "number" && draggedBlockIndex >= 0) {
+        pinned.add(draggedBlockIndex);
       }
-      if (gesture.source === "right" && gesture.didDrag) {
+      if (typeof dropIndicatorIndex === "number") {
+        pinned.add(dropIndicatorIndex);
+        pinned.add(Math.max(0, dropIndicatorIndex - 1));
+      }
+      return pinned;
+    }, [activeBlockIndex, draggedBlockIndex, dropIndicatorIndex, selectedBlockSelection]);
+
+    const visibleVirtualizedIndices = useMemo(() => {
+      if (!shouldVirtualizeBlocks) {
+        return null;
+      }
+      if (!Number.isFinite(virtualViewport.bottom) || virtualViewport.bottom <= 0) {
+        return null;
+      }
+      const top = Math.max(0, virtualViewport.top - VIRTUALIZATION_OVERSCAN_PX);
+      const bottom = Math.max(top, virtualViewport.bottom + VIRTUALIZATION_OVERSCAN_PX);
+      const visible = new Set<number>();
+      let fallbackTop = 0;
+
+      for (let index = 0; index < blocks.length; index += 1) {
+        const block = blocks[index]!;
+        const row = overlayLayout.byIndex.get(index);
+        const height = resolveEstimatedBlockHeight(index, block);
+        const rowTop = row ? row.top : fallbackTop;
+        const rowBottom = rowTop + height;
+        if (rowBottom >= top && rowTop <= bottom) {
+          visible.add(index);
+        }
+        fallbackTop = rowTop + height + VIRTUALIZATION_FALLBACK_ROW_GAP;
+      }
+      return visible;
+    }, [
+      blocks,
+      overlayLayout.byIndex,
+      resolveEstimatedBlockHeight,
+      shouldVirtualizeBlocks,
+      virtualViewport.bottom,
+      virtualViewport.top,
+    ]);
+
+    const editorSurfaceStyle = useMemo<CSSProperties>(
+      () =>
+        ({
+          "--mdh-left-gutter-width": `${overlayLayout.contentPaddingLeft}px`,
+          "--mdh-right-gutter-width": `${overlayLayout.contentPaddingRight}px`,
+        }) as CSSProperties,
+      [overlayLayout.contentPaddingLeft, overlayLayout.contentPaddingRight],
+    );
+    const activeInsertMenuContext = useMemo<AdvancedInsertTemplateContext>(() => {
+      if (!insertMenuState) {
+        return { insideCard: false, insideExam: false };
+      }
+      const targetIndex = insertMenuState.insertAbove
+        ? insertMenuState.blockIndex
+        : insertMenuState.blockIndex + 1;
+      return resolveInsertMenuContextForSlot(markdown, blocks, targetIndex);
+    }, [blocks, insertMenuState, markdown]);
+    const activeEditorSyntaxOverlayContent = useMemo(
+      () => renderEditorInlineSyntaxOverlay(activeDraft, editorOverlaySelectionStart),
+      [activeDraft, editorOverlaySelectionStart],
+    );
+    const pageLinkCandidates = useMemo(() => buildPageLinkCandidates(vaultFiles), [vaultFiles]);
+    const imageLinkCandidates = useMemo(
+      () => buildVaultImageCandidates(vaultPngAssets),
+      [vaultPngAssets],
+    );
+    const pageLinkLookup = useMemo(
+      () => buildPageLinkLookup(pageLinkCandidates),
+      [pageLinkCandidates],
+    );
+    const filteredPageLinkCandidates = useMemo(
+      () => filterPageLinkCandidates(pageLinkCandidates, pageLinkPickerState?.query ?? ""),
+      [pageLinkCandidates, pageLinkPickerState?.query],
+    );
+    const filteredImageLinkCandidates = useMemo(() => {
+      const query =
+        insertMenuState?.phase === "image-link-picker" ? (insertMenuState.query ?? "") : "";
+      return filterVaultImageCandidates(imageLinkCandidates, query);
+    }, [imageLinkCandidates, insertMenuState]);
+    const filteredTypedImageLinkCandidates = useMemo(
+      () => filterVaultImageCandidates(imageLinkCandidates, typedImageLinkPickerState?.query ?? ""),
+      [imageLinkCandidates, typedImageLinkPickerState?.query],
+    );
+    const filteredImageEmbedReplaceCandidates = useMemo(
+      () =>
+        filterVaultImageCandidates(imageLinkCandidates, imageEmbedReplacePickerState?.query ?? ""),
+      [imageEmbedReplacePickerState?.query, imageLinkCandidates],
+    );
+    const resolveInlinePageLink = useCallback(
+      (rawWikilink: string): ResolvedInlinePageLink => {
+        const parsed = parseInlineWikilink(rawWikilink);
+        if (!parsed) {
+          return {
+            wikilink: rawWikilink,
+            label: rawWikilink,
+            exists: false,
+          };
+        }
+        const candidate = resolvePageLinkCandidate(pageLinkLookup, parsed.target);
+        if (!candidate) {
+          return {
+            wikilink: `[[${parsed.alias ? `${parsed.target}|${parsed.alias}` : parsed.target}]]`,
+            label: parsed.alias || parsed.label,
+            exists: false,
+          };
+        }
+        const wikilink = parsed.alias
+          ? `[[${candidate.target}|${parsed.alias}]]`
+          : candidate.wikilink;
+        return {
+          wikilink,
+          label: parsed.alias || candidate.label,
+          exists: true,
+        };
+      },
+      [pageLinkLookup],
+    );
+    const handleInlinePageLinkClick = useCallback(
+      (wikilink: string, exists: boolean, event: MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
-      }
-      scheduleSelectionDragUpdate();
-      syncSelectionAutoScrollLoop();
-    };
-
-    const handleMouseUp = () => {
-      endSelectionGesture("mouseup");
-    };
-
-    const handleWindowContextMenu = (event: globalThis.MouseEvent) => {
-      const gesture = selectionGestureRef.current;
-      if (!gesture?.active || gesture.source !== "right" || !gesture.didDrag) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-    window.addEventListener("contextmenu", handleWindowContextMenu, true);
-    return () => {
-      selectionDragPointerRef.current = null;
-      stopSelectionAutoScroll();
-      stopSelectionDragUpdate();
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-      window.removeEventListener("contextmenu", handleWindowContextMenu, true);
-    };
-  }, [
-    blocks.length,
-    disabled,
-    getContainerLocalPoint,
-    isSelectionDragging,
-    setSelectionMarqueeFromContentPoints,
-    updateSelectionFromMarqueeContentPoints,
-  ]);
-
-  useEffect(() => {
-    if (activeBlockIndex === null) {
-      return;
-    }
-    if (activeEditSnapshot?.isDetachedEmptyBlock && blocks.length === 0) {
-      return;
-    }
-    const nextBlock = blocks[activeBlockIndex];
-    if (!nextBlock) {
-      setActiveBlockIndex(null);
-      updateActiveDraftState("");
-      setActiveDirty(false);
-      setActiveEditSnapshot(null);
-      setActiveComposing(false);
-      return;
-    }
-    const nextDraft = toEditorDraftForBlock(nextBlock);
-    if (!activeDirty && nextDraft !== activeDraft) {
-      updateActiveDraftState(nextDraft);
-    }
-    if (
-      !activeDirty &&
-      (
-        !activeEditSnapshot ||
-        activeEditSnapshot.blockId !== nextBlock.id ||
-        activeEditSnapshot.raw !== nextBlock.raw
-      )
-    ) {
-      setActiveEditSnapshot(createActiveEditSnapshotFromBlock(activeBlockIndex, nextBlock));
-    }
-  }, [activeBlockIndex, activeDirty, activeDraft, activeEditSnapshot, blocks]);
-
-  useEffect(() => {
-    if (mode !== "write" || disabled) {
-      return;
-    }
-    if (activeBlockIndex !== null) {
-      return;
-    }
-    if (autoActivatedWriteKeyRef.current === historyKey) {
-      return;
-    }
-    autoActivatedWriteKeyRef.current = historyKey;
-    if (blocks.length === 0) {
-      pendingCaretRef.current = "start";
-      setActiveBlockIndex(0);
-      updateActiveDraftState(markdown);
-      setActiveDirty(false);
-      setActiveEditSnapshot(createDetachedEmptyEditSnapshot(markdown));
-      setActiveComposing(false);
-      return;
-    }
-    setPendingActivation({ index: 0, caret: "end" });
-  }, [activeBlockIndex, blocks.length, disabled, historyKey, markdown, mode]);
-
-  useEffect(() => {
-    if (!pendingActivation) {
-      return;
-    }
-    if (
-      pendingActivationMarkdownRef.current !== null &&
-      markdown !== pendingActivationMarkdownRef.current
-    ) {
-      return;
-    }
-    if (blocks.length === 0) {
-      pendingActivationMarkdownRef.current = null;
-      setPendingActivation(null);
-      return;
-    }
-    const nextIndex = clampIndex(pendingActivation.index, blocks.length);
-    const targetBlock = blocks[nextIndex];
-    if (targetBlock?.kind === "hr") {
-      setActiveBlockIndex(null);
-      updateActiveDraftState("");
-      setActiveDirty(false);
-      setActiveEditSnapshot(null);
-      setActiveComposing(false);
-      pendingActivationMarkdownRef.current = null;
-      setPendingActivation(null);
-      const zoneSelector = pendingActivation.caret === "end"
-        ? ".markdown-hybrid-hr-enter-zone-bottom"
-        : ".markdown-hybrid-hr-enter-zone-top";
-      const handle = window.requestAnimationFrame(() => {
-        const row = containerRef.current?.querySelector<HTMLElement>(
-          `.markdown-hybrid-block[data-md-block-index="${nextIndex}"]`,
-        );
-        const zone = row?.querySelector<HTMLButtonElement>(zoneSelector);
-        if (!zone) {
-          const container = containerRef.current;
-          if (container) {
-            try {
-              container.focus({ preventScroll: true });
-            } catch {
-              container.focus();
-            }
-          }
+        event.stopPropagation();
+        if (!exists) {
           return;
         }
-        try {
-          zone.focus({ preventScroll: true });
-        } catch {
-          zone.focus();
+        onNavigateWikilink?.(wikilink);
+      },
+      [onNavigateWikilink],
+    );
+    const renderPreviewWithPageLinks = useCallback(
+      (source: string) =>
+        transformPreviewNodeWikilinks(renderPreview(source), "mdh-preview", {
+          resolveLink: resolveInlinePageLink,
+          onClick: handleInlinePageLinkClick,
+        }),
+      [handleInlinePageLinkClick, renderPreview, resolveInlinePageLink],
+    );
+
+    const measureOverlayLayout = useCallback(() => {
+      const contentLayer = contentLayerRef.current;
+      if (!contentLayer) {
+        setOverlayLayout((current) => {
+          if (current.byIndex.size === 0) {
+            return current;
+          }
+          return {
+            ...current,
+            byIndex: new Map(),
+          };
+        });
+        return;
+      }
+
+      const rowElements = Array.from(
+        contentLayer.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+      );
+      const nextByIndex = new Map<number, OverlayBlockRect>();
+      let fallbackTopCursor = 0;
+      let lastMeasuredTop = Number.NEGATIVE_INFINITY;
+      const fallbackRowGap = 6;
+
+      for (const rowElement of rowElements) {
+        const indexRaw = rowElement.dataset.mdBlockIndex;
+        const kindRaw = rowElement.dataset.mdBlockKind;
+        if (typeof indexRaw !== "string" || typeof kindRaw !== "string") {
+          continue;
         }
+        const parsedIndex = Number.parseInt(indexRaw, 10);
+        if (!Number.isFinite(parsedIndex)) {
+          continue;
+        }
+        // Use layout-tree offsets (scroll-independent) to avoid expensive viewport rect reads
+        // on frequent overlay updates.
+        const measuredTop = Math.max(0, rowElement.offsetTop);
+        const height = Math.max(1, rowElement.offsetHeight);
+        const top = measuredTop > lastMeasuredTop ? measuredTop : fallbackTopCursor;
+        fallbackTopCursor = top + height + fallbackRowGap;
+        lastMeasuredTop = top;
+        nextByIndex.set(parsedIndex, {
+          index: parsedIndex,
+          top,
+          height,
+          kind: kindRaw as MarkdownBlock["kind"],
+        });
+      }
+
+      const nextLayout: OverlayLayoutState = {
+        byIndex: nextByIndex,
+        contentPaddingLeft: OVERLAY_LEFT_GUTTER_WIDTH,
+        contentPaddingRight: OVERLAY_RIGHT_GUTTER_WIDTH,
+      };
+
+      setOverlayLayout((current) =>
+        areOverlayLayoutsEqual(current, nextLayout) ? current : nextLayout,
+      );
+    }, []);
+
+    const scheduleOverlayLayoutMeasure = useCallback(() => {
+      if (overlayMeasureFrameRef.current !== null) {
+        return;
+      }
+      overlayMeasureFrameRef.current = window.requestAnimationFrame(() => {
+        overlayMeasureFrameRef.current = null;
+        measureOverlayLayout();
       });
-      return () => window.cancelAnimationFrame(handle);
-    }
-    pendingCaretRef.current = pendingActivation.caret;
-    pendingTextareaSelectionRef.current = pendingActivation.selection ?? null;
-    cacheSvgCodeFencePreviewHeightForBlock(nextIndex, targetBlock);
-    setActiveBlockIndex(nextIndex);
-    setActiveEditSnapshot(createActiveEditSnapshotFromBlock(nextIndex, targetBlock));
-    updateActiveDraftState(toEditorDraftForBlock(targetBlock));
-    setActiveDirty(false);
-    setActiveComposing(false);
-    pendingActivationMarkdownRef.current = null;
-    setPendingActivation(null);
-  }, [blocks, cacheSvgCodeFencePreviewHeightForBlock, markdown, pendingActivation, updateActiveDraftState]);
+    }, [measureOverlayLayout]);
 
-  useLayoutEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      return;
-    }
-    const caret = pendingCaretRef.current;
-    const selection = pendingTextareaSelectionRef.current;
-    pendingCaretRef.current = null;
-    pendingTextareaSelectionRef.current = null;
-    const handle = window.requestAnimationFrame(() => {
-      try {
-        textarea.focus({ preventScroll: true });
-      } catch {
-        textarea.focus();
-      }
-      if (selection) {
-        const max = textarea.value.length;
-        const start = Math.max(0, Math.min(selection.start, max));
-        const end = Math.max(start, Math.min(selection.end, max));
-        textarea.setSelectionRange(start, end);
-        setEditorOverlaySelectionStart(start);
+    const measureVirtualViewport = useCallback(() => {
+      const container = containerRef.current;
+      if (!container) {
         return;
       }
-      const nextPos = caret === "start" ? 0 : textarea.value.length;
-      textarea.setSelectionRange(nextPos, nextPos);
-      setEditorOverlaySelectionStart(nextPos);
-    });
-    return () => window.cancelAnimationFrame(handle);
-  }, [activeBlockIndex]);
-
-  const closePageLinkPicker = useCallback(() => {
-    setPendingPageLinkPickerRequest(null);
-    setPageLinkPickerState(null);
-  }, []);
-
-  const closeTypedImageLinkPicker = useCallback(() => {
-    setPendingTypedImageLinkPickerRequest(null);
-    setTypedImageLinkPickerState(null);
-  }, []);
-
-  const closeImageEmbedReplacePicker = useCallback(() => {
-    setImageEmbedReplacePickerState(null);
-  }, []);
-
-  const requestPageLinkPickerOpen = useCallback((request: PendingPageLinkPickerRequest) => {
-    setPendingTypedImageLinkPickerRequest(null);
-    setTypedImageLinkPickerState(null);
-    setPendingPageLinkPickerRequest(request);
-    setPageLinkPickerState(null);
-  }, []);
-
-  const requestTypedImageLinkPickerOpen = useCallback((request: PendingTypedImageLinkPickerRequest) => {
-    setPendingPageLinkPickerRequest(null);
-    setPageLinkPickerState(null);
-    setPendingTypedImageLinkPickerRequest(request);
-    setTypedImageLinkPickerState(null);
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!pendingPageLinkPickerRequest) {
-      return;
-    }
-    if (activeBlockIndex === null) {
-      return;
-    }
-    const textarea = textareaRef.current;
-    const container = containerRef.current;
-    if (!textarea || !container) {
-      return;
-    }
-    const replaceRange = pendingPageLinkPickerRequest.replaceRange ?? {
-      start: textarea.selectionStart,
-      end: textarea.selectionEnd,
-    };
-    const anchor = resolveTextareaCaretAnchor(textarea, container, replaceRange.end);
-    setPageLinkPickerState({
-      source: pendingPageLinkPickerRequest.source,
-      blockIndex: activeBlockIndex,
-      replaceRange: {
-        start: Math.max(0, Math.min(replaceRange.start, textarea.value.length)),
-        end: Math.max(0, Math.min(replaceRange.end, textarea.value.length)),
-      },
-      anchorLeft: anchor.left,
-      anchorTop: anchor.top,
-      query: pendingPageLinkPickerRequest.initialQuery ?? "",
-      highlightedIndex: 0,
-    });
-    setPendingPageLinkPickerRequest(null);
-  }, [activeBlockIndex, pendingPageLinkPickerRequest, activeDraft]);
-
-  useLayoutEffect(() => {
-    if (!pendingTypedImageLinkPickerRequest) {
-      return;
-    }
-    if (activeBlockIndex === null) {
-      return;
-    }
-    const textarea = textareaRef.current;
-    const container = containerRef.current;
-    if (!textarea || !container) {
-      return;
-    }
-    const replaceRange = pendingTypedImageLinkPickerRequest.replaceRange ?? {
-      start: textarea.selectionStart,
-      end: textarea.selectionEnd,
-    };
-    const anchor = resolveTextareaCaretAnchor(textarea, container, replaceRange.end);
-    setTypedImageLinkPickerState({
-      blockIndex: activeBlockIndex,
-      replaceRange: {
-        start: Math.max(0, Math.min(replaceRange.start, textarea.value.length)),
-        end: Math.max(0, Math.min(replaceRange.end, textarea.value.length)),
-      },
-      anchorLeft: anchor.left,
-      anchorTop: anchor.top,
-      query: pendingTypedImageLinkPickerRequest.initialQuery ?? "",
-      highlightedIndex: 0,
-    });
-    setPendingTypedImageLinkPickerRequest(null);
-  }, [activeBlockIndex, pendingTypedImageLinkPickerRequest, activeDraft]);
-
-  useEffect(() => {
-    if (!pageLinkPickerState) {
-      return;
-    }
-    const handle = window.requestAnimationFrame(() => {
-      const input = pageLinkPickerSearchInputRef.current;
-      if (!input) {
+      const scrollHost = findScrollableAncestor(container);
+      if (!scrollHost) {
+        setVirtualViewport({
+          top: 0,
+          bottom: Number.POSITIVE_INFINITY,
+        });
         return;
       }
-      try {
-        input.focus({ preventScroll: true });
-      } catch {
-        input.focus();
-      }
-      input.select();
-    });
-    return () => window.cancelAnimationFrame(handle);
-  }, [pageLinkPickerState]);
-
-  useEffect(() => {
-    if (!typedImageLinkPickerState) {
-      return;
-    }
-    const handle = window.requestAnimationFrame(() => {
-      const input = typedImageLinkPickerRef.current?.querySelector<HTMLInputElement>(
-        "input[type='search']",
+      const hostRect = scrollHost.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      const top = Math.max(0, hostRect.top - containerRect.top);
+      const bottom = Math.max(top, top + scrollHost.clientHeight);
+      setVirtualViewport((current) =>
+        current.top === top && current.bottom === bottom ? current : { top, bottom },
       );
-      if (!input) {
+    }, []);
+
+    const scheduleVirtualViewportMeasure = useCallback(() => {
+      if (virtualViewportFrameRef.current !== null) {
         return;
       }
-      try {
-        input.focus({ preventScroll: true });
-      } catch {
-        input.focus();
-      }
-      input.select();
-    });
-    return () => window.cancelAnimationFrame(handle);
-  }, [typedImageLinkPickerState]);
+      virtualViewportFrameRef.current = window.requestAnimationFrame(() => {
+        virtualViewportFrameRef.current = null;
+        measureVirtualViewport();
+      });
+    }, [measureVirtualViewport]);
 
-  useEffect(() => {
-    if (!pageLinkPickerState) {
-      return;
-    }
-    setPageLinkPickerState((current) => {
-      if (!current) {
-        return current;
-      }
-      if (activeBlockIndex === null || current.blockIndex !== activeBlockIndex) {
+    const getContainerLocalPoint = useCallback((clientX: number, clientY: number) => {
+      const container = containerRef.current;
+      if (!container) {
         return null;
       }
-      return current;
-    });
-  }, [activeBlockIndex, pageLinkPickerState]);
-
-  useEffect(() => {
-    if (!typedImageLinkPickerState) {
-      return;
-    }
-    setTypedImageLinkPickerState((current) => {
-      if (!current) {
-        return current;
-      }
-      if (activeBlockIndex === null || current.blockIndex !== activeBlockIndex) {
-        return null;
-      }
-      return current;
-    });
-  }, [activeBlockIndex, typedImageLinkPickerState]);
-
-  useEffect(() => {
-    if (!typedImageLinkPickerState) {
-      return;
-    }
-    if (
-      insertMenuState !== null ||
-      pageLinkPickerState !== null ||
-      mathToolboxState !== null ||
-      selectionContextMenuState !== null ||
-      disabled
-    ) {
-      setTypedImageLinkPickerState(null);
-    }
-  }, [
-    disabled,
-    insertMenuState,
-    mathToolboxState,
-    pageLinkPickerState,
-    selectionContextMenuState,
-    typedImageLinkPickerState,
-  ]);
-
-  useEffect(() => {
-    if (!pageLinkPickerState) {
-      return;
-    }
-    setPageLinkPickerState((current) => {
-      if (!current) {
-        return current;
-      }
-      const nextMaxIndex = Math.max(0, filteredPageLinkCandidates.length - 1);
-      const nextIndex = Math.max(0, Math.min(current.highlightedIndex, nextMaxIndex));
-      if (nextIndex === current.highlightedIndex) {
-        return current;
-      }
+      const rect = container.getBoundingClientRect();
       return {
-        ...current,
-        highlightedIndex: nextIndex,
+        x: clientX - rect.left + container.scrollLeft,
+        y: clientY - rect.top + container.scrollTop,
       };
-    });
-  }, [filteredPageLinkCandidates.length, pageLinkPickerState]);
+    }, []);
 
-  useEffect(() => {
-    if (!typedImageLinkPickerState) {
-      return;
-    }
-    setTypedImageLinkPickerState((current) => {
-      if (!current) {
-        return current;
-      }
-      const nextMaxIndex = Math.max(0, filteredTypedImageLinkCandidates.length - 1);
-      const nextIndex = Math.max(0, Math.min(current.highlightedIndex, nextMaxIndex));
-      if (nextIndex === current.highlightedIndex) {
-        return current;
-      }
-      return {
-        ...current,
-        highlightedIndex: nextIndex,
-      };
-    });
-  }, [filteredTypedImageLinkCandidates.length, typedImageLinkPickerState]);
+    const setSelectionMarqueeFromContentPoints = useCallback(
+      (startX: number, startY: number, endX: number, endY: number) => {
+        const nextRect = {
+          left: Math.min(startX, endX),
+          top: Math.min(startY, endY),
+          width: Math.abs(endX - startX),
+          height: Math.abs(endY - startY),
+        };
+        setSelectionMarqueeRect((current) => {
+          if (
+            current &&
+            current.left === nextRect.left &&
+            current.top === nextRect.top &&
+            current.width === nextRect.width &&
+            current.height === nextRect.height
+          ) {
+            return current;
+          }
+          return nextRect;
+        });
+      },
+      [],
+    );
 
-  useEffect(() => {
-    if (!pageLinkPickerState) {
-      return;
-    }
-    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
-      const target = event.target;
-      if (!(target instanceof Node)) {
-        return;
-      }
-      if (pageLinkPickerRef.current?.contains(target)) {
-        return;
-      }
-      closePageLinkPicker();
-    };
-    const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "Escape") {
-        return;
-      }
-      closePageLinkPicker();
-    };
-    document.addEventListener("mousedown", handleDocumentMouseDown);
-    window.addEventListener("keydown", handleWindowKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleDocumentMouseDown);
-      window.removeEventListener("keydown", handleWindowKeyDown);
-    };
-  }, [closePageLinkPicker, pageLinkPickerState]);
+    const updateSelectionFromMarqueeContentPoints = useCallback(
+      (startX: number, startY: number, endX: number, endY: number) => {
+        if (blocks.length === 0 || overlayRows.length === 0) {
+          return;
+        }
+        const contentLayer = contentLayerRef.current;
+        const contentWidth = Math.max(
+          contentLayer?.scrollWidth ?? 0,
+          contentLayer?.clientWidth ?? 0,
+          1,
+        );
+        const left = Math.max(0, Math.min(contentWidth, Math.min(startX, endX)));
+        const right = Math.max(0, Math.min(contentWidth, Math.max(startX, endX)));
+        const top = Math.min(startY, endY);
+        const bottom = Math.max(startY, endY);
+        const rowLeft = 0;
+        const rowRight = contentWidth;
+        const intersectedIndices: number[] = [];
 
-  useEffect(() => {
-    if (!typedImageLinkPickerState) {
-      return;
-    }
-    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
-      const target = event.target;
-      if (!(target instanceof Node)) {
-        return;
-      }
-      if (typedImageLinkPickerRef.current?.contains(target)) {
-        return;
-      }
-      closeTypedImageLinkPicker();
-    };
-    const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "Escape") {
-        return;
-      }
-      closeTypedImageLinkPicker();
-    };
-    document.addEventListener("mousedown", handleDocumentMouseDown);
-    window.addEventListener("keydown", handleWindowKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleDocumentMouseDown);
-      window.removeEventListener("keydown", handleWindowKeyDown);
-    };
-  }, [closeTypedImageLinkPicker, typedImageLinkPickerState]);
+        for (const row of overlayRows) {
+          const nextIndex = clampIndex(row.index, blocks.length);
+          if (
+            blocks[nextIndex]?.kind === "blank" &&
+            isStructuralSeparatorBlankBlock(blocks, nextIndex)
+          ) {
+            continue;
+          }
+          const rowTop = row.top;
+          const rowBottom = row.top + row.height;
+          const intersects =
+            rowRight >= left && rowLeft <= right && rowBottom >= top && rowTop <= bottom;
+          if (!intersects) {
+            continue;
+          }
+          intersectedIndices.push(nextIndex);
+        }
 
-  useEffect(() => {
-    if (!imageEmbedReplacePickerState) {
-      return;
-    }
-    const handle = window.requestAnimationFrame(() => {
-      const input = imageEmbedReplacePickerRef.current?.querySelector<HTMLInputElement>(
-        "input[type='search']",
-      );
-      if (!input) {
-        return;
-      }
-      try {
-        input.focus({ preventScroll: true });
-      } catch {
-        input.focus();
-      }
-      input.select();
-    });
-    return () => window.cancelAnimationFrame(handle);
-  }, [imageEmbedReplacePickerState]);
+        const selectedIndices = sortUniqueSelectionIndices(intersectedIndices);
+        const gestureAnchor = selectionGestureRef.current?.anchorIndex;
+        setSelectedBlockSelection((current) => {
+          if (selectedIndices.length === 0) {
+            return null;
+          }
+          const nextAnchor =
+            typeof gestureAnchor === "number" && selectedIndices.includes(gestureAnchor)
+              ? gestureAnchor
+              : current && selectedIndices.includes(current.anchorIndex)
+                ? current.anchorIndex
+                : selectedIndices[0]!;
+          if (
+            current &&
+            current.anchorIndex === nextAnchor &&
+            current.selectedIndices.length === selectedIndices.length &&
+            current.selectedIndices.every((value, index) => value === selectedIndices[index])
+          ) {
+            return current;
+          }
+          return {
+            anchorIndex: nextAnchor,
+            selectedIndices,
+          };
+        });
+      },
+      [blocks, overlayRows],
+    );
 
-  useEffect(() => {
-    if (!imageEmbedReplacePickerState) {
-      return;
-    }
-    setImageEmbedReplacePickerState((current) => {
-      if (!current) {
-        return current;
-      }
-      const block = blocks[current.blockIndex];
-      if (!block || block.id !== current.blockId || block.kind !== "image-embed") {
-        return null;
-      }
-      return current;
-    });
-  }, [blocks, imageEmbedReplacePickerState]);
+    const editorDirty = activeDirty || activeTableDirty;
 
-  useEffect(() => {
-    if (!imageEmbedReplacePickerState) {
-      return;
-    }
-    if (
-      activeBlockIndex !== null ||
-      insertMenuState !== null ||
-      pageLinkPickerState !== null ||
-      typedImageLinkPickerState !== null ||
-      mathToolboxState !== null ||
-      selectionContextMenuState !== null ||
-      disabled
-    ) {
-      setImageEmbedReplacePickerState(null);
-    }
-  }, [
-    activeBlockIndex,
-    disabled,
-    imageEmbedReplacePickerState,
-    insertMenuState,
-    mathToolboxState,
-    pageLinkPickerState,
-    typedImageLinkPickerState,
-    selectionContextMenuState,
-  ]);
+    useEffect(() => {
+      onDirtyChange?.(editorDirty);
+    }, [editorDirty, onDirtyChange]);
 
-  useEffect(() => {
-    if (!imageEmbedReplacePickerState) {
-      return;
-    }
-    setImageEmbedReplacePickerState((current) => {
-      if (!current) {
-        return current;
-      }
-      const nextMaxIndex = Math.max(0, filteredImageEmbedReplaceCandidates.length - 1);
-      const nextIndex = Math.max(0, Math.min(current.highlightedIndex, nextMaxIndex));
-      if (nextIndex === current.highlightedIndex) {
-        return current;
-      }
-      return {
-        ...current,
-        highlightedIndex: nextIndex,
-      };
-    });
-  }, [filteredImageEmbedReplaceCandidates.length, imageEmbedReplacePickerState]);
+    useEffect(() => {
+      setHistory((current) => {
+        if (current.present.markdown === markdown) {
+          return current;
+        }
+        if (editorDirty) {
+          return current;
+        }
+        return resetMarkdownHistory(markdown, "external-load");
+      });
+    }, [editorDirty, markdown]);
 
-  useEffect(() => {
-    if (!imageEmbedReplacePickerState) {
-      return;
-    }
-    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
-      const target = event.target;
-      if (!(target instanceof Node)) {
-        return;
-      }
-      if (imageEmbedReplacePickerRef.current?.contains(target)) {
-        return;
-      }
-      if (target instanceof Element && target.closest(".markdown-hybrid-image-embed-replace-shell")) {
-        return;
-      }
-      closeImageEmbedReplacePicker();
-    };
-    const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "Escape") {
-        return;
-      }
-      closeImageEmbedReplacePicker();
-    };
-    document.addEventListener("mousedown", handleDocumentMouseDown);
-    window.addEventListener("keydown", handleWindowKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleDocumentMouseDown);
-      window.removeEventListener("keydown", handleWindowKeyDown);
-    };
-  }, [closeImageEmbedReplacePicker, imageEmbedReplacePickerState]);
-
-  const applyGlobalHistory = useCallback(
-    (nextHistory: MarkdownHistoryState) => {
-      setHistory(nextHistory);
+    useEffect(() => {
       setActiveBlockIndex(null);
       updateActiveDraftState("");
       setActiveDirty(false);
@@ -5140,24 +4177,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       setActiveTableDirty(false);
       setPendingActivation(null);
       setPendingTableActivation(null);
-      setSelectedBlockSelection(null);
-      setIsSelectionDragging(false);
-      setDraggedBlockIndex(null);
-      setDropIndicatorIndex(null);
-      setInsertMenuState(null);
-      setMathToolboxState(null);
-      setSelectionContextMenuState(null);
-      setSelectionMarqueeRect(null);
-      setPendingTypedImageLinkPickerRequest(null);
-      setTypedImageLinkPickerState(null);
-      setPendingPageLinkPickerRequest(null);
-      setPageLinkPickerState(null);
-      setImageEmbedReplacePickerState(null);
-      setInlineFormattingToolbarSelection(null);
-      setInlineFormattingToolbarMenu(null);
-      setInlineFormattingToolbarLinkState(null);
-      selectionGestureRef.current = null;
-      suppressNextBlockContextMenuRef.current = false;
       pendingActivationMarkdownRef.current = null;
       activeTableSessionRef.current = null;
       deferredEditActionRef.current = null;
@@ -5168,1116 +4187,6 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         window.cancelAnimationFrame(deferredEditFlushFrameRef.current);
         deferredEditFlushFrameRef.current = null;
       }
-      inlineFormattingToolbarRangeRef.current = null;
-      inlineFormattingToolbarPendingSignatureRef.current = null;
-      if (inlineFormattingToolbarTimerRef.current !== null) {
-        window.clearTimeout(inlineFormattingToolbarTimerRef.current);
-        inlineFormattingToolbarTimerRef.current = null;
-      }
-      onChange(nextHistory.present.markdown);
-    },
-    [onChange],
-  );
-
-  const clearPendingTableActivation = useCallback((blockIndex: number) => {
-    setPendingTableActivation((current) =>
-      current?.blockIndex === blockIndex ? null : current
-    );
-  }, []);
-
-  const registerActiveTableSession = useCallback(
-    (controller: MarkdownHybridTableSessionController | null) => {
-      activeTableSessionRef.current = controller;
-      if (!controller) {
-        setActiveTableDirty(false);
-      }
-    },
-    [],
-  );
-
-  const handleTableBlockCommitRaw = useCallback(
-    (blockIndex: number, nextRaw: string) => {
-      const block = blocks[blockIndex];
-      if (!block) {
-        return false;
-      }
-      const nextMarkdown = applyEditorMarkdownNormalization(
-        replaceMarkdownBlock(markdown, block, nextRaw),
-      );
-      if (nextMarkdown === markdown) {
-        return true;
-      }
-      onChange(nextMarkdown);
-      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
-      onCommit?.(nextMarkdown, { block: { ...block, raw: nextRaw } });
-      if (activeBlockIndex === blockIndex) {
-        updateActiveDraftState(nextRaw);
-        setActiveDirty(false);
-        setActiveEditSnapshot((current) =>
-          current && current.blockIndex === blockIndex
-            ? {
-              ...current,
-              raw: nextRaw,
-              draft: nextRaw,
-            }
-            : current,
-        );
-      }
-      return true;
-    },
-    [activeBlockIndex, blocks, markdown, onChange, onCommit],
-  );
-
-  const handleMathBlockLiveSync = useCallback(
-    (blockIndex: number, nextLatex: string, _options?: { mergeKey?: string }) => {
-      const snapshot = activeEditSnapshotRef.current;
-      if (
-        activeBlockIndex !== blockIndex ||
-        !snapshot ||
-        snapshot.blockIndex !== blockIndex ||
-        snapshot.kind !== "math-block"
-      ) {
-        return false;
-      }
-      const nextRaw = normalizeMathBlockSource(["$$", nextLatex.trim(), "$$"].join("\n"));
-      updateActiveDraftState(nextRaw);
-      setActiveDirty(true);
-      setActiveEditSnapshot((current) =>
-        current && current.blockIndex === blockIndex
-          ? {
-            ...current,
-            draft: nextRaw,
-          }
-          : current,
-      );
-      return true;
-    },
-    [activeBlockIndex],
-  );
-
-  const handleGlobalUndo = useCallback(() => {
-    if (!canUndoMarkdownHistory(history)) {
-      return false;
-    }
-    applyGlobalHistory(undoMarkdownHistory(history));
-    return true;
-  }, [applyGlobalHistory, history]);
-
-  const handleGlobalRedo = useCallback(() => {
-    if (!canRedoMarkdownHistory(history)) {
-      return false;
-    }
-    applyGlobalHistory(redoMarkdownHistory(history));
-    return true;
-  }, [applyGlobalHistory, history]);
-
-  const resetActiveEditorUi = useCallback(() => {
-    closePageLinkPicker();
-    closeTypedImageLinkPicker();
-    setPendingPageLinkPickerRequest(null);
-    setInlineFormattingToolbarSelection(null);
-    setInlineFormattingToolbarMenu(null);
-    setInlineFormattingToolbarLinkState(null);
-    setMathToolboxState(null);
-    inlineFormattingToolbarRangeRef.current = null;
-    inlineFormattingToolbarPendingSignatureRef.current = null;
-    if (inlineFormattingToolbarTimerRef.current !== null) {
-      window.clearTimeout(inlineFormattingToolbarTimerRef.current);
-      inlineFormattingToolbarTimerRef.current = null;
-    }
-  }, [closePageLinkPicker, closeTypedImageLinkPicker]);
-
-  const resolveDeferredEditRequests = useCallback(
-    (performedKind: DeferredEditAction["kind"], result: boolean) => {
-      const requests = deferredEditRequestsRef.current;
-      deferredEditRequestsRef.current = [];
-      requests.forEach((request) => {
-        request.resolve(result && request.kind === performedKind);
-      });
-    },
-    [],
-  );
-
-  const commitActiveBlockNow = useCallback(
-    (options?: { deactivate?: boolean; nextActivation?: PendingActivation | null }) => {
-      if (activeBlockIndex === null) {
-        return true;
-      }
-
-      const liveBlock = blocks[activeBlockIndex] ?? null;
-      if (
-        liveBlock?.kind === "table" ||
-        liveBlock?.kind === "database-block" ||
-        liveBlock?.kind === "canvas-block"
-      ) {
-        if (liveBlock.kind === "table") {
-          const session = activeTableSessionRef.current;
-          if (session?.blockIndex === activeBlockIndex && !session.flush()) {
-            return false;
-          }
-        }
-        if (options?.deactivate ?? true) {
-          resetActiveEditorUi();
-          setActiveBlockIndex(null);
-          updateActiveDraftState("");
-          setActiveDirty(false);
-          setActiveEditSnapshot(null);
-          setActiveComposing(false);
-          if (!options?.nextActivation || pendingTableActivation?.blockIndex !== options.nextActivation.index) {
-            setPendingTableActivation(null);
-          }
-        }
-        setActiveTableDirty(false);
-        if (options?.nextActivation) {
-          setPendingActivation(options.nextActivation);
-        }
-        return true;
-      }
-
-      const snapshot = activeEditSnapshotRef.current;
-      if (!snapshot) {
-        if (options?.deactivate ?? true) {
-          resetActiveEditorUi();
-          setActiveBlockIndex(null);
-          updateActiveDraftState("");
-          setActiveDirty(false);
-          setActiveEditSnapshot(null);
-          setActiveComposing(false);
-          if (!options?.nextActivation || pendingTableActivation?.blockIndex !== options.nextActivation.index) {
-            setPendingTableActivation(null);
-          }
-        }
-        return true;
-      }
-
-      const currentDraft = textareaRef.current?.value ?? activeDraftRef.current;
-      const activeSelectionStart = textareaRef.current?.selectionStart ?? null;
-      const normalizedHeadingSpacing = normalizeLeadingHeadingSpacing(
-        currentDraft,
-        snapshot.kind,
-        activeSelectionStart,
-      );
-      const draftForPersist = normalizedHeadingSpacing?.value ?? currentDraft;
-      const normalizedDraftForPersist = snapshot.kind === "math-block"
-        ? draftForPersist
-        : normalizeMultilineInlineMathOnCommit(draftForPersist);
-
-      let nextResolvedMarkdown = markdown;
-      let committedBlock: MarkdownBlock;
-
-      if (snapshot.isDetachedEmptyBlock) {
-        nextResolvedMarkdown = applyEditorMarkdownNormalization(normalizedDraftForPersist);
-        committedBlock = parseHybridMarkdownBlocks(nextResolvedMarkdown)[0] ?? {
-          id: snapshot.blockId,
-          kind: "blank",
-          startLine: snapshot.startLine,
-          endLine: snapshot.endLine,
-          startOffset: 0,
-          endOffset: nextResolvedMarkdown.length,
-          raw: nextResolvedMarkdown,
-        };
-      } else {
-        let nextBlockRaw = toPersistedBlockRawForDraft({ kind: snapshot.kind }, normalizedDraftForPersist);
-        if (snapshot.kind === "help-block") {
-          nextBlockRaw = normalizeHelpBlockSource(nextBlockRaw);
-        } else if (snapshot.kind === "card-start" || snapshot.kind === "card-end") {
-          nextBlockRaw = normalizeCardBlockSource(nextBlockRaw);
-        } else if (snapshot.kind === "hr") {
-          nextBlockRaw = normalizeHorizontalRuleBlockSource(nextBlockRaw);
-        }
-        nextResolvedMarkdown = applyEditorMarkdownNormalization(
-          replaceMarkdownBlock(markdown, snapshot, nextBlockRaw),
-        );
-        committedBlock = liveBlock && liveBlock.id === snapshot.blockId
-          ? { ...liveBlock, raw: nextBlockRaw }
-          : {
-            id: snapshot.blockId,
-            kind: snapshot.kind,
-            startLine: snapshot.startLine,
-            endLine: snapshot.endLine,
-            startOffset: snapshot.startOffset,
-            endOffset: snapshot.endOffset,
-            raw: nextBlockRaw,
-          };
-      }
-
-      if (snapshot.kind === "ordered-list") {
-        nextResolvedMarkdown = normalizeOrderedListSegmentsInMarkdown(nextResolvedMarkdown);
-        const normalizedBlocks = parseHybridMarkdownBlocks(nextResolvedMarkdown);
-        const normalizedCommittedBlock = normalizedBlocks.find(
-          (block) => block.kind === "ordered-list" && block.startLine === snapshot.startLine,
-        ) ?? normalizedBlocks[clampIndex(activeBlockIndex ?? 0, normalizedBlocks.length)] ?? null;
-        if (normalizedCommittedBlock) {
-          committedBlock = normalizedCommittedBlock;
-        }
-      }
-
-      if (nextResolvedMarkdown !== markdown) {
-        pendingActivationMarkdownRef.current = options?.nextActivation ? nextResolvedMarkdown : null;
-        onChange(nextResolvedMarkdown);
-      } else if (options?.nextActivation) {
-        pendingActivationMarkdownRef.current = null;
-      }
-
-      setHistory((current) => pushMarkdownHistory(current, nextResolvedMarkdown, "block-commit"));
-      onCommit?.(nextResolvedMarkdown, { block: committedBlock });
-
-      if (options?.deactivate ?? true) {
-        resetActiveEditorUi();
-        setActiveBlockIndex(null);
-        updateActiveDraftState("");
-        setActiveDirty(false);
-        setActiveEditSnapshot(null);
-        setActiveComposing(false);
-        if (!options?.nextActivation || pendingTableActivation?.blockIndex !== options.nextActivation.index) {
-          setPendingTableActivation(null);
-        }
-      } else {
-        setActiveDirty(false);
-        setActiveEditSnapshot((current) =>
-          current
-            ? {
-              ...current,
-              raw: committedBlock.raw,
-              draft: toEditorDraftForBlock(committedBlock),
-            }
-            : current,
-        );
-        updateActiveDraftState(toEditorDraftForBlock(committedBlock));
-      }
-
-      if (options?.nextActivation) {
-        setPendingActivation(options.nextActivation);
-      }
-
-      return true;
-    },
-    [
-      activeBlockIndex,
-      blocks,
-      markdown,
-      onChange,
-      onCommit,
-      pendingTableActivation,
-      resetActiveEditorUi,
-      updateActiveDraftState,
-    ],
-  );
-
-  const discardActiveBlockNow = useCallback(() => {
-    resetActiveEditorUi();
-    setActiveBlockIndex(null);
-    updateActiveDraftState("");
-    setActiveDirty(false);
-    setActiveEditSnapshot(null);
-    setActiveComposing(false);
-    setActiveTableDirty(false);
-    setPendingActivation(null);
-    setPendingTableActivation(null);
-    return true;
-  }, [resetActiveEditorUi, updateActiveDraftState]);
-
-  const flushDeferredEditAction = useCallback(() => {
-    const action = deferredEditActionRef.current;
-    deferredEditActionRef.current = null;
-    if (!action) {
-      return true;
-    }
-    const result = action.kind === "discard"
-      ? discardActiveBlockNow()
-      : commitActiveBlockNow(action.options);
-    resolveDeferredEditRequests(action.kind, result);
-    return result;
-  }, [commitActiveBlockNow, discardActiveBlockNow, resolveDeferredEditRequests]);
-
-  const scheduleDeferredEditFlush = useCallback(() => {
-    if (deferredEditFlushFrameRef.current !== null) {
-      return;
-    }
-    deferredEditFlushFrameRef.current = window.requestAnimationFrame(() => {
-      deferredEditFlushFrameRef.current = null;
-      flushDeferredEditAction();
-    });
-  }, [flushDeferredEditAction]);
-
-  const queueDeferredEditAction = useCallback(
-    (action: DeferredEditAction, requestKind: DeferredEditAction["kind"]) =>
-      new Promise<boolean>((resolve) => {
-        deferredEditActionRef.current = mergeDeferredEditAction(
-          deferredEditActionRef.current,
-          action,
-        );
-        deferredEditRequestsRef.current.push({ kind: requestKind, resolve });
-      }),
-    [],
-  );
-
-  const commitActiveBlock = useCallback(
-    (options?: { deactivate?: boolean; nextActivation?: PendingActivation | null }) => {
-      if (activeComposingRef.current) {
-        void queueDeferredEditAction({ kind: "commit", options }, "commit");
-        return false;
-      }
-      return commitActiveBlockNow(options);
-    },
-    [commitActiveBlockNow, queueDeferredEditAction],
-  );
-
-  const commitActiveBlockAsync = useCallback(
-    (options?: { deactivate?: boolean; nextActivation?: PendingActivation | null }) => {
-      if (activeComposingRef.current) {
-        return queueDeferredEditAction({ kind: "commit", options }, "commit");
-      }
-      return Promise.resolve(commitActiveBlockNow(options));
-    },
-    [commitActiveBlockNow, queueDeferredEditAction],
-  );
-
-  const discardActiveBlock = useCallback(() => {
-    if (activeComposingRef.current) {
-      void queueDeferredEditAction({ kind: "discard" }, "discard");
-      return false;
-    }
-    return discardActiveBlockNow();
-  }, [discardActiveBlockNow, queueDeferredEditAction]);
-
-  const discardActiveBlockAsync = useCallback(() => {
-    if (activeComposingRef.current) {
-      return queueDeferredEditAction({ kind: "discard" }, "discard");
-    }
-    return Promise.resolve(discardActiveBlockNow());
-  }, [discardActiveBlockNow, queueDeferredEditAction]);
-
-  const activateBlock = useCallback(
-    (index: number, caret: "start" | "end" = "end") => {
-      if (disabled) {
-        return;
-      }
-      if (blocks.length === 0) {
-        return;
-      }
-      const nextIndex = clampIndex(index, blocks.length);
-      const nextBlock = blocks[nextIndex];
-      if (!nextBlock) {
-        return;
-      }
-      cacheSvgCodeFencePreviewHeightForBlock(nextIndex, nextBlock);
-      if (activeBlockIndex !== null && activeBlockIndex !== nextIndex) {
-        commitActiveBlock({
-          deactivate: true,
-          nextActivation: { index: nextIndex, caret },
-        });
-        return;
-      }
-      if (activeBlockIndex === nextIndex) {
-        pendingCaretRef.current = caret;
-        return;
-      }
-      pendingCaretRef.current = caret;
-      setPendingTableActivation(null);
-      setActiveBlockIndex(nextIndex);
-      setActiveEditSnapshot(createActiveEditSnapshotFromBlock(nextIndex, nextBlock));
-      updateActiveDraftState(toEditorDraftForBlock(nextBlock));
-      setActiveDirty(false);
-      setActiveComposing(false);
-      setActiveTableDirty(false);
-    },
-    [
-      activeBlockIndex,
-      blocks,
-      cacheSvgCodeFencePreviewHeightForBlock,
-      commitActiveBlock,
-      disabled,
-    ],
-  );
-
-  const handleTableBlockRequestActivate = useCallback(
-    (index: number, request?: MarkdownHybridTableActivationRequest) => {
-      if (disabled) {
-        return;
-      }
-      const nextIndex = clampIndex(index, blocks.length);
-      const nextBlock = blocks[nextIndex];
-      if (!nextBlock || nextBlock.kind !== "table") {
-        return;
-      }
-      if (activeBlockIndex !== null && activeBlockIndex !== nextIndex) {
-        if (request) {
-          setPendingTableActivation({ blockIndex: nextIndex, request });
-        }
-        commitActiveBlock({
-          deactivate: true,
-          nextActivation: { index: nextIndex, caret: "start" },
-        });
-        return;
-      }
-      setPendingActivation(null);
-      if (request) {
-        setPendingTableActivation({ blockIndex: nextIndex, request });
-      }
-      if (activeBlockIndex === nextIndex) {
-        setActiveTableDirty(false);
-        return;
-      }
-      setActiveBlockIndex(nextIndex);
-      setActiveEditSnapshot(createActiveEditSnapshotFromBlock(nextIndex, nextBlock));
-      updateActiveDraftState(nextBlock.raw);
-      setActiveDirty(false);
-      setActiveComposing(false);
-      setActiveTableDirty(false);
-    },
-    [activeBlockIndex, blocks, commitActiveBlock, disabled],
-  );
-
-  const handleMathToolboxButtonMouseDown = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-    },
-    [],
-  );
-
-  const handleMathToolboxButtonClick = useCallback(
-    (blockIndex: number) => (event: MouseEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (disabled) {
-        return;
-      }
-      const block = blocks[blockIndex];
-      if (!block || block.kind !== "math-block") {
-        return;
-      }
-      setMathToolboxState((current) =>
-        current && current.blockIndex === blockIndex
-          ? null
-          : {
-            blockIndex,
-            sessionId: `math-toolbox-${Date.now()}-${blockIndex}`,
-            initialLatexSnapshot: extractMathBlockBody(
-              activeBlockIndex === blockIndex ? activeDraft : block.raw,
-            ),
-          });
-      if (activeBlockIndex !== blockIndex) {
-        activateBlock(blockIndex, "start");
-      }
-    },
-    [activateBlock, activeBlockIndex, activeDraft, blocks, disabled],
-  );
-
-  const focusContainer = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) {
-      return;
-    }
-    try {
-      container.focus({ preventScroll: true });
-    } catch {
-      container.focus();
-    }
-  }, []);
-
-  const clearSelectedBlockRange = useCallback(() => {
-    if (selectionAutoScrollFrameRef.current !== null) {
-      window.cancelAnimationFrame(selectionAutoScrollFrameRef.current);
-      selectionAutoScrollFrameRef.current = null;
-    }
-    if (selectionDragUpdateFrameRef.current !== null) {
-      window.cancelAnimationFrame(selectionDragUpdateFrameRef.current);
-      selectionDragUpdateFrameRef.current = null;
-    }
-    setSelectedBlockSelection(null);
-    setIsSelectionDragging(false);
-    setSelectionContextMenuState(null);
-    setSelectionMarqueeRect(null);
-    selectionDragPointerRef.current = null;
-    selectionGestureRef.current = null;
-    suppressNextBlockContextMenuRef.current = false;
-  }, []);
-
-  const setSingleBlockSelection = useCallback(
-    (index: number) => {
-      if (disabled || blocks.length === 0) {
-        return;
-      }
-      const nextIndex = clampIndex(index, blocks.length);
-      setSelectedBlockSelection({ anchorIndex: nextIndex, selectedIndices: [nextIndex] });
-    },
-    [blocks.length, disabled],
-  );
-
-  const toggleDiscreteBlockSelection = useCallback(
-    (index: number) => {
-      if (disabled || blocks.length === 0) {
-        return;
-      }
-      const nextIndex = clampIndex(index, blocks.length);
-      setSelectedBlockSelection((current) => {
-        if (!current) {
-          return { anchorIndex: nextIndex, selectedIndices: [nextIndex] };
-        }
-        const alreadySelected = current.selectedIndices.includes(nextIndex);
-        if (alreadySelected) {
-          const remaining = current.selectedIndices.filter((value) => value !== nextIndex);
-          if (remaining.length === 0) {
-            return null;
-          }
-          const nextAnchor = remaining.includes(current.anchorIndex)
-            ? current.anchorIndex
-            : nextIndex;
-          return {
-            anchorIndex: remaining.includes(nextAnchor) ? nextAnchor : remaining[0]!,
-            selectedIndices: remaining,
-          };
-        }
-        const nextSelectedIndices = sortUniqueSelectionIndices([
-          ...current.selectedIndices,
-          nextIndex,
-        ]);
-        return { anchorIndex: nextIndex, selectedIndices: nextSelectedIndices };
-      });
-    },
-    [blocks.length, disabled],
-  );
-
-  const beginSelectionGesture = useCallback(
-    (options: {
-      index: number;
-      source: SelectionGestureSource;
-      clientX: number;
-      clientY: number;
-      preserveAnchor?: boolean;
-      preserveCurrentRangeIfSelected?: boolean;
-    }) => {
-      if (disabled || blocks.length === 0) {
-        return false;
-      }
-      const nextIndex = clampIndex(options.index, blocks.length);
-      const startPoint = getContainerLocalPoint(options.clientX, options.clientY);
-      const shouldPreserveCurrentRange = Boolean(
-        options.preserveCurrentRangeIfSelected &&
-          selectedBlockSelection &&
-          isBlockIndexSelected(selectedBlockSelection, nextIndex),
-      );
-      const nextAnchor = shouldPreserveCurrentRange
-        ? selectedBlockSelection!.anchorIndex
-        : (options.preserveAnchor && selectedBlockSelection
-          ? selectedBlockSelection.anchorIndex
-          : nextIndex);
-      const nextSelectedIndices = shouldPreserveCurrentRange
-        ? selectedBlockSelection!.selectedIndices
-        : createSelectionIndexRange(nextAnchor, nextIndex);
-
-      if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
-        return false;
-      }
-      setPendingActivation(null);
-      setInsertMenuState(null);
-      setSelectionContextMenuState(null);
-      setDraggedBlockIndex(null);
-      setDropIndicatorIndex(null);
-      setSelectedBlockSelection({ anchorIndex: nextAnchor, selectedIndices: nextSelectedIndices });
-      setSelectionMarqueeRect(null);
-      selectionGestureRef.current = {
-        active: true,
-        source: options.source,
-        anchorIndex: nextAnchor,
-        didDrag: false,
-        startClientX: options.clientX,
-        startClientY: options.clientY,
-        startContentX: startPoint?.x ?? options.clientX,
-        startContentY: startPoint?.y ?? options.clientY,
-      };
-      suppressNextBlockContextMenuRef.current = false;
-      setIsSelectionDragging(true);
-      focusContainer();
-      return true;
-    },
-    [
-      activeBlockIndex,
-      blocks.length,
-      commitActiveBlock,
-      disabled,
-      focusContainer,
-      getContainerLocalPoint,
-      selectedBlockSelection,
-    ],
-  );
-
-  const beginMarqueeSelectionGesture = useCallback(
-    (options: {
-      clientX: number;
-      clientY: number;
-      preserveAnchor?: boolean;
-    }) => {
-      if (disabled) {
-        return false;
-      }
-      const startPoint = getContainerLocalPoint(options.clientX, options.clientY);
-      if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
-        return false;
-      }
-      const nextAnchor = options.preserveAnchor && selectedBlockSelection
-        ? selectedBlockSelection.anchorIndex
-        : (selectedBlockSelection?.anchorIndex ?? 0);
-      setPendingActivation(null);
-      setInsertMenuState(null);
-      setSelectionContextMenuState(null);
-      setDraggedBlockIndex(null);
-      setDropIndicatorIndex(null);
-      selectionGestureRef.current = {
-        active: true,
-        source: "shift-left",
-        anchorIndex: nextAnchor,
-        didDrag: false,
-        startClientX: options.clientX,
-        startClientY: options.clientY,
-        startContentX: startPoint?.x ?? options.clientX,
-        startContentY: startPoint?.y ?? options.clientY,
-      };
-      suppressNextBlockContextMenuRef.current = false;
-      setIsSelectionDragging(true);
-      setSelectionMarqueeFromContentPoints(
-        startPoint?.x ?? options.clientX,
-        startPoint?.y ?? options.clientY,
-        startPoint?.x ?? options.clientX,
-        startPoint?.y ?? options.clientY,
-      );
-      focusContainer();
-      return true;
-    },
-    [
-      activeBlockIndex,
-      commitActiveBlock,
-      disabled,
-      focusContainer,
-      getContainerLocalPoint,
-      selectedBlockSelection,
-      setSelectionMarqueeFromContentPoints,
-    ],
-  );
-
-  const deleteSelectedBlocks = useCallback(
-    (options?: { source?: "delete" | "cut" }) => {
-      if (disabled || activeBlockIndex !== null || !selectedBlockSelection) {
-        return false;
-      }
-      const normalizedSelectedIndices = sortUniqueSelectionIndices(
-        selectedBlockSelection.selectedIndices.filter((index) =>
-          Number.isInteger(index) && index >= 0 && index < blocks.length
-        ),
-      );
-      if (normalizedSelectedIndices.length === 0) {
-        clearSelectedBlockRange();
-        return false;
-      }
-      const nextMarkdownRaw = deleteMarkdownBlockSelection(markdown, blocks, selectedBlockSelection);
-      if (nextMarkdownRaw === markdown) {
-        clearSelectedBlockRange();
-        return false;
-      }
-      const nextMarkdown = applyEditorMarkdownNormalization(nextMarkdownRaw);
-      const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
-      const firstSelectedIndex = normalizedSelectedIndices[0]!;
-      const shouldFocusNeighborBlock = options?.source === "cut";
-
-      setActiveBlockIndex(null);
-      updateActiveDraftState("");
-      setActiveDirty(false);
-      setActiveEditSnapshot(null);
-      setActiveComposing(false);
-      setActiveTableDirty(false);
-      if (shouldFocusNeighborBlock && nextBlocks.length > 0) {
-        pendingActivationMarkdownRef.current = nextMarkdown;
-        setPendingActivation({
-          index: firstSelectedIndex < nextBlocks.length ? firstSelectedIndex : nextBlocks.length - 1,
-          caret: "end",
-        });
-      } else {
-        pendingActivationMarkdownRef.current = null;
-        setPendingActivation(null);
-      }
-      setPendingTableActivation(null);
-      setSelectedBlockSelection(null);
-      setIsSelectionDragging(false);
-      setDraggedBlockIndex(null);
-      setDropIndicatorIndex(null);
-      setInsertMenuState(null);
-      setMathToolboxState(null);
-      setSelectionContextMenuState(null);
-      setSelectionMarqueeRect(null);
-      selectionGestureRef.current = null;
-      suppressNextBlockContextMenuRef.current = false;
-
-      if (shouldFocusNeighborBlock && nextBlocks.length === 0) {
-        setActiveBlockIndex(0);
-        updateActiveDraftState("");
-        setActiveDirty(false);
-        setActiveEditSnapshot(createDetachedEmptyEditSnapshot(nextMarkdown));
-        setActiveComposing(false);
-      } else if (!shouldFocusNeighborBlock) {
-        focusContainer();
-      }
-
-      onChange(nextMarkdown);
-      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-delete"));
-      return true;
-    },
-    [
-      activeBlockIndex,
-      blocks,
-      clearSelectedBlockRange,
-      disabled,
-      focusContainer,
-      markdown,
-      onChange,
-      selectedBlockSelection,
-      updateActiveDraftState,
-    ],
-  );
-
-  const replaceSelectedBlocksWithRaw = useCallback(
-    (insertedRaw: string) => {
-      if (disabled || activeBlockIndex !== null || !selectedBlockSelection) {
-        return false;
-      }
-      if (insertedRaw.length === 0) {
-        return false;
-      }
-      const normalizedSelectedIndices = sortUniqueSelectionIndices(
-        selectedBlockSelection.selectedIndices.filter((index) =>
-          Number.isInteger(index) && index >= 0 && index < blocks.length
-        ),
-      );
-      if (normalizedSelectedIndices.length === 0) {
-        return false;
-      }
-      const firstSelectedIndex = normalizedSelectedIndices[0]!;
-      const withoutSelectionMarkdown = applyEditorMarkdownNormalization(
-        deleteMarkdownBlockSelection(markdown, blocks, selectedBlockSelection),
-      );
-      const blocksWithoutSelection = parseHybridMarkdownBlocks(withoutSelectionMarkdown);
-      const insertionIndex = Math.max(0, Math.min(firstSelectedIndex, blocksWithoutSelection.length));
-      const nextMarkdown = applyEditorMarkdownNormalization(
-        withInsertedRawBlock(blocksWithoutSelection, insertionIndex, insertedRaw),
-      );
-      if (nextMarkdown === markdown) {
-        return false;
-      }
-      const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
-      const activationIndex = resolveInsertedBlockActivationIndex(nextBlocks, insertedRaw, insertionIndex);
-
-      setActiveBlockIndex(null);
-      updateActiveDraftState("");
-      setActiveDirty(false);
-      setActiveEditSnapshot(null);
-      setActiveComposing(false);
-      setActiveTableDirty(false);
-      pendingActivationMarkdownRef.current = activationIndex >= 0 ? nextMarkdown : null;
-      setPendingActivation(
-        activationIndex >= 0
-          ? { index: activationIndex, caret: "end" }
-          : null,
-      );
-      setPendingTableActivation(null);
-      setSelectedBlockSelection(null);
-      setIsSelectionDragging(false);
-      setDraggedBlockIndex(null);
-      setDropIndicatorIndex(null);
-      setInsertMenuState(null);
-      setMathToolboxState(null);
-      setSelectionContextMenuState(null);
-      setSelectionMarqueeRect(null);
-      selectionGestureRef.current = null;
-      suppressNextBlockContextMenuRef.current = false;
-      onChange(nextMarkdown);
-      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
-      return true;
-    },
-    [
-      activeBlockIndex,
-      blocks,
-      disabled,
-      markdown,
-      onChange,
-      selectedBlockSelection,
-      updateActiveDraftState,
-    ],
-  );
-
-  const applyMarkdownWithPendingActivation = useCallback(
-    (
-      nextMarkdown: string,
-      activation: PendingActivation | null,
-      historyReason: "block-commit" | "block-delete" = "block-commit",
-    ) => {
-      if (nextMarkdown === markdown) {
-        return false;
-      }
-      const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
-
-      setActiveBlockIndex(null);
-      updateActiveDraftState("");
-      setActiveDirty(false);
-      setActiveEditSnapshot(null);
-      setActiveComposing(false);
-      setActiveTableDirty(false);
-      if (nextBlocks.length === 0) {
-        pendingActivationMarkdownRef.current = null;
-        setPendingActivation(null);
-        setActiveBlockIndex(0);
-        updateActiveDraftState("");
-        setActiveDirty(false);
-        setActiveEditSnapshot(createDetachedEmptyEditSnapshot(nextMarkdown));
-        setActiveComposing(false);
-      } else {
-        pendingActivationMarkdownRef.current = activation ? nextMarkdown : null;
-        setPendingActivation(activation);
-      }
-      setPendingTableActivation(null);
-      setSelectedBlockSelection(null);
-      setIsSelectionDragging(false);
-      setDraggedBlockIndex(null);
-      setDropIndicatorIndex(null);
-      setInsertMenuState(null);
-      setMathToolboxState(null);
-      setSelectionContextMenuState(null);
-      setSelectionMarqueeRect(null);
-      selectionGestureRef.current = null;
-      suppressNextBlockContextMenuRef.current = false;
-      onChange(nextMarkdown);
-      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, historyReason));
-      return true;
-    },
-    [markdown, onChange, updateActiveDraftState],
-  );
-
-  const insertBlockRelativeTo = useCallback(
-    (
-      blockIndex: number,
-      insertedRaw: string,
-      insertAbove: boolean,
-      options?: {
-        firstPlaceholder?: string;
-        selection?: {
-          start: number;
-          end: number;
-        };
-        transformNextMarkdown?: (value: string) => string;
-      },
-    ) => {
-      if (disabled) {
-        return false;
-      }
-      const targetIndex = insertAbove ? blockIndex : blockIndex + 1;
-      const insertedMarkdown = applyEditorMarkdownNormalization(
-        withInsertedRawBlock(blocks, targetIndex, insertedRaw),
-      );
-      const nextMarkdown = options?.transformNextMarkdown
-        ? applyEditorMarkdownNormalization(options.transformNextMarkdown(insertedMarkdown))
-        : insertedMarkdown;
-      if (nextMarkdown === markdown) {
-        return false;
-      }
-
-      const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
-      const insertedBlocks = parseHybridMarkdownBlocks(applyEditorMarkdownNormalization(insertedRaw));
-      const primaryInsertedBlock = insertedBlocks.find((block) => block.kind !== "blank") ?? insertedBlocks[0];
-      let activationSelection: PendingActivation["selection"] | undefined;
-      if (primaryInsertedBlock) {
-        if (options?.firstPlaceholder && primaryInsertedBlock.kind !== "hr") {
-          const editorDraft = toEditorDraftForBlock(primaryInsertedBlock);
-          const placeholderStart = editorDraft.indexOf(options.firstPlaceholder);
-          if (placeholderStart >= 0) {
-            activationSelection = {
-              start: placeholderStart,
-              end: placeholderStart + options.firstPlaceholder.length,
-            };
-          }
-        } else if (options?.selection && primaryInsertedBlock.kind !== "hr") {
-          activationSelection = options.selection;
-        }
-      }
-      const activationIndex = resolveInsertedBlockActivationIndex(nextBlocks, insertedRaw, targetIndex);
-
-      setActiveBlockIndex(null);
-      updateActiveDraftState("");
-      setActiveDirty(false);
-      setActiveEditSnapshot(null);
-      setActiveComposing(false);
-      setActiveTableDirty(false);
-      pendingActivationMarkdownRef.current = activationIndex >= 0 ? nextMarkdown : null;
-      setPendingActivation(
-        activationIndex >= 0
-          ? { index: activationIndex, caret: "end", selection: activationSelection }
-          : null,
-      );
-      setPendingTableActivation(null);
-      setSelectedBlockSelection(null);
-      setIsSelectionDragging(false);
-      setDraggedBlockIndex(null);
-      setDropIndicatorIndex(null);
-      setInsertMenuState(null);
-      setMathToolboxState(null);
-      setSelectionContextMenuState(null);
-      setSelectionMarqueeRect(null);
-      selectionGestureRef.current = null;
-      suppressNextBlockContextMenuRef.current = false;
-      onChange(nextMarkdown);
-      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
-      return true;
-    },
-    [blocks, disabled, markdown, onChange],
-  );
-
-  const getEmptyParagraphInsertRawForSlot = useCallback(
-    (targetIndex: number) => {
-      const previousKind = blocks[targetIndex - 1]?.kind ?? null;
-      const nextKind = blocks[targetIndex]?.kind ?? null;
-      const adjacentHrCount = Number(previousKind === "hr") + Number(nextKind === "hr");
-      if (adjacentHrCount >= 2) {
-        return "\n\n";
-      }
-      if (adjacentHrCount === 1) {
-        return "\n";
-      }
-      return "";
-    },
-    [blocks],
-  );
-
-  const insertEmptyParagraphRelativeTo = useCallback(
-    (blockIndex: number, insertAbove: boolean) => {
-      const targetIndex = insertAbove ? blockIndex : blockIndex + 1;
-      return insertBlockRelativeTo(
-        blockIndex,
-        getEmptyParagraphInsertRawForSlot(targetIndex),
-        insertAbove,
-      );
-    },
-    [getEmptyParagraphInsertRawForSlot, insertBlockRelativeTo],
-  );
-
-  const resolveImperativeInsertAnchorIndex = useCallback(() => {
-    if (typeof activeBlockIndex === "number") {
-      return activeBlockIndex;
-    }
-    if (blocks.length === 0) {
-      return 0;
-    }
-    return blocks.length - 1;
-  }, [activeBlockIndex, blocks.length]);
-
-  const insertStructureTemplateInternal = useCallback(
-    (template: "table" | "code-block" | "math-block") => {
-      const templateConfig =
-        template === "table"
-          ? {
-              raw: "| Column A | Column B |\n| --- | --- |\n| Value 1 | Value 2 |",
-              firstPlaceholder: "Column A",
-              selection: undefined,
-            }
-          : template === "code-block"
-            ? {
-                raw: "```txt\nCODE HERE\n```",
-                firstPlaceholder: "CODE HERE",
-                selection: undefined,
-              }
-            : {
-                raw: "$$\n\n$$",
-                firstPlaceholder: undefined,
-                selection: { start: 3, end: 3 },
-              };
-      const anchorIndex = resolveImperativeInsertAnchorIndex();
-      return insertBlockRelativeTo(anchorIndex, templateConfig.raw, false, {
-        firstPlaceholder: templateConfig.firstPlaceholder,
-        selection: templateConfig.selection,
-      });
-    },
-    [insertBlockRelativeTo, resolveImperativeInsertAnchorIndex],
-  );
-
-  const openImageInsertPickerInternal = useCallback(() => {
-    if (disabled) {
-      return false;
-    }
-    const anchorIndex = resolveImperativeInsertAnchorIndex();
-    setSelectionContextMenuState(null);
-    setMathToolboxState(null);
-    setInsertMenuState({
-      blockIndex: anchorIndex,
-      insertAbove: false,
-      phase: "image-link-picker",
-      categoryId: "links",
-      query: "",
-      highlightedIndex: 0,
-    });
-    return true;
-  }, [disabled, resolveImperativeInsertAnchorIndex]);
-
-  useImperativeHandle(ref, () => ({
-    commitActiveEdit: () => commitActiveBlockAsync({ deactivate: true }),
-    discardActiveEdit: () => discardActiveBlockAsync(),
-    insertStructureTemplate: (template) =>
-      Promise.resolve(insertStructureTemplateInternal(template)),
-    openImageInsertPicker: () => Promise.resolve(openImageInsertPickerInternal()),
-  }), [
-    commitActiveBlockAsync,
-    discardActiveBlockAsync,
-    insertStructureTemplateInternal,
-    openImageInsertPickerInternal,
-  ]);
-
-  const reorderBlockByDrop = useCallback(
-    (fromIndex: number, toSlotIndex: number) => {
-      if (disabled) {
-        return false;
-      }
-      const shouldMoveSelectionGroup = Boolean(
-        selectedBlockSelection &&
-          selectedBlockSelection.selectedIndices.length > 1 &&
-          isBlockIndexSelected(selectedBlockSelection, fromIndex),
-      );
-      const moveResult = shouldMoveSelectionGroup
-        ? moveBlockSelectionInList(blocks, selectedBlockSelection!.selectedIndices, toSlotIndex)
-        : (() => {
-          const nextItems = moveBlockInList(blocks, fromIndex, toSlotIndex);
-          const normalizedToSlot = Math.max(0, Math.min(toSlotIndex, blocks.length));
-          const nextInsertIndex = normalizedToSlot > fromIndex ? normalizedToSlot - 1 : normalizedToSlot;
-          const clampedInsertIndex = Math.max(0, Math.min(nextInsertIndex, Math.max(0, nextItems.length - 1)));
-          return {
-            items: nextItems,
-            insertIndex: clampedInsertIndex,
-            movedIndices: [clampedInsertIndex],
-          };
-        })();
-      const reorderedBlocks = moveResult.items;
-      if (reorderedBlocks === blocks) {
-        return false;
-      }
-      const nextMarkdown = applyEditorMarkdownNormalization(
-        serializeMarkdownFromBlocks(reorderedBlocks),
-      );
-      if (nextMarkdown === markdown) {
-        return false;
-      }
-      const draggedRelativeIndex = shouldMoveSelectionGroup && selectedBlockSelection
-        ? Math.max(0, selectedBlockSelection.selectedIndices.indexOf(fromIndex))
-        : 0;
-      const activationIndex = shouldMoveSelectionGroup
-        ? moveResult.movedIndices[draggedRelativeIndex] ?? moveResult.insertIndex
-        : moveResult.insertIndex;
-
-      setActiveBlockIndex(null);
-      updateActiveDraftState("");
-      setActiveDirty(false);
-      setActiveEditSnapshot(null);
-      setActiveComposing(false);
-      pendingActivationMarkdownRef.current = nextMarkdown;
-      setPendingActivation({
-        index: clampIndex(activationIndex, reorderedBlocks.length),
-        caret: "end",
-      });
       setSelectedBlockSelection(null);
       setIsSelectionDragging(false);
       setDraggedBlockIndex(null);
@@ -6285,706 +4194,16 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
       setInsertMenuState(null);
       setSelectionContextMenuState(null);
       setSelectionMarqueeRect(null);
-      selectionGestureRef.current = null;
-      suppressNextBlockContextMenuRef.current = false;
-      onChange(nextMarkdown);
-      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
-      return true;
-    },
-    [blocks, disabled, markdown, onChange, selectedBlockSelection],
-  );
-
-  useEffect(() => {
-    if (!insertMenuState) {
-      return;
-    }
-
-    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
-      const target = event.target;
-      if (!(target instanceof HTMLElement)) {
-        return;
-      }
-      if (insertMenuRef.current?.contains(target)) {
-        return;
-      }
-      if (target.closest("[data-md-block-control='true']")) {
-        return;
-      }
-      setInsertMenuState(null);
-    };
-
-    const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setInsertMenuState(null);
-      }
-    };
-
-    document.addEventListener("mousedown", handleDocumentMouseDown);
-    window.addEventListener("keydown", handleWindowKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleDocumentMouseDown);
-      window.removeEventListener("keydown", handleWindowKeyDown);
-    };
-  }, [insertMenuState]);
-
-  useEffect(() => {
-    if (!mathToolboxState) {
-      return;
-    }
-    const block = blocks[mathToolboxState.blockIndex];
-    if (!block || block.kind !== "math-block") {
-      setMathToolboxState(null);
-    }
-  }, [blocks, mathToolboxState]);
-
-  useEffect(() => {
-    if (!selectionContextMenuState) {
-      return;
-    }
-
-    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
-      const target = event.target;
-      if (!(target instanceof HTMLElement)) {
-        return;
-      }
-      if (selectionContextMenuRef.current?.contains(target)) {
-        return;
-      }
-      setSelectionContextMenuState(null);
-    };
-
-    const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setSelectionContextMenuState(null);
-      }
-    };
-
-    document.addEventListener("mousedown", handleDocumentMouseDown);
-    window.addEventListener("keydown", handleWindowKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleDocumentMouseDown);
-      window.removeEventListener("keydown", handleWindowKeyDown);
-    };
-  }, [selectionContextMenuState]);
-
-  useEffect(() => {
-    if (!selectedBlockSelection) {
-      return;
-    }
-
-    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
-      const target = event.target;
-      if (!(target instanceof Node)) {
-        return;
-      }
-      if (containerRef.current?.contains(target)) {
-        return;
-      }
-      clearSelectedBlockRange();
-    };
-
-    document.addEventListener("mousedown", handleDocumentMouseDown);
-    return () => {
-      document.removeEventListener("mousedown", handleDocumentMouseDown);
-    };
-  }, [clearSelectedBlockRange, selectedBlockSelection]);
-
-  const handleOpenInsertMenu = useCallback(
-    (blockIndex: number) => (event: MouseEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const insertAbove = event.shiftKey;
-      setSelectionContextMenuState(null);
-      setInsertMenuState({
-        blockIndex,
-        insertAbove,
-        phase: "categories",
-      });
-    },
-    [],
-  );
-
-  const handleSelectInsertMenuCategory = useCallback(
-    (categoryId: InsertMenuCategoryId) => (event: MouseEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-      setInsertMenuState((current) => {
-        if (!current) {
-          return current;
-        }
-        return {
-          ...current,
-          phase: "items",
-          categoryId,
-          advancedTemplateId: undefined,
-          advancedSequenceNumber: undefined,
-        };
-      });
-    },
-    [],
-  );
-
-  const handleSelectAdvancedInsertTemplate = useCallback(
-    (templateId: string) => (event: MouseEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const template = getAdvancedInsertTemplateById(templateId);
-      if (!template || !insertMenuState) {
-        return;
-      }
-      if (template.insertBehavior === "direct") {
-        insertBlockRelativeTo(insertMenuState.blockIndex, template.payload, insertMenuState.insertAbove, {
-          firstPlaceholder: template.firstPlaceholder,
-        });
-        return;
-      }
-      const nextSequenceNumber = resolveNextGlobalSequenceNumber(markdown);
-      setInsertMenuState((current) => {
-        if (!current) {
-          return current;
-        }
-        return {
-          ...current,
-          phase: "advanced-variant",
-          categoryId: "advanced",
-          advancedTemplateId: templateId,
-          advancedSequenceNumber: nextSequenceNumber,
-        };
-      });
-    },
-    [insertBlockRelativeTo, insertMenuState, markdown],
-  );
-
-  const handleInsertMenuBack = useCallback((event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setInsertMenuState((current) => {
-      if (!current) {
-        return current;
-      }
-      if (current.phase === "image-link-picker") {
-        return {
-          ...current,
-          phase: "items",
-          query: "",
-          highlightedIndex: 0,
-        };
-      }
-      if (current.phase === "advanced-variant") {
-        return {
-          ...current,
-          phase: "items",
-          advancedTemplateId: undefined,
-          advancedSequenceNumber: undefined,
-        };
-      }
-      return {
+      setInlineFormattingToolbarSelection(null);
+      setInlineFormattingToolbarMenu(null);
+      setInlineFormattingToolbarLinkState(null);
+      setImageEmbedReplacePickerState(null);
+      setHistory(createMarkdownHistory(markdown));
+      setOverlayLayout((current) => ({
         ...current,
-        phase: "categories",
-        categoryId: undefined,
-        advancedTemplateId: undefined,
-        advancedSequenceNumber: undefined,
-      };
-    });
-  }, []);
-
-  const handleInsertMenuClose = useCallback((event?: MouseEvent<HTMLButtonElement>) => {
-    event?.preventDefault();
-    event?.stopPropagation();
-    setInsertMenuState(null);
-  }, []);
-
-  const handleSelectionContextMenuClose = useCallback(() => {
-    setSelectionContextMenuState(null);
-  }, []);
-
-  const handleOpenImageEmbedReplacePicker = useCallback(
-    (blockIndex: number) => (event: MouseEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (disabled) {
-        return;
-      }
-      if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
-        return;
-      }
-      const block = blocks[blockIndex];
-      if (!block || block.kind !== "image-embed") {
-        return;
-      }
-      setInsertMenuState(null);
-      setMathToolboxState(null);
-      setSelectionContextMenuState(null);
-      setPendingTypedImageLinkPickerRequest(null);
-      setTypedImageLinkPickerState(null);
-      setPendingPageLinkPickerRequest(null);
-      setPageLinkPickerState(null);
-      setImageEmbedReplacePickerState((current) =>
-        current && current.blockId === block.id
-          ? null
-          : {
-              blockIndex,
-              blockId: block.id,
-              query: "",
-              highlightedIndex: 0,
-            }
-      );
-    },
-    [activeBlockIndex, blocks, commitActiveBlock, disabled],
-  );
-
-  const handleImageEmbedReplaceQueryChange = useCallback((value: string) => {
-    setImageEmbedReplacePickerState((current) =>
-      current
-        ? {
-            ...current,
-            query: value,
-            highlightedIndex: 0,
-          }
-        : current
-    );
-  }, []);
-
-  const handleImageEmbedReplaceSelectCandidate = useCallback(
-    (candidate: VaultImageCandidate) => {
-      if (!imageEmbedReplacePickerState) {
-        return;
-      }
-      const block = blocks[imageEmbedReplacePickerState.blockIndex];
-      if (
-        !block ||
-        block.id !== imageEmbedReplacePickerState.blockId ||
-        block.kind !== "image-embed"
-      ) {
-        closeImageEmbedReplacePicker();
-        return;
-      }
-      const currentImageEmbed = extractImageEmbedTokenFromRaw(block.raw);
-      if (!currentImageEmbed) {
-        closeImageEmbedReplacePicker();
-        return;
-      }
-      const currentPath = normalizeRelativePath(currentImageEmbed.src).toLowerCase();
-      const nextPath = normalizeRelativePath(candidate.relPath).toLowerCase();
-      if (!nextPath || currentPath === nextPath) {
-        closeImageEmbedReplacePicker();
-        return;
-      }
-      const nextBlockRaw = serializePngEmbed(candidate.relPath, currentImageEmbed.label);
-      const nextMarkdown = applyEditorMarkdownNormalization(
-        replaceMarkdownBlock(markdown, block, nextBlockRaw),
-      );
-      closeImageEmbedReplacePicker();
-      if (nextMarkdown === markdown) {
-        return;
-      }
-      onChange(nextMarkdown);
-      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
-      onCommit?.(nextMarkdown, { block: { ...block, raw: nextBlockRaw } });
-    },
-    [
-      blocks,
-      closeImageEmbedReplacePicker,
-      imageEmbedReplacePickerState,
-      markdown,
-      onChange,
-      onCommit,
-    ],
-  );
-
-  const handleImageEmbedReplaceSearchKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLInputElement>) => {
-      if (!imageEmbedReplacePickerState) {
-        return;
-      }
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        closeImageEmbedReplacePicker();
-        return;
-      }
-      if (filteredImageEmbedReplaceCandidates.length === 0) {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-        return;
-      }
-      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-        event.preventDefault();
-        event.stopPropagation();
-        const delta = event.key === "ArrowDown" ? 1 : -1;
-        setImageEmbedReplacePickerState((current) => {
-          if (!current) {
-            return current;
-          }
-          const currentIndex = current.highlightedIndex ?? 0;
-          return {
-            ...current,
-            highlightedIndex:
-              (currentIndex + delta + filteredImageEmbedReplaceCandidates.length) %
-              filteredImageEmbedReplaceCandidates.length,
-          };
-        });
-        return;
-      }
-      if (event.key === "Enter") {
-        event.preventDefault();
-        event.stopPropagation();
-        const candidate =
-          filteredImageEmbedReplaceCandidates[imageEmbedReplacePickerState.highlightedIndex] ??
-          filteredImageEmbedReplaceCandidates[0];
-        if (!candidate) {
-          return;
-        }
-        handleImageEmbedReplaceSelectCandidate(candidate);
-      }
-    },
-    [
-      closeImageEmbedReplacePicker,
-      filteredImageEmbedReplaceCandidates,
-      handleImageEmbedReplaceSelectCandidate,
-      imageEmbedReplacePickerState,
-    ],
-  );
-
-  const handleInsertImageLinkQueryChange = useCallback((value: string) => {
-    setInsertMenuState((current) => {
-      if (!current || current.phase !== "image-link-picker") {
-        return current;
-      }
-      return {
-        ...current,
-        query: value,
-        highlightedIndex: 0,
-      };
-    });
-  }, []);
-
-  const handleInsertImageLinkSelectCandidate = useCallback(
-    (relativePath: string) => {
-      if (!insertMenuState) {
-        return;
-      }
-      const blockSource = serializePngEmbed(relativePath);
-      insertBlockRelativeTo(insertMenuState.blockIndex, blockSource, insertMenuState.insertAbove);
-    },
-    [insertBlockRelativeTo, insertMenuState],
-  );
-
-  const handleInsertImageLinkSearchKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLInputElement>) => {
-      if (!insertMenuState || insertMenuState.phase !== "image-link-picker") {
-        return;
-      }
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setInsertMenuState((current) =>
-          current
-            ? {
-                ...current,
-                phase: "items",
-                query: "",
-                highlightedIndex: 0,
-              }
-            : current,
-        );
-        return;
-      }
-      if (filteredImageLinkCandidates.length === 0) {
-        return;
-      }
-      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-        event.preventDefault();
-        const delta = event.key === "ArrowDown" ? 1 : -1;
-        setInsertMenuState((current) => {
-          if (!current || current.phase !== "image-link-picker") {
-            return current;
-          }
-          const currentIndex = current.highlightedIndex ?? 0;
-          return {
-            ...current,
-            highlightedIndex:
-              (currentIndex + delta + filteredImageLinkCandidates.length) %
-              filteredImageLinkCandidates.length,
-          };
-        });
-        return;
-      }
-      if (event.key === "Enter") {
-        event.preventDefault();
-        const candidate =
-          filteredImageLinkCandidates[insertMenuState.highlightedIndex ?? 0] ??
-          filteredImageLinkCandidates[0];
-        if (!candidate) {
-          return;
-        }
-        handleInsertImageLinkSelectCandidate(candidate.relPath);
-      }
-    },
-    [filteredImageLinkCandidates, handleInsertImageLinkSelectCandidate, insertMenuState],
-  );
-
-  const handleInsertMenuItemSelect = useCallback(
-    (item: InsertMenuItem) => (event: MouseEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (!insertMenuState) {
-        return;
-      }
-      if (item.id === "page-link") {
-        if (blocks.length === 0) {
-          pendingCaretRef.current = "start";
-          setActiveBlockIndex(0);
-          updateActiveDraftState("");
-          setActiveDirty(false);
-          setActiveEditSnapshot(createDetachedEmptyEditSnapshot(""));
-          setActiveComposing(false);
-          setInsertMenuState(null);
-          requestPageLinkPickerOpen({ source: "insert-menu" });
-          return;
-        }
-        const inserted = insertEmptyParagraphRelativeTo(
-          insertMenuState.blockIndex,
-          insertMenuState.insertAbove,
-        );
-        if (inserted) {
-          requestPageLinkPickerOpen({ source: "insert-menu" });
-        }
-        return;
-      }
-      if (item.id === "image-link") {
-        setInsertMenuState((current) => {
-          if (!current) {
-            return current;
-          }
-          return {
-            ...current,
-            phase: "image-link-picker",
-            query: "",
-            highlightedIndex: 0,
-          };
-        });
-        return;
-      }
-      if (item.id === "db-attributes") {
-        if (sourceHasFrontmatter || parseFrontmatterDocument(markdown).hasFrontmatter) {
-          setInsertMenuState(null);
-          return;
-        }
-        insertBlockRelativeTo(0, item.template, true, {
-          firstPlaceholder: item.firstPlaceholder,
-          selection: item.initialSelection,
-        });
-        return;
-      }
-      insertBlockRelativeTo(insertMenuState.blockIndex, item.template, insertMenuState.insertAbove, {
-        firstPlaceholder: item.firstPlaceholder,
-        selection: item.initialSelection,
-      });
-    },
-    [
-      blocks.length,
-      insertBlockRelativeTo,
-      insertEmptyParagraphRelativeTo,
-      insertMenuState,
-      markdown,
-      requestPageLinkPickerOpen,
-      sourceHasFrontmatter,
-    ],
-  );
-
-  const handleAdvancedInsertTemplateVariantSelect = useCallback(
-    (variant: AdvancedInsertTemplateVariant) => (event: MouseEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (!insertMenuState?.advancedTemplateId) {
-        return;
-      }
-      const template = getAdvancedInsertTemplateById(insertMenuState.advancedTemplateId);
-      if (!template) {
-        return;
-      }
-      if (template.insertBehavior === "direct") {
-        insertBlockRelativeTo(insertMenuState.blockIndex, template.payload, insertMenuState.insertAbove, {
-          firstPlaceholder: template.firstPlaceholder,
-        });
-        return;
-      }
-      const sequenceNumber = typeof insertMenuState.advancedSequenceNumber === "number" &&
-          Number.isFinite(insertMenuState.advancedSequenceNumber)
-        ? Math.max(1, Math.floor(insertMenuState.advancedSequenceNumber))
-        : resolveNextGlobalSequenceNumber(markdown);
-      const shouldEnsureExamWrapperBoundaries = variant === "task" && !hasBalancedExamWrapper(markdown);
-      const resolved = buildAdvancedInsertTemplateVariant(template, variant, {
-        sequenceNumber,
-      });
-      insertBlockRelativeTo(insertMenuState.blockIndex, resolved.payload, insertMenuState.insertAbove, {
-        firstPlaceholder: resolved.firstPlaceholder,
-        transformNextMarkdown: shouldEnsureExamWrapperBoundaries
-          ? ensureExamWrapperBoundaryMarkers
-          : undefined,
-      });
-    },
-    [insertBlockRelativeTo, insertMenuState, markdown],
-  );
-
-  const decrementAdvancedSequenceNumber = useCallback((event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setInsertMenuState((current) => {
-      if (!current || current.phase !== "advanced-variant") {
-        return current;
-      }
-      const currentValue = typeof current.advancedSequenceNumber === "number" &&
-          Number.isFinite(current.advancedSequenceNumber)
-        ? Math.max(1, Math.floor(current.advancedSequenceNumber))
-        : 1;
-      return {
-        ...current,
-        advancedSequenceNumber: Math.max(1, currentValue - 1),
-      };
-    });
-  }, []);
-
-  const incrementAdvancedSequenceNumber = useCallback((event: MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setInsertMenuState((current) => {
-      if (!current || current.phase !== "advanced-variant") {
-        return current;
-      }
-      const currentValue = typeof current.advancedSequenceNumber === "number" &&
-          Number.isFinite(current.advancedSequenceNumber)
-        ? Math.max(1, Math.floor(current.advancedSequenceNumber))
-        : 1;
-      return {
-        ...current,
-        advancedSequenceNumber: currentValue + 1,
-      };
-    });
-  }, []);
-
-  const handleAdvancedSequenceNumberInputChange = useCallback((event: FormEvent<HTMLInputElement>) => {
-    const rawValue = event.currentTarget.value.trim();
-    const parsedValue = Number.parseInt(rawValue, 10);
-    if (!Number.isFinite(parsedValue)) {
-      return;
-    }
-    setInsertMenuState((current) => {
-      if (!current || current.phase !== "advanced-variant") {
-        return current;
-      }
-      return {
-        ...current,
-        advancedSequenceNumber: Math.max(1, parsedValue),
-      };
-    });
-  }, []);
-
-  const handleHrEnterZoneMouseDown = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      event.stopPropagation();
-    },
-    [],
-  );
-
-  const handleHrEnterZoneClick = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      event.stopPropagation();
-    },
-    [],
-  );
-
-  const handleHrEnterZoneKeyDown = useCallback(
-    (blockIndex: number, insertAbove: boolean) => (event: KeyboardEvent<HTMLButtonElement>) => {
-      if (
-        event.key !== "Enter" ||
-        event.shiftKey ||
-        event.altKey ||
-        event.ctrlKey ||
-        event.metaKey
-      ) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      insertEmptyParagraphRelativeTo(blockIndex, insertAbove);
-    },
-    [insertEmptyParagraphRelativeTo],
-  );
-
-  const handleSelectionContextMenuDelete = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-      setSelectionContextMenuState(null);
-      deleteSelectedBlocks();
-    },
-    [deleteSelectedBlocks],
-  );
-
-  const handleSelectionContextMenuClear = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-      handleSelectionContextMenuClose();
-      clearSelectedBlockRange();
-      focusContainer();
-    },
-    [clearSelectedBlockRange, focusContainer, handleSelectionContextMenuClose],
-  );
-
-  const shiftSelectedBlocksInlinePosition = useCallback(
-    (direction: "left" | "right") => {
-      if (disabled || activeBlockIndex !== null || !selectedBlockSelection) {
-        return false;
-      }
-      const selectedIndices = sortUniqueSelectionIndices(
-        selectedBlockSelection.selectedIndices.filter((index) =>
-          Number.isInteger(index) && index >= 0 && index < blocks.length
-        ),
-      );
-      if (selectedIndices.length === 0) {
-        return false;
-      }
-
-      const selectedIndexSet = new Set<number>(selectedIndices);
-      let didChange = false;
-      const nextBlocks = blocks.map((block, index) => {
-        if (!selectedIndexSet.has(index)) {
-          return block;
-        }
-        if (!isInlineShiftableBlockKind(block.kind)) {
-          return block;
-        }
-        const nextRaw = shiftBlockRawInlineIndent(block.raw, direction);
-        if (nextRaw === block.raw) {
-          return block;
-        }
-        didChange = true;
-        return {
-          ...block,
-          raw: nextRaw,
-        };
-      });
-
-      if (!didChange) {
-        return false;
-      }
-
-      let nextMarkdown = applyEditorMarkdownNormalization(serializeMarkdownFromBlocks(nextBlocks));
-      nextMarkdown = normalizeOrderedListSegmentsInMarkdown(nextMarkdown);
-      if (nextMarkdown === markdown) {
-        return false;
-      }
-
-      const nextParsedBlocks = parseHybridMarkdownBlocks(nextMarkdown);
-      const nextSelectedIndices = selectedIndices.filter((index) => index < nextParsedBlocks.length);
-      const nextAnchor = nextSelectedIndices.includes(selectedBlockSelection.anchorIndex)
-        ? selectedBlockSelection.anchorIndex
-        : nextSelectedIndices[0];
-
+        byIndex: new Map(),
+      }));
+      autoActivatedWriteKeyRef.current = null;
       if (selectionAutoScrollFrameRef.current !== null) {
         window.cancelAnimationFrame(selectionAutoScrollFrameRef.current);
         selectionAutoScrollFrameRef.current = null;
@@ -6993,1598 +4212,4946 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         window.cancelAnimationFrame(selectionDragUpdateFrameRef.current);
         selectionDragUpdateFrameRef.current = null;
       }
+      if (virtualViewportFrameRef.current !== null) {
+        window.cancelAnimationFrame(virtualViewportFrameRef.current);
+        virtualViewportFrameRef.current = null;
+      }
+      if (activeTextareaLayoutFrameRef.current !== null) {
+        window.cancelAnimationFrame(activeTextareaLayoutFrameRef.current);
+        activeTextareaLayoutFrameRef.current = null;
+      }
       selectionDragPointerRef.current = null;
       selectionGestureRef.current = null;
-      setIsSelectionDragging(false);
-      setSelectionMarqueeRect(null);
-      setSelectionContextMenuState(null);
+      suppressNextBlockContextMenuRef.current = false;
+      stableBlockRenderTokensRef.current = [];
+      pendingActivationMarkdownRef.current = null;
+      inlineFormattingToolbarRangeRef.current = null;
+      inlineFormattingToolbarPendingSignatureRef.current = null;
+      if (inlineFormattingToolbarTimerRef.current !== null) {
+        window.clearTimeout(inlineFormattingToolbarTimerRef.current);
+        inlineFormattingToolbarTimerRef.current = null;
+      }
+    }, [historyKey]);
 
-      onChange(nextMarkdown);
-      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
-      if (typeof nextAnchor === "number" && nextSelectedIndices.length > 0) {
+    useEffect(
+      () => () => {
+        if (overlayMeasureFrameRef.current !== null) {
+          window.cancelAnimationFrame(overlayMeasureFrameRef.current);
+          overlayMeasureFrameRef.current = null;
+        }
+        if (virtualViewportFrameRef.current !== null) {
+          window.cancelAnimationFrame(virtualViewportFrameRef.current);
+          virtualViewportFrameRef.current = null;
+        }
+        if (activeTextareaLayoutFrameRef.current !== null) {
+          window.cancelAnimationFrame(activeTextareaLayoutFrameRef.current);
+          activeTextareaLayoutFrameRef.current = null;
+        }
+        if (selectionAutoScrollFrameRef.current !== null) {
+          window.cancelAnimationFrame(selectionAutoScrollFrameRef.current);
+          selectionAutoScrollFrameRef.current = null;
+        }
+        if (selectionDragUpdateFrameRef.current !== null) {
+          window.cancelAnimationFrame(selectionDragUpdateFrameRef.current);
+          selectionDragUpdateFrameRef.current = null;
+        }
+        selectionDragPointerRef.current = null;
+        if (inlineFormattingToolbarTimerRef.current !== null) {
+          window.clearTimeout(inlineFormattingToolbarTimerRef.current);
+          inlineFormattingToolbarTimerRef.current = null;
+        }
+        if (deferredEditFlushFrameRef.current !== null) {
+          window.cancelAnimationFrame(deferredEditFlushFrameRef.current);
+          deferredEditFlushFrameRef.current = null;
+        }
+        deferredEditActionRef.current = null;
+        deferredEditRequestsRef.current.splice(0).forEach((request) => {
+          request.resolve(false);
+        });
+        inlineFormattingToolbarPendingSignatureRef.current = null;
+        inlineFormattingToolbarRangeRef.current = null;
+      },
+      [],
+    );
+
+    useLayoutEffect(() => {
+      scheduleOverlayLayoutMeasure();
+      scheduleVirtualViewportMeasure();
+    }, [
+      blocks,
+      activeBlockIndex,
+      selectedBlockSelection,
+      draggedBlockIndex,
+      dropIndicatorIndex,
+      insertMenuState,
+      isSelectionDragging,
+      scheduleOverlayLayoutMeasure,
+      scheduleVirtualViewportMeasure,
+    ]);
+
+    useEffect(() => {
+      const contentLayer = contentLayerRef.current;
+      if (!contentLayer || typeof ResizeObserver === "undefined") {
+        return;
+      }
+      const observer = new ResizeObserver(() => {
+        scheduleOverlayLayoutMeasure();
+      });
+      observer.observe(contentLayer);
+      return () => observer.disconnect();
+    }, [scheduleOverlayLayoutMeasure]);
+
+    useEffect(() => {
+      const container = containerRef.current;
+      if (!container) {
+        return;
+      }
+      const scrollHost = findScrollableAncestor(container);
+      if (!scrollHost) {
+        return;
+      }
+      const handleScroll = () => {
+        scheduleVirtualViewportMeasure();
+      };
+      const handleResize = () => {
+        scheduleVirtualViewportMeasure();
+      };
+      scheduleVirtualViewportMeasure();
+      scrollHost.addEventListener("scroll", handleScroll, { passive: true });
+      window.addEventListener("resize", handleResize);
+      return () => {
+        scrollHost.removeEventListener("scroll", handleScroll);
+        window.removeEventListener("resize", handleResize);
+      };
+    }, [scheduleVirtualViewportMeasure]);
+
+    useEffect(() => {
+      if (!selectedBlockSelection) {
+        return;
+      }
+      if (blocks.length === 0) {
+        setSelectedBlockSelection(null);
+        setIsSelectionDragging(false);
+        setSelectionContextMenuState(null);
+        setSelectionMarqueeRect(null);
+        selectionGestureRef.current = null;
+        return;
+      }
+      const validSelectedIndices = sortUniqueSelectionIndices(
+        selectedBlockSelection.selectedIndices.filter(
+          (index) => Number.isInteger(index) && index >= 0 && index < blocks.length,
+        ),
+      );
+      if (validSelectedIndices.length === 0) {
+        setSelectedBlockSelection(null);
+        setIsSelectionDragging(false);
+        setSelectionContextMenuState(null);
+        setSelectionMarqueeRect(null);
+        selectionGestureRef.current = null;
+        return;
+      }
+      const nextAnchor = validSelectedIndices.includes(selectedBlockSelection.anchorIndex)
+        ? selectedBlockSelection.anchorIndex
+        : validSelectedIndices[0]!;
+      const didChange =
+        nextAnchor !== selectedBlockSelection.anchorIndex ||
+        validSelectedIndices.length !== selectedBlockSelection.selectedIndices.length ||
+        validSelectedIndices.some(
+          (value, index) => value !== selectedBlockSelection.selectedIndices[index],
+        );
+      if (didChange) {
+        setSelectedBlockSelection({
+          anchorIndex: nextAnchor,
+          selectedIndices: validSelectedIndices,
+        });
+      }
+    }, [blocks.length, selectedBlockSelection]);
+
+    useEffect(() => {
+      if (!isSelectionDragging) {
+        return;
+      }
+
+      const stopSelectionAutoScroll = () => {
+        if (selectionAutoScrollFrameRef.current !== null) {
+          window.cancelAnimationFrame(selectionAutoScrollFrameRef.current);
+          selectionAutoScrollFrameRef.current = null;
+        }
+      };
+
+      const stopSelectionDragUpdate = () => {
+        if (selectionDragUpdateFrameRef.current !== null) {
+          window.cancelAnimationFrame(selectionDragUpdateFrameRef.current);
+          selectionDragUpdateFrameRef.current = null;
+        }
+      };
+
+      const isDragThresholdExceeded = (
+        gesture: SelectionGestureState,
+        clientX: number,
+        clientY: number,
+      ) =>
+        Math.abs(clientX - gesture.startClientX) > SELECTION_DRAG_THRESHOLD_PX ||
+        Math.abs(clientY - gesture.startClientY) > SELECTION_DRAG_THRESHOLD_PX;
+
+      const applySelectionFromPointer = (
+        gesture: SelectionGestureState,
+        pointer: { x: number; y: number },
+        forceSelectionUpdate = false,
+      ) => {
+        const endPoint = getContainerLocalPoint(pointer.x, pointer.y);
+        if (!endPoint) {
+          return;
+        }
+
+        if (gesture.source === "shift-left") {
+          setSelectionMarqueeFromContentPoints(
+            gesture.startContentX,
+            gesture.startContentY,
+            endPoint.x,
+            endPoint.y,
+          );
+        }
+
+        if (!gesture.didDrag && !forceSelectionUpdate) {
+          return;
+        }
+
+        updateSelectionFromMarqueeContentPoints(
+          gesture.startContentX,
+          gesture.startContentY,
+          endPoint.x,
+          endPoint.y,
+        );
+      };
+
+      const flushSelectionDragUpdate = () => {
+        selectionDragUpdateFrameRef.current = null;
+        const gesture = selectionGestureRef.current;
+        const pointer = selectionDragPointerRef.current;
+        if (!gesture?.active || !pointer || disabled || blocks.length === 0) {
+          return;
+        }
+        applySelectionFromPointer(gesture, pointer);
+      };
+
+      const scheduleSelectionDragUpdate = () => {
+        if (selectionDragUpdateFrameRef.current !== null) {
+          return;
+        }
+        selectionDragUpdateFrameRef.current =
+          window.requestAnimationFrame(flushSelectionDragUpdate);
+      };
+
+      const resolveAutoScrollDeltaY = () => {
+        const pointer = selectionDragPointerRef.current;
+        if (!pointer) {
+          return 0;
+        }
+        const container = containerRef.current;
+        const scrollHost = findScrollableAncestor(container);
+        if (!container || !scrollHost) {
+          return 0;
+        }
+        const hostRect = scrollHost.getBoundingClientRect();
+        if (hostRect.height <= 0) {
+          return 0;
+        }
+        const edgeSize = Math.min(
+          SELECTION_AUTO_SCROLL_EDGE_PX,
+          Math.max(16, Math.floor(hostRect.height * 0.18)),
+        );
+        if (pointer.y < hostRect.top + edgeSize) {
+          const distance = hostRect.top + edgeSize - pointer.y;
+          const intensity = Math.max(0, Math.min(1, distance / edgeSize));
+          return -Math.max(1, Math.round(SELECTION_AUTO_SCROLL_MAX_STEP_PX * intensity));
+        }
+        if (pointer.y > hostRect.bottom - edgeSize) {
+          const distance = pointer.y - (hostRect.bottom - edgeSize);
+          const intensity = Math.max(0, Math.min(1, distance / edgeSize));
+          return Math.max(1, Math.round(SELECTION_AUTO_SCROLL_MAX_STEP_PX * intensity));
+        }
+        return 0;
+      };
+
+      const stepSelectionAutoScroll = () => {
+        selectionAutoScrollFrameRef.current = null;
+        const gesture = selectionGestureRef.current;
+        if (!gesture?.active) {
+          return;
+        }
+        if (disabled || blocks.length === 0) {
+          return;
+        }
+        if (!gesture.didDrag) {
+          return;
+        }
+        const pointer = selectionDragPointerRef.current;
+        if (!pointer) {
+          return;
+        }
+        const container = containerRef.current;
+        const scrollHost = findScrollableAncestor(container);
+        if (!container || !scrollHost) {
+          return;
+        }
+
+        const deltaY = resolveAutoScrollDeltaY();
+        let didScroll = false;
+        if (deltaY !== 0) {
+          const prevScrollTop = scrollHost.scrollTop;
+          const maxScrollTop = Math.max(0, scrollHost.scrollHeight - scrollHost.clientHeight);
+          const nextScrollTop = Math.max(0, Math.min(maxScrollTop, prevScrollTop + deltaY));
+          if (nextScrollTop !== prevScrollTop) {
+            scrollHost.scrollTop = nextScrollTop;
+            didScroll = true;
+          }
+        }
+
+        applySelectionFromPointer(gesture, pointer, didScroll);
+
+        if (resolveAutoScrollDeltaY() !== 0) {
+          selectionAutoScrollFrameRef.current =
+            window.requestAnimationFrame(stepSelectionAutoScroll);
+        }
+      };
+
+      const syncSelectionAutoScrollLoop = () => {
+        const gesture = selectionGestureRef.current;
+        if (!gesture?.active) {
+          stopSelectionAutoScroll();
+          return;
+        }
+        if (!gesture.didDrag) {
+          stopSelectionAutoScroll();
+          return;
+        }
+        if (resolveAutoScrollDeltaY() === 0) {
+          stopSelectionAutoScroll();
+          return;
+        }
+        if (selectionAutoScrollFrameRef.current !== null) {
+          return;
+        }
+        selectionAutoScrollFrameRef.current = window.requestAnimationFrame(stepSelectionAutoScroll);
+      };
+
+      const endSelectionGesture = (reason: "mouseup" | "button-release") => {
+        const gesture = selectionGestureRef.current;
+        if (gesture && gesture.source === "right" && gesture.didDrag) {
+          suppressNextBlockContextMenuRef.current = true;
+        } else if (reason === "mouseup") {
+          suppressNextBlockContextMenuRef.current = false;
+        }
+        if (gesture) {
+          gesture.active = false;
+        }
+        selectionDragPointerRef.current = null;
+        stopSelectionAutoScroll();
+        stopSelectionDragUpdate();
+        selectionGestureRef.current = null;
+        setIsSelectionDragging(false);
+        setSelectionMarqueeRect(null);
+      };
+
+      const handleMouseMove = (event: globalThis.MouseEvent) => {
+        if (disabled || blocks.length === 0) {
+          return;
+        }
+        const gesture = selectionGestureRef.current;
+        if (!gesture?.active) {
+          return;
+        }
+        selectionDragPointerRef.current = { x: event.clientX, y: event.clientY };
+        const expectedButtonMask = gesture.source === "right" ? 2 : 1;
+        if ((event.buttons & expectedButtonMask) !== expectedButtonMask) {
+          endSelectionGesture("button-release");
+          return;
+        }
+        if (isDragThresholdExceeded(gesture, event.clientX, event.clientY)) {
+          gesture.didDrag = true;
+        }
+        if (gesture.source === "right" && gesture.didDrag) {
+          event.preventDefault();
+        }
+        scheduleSelectionDragUpdate();
+        syncSelectionAutoScrollLoop();
+      };
+
+      const handleMouseUp = () => {
+        endSelectionGesture("mouseup");
+      };
+
+      const handleWindowContextMenu = (event: globalThis.MouseEvent) => {
+        const gesture = selectionGestureRef.current;
+        if (!gesture?.active || gesture.source !== "right" || !gesture.didDrag) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+      };
+
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+      window.addEventListener("contextmenu", handleWindowContextMenu, true);
+      return () => {
+        selectionDragPointerRef.current = null;
+        stopSelectionAutoScroll();
+        stopSelectionDragUpdate();
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
+        window.removeEventListener("contextmenu", handleWindowContextMenu, true);
+      };
+    }, [
+      blocks.length,
+      disabled,
+      getContainerLocalPoint,
+      isSelectionDragging,
+      setSelectionMarqueeFromContentPoints,
+      updateSelectionFromMarqueeContentPoints,
+    ]);
+
+    useEffect(() => {
+      if (activeBlockIndex === null) {
+        return;
+      }
+      if (activeEditSnapshot?.isDetachedEmptyBlock && blocks.length === 0) {
+        return;
+      }
+      const nextBlock = blocks[activeBlockIndex];
+      if (!nextBlock) {
+        setActiveBlockIndex(null);
+        updateActiveDraftState("");
+        setActiveDirty(false);
+        setActiveEditSnapshot(null);
+        setActiveComposing(false);
+        return;
+      }
+      const nextDraft = toEditorDraftForBlock(nextBlock);
+      if (!activeDirty && nextDraft !== activeDraft) {
+        updateActiveDraftState(nextDraft);
+      }
+      if (
+        !activeDirty &&
+        (!activeEditSnapshot ||
+          activeEditSnapshot.blockId !== nextBlock.id ||
+          activeEditSnapshot.raw !== nextBlock.raw)
+      ) {
+        setActiveEditSnapshot(createActiveEditSnapshotFromBlock(activeBlockIndex, nextBlock));
+      }
+    }, [activeBlockIndex, activeDirty, activeDraft, activeEditSnapshot, blocks]);
+
+    useEffect(() => {
+      if (mode !== "write" || disabled) {
+        return;
+      }
+      if (activeBlockIndex !== null) {
+        return;
+      }
+      if (autoActivatedWriteKeyRef.current === historyKey) {
+        return;
+      }
+      autoActivatedWriteKeyRef.current = historyKey;
+      if (blocks.length === 0) {
+        pendingCaretRef.current = "start";
+        setActiveBlockIndex(0);
+        updateActiveDraftState(markdown);
+        setActiveDirty(false);
+        setActiveEditSnapshot(createDetachedEmptyEditSnapshot(markdown));
+        setActiveComposing(false);
+        return;
+      }
+      setPendingActivation({ index: 0, caret: "end" });
+    }, [activeBlockIndex, blocks.length, disabled, historyKey, markdown, mode]);
+
+    useEffect(() => {
+      if (!pendingActivation) {
+        return;
+      }
+      if (
+        pendingActivationMarkdownRef.current !== null &&
+        markdown !== pendingActivationMarkdownRef.current
+      ) {
+        return;
+      }
+      if (blocks.length === 0) {
+        pendingActivationMarkdownRef.current = null;
+        setPendingActivation(null);
+        return;
+      }
+      const nextIndex = clampIndex(pendingActivation.index, blocks.length);
+      const targetBlock = blocks[nextIndex];
+      if (targetBlock?.kind === "hr") {
+        setActiveBlockIndex(null);
+        updateActiveDraftState("");
+        setActiveDirty(false);
+        setActiveEditSnapshot(null);
+        setActiveComposing(false);
+        pendingActivationMarkdownRef.current = null;
+        setPendingActivation(null);
+        const zoneSelector =
+          pendingActivation.caret === "end"
+            ? ".markdown-hybrid-hr-enter-zone-bottom"
+            : ".markdown-hybrid-hr-enter-zone-top";
+        const handle = window.requestAnimationFrame(() => {
+          const row = containerRef.current?.querySelector<HTMLElement>(
+            `.markdown-hybrid-block[data-md-block-index="${nextIndex}"]`,
+          );
+          const zone = row?.querySelector<HTMLButtonElement>(zoneSelector);
+          if (!zone) {
+            const container = containerRef.current;
+            if (container) {
+              try {
+                container.focus({ preventScroll: true });
+              } catch {
+                container.focus();
+              }
+            }
+            return;
+          }
+          try {
+            zone.focus({ preventScroll: true });
+          } catch {
+            zone.focus();
+          }
+        });
+        return () => window.cancelAnimationFrame(handle);
+      }
+      pendingCaretRef.current = pendingActivation.caret;
+      pendingTextareaSelectionRef.current = pendingActivation.selection ?? null;
+      cacheSvgCodeFencePreviewHeightForBlock(nextIndex, targetBlock);
+      setActiveBlockIndex(nextIndex);
+      setActiveEditSnapshot(createActiveEditSnapshotFromBlock(nextIndex, targetBlock));
+      updateActiveDraftState(toEditorDraftForBlock(targetBlock));
+      setActiveDirty(false);
+      setActiveComposing(false);
+      pendingActivationMarkdownRef.current = null;
+      setPendingActivation(null);
+    }, [
+      blocks,
+      cacheSvgCodeFencePreviewHeightForBlock,
+      markdown,
+      pendingActivation,
+      updateActiveDraftState,
+    ]);
+
+    useLayoutEffect(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) {
+        return;
+      }
+      const caret = pendingCaretRef.current;
+      const selection = pendingTextareaSelectionRef.current;
+      pendingCaretRef.current = null;
+      pendingTextareaSelectionRef.current = null;
+      const handle = window.requestAnimationFrame(() => {
+        try {
+          textarea.focus({ preventScroll: true });
+        } catch {
+          textarea.focus();
+        }
+        if (selection) {
+          const max = textarea.value.length;
+          const start = Math.max(0, Math.min(selection.start, max));
+          const end = Math.max(start, Math.min(selection.end, max));
+          textarea.setSelectionRange(start, end);
+          setEditorOverlaySelectionStart(start);
+          return;
+        }
+        const nextPos = caret === "start" ? 0 : textarea.value.length;
+        textarea.setSelectionRange(nextPos, nextPos);
+        setEditorOverlaySelectionStart(nextPos);
+      });
+      return () => window.cancelAnimationFrame(handle);
+    }, [activeBlockIndex]);
+
+    const closePageLinkPicker = useCallback(() => {
+      setPendingPageLinkPickerRequest(null);
+      setPageLinkPickerState(null);
+    }, []);
+
+    const closeTypedImageLinkPicker = useCallback(() => {
+      setPendingTypedImageLinkPickerRequest(null);
+      setTypedImageLinkPickerState(null);
+    }, []);
+
+    const closeImageEmbedReplacePicker = useCallback(() => {
+      setImageEmbedReplacePickerState(null);
+    }, []);
+
+    const requestPageLinkPickerOpen = useCallback((request: PendingPageLinkPickerRequest) => {
+      setPendingTypedImageLinkPickerRequest(null);
+      setTypedImageLinkPickerState(null);
+      setPendingPageLinkPickerRequest(request);
+      setPageLinkPickerState(null);
+    }, []);
+
+    const requestTypedImageLinkPickerOpen = useCallback(
+      (request: PendingTypedImageLinkPickerRequest) => {
+        setPendingPageLinkPickerRequest(null);
+        setPageLinkPickerState(null);
+        setPendingTypedImageLinkPickerRequest(request);
+        setTypedImageLinkPickerState(null);
+      },
+      [],
+    );
+
+    useLayoutEffect(() => {
+      if (!pendingPageLinkPickerRequest) {
+        return;
+      }
+      if (activeBlockIndex === null) {
+        return;
+      }
+      const textarea = textareaRef.current;
+      const container = containerRef.current;
+      if (!textarea || !container) {
+        return;
+      }
+      const replaceRange = pendingPageLinkPickerRequest.replaceRange ?? {
+        start: textarea.selectionStart,
+        end: textarea.selectionEnd,
+      };
+      const anchor = resolveTextareaCaretAnchor(textarea, container, replaceRange.end);
+      setPageLinkPickerState({
+        source: pendingPageLinkPickerRequest.source,
+        blockIndex: activeBlockIndex,
+        replaceRange: {
+          start: Math.max(0, Math.min(replaceRange.start, textarea.value.length)),
+          end: Math.max(0, Math.min(replaceRange.end, textarea.value.length)),
+        },
+        anchorLeft: anchor.left,
+        anchorTop: anchor.top,
+        query: pendingPageLinkPickerRequest.initialQuery ?? "",
+        highlightedIndex: 0,
+      });
+      setPendingPageLinkPickerRequest(null);
+    }, [activeBlockIndex, pendingPageLinkPickerRequest, activeDraft]);
+
+    useLayoutEffect(() => {
+      if (!pendingTypedImageLinkPickerRequest) {
+        return;
+      }
+      if (activeBlockIndex === null) {
+        return;
+      }
+      const textarea = textareaRef.current;
+      const container = containerRef.current;
+      if (!textarea || !container) {
+        return;
+      }
+      const replaceRange = pendingTypedImageLinkPickerRequest.replaceRange ?? {
+        start: textarea.selectionStart,
+        end: textarea.selectionEnd,
+      };
+      const anchor = resolveTextareaCaretAnchor(textarea, container, replaceRange.end);
+      setTypedImageLinkPickerState({
+        blockIndex: activeBlockIndex,
+        replaceRange: {
+          start: Math.max(0, Math.min(replaceRange.start, textarea.value.length)),
+          end: Math.max(0, Math.min(replaceRange.end, textarea.value.length)),
+        },
+        anchorLeft: anchor.left,
+        anchorTop: anchor.top,
+        query: pendingTypedImageLinkPickerRequest.initialQuery ?? "",
+        highlightedIndex: 0,
+      });
+      setPendingTypedImageLinkPickerRequest(null);
+    }, [activeBlockIndex, pendingTypedImageLinkPickerRequest, activeDraft]);
+
+    useEffect(() => {
+      if (!pageLinkPickerState) {
+        return;
+      }
+      const handle = window.requestAnimationFrame(() => {
+        const input = pageLinkPickerSearchInputRef.current;
+        if (!input) {
+          return;
+        }
+        try {
+          input.focus({ preventScroll: true });
+        } catch {
+          input.focus();
+        }
+        input.select();
+      });
+      return () => window.cancelAnimationFrame(handle);
+    }, [pageLinkPickerState]);
+
+    useEffect(() => {
+      if (!typedImageLinkPickerState) {
+        return;
+      }
+      const handle = window.requestAnimationFrame(() => {
+        const input =
+          typedImageLinkPickerRef.current?.querySelector<HTMLInputElement>("input[type='search']");
+        if (!input) {
+          return;
+        }
+        try {
+          input.focus({ preventScroll: true });
+        } catch {
+          input.focus();
+        }
+        input.select();
+      });
+      return () => window.cancelAnimationFrame(handle);
+    }, [typedImageLinkPickerState]);
+
+    useEffect(() => {
+      if (!pageLinkPickerState) {
+        return;
+      }
+      setPageLinkPickerState((current) => {
+        if (!current) {
+          return current;
+        }
+        if (activeBlockIndex === null || current.blockIndex !== activeBlockIndex) {
+          return null;
+        }
+        return current;
+      });
+    }, [activeBlockIndex, pageLinkPickerState]);
+
+    useEffect(() => {
+      if (!typedImageLinkPickerState) {
+        return;
+      }
+      setTypedImageLinkPickerState((current) => {
+        if (!current) {
+          return current;
+        }
+        if (activeBlockIndex === null || current.blockIndex !== activeBlockIndex) {
+          return null;
+        }
+        return current;
+      });
+    }, [activeBlockIndex, typedImageLinkPickerState]);
+
+    useEffect(() => {
+      if (!typedImageLinkPickerState) {
+        return;
+      }
+      if (
+        insertMenuState !== null ||
+        pageLinkPickerState !== null ||
+        mathToolboxState !== null ||
+        selectionContextMenuState !== null ||
+        disabled
+      ) {
+        setTypedImageLinkPickerState(null);
+      }
+    }, [
+      disabled,
+      insertMenuState,
+      mathToolboxState,
+      pageLinkPickerState,
+      selectionContextMenuState,
+      typedImageLinkPickerState,
+    ]);
+
+    useEffect(() => {
+      if (!pageLinkPickerState) {
+        return;
+      }
+      setPageLinkPickerState((current) => {
+        if (!current) {
+          return current;
+        }
+        const nextMaxIndex = Math.max(0, filteredPageLinkCandidates.length - 1);
+        const nextIndex = Math.max(0, Math.min(current.highlightedIndex, nextMaxIndex));
+        if (nextIndex === current.highlightedIndex) {
+          return current;
+        }
+        return {
+          ...current,
+          highlightedIndex: nextIndex,
+        };
+      });
+    }, [filteredPageLinkCandidates.length, pageLinkPickerState]);
+
+    useEffect(() => {
+      if (!typedImageLinkPickerState) {
+        return;
+      }
+      setTypedImageLinkPickerState((current) => {
+        if (!current) {
+          return current;
+        }
+        const nextMaxIndex = Math.max(0, filteredTypedImageLinkCandidates.length - 1);
+        const nextIndex = Math.max(0, Math.min(current.highlightedIndex, nextMaxIndex));
+        if (nextIndex === current.highlightedIndex) {
+          return current;
+        }
+        return {
+          ...current,
+          highlightedIndex: nextIndex,
+        };
+      });
+    }, [filteredTypedImageLinkCandidates.length, typedImageLinkPickerState]);
+
+    useEffect(() => {
+      if (!pageLinkPickerState) {
+        return;
+      }
+      const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
+        const target = event.target;
+        if (!(target instanceof Node)) {
+          return;
+        }
+        if (pageLinkPickerRef.current?.contains(target)) {
+          return;
+        }
+        closePageLinkPicker();
+      };
+      const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
+        if (event.key !== "Escape") {
+          return;
+        }
+        closePageLinkPicker();
+      };
+      document.addEventListener("mousedown", handleDocumentMouseDown);
+      window.addEventListener("keydown", handleWindowKeyDown);
+      return () => {
+        document.removeEventListener("mousedown", handleDocumentMouseDown);
+        window.removeEventListener("keydown", handleWindowKeyDown);
+      };
+    }, [closePageLinkPicker, pageLinkPickerState]);
+
+    useEffect(() => {
+      if (!typedImageLinkPickerState) {
+        return;
+      }
+      const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
+        const target = event.target;
+        if (!(target instanceof Node)) {
+          return;
+        }
+        if (typedImageLinkPickerRef.current?.contains(target)) {
+          return;
+        }
+        closeTypedImageLinkPicker();
+      };
+      const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
+        if (event.key !== "Escape") {
+          return;
+        }
+        closeTypedImageLinkPicker();
+      };
+      document.addEventListener("mousedown", handleDocumentMouseDown);
+      window.addEventListener("keydown", handleWindowKeyDown);
+      return () => {
+        document.removeEventListener("mousedown", handleDocumentMouseDown);
+        window.removeEventListener("keydown", handleWindowKeyDown);
+      };
+    }, [closeTypedImageLinkPicker, typedImageLinkPickerState]);
+
+    useEffect(() => {
+      if (!imageEmbedReplacePickerState) {
+        return;
+      }
+      const handle = window.requestAnimationFrame(() => {
+        const input =
+          imageEmbedReplacePickerRef.current?.querySelector<HTMLInputElement>(
+            "input[type='search']",
+          );
+        if (!input) {
+          return;
+        }
+        try {
+          input.focus({ preventScroll: true });
+        } catch {
+          input.focus();
+        }
+        input.select();
+      });
+      return () => window.cancelAnimationFrame(handle);
+    }, [imageEmbedReplacePickerState]);
+
+    useEffect(() => {
+      if (!imageEmbedReplacePickerState) {
+        return;
+      }
+      setImageEmbedReplacePickerState((current) => {
+        if (!current) {
+          return current;
+        }
+        const block = blocks[current.blockIndex];
+        if (!block || block.id !== current.blockId || block.kind !== "image-embed") {
+          return null;
+        }
+        return current;
+      });
+    }, [blocks, imageEmbedReplacePickerState]);
+
+    useEffect(() => {
+      if (!imageEmbedReplacePickerState) {
+        return;
+      }
+      if (
+        activeBlockIndex !== null ||
+        insertMenuState !== null ||
+        pageLinkPickerState !== null ||
+        typedImageLinkPickerState !== null ||
+        mathToolboxState !== null ||
+        selectionContextMenuState !== null ||
+        disabled
+      ) {
+        setImageEmbedReplacePickerState(null);
+      }
+    }, [
+      activeBlockIndex,
+      disabled,
+      imageEmbedReplacePickerState,
+      insertMenuState,
+      mathToolboxState,
+      pageLinkPickerState,
+      typedImageLinkPickerState,
+      selectionContextMenuState,
+    ]);
+
+    useEffect(() => {
+      if (!imageEmbedReplacePickerState) {
+        return;
+      }
+      setImageEmbedReplacePickerState((current) => {
+        if (!current) {
+          return current;
+        }
+        const nextMaxIndex = Math.max(0, filteredImageEmbedReplaceCandidates.length - 1);
+        const nextIndex = Math.max(0, Math.min(current.highlightedIndex, nextMaxIndex));
+        if (nextIndex === current.highlightedIndex) {
+          return current;
+        }
+        return {
+          ...current,
+          highlightedIndex: nextIndex,
+        };
+      });
+    }, [filteredImageEmbedReplaceCandidates.length, imageEmbedReplacePickerState]);
+
+    useEffect(() => {
+      if (!imageEmbedReplacePickerState) {
+        return;
+      }
+      const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
+        const target = event.target;
+        if (!(target instanceof Node)) {
+          return;
+        }
+        if (imageEmbedReplacePickerRef.current?.contains(target)) {
+          return;
+        }
+        if (
+          target instanceof Element &&
+          target.closest(".markdown-hybrid-image-embed-replace-shell")
+        ) {
+          return;
+        }
+        closeImageEmbedReplacePicker();
+      };
+      const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
+        if (event.key !== "Escape") {
+          return;
+        }
+        closeImageEmbedReplacePicker();
+      };
+      document.addEventListener("mousedown", handleDocumentMouseDown);
+      window.addEventListener("keydown", handleWindowKeyDown);
+      return () => {
+        document.removeEventListener("mousedown", handleDocumentMouseDown);
+        window.removeEventListener("keydown", handleWindowKeyDown);
+      };
+    }, [closeImageEmbedReplacePicker, imageEmbedReplacePickerState]);
+
+    const applyGlobalHistory = useCallback(
+      (nextHistory: MarkdownHistoryState) => {
+        setHistory(nextHistory);
+        setActiveBlockIndex(null);
+        updateActiveDraftState("");
+        setActiveDirty(false);
+        setActiveEditSnapshot(null);
+        setActiveComposing(false);
+        setActiveTableDirty(false);
+        setPendingActivation(null);
+        setPendingTableActivation(null);
+        setSelectedBlockSelection(null);
+        setIsSelectionDragging(false);
+        setDraggedBlockIndex(null);
+        setDropIndicatorIndex(null);
+        setInsertMenuState(null);
+        setMathToolboxState(null);
+        setSelectionContextMenuState(null);
+        setSelectionMarqueeRect(null);
+        setPendingTypedImageLinkPickerRequest(null);
+        setTypedImageLinkPickerState(null);
+        setPendingPageLinkPickerRequest(null);
+        setPageLinkPickerState(null);
+        setImageEmbedReplacePickerState(null);
+        setInlineFormattingToolbarSelection(null);
+        setInlineFormattingToolbarMenu(null);
+        setInlineFormattingToolbarLinkState(null);
+        selectionGestureRef.current = null;
+        suppressNextBlockContextMenuRef.current = false;
+        pendingActivationMarkdownRef.current = null;
+        activeTableSessionRef.current = null;
+        deferredEditActionRef.current = null;
+        deferredEditRequestsRef.current.splice(0).forEach((request) => {
+          request.resolve(false);
+        });
+        if (deferredEditFlushFrameRef.current !== null) {
+          window.cancelAnimationFrame(deferredEditFlushFrameRef.current);
+          deferredEditFlushFrameRef.current = null;
+        }
+        inlineFormattingToolbarRangeRef.current = null;
+        inlineFormattingToolbarPendingSignatureRef.current = null;
+        if (inlineFormattingToolbarTimerRef.current !== null) {
+          window.clearTimeout(inlineFormattingToolbarTimerRef.current);
+          inlineFormattingToolbarTimerRef.current = null;
+        }
+        onChange(nextHistory.present.markdown);
+      },
+      [onChange],
+    );
+
+    const clearPendingTableActivation = useCallback((blockIndex: number) => {
+      setPendingTableActivation((current) => (current?.blockIndex === blockIndex ? null : current));
+    }, []);
+
+    const registerActiveTableSession = useCallback(
+      (controller: MarkdownHybridTableSessionController | null) => {
+        activeTableSessionRef.current = controller;
+        if (!controller) {
+          setActiveTableDirty(false);
+        }
+      },
+      [],
+    );
+
+    const handleTableBlockCommitRaw = useCallback(
+      (blockIndex: number, nextRaw: string) => {
+        const block = blocks[blockIndex];
+        if (!block) {
+          return false;
+        }
+        const nextMarkdown = applyEditorMarkdownNormalization(
+          replaceMarkdownBlock(markdown, block, nextRaw),
+        );
+        if (nextMarkdown === markdown) {
+          return true;
+        }
+        onChange(nextMarkdown);
+        setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
+        onCommit?.(nextMarkdown, { block: { ...block, raw: nextRaw } });
+        if (activeBlockIndex === blockIndex) {
+          updateActiveDraftState(nextRaw);
+          setActiveDirty(false);
+          setActiveEditSnapshot((current) =>
+            current && current.blockIndex === blockIndex
+              ? {
+                  ...current,
+                  raw: nextRaw,
+                  draft: nextRaw,
+                }
+              : current,
+          );
+        }
+        return true;
+      },
+      [activeBlockIndex, blocks, markdown, onChange, onCommit],
+    );
+
+    const handleMathBlockLiveSync = useCallback(
+      (blockIndex: number, nextLatex: string, _options?: { mergeKey?: string }) => {
+        const snapshot = activeEditSnapshotRef.current;
+        if (
+          activeBlockIndex !== blockIndex ||
+          !snapshot ||
+          snapshot.blockIndex !== blockIndex ||
+          snapshot.kind !== "math-block"
+        ) {
+          return false;
+        }
+        const nextRaw = normalizeMathBlockSource(["$$", nextLatex.trim(), "$$"].join("\n"));
+        updateActiveDraftState(nextRaw);
+        setActiveDirty(true);
+        setActiveEditSnapshot((current) =>
+          current && current.blockIndex === blockIndex
+            ? {
+                ...current,
+                draft: nextRaw,
+              }
+            : current,
+        );
+        return true;
+      },
+      [activeBlockIndex],
+    );
+
+    const handleGlobalUndo = useCallback(() => {
+      if (!canUndoMarkdownHistory(history)) {
+        return false;
+      }
+      applyGlobalHistory(undoMarkdownHistory(history));
+      return true;
+    }, [applyGlobalHistory, history]);
+
+    const handleGlobalRedo = useCallback(() => {
+      if (!canRedoMarkdownHistory(history)) {
+        return false;
+      }
+      applyGlobalHistory(redoMarkdownHistory(history));
+      return true;
+    }, [applyGlobalHistory, history]);
+
+    const resetActiveEditorUi = useCallback(() => {
+      closePageLinkPicker();
+      closeTypedImageLinkPicker();
+      setPendingPageLinkPickerRequest(null);
+      setInlineFormattingToolbarSelection(null);
+      setInlineFormattingToolbarMenu(null);
+      setInlineFormattingToolbarLinkState(null);
+      setMathToolboxState(null);
+      inlineFormattingToolbarRangeRef.current = null;
+      inlineFormattingToolbarPendingSignatureRef.current = null;
+      if (inlineFormattingToolbarTimerRef.current !== null) {
+        window.clearTimeout(inlineFormattingToolbarTimerRef.current);
+        inlineFormattingToolbarTimerRef.current = null;
+      }
+    }, [closePageLinkPicker, closeTypedImageLinkPicker]);
+
+    const resolveDeferredEditRequests = useCallback(
+      (performedKind: DeferredEditAction["kind"], result: boolean) => {
+        const requests = deferredEditRequestsRef.current;
+        deferredEditRequestsRef.current = [];
+        requests.forEach((request) => {
+          request.resolve(result && request.kind === performedKind);
+        });
+      },
+      [],
+    );
+
+    const commitActiveBlockNow = useCallback(
+      (options?: { deactivate?: boolean; nextActivation?: PendingActivation | null }) => {
+        if (activeBlockIndex === null) {
+          return true;
+        }
+
+        const liveBlock = blocks[activeBlockIndex] ?? null;
+        if (
+          liveBlock?.kind === "table" ||
+          liveBlock?.kind === "database-block" ||
+          liveBlock?.kind === "canvas-block"
+        ) {
+          if (liveBlock.kind === "table") {
+            const session = activeTableSessionRef.current;
+            if (session?.blockIndex === activeBlockIndex && !session.flush()) {
+              return false;
+            }
+          }
+          if (options?.deactivate ?? true) {
+            resetActiveEditorUi();
+            setActiveBlockIndex(null);
+            updateActiveDraftState("");
+            setActiveDirty(false);
+            setActiveEditSnapshot(null);
+            setActiveComposing(false);
+            if (
+              !options?.nextActivation ||
+              pendingTableActivation?.blockIndex !== options.nextActivation.index
+            ) {
+              setPendingTableActivation(null);
+            }
+          }
+          setActiveTableDirty(false);
+          if (options?.nextActivation) {
+            setPendingActivation(options.nextActivation);
+          }
+          return true;
+        }
+
+        const snapshot = activeEditSnapshotRef.current;
+        if (!snapshot) {
+          if (options?.deactivate ?? true) {
+            resetActiveEditorUi();
+            setActiveBlockIndex(null);
+            updateActiveDraftState("");
+            setActiveDirty(false);
+            setActiveEditSnapshot(null);
+            setActiveComposing(false);
+            if (
+              !options?.nextActivation ||
+              pendingTableActivation?.blockIndex !== options.nextActivation.index
+            ) {
+              setPendingTableActivation(null);
+            }
+          }
+          return true;
+        }
+
+        const currentDraft = textareaRef.current?.value ?? activeDraftRef.current;
+        const activeSelectionStart = textareaRef.current?.selectionStart ?? null;
+        const normalizedHeadingSpacing = normalizeLeadingHeadingSpacing(
+          currentDraft,
+          snapshot.kind,
+          activeSelectionStart,
+        );
+        const draftForPersist = normalizedHeadingSpacing?.value ?? currentDraft;
+        const normalizedDraftForPersist =
+          snapshot.kind === "math-block"
+            ? draftForPersist
+            : normalizeMultilineInlineMathOnCommit(draftForPersist);
+
+        let nextResolvedMarkdown = markdown;
+        let committedBlock: MarkdownBlock;
+
+        if (snapshot.isDetachedEmptyBlock) {
+          nextResolvedMarkdown = applyEditorMarkdownNormalization(normalizedDraftForPersist);
+          committedBlock = parseHybridMarkdownBlocks(nextResolvedMarkdown)[0] ?? {
+            id: snapshot.blockId,
+            kind: "blank",
+            startLine: snapshot.startLine,
+            endLine: snapshot.endLine,
+            startOffset: 0,
+            endOffset: nextResolvedMarkdown.length,
+            raw: nextResolvedMarkdown,
+          };
+        } else {
+          let nextBlockRaw = toPersistedBlockRawForDraft(
+            { kind: snapshot.kind },
+            normalizedDraftForPersist,
+          );
+          if (snapshot.kind === "help-block") {
+            nextBlockRaw = normalizeHelpBlockSource(nextBlockRaw);
+          } else if (snapshot.kind === "card-start" || snapshot.kind === "card-end") {
+            nextBlockRaw = normalizeCardBlockSource(nextBlockRaw);
+          } else if (snapshot.kind === "hr") {
+            nextBlockRaw = normalizeHorizontalRuleBlockSource(nextBlockRaw);
+          }
+          nextResolvedMarkdown = applyEditorMarkdownNormalization(
+            replaceMarkdownBlock(markdown, snapshot, nextBlockRaw),
+          );
+          committedBlock =
+            liveBlock && liveBlock.id === snapshot.blockId
+              ? { ...liveBlock, raw: nextBlockRaw }
+              : {
+                  id: snapshot.blockId,
+                  kind: snapshot.kind,
+                  startLine: snapshot.startLine,
+                  endLine: snapshot.endLine,
+                  startOffset: snapshot.startOffset,
+                  endOffset: snapshot.endOffset,
+                  raw: nextBlockRaw,
+                };
+        }
+
+        if (snapshot.kind === "ordered-list") {
+          nextResolvedMarkdown = normalizeOrderedListSegmentsInMarkdown(nextResolvedMarkdown);
+          const normalizedBlocks = parseHybridMarkdownBlocks(nextResolvedMarkdown);
+          const normalizedCommittedBlock =
+            normalizedBlocks.find(
+              (block) => block.kind === "ordered-list" && block.startLine === snapshot.startLine,
+            ) ??
+            normalizedBlocks[clampIndex(activeBlockIndex ?? 0, normalizedBlocks.length)] ??
+            null;
+          if (normalizedCommittedBlock) {
+            committedBlock = normalizedCommittedBlock;
+          }
+        }
+
+        if (nextResolvedMarkdown !== markdown) {
+          pendingActivationMarkdownRef.current = options?.nextActivation
+            ? nextResolvedMarkdown
+            : null;
+          onChange(nextResolvedMarkdown);
+        } else if (options?.nextActivation) {
+          pendingActivationMarkdownRef.current = null;
+        }
+
+        setHistory((current) => pushMarkdownHistory(current, nextResolvedMarkdown, "block-commit"));
+        onCommit?.(nextResolvedMarkdown, { block: committedBlock });
+
+        if (options?.deactivate ?? true) {
+          resetActiveEditorUi();
+          setActiveBlockIndex(null);
+          updateActiveDraftState("");
+          setActiveDirty(false);
+          setActiveEditSnapshot(null);
+          setActiveComposing(false);
+          if (
+            !options?.nextActivation ||
+            pendingTableActivation?.blockIndex !== options.nextActivation.index
+          ) {
+            setPendingTableActivation(null);
+          }
+        } else {
+          setActiveDirty(false);
+          setActiveEditSnapshot((current) =>
+            current
+              ? {
+                  ...current,
+                  raw: committedBlock.raw,
+                  draft: toEditorDraftForBlock(committedBlock),
+                }
+              : current,
+          );
+          updateActiveDraftState(toEditorDraftForBlock(committedBlock));
+        }
+
+        if (options?.nextActivation) {
+          setPendingActivation(options.nextActivation);
+        }
+
+        return true;
+      },
+      [
+        activeBlockIndex,
+        blocks,
+        markdown,
+        onChange,
+        onCommit,
+        pendingTableActivation,
+        resetActiveEditorUi,
+        updateActiveDraftState,
+      ],
+    );
+
+    const discardActiveBlockNow = useCallback(() => {
+      resetActiveEditorUi();
+      setActiveBlockIndex(null);
+      updateActiveDraftState("");
+      setActiveDirty(false);
+      setActiveEditSnapshot(null);
+      setActiveComposing(false);
+      setActiveTableDirty(false);
+      setPendingActivation(null);
+      setPendingTableActivation(null);
+      return true;
+    }, [resetActiveEditorUi, updateActiveDraftState]);
+
+    const flushDeferredEditAction = useCallback(() => {
+      const action = deferredEditActionRef.current;
+      deferredEditActionRef.current = null;
+      if (!action) {
+        return true;
+      }
+      const result =
+        action.kind === "discard" ? discardActiveBlockNow() : commitActiveBlockNow(action.options);
+      resolveDeferredEditRequests(action.kind, result);
+      return result;
+    }, [commitActiveBlockNow, discardActiveBlockNow, resolveDeferredEditRequests]);
+
+    const scheduleDeferredEditFlush = useCallback(() => {
+      if (deferredEditFlushFrameRef.current !== null) {
+        return;
+      }
+      deferredEditFlushFrameRef.current = window.requestAnimationFrame(() => {
+        deferredEditFlushFrameRef.current = null;
+        flushDeferredEditAction();
+      });
+    }, [flushDeferredEditAction]);
+
+    const queueDeferredEditAction = useCallback(
+      (action: DeferredEditAction, requestKind: DeferredEditAction["kind"]) =>
+        new Promise<boolean>((resolve) => {
+          deferredEditActionRef.current = mergeDeferredEditAction(
+            deferredEditActionRef.current,
+            action,
+          );
+          deferredEditRequestsRef.current.push({ kind: requestKind, resolve });
+        }),
+      [],
+    );
+
+    const commitActiveBlock = useCallback(
+      (options?: { deactivate?: boolean; nextActivation?: PendingActivation | null }) => {
+        if (activeComposingRef.current) {
+          void queueDeferredEditAction({ kind: "commit", options }, "commit");
+          return false;
+        }
+        return commitActiveBlockNow(options);
+      },
+      [commitActiveBlockNow, queueDeferredEditAction],
+    );
+
+    const commitActiveBlockAsync = useCallback(
+      (options?: { deactivate?: boolean; nextActivation?: PendingActivation | null }) => {
+        if (activeComposingRef.current) {
+          return queueDeferredEditAction({ kind: "commit", options }, "commit");
+        }
+        return Promise.resolve(commitActiveBlockNow(options));
+      },
+      [commitActiveBlockNow, queueDeferredEditAction],
+    );
+
+    const discardActiveBlock = useCallback(() => {
+      if (activeComposingRef.current) {
+        void queueDeferredEditAction({ kind: "discard" }, "discard");
+        return false;
+      }
+      return discardActiveBlockNow();
+    }, [discardActiveBlockNow, queueDeferredEditAction]);
+
+    const discardActiveBlockAsync = useCallback(() => {
+      if (activeComposingRef.current) {
+        return queueDeferredEditAction({ kind: "discard" }, "discard");
+      }
+      return Promise.resolve(discardActiveBlockNow());
+    }, [discardActiveBlockNow, queueDeferredEditAction]);
+
+    const activateBlock = useCallback(
+      (index: number, caret: "start" | "end" = "end") => {
+        if (disabled) {
+          return;
+        }
+        if (blocks.length === 0) {
+          return;
+        }
+        const nextIndex = clampIndex(index, blocks.length);
+        const nextBlock = blocks[nextIndex];
+        if (!nextBlock) {
+          return;
+        }
+        cacheSvgCodeFencePreviewHeightForBlock(nextIndex, nextBlock);
+        if (activeBlockIndex !== null && activeBlockIndex !== nextIndex) {
+          commitActiveBlock({
+            deactivate: true,
+            nextActivation: { index: nextIndex, caret },
+          });
+          return;
+        }
+        if (activeBlockIndex === nextIndex) {
+          pendingCaretRef.current = caret;
+          return;
+        }
+        pendingCaretRef.current = caret;
+        setPendingTableActivation(null);
+        setActiveBlockIndex(nextIndex);
+        setActiveEditSnapshot(createActiveEditSnapshotFromBlock(nextIndex, nextBlock));
+        updateActiveDraftState(toEditorDraftForBlock(nextBlock));
+        setActiveDirty(false);
+        setActiveComposing(false);
+        setActiveTableDirty(false);
+      },
+      [
+        activeBlockIndex,
+        blocks,
+        cacheSvgCodeFencePreviewHeightForBlock,
+        commitActiveBlock,
+        disabled,
+      ],
+    );
+
+    const handleTableBlockRequestActivate = useCallback(
+      (index: number, request?: MarkdownHybridTableActivationRequest) => {
+        if (disabled) {
+          return;
+        }
+        const nextIndex = clampIndex(index, blocks.length);
+        const nextBlock = blocks[nextIndex];
+        if (!nextBlock || nextBlock.kind !== "table") {
+          return;
+        }
+        if (activeBlockIndex !== null && activeBlockIndex !== nextIndex) {
+          if (request) {
+            setPendingTableActivation({ blockIndex: nextIndex, request });
+          }
+          commitActiveBlock({
+            deactivate: true,
+            nextActivation: { index: nextIndex, caret: "start" },
+          });
+          return;
+        }
+        setPendingActivation(null);
+        if (request) {
+          setPendingTableActivation({ blockIndex: nextIndex, request });
+        }
+        if (activeBlockIndex === nextIndex) {
+          setActiveTableDirty(false);
+          return;
+        }
+        setActiveBlockIndex(nextIndex);
+        setActiveEditSnapshot(createActiveEditSnapshotFromBlock(nextIndex, nextBlock));
+        updateActiveDraftState(nextBlock.raw);
+        setActiveDirty(false);
+        setActiveComposing(false);
+        setActiveTableDirty(false);
+      },
+      [activeBlockIndex, blocks, commitActiveBlock, disabled],
+    );
+
+    const handleMathToolboxButtonMouseDown = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+    }, []);
+
+    const handleMathToolboxButtonClick = useCallback(
+      (blockIndex: number) => (event: MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (disabled) {
+          return;
+        }
+        const block = blocks[blockIndex];
+        if (!block || block.kind !== "math-block") {
+          return;
+        }
+        setMathToolboxState((current) =>
+          current && current.blockIndex === blockIndex
+            ? null
+            : {
+                blockIndex,
+                sessionId: `math-toolbox-${Date.now()}-${blockIndex}`,
+                initialLatexSnapshot: extractMathBlockBody(
+                  activeBlockIndex === blockIndex ? activeDraft : block.raw,
+                ),
+              },
+        );
+        if (activeBlockIndex !== blockIndex) {
+          activateBlock(blockIndex, "start");
+        }
+      },
+      [activateBlock, activeBlockIndex, activeDraft, blocks, disabled],
+    );
+
+    const focusContainer = useCallback(() => {
+      const container = containerRef.current;
+      if (!container) {
+        return;
+      }
+      try {
+        container.focus({ preventScroll: true });
+      } catch {
+        container.focus();
+      }
+    }, []);
+
+    const clearSelectedBlockRange = useCallback(() => {
+      if (selectionAutoScrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(selectionAutoScrollFrameRef.current);
+        selectionAutoScrollFrameRef.current = null;
+      }
+      if (selectionDragUpdateFrameRef.current !== null) {
+        window.cancelAnimationFrame(selectionDragUpdateFrameRef.current);
+        selectionDragUpdateFrameRef.current = null;
+      }
+      setSelectedBlockSelection(null);
+      setIsSelectionDragging(false);
+      setSelectionContextMenuState(null);
+      setSelectionMarqueeRect(null);
+      selectionDragPointerRef.current = null;
+      selectionGestureRef.current = null;
+      suppressNextBlockContextMenuRef.current = false;
+    }, []);
+
+    const setSingleBlockSelection = useCallback(
+      (index: number) => {
+        if (disabled || blocks.length === 0) {
+          return;
+        }
+        const nextIndex = clampIndex(index, blocks.length);
+        setSelectedBlockSelection({ anchorIndex: nextIndex, selectedIndices: [nextIndex] });
+      },
+      [blocks.length, disabled],
+    );
+
+    const toggleDiscreteBlockSelection = useCallback(
+      (index: number) => {
+        if (disabled || blocks.length === 0) {
+          return;
+        }
+        const nextIndex = clampIndex(index, blocks.length);
+        setSelectedBlockSelection((current) => {
+          if (!current) {
+            return { anchorIndex: nextIndex, selectedIndices: [nextIndex] };
+          }
+          const alreadySelected = current.selectedIndices.includes(nextIndex);
+          if (alreadySelected) {
+            const remaining = current.selectedIndices.filter((value) => value !== nextIndex);
+            if (remaining.length === 0) {
+              return null;
+            }
+            const nextAnchor = remaining.includes(current.anchorIndex)
+              ? current.anchorIndex
+              : nextIndex;
+            return {
+              anchorIndex: remaining.includes(nextAnchor) ? nextAnchor : remaining[0]!,
+              selectedIndices: remaining,
+            };
+          }
+          const nextSelectedIndices = sortUniqueSelectionIndices([
+            ...current.selectedIndices,
+            nextIndex,
+          ]);
+          return { anchorIndex: nextIndex, selectedIndices: nextSelectedIndices };
+        });
+      },
+      [blocks.length, disabled],
+    );
+
+    const beginSelectionGesture = useCallback(
+      (options: {
+        index: number;
+        source: SelectionGestureSource;
+        clientX: number;
+        clientY: number;
+        preserveAnchor?: boolean;
+        preserveCurrentRangeIfSelected?: boolean;
+      }) => {
+        if (disabled || blocks.length === 0) {
+          return false;
+        }
+        const nextIndex = clampIndex(options.index, blocks.length);
+        const startPoint = getContainerLocalPoint(options.clientX, options.clientY);
+        const shouldPreserveCurrentRange = Boolean(
+          options.preserveCurrentRangeIfSelected &&
+          selectedBlockSelection &&
+          isBlockIndexSelected(selectedBlockSelection, nextIndex),
+        );
+        const nextAnchor = shouldPreserveCurrentRange
+          ? selectedBlockSelection!.anchorIndex
+          : options.preserveAnchor && selectedBlockSelection
+            ? selectedBlockSelection.anchorIndex
+            : nextIndex;
+        const nextSelectedIndices = shouldPreserveCurrentRange
+          ? selectedBlockSelection!.selectedIndices
+          : createSelectionIndexRange(nextAnchor, nextIndex);
+
+        if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
+          return false;
+        }
+        setPendingActivation(null);
+        setInsertMenuState(null);
+        setSelectionContextMenuState(null);
+        setDraggedBlockIndex(null);
+        setDropIndicatorIndex(null);
         setSelectedBlockSelection({
           anchorIndex: nextAnchor,
           selectedIndices: nextSelectedIndices,
         });
-      } else {
-        setSelectedBlockSelection(null);
-      }
-      return true;
-    },
-    [
-      activeBlockIndex,
-      blocks,
-      disabled,
-      markdown,
-      onChange,
-      selectedBlockSelection,
-    ],
-  );
+        setSelectionMarqueeRect(null);
+        selectionGestureRef.current = {
+          active: true,
+          source: options.source,
+          anchorIndex: nextAnchor,
+          didDrag: false,
+          startClientX: options.clientX,
+          startClientY: options.clientY,
+          startContentX: startPoint?.x ?? options.clientX,
+          startContentY: startPoint?.y ?? options.clientY,
+        };
+        suppressNextBlockContextMenuRef.current = false;
+        setIsSelectionDragging(true);
+        focusContainer();
+        return true;
+      },
+      [
+        activeBlockIndex,
+        blocks.length,
+        commitActiveBlock,
+        disabled,
+        focusContainer,
+        getContainerLocalPoint,
+        selectedBlockSelection,
+      ],
+    );
 
-  const handleContainerKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLDivElement>) => {
-      if (disabled || activeBlockIndex !== null) {
-        return;
-      }
-      if (selectedBlockSelection && isInlineShiftShortcut(event)) {
-        shiftSelectedBlocksInlinePosition(event.key === "ArrowRight" ? "right" : "left");
-        event.preventDefault();
-        event.stopPropagation();
-        return;
-      }
-      if (event.key === "Escape" && imageEmbedReplacePickerState) {
-        event.preventDefault();
-        event.stopPropagation();
-        closeImageEmbedReplacePicker();
-        return;
-      }
-      if (event.key === "Escape" && insertMenuState) {
-        event.preventDefault();
-        event.stopPropagation();
+    const beginMarqueeSelectionGesture = useCallback(
+      (options: { clientX: number; clientY: number; preserveAnchor?: boolean }) => {
+        if (disabled) {
+          return false;
+        }
+        const startPoint = getContainerLocalPoint(options.clientX, options.clientY);
+        if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
+          return false;
+        }
+        const nextAnchor =
+          options.preserveAnchor && selectedBlockSelection
+            ? selectedBlockSelection.anchorIndex
+            : (selectedBlockSelection?.anchorIndex ?? 0);
+        setPendingActivation(null);
         setInsertMenuState(null);
+        setSelectionContextMenuState(null);
+        setDraggedBlockIndex(null);
+        setDropIndicatorIndex(null);
+        selectionGestureRef.current = {
+          active: true,
+          source: "shift-left",
+          anchorIndex: nextAnchor,
+          didDrag: false,
+          startClientX: options.clientX,
+          startClientY: options.clientY,
+          startContentX: startPoint?.x ?? options.clientX,
+          startContentY: startPoint?.y ?? options.clientY,
+        };
+        suppressNextBlockContextMenuRef.current = false;
+        setIsSelectionDragging(true);
+        setSelectionMarqueeFromContentPoints(
+          startPoint?.x ?? options.clientX,
+          startPoint?.y ?? options.clientY,
+          startPoint?.x ?? options.clientX,
+          startPoint?.y ?? options.clientY,
+        );
+        focusContainer();
+        return true;
+      },
+      [
+        activeBlockIndex,
+        commitActiveBlock,
+        disabled,
+        focusContainer,
+        getContainerLocalPoint,
+        selectedBlockSelection,
+        setSelectionMarqueeFromContentPoints,
+      ],
+    );
+
+    const deleteSelectedBlocks = useCallback(
+      (options?: { source?: "delete" | "cut" }) => {
+        if (disabled || activeBlockIndex !== null || !selectedBlockSelection) {
+          return false;
+        }
+        const normalizedSelectedIndices = sortUniqueSelectionIndices(
+          selectedBlockSelection.selectedIndices.filter(
+            (index) => Number.isInteger(index) && index >= 0 && index < blocks.length,
+          ),
+        );
+        if (normalizedSelectedIndices.length === 0) {
+          clearSelectedBlockRange();
+          return false;
+        }
+        const nextMarkdownRaw = deleteMarkdownBlockSelection(
+          markdown,
+          blocks,
+          selectedBlockSelection,
+        );
+        if (nextMarkdownRaw === markdown) {
+          clearSelectedBlockRange();
+          return false;
+        }
+        const nextMarkdown = applyEditorMarkdownNormalization(nextMarkdownRaw);
+        const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
+        const firstSelectedIndex = normalizedSelectedIndices[0]!;
+        const shouldFocusNeighborBlock = options?.source === "cut";
+
+        setActiveBlockIndex(null);
+        updateActiveDraftState("");
+        setActiveDirty(false);
+        setActiveEditSnapshot(null);
+        setActiveComposing(false);
+        setActiveTableDirty(false);
+        if (shouldFocusNeighborBlock && nextBlocks.length > 0) {
+          pendingActivationMarkdownRef.current = nextMarkdown;
+          setPendingActivation({
+            index:
+              firstSelectedIndex < nextBlocks.length ? firstSelectedIndex : nextBlocks.length - 1,
+            caret: "end",
+          });
+        } else {
+          pendingActivationMarkdownRef.current = null;
+          setPendingActivation(null);
+        }
+        setPendingTableActivation(null);
+        setSelectedBlockSelection(null);
+        setIsSelectionDragging(false);
+        setDraggedBlockIndex(null);
+        setDropIndicatorIndex(null);
+        setInsertMenuState(null);
+        setMathToolboxState(null);
+        setSelectionContextMenuState(null);
+        setSelectionMarqueeRect(null);
+        selectionGestureRef.current = null;
+        suppressNextBlockContextMenuRef.current = false;
+
+        if (shouldFocusNeighborBlock && nextBlocks.length === 0) {
+          setActiveBlockIndex(0);
+          updateActiveDraftState("");
+          setActiveDirty(false);
+          setActiveEditSnapshot(createDetachedEmptyEditSnapshot(nextMarkdown));
+          setActiveComposing(false);
+        } else if (!shouldFocusNeighborBlock) {
+          focusContainer();
+        }
+
+        onChange(nextMarkdown);
+        setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-delete"));
+        return true;
+      },
+      [
+        activeBlockIndex,
+        blocks,
+        clearSelectedBlockRange,
+        disabled,
+        focusContainer,
+        markdown,
+        onChange,
+        selectedBlockSelection,
+        updateActiveDraftState,
+      ],
+    );
+
+    const replaceSelectedBlocksWithRaw = useCallback(
+      (insertedRaw: string) => {
+        if (disabled || activeBlockIndex !== null || !selectedBlockSelection) {
+          return false;
+        }
+        if (insertedRaw.length === 0) {
+          return false;
+        }
+        const normalizedSelectedIndices = sortUniqueSelectionIndices(
+          selectedBlockSelection.selectedIndices.filter(
+            (index) => Number.isInteger(index) && index >= 0 && index < blocks.length,
+          ),
+        );
+        if (normalizedSelectedIndices.length === 0) {
+          return false;
+        }
+        const firstSelectedIndex = normalizedSelectedIndices[0]!;
+        const withoutSelectionMarkdown = applyEditorMarkdownNormalization(
+          deleteMarkdownBlockSelection(markdown, blocks, selectedBlockSelection),
+        );
+        const blocksWithoutSelection = parseHybridMarkdownBlocks(withoutSelectionMarkdown);
+        const insertionIndex = Math.max(
+          0,
+          Math.min(firstSelectedIndex, blocksWithoutSelection.length),
+        );
+        const nextMarkdown = applyEditorMarkdownNormalization(
+          withInsertedRawBlock(blocksWithoutSelection, insertionIndex, insertedRaw),
+        );
+        if (nextMarkdown === markdown) {
+          return false;
+        }
+        const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
+        const activationIndex = resolveInsertedBlockActivationIndex(
+          nextBlocks,
+          insertedRaw,
+          insertionIndex,
+        );
+
+        setActiveBlockIndex(null);
+        updateActiveDraftState("");
+        setActiveDirty(false);
+        setActiveEditSnapshot(null);
+        setActiveComposing(false);
+        setActiveTableDirty(false);
+        pendingActivationMarkdownRef.current = activationIndex >= 0 ? nextMarkdown : null;
+        setPendingActivation(
+          activationIndex >= 0 ? { index: activationIndex, caret: "end" } : null,
+        );
+        setPendingTableActivation(null);
+        setSelectedBlockSelection(null);
+        setIsSelectionDragging(false);
+        setDraggedBlockIndex(null);
+        setDropIndicatorIndex(null);
+        setInsertMenuState(null);
+        setMathToolboxState(null);
+        setSelectionContextMenuState(null);
+        setSelectionMarqueeRect(null);
+        selectionGestureRef.current = null;
+        suppressNextBlockContextMenuRef.current = false;
+        onChange(nextMarkdown);
+        setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
+        return true;
+      },
+      [
+        activeBlockIndex,
+        blocks,
+        disabled,
+        markdown,
+        onChange,
+        selectedBlockSelection,
+        updateActiveDraftState,
+      ],
+    );
+
+    const applyMarkdownWithPendingActivation = useCallback(
+      (
+        nextMarkdown: string,
+        activation: PendingActivation | null,
+        historyReason: "block-commit" | "block-delete" = "block-commit",
+      ) => {
+        if (nextMarkdown === markdown) {
+          return false;
+        }
+        const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
+
+        setActiveBlockIndex(null);
+        updateActiveDraftState("");
+        setActiveDirty(false);
+        setActiveEditSnapshot(null);
+        setActiveComposing(false);
+        setActiveTableDirty(false);
+        if (nextBlocks.length === 0) {
+          pendingActivationMarkdownRef.current = null;
+          setPendingActivation(null);
+          setActiveBlockIndex(0);
+          updateActiveDraftState("");
+          setActiveDirty(false);
+          setActiveEditSnapshot(createDetachedEmptyEditSnapshot(nextMarkdown));
+          setActiveComposing(false);
+        } else {
+          pendingActivationMarkdownRef.current = activation ? nextMarkdown : null;
+          setPendingActivation(activation);
+        }
+        setPendingTableActivation(null);
+        setSelectedBlockSelection(null);
+        setIsSelectionDragging(false);
+        setDraggedBlockIndex(null);
+        setDropIndicatorIndex(null);
+        setInsertMenuState(null);
+        setMathToolboxState(null);
+        setSelectionContextMenuState(null);
+        setSelectionMarqueeRect(null);
+        selectionGestureRef.current = null;
+        suppressNextBlockContextMenuRef.current = false;
+        onChange(nextMarkdown);
+        setHistory((current) => pushMarkdownHistory(current, nextMarkdown, historyReason));
+        return true;
+      },
+      [markdown, onChange, updateActiveDraftState],
+    );
+
+    const insertBlockRelativeTo = useCallback(
+      (
+        blockIndex: number,
+        insertedRaw: string,
+        insertAbove: boolean,
+        options?: {
+          firstPlaceholder?: string;
+          selection?: {
+            start: number;
+            end: number;
+          };
+          transformNextMarkdown?: (value: string) => string;
+        },
+      ) => {
+        if (disabled) {
+          return false;
+        }
+        const targetIndex = insertAbove ? blockIndex : blockIndex + 1;
+        const insertedMarkdown = applyEditorMarkdownNormalization(
+          withInsertedRawBlock(blocks, targetIndex, insertedRaw),
+        );
+        const nextMarkdown = options?.transformNextMarkdown
+          ? applyEditorMarkdownNormalization(options.transformNextMarkdown(insertedMarkdown))
+          : insertedMarkdown;
+        if (nextMarkdown === markdown) {
+          return false;
+        }
+
+        const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
+        const insertedBlocks = parseHybridMarkdownBlocks(
+          applyEditorMarkdownNormalization(insertedRaw),
+        );
+        const primaryInsertedBlock =
+          insertedBlocks.find((block) => block.kind !== "blank") ?? insertedBlocks[0];
+        let activationBlock = primaryInsertedBlock;
+        let activationSelection: PendingActivation["selection"] | undefined;
+        if (primaryInsertedBlock) {
+          if (options?.firstPlaceholder) {
+            activationBlock =
+              insertedBlocks.find(
+                (block) =>
+                  block.kind !== "hr" &&
+                  toEditorDraftForBlock(block).includes(options.firstPlaceholder!),
+              ) ?? primaryInsertedBlock;
+            const editorDraft = toEditorDraftForBlock(activationBlock);
+            const placeholderStart = editorDraft.indexOf(options.firstPlaceholder);
+            if (placeholderStart >= 0) {
+              activationSelection = {
+                start: placeholderStart,
+                end: placeholderStart + options.firstPlaceholder.length,
+              };
+            }
+          } else if (options?.selection && primaryInsertedBlock.kind !== "hr") {
+            activationSelection = options.selection;
+          }
+        }
+        const activationIndex = resolveInsertedBlockActivationIndex(
+          nextBlocks,
+          insertedRaw,
+          targetIndex,
+          activationBlock,
+        );
+
+        setActiveBlockIndex(null);
+        updateActiveDraftState("");
+        setActiveDirty(false);
+        setActiveEditSnapshot(null);
+        setActiveComposing(false);
+        setActiveTableDirty(false);
+        pendingActivationMarkdownRef.current = activationIndex >= 0 ? nextMarkdown : null;
+        setPendingActivation(
+          activationIndex >= 0
+            ? { index: activationIndex, caret: "end", selection: activationSelection }
+            : null,
+        );
+        setPendingTableActivation(null);
+        setSelectedBlockSelection(null);
+        setIsSelectionDragging(false);
+        setDraggedBlockIndex(null);
+        setDropIndicatorIndex(null);
+        setInsertMenuState(null);
+        setMathToolboxState(null);
+        setSelectionContextMenuState(null);
+        setSelectionMarqueeRect(null);
+        selectionGestureRef.current = null;
+        suppressNextBlockContextMenuRef.current = false;
+        onChange(nextMarkdown);
+        setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
+        return true;
+      },
+      [blocks, disabled, markdown, onChange],
+    );
+
+    const getEmptyParagraphInsertRawForSlot = useCallback(
+      (targetIndex: number) => {
+        const previousKind = blocks[targetIndex - 1]?.kind ?? null;
+        const nextKind = blocks[targetIndex]?.kind ?? null;
+        const adjacentHrCount = Number(previousKind === "hr") + Number(nextKind === "hr");
+        if (adjacentHrCount >= 2) {
+          return "\n\n";
+        }
+        if (adjacentHrCount === 1) {
+          return "\n";
+        }
+        return "";
+      },
+      [blocks],
+    );
+
+    const insertEmptyParagraphRelativeTo = useCallback(
+      (blockIndex: number, insertAbove: boolean) => {
+        const targetIndex = insertAbove ? blockIndex : blockIndex + 1;
+        return insertBlockRelativeTo(
+          blockIndex,
+          getEmptyParagraphInsertRawForSlot(targetIndex),
+          insertAbove,
+        );
+      },
+      [getEmptyParagraphInsertRawForSlot, insertBlockRelativeTo],
+    );
+
+    const resolveImperativeInsertAnchorIndex = useCallback(() => {
+      if (typeof activeBlockIndex === "number") {
+        return activeBlockIndex;
+      }
+      if (blocks.length === 0) {
+        return 0;
+      }
+      return blocks.length - 1;
+    }, [activeBlockIndex, blocks.length]);
+
+    const insertStructureTemplateInternal = useCallback(
+      (template: "table" | "code-block" | "math-block") => {
+        const templateConfig =
+          template === "table"
+            ? {
+                raw: "| Column A | Column B |\n| --- | --- |\n| Value 1 | Value 2 |",
+                firstPlaceholder: "Column A",
+                selection: undefined,
+              }
+            : template === "code-block"
+              ? {
+                  raw: "```txt\nCODE HERE\n```",
+                  firstPlaceholder: "CODE HERE",
+                  selection: undefined,
+                }
+              : {
+                  raw: "$$\n\n$$",
+                  firstPlaceholder: undefined,
+                  selection: { start: 3, end: 3 },
+                };
+        const anchorIndex = resolveImperativeInsertAnchorIndex();
+        return insertBlockRelativeTo(anchorIndex, templateConfig.raw, false, {
+          firstPlaceholder: templateConfig.firstPlaceholder,
+          selection: templateConfig.selection,
+        });
+      },
+      [insertBlockRelativeTo, resolveImperativeInsertAnchorIndex],
+    );
+
+    const openImageInsertPickerInternal = useCallback(() => {
+      if (disabled) {
+        return false;
+      }
+      const anchorIndex = resolveImperativeInsertAnchorIndex();
+      setSelectionContextMenuState(null);
+      setMathToolboxState(null);
+      setInsertMenuState({
+        blockIndex: anchorIndex,
+        insertAbove: false,
+        phase: "image-link-picker",
+        categoryId: "links",
+        query: "",
+        highlightedIndex: 0,
+      });
+      return true;
+    }, [disabled, resolveImperativeInsertAnchorIndex]);
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        commitActiveEdit: () => commitActiveBlockAsync({ deactivate: true }),
+        discardActiveEdit: () => discardActiveBlockAsync(),
+        insertStructureTemplate: (template) =>
+          Promise.resolve(insertStructureTemplateInternal(template)),
+        openImageInsertPicker: () => Promise.resolve(openImageInsertPickerInternal()),
+      }),
+      [
+        commitActiveBlockAsync,
+        discardActiveBlockAsync,
+        insertStructureTemplateInternal,
+        openImageInsertPickerInternal,
+      ],
+    );
+
+    const reorderBlockByDrop = useCallback(
+      (fromIndex: number, toSlotIndex: number) => {
+        if (disabled) {
+          return false;
+        }
+        const shouldMoveSelectionGroup = Boolean(
+          selectedBlockSelection &&
+          selectedBlockSelection.selectedIndices.length > 1 &&
+          isBlockIndexSelected(selectedBlockSelection, fromIndex),
+        );
+        const moveResult = shouldMoveSelectionGroup
+          ? moveBlockSelectionInList(blocks, selectedBlockSelection!.selectedIndices, toSlotIndex)
+          : (() => {
+              const nextItems = moveBlockInList(blocks, fromIndex, toSlotIndex);
+              const normalizedToSlot = Math.max(0, Math.min(toSlotIndex, blocks.length));
+              const nextInsertIndex =
+                normalizedToSlot > fromIndex ? normalizedToSlot - 1 : normalizedToSlot;
+              const clampedInsertIndex = Math.max(
+                0,
+                Math.min(nextInsertIndex, Math.max(0, nextItems.length - 1)),
+              );
+              return {
+                items: nextItems,
+                insertIndex: clampedInsertIndex,
+                movedIndices: [clampedInsertIndex],
+              };
+            })();
+        const reorderedBlocks = moveResult.items;
+        if (reorderedBlocks === blocks) {
+          return false;
+        }
+        const nextMarkdown = applyEditorMarkdownNormalization(
+          serializeMarkdownFromBlocks(reorderedBlocks),
+        );
+        if (nextMarkdown === markdown) {
+          return false;
+        }
+        const draggedRelativeIndex =
+          shouldMoveSelectionGroup && selectedBlockSelection
+            ? Math.max(0, selectedBlockSelection.selectedIndices.indexOf(fromIndex))
+            : 0;
+        const activationIndex = shouldMoveSelectionGroup
+          ? (moveResult.movedIndices[draggedRelativeIndex] ?? moveResult.insertIndex)
+          : moveResult.insertIndex;
+
+        setActiveBlockIndex(null);
+        updateActiveDraftState("");
+        setActiveDirty(false);
+        setActiveEditSnapshot(null);
+        setActiveComposing(false);
+        pendingActivationMarkdownRef.current = nextMarkdown;
+        setPendingActivation({
+          index: clampIndex(activationIndex, reorderedBlocks.length),
+          caret: "end",
+        });
+        setSelectedBlockSelection(null);
+        setIsSelectionDragging(false);
+        setDraggedBlockIndex(null);
+        setDropIndicatorIndex(null);
+        setInsertMenuState(null);
+        setSelectionContextMenuState(null);
+        setSelectionMarqueeRect(null);
+        selectionGestureRef.current = null;
+        suppressNextBlockContextMenuRef.current = false;
+        onChange(nextMarkdown);
+        setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
+        return true;
+      },
+      [blocks, disabled, markdown, onChange, selectedBlockSelection],
+    );
+
+    useEffect(() => {
+      if (!insertMenuState) {
         return;
       }
-      if (event.key === "Escape" && selectionContextMenuState) {
+
+      const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+        if (insertMenuRef.current?.contains(target)) {
+          return;
+        }
+        if (target.closest("[data-md-block-control='true']")) {
+          return;
+        }
+        setInsertMenuState(null);
+      };
+
+      const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
+        if (event.key === "Escape") {
+          setInsertMenuState(null);
+        }
+      };
+
+      document.addEventListener("mousedown", handleDocumentMouseDown);
+      window.addEventListener("keydown", handleWindowKeyDown);
+      return () => {
+        document.removeEventListener("mousedown", handleDocumentMouseDown);
+        window.removeEventListener("keydown", handleWindowKeyDown);
+      };
+    }, [insertMenuState]);
+
+    useEffect(() => {
+      if (!mathToolboxState) {
+        return;
+      }
+      const block = blocks[mathToolboxState.blockIndex];
+      if (!block || block.kind !== "math-block") {
+        setMathToolboxState(null);
+      }
+    }, [blocks, mathToolboxState]);
+
+    useEffect(() => {
+      if (!selectionContextMenuState) {
+        return;
+      }
+
+      const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+        if (selectionContextMenuRef.current?.contains(target)) {
+          return;
+        }
+        setSelectionContextMenuState(null);
+      };
+
+      const handleWindowKeyDown = (event: globalThis.KeyboardEvent) => {
+        if (event.key === "Escape") {
+          setSelectionContextMenuState(null);
+        }
+      };
+
+      document.addEventListener("mousedown", handleDocumentMouseDown);
+      window.addEventListener("keydown", handleWindowKeyDown);
+      return () => {
+        document.removeEventListener("mousedown", handleDocumentMouseDown);
+        window.removeEventListener("keydown", handleWindowKeyDown);
+      };
+    }, [selectionContextMenuState]);
+
+    useEffect(() => {
+      if (!selectedBlockSelection) {
+        return;
+      }
+
+      const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
+        const target = event.target;
+        if (!(target instanceof Node)) {
+          return;
+        }
+        if (containerRef.current?.contains(target)) {
+          return;
+        }
+        clearSelectedBlockRange();
+      };
+
+      document.addEventListener("mousedown", handleDocumentMouseDown);
+      return () => {
+        document.removeEventListener("mousedown", handleDocumentMouseDown);
+      };
+    }, [clearSelectedBlockRange, selectedBlockSelection]);
+
+    const handleOpenInsertMenu = useCallback(
+      (blockIndex: number) => (event: MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const insertAbove = event.shiftKey;
+        setSelectionContextMenuState(null);
+        setInsertMenuState({
+          blockIndex,
+          insertAbove,
+          phase: "categories",
+        });
+      },
+      [],
+    );
+
+    const handleSelectInsertMenuCategory = useCallback(
+      (categoryId: InsertMenuCategoryId) => (event: MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setInsertMenuState((current) => {
+          if (!current) {
+            return current;
+          }
+          return {
+            ...current,
+            phase: "items",
+            categoryId,
+            advancedTemplateId: undefined,
+            advancedSequenceNumber: undefined,
+          };
+        });
+      },
+      [],
+    );
+
+    const handleSelectAdvancedInsertTemplate = useCallback(
+      (templateId: string) => (event: MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        const template = getAdvancedInsertTemplateById(templateId);
+        if (!template || !insertMenuState) {
+          return;
+        }
+        if (template.insertBehavior === "direct") {
+          insertBlockRelativeTo(
+            insertMenuState.blockIndex,
+            template.payload,
+            insertMenuState.insertAbove,
+            {
+              firstPlaceholder: template.firstPlaceholder,
+            },
+          );
+          return;
+        }
+        const nextSequenceNumber = resolveNextGlobalSequenceNumber(markdown);
+        setInsertMenuState((current) => {
+          if (!current) {
+            return current;
+          }
+          return {
+            ...current,
+            phase: "advanced-variant",
+            categoryId: "advanced",
+            advancedTemplateId: templateId,
+            advancedSequenceNumber: nextSequenceNumber,
+          };
+        });
+      },
+      [insertBlockRelativeTo, insertMenuState, markdown],
+    );
+
+    const handleInsertMenuBack = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setInsertMenuState((current) => {
+        if (!current) {
+          return current;
+        }
+        if (current.phase === "image-link-picker") {
+          return {
+            ...current,
+            phase: "items",
+            query: "",
+            highlightedIndex: 0,
+          };
+        }
+        if (current.phase === "advanced-variant") {
+          return {
+            ...current,
+            phase: "items",
+            advancedTemplateId: undefined,
+            advancedSequenceNumber: undefined,
+          };
+        }
+        return {
+          ...current,
+          phase: "categories",
+          categoryId: undefined,
+          advancedTemplateId: undefined,
+          advancedSequenceNumber: undefined,
+        };
+      });
+    }, []);
+
+    const handleInsertMenuClose = useCallback((event?: MouseEvent<HTMLButtonElement>) => {
+      event?.preventDefault();
+      event?.stopPropagation();
+      setInsertMenuState(null);
+    }, []);
+
+    const handleSelectionContextMenuClose = useCallback(() => {
+      setSelectionContextMenuState(null);
+    }, []);
+
+    const handleOpenImageEmbedReplacePicker = useCallback(
+      (blockIndex: number) => (event: MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (disabled) {
+          return;
+        }
+        if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
+          return;
+        }
+        const block = blocks[blockIndex];
+        if (!block || block.kind !== "image-embed") {
+          return;
+        }
+        setInsertMenuState(null);
+        setMathToolboxState(null);
+        setSelectionContextMenuState(null);
+        setPendingTypedImageLinkPickerRequest(null);
+        setTypedImageLinkPickerState(null);
+        setPendingPageLinkPickerRequest(null);
+        setPageLinkPickerState(null);
+        setImageEmbedReplacePickerState((current) =>
+          current && current.blockId === block.id
+            ? null
+            : {
+                blockIndex,
+                blockId: block.id,
+                query: "",
+                highlightedIndex: 0,
+              },
+        );
+      },
+      [activeBlockIndex, blocks, commitActiveBlock, disabled],
+    );
+
+    const handleImageEmbedReplaceQueryChange = useCallback((value: string) => {
+      setImageEmbedReplacePickerState((current) =>
+        current
+          ? {
+              ...current,
+              query: value,
+              highlightedIndex: 0,
+            }
+          : current,
+      );
+    }, []);
+
+    const handleImageEmbedReplaceSelectCandidate = useCallback(
+      (candidate: VaultImageCandidate) => {
+        if (!imageEmbedReplacePickerState) {
+          return;
+        }
+        const block = blocks[imageEmbedReplacePickerState.blockIndex];
+        if (
+          !block ||
+          block.id !== imageEmbedReplacePickerState.blockId ||
+          block.kind !== "image-embed"
+        ) {
+          closeImageEmbedReplacePicker();
+          return;
+        }
+        const currentImageEmbed = extractImageEmbedTokenFromRaw(block.raw);
+        if (!currentImageEmbed) {
+          closeImageEmbedReplacePicker();
+          return;
+        }
+        const currentPath = normalizeRelativePath(currentImageEmbed.src).toLowerCase();
+        const nextPath = normalizeRelativePath(candidate.relPath).toLowerCase();
+        if (!nextPath || currentPath === nextPath) {
+          closeImageEmbedReplacePicker();
+          return;
+        }
+        const nextBlockRaw = serializePngEmbed(candidate.relPath, currentImageEmbed.label);
+        const nextMarkdown = applyEditorMarkdownNormalization(
+          replaceMarkdownBlock(markdown, block, nextBlockRaw),
+        );
+        closeImageEmbedReplacePicker();
+        if (nextMarkdown === markdown) {
+          return;
+        }
+        onChange(nextMarkdown);
+        setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
+        onCommit?.(nextMarkdown, { block: { ...block, raw: nextBlockRaw } });
+      },
+      [
+        blocks,
+        closeImageEmbedReplacePicker,
+        imageEmbedReplacePickerState,
+        markdown,
+        onChange,
+        onCommit,
+      ],
+    );
+
+    const handleImageEmbedReplaceSearchKeyDown = useCallback(
+      (event: KeyboardEvent<HTMLInputElement>) => {
+        if (!imageEmbedReplacePickerState) {
+          return;
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          closeImageEmbedReplacePicker();
+          return;
+        }
+        if (filteredImageEmbedReplaceCandidates.length === 0) {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          return;
+        }
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          event.preventDefault();
+          event.stopPropagation();
+          const delta = event.key === "ArrowDown" ? 1 : -1;
+          setImageEmbedReplacePickerState((current) => {
+            if (!current) {
+              return current;
+            }
+            const currentIndex = current.highlightedIndex ?? 0;
+            return {
+              ...current,
+              highlightedIndex:
+                (currentIndex + delta + filteredImageEmbedReplaceCandidates.length) %
+                filteredImageEmbedReplaceCandidates.length,
+            };
+          });
+          return;
+        }
+        if (event.key === "Enter") {
+          event.preventDefault();
+          event.stopPropagation();
+          const candidate =
+            filteredImageEmbedReplaceCandidates[imageEmbedReplacePickerState.highlightedIndex] ??
+            filteredImageEmbedReplaceCandidates[0];
+          if (!candidate) {
+            return;
+          }
+          handleImageEmbedReplaceSelectCandidate(candidate);
+        }
+      },
+      [
+        closeImageEmbedReplacePicker,
+        filteredImageEmbedReplaceCandidates,
+        handleImageEmbedReplaceSelectCandidate,
+        imageEmbedReplacePickerState,
+      ],
+    );
+
+    const handleInsertImageLinkQueryChange = useCallback((value: string) => {
+      setInsertMenuState((current) => {
+        if (!current || current.phase !== "image-link-picker") {
+          return current;
+        }
+        return {
+          ...current,
+          query: value,
+          highlightedIndex: 0,
+        };
+      });
+    }, []);
+
+    const handleInsertImageLinkSelectCandidate = useCallback(
+      (relativePath: string) => {
+        if (!insertMenuState) {
+          return;
+        }
+        const blockSource = serializePngEmbed(relativePath);
+        insertBlockRelativeTo(insertMenuState.blockIndex, blockSource, insertMenuState.insertAbove);
+      },
+      [insertBlockRelativeTo, insertMenuState],
+    );
+
+    const handleInsertImageLinkSearchKeyDown = useCallback(
+      (event: KeyboardEvent<HTMLInputElement>) => {
+        if (!insertMenuState || insertMenuState.phase !== "image-link-picker") {
+          return;
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setInsertMenuState((current) =>
+            current
+              ? {
+                  ...current,
+                  phase: "items",
+                  query: "",
+                  highlightedIndex: 0,
+                }
+              : current,
+          );
+          return;
+        }
+        if (filteredImageLinkCandidates.length === 0) {
+          return;
+        }
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          event.preventDefault();
+          const delta = event.key === "ArrowDown" ? 1 : -1;
+          setInsertMenuState((current) => {
+            if (!current || current.phase !== "image-link-picker") {
+              return current;
+            }
+            const currentIndex = current.highlightedIndex ?? 0;
+            return {
+              ...current,
+              highlightedIndex:
+                (currentIndex + delta + filteredImageLinkCandidates.length) %
+                filteredImageLinkCandidates.length,
+            };
+          });
+          return;
+        }
+        if (event.key === "Enter") {
+          event.preventDefault();
+          const candidate =
+            filteredImageLinkCandidates[insertMenuState.highlightedIndex ?? 0] ??
+            filteredImageLinkCandidates[0];
+          if (!candidate) {
+            return;
+          }
+          handleInsertImageLinkSelectCandidate(candidate.relPath);
+        }
+      },
+      [filteredImageLinkCandidates, handleInsertImageLinkSelectCandidate, insertMenuState],
+    );
+
+    const handleInsertMenuItemSelect = useCallback(
+      (item: InsertMenuItem) => (event: MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!insertMenuState) {
+          return;
+        }
+        if (item.id === "page-link") {
+          if (blocks.length === 0) {
+            pendingCaretRef.current = "start";
+            setActiveBlockIndex(0);
+            updateActiveDraftState("");
+            setActiveDirty(false);
+            setActiveEditSnapshot(createDetachedEmptyEditSnapshot(""));
+            setActiveComposing(false);
+            setInsertMenuState(null);
+            requestPageLinkPickerOpen({ source: "insert-menu" });
+            return;
+          }
+          const inserted = insertEmptyParagraphRelativeTo(
+            insertMenuState.blockIndex,
+            insertMenuState.insertAbove,
+          );
+          if (inserted) {
+            requestPageLinkPickerOpen({ source: "insert-menu" });
+          }
+          return;
+        }
+        if (item.id === "image-link") {
+          setInsertMenuState((current) => {
+            if (!current) {
+              return current;
+            }
+            return {
+              ...current,
+              phase: "image-link-picker",
+              query: "",
+              highlightedIndex: 0,
+            };
+          });
+          return;
+        }
+        if (item.id === "db-attributes") {
+          if (sourceHasFrontmatter || parseFrontmatterDocument(markdown).hasFrontmatter) {
+            setInsertMenuState(null);
+            return;
+          }
+          insertBlockRelativeTo(0, item.template, true, {
+            firstPlaceholder: item.firstPlaceholder,
+            selection: item.initialSelection,
+            transformNextMarkdown: (value) => {
+              const parsed = parseFrontmatterDocument(value);
+              if (!parsed.hasFrontmatter) {
+                return value;
+              }
+              return `${value.slice(0, parsed.bodyStartOffset)}${parsed.body.replace(/^(?:\r?\n)+/, "")}`;
+            },
+          });
+          return;
+        }
+        insertBlockRelativeTo(
+          insertMenuState.blockIndex,
+          item.template,
+          insertMenuState.insertAbove,
+          {
+            firstPlaceholder: item.firstPlaceholder,
+            selection: item.initialSelection,
+          },
+        );
+      },
+      [
+        blocks.length,
+        insertBlockRelativeTo,
+        insertEmptyParagraphRelativeTo,
+        insertMenuState,
+        markdown,
+        requestPageLinkPickerOpen,
+        sourceHasFrontmatter,
+      ],
+    );
+
+    const handleAdvancedInsertTemplateVariantSelect = useCallback(
+      (variant: AdvancedInsertTemplateVariant) => (event: MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!insertMenuState?.advancedTemplateId) {
+          return;
+        }
+        const template = getAdvancedInsertTemplateById(insertMenuState.advancedTemplateId);
+        if (!template) {
+          return;
+        }
+        if (template.insertBehavior === "direct") {
+          insertBlockRelativeTo(
+            insertMenuState.blockIndex,
+            template.payload,
+            insertMenuState.insertAbove,
+            {
+              firstPlaceholder: template.firstPlaceholder,
+            },
+          );
+          return;
+        }
+        const sequenceNumber =
+          typeof insertMenuState.advancedSequenceNumber === "number" &&
+          Number.isFinite(insertMenuState.advancedSequenceNumber)
+            ? Math.max(1, Math.floor(insertMenuState.advancedSequenceNumber))
+            : resolveNextGlobalSequenceNumber(markdown);
+        const shouldEnsureExamWrapperBoundaries =
+          variant === "task" && !hasBalancedExamWrapper(markdown);
+        const resolved = buildAdvancedInsertTemplateVariant(template, variant, {
+          sequenceNumber,
+        });
+        insertBlockRelativeTo(
+          insertMenuState.blockIndex,
+          resolved.payload,
+          insertMenuState.insertAbove,
+          {
+            firstPlaceholder: resolved.firstPlaceholder,
+            transformNextMarkdown: shouldEnsureExamWrapperBoundaries
+              ? ensureExamWrapperBoundaryMarkers
+              : undefined,
+          },
+        );
+      },
+      [insertBlockRelativeTo, insertMenuState, markdown],
+    );
+
+    const decrementAdvancedSequenceNumber = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setInsertMenuState((current) => {
+        if (!current || current.phase !== "advanced-variant") {
+          return current;
+        }
+        const currentValue =
+          typeof current.advancedSequenceNumber === "number" &&
+          Number.isFinite(current.advancedSequenceNumber)
+            ? Math.max(1, Math.floor(current.advancedSequenceNumber))
+            : 1;
+        return {
+          ...current,
+          advancedSequenceNumber: Math.max(1, currentValue - 1),
+        };
+      });
+    }, []);
+
+    const incrementAdvancedSequenceNumber = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setInsertMenuState((current) => {
+        if (!current || current.phase !== "advanced-variant") {
+          return current;
+        }
+        const currentValue =
+          typeof current.advancedSequenceNumber === "number" &&
+          Number.isFinite(current.advancedSequenceNumber)
+            ? Math.max(1, Math.floor(current.advancedSequenceNumber))
+            : 1;
+        return {
+          ...current,
+          advancedSequenceNumber: currentValue + 1,
+        };
+      });
+    }, []);
+
+    const handleAdvancedSequenceNumberInputChange = useCallback(
+      (event: FormEvent<HTMLInputElement>) => {
+        const rawValue = event.currentTarget.value.trim();
+        const parsedValue = Number.parseInt(rawValue, 10);
+        if (!Number.isFinite(parsedValue)) {
+          return;
+        }
+        setInsertMenuState((current) => {
+          if (!current || current.phase !== "advanced-variant") {
+            return current;
+          }
+          return {
+            ...current,
+            advancedSequenceNumber: Math.max(1, parsedValue),
+          };
+        });
+      },
+      [],
+    );
+
+    const handleHrEnterZoneMouseDown = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+    }, []);
+
+    const handleHrEnterZoneClick = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation();
+    }, []);
+
+    const handleHrEnterZoneKeyDown = useCallback(
+      (blockIndex: number, insertAbove: boolean) => (event: KeyboardEvent<HTMLButtonElement>) => {
+        if (
+          event.key !== "Enter" ||
+          event.shiftKey ||
+          event.altKey ||
+          event.ctrlKey ||
+          event.metaKey
+        ) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        insertEmptyParagraphRelativeTo(blockIndex, insertAbove);
+      },
+      [insertEmptyParagraphRelativeTo],
+    );
+
+    const handleSelectionContextMenuDelete = useCallback(
+      (event: MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
         event.stopPropagation();
         setSelectionContextMenuState(null);
-        return;
-      }
-      if (event.key === "Escape" && selectedBlockSelection) {
+        deleteSelectedBlocks();
+      },
+      [deleteSelectedBlocks],
+    );
+
+    const handleSelectionContextMenuClear = useCallback(
+      (event: MouseEvent<HTMLButtonElement>) => {
         event.preventDefault();
         event.stopPropagation();
+        handleSelectionContextMenuClose();
         clearSelectedBlockRange();
-        return;
-      }
-      if (selectedBlockSelection && isDeleteRangeShortcut(event)) {
-        if (deleteSelectedBlocks()) {
+        focusContainer();
+      },
+      [clearSelectedBlockRange, focusContainer, handleSelectionContextMenuClose],
+    );
+
+    const shiftSelectedBlocksInlinePosition = useCallback(
+      (direction: "left" | "right") => {
+        if (disabled || activeBlockIndex !== null || !selectedBlockSelection) {
+          return false;
+        }
+        const selectedIndices = sortUniqueSelectionIndices(
+          selectedBlockSelection.selectedIndices.filter(
+            (index) => Number.isInteger(index) && index >= 0 && index < blocks.length,
+          ),
+        );
+        if (selectedIndices.length === 0) {
+          return false;
+        }
+
+        const selectedIndexSet = new Set<number>(selectedIndices);
+        let didChange = false;
+        const nextBlocks = blocks.map((block, index) => {
+          if (!selectedIndexSet.has(index)) {
+            return block;
+          }
+          if (!isInlineShiftableBlockKind(block.kind)) {
+            return block;
+          }
+          const nextRaw = shiftBlockRawInlineIndent(block.raw, direction);
+          if (nextRaw === block.raw) {
+            return block;
+          }
+          didChange = true;
+          return {
+            ...block,
+            raw: nextRaw,
+          };
+        });
+
+        if (!didChange) {
+          return false;
+        }
+
+        // Preserve the explicit two-space source shift here. Running the automatic
+        // four-space unordered-list canonicalizer would immediately erase a
+        // top-level shift before the user can move the block again.
+        let nextMarkdown = normalizeExamTaskHeadingIndentationInMarkdown(
+          normalizeHorizontalRuleSpacingInMarkdown(serializeMarkdownFromBlocks(nextBlocks)),
+        );
+        nextMarkdown = normalizeOrderedListSegmentsInMarkdown(nextMarkdown);
+        if (nextMarkdown === markdown) {
+          return false;
+        }
+
+        const nextParsedBlocks = parseHybridMarkdownBlocks(nextMarkdown);
+        const nextSelectedIndices = selectedIndices.filter(
+          (index) => index < nextParsedBlocks.length,
+        );
+        const nextAnchor = nextSelectedIndices.includes(selectedBlockSelection.anchorIndex)
+          ? selectedBlockSelection.anchorIndex
+          : nextSelectedIndices[0];
+
+        if (selectionAutoScrollFrameRef.current !== null) {
+          window.cancelAnimationFrame(selectionAutoScrollFrameRef.current);
+          selectionAutoScrollFrameRef.current = null;
+        }
+        if (selectionDragUpdateFrameRef.current !== null) {
+          window.cancelAnimationFrame(selectionDragUpdateFrameRef.current);
+          selectionDragUpdateFrameRef.current = null;
+        }
+        selectionDragPointerRef.current = null;
+        selectionGestureRef.current = null;
+        setIsSelectionDragging(false);
+        setSelectionMarqueeRect(null);
+        setSelectionContextMenuState(null);
+
+        onChange(nextMarkdown);
+        setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
+        if (typeof nextAnchor === "number" && nextSelectedIndices.length > 0) {
+          setSelectedBlockSelection({
+            anchorIndex: nextAnchor,
+            selectedIndices: nextSelectedIndices,
+          });
+        } else {
+          setSelectedBlockSelection(null);
+        }
+        return true;
+      },
+      [activeBlockIndex, blocks, disabled, markdown, onChange, selectedBlockSelection],
+    );
+
+    const handleContainerKeyDown = useCallback(
+      (event: KeyboardEvent<HTMLDivElement>) => {
+        if (disabled || activeBlockIndex !== null) {
+          return;
+        }
+        if (selectedBlockSelection && isInlineShiftShortcut(event)) {
+          shiftSelectedBlocksInlinePosition(event.key === "ArrowRight" ? "right" : "left");
           event.preventDefault();
           event.stopPropagation();
+          return;
         }
-        return;
-      }
-      if (isUndoShortcut(event)) {
-        if (handleGlobalUndo()) {
+        if (event.key === "Escape" && imageEmbedReplacePickerState) {
           event.preventDefault();
           event.stopPropagation();
+          closeImageEmbedReplacePicker();
+          return;
         }
-        return;
-      }
-      if (isRedoShortcut(event)) {
-        if (handleGlobalRedo()) {
+        if (event.key === "Escape" && insertMenuState) {
           event.preventDefault();
           event.stopPropagation();
+          setInsertMenuState(null);
+          return;
         }
-      }
-    },
-    [
-      activeBlockIndex,
-      clearSelectedBlockRange,
-      closeImageEmbedReplacePicker,
-      deleteSelectedBlocks,
-      disabled,
-      handleGlobalRedo,
-      handleGlobalUndo,
-      imageEmbedReplacePickerState,
-      insertMenuState,
-      selectionContextMenuState,
-      selectedBlockSelection,
-      shiftSelectedBlocksInlinePosition,
-    ],
-  );
+        if (event.key === "Escape" && selectionContextMenuState) {
+          event.preventDefault();
+          event.stopPropagation();
+          setSelectionContextMenuState(null);
+          return;
+        }
+        if (event.key === "Escape" && selectedBlockSelection) {
+          event.preventDefault();
+          event.stopPropagation();
+          clearSelectedBlockRange();
+          return;
+        }
+        if (selectedBlockSelection && isDeleteRangeShortcut(event)) {
+          if (deleteSelectedBlocks()) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          return;
+        }
+        if (isUndoShortcut(event)) {
+          if (handleGlobalUndo()) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          return;
+        }
+        if (isRedoShortcut(event)) {
+          if (handleGlobalRedo()) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }
+      },
+      [
+        activeBlockIndex,
+        clearSelectedBlockRange,
+        closeImageEmbedReplacePicker,
+        deleteSelectedBlocks,
+        disabled,
+        handleGlobalRedo,
+        handleGlobalUndo,
+        imageEmbedReplacePickerState,
+        insertMenuState,
+        selectionContextMenuState,
+        selectedBlockSelection,
+        shiftSelectedBlocksInlinePosition,
+      ],
+    );
 
-  const writeSelectedBlocksToClipboard = useCallback(
-    (clipboardData: DataTransfer | null) => {
-      const selectedBlocks = resolveSelectedBlocksInDocumentOrder(blocks, selectedBlockSelection);
-      if (selectedBlocks.length === 0) {
-        return false;
-      }
-      const clipboardBlocks: ClipboardBlockEntry[] = selectedBlocks.map((block) => ({
-        kind: block.kind,
-        raw: block.raw,
-      }));
-      const plainText = serializeMarkdownFromBlocks(clipboardBlocks);
-      if (!setClipboardTextData(clipboardData, "text/plain", plainText)) {
-        return false;
-      }
-      const payload = serializeInternalBlockClipboardPayload(clipboardBlocks);
-      setClipboardTextData(clipboardData, INTERNAL_BLOCK_CLIPBOARD_MIME, payload);
-      return true;
-    },
-    [blocks, selectedBlockSelection],
-  );
+    const writeSelectedBlocksToClipboard = useCallback(
+      (clipboardData: DataTransfer | null) => {
+        const selectedBlocks = resolveSelectedBlocksInDocumentOrder(blocks, selectedBlockSelection);
+        if (selectedBlocks.length === 0) {
+          return false;
+        }
+        const clipboardBlocks: ClipboardBlockEntry[] = selectedBlocks.map((block) => ({
+          kind: block.kind,
+          raw: block.raw,
+        }));
+        const plainText = serializeMarkdownFromBlocks(clipboardBlocks);
+        if (!setClipboardTextData(clipboardData, "text/plain", plainText)) {
+          return false;
+        }
+        const payload = serializeInternalBlockClipboardPayload(clipboardBlocks);
+        setClipboardTextData(clipboardData, INTERNAL_BLOCK_CLIPBOARD_MIME, payload);
+        return true;
+      },
+      [blocks, selectedBlockSelection],
+    );
 
-  const handleEditorCopy = useCallback(
-    (event: ClipboardEvent<HTMLDivElement>) => {
-      if (disabled || activeBlockIndex !== null || !selectedBlockSelection) {
-        return;
-      }
-      if (!writeSelectedBlocksToClipboard(event.clipboardData)) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-    },
-    [
-      activeBlockIndex,
-      disabled,
-      selectedBlockSelection,
-      writeSelectedBlocksToClipboard,
-    ],
-  );
+    const handleEditorCopy = useCallback(
+      (event: ClipboardEvent<HTMLDivElement>) => {
+        if (disabled || activeBlockIndex !== null || !selectedBlockSelection) {
+          return;
+        }
+        if (!writeSelectedBlocksToClipboard(event.clipboardData)) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+      },
+      [activeBlockIndex, disabled, selectedBlockSelection, writeSelectedBlocksToClipboard],
+    );
 
-  const handleEditorCut = useCallback(
-    (event: ClipboardEvent<HTMLDivElement>) => {
-      if (disabled || activeBlockIndex !== null || !selectedBlockSelection) {
-        return;
-      }
-      if (!writeSelectedBlocksToClipboard(event.clipboardData)) {
-        return;
-      }
-      if (!deleteSelectedBlocks({ source: "cut" })) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-    },
-    [
-      activeBlockIndex,
-      deleteSelectedBlocks,
-      disabled,
-      selectedBlockSelection,
-      writeSelectedBlocksToClipboard,
-    ],
-  );
+    const handleEditorCut = useCallback(
+      (event: ClipboardEvent<HTMLDivElement>) => {
+        if (disabled || activeBlockIndex !== null || !selectedBlockSelection) {
+          return;
+        }
+        if (!writeSelectedBlocksToClipboard(event.clipboardData)) {
+          return;
+        }
+        if (!deleteSelectedBlocks({ source: "cut" })) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+      },
+      [
+        activeBlockIndex,
+        deleteSelectedBlocks,
+        disabled,
+        selectedBlockSelection,
+        writeSelectedBlocksToClipboard,
+      ],
+    );
 
-  const handleEditorPaste = useCallback(
-    (event: ClipboardEvent<HTMLDivElement>) => {
-      if (disabled) {
-        return;
-      }
-      const target = event.target;
-      if (target instanceof HTMLElement && target.closest(".markdown-hybrid-table-block")) {
-        return;
-      }
-      const clipboardData = event.clipboardData;
-      const internalPayload = parseInternalBlockClipboardPayload(
-        getClipboardTextData(clipboardData, INTERNAL_BLOCK_CLIPBOARD_MIME),
-      );
+    const handleEditorPaste = useCallback(
+      (event: ClipboardEvent<HTMLDivElement>) => {
+        if (disabled) {
+          return;
+        }
+        const target = event.target;
+        if (target instanceof HTMLElement && target.closest(".markdown-hybrid-table-block")) {
+          return;
+        }
+        const clipboardData = event.clipboardData;
+        const internalPayload = parseInternalBlockClipboardPayload(
+          getClipboardTextData(clipboardData, INTERNAL_BLOCK_CLIPBOARD_MIME),
+        );
 
-      if (selectedBlockSelection && activeBlockIndex === null) {
-        const plainText = getClipboardTextData(clipboardData, "text/plain");
-        const insertedRaw = internalPayload
-          ? serializeMarkdownFromBlocks(internalPayload.blocks)
-          : plainText;
+        if (selectedBlockSelection && activeBlockIndex === null) {
+          const plainText = getClipboardTextData(clipboardData, "text/plain");
+          const insertedRaw = internalPayload
+            ? serializeMarkdownFromBlocks(internalPayload.blocks)
+            : plainText;
+          if (insertedRaw.length === 0) {
+            return;
+          }
+          if (replaceSelectedBlocksWithRaw(insertedRaw)) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          return;
+        }
+
+        if (activeBlockIndex === null || activeDirty || activeTableDirty) {
+          return;
+        }
+        if (!internalPayload) {
+          return;
+        }
+        const insertedRaw = serializeMarkdownFromBlocks(internalPayload.blocks);
         if (insertedRaw.length === 0) {
           return;
         }
-        if (replaceSelectedBlocksWithRaw(insertedRaw)) {
+        if (insertBlockRelativeTo(activeBlockIndex, insertedRaw, false)) {
           event.preventDefault();
           event.stopPropagation();
         }
-        return;
-      }
+      },
+      [
+        activeBlockIndex,
+        activeDirty,
+        activeTableDirty,
+        disabled,
+        insertBlockRelativeTo,
+        replaceSelectedBlocksWithRaw,
+        selectedBlockSelection,
+      ],
+    );
 
-      if (
-        activeBlockIndex === null ||
-        activeDirty ||
-        activeTableDirty
-      ) {
-        return;
-      }
-      if (!internalPayload) {
-        return;
-      }
-      const insertedRaw = serializeMarkdownFromBlocks(internalPayload.blocks);
-      if (insertedRaw.length === 0) {
-        return;
-      }
-      if (insertBlockRelativeTo(activeBlockIndex, insertedRaw, false)) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    },
-    [
-      activeBlockIndex,
-      activeDirty,
-      activeTableDirty,
-      disabled,
-      insertBlockRelativeTo,
-      replaceSelectedBlocksWithRaw,
-      selectedBlockSelection,
-    ],
-  );
-
-  const handleTextareaChange = useCallback(
-    (value: string, selectionStart?: number | null) => {
-      if (typeof selectionStart === "number") {
-        setEditorOverlaySelectionStart(selectionStart);
-      }
-      const typedLinkTrigger = pageLinkPickerState || typedImageLinkPickerState
-        ? null
-        : resolveTypedLinkPickerTriggerAtCaret(value, selectionStart);
-      const typedPageLinkTrigger = typedLinkTrigger?.mode === "page" ? typedLinkTrigger : null;
-      const typedImageLinkTrigger = typedLinkTrigger?.mode === "image" ? typedLinkTrigger : null;
-      if (activeBlockIndex === null) {
-        return;
-      }
-      // Draft-only transaction: never write into committed markdown while the user edits.
-      updateActiveDraftState(value);
-      setActiveDirty(true);
-      setActiveEditSnapshot((current) =>
-        current
-          ? {
-            ...current,
-            draft: value,
-          }
-          : current,
-      );
-      const block = activeEditSnapshotRef.current;
-      if (typedPageLinkTrigger && block && canOpenPageLinkPickerInBlockKind(block.kind)) {
-        requestPageLinkPickerOpen({
-          source: "typed-trigger",
-          replaceRange: typedPageLinkTrigger.replaceRange,
-          initialQuery: typedPageLinkTrigger.initialQuery,
-        });
-        return;
-      }
-      if (typedImageLinkTrigger && block && canOpenPageLinkPickerInBlockKind(block.kind)) {
-        requestTypedImageLinkPickerOpen({
-          replaceRange: typedImageLinkTrigger.replaceRange,
-          initialQuery: typedImageLinkTrigger.initialQuery,
-        });
-      }
-    },
-    [
-      activeBlockIndex,
-      pageLinkPickerState,
-      requestPageLinkPickerOpen,
-      requestTypedImageLinkPickerOpen,
-      typedImageLinkPickerState,
-    ],
-  );
-
-  const handleTextareaBlur = useCallback((event: FocusEvent<HTMLTextAreaElement>) => {
-    const nextFocus = event.relatedTarget;
-    if (nextFocus instanceof Node && pageLinkPickerRef.current?.contains(nextFocus)) {
-      return;
-    }
-    if (nextFocus instanceof Node && typedImageLinkPickerRef.current?.contains(nextFocus)) {
-      return;
-    }
-    if (nextFocus instanceof Node && mathToolboxRef.current?.contains(nextFocus)) {
-      return;
-    }
-    if (nextFocus instanceof Node && inlineFormattingToolbarRef.current?.contains(nextFocus)) {
-      return;
-    }
-    commitActiveBlock({ deactivate: true });
-  }, [commitActiveBlock]);
-
-  const handleTextareaCompositionStart = useCallback(() => {
-    setActiveComposing(true);
-  }, []);
-
-  const handleTextareaCompositionEnd = useCallback(() => {
-    setActiveComposing(false);
-    if (deferredEditActionRef.current) {
-      scheduleDeferredEditFlush();
-    }
-  }, [scheduleDeferredEditFlush]);
-
-  const scheduleTextareaCaret = useCallback((nextPosition: number) => {
-    const handle = window.requestAnimationFrame(() => {
-      const textarea = textareaRef.current;
-      if (!textarea) {
-        return;
-      }
-      const safe = Math.max(0, Math.min(nextPosition, textarea.value.length));
-      try {
-        textarea.focus({ preventScroll: true });
-      } catch {
-        textarea.focus();
-      }
-      textarea.setSelectionRange(safe, safe);
-      setEditorOverlaySelectionStart(safe);
-    });
-    return () => window.cancelAnimationFrame(handle);
-  }, []);
-
-  const scheduleTextareaSelection = useCallback((nextStart: number, nextEnd: number) => {
-    const handle = window.requestAnimationFrame(() => {
-      const textarea = textareaRef.current;
-      if (!textarea) {
-        return;
-      }
-      const max = textarea.value.length;
-      const safeStart = Math.max(0, Math.min(nextStart, max));
-      const safeEnd = Math.max(0, Math.min(nextEnd, max));
-      const start = Math.min(safeStart, safeEnd);
-      const end = Math.max(safeStart, safeEnd);
-      try {
-        textarea.focus({ preventScroll: true });
-      } catch {
-        textarea.focus();
-      }
-      textarea.setSelectionRange(start, end);
-      setEditorOverlaySelectionStart(start);
-    });
-    return () => window.cancelAnimationFrame(handle);
-  }, []);
-
-  const syncEditorSyntaxOverlayScroll = useCallback(() => {
-    const textarea = textareaRef.current;
-    const overlayContent = editorSyntaxOverlayContentRef.current;
-    if (!textarea || !overlayContent) {
-      return;
-    }
-    overlayContent.style.transform = `translate(${-textarea.scrollLeft}px, ${-textarea.scrollTop}px)`;
-  }, []);
-
-  const syncActiveTextareaAutoHeight = useCallback(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) {
-      return;
-    }
-    const activeBlock = activeBlockIndex === null ? null : (blocks[activeBlockIndex] ?? null);
-    const syncedCodeFenceHeight = resolveStoredSvgCodeFencePreviewHeight(activeBlock);
-    if (syncedCodeFenceHeight !== null) {
-      textarea.style.height = `${syncedCodeFenceHeight}px`;
-      return;
-    }
-    // Auto-grow to visible wrapped content so activating long paragraph lines
-    // does not collapse the editor to the number of hard line breaks only.
-    textarea.style.height = "auto";
-    const nextHeight = Math.max(textarea.scrollHeight, 28);
-    textarea.style.height = `${nextHeight}px`;
-  }, [activeBlockIndex, blocks, resolveStoredSvgCodeFencePreviewHeight]);
-
-  const handleTextareaScroll = useCallback(() => {
-    syncEditorSyntaxOverlayScroll();
-  }, [syncEditorSyntaxOverlayScroll]);
-
-  const handleTextareaSelect = useCallback((event: SyntheticEvent<HTMLTextAreaElement>) => {
-    const textarea = event.currentTarget;
-    setEditorOverlaySelectionStart(textarea.selectionStart);
-    if (activeBlockIndex === null) {
-      return;
-    }
-    const block = blocks[activeBlockIndex];
-    if (block?.kind === "math-block") {
-      inlineFormattingToolbarPendingSignatureRef.current = null;
-      inlineFormattingToolbarRangeRef.current = null;
-      setInlineFormattingToolbarSelection(null);
-      setInlineFormattingToolbarMenu(null);
-      setInlineFormattingToolbarLinkState(null);
-      return;
-    }
-    const normalized = normalizeInlineFormattingRange(textarea.value, {
-      start: textarea.selectionStart,
-      end: textarea.selectionEnd,
-    });
-    if (normalized.start === normalized.end) {
-      return;
-    }
-    inlineFormattingToolbarRangeRef.current = {
-      blockIndex: activeBlockIndex,
-      start: normalized.start,
-      end: normalized.end,
-    };
-  }, [activeBlockIndex, blocks]);
-
-  const scheduleActiveTextareaLayoutSync = useCallback(() => {
-    if (activeTextareaLayoutFrameRef.current !== null) {
-      return;
-    }
-    activeTextareaLayoutFrameRef.current = window.requestAnimationFrame(() => {
-      activeTextareaLayoutFrameRef.current = null;
-      syncActiveTextareaAutoHeight();
-      syncEditorSyntaxOverlayScroll();
-    });
-  }, [syncActiveTextareaAutoHeight, syncEditorSyntaxOverlayScroll]);
-
-  useEffect(() => {
-    scheduleActiveTextareaLayoutSync();
-  }, [activeBlockIndex, activeDraft, scheduleActiveTextareaLayoutSync]);
-
-  const applyActiveBlockDraft = useCallback(
-    (nextDraft: string, nextCaretPosition?: number) => {
-      if (activeBlockIndex === null) {
-        return false;
-      }
-      updateActiveDraftState(nextDraft);
-      setActiveDirty(true);
-      setActiveEditSnapshot((current) =>
-        current
-          ? {
-            ...current,
-            draft: nextDraft,
-          }
-          : current,
-      );
-      if (typeof nextCaretPosition === "number") {
-        scheduleTextareaCaret(nextCaretPosition);
-      }
-      return true;
-    },
-    [activeBlockIndex, scheduleTextareaCaret],
-  );
-
-  const clearInlineFormattingToolbarTimer = useCallback(() => {
-    if (inlineFormattingToolbarTimerRef.current === null) {
-      return;
-    }
-    window.clearTimeout(inlineFormattingToolbarTimerRef.current);
-    inlineFormattingToolbarTimerRef.current = null;
-  }, []);
-
-  const hideInlineFormattingToolbar = useCallback(() => {
-    clearInlineFormattingToolbarTimer();
-    inlineFormattingToolbarPendingSignatureRef.current = null;
-    inlineFormattingToolbarRangeRef.current = null;
-    setInlineFormattingToolbarSelection(null);
-    setInlineFormattingToolbarMenu(null);
-    setInlineFormattingToolbarLinkState(null);
-  }, [clearInlineFormattingToolbarTimer]);
-
-  useEffect(() => {
-    if (activeBlockIndex === null) {
-      return;
-    }
-    if (blocks[activeBlockIndex]?.kind === "math-block") {
-      hideInlineFormattingToolbar();
-    }
-  }, [activeBlockIndex, blocks, hideInlineFormattingToolbar]);
-
-  const resolveActiveInlineFormattingSelection = useCallback(() => {
-    if (disabled || activeBlockIndex === null) {
-      return null;
-    }
-    if (blocks[activeBlockIndex]?.kind === "math-block") {
-      return null;
-    }
-    if (pageLinkPickerState) {
-      return null;
-    }
-    if (typedImageLinkPickerState) {
-      return null;
-    }
-    const textarea = textareaRef.current;
-    const container = containerRef.current;
-    if (!textarea || !container) {
-      return null;
-    }
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    if (start === end) {
-      return null;
-    }
-    const normalizedRange = normalizeInlineFormattingRange(textarea.value, { start, end });
-    const anchor = resolveTextareaSelectionToolbarAnchor(textarea, container, normalizedRange);
-    if (!anchor) {
-      return null;
-    }
-    const activeState = resolveInlineFormattingToolbarActiveState(textarea.value, normalizedRange);
-    return {
-      blockIndex: activeBlockIndex,
-      start: normalizedRange.start,
-      end: normalizedRange.end,
-      anchor,
-      activeState,
-    } as InlineFormattingToolbarSelection;
-  }, [activeBlockIndex, blocks, disabled, pageLinkPickerState, typedImageLinkPickerState]);
-
-  const showInlineFormattingToolbarImmediate = useCallback(() => {
-    const nextSelection = resolveActiveInlineFormattingSelection();
-    if (!nextSelection) {
-      hideInlineFormattingToolbar();
-      return;
-    }
-    setInlineFormattingToolbarSelection(nextSelection);
-    inlineFormattingToolbarRangeRef.current = {
-      blockIndex: nextSelection.blockIndex,
-      start: nextSelection.start,
-      end: nextSelection.end,
-    };
-  }, [hideInlineFormattingToolbar, resolveActiveInlineFormattingSelection]);
-
-  const scheduleInlineFormattingToolbarVisibility = useCallback(
-    (options?: { immediate?: boolean }) => {
-      if (options?.immediate) {
-        clearInlineFormattingToolbarTimer();
-        showInlineFormattingToolbarImmediate();
-        return;
-      }
-      const selection = resolveActiveInlineFormattingSelection();
-      if (!selection) {
-        hideInlineFormattingToolbar();
-        return;
-      }
-      const signature = `${selection.blockIndex}:${selection.start}:${selection.end}`;
-      inlineFormattingToolbarPendingSignatureRef.current = signature;
-      clearInlineFormattingToolbarTimer();
-      inlineFormattingToolbarTimerRef.current = window.setTimeout(() => {
-        const latestSelection = resolveActiveInlineFormattingSelection();
-        if (!latestSelection) {
-          hideInlineFormattingToolbar();
+    const handleTextareaChange = useCallback(
+      (value: string, selectionStart?: number | null) => {
+        if (typeof selectionStart === "number") {
+          setEditorOverlaySelectionStart(selectionStart);
+        }
+        const typedLinkTrigger =
+          pageLinkPickerState || typedImageLinkPickerState
+            ? null
+            : resolveTypedLinkPickerTriggerAtCaret(value, selectionStart);
+        const typedPageLinkTrigger = typedLinkTrigger?.mode === "page" ? typedLinkTrigger : null;
+        const typedImageLinkTrigger = typedLinkTrigger?.mode === "image" ? typedLinkTrigger : null;
+        if (activeBlockIndex === null) {
           return;
         }
-        const latestSignature =
-          `${latestSelection.blockIndex}:${latestSelection.start}:${latestSelection.end}`;
-        if (inlineFormattingToolbarPendingSignatureRef.current !== latestSignature) {
+        // Draft-only transaction: never write into committed markdown while the user edits.
+        updateActiveDraftState(value);
+        setActiveDirty(true);
+        setActiveEditSnapshot((current) =>
+          current
+            ? {
+                ...current,
+                draft: value,
+              }
+            : current,
+        );
+        const block = activeEditSnapshotRef.current;
+        if (typedPageLinkTrigger && block && canOpenPageLinkPickerInBlockKind(block.kind)) {
+          requestPageLinkPickerOpen({
+            source: "typed-trigger",
+            replaceRange: typedPageLinkTrigger.replaceRange,
+            initialQuery: typedPageLinkTrigger.initialQuery,
+          });
           return;
         }
-        setInlineFormattingToolbarSelection(latestSelection);
-        inlineFormattingToolbarRangeRef.current = {
-          blockIndex: latestSelection.blockIndex,
-          start: latestSelection.start,
-          end: latestSelection.end,
-        };
-      }, INLINE_FORMATTING_TOOLBAR_DELAY_MS);
-    },
-    [
-      clearInlineFormattingToolbarTimer,
-      hideInlineFormattingToolbar,
-      resolveActiveInlineFormattingSelection,
-      showInlineFormattingToolbarImmediate,
-    ],
-  );
+        if (typedImageLinkTrigger && block && canOpenPageLinkPickerInBlockKind(block.kind)) {
+          requestTypedImageLinkPickerOpen({
+            replaceRange: typedImageLinkTrigger.replaceRange,
+            initialQuery: typedImageLinkTrigger.initialQuery,
+          });
+        }
+      },
+      [
+        activeBlockIndex,
+        pageLinkPickerState,
+        requestPageLinkPickerOpen,
+        requestTypedImageLinkPickerOpen,
+        typedImageLinkPickerState,
+      ],
+    );
 
-  const scheduleTextareaSelectionRange = useCallback(
-    (selection: InlineFormattingToolbarRange) => {
+    const handleTextareaBlur = useCallback(
+      (event: FocusEvent<HTMLTextAreaElement>) => {
+        const nextFocus = event.relatedTarget;
+        if (nextFocus instanceof Node && pageLinkPickerRef.current?.contains(nextFocus)) {
+          return;
+        }
+        if (nextFocus instanceof Node && typedImageLinkPickerRef.current?.contains(nextFocus)) {
+          return;
+        }
+        if (nextFocus instanceof Node && mathToolboxRef.current?.contains(nextFocus)) {
+          return;
+        }
+        if (nextFocus instanceof Node && inlineFormattingToolbarRef.current?.contains(nextFocus)) {
+          return;
+        }
+        commitActiveBlock({ deactivate: true });
+      },
+      [commitActiveBlock],
+    );
+
+    const handleTextareaCompositionStart = useCallback(() => {
+      setActiveComposing(true);
+    }, []);
+
+    const handleTextareaCompositionEnd = useCallback(() => {
+      setActiveComposing(false);
+      if (deferredEditActionRef.current) {
+        scheduleDeferredEditFlush();
+      }
+    }, [scheduleDeferredEditFlush]);
+
+    const scheduleTextareaCaret = useCallback((nextPosition: number) => {
       const handle = window.requestAnimationFrame(() => {
         const textarea = textareaRef.current;
         if (!textarea) {
           return;
         }
-        const normalized = normalizeInlineFormattingRange(textarea.value, selection);
+        const safe = Math.max(0, Math.min(nextPosition, textarea.value.length));
         try {
           textarea.focus({ preventScroll: true });
         } catch {
           textarea.focus();
         }
-        textarea.setSelectionRange(normalized.start, normalized.end);
-        setEditorOverlaySelectionStart(normalized.start);
-        scheduleInlineFormattingToolbarVisibility({ immediate: true });
+        textarea.setSelectionRange(safe, safe);
+        setEditorOverlaySelectionStart(safe);
       });
       return () => window.cancelAnimationFrame(handle);
-    },
-    [scheduleInlineFormattingToolbarVisibility],
-  );
+    }, []);
 
-  const restoreInlineFormattingToolbarSelection = useCallback(() => {
-    if (activeBlockIndex === null) {
-      return null;
-    }
-    const textarea = textareaRef.current;
-    const savedRange = inlineFormattingToolbarRangeRef.current;
-    if (!textarea || !savedRange || savedRange.blockIndex !== activeBlockIndex) {
-      return null;
-    }
-    const normalized = normalizeInlineFormattingRange(textarea.value, {
-      start: savedRange.start,
-      end: savedRange.end,
-    });
-    if (normalized.start === normalized.end) {
-      return null;
-    }
-    try {
-      textarea.focus({ preventScroll: true });
-    } catch {
-      textarea.focus();
-    }
-    textarea.setSelectionRange(normalized.start, normalized.end);
-    setEditorOverlaySelectionStart(normalized.start);
-    return normalized;
-  }, [activeBlockIndex]);
-
-  const applyInlineFormattingToActiveSelection = useCallback(
-    (result: InlineFormattingToggleResult) => {
-      if (!result.changed) {
-        return false;
-      }
-      const applied = applyActiveBlockDraft(result.value);
-      if (!applied || activeBlockIndex === null) {
-        return false;
-      }
-      inlineFormattingToolbarRangeRef.current = {
-        blockIndex: activeBlockIndex,
-        start: result.selection.start,
-        end: result.selection.end,
-      };
-      scheduleTextareaSelectionRange(result.selection);
-      return true;
-    },
-    [activeBlockIndex, applyActiveBlockDraft, scheduleTextareaSelectionRange],
-  );
-
-  const applyInlineFormattingAction = useCallback(
-    (action: InlineFormattingToolbarAction) => {
-      const normalizedSelection = restoreInlineFormattingToolbarSelection();
-      const textarea = textareaRef.current;
-      if (!normalizedSelection || !textarea) {
-        return false;
-      }
-      const value = textarea.value;
-      const isClozeExclusiveAction = action === "cd" || action === "cl";
-
-      if (isClozeExclusiveAction) {
-        const activeState = resolveInlineFormattingToolbarActiveState(value, normalizedSelection);
-        const linkActive = Boolean(findInlineMarkdownLinkAtRange(value, normalizedSelection));
-        const targetActive = action === "cd" ? activeState.cd : activeState.cl;
-        const hasOtherFormatting = activeState.highlight ||
-          activeState.bold ||
-          activeState.italic ||
-          activeState.underline ||
-          activeState.strikethrough ||
-          activeState["inline-code"] ||
-          activeState.math ||
-          (action === "cd" ? activeState.cl : activeState.cd) ||
-          linkActive;
-        const wrapper = INLINE_FORMATTING_WRAPPERS[action];
-        if (targetActive && !hasOtherFormatting) {
-          const toggled = toggleInlineFormattingWrapper(value, normalizedSelection, wrapper);
-          return applyInlineFormattingToActiveSelection(toggled);
+    const scheduleTextareaSelection = useCallback((nextStart: number, nextEnd: number) => {
+      const handle = window.requestAnimationFrame(() => {
+        const textarea = textareaRef.current;
+        if (!textarea) {
+          return;
         }
-        const replaced = stripInlineFormattingAroundRange(value, normalizedSelection, {
-          actions: ["highlight", "strikethrough", "underline", "bold", "italic", "inline-code", "math", "cd", "cl"],
-          removeLink: true,
-        });
-        const wrapped = toggleInlineFormattingWrapper(replaced.value, replaced.selection, wrapper);
-        return applyInlineFormattingToActiveSelection(wrapped);
-      }
-
-      const withoutCdCl = stripInlineFormattingAroundRange(value, normalizedSelection, {
-        actions: ["cd", "cl"],
+        const max = textarea.value.length;
+        const safeStart = Math.max(0, Math.min(nextStart, max));
+        const safeEnd = Math.max(0, Math.min(nextEnd, max));
+        const start = Math.min(safeStart, safeEnd);
+        const end = Math.max(safeStart, safeEnd);
+        try {
+          textarea.focus({ preventScroll: true });
+        } catch {
+          textarea.focus();
+        }
+        textarea.setSelectionRange(start, end);
+        setEditorOverlaySelectionStart(start);
       });
-      if (action === "math" && rangeIntersectsMarkdownCodeContext(withoutCdCl.value, withoutCdCl.selection)) {
-        return false;
-      }
-      const wrapper = INLINE_FORMATTING_WRAPPERS[action];
-      const nextResult = toggleInlineFormattingWrapper(withoutCdCl.value, withoutCdCl.selection, wrapper);
-      return applyInlineFormattingToActiveSelection(nextResult);
-    },
-    [applyInlineFormattingToActiveSelection, restoreInlineFormattingToolbarSelection],
-  );
+      return () => window.cancelAnimationFrame(handle);
+    }, []);
 
-  const applyInlineMathMenuAction = useCallback(
-    (action: InlineFormattingMathMenuAction) => {
-      const normalizedSelection = restoreInlineFormattingToolbarSelection();
+    const syncEditorSyntaxOverlayScroll = useCallback(() => {
       const textarea = textareaRef.current;
-      if (!normalizedSelection || !textarea) {
-        return false;
-      }
-      if (rangeIntersectsMarkdownCodeContext(textarea.value, normalizedSelection)) {
-        return false;
-      }
-
-      const value = textarea.value;
-      const activeMathToken = findMathTokenCoveringRange(value, normalizedSelection);
-
-      const applyDelimiterConversion = (
-        token: Extract<MathToken, { type: "inline-math" | "display-math" }>,
-        targetType: "inline-math" | "display-math",
-      ) => {
-        if (token.type === targetType) {
-          return false;
-        }
-        const targetDelimiter = targetType === "inline-math" ? "$" : "$$";
-        const nextValue = `${value.slice(0, token.start)}${targetDelimiter}${token.value}${targetDelimiter}${
-          value.slice(token.end)
-        }`;
-        const delimiterLength = targetDelimiter.length;
-        return applyInlineFormattingToActiveSelection({
-          value: nextValue,
-          selection: {
-            start: token.start + delimiterLength,
-            end: token.start + delimiterLength + token.value.length,
-          },
-          changed: nextValue !== value,
-        });
-      };
-
-      if (action === "wrap-inline") {
-        if (activeMathToken) {
-          if (activeMathToken.type === "display-math") {
-            return applyDelimiterConversion(activeMathToken, "inline-math");
-          }
-          return false;
-        }
-        const selectedText = value.slice(normalizedSelection.start, normalizedSelection.end);
-        const nextValue = `${value.slice(0, normalizedSelection.start)}$${selectedText}$${
-          value.slice(normalizedSelection.end)
-        }`;
-        return applyInlineFormattingToActiveSelection({
-          value: nextValue,
-          selection: {
-            start: normalizedSelection.start + 1,
-            end: normalizedSelection.end + 1,
-          },
-          changed: nextValue !== value,
-        });
-      }
-
-      if (action === "convert-inline-display") {
-        if (!activeMathToken) {
-          return false;
-        }
-        return applyDelimiterConversion(
-          activeMathToken,
-          activeMathToken.type === "inline-math" ? "display-math" : "inline-math",
-        );
-      }
-
-      if (!activeMathToken) {
-        return false;
-      }
-      const nextValue = `${value.slice(0, activeMathToken.start)}${activeMathToken.value}${
-        value.slice(activeMathToken.end)
-      }`;
-      return applyInlineFormattingToActiveSelection({
-        value: nextValue,
-        selection: {
-          start: activeMathToken.start,
-          end: activeMathToken.start + activeMathToken.value.length,
-        },
-        changed: nextValue !== value,
-      });
-    },
-    [applyInlineFormattingToActiveSelection, restoreInlineFormattingToolbarSelection],
-  );
-
-  const clearInlineFormattingAtSelection = useCallback(() => {
-    const normalizedSelection = restoreInlineFormattingToolbarSelection();
-    const textarea = textareaRef.current;
-    if (!normalizedSelection || !textarea) {
-      return false;
-    }
-
-    let nextValue = textarea.value;
-    let nextRange = normalizedSelection;
-    let hasChanged = false;
-
-    const strippedAroundSelection = stripInlineFormattingAroundRange(nextValue, nextRange, {
-      actions: ["highlight", "strikethrough", "underline", "bold", "italic", "inline-code", "math", "cd", "cl"],
-      removeLink: true,
-    });
-    if (strippedAroundSelection.changed) {
-      nextValue = strippedAroundSelection.value;
-      nextRange = strippedAroundSelection.selection;
-      hasChanged = true;
-    }
-
-    // Then, strip supported markdown markers inside the selected text.
-    const selectedValue = nextValue.slice(nextRange.start, nextRange.end);
-    const plainSelectedValue = stripSupportedInlineMarkdownFormatting(selectedValue);
-    if (plainSelectedValue !== selectedValue) {
-      nextValue = `${nextValue.slice(0, nextRange.start)}${plainSelectedValue}${nextValue.slice(nextRange.end)}`;
-      nextRange = {
-        start: nextRange.start,
-        end: nextRange.start + plainSelectedValue.length,
-      };
-      hasChanged = true;
-    }
-
-    if (!hasChanged) {
-      return false;
-    }
-
-    return applyInlineFormattingToActiveSelection({
-      value: nextValue,
-      selection: nextRange,
-      changed: true,
-    });
-  }, [applyInlineFormattingToActiveSelection, restoreInlineFormattingToolbarSelection]);
-
-  const openInlineFormattingLinkEditor = useCallback(() => {
-    const normalizedSelection = restoreInlineFormattingToolbarSelection();
-    const textarea = textareaRef.current;
-    if (!normalizedSelection || !textarea) {
-      return false;
-    }
-    const linkMatch = findInlineMarkdownLinkAtRange(textarea.value, normalizedSelection);
-    setInsertMenuState(null);
-    setInlineFormattingToolbarMenu(null);
-    setInlineFormattingToolbarLinkState({
-      url: linkMatch?.url ?? "",
-      canRemove: Boolean(linkMatch),
-    });
-    return true;
-  }, [restoreInlineFormattingToolbarSelection]);
-
-  const applyInlineFormattingLinkValue = useCallback(
-    (urlValue?: string) => {
-      const normalizedSelection = restoreInlineFormattingToolbarSelection();
-      const textarea = textareaRef.current;
-      if (!normalizedSelection || !textarea) {
-        return false;
-      }
-      const nextUrl = typeof urlValue === "string"
-        ? urlValue
-        : (inlineFormattingToolbarLinkState?.url ?? "");
-      const strippedCloze = stripInlineFormattingAroundRange(textarea.value, normalizedSelection, {
-        actions: ["cd", "cl"],
-      });
-      const nextResult = applyInlineMarkdownLink(
-        strippedCloze.value,
-        strippedCloze.selection,
-        nextUrl,
-      );
-      if (!nextResult.changed) {
-        return false;
-      }
-      const applied = applyInlineFormattingToActiveSelection(nextResult);
-      if (applied) {
-        setInlineFormattingToolbarLinkState(null);
-      }
-      return applied;
-    },
-    [
-      applyInlineFormattingToActiveSelection,
-      inlineFormattingToolbarLinkState?.url,
-      restoreInlineFormattingToolbarSelection,
-    ],
-  );
-
-  const handleInlineFormattingToolbarAction = useCallback(
-    (action: InlineFormattingToolbarAction | "link" | "clear-formatting") => {
-      setInsertMenuState(null);
-      if (action === "link") {
-        openInlineFormattingLinkEditor();
+      const overlayContent = editorSyntaxOverlayContentRef.current;
+      if (!textarea || !overlayContent) {
         return;
       }
-      if (action === "clear-formatting") {
-        setInlineFormattingToolbarLinkState(null);
-        setInlineFormattingToolbarMenu(null);
-        clearInlineFormattingAtSelection();
-        return;
-      }
-      setInlineFormattingToolbarMenu(null);
-      applyInlineFormattingAction(action);
-    },
-    [applyInlineFormattingAction, clearInlineFormattingAtSelection, openInlineFormattingLinkEditor],
-  );
+      overlayContent.style.transform = `translate(${-textarea.scrollLeft}px, ${-textarea.scrollTop}px)`;
+    }, []);
 
-  const handleInlineFormattingMathMenuAction = useCallback(
-    (action: InlineFormattingMathMenuAction) => {
-      setInsertMenuState(null);
-      setInlineFormattingToolbarLinkState(null);
-      setInlineFormattingToolbarMenu(null);
-      applyInlineMathMenuAction(action);
-    },
-    [applyInlineMathMenuAction],
-  );
-
-  const toggleInlineFormattingToolbarMenu = useCallback(
-    (menu: Exclude<InlineFormattingToolbarMenu, null>) => {
-      setInsertMenuState(null);
-      setInlineFormattingToolbarLinkState(null);
-      setInlineFormattingToolbarMenu((current) => (current === menu ? null : menu));
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (disabled || activeBlockIndex === null) {
-      inlineFormattingToolbarRangeRef.current = null;
-      hideInlineFormattingToolbar();
-    }
-  }, [activeBlockIndex, disabled, hideInlineFormattingToolbar]);
-
-  useEffect(() => {
-    if (!pageLinkPickerState) {
-      return;
-    }
-    hideInlineFormattingToolbar();
-  }, [hideInlineFormattingToolbar, pageLinkPickerState]);
-
-  useEffect(() => {
-    if (!typedImageLinkPickerState) {
-      return;
-    }
-    hideInlineFormattingToolbar();
-  }, [hideInlineFormattingToolbar, typedImageLinkPickerState]);
-
-  useEffect(() => {
-    const handleSelectionSignal = () => {
+    const syncActiveTextareaAutoHeight = useCallback(() => {
       const textarea = textareaRef.current;
       if (!textarea) {
-        hideInlineFormattingToolbar();
         return;
       }
-      const activeElement = document.activeElement;
-      const isToolbarFocused = activeElement instanceof Node &&
-        inlineFormattingToolbarRef.current?.contains(activeElement);
-      if (activeElement === textarea) {
-        scheduleInlineFormattingToolbarVisibility();
+      const activeBlock = activeBlockIndex === null ? null : (blocks[activeBlockIndex] ?? null);
+      const syncedCodeFenceHeight = resolveStoredSvgCodeFencePreviewHeight(activeBlock);
+      if (syncedCodeFenceHeight !== null) {
+        textarea.style.height = `${syncedCodeFenceHeight}px`;
         return;
       }
-      if (isToolbarFocused) {
-        // Keep the last stable textarea range while interacting with the toolbar.
-        return;
-      }
-      hideInlineFormattingToolbar();
-    };
+      // Auto-grow to visible wrapped content so activating long paragraph lines
+      // does not collapse the editor to the number of hard line breaks only.
+      textarea.style.height = "auto";
+      const nextHeight = Math.max(textarea.scrollHeight, 28);
+      textarea.style.height = `${nextHeight}px`;
+    }, [activeBlockIndex, blocks, resolveStoredSvgCodeFencePreviewHeight]);
 
-    document.addEventListener("selectionchange", handleSelectionSignal);
-    window.addEventListener("pointerup", handleSelectionSignal, true);
-    window.addEventListener("keyup", handleSelectionSignal, true);
-    return () => {
-      document.removeEventListener("selectionchange", handleSelectionSignal);
-      window.removeEventListener("pointerup", handleSelectionSignal, true);
-      window.removeEventListener("keyup", handleSelectionSignal, true);
-    };
-  }, [hideInlineFormattingToolbar, scheduleInlineFormattingToolbarVisibility]);
+    const handleTextareaScroll = useCallback(() => {
+      syncEditorSyntaxOverlayScroll();
+    }, [syncEditorSyntaxOverlayScroll]);
 
-  useEffect(() => {
-    if (!inlineFormattingToolbarSelection) {
-      return;
-    }
-    const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
-      const target = event.target;
-      if (!(target instanceof Node)) {
-        return;
-      }
-      if (inlineFormattingToolbarRef.current?.contains(target)) {
-        return;
-      }
-      if (textareaRef.current?.contains(target)) {
-        return;
-      }
-      hideInlineFormattingToolbar();
-    };
-    document.addEventListener("mousedown", handleDocumentMouseDown);
-    return () => {
-      document.removeEventListener("mousedown", handleDocumentMouseDown);
-    };
-  }, [hideInlineFormattingToolbar, inlineFormattingToolbarSelection]);
-
-  useEffect(() => {
-    if (!inlineFormattingToolbarSelection) {
-      return;
-    }
-    const handleDocumentFocusIn = (event: globalThis.FocusEvent) => {
-      const target = event.target;
-      if (!(target instanceof Node)) {
-        return;
-      }
-      if (textareaRef.current?.contains(target)) {
-        return;
-      }
-      if (inlineFormattingToolbarRef.current?.contains(target)) {
-        return;
-      }
-      hideInlineFormattingToolbar();
-    };
-    document.addEventListener("focusin", handleDocumentFocusIn);
-    return () => {
-      document.removeEventListener("focusin", handleDocumentFocusIn);
-    };
-  }, [hideInlineFormattingToolbar, inlineFormattingToolbarSelection]);
-
-  useEffect(() => {
-    if (!inlineFormattingToolbarSelection) {
-      return;
-    }
-    const handleHide = () => {
-      hideInlineFormattingToolbar();
-    };
-    window.addEventListener("resize", handleHide);
-    window.addEventListener("scroll", handleHide, true);
-    return () => {
-      window.removeEventListener("resize", handleHide);
-      window.removeEventListener("scroll", handleHide, true);
-    };
-  }, [hideInlineFormattingToolbar, inlineFormattingToolbarSelection]);
-
-  const handleTextareaPointerUp = useCallback((event: MouseEvent<HTMLTextAreaElement>) => {
-    setEditorOverlaySelectionStart(event.currentTarget.selectionStart);
-    scheduleInlineFormattingToolbarVisibility();
-  }, [scheduleInlineFormattingToolbarVisibility]);
-
-  const handleTextareaKeyUp = useCallback((event: KeyboardEvent<HTMLTextAreaElement>) => {
-    setEditorOverlaySelectionStart(event.currentTarget.selectionStart);
-    scheduleInlineFormattingToolbarVisibility();
-  }, [scheduleInlineFormattingToolbarVisibility]);
-
-  const handleTextareaKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLTextAreaElement>) => {
-      const nativeKeyboardEvent = event.nativeEvent as Event & { isComposing?: boolean };
-      if (nativeKeyboardEvent.isComposing) {
-        return;
-      }
-
-      if (isUndoShortcut(event)) {
-        if (!activeDirty && handleGlobalUndo()) {
-          event.preventDefault();
-          event.stopPropagation();
+    const handleTextareaSelect = useCallback(
+      (event: SyntheticEvent<HTMLTextAreaElement>) => {
+        const textarea = event.currentTarget;
+        setEditorOverlaySelectionStart(textarea.selectionStart);
+        if (activeBlockIndex === null) {
+          return;
         }
-        return;
-      }
-
-      if (isRedoShortcut(event)) {
-        if (!activeDirty && handleGlobalRedo()) {
-          event.preventDefault();
-          event.stopPropagation();
+        const block = blocks[activeBlockIndex];
+        if (block?.kind === "math-block") {
+          inlineFormattingToolbarPendingSignatureRef.current = null;
+          inlineFormattingToolbarRangeRef.current = null;
+          setInlineFormattingToolbarSelection(null);
+          setInlineFormattingToolbarMenu(null);
+          setInlineFormattingToolbarLinkState(null);
+          return;
         }
-        return;
-      }
-
-      if (activeBlockIndex === null) {
-        return;
-      }
-      const block = blocks[activeBlockIndex];
-      if (!block) {
-        return;
-      }
-
-      const textarea = event.currentTarget;
-      const hasSelection = textarea.selectionStart !== textarea.selectionEnd;
-      const atStart = !hasSelection && textarea.selectionStart === 0;
-      const atEnd = !hasSelection && textarea.selectionEnd === textarea.value.length;
-      const isPlainDeleteKey = (event.key === "Backspace" || event.key === "Delete") &&
-        !event.shiftKey &&
-        !event.altKey &&
-        !event.ctrlKey &&
-        !event.metaKey;
-      const isExplicitCommitShortcut = event.key === "Enter" &&
-        !event.shiftKey &&
-        !event.altKey &&
-        (event.ctrlKey || event.metaKey);
-
-      if (event.key === "Escape" && pageLinkPickerState) {
-        event.preventDefault();
-        event.stopPropagation();
-        closePageLinkPicker();
-        try {
-          textarea.focus({ preventScroll: true });
-        } catch {
-          textarea.focus();
-        }
-        return;
-      }
-
-      if (event.key === "Escape" && typedImageLinkPickerState) {
-        event.preventDefault();
-        event.stopPropagation();
-        closeTypedImageLinkPicker();
-        try {
-          textarea.focus({ preventScroll: true });
-        } catch {
-          textarea.focus();
-        }
-        return;
-      }
-
-      if (event.key === "Escape" && inlineFormattingToolbarSelection) {
-        event.preventDefault();
-        event.stopPropagation();
-        hideInlineFormattingToolbar();
-        return;
-      }
-
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        discardActiveBlock();
-        return;
-      }
-
-      if (isExplicitCommitShortcut) {
-        event.preventDefault();
-        event.stopPropagation();
-        commitActiveBlock({ deactivate: true });
-        return;
-      }
-
-      if (isInlineShiftShortcut(event) && isInlineShiftableBlockKind(block.kind)) {
-        event.preventDefault();
-        event.stopPropagation();
-        const shifted = shiftBlockRawInlineIndentWithSelection(
-          textarea.value,
-          event.key === "ArrowRight" ? "right" : "left",
-          textarea.selectionStart,
-          textarea.selectionEnd,
-        );
-        if (shifted.raw !== textarea.value) {
-          applyActiveBlockDraft(shifted.raw);
-        }
-        scheduleTextareaSelection(shifted.selectionStart, shifted.selectionEnd);
-        return;
-      }
-
-      const inlineShortcutAction = resolveInlineFormattingShortcutAction(event);
-      if (inlineShortcutAction && block.kind !== "math-block") {
-        event.preventDefault();
-        event.stopPropagation();
-        const normalizedRange = normalizeInlineFormattingRange(textarea.value, {
+        const normalized = normalizeInlineFormattingRange(textarea.value, {
           start: textarea.selectionStart,
           end: textarea.selectionEnd,
         });
-        if (normalizedRange.start !== normalizedRange.end) {
-          inlineFormattingToolbarRangeRef.current = {
-            blockIndex: activeBlockIndex,
-            start: normalizedRange.start,
-            end: normalizedRange.end,
-          };
-          if (inlineShortcutAction === "link") {
-            openInlineFormattingLinkEditor();
-          } else {
-            applyInlineFormattingAction(inlineShortcutAction);
-          }
+        if (normalized.start === normalized.end) {
+          return;
         }
+        inlineFormattingToolbarRangeRef.current = {
+          blockIndex: activeBlockIndex,
+          start: normalized.start,
+          end: normalized.end,
+        };
+      },
+      [activeBlockIndex, blocks],
+    );
+
+    const scheduleActiveTextareaLayoutSync = useCallback(() => {
+      if (activeTextareaLayoutFrameRef.current !== null) {
         return;
       }
+      activeTextareaLayoutFrameRef.current = window.requestAnimationFrame(() => {
+        activeTextareaLayoutFrameRef.current = null;
+        syncActiveTextareaAutoHeight();
+        syncEditorSyntaxOverlayScroll();
+      });
+    }, [syncActiveTextareaAutoHeight, syncEditorSyntaxOverlayScroll]);
 
-      if (
-        isPlainDeleteKey &&
-        !hasSelection &&
-        canOpenPageLinkPickerInBlockKind(block.kind)
-      ) {
-        const adjacentLinkRange = findAdjacentWikilinkRange(
-          activeDraft,
-          textarea.selectionStart,
-          event.key as "Backspace" | "Delete",
-        );
-        if (adjacentLinkRange) {
-          event.preventDefault();
-          event.stopPropagation();
-          const nextDraft = `${activeDraft.slice(0, adjacentLinkRange.start)}${
-            activeDraft.slice(adjacentLinkRange.end)
-          }`;
-          closePageLinkPicker();
-          applyActiveBlockDraft(nextDraft, adjacentLinkRange.start);
-          return;
+    useEffect(() => {
+      scheduleActiveTextareaLayoutSync();
+    }, [activeBlockIndex, activeDraft, scheduleActiveTextareaLayoutSync]);
+
+    const applyActiveBlockDraft = useCallback(
+      (nextDraft: string, nextCaretPosition?: number) => {
+        if (activeBlockIndex === null) {
+          return false;
         }
-      }
-
-      if (
-        (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
-        !hasSelection &&
-        !event.shiftKey &&
-        !event.altKey &&
-        !event.ctrlKey &&
-        !event.metaKey &&
-        canOpenPageLinkPickerInBlockKind(block.kind)
-      ) {
-        const adjacentLinkRange = findAdjacentWikilinkRange(
-          activeDraft,
-          textarea.selectionStart,
-          event.key === "ArrowLeft" ? "Backspace" : "Delete",
-        );
-        if (adjacentLinkRange) {
-          event.preventDefault();
-          event.stopPropagation();
-          const nextCaret = event.key === "ArrowLeft"
-            ? adjacentLinkRange.start
-            : adjacentLinkRange.end;
-          scheduleTextareaCaret(nextCaret);
-          return;
-        }
-      }
-
-      const isPlainEnterKey =
-        event.key === "Enter" &&
-        !event.altKey &&
-        !event.ctrlKey &&
-        !event.metaKey;
-
-      if (
-        isPlainEnterKey &&
-        !event.shiftKey &&
-        (block.kind === "ordered-list" || block.kind === "unordered-list")
-      ) {
-        const snapshot = activeEditSnapshotRef.current;
-        if (snapshot && snapshot.kind === block.kind && !snapshot.isDetachedEmptyBlock) {
-          const persistedBlockRaw = toPersistedBlockRawForDraft(
-            { kind: block.kind },
-            textarea.value,
-          );
-          const lineInfo = resolveListLineInfo(persistedBlockRaw);
-          const baseMarkdown = applyEditorMarkdownNormalization(
-            replaceMarkdownBlock(markdown, snapshot, persistedBlockRaw),
-          );
-          const baseBlocks = parseHybridMarkdownBlocks(baseMarkdown);
-          if (baseBlocks.length > 0 && lineInfo) {
-            const fallbackIndex = clampIndex(activeBlockIndex, baseBlocks.length);
-            const resolvedCurrentIndex = baseBlocks.findIndex(
-              (candidate) =>
-                candidate.kind === block.kind &&
-                candidate.startLine === snapshot.startLine,
-            );
-            const currentIndex = resolvedCurrentIndex >= 0
-              ? resolvedCurrentIndex
-              : fallbackIndex;
-            const currentBlock = baseBlocks[currentIndex];
-            if (currentBlock && (currentBlock.kind === "ordered-list" || currentBlock.kind === "unordered-list")) {
-              const isEmptyListItem = isListItemRawEffectivelyEmpty(currentBlock.raw, lineInfo);
-              let nextMarkdown = baseMarkdown;
-              let activationSelection: PendingActivation["selection"] | undefined;
-              let activationIndex = currentIndex;
-
-              if (!isEmptyListItem) {
-                const insertedRaw = buildSiblingListItemRaw(lineInfo);
-                const nextRawBlocks = baseBlocks.map((candidate) => candidate.raw);
-                nextRawBlocks.splice(currentIndex + 1, 0, insertedRaw);
-                nextMarkdown = applyEditorMarkdownNormalization(nextRawBlocks.join("\n"));
-                nextMarkdown = normalizeOrderedListSegmentsInMarkdown(nextMarkdown);
-                const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
-                activationIndex = resolveInsertedBlockActivationIndex(
-                  nextBlocks,
-                  insertedRaw,
-                  currentIndex + 1,
-                );
-                activationSelection = {
-                  start: insertedRaw.length,
-                  end: insertedRaw.length,
-                };
-              } else {
-                const listDepth = currentBlock.meta?.listDepth ?? 0;
-                if (listDepth > 0) {
-                  const parentStartLine = currentBlock.meta?.listParentStartLine;
-                  const parentBlock = typeof parentStartLine === "number"
-                    ? baseBlocks.find(
-                      (candidate) =>
-                        candidate.startLine === parentStartLine &&
-                        candidate.meta?.listGroupId === currentBlock.meta?.listGroupId &&
-                        (candidate.kind === "ordered-list" || candidate.kind === "unordered-list"),
-                    ) ?? null
-                    : null;
-                  const parentIndent = parentBlock
-                    ? (resolveListLineInfo(parentBlock.raw)?.indent ?? null)
-                    : null;
-                  const nextRawBlocks = baseBlocks.map((candidate, index) =>
-                    index === currentIndex
-                      ? buildOutdentedListItemRaw(lineInfo, parentIndent)
-                      : candidate.raw,
-                  );
-                  nextMarkdown = applyEditorMarkdownNormalization(nextRawBlocks.join("\n"));
-                  nextMarkdown = normalizeOrderedListSegmentsInMarkdown(nextMarkdown);
-                  const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
-                  activationIndex = clampIndex(currentIndex, nextBlocks.length);
-                  const nextActiveBlock = nextBlocks[activationIndex];
-                  const nextRaw = nextActiveBlock?.raw ?? "";
-                  activationSelection = {
-                    start: nextRaw.length,
-                    end: nextRaw.length,
-                  };
-                } else {
-                  const nextRawBlocks = baseBlocks.map((candidate, index) =>
-                    index === currentIndex ? "" : candidate.raw,
-                  );
-                  nextMarkdown = applyEditorMarkdownNormalization(nextRawBlocks.join("\n"));
-                  nextMarkdown = normalizeOrderedListSegmentsInMarkdown(nextMarkdown);
-                  const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
-                  activationIndex = clampIndex(currentIndex, nextBlocks.length);
-                  activationSelection = { start: 0, end: 0 };
-                }
+        updateActiveDraftState(nextDraft);
+        setActiveDirty(true);
+        setActiveEditSnapshot((current) =>
+          current
+            ? {
+                ...current,
+                draft: nextDraft,
               }
-
-              event.preventDefault();
-              event.stopPropagation();
-              applyMarkdownWithPendingActivation(
-                nextMarkdown,
-                {
-                  index: activationIndex,
-                  caret: "end",
-                  selection: activationSelection,
-                },
-              );
-              return;
-            }
-          }
+            : current,
+        );
+        if (typeof nextCaretPosition === "number") {
+          scheduleTextareaCaret(nextCaretPosition);
         }
-      }
+        return true;
+      },
+      [activeBlockIndex, scheduleTextareaCaret],
+    );
 
-      if (isPlainEnterKey) {
-        const nextDraft = `${activeDraft.slice(0, textarea.selectionStart)}\n${
-          activeDraft.slice(textarea.selectionEnd)
-        }`;
-        event.preventDefault();
-        event.stopPropagation();
-        applyActiveBlockDraft(nextDraft, textarea.selectionStart + 1);
+    const clearInlineFormattingToolbarTimer = useCallback(() => {
+      if (inlineFormattingToolbarTimerRef.current === null) {
         return;
       }
+      window.clearTimeout(inlineFormattingToolbarTimerRef.current);
+      inlineFormattingToolbarTimerRef.current = null;
+    }, []);
 
-      if (
-        event.key === "ArrowDown" &&
-        !event.shiftKey &&
-        !event.altKey &&
-        !event.ctrlKey &&
-        !event.metaKey &&
-        atEnd
-      ) {
-        event.preventDefault();
-        commitActiveBlock({
-          deactivate: true,
-          nextActivation: { index: activeBlockIndex + 1, caret: "start" },
-        });
+    const hideInlineFormattingToolbar = useCallback(() => {
+      clearInlineFormattingToolbarTimer();
+      inlineFormattingToolbarPendingSignatureRef.current = null;
+      inlineFormattingToolbarRangeRef.current = null;
+      setInlineFormattingToolbarSelection(null);
+      setInlineFormattingToolbarMenu(null);
+      setInlineFormattingToolbarLinkState(null);
+    }, [clearInlineFormattingToolbarTimer]);
+
+    useEffect(() => {
+      if (activeBlockIndex === null) {
         return;
       }
-
-      if (
-        event.key === "ArrowUp" &&
-        !event.shiftKey &&
-        !event.altKey &&
-        !event.ctrlKey &&
-        !event.metaKey &&
-        atStart
-      ) {
-        event.preventDefault();
-        commitActiveBlock({
-          deactivate: true,
-          nextActivation: { index: activeBlockIndex - 1, caret: "end" },
-        });
+      if (blocks[activeBlockIndex]?.kind === "math-block") {
+        hideInlineFormattingToolbar();
       }
-    },
-    [
-      activeBlockIndex,
-      activeDraft,
-      applyActiveBlockDraft,
-      applyMarkdownWithPendingActivation,
-      applyInlineFormattingAction,
-      activeDirty,
-      blocks,
-      closePageLinkPicker,
-      commitActiveBlock,
-      discardActiveBlock,
-      handleGlobalRedo,
-      handleGlobalUndo,
-      hideInlineFormattingToolbar,
-      inlineFormattingToolbarSelection,
-      markdown,
-      openInlineFormattingLinkEditor,
-      pageLinkPickerState,
-      closeTypedImageLinkPicker,
-      scheduleTextareaCaret,
-      scheduleTextareaSelection,
-      typedImageLinkPickerState,
-    ],
-  );
+    }, [activeBlockIndex, blocks, hideInlineFormattingToolbar]);
 
-  const handlePageLinkPickerQueryChange = useCallback((value: string) => {
-    setPageLinkPickerState((current) => {
-      if (!current) {
-        return current;
+    const resolveActiveInlineFormattingSelection = useCallback(() => {
+      if (disabled || activeBlockIndex === null) {
+        return null;
       }
+      if (blocks[activeBlockIndex]?.kind === "math-block") {
+        return null;
+      }
+      if (pageLinkPickerState) {
+        return null;
+      }
+      if (typedImageLinkPickerState) {
+        return null;
+      }
+      const textarea = textareaRef.current;
+      const container = containerRef.current;
+      if (!textarea || !container) {
+        return null;
+      }
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      if (start === end) {
+        return null;
+      }
+      const normalizedRange = normalizeInlineFormattingRange(textarea.value, { start, end });
+      const anchor = resolveTextareaSelectionToolbarAnchor(textarea, container, normalizedRange);
+      if (!anchor) {
+        return null;
+      }
+      const activeState = resolveInlineFormattingToolbarActiveState(
+        textarea.value,
+        normalizedRange,
+      );
       return {
-        ...current,
-        query: value,
-        highlightedIndex: 0,
-      };
-    });
-  }, []);
+        blockIndex: activeBlockIndex,
+        start: normalizedRange.start,
+        end: normalizedRange.end,
+        anchor,
+        activeState,
+      } as InlineFormattingToolbarSelection;
+    }, [activeBlockIndex, blocks, disabled, pageLinkPickerState, typedImageLinkPickerState]);
 
-  const handlePageLinkPickerSelectCandidate = useCallback(
-    (candidate: PageLinkCandidate) => {
-      if (!pageLinkPickerState || activeBlockIndex === null || pageLinkPickerState.blockIndex !== activeBlockIndex) {
-        closePageLinkPicker();
+    const showInlineFormattingToolbarImmediate = useCallback(() => {
+      const nextSelection = resolveActiveInlineFormattingSelection();
+      if (!nextSelection) {
+        hideInlineFormattingToolbar();
         return;
       }
-      const replaceStart = Math.max(0, Math.min(pageLinkPickerState.replaceRange.start, activeDraft.length));
-      const replaceEnd = Math.max(replaceStart, Math.min(pageLinkPickerState.replaceRange.end, activeDraft.length));
-      const nextToken = candidate.wikilink;
-      const nextDraft = `${activeDraft.slice(0, replaceStart)}${nextToken}${activeDraft.slice(replaceEnd)}`;
-      const nextCaret = replaceStart + nextToken.length;
-      closePageLinkPicker();
-      applyActiveBlockDraft(nextDraft, nextCaret);
-    },
-    [activeBlockIndex, activeDraft, applyActiveBlockDraft, closePageLinkPicker, pageLinkPickerState],
-  );
+      setInlineFormattingToolbarSelection(nextSelection);
+      inlineFormattingToolbarRangeRef.current = {
+        blockIndex: nextSelection.blockIndex,
+        start: nextSelection.start,
+        end: nextSelection.end,
+      };
+    }, [hideInlineFormattingToolbar, resolveActiveInlineFormattingSelection]);
 
-  const handlePageLinkPickerSearchKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLInputElement>) => {
+    const scheduleInlineFormattingToolbarVisibility = useCallback(
+      (options?: { immediate?: boolean }) => {
+        if (options?.immediate) {
+          clearInlineFormattingToolbarTimer();
+          showInlineFormattingToolbarImmediate();
+          return;
+        }
+        const selection = resolveActiveInlineFormattingSelection();
+        if (!selection) {
+          hideInlineFormattingToolbar();
+          return;
+        }
+        const signature = `${selection.blockIndex}:${selection.start}:${selection.end}`;
+        inlineFormattingToolbarPendingSignatureRef.current = signature;
+        clearInlineFormattingToolbarTimer();
+        inlineFormattingToolbarTimerRef.current = window.setTimeout(() => {
+          const latestSelection = resolveActiveInlineFormattingSelection();
+          if (!latestSelection) {
+            hideInlineFormattingToolbar();
+            return;
+          }
+          const latestSignature = `${latestSelection.blockIndex}:${latestSelection.start}:${latestSelection.end}`;
+          if (inlineFormattingToolbarPendingSignatureRef.current !== latestSignature) {
+            return;
+          }
+          setInlineFormattingToolbarSelection(latestSelection);
+          inlineFormattingToolbarRangeRef.current = {
+            blockIndex: latestSelection.blockIndex,
+            start: latestSelection.start,
+            end: latestSelection.end,
+          };
+        }, INLINE_FORMATTING_TOOLBAR_DELAY_MS);
+      },
+      [
+        clearInlineFormattingToolbarTimer,
+        hideInlineFormattingToolbar,
+        resolveActiveInlineFormattingSelection,
+        showInlineFormattingToolbarImmediate,
+      ],
+    );
+
+    const scheduleTextareaSelectionRange = useCallback(
+      (selection: InlineFormattingToolbarRange) => {
+        const handle = window.requestAnimationFrame(() => {
+          const textarea = textareaRef.current;
+          if (!textarea) {
+            return;
+          }
+          const normalized = normalizeInlineFormattingRange(textarea.value, selection);
+          try {
+            textarea.focus({ preventScroll: true });
+          } catch {
+            textarea.focus();
+          }
+          textarea.setSelectionRange(normalized.start, normalized.end);
+          setEditorOverlaySelectionStart(normalized.start);
+          scheduleInlineFormattingToolbarVisibility({ immediate: true });
+        });
+        return () => window.cancelAnimationFrame(handle);
+      },
+      [scheduleInlineFormattingToolbarVisibility],
+    );
+
+    const restoreInlineFormattingToolbarSelection = useCallback(() => {
+      if (activeBlockIndex === null) {
+        return null;
+      }
+      const textarea = textareaRef.current;
+      const savedRange = inlineFormattingToolbarRangeRef.current;
+      if (!textarea || !savedRange || savedRange.blockIndex !== activeBlockIndex) {
+        return null;
+      }
+      const normalized = normalizeInlineFormattingRange(textarea.value, {
+        start: savedRange.start,
+        end: savedRange.end,
+      });
+      if (normalized.start === normalized.end) {
+        return null;
+      }
+      try {
+        textarea.focus({ preventScroll: true });
+      } catch {
+        textarea.focus();
+      }
+      textarea.setSelectionRange(normalized.start, normalized.end);
+      setEditorOverlaySelectionStart(normalized.start);
+      return normalized;
+    }, [activeBlockIndex]);
+
+    const applyInlineFormattingToActiveSelection = useCallback(
+      (result: InlineFormattingToggleResult) => {
+        if (!result.changed) {
+          return false;
+        }
+        const applied = applyActiveBlockDraft(result.value);
+        if (!applied || activeBlockIndex === null) {
+          return false;
+        }
+        inlineFormattingToolbarRangeRef.current = {
+          blockIndex: activeBlockIndex,
+          start: result.selection.start,
+          end: result.selection.end,
+        };
+        scheduleTextareaSelectionRange(result.selection);
+        return true;
+      },
+      [activeBlockIndex, applyActiveBlockDraft, scheduleTextareaSelectionRange],
+    );
+
+    const applyInlineFormattingAction = useCallback(
+      (action: InlineFormattingToolbarAction) => {
+        const normalizedSelection = restoreInlineFormattingToolbarSelection();
+        const textarea = textareaRef.current;
+        if (!normalizedSelection || !textarea) {
+          return false;
+        }
+        const value = textarea.value;
+        const isClozeExclusiveAction = action === "cd" || action === "cl";
+
+        if (isClozeExclusiveAction) {
+          const activeState = resolveInlineFormattingToolbarActiveState(value, normalizedSelection);
+          const linkActive = Boolean(findInlineMarkdownLinkAtRange(value, normalizedSelection));
+          const targetActive = action === "cd" ? activeState.cd : activeState.cl;
+          const hasOtherFormatting =
+            activeState.highlight ||
+            activeState.bold ||
+            activeState.italic ||
+            activeState.underline ||
+            activeState.strikethrough ||
+            activeState["inline-code"] ||
+            activeState.math ||
+            (action === "cd" ? activeState.cl : activeState.cd) ||
+            linkActive;
+          const wrapper = INLINE_FORMATTING_WRAPPERS[action];
+          if (targetActive && !hasOtherFormatting) {
+            const toggled = toggleInlineFormattingWrapper(value, normalizedSelection, wrapper);
+            return applyInlineFormattingToActiveSelection(toggled);
+          }
+          const replaced = stripInlineFormattingAroundRange(value, normalizedSelection, {
+            actions: [
+              "highlight",
+              "strikethrough",
+              "underline",
+              "bold",
+              "italic",
+              "inline-code",
+              "math",
+              "cd",
+              "cl",
+            ],
+            removeLink: true,
+          });
+          const wrapped = toggleInlineFormattingWrapper(
+            replaced.value,
+            replaced.selection,
+            wrapper,
+          );
+          return applyInlineFormattingToActiveSelection(wrapped);
+        }
+
+        const withoutCdCl = stripInlineFormattingAroundRange(value, normalizedSelection, {
+          actions: ["cd", "cl"],
+        });
+        if (
+          action === "math" &&
+          rangeIntersectsMarkdownCodeContext(withoutCdCl.value, withoutCdCl.selection)
+        ) {
+          return false;
+        }
+        const wrapper = INLINE_FORMATTING_WRAPPERS[action];
+        const nextResult = toggleInlineFormattingWrapper(
+          withoutCdCl.value,
+          withoutCdCl.selection,
+          wrapper,
+        );
+        return applyInlineFormattingToActiveSelection(nextResult);
+      },
+      [applyInlineFormattingToActiveSelection, restoreInlineFormattingToolbarSelection],
+    );
+
+    const applyInlineMathMenuAction = useCallback(
+      (action: InlineFormattingMathMenuAction) => {
+        const normalizedSelection = restoreInlineFormattingToolbarSelection();
+        const textarea = textareaRef.current;
+        if (!normalizedSelection || !textarea) {
+          return false;
+        }
+        if (rangeIntersectsMarkdownCodeContext(textarea.value, normalizedSelection)) {
+          return false;
+        }
+
+        const value = textarea.value;
+        const activeMathToken = findMathTokenCoveringRange(value, normalizedSelection);
+
+        const applyDelimiterConversion = (
+          token: Extract<MathToken, { type: "inline-math" | "display-math" }>,
+          targetType: "inline-math" | "display-math",
+        ) => {
+          if (token.type === targetType) {
+            return false;
+          }
+          const targetDelimiter = targetType === "inline-math" ? "$" : "$$";
+          const nextValue = `${value.slice(0, token.start)}${targetDelimiter}${token.value}${targetDelimiter}${value.slice(
+            token.end,
+          )}`;
+          const delimiterLength = targetDelimiter.length;
+          return applyInlineFormattingToActiveSelection({
+            value: nextValue,
+            selection: {
+              start: token.start + delimiterLength,
+              end: token.start + delimiterLength + token.value.length,
+            },
+            changed: nextValue !== value,
+          });
+        };
+
+        if (action === "wrap-inline") {
+          if (activeMathToken) {
+            if (activeMathToken.type === "display-math") {
+              return applyDelimiterConversion(activeMathToken, "inline-math");
+            }
+            return false;
+          }
+          const selectedText = value.slice(normalizedSelection.start, normalizedSelection.end);
+          const nextValue = `${value.slice(0, normalizedSelection.start)}$${selectedText}$${value.slice(
+            normalizedSelection.end,
+          )}`;
+          return applyInlineFormattingToActiveSelection({
+            value: nextValue,
+            selection: {
+              start: normalizedSelection.start + 1,
+              end: normalizedSelection.end + 1,
+            },
+            changed: nextValue !== value,
+          });
+        }
+
+        if (action === "convert-inline-display") {
+          if (!activeMathToken) {
+            return false;
+          }
+          return applyDelimiterConversion(
+            activeMathToken,
+            activeMathToken.type === "inline-math" ? "display-math" : "inline-math",
+          );
+        }
+
+        if (!activeMathToken) {
+          return false;
+        }
+        const nextValue = `${value.slice(0, activeMathToken.start)}${activeMathToken.value}${value.slice(
+          activeMathToken.end,
+        )}`;
+        return applyInlineFormattingToActiveSelection({
+          value: nextValue,
+          selection: {
+            start: activeMathToken.start,
+            end: activeMathToken.start + activeMathToken.value.length,
+          },
+          changed: nextValue !== value,
+        });
+      },
+      [applyInlineFormattingToActiveSelection, restoreInlineFormattingToolbarSelection],
+    );
+
+    const clearInlineFormattingAtSelection = useCallback(() => {
+      const normalizedSelection = restoreInlineFormattingToolbarSelection();
+      const textarea = textareaRef.current;
+      if (!normalizedSelection || !textarea) {
+        return false;
+      }
+
+      let nextValue = textarea.value;
+      let nextRange = normalizedSelection;
+      let hasChanged = false;
+
+      const strippedAroundSelection = stripInlineFormattingAroundRange(nextValue, nextRange, {
+        actions: [
+          "highlight",
+          "strikethrough",
+          "underline",
+          "bold",
+          "italic",
+          "inline-code",
+          "math",
+          "cd",
+          "cl",
+        ],
+        removeLink: true,
+      });
+      if (strippedAroundSelection.changed) {
+        nextValue = strippedAroundSelection.value;
+        nextRange = strippedAroundSelection.selection;
+        hasChanged = true;
+      }
+
+      // Then, strip supported markdown markers inside the selected text.
+      const selectedValue = nextValue.slice(nextRange.start, nextRange.end);
+      const plainSelectedValue = stripSupportedInlineMarkdownFormatting(selectedValue);
+      if (plainSelectedValue !== selectedValue) {
+        nextValue = `${nextValue.slice(0, nextRange.start)}${plainSelectedValue}${nextValue.slice(nextRange.end)}`;
+        nextRange = {
+          start: nextRange.start,
+          end: nextRange.start + plainSelectedValue.length,
+        };
+        hasChanged = true;
+      }
+
+      if (!hasChanged) {
+        return false;
+      }
+
+      return applyInlineFormattingToActiveSelection({
+        value: nextValue,
+        selection: nextRange,
+        changed: true,
+      });
+    }, [applyInlineFormattingToActiveSelection, restoreInlineFormattingToolbarSelection]);
+
+    const openInlineFormattingLinkEditor = useCallback(() => {
+      const normalizedSelection = restoreInlineFormattingToolbarSelection();
+      const textarea = textareaRef.current;
+      if (!normalizedSelection || !textarea) {
+        return false;
+      }
+      const linkMatch = findInlineMarkdownLinkAtRange(textarea.value, normalizedSelection);
+      setInsertMenuState(null);
+      setInlineFormattingToolbarMenu(null);
+      setInlineFormattingToolbarLinkState({
+        url: linkMatch?.url ?? "",
+        canRemove: Boolean(linkMatch),
+      });
+      return true;
+    }, [restoreInlineFormattingToolbarSelection]);
+
+    const applyInlineFormattingLinkValue = useCallback(
+      (urlValue?: string) => {
+        const normalizedSelection = restoreInlineFormattingToolbarSelection();
+        const textarea = textareaRef.current;
+        if (!normalizedSelection || !textarea) {
+          return false;
+        }
+        const nextUrl =
+          typeof urlValue === "string" ? urlValue : (inlineFormattingToolbarLinkState?.url ?? "");
+        const strippedCloze = stripInlineFormattingAroundRange(
+          textarea.value,
+          normalizedSelection,
+          {
+            actions: ["cd", "cl"],
+          },
+        );
+        const nextResult = applyInlineMarkdownLink(
+          strippedCloze.value,
+          strippedCloze.selection,
+          nextUrl,
+        );
+        if (!nextResult.changed) {
+          return false;
+        }
+        const applied = applyInlineFormattingToActiveSelection(nextResult);
+        if (applied) {
+          setInlineFormattingToolbarLinkState(null);
+        }
+        return applied;
+      },
+      [
+        applyInlineFormattingToActiveSelection,
+        inlineFormattingToolbarLinkState?.url,
+        restoreInlineFormattingToolbarSelection,
+      ],
+    );
+
+    const handleInlineFormattingToolbarAction = useCallback(
+      (action: InlineFormattingToolbarAction | "link" | "clear-formatting") => {
+        setInsertMenuState(null);
+        if (action === "link") {
+          openInlineFormattingLinkEditor();
+          return;
+        }
+        if (action === "clear-formatting") {
+          setInlineFormattingToolbarLinkState(null);
+          setInlineFormattingToolbarMenu(null);
+          clearInlineFormattingAtSelection();
+          return;
+        }
+        setInlineFormattingToolbarMenu(null);
+        applyInlineFormattingAction(action);
+      },
+      [
+        applyInlineFormattingAction,
+        clearInlineFormattingAtSelection,
+        openInlineFormattingLinkEditor,
+      ],
+    );
+
+    const handleInlineFormattingMathMenuAction = useCallback(
+      (action: InlineFormattingMathMenuAction) => {
+        setInsertMenuState(null);
+        setInlineFormattingToolbarLinkState(null);
+        setInlineFormattingToolbarMenu(null);
+        applyInlineMathMenuAction(action);
+      },
+      [applyInlineMathMenuAction],
+    );
+
+    const toggleInlineFormattingToolbarMenu = useCallback(
+      (menu: Exclude<InlineFormattingToolbarMenu, null>) => {
+        setInsertMenuState(null);
+        setInlineFormattingToolbarLinkState(null);
+        setInlineFormattingToolbarMenu((current) => (current === menu ? null : menu));
+      },
+      [],
+    );
+
+    useEffect(() => {
+      if (disabled || activeBlockIndex === null) {
+        inlineFormattingToolbarRangeRef.current = null;
+        hideInlineFormattingToolbar();
+      }
+    }, [activeBlockIndex, disabled, hideInlineFormattingToolbar]);
+
+    useEffect(() => {
       if (!pageLinkPickerState) {
         return;
       }
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        closePageLinkPicker();
-        const textarea = textareaRef.current;
-        if (textarea) {
-          try {
-            textarea.focus({ preventScroll: true });
-          } catch {
-            textarea.focus();
-          }
-        }
-        return;
-      }
-      if (filteredPageLinkCandidates.length === 0) {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          event.stopPropagation();
-        }
-        return;
-      }
-      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-        event.preventDefault();
-        event.stopPropagation();
-        setPageLinkPickerState((current) => {
-          if (!current) {
-            return current;
-          }
-          const delta = event.key === "ArrowDown" ? 1 : -1;
-          const nextIndex = (current.highlightedIndex + delta + filteredPageLinkCandidates.length) %
-            filteredPageLinkCandidates.length;
-          return {
-            ...current,
-            highlightedIndex: nextIndex,
-          };
-        });
-        return;
-      }
-      if (event.key === "Enter") {
-        event.preventDefault();
-        event.stopPropagation();
-        const candidate = filteredPageLinkCandidates[pageLinkPickerState.highlightedIndex] ??
-          filteredPageLinkCandidates[0];
-        if (!candidate) {
-          return;
-        }
-        handlePageLinkPickerSelectCandidate(candidate);
-      }
-    },
-    [
-      closePageLinkPicker,
-      filteredPageLinkCandidates,
-      handlePageLinkPickerSelectCandidate,
-      pageLinkPickerState,
-    ],
-  );
+      hideInlineFormattingToolbar();
+    }, [hideInlineFormattingToolbar, pageLinkPickerState]);
 
-  const handleTypedImageLinkPickerQueryChange = useCallback((value: string) => {
-    setTypedImageLinkPickerState((current) => {
-      if (!current) {
-        return current;
-      }
-      return {
-        ...current,
-        query: value,
-        highlightedIndex: 0,
-      };
-    });
-  }, []);
-
-  const handleTypedImageLinkPickerSelectCandidate = useCallback(
-    (candidate: VaultImageCandidate) => {
-      if (
-        !typedImageLinkPickerState ||
-        activeBlockIndex === null ||
-        typedImageLinkPickerState.blockIndex !== activeBlockIndex
-      ) {
-        closeTypedImageLinkPicker();
-        return;
-      }
-      const replaceStart = Math.max(0, Math.min(typedImageLinkPickerState.replaceRange.start, activeDraft.length));
-      const replaceEnd = Math.max(
-        replaceStart,
-        Math.min(typedImageLinkPickerState.replaceRange.end, activeDraft.length),
-      );
-      const nextToken = serializePngEmbed(candidate.relPath);
-      const nextDraft = `${activeDraft.slice(0, replaceStart)}${nextToken}${activeDraft.slice(replaceEnd)}`;
-      const nextCaret = replaceStart + nextToken.length;
-      closeTypedImageLinkPicker();
-      applyActiveBlockDraft(nextDraft, nextCaret);
-    },
-    [
-      activeBlockIndex,
-      activeDraft,
-      applyActiveBlockDraft,
-      closeTypedImageLinkPicker,
-      typedImageLinkPickerState,
-    ],
-  );
-
-  const handleTypedImageLinkPickerSearchKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLInputElement>) => {
+    useEffect(() => {
       if (!typedImageLinkPickerState) {
         return;
       }
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        closeTypedImageLinkPicker();
+      hideInlineFormattingToolbar();
+    }, [hideInlineFormattingToolbar, typedImageLinkPickerState]);
+
+    useEffect(() => {
+      const handleSelectionSignal = () => {
         const textarea = textareaRef.current;
-        if (textarea) {
+        if (!textarea) {
+          hideInlineFormattingToolbar();
+          return;
+        }
+        const activeElement = document.activeElement;
+        const isToolbarFocused =
+          activeElement instanceof Node &&
+          inlineFormattingToolbarRef.current?.contains(activeElement);
+        if (activeElement === textarea) {
+          scheduleInlineFormattingToolbarVisibility();
+          return;
+        }
+        if (isToolbarFocused) {
+          // Keep the last stable textarea range while interacting with the toolbar.
+          return;
+        }
+        hideInlineFormattingToolbar();
+      };
+
+      document.addEventListener("selectionchange", handleSelectionSignal);
+      window.addEventListener("pointerup", handleSelectionSignal, true);
+      window.addEventListener("keyup", handleSelectionSignal, true);
+      return () => {
+        document.removeEventListener("selectionchange", handleSelectionSignal);
+        window.removeEventListener("pointerup", handleSelectionSignal, true);
+        window.removeEventListener("keyup", handleSelectionSignal, true);
+      };
+    }, [hideInlineFormattingToolbar, scheduleInlineFormattingToolbarVisibility]);
+
+    useEffect(() => {
+      if (!inlineFormattingToolbarSelection) {
+        return;
+      }
+      const handleDocumentMouseDown = (event: globalThis.MouseEvent) => {
+        const target = event.target;
+        if (!(target instanceof Node)) {
+          return;
+        }
+        if (inlineFormattingToolbarRef.current?.contains(target)) {
+          return;
+        }
+        if (textareaRef.current?.contains(target)) {
+          return;
+        }
+        hideInlineFormattingToolbar();
+      };
+      document.addEventListener("mousedown", handleDocumentMouseDown);
+      return () => {
+        document.removeEventListener("mousedown", handleDocumentMouseDown);
+      };
+    }, [hideInlineFormattingToolbar, inlineFormattingToolbarSelection]);
+
+    useEffect(() => {
+      if (!inlineFormattingToolbarSelection) {
+        return;
+      }
+      const handleDocumentFocusIn = (event: globalThis.FocusEvent) => {
+        const target = event.target;
+        if (!(target instanceof Node)) {
+          return;
+        }
+        if (textareaRef.current?.contains(target)) {
+          return;
+        }
+        if (inlineFormattingToolbarRef.current?.contains(target)) {
+          return;
+        }
+        hideInlineFormattingToolbar();
+      };
+      document.addEventListener("focusin", handleDocumentFocusIn);
+      return () => {
+        document.removeEventListener("focusin", handleDocumentFocusIn);
+      };
+    }, [hideInlineFormattingToolbar, inlineFormattingToolbarSelection]);
+
+    useEffect(() => {
+      if (!inlineFormattingToolbarSelection) {
+        return;
+      }
+      const handleHide = () => {
+        hideInlineFormattingToolbar();
+      };
+      window.addEventListener("resize", handleHide);
+      window.addEventListener("scroll", handleHide, true);
+      return () => {
+        window.removeEventListener("resize", handleHide);
+        window.removeEventListener("scroll", handleHide, true);
+      };
+    }, [hideInlineFormattingToolbar, inlineFormattingToolbarSelection]);
+
+    const handleTextareaPointerUp = useCallback(
+      (event: MouseEvent<HTMLTextAreaElement>) => {
+        setEditorOverlaySelectionStart(event.currentTarget.selectionStart);
+        scheduleInlineFormattingToolbarVisibility();
+      },
+      [scheduleInlineFormattingToolbarVisibility],
+    );
+
+    const handleTextareaKeyUp = useCallback(
+      (event: KeyboardEvent<HTMLTextAreaElement>) => {
+        setEditorOverlaySelectionStart(event.currentTarget.selectionStart);
+        scheduleInlineFormattingToolbarVisibility();
+      },
+      [scheduleInlineFormattingToolbarVisibility],
+    );
+
+    const handleTextareaKeyDown = useCallback(
+      (event: KeyboardEvent<HTMLTextAreaElement>) => {
+        const nativeKeyboardEvent = event.nativeEvent as Event & { isComposing?: boolean };
+        if (nativeKeyboardEvent.isComposing) {
+          return;
+        }
+
+        if (isUndoShortcut(event)) {
+          if (!activeDirty && handleGlobalUndo()) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          return;
+        }
+
+        if (isRedoShortcut(event)) {
+          if (!activeDirty && handleGlobalRedo()) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          return;
+        }
+
+        if (activeBlockIndex === null) {
+          return;
+        }
+        const block = blocks[activeBlockIndex];
+        if (!block) {
+          return;
+        }
+
+        const textarea = event.currentTarget;
+        const hasSelection = textarea.selectionStart !== textarea.selectionEnd;
+        const atStart = !hasSelection && textarea.selectionStart === 0;
+        const atEnd = !hasSelection && textarea.selectionEnd === textarea.value.length;
+        const isPlainDeleteKey =
+          (event.key === "Backspace" || event.key === "Delete") &&
+          !event.shiftKey &&
+          !event.altKey &&
+          !event.ctrlKey &&
+          !event.metaKey;
+        const isExplicitCommitShortcut =
+          event.key === "Enter" &&
+          !event.shiftKey &&
+          !event.altKey &&
+          (event.ctrlKey || event.metaKey);
+
+        if (event.key === "Escape" && pageLinkPickerState) {
+          event.preventDefault();
+          event.stopPropagation();
+          closePageLinkPicker();
           try {
             textarea.focus({ preventScroll: true });
           } catch {
             textarea.focus();
           }
+          return;
         }
-        return;
-      }
-      if (filteredTypedImageLinkCandidates.length === 0) {
+
+        if (event.key === "Escape" && typedImageLinkPickerState) {
+          event.preventDefault();
+          event.stopPropagation();
+          closeTypedImageLinkPicker();
+          try {
+            textarea.focus({ preventScroll: true });
+          } catch {
+            textarea.focus();
+          }
+          return;
+        }
+
+        if (event.key === "Escape" && inlineFormattingToolbarSelection) {
+          event.preventDefault();
+          event.stopPropagation();
+          hideInlineFormattingToolbar();
+          return;
+        }
+
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          discardActiveBlock();
+          return;
+        }
+
+        if (isExplicitCommitShortcut) {
+          event.preventDefault();
+          event.stopPropagation();
+          commitActiveBlock({ deactivate: true });
+          return;
+        }
+
+        if (isInlineShiftShortcut(event) && isInlineShiftableBlockKind(block.kind)) {
+          event.preventDefault();
+          event.stopPropagation();
+          const shifted = shiftBlockRawInlineIndentWithSelection(
+            textarea.value,
+            event.key === "ArrowRight" ? "right" : "left",
+            textarea.selectionStart,
+            textarea.selectionEnd,
+          );
+          if (shifted.raw !== textarea.value) {
+            applyActiveBlockDraft(shifted.raw);
+          }
+          scheduleTextareaSelection(shifted.selectionStart, shifted.selectionEnd);
+          return;
+        }
+
+        const inlineShortcutAction = resolveInlineFormattingShortcutAction(event);
+        if (inlineShortcutAction && block.kind !== "math-block") {
+          event.preventDefault();
+          event.stopPropagation();
+          const normalizedRange = normalizeInlineFormattingRange(textarea.value, {
+            start: textarea.selectionStart,
+            end: textarea.selectionEnd,
+          });
+          if (normalizedRange.start !== normalizedRange.end) {
+            inlineFormattingToolbarRangeRef.current = {
+              blockIndex: activeBlockIndex,
+              start: normalizedRange.start,
+              end: normalizedRange.end,
+            };
+            if (inlineShortcutAction === "link") {
+              openInlineFormattingLinkEditor();
+            } else {
+              applyInlineFormattingAction(inlineShortcutAction);
+            }
+          }
+          return;
+        }
+
+        if (isPlainDeleteKey && !hasSelection && canOpenPageLinkPickerInBlockKind(block.kind)) {
+          const adjacentLinkRange = findAdjacentWikilinkRange(
+            activeDraft,
+            textarea.selectionStart,
+            event.key as "Backspace" | "Delete",
+          );
+          if (adjacentLinkRange) {
+            event.preventDefault();
+            event.stopPropagation();
+            const nextDraft = `${activeDraft.slice(0, adjacentLinkRange.start)}${activeDraft.slice(
+              adjacentLinkRange.end,
+            )}`;
+            closePageLinkPicker();
+            applyActiveBlockDraft(nextDraft, adjacentLinkRange.start);
+            return;
+          }
+        }
+
+        if (
+          (event.key === "ArrowLeft" || event.key === "ArrowRight") &&
+          !hasSelection &&
+          !event.shiftKey &&
+          !event.altKey &&
+          !event.ctrlKey &&
+          !event.metaKey &&
+          canOpenPageLinkPickerInBlockKind(block.kind)
+        ) {
+          const adjacentLinkRange = findAdjacentWikilinkRange(
+            activeDraft,
+            textarea.selectionStart,
+            event.key === "ArrowLeft" ? "Backspace" : "Delete",
+          );
+          if (adjacentLinkRange) {
+            event.preventDefault();
+            event.stopPropagation();
+            const nextCaret =
+              event.key === "ArrowLeft" ? adjacentLinkRange.start : adjacentLinkRange.end;
+            scheduleTextareaCaret(nextCaret);
+            return;
+          }
+        }
+
+        const isPlainEnterKey =
+          event.key === "Enter" && !event.altKey && !event.ctrlKey && !event.metaKey;
+
+        if (
+          isPlainEnterKey &&
+          !event.shiftKey &&
+          (block.kind === "ordered-list" || block.kind === "unordered-list")
+        ) {
+          const snapshot = activeEditSnapshotRef.current;
+          if (snapshot && snapshot.kind === block.kind && !snapshot.isDetachedEmptyBlock) {
+            const persistedBlockRaw = toPersistedBlockRawForDraft(
+              { kind: block.kind },
+              textarea.value,
+            );
+            const lineInfo = resolveListLineInfo(persistedBlockRaw);
+            const baseMarkdown = applyEditorMarkdownNormalization(
+              replaceMarkdownBlock(markdown, snapshot, persistedBlockRaw),
+            );
+            const baseBlocks = parseHybridMarkdownBlocks(baseMarkdown);
+            if (baseBlocks.length > 0 && lineInfo) {
+              const fallbackIndex = clampIndex(activeBlockIndex, baseBlocks.length);
+              const resolvedCurrentIndex = baseBlocks.findIndex(
+                (candidate) =>
+                  candidate.kind === block.kind && candidate.startLine === snapshot.startLine,
+              );
+              const currentIndex = resolvedCurrentIndex >= 0 ? resolvedCurrentIndex : fallbackIndex;
+              const currentBlock = baseBlocks[currentIndex];
+              if (
+                currentBlock &&
+                (currentBlock.kind === "ordered-list" || currentBlock.kind === "unordered-list")
+              ) {
+                const isEmptyListItem = isListItemRawEffectivelyEmpty(currentBlock.raw, lineInfo);
+                let nextMarkdown = baseMarkdown;
+                let activationSelection: PendingActivation["selection"] | undefined;
+                let activationIndex = currentIndex;
+
+                if (!isEmptyListItem) {
+                  const insertedRaw = buildSiblingListItemRaw(lineInfo);
+                  const nextRawBlocks = baseBlocks.map((candidate) => candidate.raw);
+                  nextRawBlocks.splice(currentIndex + 1, 0, insertedRaw);
+                  nextMarkdown = applyEditorMarkdownNormalization(nextRawBlocks.join("\n"));
+                  nextMarkdown = normalizeOrderedListSegmentsInMarkdown(nextMarkdown);
+                  const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
+                  activationIndex = resolveInsertedBlockActivationIndex(
+                    nextBlocks,
+                    insertedRaw,
+                    currentIndex + 1,
+                  );
+                  activationSelection = {
+                    start: insertedRaw.length,
+                    end: insertedRaw.length,
+                  };
+                } else {
+                  const listDepth = currentBlock.meta?.listDepth ?? 0;
+                  if (listDepth > 0) {
+                    const parentStartLine = currentBlock.meta?.listParentStartLine;
+                    const parentBlock =
+                      typeof parentStartLine === "number"
+                        ? (baseBlocks.find(
+                            (candidate) =>
+                              candidate.startLine === parentStartLine &&
+                              candidate.meta?.listGroupId === currentBlock.meta?.listGroupId &&
+                              (candidate.kind === "ordered-list" ||
+                                candidate.kind === "unordered-list"),
+                          ) ?? null)
+                        : null;
+                    const parentIndent = parentBlock
+                      ? (resolveListLineInfo(parentBlock.raw)?.indent ?? null)
+                      : null;
+                    const nextRawBlocks = baseBlocks.map((candidate, index) =>
+                      index === currentIndex
+                        ? buildOutdentedListItemRaw(lineInfo, parentIndent)
+                        : candidate.raw,
+                    );
+                    nextMarkdown = applyEditorMarkdownNormalization(nextRawBlocks.join("\n"));
+                    nextMarkdown = normalizeOrderedListSegmentsInMarkdown(nextMarkdown);
+                    const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
+                    activationIndex = clampIndex(currentIndex, nextBlocks.length);
+                    const nextActiveBlock = nextBlocks[activationIndex];
+                    const nextRaw = nextActiveBlock?.raw ?? "";
+                    activationSelection = {
+                      start: nextRaw.length,
+                      end: nextRaw.length,
+                    };
+                  } else {
+                    const nextRawBlocks = baseBlocks.map((candidate, index) =>
+                      index === currentIndex ? "" : candidate.raw,
+                    );
+                    nextMarkdown = applyEditorMarkdownNormalization(nextRawBlocks.join("\n"));
+                    nextMarkdown = normalizeOrderedListSegmentsInMarkdown(nextMarkdown);
+                    const nextBlocks = parseHybridMarkdownBlocks(nextMarkdown);
+                    activationIndex = clampIndex(currentIndex, nextBlocks.length);
+                    activationSelection = { start: 0, end: 0 };
+                  }
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                applyMarkdownWithPendingActivation(nextMarkdown, {
+                  index: activationIndex,
+                  caret: "end",
+                  selection: activationSelection,
+                });
+                return;
+              }
+            }
+          }
+        }
+
+        if (isPlainEnterKey) {
+          const nextDraft = `${activeDraft.slice(0, textarea.selectionStart)}\n${activeDraft.slice(
+            textarea.selectionEnd,
+          )}`;
+          event.preventDefault();
+          event.stopPropagation();
+          applyActiveBlockDraft(nextDraft, textarea.selectionStart + 1);
+          return;
+        }
+
+        if (
+          event.key === "ArrowDown" &&
+          !event.shiftKey &&
+          !event.altKey &&
+          !event.ctrlKey &&
+          !event.metaKey &&
+          atEnd
+        ) {
+          event.preventDefault();
+          commitActiveBlock({
+            deactivate: true,
+            nextActivation: { index: activeBlockIndex + 1, caret: "start" },
+          });
+          return;
+        }
+
+        if (
+          event.key === "ArrowUp" &&
+          !event.shiftKey &&
+          !event.altKey &&
+          !event.ctrlKey &&
+          !event.metaKey &&
+          atStart
+        ) {
+          event.preventDefault();
+          commitActiveBlock({
+            deactivate: true,
+            nextActivation: { index: activeBlockIndex - 1, caret: "end" },
+          });
+        }
+      },
+      [
+        activeBlockIndex,
+        activeDraft,
+        applyActiveBlockDraft,
+        applyMarkdownWithPendingActivation,
+        applyInlineFormattingAction,
+        activeDirty,
+        blocks,
+        closePageLinkPicker,
+        commitActiveBlock,
+        discardActiveBlock,
+        handleGlobalRedo,
+        handleGlobalUndo,
+        hideInlineFormattingToolbar,
+        inlineFormattingToolbarSelection,
+        markdown,
+        openInlineFormattingLinkEditor,
+        pageLinkPickerState,
+        closeTypedImageLinkPicker,
+        scheduleTextareaCaret,
+        scheduleTextareaSelection,
+        typedImageLinkPickerState,
+      ],
+    );
+
+    const handlePageLinkPickerQueryChange = useCallback((value: string) => {
+      setPageLinkPickerState((current) => {
+        if (!current) {
+          return current;
+        }
+        return {
+          ...current,
+          query: value,
+          highlightedIndex: 0,
+        };
+      });
+    }, []);
+
+    const handlePageLinkPickerSelectCandidate = useCallback(
+      (candidate: PageLinkCandidate) => {
+        if (
+          !pageLinkPickerState ||
+          activeBlockIndex === null ||
+          pageLinkPickerState.blockIndex !== activeBlockIndex
+        ) {
+          closePageLinkPicker();
+          return;
+        }
+        const replaceStart = Math.max(
+          0,
+          Math.min(pageLinkPickerState.replaceRange.start, activeDraft.length),
+        );
+        const replaceEnd = Math.max(
+          replaceStart,
+          Math.min(pageLinkPickerState.replaceRange.end, activeDraft.length),
+        );
+        const nextToken = candidate.wikilink;
+        const nextDraft = `${activeDraft.slice(0, replaceStart)}${nextToken}${activeDraft.slice(replaceEnd)}`;
+        const nextCaret = replaceStart + nextToken.length;
+        closePageLinkPicker();
+        applyActiveBlockDraft(nextDraft, nextCaret);
+      },
+      [
+        activeBlockIndex,
+        activeDraft,
+        applyActiveBlockDraft,
+        closePageLinkPicker,
+        pageLinkPickerState,
+      ],
+    );
+
+    const handlePageLinkPickerSearchKeyDown = useCallback(
+      (event: KeyboardEvent<HTMLInputElement>) => {
+        if (!pageLinkPickerState) {
+          return;
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          closePageLinkPicker();
+          const textarea = textareaRef.current;
+          if (textarea) {
+            try {
+              textarea.focus({ preventScroll: true });
+            } catch {
+              textarea.focus();
+            }
+          }
+          return;
+        }
+        if (filteredPageLinkCandidates.length === 0) {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          return;
+        }
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          event.preventDefault();
+          event.stopPropagation();
+          setPageLinkPickerState((current) => {
+            if (!current) {
+              return current;
+            }
+            const delta = event.key === "ArrowDown" ? 1 : -1;
+            const nextIndex =
+              (current.highlightedIndex + delta + filteredPageLinkCandidates.length) %
+              filteredPageLinkCandidates.length;
+            return {
+              ...current,
+              highlightedIndex: nextIndex,
+            };
+          });
+          return;
+        }
         if (event.key === "Enter") {
           event.preventDefault();
           event.stopPropagation();
-        }
-        return;
-      }
-      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-        event.preventDefault();
-        event.stopPropagation();
-        setTypedImageLinkPickerState((current) => {
-          if (!current) {
-            return current;
+          const candidate =
+            filteredPageLinkCandidates[pageLinkPickerState.highlightedIndex] ??
+            filteredPageLinkCandidates[0];
+          if (!candidate) {
+            return;
           }
-          const delta = event.key === "ArrowDown" ? 1 : -1;
-          const nextIndex = (current.highlightedIndex + delta + filteredTypedImageLinkCandidates.length) %
-            filteredTypedImageLinkCandidates.length;
-          return {
-            ...current,
-            highlightedIndex: nextIndex,
-          };
-        });
-        return;
-      }
-      if (event.key === "Enter") {
-        event.preventDefault();
-        event.stopPropagation();
-        const candidate = filteredTypedImageLinkCandidates[typedImageLinkPickerState.highlightedIndex] ??
-          filteredTypedImageLinkCandidates[0];
-        if (!candidate) {
+          handlePageLinkPickerSelectCandidate(candidate);
+        }
+      },
+      [
+        closePageLinkPicker,
+        filteredPageLinkCandidates,
+        handlePageLinkPickerSelectCandidate,
+        pageLinkPickerState,
+      ],
+    );
+
+    const handleTypedImageLinkPickerQueryChange = useCallback((value: string) => {
+      setTypedImageLinkPickerState((current) => {
+        if (!current) {
+          return current;
+        }
+        return {
+          ...current,
+          query: value,
+          highlightedIndex: 0,
+        };
+      });
+    }, []);
+
+    const handleTypedImageLinkPickerSelectCandidate = useCallback(
+      (candidate: VaultImageCandidate) => {
+        if (
+          !typedImageLinkPickerState ||
+          activeBlockIndex === null ||
+          typedImageLinkPickerState.blockIndex !== activeBlockIndex
+        ) {
+          closeTypedImageLinkPicker();
           return;
         }
-        handleTypedImageLinkPickerSelectCandidate(candidate);
-      }
-    },
-    [
-      closeTypedImageLinkPicker,
-      filteredTypedImageLinkCandidates,
-      handleTypedImageLinkPickerSelectCandidate,
-      typedImageLinkPickerState,
-    ],
-  );
+        const replaceStart = Math.max(
+          0,
+          Math.min(typedImageLinkPickerState.replaceRange.start, activeDraft.length),
+        );
+        const replaceEnd = Math.max(
+          replaceStart,
+          Math.min(typedImageLinkPickerState.replaceRange.end, activeDraft.length),
+        );
+        const nextToken = serializePngEmbed(candidate.relPath);
+        const nextDraft = `${activeDraft.slice(0, replaceStart)}${nextToken}${activeDraft.slice(replaceEnd)}`;
+        const nextCaret = replaceStart + nextToken.length;
+        closeTypedImageLinkPicker();
+        applyActiveBlockDraft(nextDraft, nextCaret);
+      },
+      [
+        activeBlockIndex,
+        activeDraft,
+        applyActiveBlockDraft,
+        closeTypedImageLinkPicker,
+        typedImageLinkPickerState,
+      ],
+    );
 
-  const handleBlockMouseDownCapture = useCallback(
-    (index: number) => (event: MouseEvent<HTMLDivElement>) => {
-      if (disabled) {
-        return;
-      }
-      const target = event.target;
-      const isInteractiveElement = target instanceof HTMLElement &&
-        Boolean(target.closest("a[href],button,input,textarea,[data-md-block-control='true']"));
-      if (isInteractiveElement) {
-        return;
-      }
+    const handleTypedImageLinkPickerSearchKeyDown = useCallback(
+      (event: KeyboardEvent<HTMLInputElement>) => {
+        if (!typedImageLinkPickerState) {
+          return;
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          closeTypedImageLinkPicker();
+          const textarea = textareaRef.current;
+          if (textarea) {
+            try {
+              textarea.focus({ preventScroll: true });
+            } catch {
+              textarea.focus();
+            }
+          }
+          return;
+        }
+        if (filteredTypedImageLinkCandidates.length === 0) {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+          return;
+        }
+        if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+          event.preventDefault();
+          event.stopPropagation();
+          setTypedImageLinkPickerState((current) => {
+            if (!current) {
+              return current;
+            }
+            const delta = event.key === "ArrowDown" ? 1 : -1;
+            const nextIndex =
+              (current.highlightedIndex + delta + filteredTypedImageLinkCandidates.length) %
+              filteredTypedImageLinkCandidates.length;
+            return {
+              ...current,
+              highlightedIndex: nextIndex,
+            };
+          });
+          return;
+        }
+        if (event.key === "Enter") {
+          event.preventDefault();
+          event.stopPropagation();
+          const candidate =
+            filteredTypedImageLinkCandidates[typedImageLinkPickerState.highlightedIndex] ??
+            filteredTypedImageLinkCandidates[0];
+          if (!candidate) {
+            return;
+          }
+          handleTypedImageLinkPickerSelectCandidate(candidate);
+        }
+      },
+      [
+        closeTypedImageLinkPicker,
+        filteredTypedImageLinkCandidates,
+        handleTypedImageLinkPickerSelectCandidate,
+        typedImageLinkPickerState,
+      ],
+    );
 
-      if (event.button === 0 && event.shiftKey) {
+    const handleBlockMouseDownCapture = useCallback(
+      (index: number) => (event: MouseEvent<HTMLDivElement>) => {
+        if (disabled) {
+          return;
+        }
+        const target = event.target;
+        const isInteractiveElement =
+          target instanceof HTMLElement &&
+          Boolean(target.closest("a[href],button,input,textarea,[data-md-block-control='true']"));
+        if (isInteractiveElement) {
+          return;
+        }
+
+        if (event.button === 0 && event.shiftKey) {
+          event.preventDefault();
+          event.stopPropagation();
+          beginSelectionGesture({
+            index,
+            source: "shift-left",
+            clientX: event.clientX,
+            clientY: event.clientY,
+            preserveAnchor: Boolean(selectedBlockSelection),
+          });
+          return;
+        }
+
+        if (event.button === 0 && (event.ctrlKey || event.metaKey)) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
+            return;
+          }
+          setPendingActivation(null);
+          setInsertMenuState(null);
+          setSelectionContextMenuState(null);
+          setDraggedBlockIndex(null);
+          setDropIndicatorIndex(null);
+          toggleDiscreteBlockSelection(index);
+          focusContainer();
+          return;
+        }
+
+        if (event.button === 2) {
+          event.preventDefault();
+          event.stopPropagation();
+          beginSelectionGesture({
+            index,
+            source: "right",
+            clientX: event.clientX,
+            clientY: event.clientY,
+            preserveCurrentRangeIfSelected: true,
+          });
+        }
+      },
+      [
+        activeBlockIndex,
+        beginSelectionGesture,
+        commitActiveBlock,
+        disabled,
+        focusContainer,
+        selectedBlockSelection,
+        toggleDiscreteBlockSelection,
+      ],
+    );
+
+    const handleContentLayerMouseDownCapture = useCallback(
+      (event: MouseEvent<HTMLDivElement>) => {
+        if (disabled) {
+          return;
+        }
+        if (event.button !== 0) {
+          return;
+        }
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+        if (target.closest("a[href],button,input,textarea,[data-md-block-control='true']")) {
+          return;
+        }
+        if (target.closest(".markdown-hybrid-block[data-md-block-index]")) {
+          return;
+        }
+        if (event.ctrlKey || event.metaKey) {
+          return;
+        }
+        if (selectedBlockSelection && !event.shiftKey) {
+          clearSelectedBlockRange();
+        }
         event.preventDefault();
         event.stopPropagation();
-        beginSelectionGesture({
-          index,
-          source: "shift-left",
+        beginMarqueeSelectionGesture({
           clientX: event.clientX,
           clientY: event.clientY,
-          preserveAnchor: Boolean(selectedBlockSelection),
+          preserveAnchor: event.shiftKey && Boolean(selectedBlockSelection),
         });
+      },
+      [beginMarqueeSelectionGesture, clearSelectedBlockRange, disabled, selectedBlockSelection],
+    );
+
+    const handleEditorRootMouseDownCapture = useCallback(
+      (event: MouseEvent<HTMLDivElement>) => {
+        if (disabled || !selectedBlockSelection) {
+          return;
+        }
+        if (event.shiftKey || event.ctrlKey || event.metaKey) {
+          return;
+        }
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+        if (target.closest("textarea,a[href],button,input,[data-md-block-control='true']")) {
+          return;
+        }
+        if (target.closest(".markdown-hybrid-block[data-md-block-index]")) {
+          return;
+        }
+        clearSelectedBlockRange();
+      },
+      [clearSelectedBlockRange, disabled, selectedBlockSelection],
+    );
+
+    const handleBlockMouseDown = useCallback(
+      (index: number) => (event: MouseEvent<HTMLDivElement>) => {
+        if (disabled) {
+          return;
+        }
+        const target = event.target;
+        const isInteractiveElement =
+          target instanceof HTMLElement &&
+          Boolean(target.closest("a[href],button,input,[data-md-block-control='true']"));
+        const isTextareaElement =
+          target instanceof HTMLElement && Boolean(target.closest("textarea"));
+        if (isInteractiveElement) {
+          return;
+        }
+
+        if (event.shiftKey || event.ctrlKey || event.metaKey) {
+          return;
+        }
+
+        if (event.button !== 0) {
+          return;
+        }
+        if (isTextareaElement) {
+          return;
+        }
+        if (blocks[index]?.kind === "blank" && isStructuralSeparatorBlankBlock(blocks, index)) {
+          return;
+        }
+        if (selectedBlockSelection) {
+          clearSelectedBlockRange();
+        }
+        if (activeBlockIndex === index) {
+          return;
+        }
+        event.preventDefault();
+        activateBlock(index, "end");
+      },
+      [
+        activateBlock,
+        activeBlockIndex,
+        blocks,
+        clearSelectedBlockRange,
+        disabled,
+        selectedBlockSelection,
+      ],
+    );
+
+    const handleRenderedTaskCheckboxChange = useCallback(
+      (blockIndex: number) => (event: FormEvent<HTMLDivElement>) => {
+        if (disabled) {
+          return;
+        }
+        const target = event.target;
+        if (
+          !(target instanceof HTMLInputElement) ||
+          target.type.toLowerCase() !== "checkbox" ||
+          target.dataset.mdTaskCheckbox !== "true"
+        ) {
+          return;
+        }
+
+        event.stopPropagation();
+
+        const block = blocks[blockIndex];
+        if (!block || block.kind === "hr") {
+          return;
+        }
+
+        const previewContainer = event.currentTarget;
+        const taskCheckboxes = Array.from(
+          previewContainer.querySelectorAll<HTMLInputElement>(
+            "input[data-md-task-checkbox='true']",
+          ),
+        );
+        const checkboxOrdinal = taskCheckboxes.indexOf(target);
+        if (checkboxOrdinal < 0) {
+          return;
+        }
+
+        const nextBlockRaw = toggleTaskCheckboxInBlockRaw(
+          block.raw,
+          checkboxOrdinal,
+          target.checked,
+        );
+        if (nextBlockRaw === block.raw) {
+          return;
+        }
+
+        const nextMarkdown = applyEditorMarkdownNormalization(
+          replaceMarkdownBlock(markdown, block, nextBlockRaw),
+        );
+        if (nextMarkdown === markdown) {
+          return;
+        }
+        onChange(nextMarkdown);
+        setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
+      },
+      [blocks, disabled, markdown, onChange],
+    );
+
+    const isPointerWithinBlockOrOverlayRegion = useCallback(
+      (target: EventTarget | null, index: number) => {
+        if (!(target instanceof HTMLElement)) {
+          return false;
+        }
+        const blockElement = target.closest<HTMLElement>(
+          ".markdown-hybrid-block[data-md-block-index]",
+        );
+        if (blockElement?.dataset.mdBlockIndex === String(index)) {
+          return true;
+        }
+        const overlayRowElement = target.closest<HTMLElement>(
+          ".markdown-hybrid-overlay-row[data-md-block-index]",
+        );
+        return overlayRowElement?.dataset.mdBlockIndex === String(index);
+      },
+      [],
+    );
+
+    const handleBlockMouseEnter = useCallback(
+      (index: number) => (event: MouseEvent<HTMLDivElement>) => {
+        if (!disabled) {
+          setHoveredOverlayBlockIndex(index);
+        }
+        if (disabled || !isSelectionDragging || blocks.length === 0) {
+          return;
+        }
+        const gesture = selectionGestureRef.current;
+        if (!gesture?.active) {
+          return;
+        }
+        if (gesture.source !== "right") {
+          return;
+        }
+        const expectedButtonMask = gesture.source === "right" ? 2 : 1;
+        if ((event.buttons & expectedButtonMask) !== expectedButtonMask) {
+          return;
+        }
+        selectionDragPointerRef.current = { x: event.clientX, y: event.clientY };
+        const movedFarEnough =
+          Math.abs(event.clientX - gesture.startClientX) > SELECTION_DRAG_THRESHOLD_PX ||
+          Math.abs(event.clientY - gesture.startClientY) > SELECTION_DRAG_THRESHOLD_PX;
+        if (!movedFarEnough) {
+          return;
+        }
+        gesture.didDrag = true;
+        const endPoint = getContainerLocalPoint(event.clientX, event.clientY);
+        if (!endPoint) {
+          return;
+        }
+        updateSelectionFromMarqueeContentPoints(
+          gesture.startContentX,
+          gesture.startContentY,
+          endPoint.x,
+          endPoint.y,
+        );
+      },
+      [
+        blocks.length,
+        disabled,
+        getContainerLocalPoint,
+        isSelectionDragging,
+        updateSelectionFromMarqueeContentPoints,
+      ],
+    );
+
+    const handleBlockMouseLeave = useCallback(
+      (index: number) => (event: MouseEvent<HTMLDivElement>) => {
+        if (isPointerWithinBlockOrOverlayRegion(event.relatedTarget, index)) {
+          return;
+        }
+        setHoveredOverlayBlockIndex((current) => (current === index ? null : current));
+      },
+      [isPointerWithinBlockOrOverlayRegion],
+    );
+
+    const handleOverlayRailMouseEnter = useCallback(
+      (index: number) => () => {
+        if (disabled) {
+          return;
+        }
+        setHoveredOverlayBlockIndex(index);
+      },
+      [disabled],
+    );
+
+    const handleOverlayRailMouseLeave = useCallback(
+      (index: number) => (event: MouseEvent<HTMLDivElement>) => {
+        if (isPointerWithinBlockOrOverlayRegion(event.relatedTarget, index)) {
+          return;
+        }
+        setHoveredOverlayBlockIndex((current) => (current === index ? null : current));
+      },
+      [isPointerWithinBlockOrOverlayRegion],
+    );
+
+    const handleEditorMouseLeave = useCallback(() => {
+      setHoveredOverlayBlockIndex(null);
+    }, []);
+
+    useEffect(() => {
+      if (hoveredOverlayBlockIndex === null) {
         return;
       }
+      const maxValidOverlayIndex = blocks.length === 0 ? 0 : blocks.length - 1;
+      if (hoveredOverlayBlockIndex < 0 || hoveredOverlayBlockIndex > maxValidOverlayIndex) {
+        setHoveredOverlayBlockIndex(null);
+      }
+    }, [blocks.length, hoveredOverlayBlockIndex]);
 
-      if (event.button === 0 && (event.ctrlKey || event.metaKey)) {
+    useEffect(() => {
+      if (draggedBlockIndex !== null) {
+        return;
+      }
+      setHoveredOverlayBlockIndex(null);
+    }, [draggedBlockIndex]);
+
+    useEffect(() => {
+      if (disabled) {
+        setHoveredOverlayBlockIndex(null);
+      }
+    }, [disabled]);
+
+    const handleDragHandleDragStart = useCallback(
+      (index: number) => (event: DragEvent<HTMLButtonElement>) => {
+        if (disabled) {
+          clearBlockReorderDragSession();
+          event.preventDefault();
+          return;
+        }
+        if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
+          clearBlockReorderDragSession();
+          event.preventDefault();
+          return;
+        }
+        startBlockReorderDragSession(index);
+        const draggingSelectionGroup = Boolean(
+          selectedBlockSelection &&
+          selectedBlockSelection.selectedIndices.length > 1 &&
+          isBlockIndexSelected(selectedBlockSelection, index),
+        );
+        if (!draggingSelectionGroup) {
+          clearSelectedBlockRange();
+        } else {
+          setIsSelectionDragging(false);
+          setSelectionContextMenuState(null);
+          setSelectionMarqueeRect(null);
+          selectionGestureRef.current = null;
+        }
+        setInsertMenuState(null);
+        setDraggedBlockIndex(index);
+        setDropIndicatorIndex(index);
+        const previewPayload = resolveDragPreviewPayload(blocks, index, selectedBlockSelection);
+        setDragPreviewState({
+          pointerX: event.clientX,
+          pointerY: event.clientY,
+          title: previewPayload.title,
+          kindLabel: previewPayload.kindLabel,
+          snippet: previewPayload.snippet,
+          itemCount: previewPayload.itemCount,
+        });
+        scheduleDragPreviewPointerUpdate(event.clientX, event.clientY);
+        startInternalDrag(event, {
+          channel: DRAG_CHANNELS.MARKDOWN_BLOCK,
+          payload: index,
+          plainTextFallback: String(index),
+          effectAllowed: "move",
+        });
+        try {
+          event.dataTransfer.setData(INTERNAL_BLOCK_REORDER_DRAG_MIME, String(index));
+        } catch {
+          // ignore restricted dataTransfer implementations
+        }
+        const dragImageElement = createDragImageElement();
+        if (dragImageElement) {
+          setDragImageSafe(event, dragImageElement, 0, 0);
+        }
+      },
+      [
+        activeBlockIndex,
+        blocks,
+        clearSelectedBlockRange,
+        clearBlockReorderDragSession,
+        commitActiveBlock,
+        createDragImageElement,
+        disabled,
+        scheduleDragPreviewPointerUpdate,
+        selectedBlockSelection,
+        startBlockReorderDragSession,
+      ],
+    );
+
+    const handleDragHandleClick = useCallback(
+      (index: number) => (event: MouseEvent<HTMLButtonElement>) => {
+        if (disabled || event.button !== 0 || event.shiftKey || event.ctrlKey || event.metaKey) {
+          return;
+        }
         event.preventDefault();
         event.stopPropagation();
         if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
@@ -8595,588 +9162,147 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         setSelectionContextMenuState(null);
         setDraggedBlockIndex(null);
         setDropIndicatorIndex(null);
-        toggleDiscreteBlockSelection(index);
-        focusContainer();
-        return;
-      }
-
-      if (event.button === 2) {
-        event.preventDefault();
-        event.stopPropagation();
-        beginSelectionGesture({
-          index,
-          source: "right",
-          clientX: event.clientX,
-          clientY: event.clientY,
-          preserveCurrentRangeIfSelected: true,
-        });
-      }
-    },
-    [
-      activeBlockIndex,
-      beginSelectionGesture,
-      commitActiveBlock,
-      disabled,
-      focusContainer,
-      selectedBlockSelection,
-      toggleDiscreteBlockSelection,
-    ],
-  );
-
-  const handleContentLayerMouseDownCapture = useCallback(
-    (event: MouseEvent<HTMLDivElement>) => {
-      if (disabled) {
-        return;
-      }
-      if (event.button !== 0) {
-        return;
-      }
-      const target = event.target;
-      if (!(target instanceof HTMLElement)) {
-        return;
-      }
-      if (target.closest("a[href],button,input,textarea,[data-md-block-control='true']")) {
-        return;
-      }
-      if (target.closest(".markdown-hybrid-block[data-md-block-index]")) {
-        return;
-      }
-      if (event.ctrlKey || event.metaKey) {
-        return;
-      }
-      if (selectedBlockSelection && !event.shiftKey) {
-        clearSelectedBlockRange();
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      beginMarqueeSelectionGesture({
-        clientX: event.clientX,
-        clientY: event.clientY,
-        preserveAnchor: event.shiftKey && Boolean(selectedBlockSelection),
-      });
-    },
-    [beginMarqueeSelectionGesture, clearSelectedBlockRange, disabled, selectedBlockSelection],
-  );
-
-  const handleEditorRootMouseDownCapture = useCallback(
-    (event: MouseEvent<HTMLDivElement>) => {
-      if (disabled || !selectedBlockSelection) {
-        return;
-      }
-      if (event.shiftKey || event.ctrlKey || event.metaKey) {
-        return;
-      }
-      const target = event.target;
-      if (!(target instanceof HTMLElement)) {
-        return;
-      }
-      if (target.closest("textarea,a[href],button,input,[data-md-block-control='true']")) {
-        return;
-      }
-      if (target.closest(".markdown-hybrid-block[data-md-block-index]")) {
-        return;
-      }
-      clearSelectedBlockRange();
-    },
-    [clearSelectedBlockRange, disabled, selectedBlockSelection],
-  );
-
-  const handleBlockMouseDown = useCallback(
-    (index: number) => (event: MouseEvent<HTMLDivElement>) => {
-      if (disabled) {
-        return;
-      }
-      const target = event.target;
-      const isInteractiveElement = target instanceof HTMLElement &&
-        Boolean(target.closest("a[href],button,input,[data-md-block-control='true']"));
-      const isTextareaElement = target instanceof HTMLElement &&
-        Boolean(target.closest("textarea"));
-      if (isInteractiveElement) {
-        return;
-      }
-
-      if (event.shiftKey || event.ctrlKey || event.metaKey) {
-        return;
-      }
-
-      if (event.button !== 0) {
-        return;
-      }
-      if (isTextareaElement) {
-        return;
-      }
-      if (
-        blocks[index]?.kind === "blank" &&
-        isStructuralSeparatorBlankBlock(blocks, index)
-      ) {
-        return;
-      }
-      if (selectedBlockSelection) {
-        clearSelectedBlockRange();
-      }
-      if (activeBlockIndex === index) {
-        return;
-      }
-      event.preventDefault();
-      activateBlock(index, "end");
-    },
-    [
-      activateBlock,
-      activeBlockIndex,
-      blocks,
-      clearSelectedBlockRange,
-      disabled,
-      selectedBlockSelection,
-    ],
-  );
-
-  const handleRenderedTaskCheckboxChange = useCallback(
-    (blockIndex: number) => (event: FormEvent<HTMLDivElement>) => {
-      if (disabled) {
-        return;
-      }
-      const target = event.target;
-      if (
-        !(target instanceof HTMLInputElement) ||
-        target.type.toLowerCase() !== "checkbox" ||
-        target.dataset.mdTaskCheckbox !== "true"
-      ) {
-        return;
-      }
-
-      event.stopPropagation();
-
-      const block = blocks[blockIndex];
-      if (!block || block.kind === "hr") {
-        return;
-      }
-
-      const previewContainer = event.currentTarget;
-      const taskCheckboxes = Array.from(
-        previewContainer.querySelectorAll<HTMLInputElement>("input[data-md-task-checkbox='true']"),
-      );
-      const checkboxOrdinal = taskCheckboxes.indexOf(target);
-      if (checkboxOrdinal < 0) {
-        return;
-      }
-
-      const nextBlockRaw = toggleTaskCheckboxInBlockRaw(block.raw, checkboxOrdinal, target.checked);
-      if (nextBlockRaw === block.raw) {
-        return;
-      }
-
-      const nextMarkdown = applyEditorMarkdownNormalization(
-        replaceMarkdownBlock(markdown, block, nextBlockRaw),
-      );
-      if (nextMarkdown === markdown) {
-        return;
-      }
-      onChange(nextMarkdown);
-      setHistory((current) => pushMarkdownHistory(current, nextMarkdown, "block-commit"));
-    },
-    [blocks, disabled, markdown, onChange],
-  );
-
-  const isPointerWithinBlockOrOverlayRegion = useCallback((target: EventTarget | null, index: number) => {
-    if (!(target instanceof HTMLElement)) {
-      return false;
-    }
-    const blockElement = target.closest<HTMLElement>(".markdown-hybrid-block[data-md-block-index]");
-    if (blockElement?.dataset.mdBlockIndex === String(index)) {
-      return true;
-    }
-    const overlayRowElement = target.closest<HTMLElement>(".markdown-hybrid-overlay-row[data-md-block-index]");
-    return overlayRowElement?.dataset.mdBlockIndex === String(index);
-  }, []);
-
-  const handleBlockMouseEnter = useCallback(
-    (index: number) => (event: MouseEvent<HTMLDivElement>) => {
-      if (!disabled) {
-        setHoveredOverlayBlockIndex(index);
-      }
-      if (disabled || !isSelectionDragging || blocks.length === 0) {
-        return;
-      }
-      const gesture = selectionGestureRef.current;
-      if (!gesture?.active) {
-        return;
-      }
-      if (gesture.source !== "right") {
-        return;
-      }
-      const expectedButtonMask = gesture.source === "right" ? 2 : 1;
-      if ((event.buttons & expectedButtonMask) !== expectedButtonMask) {
-        return;
-      }
-      selectionDragPointerRef.current = { x: event.clientX, y: event.clientY };
-      const movedFarEnough = Math.abs(event.clientX - gesture.startClientX) > SELECTION_DRAG_THRESHOLD_PX ||
-        Math.abs(event.clientY - gesture.startClientY) > SELECTION_DRAG_THRESHOLD_PX;
-      if (!movedFarEnough) {
-        return;
-      }
-      gesture.didDrag = true;
-      const endPoint = getContainerLocalPoint(event.clientX, event.clientY);
-      if (!endPoint) {
-        return;
-      }
-      updateSelectionFromMarqueeContentPoints(
-        gesture.startContentX,
-        gesture.startContentY,
-        endPoint.x,
-        endPoint.y,
-      );
-    },
-    [
-      blocks.length,
-      disabled,
-      getContainerLocalPoint,
-      isSelectionDragging,
-      updateSelectionFromMarqueeContentPoints,
-    ],
-  );
-
-  const handleBlockMouseLeave = useCallback(
-    (index: number) => (event: MouseEvent<HTMLDivElement>) => {
-      if (isPointerWithinBlockOrOverlayRegion(event.relatedTarget, index)) {
-        return;
-      }
-      setHoveredOverlayBlockIndex((current) => (current === index ? null : current));
-    },
-    [isPointerWithinBlockOrOverlayRegion],
-  );
-
-  const handleOverlayRailMouseEnter = useCallback(
-    (index: number) => () => {
-      if (disabled) {
-        return;
-      }
-      setHoveredOverlayBlockIndex(index);
-    },
-    [disabled],
-  );
-
-  const handleOverlayRailMouseLeave = useCallback(
-    (index: number) => (event: MouseEvent<HTMLDivElement>) => {
-      if (isPointerWithinBlockOrOverlayRegion(event.relatedTarget, index)) {
-        return;
-      }
-      setHoveredOverlayBlockIndex((current) => (current === index ? null : current));
-    },
-    [isPointerWithinBlockOrOverlayRegion],
-  );
-
-  const handleEditorMouseLeave = useCallback(() => {
-    setHoveredOverlayBlockIndex(null);
-  }, []);
-
-  useEffect(() => {
-    if (hoveredOverlayBlockIndex === null) {
-      return;
-    }
-    const maxValidOverlayIndex = blocks.length === 0 ? 0 : blocks.length - 1;
-    if (hoveredOverlayBlockIndex < 0 || hoveredOverlayBlockIndex > maxValidOverlayIndex) {
-      setHoveredOverlayBlockIndex(null);
-    }
-  }, [blocks.length, hoveredOverlayBlockIndex]);
-
-  useEffect(() => {
-    if (draggedBlockIndex !== null) {
-      return;
-    }
-    setHoveredOverlayBlockIndex(null);
-  }, [draggedBlockIndex]);
-
-  useEffect(() => {
-    if (disabled) {
-      setHoveredOverlayBlockIndex(null);
-    }
-  }, [disabled]);
-
-  const handleDragHandleDragStart = useCallback(
-    (index: number) => (event: DragEvent<HTMLButtonElement>) => {
-      if (disabled) {
-        clearBlockReorderDragSession();
-        event.preventDefault();
-        return;
-      }
-      if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
-        clearBlockReorderDragSession();
-        event.preventDefault();
-        return;
-      }
-      startBlockReorderDragSession(index);
-      const draggingSelectionGroup = Boolean(
-        selectedBlockSelection &&
-          selectedBlockSelection.selectedIndices.length > 1 &&
-          isBlockIndexSelected(selectedBlockSelection, index),
-      );
-      if (!draggingSelectionGroup) {
-        clearSelectedBlockRange();
-      } else {
         setIsSelectionDragging(false);
-        setSelectionContextMenuState(null);
         setSelectionMarqueeRect(null);
         selectionGestureRef.current = null;
-      }
-      setInsertMenuState(null);
-      setDraggedBlockIndex(index);
-      setDropIndicatorIndex(index);
-      const previewPayload = resolveDragPreviewPayload(blocks, index, selectedBlockSelection);
-      setDragPreviewState({
-        pointerX: event.clientX,
-        pointerY: event.clientY,
-        title: previewPayload.title,
-        kindLabel: previewPayload.kindLabel,
-        snippet: previewPayload.snippet,
-        itemCount: previewPayload.itemCount,
-      });
-      scheduleDragPreviewPointerUpdate(event.clientX, event.clientY);
-      startInternalDrag(event, {
-        channel: DRAG_CHANNELS.MARKDOWN_BLOCK,
-        payload: index,
-        plainTextFallback: String(index),
-        effectAllowed: "move",
-      });
-      try {
-        event.dataTransfer.setData(INTERNAL_BLOCK_REORDER_DRAG_MIME, String(index));
-      } catch {
-        // ignore restricted dataTransfer implementations
-      }
-      const dragImageElement = createDragImageElement();
-      if (dragImageElement) {
-        setDragImageSafe(event, dragImageElement, 0, 0);
-      }
-    },
-    [
-      activeBlockIndex,
-      blocks,
-      clearSelectedBlockRange,
-      clearBlockReorderDragSession,
-      commitActiveBlock,
-      createDragImageElement,
-      disabled,
-      scheduleDragPreviewPointerUpdate,
-      selectedBlockSelection,
-      startBlockReorderDragSession,
-    ],
-  );
+        suppressNextBlockContextMenuRef.current = false;
+        clearBlockReorderDragSession();
+        setSingleBlockSelection(index);
+        focusContainer();
+      },
+      [
+        activeBlockIndex,
+        commitActiveBlock,
+        clearBlockReorderDragSession,
+        disabled,
+        focusContainer,
+        setSingleBlockSelection,
+      ],
+    );
 
-  const handleDragHandleClick = useCallback(
-    (index: number) => (event: MouseEvent<HTMLButtonElement>) => {
-      if (disabled || event.button !== 0 || event.shiftKey || event.ctrlKey || event.metaKey) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
-        return;
-      }
-      setPendingActivation(null);
-      setInsertMenuState(null);
-      setSelectionContextMenuState(null);
-      setDraggedBlockIndex(null);
-      setDropIndicatorIndex(null);
-      setIsSelectionDragging(false);
-      setSelectionMarqueeRect(null);
-      selectionGestureRef.current = null;
-      suppressNextBlockContextMenuRef.current = false;
-      clearBlockReorderDragSession();
-      setSingleBlockSelection(index);
-      focusContainer();
-    },
-    [
-      activeBlockIndex,
-      commitActiveBlock,
-      clearBlockReorderDragSession,
-      disabled,
-      focusContainer,
-      setSingleBlockSelection,
-    ],
-  );
-
-  const handleDragHandleDragEnd = useCallback(() => {
-    endInternalDrag(DRAG_CHANNELS.MARKDOWN_BLOCK);
-    clearBlockReorderDragVisualState();
-  }, [clearBlockReorderDragVisualState]);
-
-  const handleBlockDragOver = useCallback(
-    (index: number) => (event: DragEvent<HTMLDivElement>) => {
-      const activeDraggedBlockIndex = resolveActiveDraggedBlockIndex();
-      const fallbackDraggedBlockIndex = activeDraggedBlockIndex === null
-        ? readInternalDrag<number>(event, {
-          channel: DRAG_CHANNELS.MARKDOWN_BLOCK,
-        })
-        : null;
-      const resolvedDraggedBlockIndex =
-        activeDraggedBlockIndex ??
-        (typeof fallbackDraggedBlockIndex === "number" &&
-            Number.isFinite(fallbackDraggedBlockIndex)
-          ? fallbackDraggedBlockIndex
-          : null);
-      if (disabled || resolvedDraggedBlockIndex === null) {
-        return;
-      }
-      if (activeDraggedBlockIndex === null) {
-        startBlockReorderDragSession(resolvedDraggedBlockIndex);
-        setDraggedBlockIndex(resolvedDraggedBlockIndex);
-      }
-      event.preventDefault();
-      scheduleDragPreviewPointerUpdate(event.clientX, event.clientY);
-      const rect = event.currentTarget.getBoundingClientRect();
-      const nextDropIndex = event.clientY < rect.top + rect.height / 2
-        ? index
-        : index + 1;
-      if (dropIndicatorIndex !== nextDropIndex) {
-        setDropIndicatorIndex(nextDropIndex);
-      }
-      setDropEffectSafe(event, "move");
-    },
-    [
-      disabled,
-      dropIndicatorIndex,
-      resolveActiveDraggedBlockIndex,
-      scheduleDragPreviewPointerUpdate,
-      startBlockReorderDragSession,
-    ],
-  );
-
-  const handleBlockDrop = useCallback(
-    (index: number) => (event: DragEvent<HTMLDivElement>) => {
-      const activeDraggedBlockIndex = resolveActiveDraggedBlockIndex();
-      const fallbackDraggedBlockIndex = activeDraggedBlockIndex === null
-        ? readInternalDrag<number>(event, {
-          channel: DRAG_CHANNELS.MARKDOWN_BLOCK,
-        })
-        : null;
-      const resolvedDraggedBlockIndex =
-        activeDraggedBlockIndex ??
-        (typeof fallbackDraggedBlockIndex === "number" &&
-            Number.isFinite(fallbackDraggedBlockIndex)
-          ? fallbackDraggedBlockIndex
-          : null);
-      if (disabled || resolvedDraggedBlockIndex === null) {
-        return;
-      }
-      if (activeDraggedBlockIndex === null) {
-        startBlockReorderDragSession(resolvedDraggedBlockIndex);
-        setDraggedBlockIndex(resolvedDraggedBlockIndex);
-      }
-      const nextDropIndex = dropIndicatorIndex ??
-        (() => {
-          const rect = event.currentTarget.getBoundingClientRect();
-          return event.clientY < rect.top + rect.height / 2 ? index : index + 1;
-        })();
-      event.preventDefault();
-      reorderBlockByDrop(resolvedDraggedBlockIndex, nextDropIndex);
+    const handleDragHandleDragEnd = useCallback(() => {
+      endInternalDrag(DRAG_CHANNELS.MARKDOWN_BLOCK);
       clearBlockReorderDragVisualState();
-    },
-    [
-      clearBlockReorderDragVisualState,
-      disabled,
-      dropIndicatorIndex,
-      reorderBlockByDrop,
-      resolveActiveDraggedBlockIndex,
-      startBlockReorderDragSession,
-    ],
-  );
+    }, [clearBlockReorderDragVisualState]);
 
-  const handleContentLayerDragOver = useCallback(
-    (event: DragEvent<HTMLDivElement>) => {
-      const activeDraggedBlockIndex = resolveActiveDraggedBlockIndex();
-      const fallbackDraggedBlockIndex = activeDraggedBlockIndex === null
-        ? readInternalDrag<number>(event, {
-          channel: DRAG_CHANNELS.MARKDOWN_BLOCK,
-        })
-        : null;
-      const resolvedDraggedBlockIndex =
-        activeDraggedBlockIndex ??
-        (typeof fallbackDraggedBlockIndex === "number" &&
-            Number.isFinite(fallbackDraggedBlockIndex)
-          ? fallbackDraggedBlockIndex
-          : null);
-      if (disabled || resolvedDraggedBlockIndex === null) {
-        return;
-      }
-      if (activeDraggedBlockIndex === null) {
-        startBlockReorderDragSession(resolvedDraggedBlockIndex);
-        setDraggedBlockIndex(resolvedDraggedBlockIndex);
-      }
-      if (event.target instanceof HTMLElement) {
-        const targetBlock = event.target.closest(".markdown-hybrid-block[data-md-block-index]");
-        if (targetBlock) {
+    const handleBlockDragOver = useCallback(
+      (index: number) => (event: DragEvent<HTMLDivElement>) => {
+        const activeDraggedBlockIndex = resolveActiveDraggedBlockIndex();
+        const fallbackDraggedBlockIndex =
+          activeDraggedBlockIndex === null
+            ? readInternalDrag<number>(event, {
+                channel: DRAG_CHANNELS.MARKDOWN_BLOCK,
+              })
+            : null;
+        const resolvedDraggedBlockIndex =
+          activeDraggedBlockIndex ??
+          (typeof fallbackDraggedBlockIndex === "number" &&
+          Number.isFinite(fallbackDraggedBlockIndex)
+            ? fallbackDraggedBlockIndex
+            : null);
+        if (disabled || resolvedDraggedBlockIndex === null) {
           return;
         }
-      }
-      event.preventDefault();
-      scheduleDragPreviewPointerUpdate(event.clientX, event.clientY);
-      const blockElements = Array.from(
-        event.currentTarget.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
-      );
-      let nextDropIndex = blocks.length;
-      for (const blockElement of blockElements) {
-        const blockIndexRaw = blockElement.dataset.mdBlockIndex;
-        if (typeof blockIndexRaw !== "string") {
-          continue;
+        if (activeDraggedBlockIndex === null) {
+          startBlockReorderDragSession(resolvedDraggedBlockIndex);
+          setDraggedBlockIndex(resolvedDraggedBlockIndex);
         }
-        const blockIndex = Number.parseInt(blockIndexRaw, 10);
-        if (!Number.isFinite(blockIndex)) {
-          continue;
+        event.preventDefault();
+        scheduleDragPreviewPointerUpdate(event.clientX, event.clientY);
+        const rect = event.currentTarget.getBoundingClientRect();
+        const nextDropIndex = event.clientY < rect.top + rect.height / 2 ? index : index + 1;
+        if (dropIndicatorIndex !== nextDropIndex) {
+          setDropIndicatorIndex(nextDropIndex);
         }
-        const rect = blockElement.getBoundingClientRect();
-        if (event.clientY < rect.top + rect.height / 2) {
-          nextDropIndex = blockIndex;
-          break;
-        }
-        nextDropIndex = blockIndex + 1;
-      }
-      if (dropIndicatorIndex !== nextDropIndex) {
-        setDropIndicatorIndex(nextDropIndex);
-      }
-      setDropEffectSafe(event, "move");
-    },
-    [
-      blocks.length,
-      disabled,
-      dropIndicatorIndex,
-      resolveActiveDraggedBlockIndex,
-      scheduleDragPreviewPointerUpdate,
-      startBlockReorderDragSession,
-    ],
-  );
+        setDropEffectSafe(event, "move");
+      },
+      [
+        disabled,
+        dropIndicatorIndex,
+        resolveActiveDraggedBlockIndex,
+        scheduleDragPreviewPointerUpdate,
+        startBlockReorderDragSession,
+      ],
+    );
 
-  const handleContentLayerDrop = useCallback(
-    (event: DragEvent<HTMLDivElement>) => {
-      const activeDraggedBlockIndex = resolveActiveDraggedBlockIndex();
-      const fallbackDraggedBlockIndex = activeDraggedBlockIndex === null
-        ? readInternalDrag<number>(event, {
-          channel: DRAG_CHANNELS.MARKDOWN_BLOCK,
-        })
-        : null;
-      const resolvedDraggedBlockIndex =
-        activeDraggedBlockIndex ??
-        (typeof fallbackDraggedBlockIndex === "number" &&
-            Number.isFinite(fallbackDraggedBlockIndex)
-          ? fallbackDraggedBlockIndex
-          : null);
-      if (disabled || resolvedDraggedBlockIndex === null) {
-        return;
-      }
-      if (activeDraggedBlockIndex === null) {
-        startBlockReorderDragSession(resolvedDraggedBlockIndex);
-        setDraggedBlockIndex(resolvedDraggedBlockIndex);
-      }
-      if (event.target instanceof HTMLElement) {
-        const targetBlock = event.target.closest(".markdown-hybrid-block[data-md-block-index]");
-        if (targetBlock) {
+    const handleBlockDrop = useCallback(
+      (index: number) => (event: DragEvent<HTMLDivElement>) => {
+        const activeDraggedBlockIndex = resolveActiveDraggedBlockIndex();
+        const fallbackDraggedBlockIndex =
+          activeDraggedBlockIndex === null
+            ? readInternalDrag<number>(event, {
+                channel: DRAG_CHANNELS.MARKDOWN_BLOCK,
+              })
+            : null;
+        const resolvedDraggedBlockIndex =
+          activeDraggedBlockIndex ??
+          (typeof fallbackDraggedBlockIndex === "number" &&
+          Number.isFinite(fallbackDraggedBlockIndex)
+            ? fallbackDraggedBlockIndex
+            : null);
+        if (disabled || resolvedDraggedBlockIndex === null) {
           return;
         }
-      }
-      let nextDropIndex = dropIndicatorIndex;
-      if (nextDropIndex === null) {
+        if (activeDraggedBlockIndex === null) {
+          startBlockReorderDragSession(resolvedDraggedBlockIndex);
+          setDraggedBlockIndex(resolvedDraggedBlockIndex);
+        }
+        const nextDropIndex =
+          dropIndicatorIndex ??
+          (() => {
+            const rect = event.currentTarget.getBoundingClientRect();
+            return event.clientY < rect.top + rect.height / 2 ? index : index + 1;
+          })();
+        event.preventDefault();
+        reorderBlockByDrop(resolvedDraggedBlockIndex, nextDropIndex);
+        clearBlockReorderDragVisualState();
+      },
+      [
+        clearBlockReorderDragVisualState,
+        disabled,
+        dropIndicatorIndex,
+        reorderBlockByDrop,
+        resolveActiveDraggedBlockIndex,
+        startBlockReorderDragSession,
+      ],
+    );
+
+    const handleContentLayerDragOver = useCallback(
+      (event: DragEvent<HTMLDivElement>) => {
+        const activeDraggedBlockIndex = resolveActiveDraggedBlockIndex();
+        const fallbackDraggedBlockIndex =
+          activeDraggedBlockIndex === null
+            ? readInternalDrag<number>(event, {
+                channel: DRAG_CHANNELS.MARKDOWN_BLOCK,
+              })
+            : null;
+        const resolvedDraggedBlockIndex =
+          activeDraggedBlockIndex ??
+          (typeof fallbackDraggedBlockIndex === "number" &&
+          Number.isFinite(fallbackDraggedBlockIndex)
+            ? fallbackDraggedBlockIndex
+            : null);
+        if (disabled || resolvedDraggedBlockIndex === null) {
+          return;
+        }
+        if (activeDraggedBlockIndex === null) {
+          startBlockReorderDragSession(resolvedDraggedBlockIndex);
+          setDraggedBlockIndex(resolvedDraggedBlockIndex);
+        }
+        if (event.target instanceof HTMLElement) {
+          const targetBlock = event.target.closest(".markdown-hybrid-block[data-md-block-index]");
+          if (targetBlock) {
+            return;
+          }
+        }
+        event.preventDefault();
+        scheduleDragPreviewPointerUpdate(event.clientX, event.clientY);
         const blockElements = Array.from(
-          event.currentTarget.querySelectorAll<HTMLElement>(".markdown-hybrid-block[data-md-block-index]"),
+          event.currentTarget.querySelectorAll<HTMLElement>(
+            ".markdown-hybrid-block[data-md-block-index]",
+          ),
         );
-        nextDropIndex = blocks.length;
+        let nextDropIndex = blocks.length;
         for (const blockElement of blockElements) {
           const blockIndexRaw = blockElement.dataset.mdBlockIndex;
           if (typeof blockIndexRaw !== "string") {
@@ -9193,385 +9319,449 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           }
           nextDropIndex = blockIndex + 1;
         }
-      }
-      event.preventDefault();
-      reorderBlockByDrop(resolvedDraggedBlockIndex, nextDropIndex);
-      clearBlockReorderDragVisualState();
-    },
-    [
-      blocks.length,
-      clearBlockReorderDragVisualState,
-      disabled,
-      dropIndicatorIndex,
-      reorderBlockByDrop,
-      resolveActiveDraggedBlockIndex,
-      startBlockReorderDragSession,
-    ],
-  );
+        if (dropIndicatorIndex !== nextDropIndex) {
+          setDropIndicatorIndex(nextDropIndex);
+        }
+        setDropEffectSafe(event, "move");
+      },
+      [
+        blocks.length,
+        disabled,
+        dropIndicatorIndex,
+        resolveActiveDraggedBlockIndex,
+        scheduleDragPreviewPointerUpdate,
+        startBlockReorderDragSession,
+      ],
+    );
 
-  useEffect(() => {
-    if (draggedBlockIndex === null) {
-      return;
-    }
-    const handleWindowDragOver = (event: globalThis.DragEvent) => {
-      scheduleDragPreviewPointerUpdate(event.clientX, event.clientY);
-    };
-    const handleWindowDropOrEnd = () => {
-      clearBlockReorderDragVisualState();
-    };
-    window.addEventListener("dragover", handleWindowDragOver);
-    window.addEventListener("drop", handleWindowDropOrEnd);
-    window.addEventListener("dragend", handleWindowDropOrEnd);
-    return () => {
-      window.removeEventListener("dragover", handleWindowDragOver);
-      window.removeEventListener("drop", handleWindowDropOrEnd);
-      window.removeEventListener("dragend", handleWindowDropOrEnd);
-    };
-  }, [clearBlockReorderDragVisualState, draggedBlockIndex, scheduleDragPreviewPointerUpdate]);
-
-  const handleHybridEditorContextMenu = useCallback(
-    (event: MouseEvent<HTMLDivElement>) => {
-      if (disabled) {
-        return;
-      }
-      if (!(event.target instanceof HTMLElement)) {
-        return;
-      }
-      if (event.target.closest("a[href],button,input,textarea,[data-md-block-control='true']")) {
-        return;
-      }
-      const blockElement = event.target.closest<HTMLElement>(
-        ".markdown-hybrid-block[data-md-block-index]",
-      );
-      if (!blockElement) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-
-      if (suppressNextBlockContextMenuRef.current) {
-        suppressNextBlockContextMenuRef.current = false;
-        setSelectionContextMenuState(null);
-        return;
-      }
-
-      const blockIndexRaw = blockElement.dataset.mdBlockIndex;
-      if (typeof blockIndexRaw !== "string") {
-        return;
-      }
-      const parsedIndex = Number.parseInt(blockIndexRaw, 10);
-      if (!Number.isFinite(parsedIndex)) {
-        return;
-      }
-      const blockIndex = clampIndex(parsedIndex, blocks.length);
-
-      if (!isBlockIndexSelected(selectedBlockSelection, blockIndex)) {
-        if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
+    const handleContentLayerDrop = useCallback(
+      (event: DragEvent<HTMLDivElement>) => {
+        const activeDraggedBlockIndex = resolveActiveDraggedBlockIndex();
+        const fallbackDraggedBlockIndex =
+          activeDraggedBlockIndex === null
+            ? readInternalDrag<number>(event, {
+                channel: DRAG_CHANNELS.MARKDOWN_BLOCK,
+              })
+            : null;
+        const resolvedDraggedBlockIndex =
+          activeDraggedBlockIndex ??
+          (typeof fallbackDraggedBlockIndex === "number" &&
+          Number.isFinite(fallbackDraggedBlockIndex)
+            ? fallbackDraggedBlockIndex
+            : null);
+        if (disabled || resolvedDraggedBlockIndex === null) {
           return;
         }
-        setPendingActivation(null);
-        setSingleBlockSelection(blockIndex);
-      }
-
-      setInsertMenuState(null);
-      setSelectionContextMenuState({
-        blockIndex,
-        x: event.clientX,
-        y: event.clientY,
-      });
-      selectionGestureRef.current = null;
-      setIsSelectionDragging(false);
-      focusContainer();
-    },
-    [
-      activeBlockIndex,
-      blocks.length,
-      commitActiveBlock,
-      disabled,
-      focusContainer,
-      selectedBlockSelection,
-      setSingleBlockSelection,
-    ],
-  );
-
-  const handleSelectionContextMenuMouseDown = useCallback(
-    (event: MouseEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-    },
-    [],
-  );
-
-  const handleSelectionContextMenuItemMouseDown = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-    },
-    [],
-  );
-
-  const handleSelectionContextMenuClearButton = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      handleSelectionContextMenuItemMouseDown(event);
-      handleSelectionContextMenuClear(event);
-    },
-    [handleSelectionContextMenuClear, handleSelectionContextMenuItemMouseDown],
-  );
-
-  const handleSelectionContextMenuDeleteButton = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      handleSelectionContextMenuItemMouseDown(event);
-      handleSelectionContextMenuDelete(event);
-    },
-    [handleSelectionContextMenuDelete, handleSelectionContextMenuItemMouseDown],
-  );
-
-  const activeInsertMenuCategoryId = insertMenuState?.categoryId;
-  const activeInsertMenuItems = activeInsertMenuCategoryId &&
-    activeInsertMenuCategoryId !== "advanced"
-    ? (INSERT_MENU_ITEMS_BY_CATEGORY[activeInsertMenuCategoryId] ?? [])
-    : [];
-  const activeAdvancedInsertTemplateSections = activeInsertMenuCategoryId === "advanced"
-    ? getAdvancedInsertTemplateSections(activeInsertMenuContext)
-    : [];
-  const activeAdvancedInsertTemplate = insertMenuState?.advancedTemplateId
-    ? (getAdvancedInsertTemplateById(insertMenuState.advancedTemplateId) ?? null)
-    : null;
-  const activeAdvancedSequenceNumberPreview = insertMenuState?.phase === "advanced-variant" && insertMenuState
-    ? typeof insertMenuState.advancedSequenceNumber === "number" &&
-        Number.isFinite(insertMenuState.advancedSequenceNumber)
-      ? Math.max(1, Math.floor(insertMenuState.advancedSequenceNumber))
-      : resolveNextGlobalSequenceNumber(markdown)
-    : null;
-  const activeDropSlotTop = useMemo(() => {
-    if (draggedBlockIndex === null || dropIndicatorIndex === null) {
-      return null;
-    }
-    const resolveRow = (index: number) =>
-      overlayLayout.byIndex.get(index) ??
-      overlayRows.find((row) => row.index === index) ??
-      null;
-    if (dropIndicatorIndex <= 0) {
-      const first = resolveRow(0);
-      return first ? Math.max(0, first.top - 5) : 0;
-    }
-    if (dropIndicatorIndex >= blocks.length) {
-      const lastIndex = Math.max(0, blocks.length - 1);
-      const last = resolveRow(lastIndex);
-      return last ? Math.max(0, last.top + last.height + 5) : null;
-    }
-    const target = resolveRow(dropIndicatorIndex);
-    if (target) {
-      return Math.max(0, target.top - 5);
-    }
-    const previous = resolveRow(dropIndicatorIndex - 1);
-    return previous ? Math.max(0, previous.top + previous.height + 5) : null;
-  }, [blocks.length, draggedBlockIndex, dropIndicatorIndex, overlayLayout.byIndex, overlayRows]);
-  const activeDragHintLabel = dragPreviewState && draggedBlockIndex !== null
-    ? dragPreviewState.itemCount > 1
-      ? `Move ${dragPreviewState.itemCount} blocks`
-      : "Move block"
-    : null;
-  const activeDragHintMetaLabel = activeDragHintLabel && dragPreviewState && draggedBlockIndex !== null
-    ? `Type: ${dragPreviewState.kindLabel} · Source #${draggedBlockIndex + 1}`
-    : null;
-  const dragPreviewOverlay = activeDragHintLabel && dragPreviewState && draggedBlockIndex !== null && !disabled
-    ? (
-      <div
-        className="markdown-hybrid-drag-preview"
-        aria-hidden="true"
-        style={{
-          left: dragPreviewState.pointerX + DRAG_PREVIEW_POINTER_OFFSET_X,
-          top: dragPreviewState.pointerY + DRAG_PREVIEW_POINTER_OFFSET_Y,
-        }}
-      >
-        <span className="markdown-hybrid-drag-preview-label">{activeDragHintLabel}</span>
-        {activeDragHintMetaLabel ? (
-          <span className="markdown-hybrid-drag-preview-meta">{activeDragHintMetaLabel}</span>
-        ) : null}
-        <span className="markdown-hybrid-drag-preview-snippet">{dragPreviewState.snippet}</span>
-      </div>
-    )
-    : null;
-
-  const handleInsertMenuKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
-    const menuElement = insertMenuRef.current;
-    if (!menuElement) {
-      return;
-    }
-    const menuItems = Array.from(
-      menuElement.querySelectorAll<HTMLButtonElement>("button[role='menuitem']"),
-    );
-    if (menuItems.length === 0) {
-      return;
-    }
-    const activeElement = document.activeElement;
-    const currentIndex = menuItems.findIndex((item) => item === activeElement);
-    const focusMenuItem = (nextIndex: number) => {
-      const clampedIndex = clampIndex(nextIndex, menuItems.length);
-      const nextItem = menuItems[clampedIndex];
-      if (!nextItem) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      try {
-        nextItem.focus({ preventScroll: true });
-      } catch {
-        nextItem.focus();
-      }
-    };
-
-    if (event.key === "ArrowDown" || event.key === "ArrowRight") {
-      focusMenuItem(currentIndex < 0 ? 0 : (currentIndex + 1) % menuItems.length);
-      return;
-    }
-    if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
-      focusMenuItem(
-        currentIndex < 0
-          ? menuItems.length - 1
-          : (currentIndex - 1 + menuItems.length) % menuItems.length,
-      );
-      return;
-    }
-    if (event.key === "Home") {
-      focusMenuItem(0);
-      return;
-    }
-    if (event.key === "End") {
-      focusMenuItem(menuItems.length - 1);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!insertMenuState) {
-      return;
-    }
-    const handle = window.requestAnimationFrame(() => {
-      if (insertMenuState.phase === "image-link-picker") {
-        const searchInput = insertMenuRef.current?.querySelector<HTMLInputElement>(
-          "input[type='search']",
-        );
-        if (searchInput) {
-          try {
-            searchInput.focus({ preventScroll: true });
-          } catch {
-            searchInput.focus();
+        if (activeDraggedBlockIndex === null) {
+          startBlockReorderDragSession(resolvedDraggedBlockIndex);
+          setDraggedBlockIndex(resolvedDraggedBlockIndex);
+        }
+        if (event.target instanceof HTMLElement) {
+          const targetBlock = event.target.closest(".markdown-hybrid-block[data-md-block-index]");
+          if (targetBlock) {
+            return;
           }
         }
-        return;
-      }
-      const firstMenuItem = insertMenuRef.current?.querySelector<HTMLButtonElement>(
-        "button[role='menuitem']",
-      );
-      if (!firstMenuItem) {
-        return;
-      }
-      try {
-        firstMenuItem.focus({ preventScroll: true });
-      } catch {
-        firstMenuItem.focus();
-      }
-    });
-    return () => window.cancelAnimationFrame(handle);
-  }, [insertMenuState]);
+        let nextDropIndex = dropIndicatorIndex;
+        if (nextDropIndex === null) {
+          const blockElements = Array.from(
+            event.currentTarget.querySelectorAll<HTMLElement>(
+              ".markdown-hybrid-block[data-md-block-index]",
+            ),
+          );
+          nextDropIndex = blocks.length;
+          for (const blockElement of blockElements) {
+            const blockIndexRaw = blockElement.dataset.mdBlockIndex;
+            if (typeof blockIndexRaw !== "string") {
+              continue;
+            }
+            const blockIndex = Number.parseInt(blockIndexRaw, 10);
+            if (!Number.isFinite(blockIndex)) {
+              continue;
+            }
+            const rect = blockElement.getBoundingClientRect();
+            if (event.clientY < rect.top + rect.height / 2) {
+              nextDropIndex = blockIndex;
+              break;
+            }
+            nextDropIndex = blockIndex + 1;
+          }
+        }
+        event.preventDefault();
+        reorderBlockByDrop(resolvedDraggedBlockIndex, nextDropIndex);
+        clearBlockReorderDragVisualState();
+      },
+      [
+        blocks.length,
+        clearBlockReorderDragVisualState,
+        disabled,
+        dropIndicatorIndex,
+        reorderBlockByDrop,
+        resolveActiveDraggedBlockIndex,
+        startBlockReorderDragSession,
+      ],
+    );
 
-  const renderInsertMenuPanel = (blockIndex: number) => {
-    const isInsertMenuOpen = Boolean(insertMenuState && insertMenuState.blockIndex === blockIndex);
-    if (!isInsertMenuOpen) {
-      return null;
-    }
-    return (
-      <div
-        ref={insertMenuRef}
-        className="markdown-hybrid-insert-menu markdown-hybrid-insert-menu-overlay"
-        data-md-block-control="true"
-        role="menu"
-        aria-label="Insert block"
-        onMouseDown={(event) => {
-          event.stopPropagation();
-        }}
-        onKeyDown={handleInsertMenuKeyDown}
-      >
-        <div className="markdown-hybrid-insert-menu-header">
-          <span className="markdown-hybrid-insert-menu-title">
-            {insertMenuState?.phase === "advanced-variant" && activeAdvancedInsertTemplate
-              ? activeAdvancedInsertTemplate.label
-              : insertMenuState?.phase === "image-link-picker"
-              ? "Select PNG"
-              : insertMenuState?.insertAbove
-              ? "Insert Above"
-              : "Insert Below"}
-          </span>
-          {insertMenuState?.phase !== "categories" ? (
-            <button
-              type="button"
-              className="markdown-hybrid-insert-menu-nav"
-              onClick={handleInsertMenuBack}
-            >
-              Back
-            </button>
+    useEffect(() => {
+      if (draggedBlockIndex === null) {
+        return;
+      }
+      const handleWindowDragOver = (event: globalThis.DragEvent) => {
+        scheduleDragPreviewPointerUpdate(event.clientX, event.clientY);
+      };
+      const handleWindowDropOrEnd = () => {
+        clearBlockReorderDragVisualState();
+      };
+      window.addEventListener("dragover", handleWindowDragOver);
+      window.addEventListener("drop", handleWindowDropOrEnd);
+      window.addEventListener("dragend", handleWindowDropOrEnd);
+      return () => {
+        window.removeEventListener("dragover", handleWindowDragOver);
+        window.removeEventListener("drop", handleWindowDropOrEnd);
+        window.removeEventListener("dragend", handleWindowDropOrEnd);
+      };
+    }, [clearBlockReorderDragVisualState, draggedBlockIndex, scheduleDragPreviewPointerUpdate]);
+
+    const handleHybridEditorContextMenu = useCallback(
+      (event: MouseEvent<HTMLDivElement>) => {
+        if (disabled) {
+          return;
+        }
+        if (!(event.target instanceof HTMLElement)) {
+          return;
+        }
+        if (event.target.closest("a[href],button,input,textarea,[data-md-block-control='true']")) {
+          return;
+        }
+        const blockElement = event.target.closest<HTMLElement>(
+          ".markdown-hybrid-block[data-md-block-index]",
+        );
+        if (!blockElement) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (suppressNextBlockContextMenuRef.current) {
+          suppressNextBlockContextMenuRef.current = false;
+          setSelectionContextMenuState(null);
+          return;
+        }
+
+        const blockIndexRaw = blockElement.dataset.mdBlockIndex;
+        if (typeof blockIndexRaw !== "string") {
+          return;
+        }
+        const parsedIndex = Number.parseInt(blockIndexRaw, 10);
+        if (!Number.isFinite(parsedIndex)) {
+          return;
+        }
+        const blockIndex = clampIndex(parsedIndex, blocks.length);
+
+        if (!isBlockIndexSelected(selectedBlockSelection, blockIndex)) {
+          if (activeBlockIndex !== null && !commitActiveBlock({ deactivate: true })) {
+            return;
+          }
+          setPendingActivation(null);
+          setSingleBlockSelection(blockIndex);
+        }
+
+        setInsertMenuState(null);
+        setSelectionContextMenuState({
+          blockIndex,
+          x: event.clientX,
+          y: event.clientY,
+        });
+        selectionGestureRef.current = null;
+        setIsSelectionDragging(false);
+        focusContainer();
+      },
+      [
+        activeBlockIndex,
+        blocks.length,
+        commitActiveBlock,
+        disabled,
+        focusContainer,
+        selectedBlockSelection,
+        setSingleBlockSelection,
+      ],
+    );
+
+    const handleSelectionContextMenuMouseDown = useCallback((event: MouseEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+    }, []);
+
+    const handleSelectionContextMenuItemMouseDown = useCallback(
+      (event: MouseEvent<HTMLButtonElement>) => {
+        event.preventDefault();
+        event.stopPropagation();
+      },
+      [],
+    );
+
+    const handleSelectionContextMenuClearButton = useCallback(
+      (event: MouseEvent<HTMLButtonElement>) => {
+        handleSelectionContextMenuItemMouseDown(event);
+        handleSelectionContextMenuClear(event);
+      },
+      [handleSelectionContextMenuClear, handleSelectionContextMenuItemMouseDown],
+    );
+
+    const handleSelectionContextMenuDeleteButton = useCallback(
+      (event: MouseEvent<HTMLButtonElement>) => {
+        handleSelectionContextMenuItemMouseDown(event);
+        handleSelectionContextMenuDelete(event);
+      },
+      [handleSelectionContextMenuDelete, handleSelectionContextMenuItemMouseDown],
+    );
+
+    const activeInsertMenuCategoryId = insertMenuState?.categoryId;
+    const activeInsertMenuItems =
+      activeInsertMenuCategoryId && activeInsertMenuCategoryId !== "advanced"
+        ? (INSERT_MENU_ITEMS_BY_CATEGORY[activeInsertMenuCategoryId] ?? [])
+        : [];
+    const activeAdvancedInsertTemplateSections =
+      activeInsertMenuCategoryId === "advanced"
+        ? getAdvancedInsertTemplateSections(activeInsertMenuContext)
+        : [];
+    const activeAdvancedInsertTemplate = insertMenuState?.advancedTemplateId
+      ? (getAdvancedInsertTemplateById(insertMenuState.advancedTemplateId) ?? null)
+      : null;
+    const activeAdvancedSequenceNumberPreview =
+      insertMenuState?.phase === "advanced-variant" && insertMenuState
+        ? typeof insertMenuState.advancedSequenceNumber === "number" &&
+          Number.isFinite(insertMenuState.advancedSequenceNumber)
+          ? Math.max(1, Math.floor(insertMenuState.advancedSequenceNumber))
+          : resolveNextGlobalSequenceNumber(markdown)
+        : null;
+    const activeDropSlotTop = useMemo(() => {
+      if (draggedBlockIndex === null || dropIndicatorIndex === null) {
+        return null;
+      }
+      const resolveRow = (index: number) =>
+        overlayLayout.byIndex.get(index) ?? overlayRows.find((row) => row.index === index) ?? null;
+      if (dropIndicatorIndex <= 0) {
+        const first = resolveRow(0);
+        return first ? Math.max(0, first.top - 5) : 0;
+      }
+      if (dropIndicatorIndex >= blocks.length) {
+        const lastIndex = Math.max(0, blocks.length - 1);
+        const last = resolveRow(lastIndex);
+        return last ? Math.max(0, last.top + last.height + 5) : null;
+      }
+      const target = resolveRow(dropIndicatorIndex);
+      if (target) {
+        return Math.max(0, target.top - 5);
+      }
+      const previous = resolveRow(dropIndicatorIndex - 1);
+      return previous ? Math.max(0, previous.top + previous.height + 5) : null;
+    }, [blocks.length, draggedBlockIndex, dropIndicatorIndex, overlayLayout.byIndex, overlayRows]);
+    const activeDragHintLabel =
+      dragPreviewState && draggedBlockIndex !== null
+        ? dragPreviewState.itemCount > 1
+          ? `Move ${dragPreviewState.itemCount} blocks`
+          : "Move block"
+        : null;
+    const activeDragHintMetaLabel =
+      activeDragHintLabel && dragPreviewState && draggedBlockIndex !== null
+        ? `Type: ${dragPreviewState.kindLabel} · Source #${draggedBlockIndex + 1}`
+        : null;
+    const dragPreviewOverlay =
+      activeDragHintLabel && dragPreviewState && draggedBlockIndex !== null && !disabled ? (
+        <div
+          className="markdown-hybrid-drag-preview"
+          aria-hidden="true"
+          style={{
+            left: dragPreviewState.pointerX + DRAG_PREVIEW_POINTER_OFFSET_X,
+            top: dragPreviewState.pointerY + DRAG_PREVIEW_POINTER_OFFSET_Y,
+          }}
+        >
+          <span className="markdown-hybrid-drag-preview-label">{activeDragHintLabel}</span>
+          {activeDragHintMetaLabel ? (
+            <span className="markdown-hybrid-drag-preview-meta">{activeDragHintMetaLabel}</span>
           ) : null}
+          <span className="markdown-hybrid-drag-preview-snippet">{dragPreviewState.snippet}</span>
         </div>
-        <div className="markdown-hybrid-insert-menu-list">
-          {insertMenuState?.phase === "image-link-picker" ? (
-            <VaultPngPicker
-              assets={vaultPngAssets}
-              query={insertMenuState.query ?? ""}
-              onQueryChange={handleInsertImageLinkQueryChange}
-              onSearchKeyDown={handleInsertImageLinkSearchKeyDown}
-              onSelect={(candidate) => handleInsertImageLinkSelectCandidate(candidate.relPath)}
-              highlightedIndex={insertMenuState.highlightedIndex ?? 0}
-              onHighlightedIndexChange={(nextIndex) =>
-                setInsertMenuState((current) =>
-                  current && current.phase === "image-link-picker"
-                    ? { ...current, highlightedIndex: nextIndex }
-                    : current
-                )
-              }
-              emptyLabel="No PNG files found in the current vault."
-              className="markdown-hybrid-insert-image-picker"
-            />
-          ) : insertMenuState?.phase === "categories"
-            ? INSERT_MENU_CATEGORIES.flatMap((category) => {
-              const categoryButton = (
-                <button
-                  key={category.id}
-                  type="button"
-                  className="markdown-hybrid-insert-menu-item markdown-hybrid-insert-menu-item-row"
-                  onClick={handleSelectInsertMenuCategory(category.id)}
-                  role="menuitem"
-                >
-                  {renderInsertMenuRowContent({
-                    label: category.label,
-                    icon: category.icon,
-                  })}
-                </button>
-              );
+      ) : null;
 
-              if (category.id !== "standard-blocks") {
-                return [categoryButton];
-              }
+    const handleInsertMenuKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
+      const menuElement = insertMenuRef.current;
+      if (!menuElement) {
+        return;
+      }
+      const menuItems = Array.from(
+        menuElement.querySelectorAll<HTMLButtonElement>("button[role='menuitem']"),
+      );
+      if (menuItems.length === 0) {
+        return;
+      }
+      const activeElement = document.activeElement;
+      const currentIndex = menuItems.findIndex((item) => item === activeElement);
+      const focusMenuItem = (nextIndex: number) => {
+        const clampedIndex = clampIndex(nextIndex, menuItems.length);
+        const nextItem = menuItems[clampedIndex];
+        if (!nextItem) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        try {
+          nextItem.focus({ preventScroll: true });
+        } catch {
+          nextItem.focus();
+        }
+      };
 
-              const canvasButton = (
-                <button
-                  key={INSERT_MENU_CANVAS_ITEM.id}
-                  type="button"
-                  className="markdown-hybrid-insert-menu-item markdown-hybrid-insert-menu-item-row"
-                  onClick={handleInsertMenuItemSelect(INSERT_MENU_CANVAS_ITEM)}
-                  role="menuitem"
-                >
-                  {renderInsertMenuRowContent({
-                    label: INSERT_MENU_CANVAS_ITEM.label,
-                    icon: INSERT_MENU_CANVAS_ITEM.icon,
-                  })}
-                </button>
-              );
+      if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+        focusMenuItem(currentIndex < 0 ? 0 : (currentIndex + 1) % menuItems.length);
+        return;
+      }
+      if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
+        focusMenuItem(
+          currentIndex < 0
+            ? menuItems.length - 1
+            : (currentIndex - 1 + menuItems.length) % menuItems.length,
+        );
+        return;
+      }
+      if (event.key === "Home") {
+        focusMenuItem(0);
+        return;
+      }
+      if (event.key === "End") {
+        focusMenuItem(menuItems.length - 1);
+      }
+    }, []);
 
-              return [categoryButton, canvasButton];
-            })
-            : insertMenuState?.phase === "advanced-variant" && activeAdvancedInsertTemplate
-            ? (
+    useEffect(() => {
+      if (!insertMenuState) {
+        return;
+      }
+      const handle = window.requestAnimationFrame(() => {
+        if (insertMenuState.phase === "image-link-picker") {
+          const searchInput =
+            insertMenuRef.current?.querySelector<HTMLInputElement>("input[type='search']");
+          if (searchInput) {
+            try {
+              searchInput.focus({ preventScroll: true });
+            } catch {
+              searchInput.focus();
+            }
+          }
+          return;
+        }
+        const firstMenuItem =
+          insertMenuRef.current?.querySelector<HTMLButtonElement>("button[role='menuitem']");
+        if (!firstMenuItem) {
+          return;
+        }
+        try {
+          firstMenuItem.focus({ preventScroll: true });
+        } catch {
+          firstMenuItem.focus();
+        }
+      });
+      return () => window.cancelAnimationFrame(handle);
+    }, [insertMenuState]);
+
+    const renderInsertMenuPanel = (blockIndex: number) => {
+      const isInsertMenuOpen = Boolean(
+        insertMenuState && insertMenuState.blockIndex === blockIndex,
+      );
+      if (!isInsertMenuOpen) {
+        return null;
+      }
+      return (
+        <div
+          ref={insertMenuRef}
+          className="markdown-hybrid-insert-menu markdown-hybrid-insert-menu-overlay"
+          data-md-block-control="true"
+          role="menu"
+          aria-label="Insert block"
+          onMouseDown={(event) => {
+            event.stopPropagation();
+          }}
+          onKeyDown={handleInsertMenuKeyDown}
+        >
+          <div className="markdown-hybrid-insert-menu-header">
+            <span className="markdown-hybrid-insert-menu-title">
+              {insertMenuState?.phase === "advanced-variant" && activeAdvancedInsertTemplate
+                ? activeAdvancedInsertTemplate.label
+                : insertMenuState?.phase === "image-link-picker"
+                  ? "Select PNG"
+                  : insertMenuState?.insertAbove
+                    ? "Insert Above"
+                    : "Insert Below"}
+            </span>
+            {insertMenuState?.phase !== "categories" ? (
+              <button
+                type="button"
+                className="markdown-hybrid-insert-menu-nav"
+                onClick={handleInsertMenuBack}
+              >
+                Back
+              </button>
+            ) : null}
+          </div>
+          <div className="markdown-hybrid-insert-menu-list">
+            {insertMenuState?.phase === "image-link-picker" ? (
+              <VaultPngPicker
+                assets={vaultPngAssets}
+                query={insertMenuState.query ?? ""}
+                onQueryChange={handleInsertImageLinkQueryChange}
+                onSearchKeyDown={handleInsertImageLinkSearchKeyDown}
+                onSelect={(candidate) => handleInsertImageLinkSelectCandidate(candidate.relPath)}
+                highlightedIndex={insertMenuState.highlightedIndex ?? 0}
+                onHighlightedIndexChange={(nextIndex) =>
+                  setInsertMenuState((current) =>
+                    current && current.phase === "image-link-picker"
+                      ? { ...current, highlightedIndex: nextIndex }
+                      : current,
+                  )
+                }
+                emptyLabel="No PNG files found in the current vault."
+                className="markdown-hybrid-insert-image-picker"
+              />
+            ) : insertMenuState?.phase === "categories" ? (
+              INSERT_MENU_CATEGORIES.flatMap((category) => {
+                const categoryButton = (
+                  <button
+                    key={category.id}
+                    type="button"
+                    className="markdown-hybrid-insert-menu-item markdown-hybrid-insert-menu-item-row"
+                    onClick={handleSelectInsertMenuCategory(category.id)}
+                    role="menuitem"
+                  >
+                    {renderInsertMenuRowContent({
+                      label: category.label,
+                      icon: category.icon,
+                    })}
+                  </button>
+                );
+
+                if (category.id !== "standard-blocks") {
+                  return [categoryButton];
+                }
+
+                const canvasButton = (
+                  <button
+                    key={INSERT_MENU_CANVAS_ITEM.id}
+                    type="button"
+                    className="markdown-hybrid-insert-menu-item markdown-hybrid-insert-menu-item-row"
+                    onClick={handleInsertMenuItemSelect(INSERT_MENU_CANVAS_ITEM)}
+                    role="menuitem"
+                  >
+                    {renderInsertMenuRowContent({
+                      label: INSERT_MENU_CANVAS_ITEM.label,
+                      icon: INSERT_MENU_CANVAS_ITEM.icon,
+                    })}
+                  </button>
+                );
+
+                return [categoryButton, canvasButton];
+              })
+            ) : insertMenuState?.phase === "advanced-variant" && activeAdvancedInsertTemplate ? (
               <>
                 <div
                   className="markdown-hybrid-insert-menu-advanced-sequence-control"
@@ -9617,783 +9807,925 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
                   >
                     {renderInsertMenuRowContent({
                       label: option.label,
-                      description: activeAdvancedSequenceNumberPreview !== null
-                        ? option.id === "task"
-                          ? `Insert as numbered task ${activeAdvancedSequenceNumberPreview})`
-                          : `Insert as #card block ${activeAdvancedSequenceNumberPreview})`
-                        : option.description,
-                      icon: option.id === "card"
-                        ? activeAdvancedInsertTemplate.icon
-                        : option.icon,
+                      description:
+                        activeAdvancedSequenceNumberPreview !== null
+                          ? option.id === "task"
+                            ? `Insert as numbered task ${activeAdvancedSequenceNumberPreview})`
+                            : `Insert as #card block ${activeAdvancedSequenceNumberPreview})`
+                          : option.description,
+                      icon: option.id === "card" ? activeAdvancedInsertTemplate.icon : option.icon,
                     })}
                   </button>
                 ))}
               </>
-            )
-            : insertMenuState?.categoryId === "advanced"
-            ? activeAdvancedInsertTemplateSections.flatMap((section) =>
-              section.items.map((item) => (
+            ) : insertMenuState?.categoryId === "advanced" ? (
+              activeAdvancedInsertTemplateSections.flatMap((section) =>
+                section.items.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="markdown-hybrid-insert-menu-item markdown-hybrid-insert-menu-item-tile"
+                    onClick={handleSelectAdvancedInsertTemplate(item.id)}
+                    role="menuitem"
+                    title={item.description}
+                  >
+                    <span className="markdown-hybrid-insert-menu-item-tile-header">
+                      {item.icon ? (
+                        <span
+                          className="markdown-hybrid-insert-menu-item-icon"
+                          aria-hidden="true"
+                          data-md-insert-menu-icon={item.icon}
+                        >
+                          <InsertMenuIconGraphic icon={item.icon} />
+                        </span>
+                      ) : null}
+                      <span className="markdown-hybrid-insert-menu-item-label">{item.label}</span>
+                    </span>
+                    {item.description ? (
+                      <span className="markdown-hybrid-insert-menu-item-description">
+                        {item.description}
+                      </span>
+                    ) : null}
+                  </button>
+                )),
+              )
+            ) : (
+              activeInsertMenuItems.map((item) => (
                 <button
                   key={item.id}
                   type="button"
-                  className="markdown-hybrid-insert-menu-item markdown-hybrid-insert-menu-item-tile"
-                  onClick={handleSelectAdvancedInsertTemplate(item.id)}
+                  className="markdown-hybrid-insert-menu-item markdown-hybrid-insert-menu-item-row"
+                  onClick={handleInsertMenuItemSelect(item)}
                   role="menuitem"
-                  title={item.description}
                 >
-                  <span className="markdown-hybrid-insert-menu-item-tile-header">
-                    {item.icon ? (
-                      <span
-                        className="markdown-hybrid-insert-menu-item-icon"
-                        aria-hidden="true"
-                        data-md-insert-menu-icon={item.icon}
-                      >
-                        <InsertMenuIconGraphic icon={item.icon} />
-                      </span>
-                    ) : null}
-                    <span className="markdown-hybrid-insert-menu-item-label">{item.label}</span>
-                  </span>
-                  {item.description ? (
-                    <span className="markdown-hybrid-insert-menu-item-description">
-                      {item.description}
-                    </span>
-                  ) : null}
+                  {renderInsertMenuRowContent({
+                    label: item.label,
+                    description: item.description,
+                    icon: item.icon,
+                  })}
                 </button>
               ))
-            )
-            : activeInsertMenuItems.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="markdown-hybrid-insert-menu-item markdown-hybrid-insert-menu-item-row"
-                onClick={handleInsertMenuItemSelect(item)}
-                role="menuitem"
-              >
-                {renderInsertMenuRowContent({
-                  label: item.label,
-                  description: item.description,
-                  icon: item.icon,
-                })}
-              </button>
-            ))}
+            )}
+          </div>
+          <button
+            type="button"
+            className="markdown-hybrid-insert-menu-close markdown-hybrid-insert-menu-item-row"
+            onClick={handleInsertMenuClose}
+          >
+            {renderInsertMenuRowContent({
+              label: "Close Menu (Esc)",
+              icon: "close",
+            })}
+          </button>
         </div>
-        <button
-          type="button"
-          className="markdown-hybrid-insert-menu-close markdown-hybrid-insert-menu-item-row"
-          onClick={handleInsertMenuClose}
-        >
-          {renderInsertMenuRowContent({
-            label: "Close Menu (Esc)",
-            icon: "close",
-          })}
-        </button>
-      </div>
-    );
-  };
+      );
+    };
 
-  const renderOverlayRow = (options: {
-    blockIndex: number;
-    kind: MarkdownBlock["kind"];
-    top: number;
-    height: number;
-    cardGroupId?: string;
-    cardGroupRole?: "start" | "inner" | "end";
-    isDragHandleDisabled?: boolean;
-    insertButtonTitle?: string;
-  }) => {
-    const blockIndex = options.blockIndex;
-    const isSelected = !disabled && isBlockIndexSelected(selectedBlockSelection, blockIndex);
-    const isActive = !disabled && activeBlockIndex === blockIndex;
-    const isGroupDrag = Boolean(
-      draggedBlockIndex !== null &&
+    const renderOverlayRow = (options: {
+      blockIndex: number;
+      kind: MarkdownBlock["kind"];
+      top: number;
+      height: number;
+      cardGroupId?: string;
+      cardGroupRole?: "start" | "inner" | "end";
+      isDragHandleDisabled?: boolean;
+      insertButtonTitle?: string;
+    }) => {
+      const blockIndex = options.blockIndex;
+      const isSelected = !disabled && isBlockIndexSelected(selectedBlockSelection, blockIndex);
+      const isActive = !disabled && activeBlockIndex === blockIndex;
+      const isGroupDrag = Boolean(
+        draggedBlockIndex !== null &&
         selectedBlockSelection &&
         selectedBlockSelection.selectedIndices.length > 1 &&
         isBlockIndexSelected(selectedBlockSelection, draggedBlockIndex),
-    );
-    const isDragging = isGroupDrag
-      ? isBlockIndexSelected(selectedBlockSelection, blockIndex)
-      : draggedBlockIndex === blockIndex;
-    const isInsertMenuOpen = Boolean(insertMenuState && insertMenuState.blockIndex === blockIndex);
-    const showLeftControls = !disabled && (
-      hoveredOverlayBlockIndex === blockIndex ||
-      isInsertMenuOpen ||
-      isDragging
-    );
-    return (
-      <div
-        key={`overlay-row:${blockIndex}`}
-        className={`markdown-hybrid-overlay-row${showLeftControls ? " is-left-controls-visible" : ""}`}
-        data-md-block-index={blockIndex}
-        data-md-block-id={String(blockIndex)}
-        data-md-block-kind={options.kind}
-        data-md-card-group-id={options.cardGroupId ?? undefined}
-        data-md-card-group-role={options.cardGroupRole ?? undefined}
-        style={{ top: options.top, height: options.height }}
-      >
+      );
+      const isDragging = isGroupDrag
+        ? isBlockIndexSelected(selectedBlockSelection, blockIndex)
+        : draggedBlockIndex === blockIndex;
+      const isInsertMenuOpen = Boolean(
+        insertMenuState && insertMenuState.blockIndex === blockIndex,
+      );
+      const showLeftControls =
+        !disabled && (hoveredOverlayBlockIndex === blockIndex || isInsertMenuOpen || isDragging);
+      return (
         <div
-          className="markdown-hybrid-overlay-rail markdown-hybrid-overlay-rail-left"
-          onMouseEnter={handleOverlayRailMouseEnter(blockIndex)}
-          onMouseLeave={handleOverlayRailMouseLeave(blockIndex)}
+          key={`overlay-row:${blockIndex}`}
+          className={`markdown-hybrid-overlay-row${showLeftControls ? " is-left-controls-visible" : ""}`}
+          data-md-block-index={blockIndex}
+          data-md-block-id={String(blockIndex)}
+          data-md-block-kind={options.kind}
+          data-md-card-group-id={options.cardGroupId ?? undefined}
+          data-md-card-group-role={options.cardGroupRole ?? undefined}
+          style={{ top: options.top, height: options.height }}
+        >
+          <div
+            className="markdown-hybrid-overlay-rail markdown-hybrid-overlay-rail-left"
+            onMouseEnter={handleOverlayRailMouseEnter(blockIndex)}
+            onMouseLeave={handleOverlayRailMouseLeave(blockIndex)}
+          >
+            <button
+              type="button"
+              className="markdown-hybrid-overlay-control markdown-hybrid-block-control markdown-hybrid-block-drag-handle"
+              data-md-block-control="true"
+              draggable={!disabled && !options.isDragHandleDisabled}
+              onMouseDown={(event) => {
+                event.stopPropagation();
+              }}
+              onClick={handleDragHandleClick(blockIndex)}
+              onDragStart={handleDragHandleDragStart(blockIndex)}
+              onDragEnd={handleDragHandleDragEnd}
+              aria-label="Block verschieben"
+              title={options.isDragHandleDisabled ? "No block available" : "Move block"}
+              disabled={disabled || options.isDragHandleDisabled}
+            >
+              <span className="markdown-hybrid-block-drag-handle-grip" aria-hidden="true">
+                ⋮⋮
+              </span>
+            </button>
+            <button
+              type="button"
+              className="markdown-hybrid-overlay-control markdown-hybrid-block-control markdown-hybrid-block-insert-button"
+              data-md-block-control="true"
+              onMouseDown={(event) => {
+                event.stopPropagation();
+              }}
+              onClick={handleOpenInsertMenu(blockIndex)}
+              aria-label="Insert block"
+              title={options.insertButtonTitle ?? "Insert block below (Shift = above)"}
+              disabled={disabled}
+            >
+              <span aria-hidden="true">+</span>
+            </button>
+            {renderInsertMenuPanel(blockIndex)}
+          </div>
+          <div className="markdown-hybrid-overlay-rail markdown-hybrid-overlay-rail-right">
+            <span
+              className={`markdown-hybrid-overlay-right-status${
+                isSelected ? " is-selected" : ""
+              }${isActive ? " is-active" : ""}${isDragging ? " is-dragging" : ""}`}
+              aria-hidden="true"
+              title={
+                isDragging
+                  ? "Block wird verschoben"
+                  : isActive
+                    ? "Block im Edit-Modus"
+                    : isSelected
+                      ? "Block markiert"
+                      : "Block"
+              }
+            >
+              |
+            </span>
+          </div>
+        </div>
+      );
+    };
+
+    const pageLinkPickerPopup =
+      pageLinkPickerState && !disabled ? (
+        <div
+          ref={pageLinkPickerRef}
+          className="markdown-hybrid-page-link-picker"
+          data-md-block-control="true"
+          role="dialog"
+          aria-label="Select page link"
+          style={{
+            left: pageLinkPickerState.anchorLeft,
+            top: pageLinkPickerState.anchorTop,
+          }}
+          onMouseDown={(event) => {
+            event.stopPropagation();
+          }}
+        >
+          <div className="markdown-hybrid-page-link-picker-search-shell">
+            <span className="markdown-hybrid-page-link-picker-search-icon" aria-hidden="true">
+              <InsertMenuIconGraphic icon="page-file" />
+            </span>
+            <input
+              ref={pageLinkPickerSearchInputRef}
+              type="text"
+              className="markdown-hybrid-page-link-picker-search"
+              value={pageLinkPickerState.query}
+              onChange={(event) => handlePageLinkPickerQueryChange(event.currentTarget.value)}
+              onKeyDown={handlePageLinkPickerSearchKeyDown}
+              placeholder="Search pages..."
+              aria-label="Search pages"
+              aria-autocomplete="list"
+              aria-controls="markdown-hybrid-page-link-picker-listbox"
+              aria-expanded="true"
+              aria-activedescendant={
+                filteredPageLinkCandidates[pageLinkPickerState.highlightedIndex]
+                  ? `markdown-hybrid-page-link-picker-option-${pageLinkPickerState.highlightedIndex}`
+                  : undefined
+              }
+            />
+          </div>
+          <div
+            id="markdown-hybrid-page-link-picker-listbox"
+            className="markdown-hybrid-page-link-picker-list"
+            role="listbox"
+            aria-label="Vault pages"
+          >
+            {filteredPageLinkCandidates.length === 0 ? (
+              <div className="markdown-hybrid-page-link-picker-empty" aria-live="polite">
+                No pages found
+              </div>
+            ) : (
+              filteredPageLinkCandidates.map((candidate, index) => {
+                const isActive = index === pageLinkPickerState.highlightedIndex;
+                return (
+                  <button
+                    key={candidate.id}
+                    id={`markdown-hybrid-page-link-picker-option-${index}`}
+                    type="button"
+                    role="option"
+                    aria-selected={isActive}
+                    className={`markdown-hybrid-page-link-picker-option${isActive ? " is-active" : ""}`}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                    onMouseEnter={() => {
+                      setPageLinkPickerState((current) => {
+                        if (!current) {
+                          return current;
+                        }
+                        if (current.highlightedIndex === index) {
+                          return current;
+                        }
+                        return {
+                          ...current,
+                          highlightedIndex: index,
+                        };
+                      });
+                    }}
+                    onClick={() => handlePageLinkPickerSelectCandidate(candidate)}
+                    title={candidate.target}
+                  >
+                    <span
+                      className="markdown-hybrid-page-link-picker-option-icon"
+                      aria-hidden="true"
+                    >
+                      <InsertMenuIconGraphic icon="page-file" />
+                    </span>
+                    <span className="markdown-hybrid-page-link-picker-option-text">
+                      <span className="markdown-hybrid-page-link-picker-option-label">
+                        {candidate.label}
+                      </span>
+                      {candidate.sublabel ? (
+                        <span className="markdown-hybrid-page-link-picker-option-meta">
+                          {candidate.sublabel}
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      ) : null;
+
+    const typedImageLinkPickerPopup =
+      typedImageLinkPickerState && !disabled ? (
+        <div
+          ref={typedImageLinkPickerRef}
+          className="markdown-hybrid-insert-menu markdown-hybrid-insert-menu-overlay"
+          data-md-block-control="true"
+          role="menu"
+          aria-label="Insert block"
+          style={{
+            left: typedImageLinkPickerState.anchorLeft,
+            top: typedImageLinkPickerState.anchorTop,
+          }}
+          onMouseDown={(event) => {
+            event.stopPropagation();
+          }}
+        >
+          <div className="markdown-hybrid-insert-menu-header">
+            <span className="markdown-hybrid-insert-menu-title">Select PNG</span>
+          </div>
+          <div className="markdown-hybrid-insert-menu-list">
+            <VaultPngPicker
+              assets={vaultPngAssets}
+              query={typedImageLinkPickerState.query}
+              onQueryChange={handleTypedImageLinkPickerQueryChange}
+              onSearchKeyDown={handleTypedImageLinkPickerSearchKeyDown}
+              onSelect={handleTypedImageLinkPickerSelectCandidate}
+              highlightedIndex={typedImageLinkPickerState.highlightedIndex}
+              onHighlightedIndexChange={(nextIndex) =>
+                setTypedImageLinkPickerState((current) =>
+                  current
+                    ? {
+                        ...current,
+                        highlightedIndex: nextIndex,
+                      }
+                    : current,
+                )
+              }
+              selectedRelPath={null}
+              emptyLabel="No PNG files found in the current vault."
+              className="markdown-hybrid-insert-image-picker"
+            />
+          </div>
+        </div>
+      ) : null;
+
+    const inlineFormattingToolbarPopup =
+      inlineFormattingToolbarSelection && !disabled ? (
+        <FloatingInlineFormattingToolbar
+          anchor={inlineFormattingToolbarSelection.anchor}
+          menu={inlineFormattingToolbarMenu}
+          linkState={inlineFormattingToolbarLinkState}
+          activeState={inlineFormattingToolbarSelection.activeState}
+          toolbarRef={inlineFormattingToolbarRef}
+          onClose={hideInlineFormattingToolbar}
+          onToggleMenu={toggleInlineFormattingToolbarMenu}
+          onAction={handleInlineFormattingToolbarAction}
+          onMathMenuAction={handleInlineFormattingMathMenuAction}
+          onLinkUrlChange={(value) => {
+            setInlineFormattingToolbarLinkState((current) => {
+              if (!current) {
+                return {
+                  url: value,
+                  canRemove: false,
+                };
+              }
+              return {
+                ...current,
+                url: value,
+              };
+            });
+          }}
+          onLinkSubmit={() => {
+            applyInlineFormattingLinkValue();
+          }}
+          onLinkRemove={() => {
+            applyInlineFormattingLinkValue("");
+          }}
+          onLinkCancel={() => {
+            setInlineFormattingToolbarLinkState(null);
+          }}
+        />
+      ) : null;
+
+    const mathToolboxPopup =
+      mathToolboxState && !disabled ? (
+        <MathStructureDialog
+          key={mathToolboxState.sessionId}
+          sessionId={mathToolboxState.sessionId}
+          blockIndex={mathToolboxState.blockIndex}
+          initialLatex={mathToolboxState.initialLatexSnapshot}
+          dialogRef={mathToolboxRef}
+          onClose={(result) => {
+            if (result === "cancel") {
+              handleMathBlockLiveSync(
+                mathToolboxState.blockIndex,
+                mathToolboxState.initialLatexSnapshot,
+                { mergeKey: `math-session:${mathToolboxState.sessionId}` },
+              );
+            }
+            setMathToolboxState(null);
+          }}
+          onLiveSync={(latex, options) => {
+            handleMathBlockLiveSync(mathToolboxState.blockIndex, latex, options);
+          }}
+        />
+      ) : null;
+
+    const selectionContextMenu =
+      selectionContextMenuState && !disabled && selectedBlockSelection ? (
+        <div
+          ref={selectionContextMenuRef}
+          className="markdown-hybrid-selection-menu"
+          role="menu"
+          aria-label="Blockauswahl"
+          data-md-block-control="true"
+          style={{ left: selectionContextMenuState.x, top: selectionContextMenuState.y }}
+          onMouseDown={handleSelectionContextMenuMouseDown}
         >
           <button
             type="button"
-            className="markdown-hybrid-overlay-control markdown-hybrid-block-control markdown-hybrid-block-drag-handle"
-            data-md-block-control="true"
-            draggable={!disabled && !options.isDragHandleDisabled}
-            onMouseDown={(event) => {
-              event.stopPropagation();
-            }}
-            onClick={handleDragHandleClick(blockIndex)}
-            onDragStart={handleDragHandleDragStart(blockIndex)}
-            onDragEnd={handleDragHandleDragEnd}
-            aria-label="Block verschieben"
-            title={options.isDragHandleDisabled ? "No block available" : "Move block"}
-            disabled={disabled || options.isDragHandleDisabled}
+            className="markdown-hybrid-selection-menu-item is-danger"
+            role="menuitem"
+            onMouseDown={handleSelectionContextMenuItemMouseDown}
+            onClick={handleSelectionContextMenuDeleteButton}
           >
-            <span className="markdown-hybrid-block-drag-handle-grip" aria-hidden="true">⋮⋮</span>
+            Delete
           </button>
           <button
             type="button"
-            className="markdown-hybrid-overlay-control markdown-hybrid-block-control markdown-hybrid-block-insert-button"
-            data-md-block-control="true"
-            onMouseDown={(event) => {
-              event.stopPropagation();
-            }}
-            onClick={handleOpenInsertMenu(blockIndex)}
-            aria-label="Insert block"
-            title={options.insertButtonTitle ?? "Insert block below (Shift = above)"}
-            disabled={disabled}
+            className="markdown-hybrid-selection-menu-item"
+            role="menuitem"
+            onMouseDown={handleSelectionContextMenuItemMouseDown}
+            onClick={handleSelectionContextMenuClearButton}
           >
-            <span aria-hidden="true">+</span>
+            Auswahl aufheben
           </button>
-          {renderInsertMenuPanel(blockIndex)}
         </div>
-        <div className="markdown-hybrid-overlay-rail markdown-hybrid-overlay-rail-right">
-          <span
-            className={`markdown-hybrid-overlay-right-status${
-              isSelected ? " is-selected" : ""
-            }${isActive ? " is-active" : ""}${isDragging ? " is-dragging" : ""}`}
-            aria-hidden="true"
-            title={
-              isDragging
-                ? "Block wird verschoben"
-                : isActive
-                ? "Block im Edit-Modus"
-                : isSelected
-                ? "Block markiert"
-                : "Block"
-            }
-          >
-            |
-          </span>
-        </div>
-      </div>
-    );
-  };
+      ) : null;
 
-  const pageLinkPickerPopup = pageLinkPickerState && !disabled ? (
-    <div
-      ref={pageLinkPickerRef}
-      className="markdown-hybrid-page-link-picker"
-      data-md-block-control="true"
-      role="dialog"
-      aria-label="Select page link"
-      style={{
-        left: pageLinkPickerState.anchorLeft,
-        top: pageLinkPickerState.anchorTop,
-      }}
-      onMouseDown={(event) => {
-        event.stopPropagation();
-      }}
-    >
-      <div className="markdown-hybrid-page-link-picker-search-shell">
-        <span className="markdown-hybrid-page-link-picker-search-icon" aria-hidden="true">
-          <InsertMenuIconGraphic icon="page-file" />
-        </span>
-        <input
-          ref={pageLinkPickerSearchInputRef}
-          type="text"
-          className="markdown-hybrid-page-link-picker-search"
-          value={pageLinkPickerState.query}
-          onChange={(event) => handlePageLinkPickerQueryChange(event.currentTarget.value)}
-          onKeyDown={handlePageLinkPickerSearchKeyDown}
-          placeholder="Search pages..."
-          aria-label="Search pages"
-          aria-autocomplete="list"
-          aria-controls="markdown-hybrid-page-link-picker-listbox"
-          aria-expanded="true"
-          aria-activedescendant={
-            filteredPageLinkCandidates[pageLinkPickerState.highlightedIndex]
-              ? `markdown-hybrid-page-link-picker-option-${pageLinkPickerState.highlightedIndex}`
-              : undefined
-          }
-        />
-      </div>
-      <div
-        id="markdown-hybrid-page-link-picker-listbox"
-        className="markdown-hybrid-page-link-picker-list"
-        role="listbox"
-        aria-label="Vault pages"
-      >
-        {filteredPageLinkCandidates.length === 0 ? (
-          <div className="markdown-hybrid-page-link-picker-empty" aria-live="polite">
-            No pages found
-          </div>
-        ) : filteredPageLinkCandidates.map((candidate, index) => {
-          const isActive = index === pageLinkPickerState.highlightedIndex;
-          return (
-            <button
-              key={candidate.id}
-              id={`markdown-hybrid-page-link-picker-option-${index}`}
-              type="button"
-              role="option"
-              aria-selected={isActive}
-              className={`markdown-hybrid-page-link-picker-option${isActive ? " is-active" : ""}`}
-              onMouseDown={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-              }}
-              onMouseEnter={() => {
-                setPageLinkPickerState((current) => {
-                  if (!current) {
-                    return current;
-                  }
-                  if (current.highlightedIndex === index) {
-                    return current;
-                  }
-                  return {
-                    ...current,
-                    highlightedIndex: index,
-                  };
-                });
-              }}
-              onClick={() => handlePageLinkPickerSelectCandidate(candidate)}
-              title={candidate.target}
-            >
-              <span className="markdown-hybrid-page-link-picker-option-icon" aria-hidden="true">
-                <InsertMenuIconGraphic icon="page-file" />
-              </span>
-              <span className="markdown-hybrid-page-link-picker-option-text">
-                <span className="markdown-hybrid-page-link-picker-option-label">{candidate.label}</span>
-                {candidate.sublabel ? (
-                  <span className="markdown-hybrid-page-link-picker-option-meta">{candidate.sublabel}</span>
-                ) : null}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  ) : null;
+    const inactiveBlockBodyByIndex = useMemo(() => {
+      const bodyByIndex = new Map<number, ReactNode>();
 
-  const typedImageLinkPickerPopup = typedImageLinkPickerState && !disabled ? (
-    <div
-      ref={typedImageLinkPickerRef}
-      className="markdown-hybrid-insert-menu markdown-hybrid-insert-menu-overlay"
-      data-md-block-control="true"
-      role="menu"
-      aria-label="Insert block"
-      style={{
-        left: typedImageLinkPickerState.anchorLeft,
-        top: typedImageLinkPickerState.anchorTop,
-      }}
-      onMouseDown={(event) => {
-        event.stopPropagation();
-      }}
-    >
-      <div className="markdown-hybrid-insert-menu-header">
-        <span className="markdown-hybrid-insert-menu-title">Select PNG</span>
-      </div>
-      <div className="markdown-hybrid-insert-menu-list">
-        <VaultPngPicker
-          assets={vaultPngAssets}
-          query={typedImageLinkPickerState.query}
-          onQueryChange={handleTypedImageLinkPickerQueryChange}
-          onSearchKeyDown={handleTypedImageLinkPickerSearchKeyDown}
-          onSelect={handleTypedImageLinkPickerSelectCandidate}
-          highlightedIndex={typedImageLinkPickerState.highlightedIndex}
-          onHighlightedIndexChange={(nextIndex) =>
-            setTypedImageLinkPickerState((current) =>
-              current
-                ? {
-                    ...current,
-                    highlightedIndex: nextIndex,
-                  }
-                : current
-            )}
-          selectedRelPath={null}
-          emptyLabel="No PNG files found in the current vault."
-          className="markdown-hybrid-insert-image-picker"
-        />
-      </div>
-    </div>
-  ) : null;
-
-  const inlineFormattingToolbarPopup = inlineFormattingToolbarSelection && !disabled ? (
-    <FloatingInlineFormattingToolbar
-      anchor={inlineFormattingToolbarSelection.anchor}
-      menu={inlineFormattingToolbarMenu}
-      linkState={inlineFormattingToolbarLinkState}
-      activeState={inlineFormattingToolbarSelection.activeState}
-      toolbarRef={inlineFormattingToolbarRef}
-      onClose={hideInlineFormattingToolbar}
-      onToggleMenu={toggleInlineFormattingToolbarMenu}
-      onAction={handleInlineFormattingToolbarAction}
-      onMathMenuAction={handleInlineFormattingMathMenuAction}
-      onLinkUrlChange={(value) => {
-        setInlineFormattingToolbarLinkState((current) => {
-          if (!current) {
-            return {
-              url: value,
-              canRemove: false,
-            };
-          }
-          return {
-            ...current,
-            url: value,
-          };
-        });
-      }}
-      onLinkSubmit={() => {
-        applyInlineFormattingLinkValue();
-      }}
-      onLinkRemove={() => {
-        applyInlineFormattingLinkValue("");
-      }}
-      onLinkCancel={() => {
-        setInlineFormattingToolbarLinkState(null);
-      }}
-    />
-  ) : null;
-
-  const mathToolboxPopup = mathToolboxState && !disabled ? (
-    <MathStructureDialog
-      key={mathToolboxState.sessionId}
-      sessionId={mathToolboxState.sessionId}
-      blockIndex={mathToolboxState.blockIndex}
-      initialLatex={mathToolboxState.initialLatexSnapshot}
-      dialogRef={mathToolboxRef}
-      onClose={(result) => {
-        if (result === "cancel") {
-          handleMathBlockLiveSync(
-            mathToolboxState.blockIndex,
-            mathToolboxState.initialLatexSnapshot,
-            { mergeKey: `math-session:${mathToolboxState.sessionId}` },
-          );
+      for (let index = 0; index < blocks.length; index += 1) {
+        if (activeBlockIndex === index) {
+          continue;
         }
-        setMathToolboxState(null);
-      }}
-      onLiveSync={(latex, options) => {
-        handleMathBlockLiveSync(mathToolboxState.blockIndex, latex, options);
-      }}
-    />
-  ) : null;
-
-  const selectionContextMenu = selectionContextMenuState && !disabled && selectedBlockSelection ? (
-    <div
-      ref={selectionContextMenuRef}
-      className="markdown-hybrid-selection-menu"
-      role="menu"
-      aria-label="Blockauswahl"
-      data-md-block-control="true"
-      style={{ left: selectionContextMenuState.x, top: selectionContextMenuState.y }}
-      onMouseDown={handleSelectionContextMenuMouseDown}
-    >
-      <button
-        type="button"
-        className="markdown-hybrid-selection-menu-item is-danger"
-        role="menuitem"
-        onMouseDown={handleSelectionContextMenuItemMouseDown}
-        onClick={handleSelectionContextMenuDeleteButton}
-      >
-        Delete
-      </button>
-      <button
-        type="button"
-        className="markdown-hybrid-selection-menu-item"
-        role="menuitem"
-        onMouseDown={handleSelectionContextMenuItemMouseDown}
-        onClick={handleSelectionContextMenuClearButton}
-      >
-        Auswahl aufheben
-      </button>
-    </div>
-  ) : null;
-
-  const inactiveBlockBodyByIndex = useMemo(() => {
-    const bodyByIndex = new Map<number, ReactNode>();
-
-    for (let index = 0; index < blocks.length; index += 1) {
-      if (activeBlockIndex === index) {
-        continue;
-      }
-      const block = blocks[index]!;
-      const isOutsideVirtualWindow = Boolean(
-        shouldVirtualizeBlocks &&
+        const block = blocks[index]!;
+        const isOutsideVirtualWindow = Boolean(
+          shouldVirtualizeBlocks &&
           visibleVirtualizedIndices &&
           !visibleVirtualizedIndices.has(index) &&
           !pinnedVirtualizedIndices.has(index),
-      );
-      if (isOutsideVirtualWindow) {
-        const placeholderOuterHeight = Math.max(24, resolveEstimatedBlockHeight(index, block));
-        const placeholderContentHeight = Math.max(
-          1,
-          Math.round(placeholderOuterHeight - VIRTUAL_PLACEHOLDER_BLOCK_CHROME_PX),
         );
-        bodyByIndex.set(
-          index,
-          <div
-            className="markdown-hybrid-virtual-placeholder"
-            aria-hidden="true"
-            style={{ height: `${placeholderContentHeight}px` }}
-          />,
-        );
-        continue;
-      }
+        if (isOutsideVirtualWindow) {
+          const placeholderOuterHeight = Math.max(24, resolveEstimatedBlockHeight(index, block));
+          const placeholderContentHeight = Math.max(
+            1,
+            Math.round(placeholderOuterHeight - VIRTUAL_PLACEHOLDER_BLOCK_CHROME_PX),
+          );
+          bodyByIndex.set(
+            index,
+            <div
+              className="markdown-hybrid-virtual-placeholder"
+              aria-hidden="true"
+              style={{ height: `${placeholderContentHeight}px` }}
+            />,
+          );
+          continue;
+        }
 
-      const headingPreviewPlaceholder = resolveHeadingEditorPlaceholder(block, block.raw);
-      const mathBlockBodySource = block.kind === "math-block"
-        ? extractMathBlockBody(block.raw)
-        : "";
-      let previewBlockSource = block.kind === "help-block"
-        ? normalizeHelpBlockPreviewSource(block.raw)
-        : (
-          block.kind === "card-start" ||
-            block.kind === "card-end"
-        )
-          ? normalizeCardBlockSource(block.raw)
-        : block.kind === "hr"
-        ? normalizeHorizontalRuleBlockSource(block.raw)
-        : block.raw;
-      const imageEmbedPreviewItems = block.kind === "image-embed"
-        ? splitMarkdownMediaSegments(block.raw, "markdown-hybrid-image-embed-preview")
-          .flatMap((segment) => (segment.kind === "media" ? segment.items : []))
-        : [];
-      const imageEmbedToken = block.kind === "image-embed"
-        ? extractImageEmbedTokenFromRaw(block.raw)
-        : null;
-      const isImageEmbedReplacePickerOpen = Boolean(
-        imageEmbedReplacePickerState &&
+        const headingPreviewPlaceholder = resolveHeadingEditorPlaceholder(block, block.raw);
+        const mathBlockBodySource =
+          block.kind === "math-block" ? extractMathBlockBody(block.raw) : "";
+        let previewBlockSource =
+          block.kind === "help-block"
+            ? normalizeHelpBlockPreviewSource(block.raw)
+            : block.kind === "card-start" || block.kind === "card-end"
+              ? normalizeCardBlockSource(block.raw)
+              : block.kind === "hr"
+                ? normalizeHorizontalRuleBlockSource(block.raw)
+                : block.raw;
+        const imageEmbedPreviewItems =
+          block.kind === "image-embed"
+            ? splitMarkdownMediaSegments(block.raw, "markdown-hybrid-image-embed-preview").flatMap(
+                (segment) => (segment.kind === "media" ? segment.items : []),
+              )
+            : [];
+        const imageEmbedToken =
+          block.kind === "image-embed" ? extractImageEmbedTokenFromRaw(block.raw) : null;
+        const isImageEmbedReplacePickerOpen = Boolean(
+          imageEmbedReplacePickerState &&
           imageEmbedReplacePickerState.blockIndex === index &&
           imageEmbedReplacePickerState.blockId === block.id,
-      );
-      const codeFencePreviewItems = block.kind === "code-fence"
-        ? resolveCodeFencePreviewItems(block.raw)
-        : [];
+        );
+        const codeFencePreviewItems =
+          block.kind === "code-fence" ? resolveCodeFencePreviewItems(block.raw) : [];
 
-      if (block.kind === "ordered-list" || block.kind === "unordered-list") {
-        previewBlockSource = dedentListBlockPreviewSource(block, previewBlockSource);
-      }
+        if (block.kind === "ordered-list" || block.kind === "unordered-list") {
+          previewBlockSource = dedentListBlockPreviewSource(block, previewBlockSource);
+        }
 
-      if (block.kind !== "hr" && block.kind !== "code-fence") {
-        previewBlockSource = escapeHybridPreviewSpecialLines(previewBlockSource);
-      }
+        if (block.kind !== "hr" && block.kind !== "code-fence") {
+          previewBlockSource = escapeHybridPreviewSpecialLines(previewBlockSource);
+        }
 
-      if (block.kind === "table") {
-        bodyByIndex.set(
-          index,
-          <MarkdownHybridTableBlock
-            blockIndex={index}
-            raw={block.raw}
-            active={false}
-            codeViewPolicy={tableCodeViewPolicy}
-            disabled={disabled}
-            vaultFiles={vaultFiles}
-            vaultPngAssets={vaultPngAssets}
-            renderPreview={renderPreviewWithPageLinks}
-            pendingActivation={
-              pendingTableActivation?.blockIndex === index
-                ? pendingTableActivation.request
-                : null
-            }
-            onConsumePendingActivation={() => clearPendingTableActivation(index)}
-            onRequestActivate={(request) => handleTableBlockRequestActivate(index, request)}
-            onCommitRaw={(nextRaw) => {
-              handleTableBlockCommitRaw(index, nextRaw);
-            }}
-            onDirtyChange={(dirty) => {
-              if (activeBlockIndex === index) {
-                setActiveTableDirty(dirty);
+        if (block.kind === "table") {
+          bodyByIndex.set(
+            index,
+            <MarkdownHybridTableBlock
+              blockIndex={index}
+              raw={block.raw}
+              active={false}
+              codeViewPolicy={tableCodeViewPolicy}
+              disabled={disabled}
+              vaultFiles={vaultFiles}
+              vaultPngAssets={vaultPngAssets}
+              renderPreview={renderPreviewWithPageLinks}
+              pendingActivation={
+                pendingTableActivation?.blockIndex === index ? pendingTableActivation.request : null
               }
-            }}
-            registerSession={(controller) => {
-              if (activeBlockIndex === index || controller === null) {
-                registerActiveTableSession(controller);
-              }
-            }}
-            onGlobalUndo={handleGlobalUndo}
-            onGlobalRedo={handleGlobalRedo}
-          />,
-        );
-        continue;
-      }
+              onConsumePendingActivation={() => clearPendingTableActivation(index)}
+              onRequestActivate={(request) => handleTableBlockRequestActivate(index, request)}
+              onCommitRaw={(nextRaw) => {
+                handleTableBlockCommitRaw(index, nextRaw);
+              }}
+              onDirtyChange={(dirty) => {
+                if (activeBlockIndex === index) {
+                  setActiveTableDirty(dirty);
+                }
+              }}
+              registerSession={(controller) => {
+                if (activeBlockIndex === index || controller === null) {
+                  registerActiveTableSession(controller);
+                }
+              }}
+              onGlobalUndo={handleGlobalUndo}
+              onGlobalRedo={handleGlobalRedo}
+            />,
+          );
+          continue;
+        }
 
-      if (block.kind === "database-block") {
-        bodyByIndex.set(
-          index,
-          <MarkdownHybridDatabaseBlock
-            raw={block.raw}
-            vaultFiles={vaultFiles}
-            vaultPath={vaultPath}
-            sourceRelativePath={sourceRelativePath}
-            onNavigateWikilink={onNavigateWikilink}
-            runnableExamRelativePaths={runnableExamRelativePaths}
-            onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
-            monitoringProfiles={monitoringProfiles}
-            blockIndex={index}
-            onCommitRaw={(nextRaw) => {
-              handleTableBlockCommitRaw(index, nextRaw);
-            }}
-            allowCellEditing={!disabled}
-          />,
-        );
-        continue;
-      }
+        if (block.kind === "database-block") {
+          bodyByIndex.set(
+            index,
+            <MarkdownHybridDatabaseBlock
+              raw={block.raw}
+              vaultFiles={vaultFiles}
+              vaultPath={vaultPath}
+              sourceRelativePath={sourceRelativePath}
+              onNavigateWikilink={onNavigateWikilink}
+              runnableExamRelativePaths={runnableExamRelativePaths}
+              onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
+              monitoringProfiles={monitoringProfiles}
+              blockIndex={index}
+              onCommitRaw={(nextRaw) => {
+                handleTableBlockCommitRaw(index, nextRaw);
+              }}
+              allowCellEditing={!disabled}
+            />,
+          );
+          continue;
+        }
 
-      if (block.kind === "canvas-block") {
-        bodyByIndex.set(
-          index,
-          <CanvasEmbeddedBlock
-            raw={block.raw}
-            blockIndex={index}
-            allowEditing={!disabled}
-            canvasCustomColors={canvasCustomColors}
-            onCanvasCustomColorsChange={onCanvasCustomColorsChange}
-            onCommitRaw={(nextRaw) => {
-              handleTableBlockCommitRaw(index, nextRaw);
-            }}
-          />,
-        );
-        continue;
-      }
+        if (block.kind === "canvas-block") {
+          bodyByIndex.set(
+            index,
+            <CanvasEmbeddedBlock
+              raw={block.raw}
+              blockIndex={index}
+              allowEditing={!disabled}
+              canvasCustomColors={canvasCustomColors}
+              onCanvasCustomColorsChange={onCanvasCustomColorsChange}
+              onCommitRaw={(nextRaw) => {
+                handleTableBlockCommitRaw(index, nextRaw);
+              }}
+            />,
+          );
+          continue;
+        }
 
-      if (block.kind === "math-block") {
-        bodyByIndex.set(
-          index,
-          <div className="markdown-hybrid-math-block-shell">
-            <div className="markdown-hybrid-math-block-toolbar">
+        if (block.kind === "math-block") {
+          bodyByIndex.set(
+            index,
+            <div className="markdown-hybrid-math-block-shell">
+              <div className="markdown-hybrid-math-block-toolbar">
+                <button
+                  type="button"
+                  className="markdown-hybrid-math-toolbox-trigger"
+                  data-md-block-control="true"
+                  data-md-math-toolbox-trigger="true"
+                  aria-label="Open math toolbox"
+                  title="Open math toolbox"
+                  onMouseDown={handleMathToolboxButtonMouseDown}
+                  onClick={handleMathToolboxButtonClick(index)}
+                >
+                  <InsertMenuIconGraphic icon="math-block" />
+                </button>
+              </div>
+              <div className="markdown-hybrid-math-preview-shell">
+                <MathBlockRenderer source={mathBlockBodySource} />
+              </div>
+            </div>,
+          );
+          continue;
+        }
+
+        if (block.kind === "blank") {
+          bodyByIndex.set(
+            index,
+            <div className="markdown-hybrid-blank-preview" aria-hidden="true" />,
+          );
+          continue;
+        }
+
+        if (block.kind === "heading" && headingPreviewPlaceholder) {
+          bodyByIndex.set(
+            index,
+            <div className="markdown-hybrid-block-preview">
+              <div
+                className={`markdown-hybrid-heading-preview-placeholder markdown-hybrid-heading-preview-placeholder-level-${headingPreviewPlaceholder.level}`}
+                aria-hidden="true"
+              >
+                {headingPreviewPlaceholder.label}
+              </div>
+            </div>,
+          );
+          continue;
+        }
+
+        if (block.kind === "hr") {
+          bodyByIndex.set(
+            index,
+            <div className="markdown-hybrid-hr-shell">
               <button
                 type="button"
-                className="markdown-hybrid-math-toolbox-trigger"
+                className="markdown-hybrid-hr-enter-zone markdown-hybrid-hr-enter-zone-top"
                 data-md-block-control="true"
-                data-md-math-toolbox-trigger="true"
-                aria-label="Open math toolbox"
-                title="Open math toolbox"
-                onMouseDown={handleMathToolboxButtonMouseDown}
-                onClick={handleMathToolboxButtonClick(index)}
+                onMouseDown={handleHrEnterZoneMouseDown}
+                onClick={handleHrEnterZoneClick}
+                onKeyDown={handleHrEnterZoneKeyDown(index, true)}
+                aria-label="Textblock oberhalb der Trennlinie einfuegen"
+                title="Enterbereich oberhalb der Trennlinie"
+              />
+              <div
+                className="markdown-hybrid-block-preview"
+                onChange={handleRenderedTaskCheckboxChange(index)}
               >
-                <InsertMenuIconGraphic icon="math-block" />
-              </button>
-            </div>
-            <div className="markdown-hybrid-math-preview-shell">
-              <MathBlockRenderer source={mathBlockBodySource} />
-            </div>
-          </div>,
-        );
-        continue;
-      }
+                {renderPreviewWithPageLinks(previewBlockSource)}
+              </div>
+              <button
+                type="button"
+                className="markdown-hybrid-hr-enter-zone markdown-hybrid-hr-enter-zone-bottom"
+                data-md-block-control="true"
+                onMouseDown={handleHrEnterZoneMouseDown}
+                onClick={handleHrEnterZoneClick}
+                onKeyDown={handleHrEnterZoneKeyDown(index, false)}
+                aria-label="Textblock unterhalb der Trennlinie einfuegen"
+                title="Enterbereich unterhalb der Trennlinie"
+              />
+            </div>,
+          );
+          continue;
+        }
 
-      if (block.kind === "blank") {
-        bodyByIndex.set(index, <div className="markdown-hybrid-blank-preview" aria-hidden="true" />);
-        continue;
-      }
+        if (block.kind === "image-embed") {
+          bodyByIndex.set(
+            index,
+            <div className="markdown-hybrid-block-preview markdown-hybrid-media-block-preview markdown-hybrid-image-embed-preview-shell">
+              {imageEmbedPreviewItems.length > 0 ? (
+                <FlashcardMediaGroup
+                  media={imageEmbedPreviewItems}
+                  vaultPngAssets={vaultPngAssets}
+                  vaultPath={vaultPath}
+                  sourceRelativePath={sourceRelativePath}
+                />
+              ) : (
+                <pre className="flashcard-code-block media-block-card-source">
+                  <code>{block.raw}</code>
+                </pre>
+              )}
+              <div
+                className={`markdown-hybrid-image-embed-replace-shell${isImageEmbedReplacePickerOpen ? " is-open" : ""}`}
+                data-md-block-control="true"
+                onMouseDown={(event) => {
+                  event.stopPropagation();
+                }}
+              >
+                <button
+                  type="button"
+                  className="markdown-hybrid-image-embed-replace-trigger"
+                  data-md-block-control="true"
+                  data-md-image-embed-replace-trigger="true"
+                  aria-label="Bild austauschen"
+                  title="Bild austauschen"
+                  onMouseDown={(event) => {
+                    event.stopPropagation();
+                  }}
+                  onClick={handleOpenImageEmbedReplacePicker(index)}
+                  disabled={disabled}
+                >
+                  Bild austauschen
+                </button>
+                {isImageEmbedReplacePickerOpen ? (
+                  <div
+                    ref={imageEmbedReplacePickerRef}
+                    className="markdown-hybrid-image-embed-picker"
+                    data-md-block-control="true"
+                    role="dialog"
+                    aria-label="Select replacement PNG"
+                    onMouseDown={(event) => {
+                      event.stopPropagation();
+                    }}
+                  >
+                    <VaultPngPicker
+                      assets={vaultPngAssets}
+                      query={imageEmbedReplacePickerState?.query ?? ""}
+                      onQueryChange={handleImageEmbedReplaceQueryChange}
+                      onSearchKeyDown={handleImageEmbedReplaceSearchKeyDown}
+                      onSelect={handleImageEmbedReplaceSelectCandidate}
+                      highlightedIndex={imageEmbedReplacePickerState?.highlightedIndex ?? 0}
+                      onHighlightedIndexChange={(nextIndex) =>
+                        setImageEmbedReplacePickerState((current) =>
+                          current ? { ...current, highlightedIndex: nextIndex } : current,
+                        )
+                      }
+                      selectedRelPath={imageEmbedToken?.src ?? null}
+                      emptyLabel="No PNG files found in the current vault."
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </div>,
+          );
+          continue;
+        }
 
-      if (block.kind === "heading" && headingPreviewPlaceholder) {
-        bodyByIndex.set(
-          index,
-          <div className="markdown-hybrid-block-preview">
-            <div
-              className={`markdown-hybrid-heading-preview-placeholder markdown-hybrid-heading-preview-placeholder-level-${headingPreviewPlaceholder.level}`}
-              aria-hidden="true"
-            >
-              {headingPreviewPlaceholder.label}
-            </div>
-          </div>,
-        );
-        continue;
-      }
-
-      if (block.kind === "hr") {
-        bodyByIndex.set(
-          index,
-          <div className="markdown-hybrid-hr-shell">
-            <button
-              type="button"
-              className="markdown-hybrid-hr-enter-zone markdown-hybrid-hr-enter-zone-top"
-              data-md-block-control="true"
-              onMouseDown={handleHrEnterZoneMouseDown}
-              onClick={handleHrEnterZoneClick}
-              onKeyDown={handleHrEnterZoneKeyDown(index, true)}
-              aria-label="Textblock oberhalb der Trennlinie einfuegen"
-              title="Enterbereich oberhalb der Trennlinie"
-            />
-            <div
-              className="markdown-hybrid-block-preview"
-              onChange={handleRenderedTaskCheckboxChange(index)}
-            >
-              {renderPreviewWithPageLinks(previewBlockSource)}
-            </div>
-            <button
-              type="button"
-              className="markdown-hybrid-hr-enter-zone markdown-hybrid-hr-enter-zone-bottom"
-              data-md-block-control="true"
-              onMouseDown={handleHrEnterZoneMouseDown}
-              onClick={handleHrEnterZoneClick}
-              onKeyDown={handleHrEnterZoneKeyDown(index, false)}
-              aria-label="Textblock unterhalb der Trennlinie einfuegen"
-              title="Enterbereich unterhalb der Trennlinie"
-            />
-          </div>,
-        );
-        continue;
-      }
-
-      if (block.kind === "image-embed") {
-        bodyByIndex.set(
-          index,
-          <div className="markdown-hybrid-block-preview markdown-hybrid-media-block-preview markdown-hybrid-image-embed-preview-shell">
-            {imageEmbedPreviewItems.length > 0 ? (
+        if (block.kind === "code-fence" && codeFencePreviewItems.length > 0) {
+          bodyByIndex.set(
+            index,
+            <div className="markdown-hybrid-block-preview markdown-hybrid-media-block-preview">
               <FlashcardMediaGroup
-                media={imageEmbedPreviewItems}
+                media={codeFencePreviewItems}
                 vaultPngAssets={vaultPngAssets}
                 vaultPath={vaultPath}
                 sourceRelativePath={sourceRelativePath}
               />
-            ) : (
-              <pre className="flashcard-code-block media-block-card-source">
-                <code>{block.raw}</code>
-              </pre>
-            )}
-            <div
-              className={`markdown-hybrid-image-embed-replace-shell${isImageEmbedReplacePickerOpen ? " is-open" : ""}`}
-              data-md-block-control="true"
-              onMouseDown={(event) => {
-                event.stopPropagation();
-              }}
-            >
-              <button
-                type="button"
-                className="markdown-hybrid-image-embed-replace-trigger"
-                data-md-block-control="true"
-                data-md-image-embed-replace-trigger="true"
-                aria-label="Bild austauschen"
-                title="Bild austauschen"
-                onMouseDown={(event) => {
-                  event.stopPropagation();
-                }}
-                onClick={handleOpenImageEmbedReplacePicker(index)}
-                disabled={disabled}
-              >
-                Bild austauschen
-              </button>
-              {isImageEmbedReplacePickerOpen ? (
-                <div
-                  ref={imageEmbedReplacePickerRef}
-                  className="markdown-hybrid-image-embed-picker"
-                  data-md-block-control="true"
-                  role="dialog"
-                  aria-label="Select replacement PNG"
-                  onMouseDown={(event) => {
-                    event.stopPropagation();
-                  }}
-                >
-                  <VaultPngPicker
-                    assets={vaultPngAssets}
-                    query={imageEmbedReplacePickerState?.query ?? ""}
-                    onQueryChange={handleImageEmbedReplaceQueryChange}
-                    onSearchKeyDown={handleImageEmbedReplaceSearchKeyDown}
-                    onSelect={handleImageEmbedReplaceSelectCandidate}
-                    highlightedIndex={imageEmbedReplacePickerState?.highlightedIndex ?? 0}
-                    onHighlightedIndexChange={(nextIndex) =>
-                      setImageEmbedReplacePickerState((current) =>
-                        current
-                          ? { ...current, highlightedIndex: nextIndex }
-                          : current
-                      )
-                    }
-                    selectedRelPath={imageEmbedToken?.src ?? null}
-                    emptyLabel="No PNG files found in the current vault."
-                  />
-                </div>
-              ) : null}
-            </div>
-          </div>,
-        );
-        continue;
-      }
+            </div>,
+          );
+          continue;
+        }
 
-      if (block.kind === "code-fence" && codeFencePreviewItems.length > 0) {
         bodyByIndex.set(
           index,
-          <div className="markdown-hybrid-block-preview markdown-hybrid-media-block-preview">
-            <FlashcardMediaGroup
-              media={codeFencePreviewItems}
-              vaultPngAssets={vaultPngAssets}
-              vaultPath={vaultPath}
-              sourceRelativePath={sourceRelativePath}
-            />
+          <div
+            className="markdown-hybrid-block-preview"
+            onChange={handleRenderedTaskCheckboxChange(index)}
+          >
+            {renderPreviewWithPageLinks(previewBlockSource)}
           </div>,
         );
-        continue;
       }
 
-      bodyByIndex.set(
-        index,
+      return bodyByIndex;
+    }, [
+      activeBlockIndex,
+      blocks,
+      canvasCustomColors,
+      clearPendingTableActivation,
+      disabled,
+      handleGlobalRedo,
+      handleGlobalUndo,
+      handleHrEnterZoneClick,
+      handleHrEnterZoneKeyDown,
+      handleHrEnterZoneMouseDown,
+      handleImageEmbedReplaceQueryChange,
+      handleImageEmbedReplaceSearchKeyDown,
+      handleImageEmbedReplaceSelectCandidate,
+      handleMathToolboxButtonClick,
+      handleMathToolboxButtonMouseDown,
+      handleOpenImageEmbedReplacePicker,
+      handleRenderedTaskCheckboxChange,
+      handleTableBlockCommitRaw,
+      handleTableBlockRequestActivate,
+      imageEmbedReplacePickerState,
+      onCanvasCustomColorsChange,
+      onNavigateWikilink,
+      pinnedVirtualizedIndices,
+      pendingTableActivation,
+      registerActiveTableSession,
+      renderPreviewWithPageLinks,
+      resolveCodeFencePreviewItems,
+      resolveEstimatedBlockHeight,
+      shouldVirtualizeBlocks,
+      sourceRelativePath,
+      tableCodeViewPolicy,
+      vaultFiles,
+      vaultPath,
+      vaultPngAssets,
+      visibleVirtualizedIndices,
+    ]);
+
+    if (blocks.length === 0) {
+      const emptyOverlayRect = overlayLayout.byIndex.get(0) ?? {
+        index: 0,
+        top: 0,
+        height: 28,
+        kind: "blank" as MarkdownBlock["kind"],
+      };
+      return (
         <div
-          className="markdown-hybrid-block-preview"
-          onChange={handleRenderedTaskCheckboxChange(index)}
+          ref={containerRef}
+          className={`markdown-hybrid-editor${disabled ? " is-disabled" : ""}${
+            isSelectionDragging ? " is-selection-dragging" : ""
+          }${draggedBlockIndex !== null ? " is-drag-reordering" : ""}`}
+          style={editorSurfaceStyle}
+          tabIndex={0}
+          onMouseDownCapture={handleEditorRootMouseDownCapture}
+          onMouseLeave={handleEditorMouseLeave}
+          onKeyDown={handleContainerKeyDown}
+          onContextMenu={handleHybridEditorContextMenu}
+          onCopy={handleEditorCopy}
+          onCut={handleEditorCut}
+          onPaste={handleEditorPaste}
+          onDragOver={handleContentLayerDragOver}
+          onDrop={handleContentLayerDrop}
         >
-          {renderPreviewWithPageLinks(previewBlockSource)}
-        </div>,
+          <div
+            ref={contentLayerRef}
+            className="markdown-hybrid-content-layer"
+            onMouseDownCapture={handleContentLayerMouseDownCapture}
+            onDragOver={handleContentLayerDragOver}
+            onDrop={handleContentLayerDrop}
+          >
+            <div
+              className={`markdown-hybrid-block markdown-hybrid-block-empty${
+                disabled ? " is-disabled" : ""
+              }`}
+              aria-selected={false}
+              data-md-block-kind="blank"
+              data-md-block-index={0}
+              data-md-block-id="0"
+              onMouseEnter={handleBlockMouseEnter(0)}
+              onMouseLeave={handleBlockMouseLeave(0)}
+              onMouseDown={(event) => {
+                if (disabled) {
+                  return;
+                }
+                if (event.button !== 0) {
+                  return;
+                }
+                event.preventDefault();
+                clearSelectedBlockRange();
+                setActiveBlockIndex(0);
+                updateActiveDraftState("");
+                setActiveDirty(false);
+                setActiveEditSnapshot(createDetachedEmptyEditSnapshot(""));
+                setActiveComposing(false);
+                pendingCaretRef.current = "start";
+              }}
+            >
+              <div className="markdown-hybrid-block-body">
+                {activeBlockIndex === 0 && !disabled ? (
+                  <div className="markdown-hybrid-block-editor-shell">
+                    <div className="markdown-hybrid-block-editor-overlay" aria-hidden="true">
+                      <div
+                        ref={editorSyntaxOverlayContentRef}
+                        className="markdown-hybrid-block-editor-overlay-content"
+                      >
+                        {activeEditorSyntaxOverlayContent}
+                      </div>
+                    </div>
+                    <textarea
+                      ref={textareaRef}
+                      className="markdown-hybrid-block-editor markdown-hybrid-block-editor-syntax-overlay"
+                      data-input-scope="editor"
+                      value={activeDraft}
+                      rows={1}
+                      onChange={(event) =>
+                        handleTextareaChange(event.target.value, event.target.selectionStart)
+                      }
+                      onBlur={handleTextareaBlur}
+                      onCompositionStart={handleTextareaCompositionStart}
+                      onCompositionEnd={handleTextareaCompositionEnd}
+                      onKeyDown={handleTextareaKeyDown}
+                      onKeyUp={handleTextareaKeyUp}
+                      onSelect={handleTextareaSelect}
+                      onMouseUp={handleTextareaPointerUp}
+                      onScroll={handleTextareaScroll}
+                      aria-label="Markdown block editor"
+                    />
+                  </div>
+                ) : (
+                  <div className="markdown-hybrid-empty-placeholder" aria-hidden="true" />
+                )}
+              </div>
+            </div>
+          </div>
+          {selectionMarqueeRect ? (
+            <div
+              className="markdown-hybrid-selection-marquee"
+              aria-hidden="true"
+              style={{
+                left: selectionMarqueeRect.left,
+                top: selectionMarqueeRect.top,
+                width: selectionMarqueeRect.width,
+                height: selectionMarqueeRect.height,
+              }}
+            />
+          ) : null}
+          <div className="markdown-hybrid-controls-overlay">
+            {renderOverlayRow({
+              blockIndex: 0,
+              kind: emptyOverlayRect.kind,
+              top: emptyOverlayRect.top,
+              height: emptyOverlayRect.height,
+              isDragHandleDisabled: true,
+              insertButtonTitle: "Insert block",
+            })}
+            {activeDropSlotTop !== null ? (
+              <div
+                className="markdown-hybrid-drop-slot-indicator"
+                style={{ top: activeDropSlotTop }}
+                aria-hidden="true"
+              >
+                <span className="markdown-hybrid-drop-slot-line" />
+              </div>
+            ) : null}
+          </div>
+          {dragPreviewOverlay}
+          {pageLinkPickerPopup}
+          {typedImageLinkPickerPopup}
+          {mathToolboxPopup}
+          {inlineFormattingToolbarPopup}
+          {selectionContextMenu}
+        </div>
       );
     }
 
-    return bodyByIndex;
-  }, [
-    activeBlockIndex,
-    blocks,
-    canvasCustomColors,
-    clearPendingTableActivation,
-    disabled,
-    handleGlobalRedo,
-    handleGlobalUndo,
-    handleHrEnterZoneClick,
-    handleHrEnterZoneKeyDown,
-    handleHrEnterZoneMouseDown,
-    handleImageEmbedReplaceQueryChange,
-    handleImageEmbedReplaceSearchKeyDown,
-    handleImageEmbedReplaceSelectCandidate,
-    handleMathToolboxButtonClick,
-    handleMathToolboxButtonMouseDown,
-    handleOpenImageEmbedReplacePicker,
-    handleRenderedTaskCheckboxChange,
-    handleTableBlockCommitRaw,
-    handleTableBlockRequestActivate,
-    imageEmbedReplacePickerState,
-    onCanvasCustomColorsChange,
-    onNavigateWikilink,
-    pinnedVirtualizedIndices,
-    pendingTableActivation,
-    registerActiveTableSession,
-    renderPreviewWithPageLinks,
-    resolveCodeFencePreviewItems,
-    resolveEstimatedBlockHeight,
-    shouldVirtualizeBlocks,
-    sourceRelativePath,
-    tableCodeViewPolicy,
-    vaultFiles,
-    vaultPath,
-    vaultPngAssets,
-    visibleVirtualizedIndices,
-  ]);
-
-  if (blocks.length === 0) {
-    const emptyOverlayRect = overlayLayout.byIndex.get(0) ?? {
-      index: 0,
-      top: 0,
-      height: 28,
-      kind: "blank" as MarkdownBlock["kind"],
-    };
     return (
       <div
         ref={containerRef}
@@ -10419,71 +10751,309 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           onDragOver={handleContentLayerDragOver}
           onDrop={handleContentLayerDrop}
         >
-          <div
-            className={`markdown-hybrid-block markdown-hybrid-block-empty${
-              disabled ? " is-disabled" : ""
-            }`}
-            aria-selected={false}
-            data-md-block-kind="blank"
-            data-md-block-index={0}
-            data-md-block-id="0"
-            onMouseEnter={handleBlockMouseEnter(0)}
-            onMouseLeave={handleBlockMouseLeave(0)}
-            onMouseDown={(event) => {
-              if (disabled) {
-                return;
-              }
-              if (event.button !== 0) {
-                return;
-              }
-              event.preventDefault();
-              clearSelectedBlockRange();
-              setActiveBlockIndex(0);
-              updateActiveDraftState("");
-              setActiveDirty(false);
-              setActiveEditSnapshot(createDetachedEmptyEditSnapshot(""));
-              setActiveComposing(false);
-              pendingCaretRef.current = "start";
-            }}
-          >
-            <div className="markdown-hybrid-block-body">
-              {activeBlockIndex === 0 && !disabled ? (
-                <div className="markdown-hybrid-block-editor-shell">
-                  <div
-                    className="markdown-hybrid-block-editor-overlay"
-                    aria-hidden="true"
-                  >
-                    <div
-                      ref={editorSyntaxOverlayContentRef}
-                      className="markdown-hybrid-block-editor-overlay-content"
-                    >
-                      {activeEditorSyntaxOverlayContent}
-                    </div>
-                  </div>
-                    <textarea
-                      ref={textareaRef}
-                      className="markdown-hybrid-block-editor markdown-hybrid-block-editor-syntax-overlay"
-                      data-input-scope="editor"
-                      value={activeDraft}
-                      rows={1}
-                      onChange={(event) =>
-                        handleTextareaChange(event.target.value, event.target.selectionStart)}
-                      onBlur={handleTextareaBlur}
-                      onCompositionStart={handleTextareaCompositionStart}
-                      onCompositionEnd={handleTextareaCompositionEnd}
-                      onKeyDown={handleTextareaKeyDown}
-                      onKeyUp={handleTextareaKeyUp}
-                      onSelect={handleTextareaSelect}
-                      onMouseUp={handleTextareaPointerUp}
-                      onScroll={handleTextareaScroll}
-                      aria-label="Markdown block editor"
-                    />
-                </div>
-              ) : (
-                <div className="markdown-hybrid-empty-placeholder" aria-hidden="true" />
-              )}
+          {cardGroupRails.length > 0 ? (
+            <div className="markdown-hybrid-card-group-rails-layer" aria-hidden="true">
+              {cardGroupRails.map((rail) => (
+                <span
+                  key={`card-group-rail:${rail.groupId}`}
+                  className={`md-card-group-rail markdown-hybrid-card-group-rail${
+                    rail.showStartCap ? " has-start-cap" : ""
+                  }${rail.showEndCap ? " has-end-cap" : ""}`}
+                  data-md-card-group-id={rail.groupId}
+                  style={{ top: rail.top, height: rail.height }}
+                />
+              ))}
             </div>
-          </div>
+          ) : null}
+          {blocks.map((block, index) => {
+            const isActive = activeBlockIndex === index && !disabled;
+            const headingEditorPlaceholder = isActive
+              ? resolveHeadingEditorPlaceholder(block, activeDraft)
+              : null;
+            const isStructuralBlankSeparator =
+              !isActive && isStructuralSeparatorBlankBlock(blocks, index);
+            const isRangeSelected =
+              !disabled && isBlockIndexSelected(selectedBlockSelection, index);
+            const isGroupDrag = Boolean(
+              draggedBlockIndex !== null &&
+              selectedBlockSelection &&
+              selectedBlockSelection.selectedIndices.length > 1 &&
+              isBlockIndexSelected(selectedBlockSelection, draggedBlockIndex),
+            );
+            const isDragging = isGroupDrag
+              ? isBlockIndexSelected(selectedBlockSelection, index)
+              : draggedBlockIndex === index;
+            const hasDropIndicatorTop = dropIndicatorIndex === index;
+            const hasDropIndicatorBottom = dropIndicatorIndex === index + 1;
+            const mathBlockBodySource =
+              isActive && block.kind === "math-block" ? extractMathBlockBody(activeDraft) : "";
+            const codeFencePreviewItems =
+              block.kind === "code-fence" ? resolveCodeFencePreviewItems(block.raw) : [];
+            const hasSvgCodeFenceMediaPreview =
+              block.kind === "code-fence" &&
+              codeFencePreviewItems.some((item) => item.type === "svg");
+            const syncedSvgCodeFenceHeight = resolveStoredSvgCodeFencePreviewHeight(block);
+            const useSyncedSvgCodeFenceEditorHeight =
+              isActive && hasSvgCodeFenceMediaPreview && syncedSvgCodeFenceHeight !== null;
+            const cardGroupId = block.meta?.cardGroupId;
+            const cardGroupRole = block.meta?.cardGroupRole;
+            const listGroupId = block.meta?.listGroupId;
+            const listDepthValue =
+              typeof block.meta?.listDepth === "number" ? Math.max(0, block.meta.listDepth) : null;
+            const listParentStartLine = block.meta?.listParentStartLine;
+            const isListBlock = block.kind === "ordered-list" || block.kind === "unordered-list";
+            const previousBlock = index > 0 ? blocks[index - 1] : null;
+            const listMarkerVariant = isListBlock
+              ? resolveListMarkerVariant(
+                  block.kind === "ordered-list" ? "ordered-list" : "unordered-list",
+                  listDepthValue ?? 0,
+                )
+              : null;
+            const isListGroupContinuation = Boolean(
+              isListBlock &&
+              listGroupId &&
+              previousBlock &&
+              (previousBlock.kind === "ordered-list" || previousBlock.kind === "unordered-list") &&
+              previousBlock.meta?.listGroupId === listGroupId,
+            );
+            const listDepthStyle =
+              listDepthValue !== null
+                ? ({ "--mdh-list-depth": String(listDepthValue) } as CSSProperties)
+                : undefined;
+            const inactiveBlockBody = !isActive
+              ? (inactiveBlockBodyByIndex.get(index) ?? (
+                  <div className="markdown-hybrid-empty-placeholder" aria-hidden="true" />
+                ))
+              : null;
+            return (
+              <div
+                key={blockRenderKeys[index] ?? block.id}
+                className={`markdown-hybrid-block markdown-hybrid-block-${block.kind}${
+                  isActive ? " is-active" : ""
+                }${isStructuralBlankSeparator ? " is-structural-separator" : ""}${
+                  isListGroupContinuation ? " is-list-group-continuation" : ""
+                }${isRangeSelected ? " is-range-selected" : ""}${
+                  isDragging ? " is-dragging" : ""
+                }${hasDropIndicatorTop ? " has-drop-indicator-top" : ""}${
+                  hasDropIndicatorBottom ? " has-drop-indicator-bottom" : ""
+                }`}
+                style={listDepthStyle}
+                aria-selected={isRangeSelected || undefined}
+                data-md-block-selected={isRangeSelected ? "true" : undefined}
+                data-md-block-kind={block.kind}
+                data-md-code-fence-media-preview={hasSvgCodeFenceMediaPreview ? "true" : undefined}
+                data-md-block-index={index}
+                data-md-block-id={String(index)}
+                data-md-card-group-id={cardGroupId ?? undefined}
+                data-md-card-group-role={cardGroupRole ?? undefined}
+                data-md-list-group-id={listGroupId ?? undefined}
+                data-md-list-depth={listDepthValue !== null ? String(listDepthValue) : undefined}
+                data-md-list-parent-start-line={
+                  typeof listParentStartLine === "number" ? String(listParentStartLine) : undefined
+                }
+                data-md-list-item-type={block.meta?.listItemType ?? undefined}
+                data-md-list-indent-width={
+                  typeof block.meta?.listIndentWidth === "number"
+                    ? String(block.meta.listIndentWidth)
+                    : undefined
+                }
+                data-md-unordered-marker={block.meta?.unorderedMarker ?? undefined}
+                data-md-list-marker-variant={listMarkerVariant ?? undefined}
+                onMouseDownCapture={handleBlockMouseDownCapture(index)}
+                onMouseDown={handleBlockMouseDown(index)}
+                onMouseEnter={handleBlockMouseEnter(index)}
+                onMouseLeave={handleBlockMouseLeave(index)}
+                onDragOver={handleBlockDragOver(index)}
+                onDrop={handleBlockDrop(index)}
+              >
+                <div className="markdown-hybrid-block-body">
+                  {block.kind === "table" ? (
+                    <MarkdownHybridTableBlock
+                      blockIndex={index}
+                      raw={block.raw}
+                      active={isActive}
+                      codeViewPolicy={tableCodeViewPolicy}
+                      disabled={disabled}
+                      vaultFiles={vaultFiles}
+                      vaultPngAssets={vaultPngAssets}
+                      renderPreview={renderPreviewWithPageLinks}
+                      pendingActivation={
+                        pendingTableActivation?.blockIndex === index
+                          ? pendingTableActivation.request
+                          : null
+                      }
+                      onConsumePendingActivation={() => clearPendingTableActivation(index)}
+                      onRequestActivate={(request) =>
+                        handleTableBlockRequestActivate(index, request)
+                      }
+                      onCommitRaw={(nextRaw) => {
+                        handleTableBlockCommitRaw(index, nextRaw);
+                      }}
+                      onDirtyChange={(dirty) => {
+                        if (activeBlockIndex === index) {
+                          setActiveTableDirty(dirty);
+                        }
+                      }}
+                      registerSession={(controller) => {
+                        if (activeBlockIndex === index || controller === null) {
+                          registerActiveTableSession(controller);
+                        }
+                      }}
+                      onGlobalUndo={handleGlobalUndo}
+                      onGlobalRedo={handleGlobalRedo}
+                    />
+                  ) : block.kind === "database-block" ? (
+                    <MarkdownHybridDatabaseBlock
+                      raw={block.raw}
+                      vaultFiles={vaultFiles}
+                      vaultPath={vaultPath}
+                      sourceRelativePath={sourceRelativePath}
+                      onNavigateWikilink={onNavigateWikilink}
+                      runnableExamRelativePaths={runnableExamRelativePaths}
+                      onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
+                      monitoringProfiles={monitoringProfiles}
+                      blockIndex={index}
+                      onCommitRaw={(nextRaw) => {
+                        handleTableBlockCommitRaw(index, nextRaw);
+                      }}
+                      allowCellEditing={!disabled}
+                    />
+                  ) : block.kind === "canvas-block" ? (
+                    <CanvasEmbeddedBlock
+                      raw={block.raw}
+                      blockIndex={index}
+                      allowEditing={!disabled}
+                      canvasCustomColors={canvasCustomColors}
+                      onCanvasCustomColorsChange={onCanvasCustomColorsChange}
+                      onCommitRaw={(nextRaw) => {
+                        handleTableBlockCommitRaw(index, nextRaw);
+                      }}
+                    />
+                  ) : isActive ? (
+                    block.kind === "math-block" ? (
+                      <div className="markdown-hybrid-math-block-shell is-editing">
+                        <div className="markdown-hybrid-math-block-toolbar">
+                          <button
+                            type="button"
+                            className="markdown-hybrid-math-toolbox-trigger"
+                            data-md-block-control="true"
+                            data-md-math-toolbox-trigger="true"
+                            aria-label="Open math toolbox"
+                            title="Open math toolbox"
+                            onMouseDown={handleMathToolboxButtonMouseDown}
+                            onClick={handleMathToolboxButtonClick(index)}
+                          >
+                            <InsertMenuIconGraphic icon="math-block" />
+                          </button>
+                        </div>
+                        {mathToolboxState?.blockIndex === index ? (
+                          <div className="markdown-hybrid-math-preview-shell is-structural-editor-active">
+                            <MathBlockRenderer source={mathBlockBodySource} />
+                          </div>
+                        ) : (
+                          <div className="markdown-hybrid-math-editor-shell">
+                            <textarea
+                              ref={textareaRef}
+                              className="markdown-hybrid-block-editor markdown-hybrid-math-editor"
+                              data-input-scope="editor"
+                              value={activeDraft}
+                              rows={Math.max(3, activeDraft.split("\n").length)}
+                              onChange={(event) =>
+                                handleTextareaChange(
+                                  event.target.value,
+                                  event.target.selectionStart,
+                                )
+                              }
+                              onBlur={handleTextareaBlur}
+                              onCompositionStart={handleTextareaCompositionStart}
+                              onCompositionEnd={handleTextareaCompositionEnd}
+                              onKeyDown={handleTextareaKeyDown}
+                              onKeyUp={handleTextareaKeyUp}
+                              onSelect={handleTextareaSelect}
+                              onMouseUp={handleTextareaPointerUp}
+                              onScroll={handleTextareaScroll}
+                              aria-label="Math block editor"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        className={`markdown-hybrid-block-editor-shell${
+                          useSyncedSvgCodeFenceEditorHeight
+                            ? " markdown-hybrid-code-fence-editor-shell"
+                            : ""
+                        }`}
+                      >
+                        <div
+                          className={`markdown-hybrid-block-editor-overlay${
+                            useSyncedSvgCodeFenceEditorHeight
+                              ? " markdown-hybrid-code-fence-editor-overlay"
+                              : ""
+                          }`}
+                          aria-hidden="true"
+                        >
+                          <div
+                            ref={editorSyntaxOverlayContentRef}
+                            className={`markdown-hybrid-block-editor-overlay-content${
+                              useSyncedSvgCodeFenceEditorHeight
+                                ? " markdown-hybrid-code-fence-editor-overlay-content"
+                                : ""
+                            }`}
+                          >
+                            {activeEditorSyntaxOverlayContent}
+                          </div>
+                        </div>
+                        <textarea
+                          ref={textareaRef}
+                          className={`markdown-hybrid-block-editor markdown-hybrid-block-editor-syntax-overlay${
+                            useSyncedSvgCodeFenceEditorHeight
+                              ? " markdown-hybrid-code-fence-editor"
+                              : ""
+                          }`}
+                          data-input-scope="editor"
+                          style={
+                            useSyncedSvgCodeFenceEditorHeight
+                              ? { height: `${syncedSvgCodeFenceHeight}px` }
+                              : undefined
+                          }
+                          value={activeDraft}
+                          rows={Math.max(1, activeDraft.split("\n").length)}
+                          onChange={(event) =>
+                            handleTextareaChange(event.target.value, event.target.selectionStart)
+                          }
+                          onBlur={handleTextareaBlur}
+                          onCompositionStart={handleTextareaCompositionStart}
+                          onCompositionEnd={handleTextareaCompositionEnd}
+                          onKeyDown={handleTextareaKeyDown}
+                          onKeyUp={handleTextareaKeyUp}
+                          onSelect={handleTextareaSelect}
+                          onMouseUp={handleTextareaPointerUp}
+                          onScroll={handleTextareaScroll}
+                          aria-label="Markdown block editor"
+                        />
+                        {headingEditorPlaceholder ? (
+                          <div
+                            className={`markdown-hybrid-heading-editor-placeholder markdown-hybrid-heading-editor-placeholder-level-${headingEditorPlaceholder.level}`}
+                            aria-hidden="true"
+                          >
+                            <span className="markdown-hybrid-heading-editor-placeholder-prefix">
+                              {headingEditorPlaceholder.prefix}
+                            </span>
+                            <span className="markdown-hybrid-heading-editor-placeholder-text">
+                              {headingEditorPlaceholder.label}
+                            </span>
+                          </div>
+                        ) : null}
+                      </div>
+                    )
+                  ) : (
+                    inactiveBlockBody
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
         {selectionMarqueeRect ? (
           <div
@@ -10498,13 +11068,22 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
           />
         ) : null}
         <div className="markdown-hybrid-controls-overlay">
-          {renderOverlayRow({
-            blockIndex: 0,
-            kind: emptyOverlayRect.kind,
-            top: emptyOverlayRect.top,
-            height: emptyOverlayRect.height,
-            isDragHandleDisabled: true,
-            insertButtonTitle: "Insert block",
+          {overlayRows.map((overlayRow) => {
+            if (
+              activeBlockIndex !== overlayRow.index &&
+              isStructuralSeparatorBlankBlock(blocks, overlayRow.index)
+            ) {
+              return null;
+            }
+            const overlayBlock = blocks[overlayRow.index];
+            return renderOverlayRow({
+              blockIndex: overlayRow.index,
+              kind: overlayRow.kind,
+              top: overlayRow.top,
+              height: overlayRow.height,
+              cardGroupId: overlayBlock?.meta?.cardGroupId,
+              cardGroupRole: overlayBlock?.meta?.cardGroupRole,
+            });
           })}
           {activeDropSlotTop !== null ? (
             <div
@@ -10524,377 +11103,7 @@ export const MarkdownHybridEditor = forwardRef<MarkdownHybridEditorHandle, Markd
         {selectionContextMenu}
       </div>
     );
-  }
-
-  return (
-    <div
-      ref={containerRef}
-      className={`markdown-hybrid-editor${disabled ? " is-disabled" : ""}${
-        isSelectionDragging ? " is-selection-dragging" : ""
-      }${draggedBlockIndex !== null ? " is-drag-reordering" : ""}`}
-      style={editorSurfaceStyle}
-      tabIndex={0}
-      onMouseDownCapture={handleEditorRootMouseDownCapture}
-      onMouseLeave={handleEditorMouseLeave}
-      onKeyDown={handleContainerKeyDown}
-      onContextMenu={handleHybridEditorContextMenu}
-      onCopy={handleEditorCopy}
-      onCut={handleEditorCut}
-      onPaste={handleEditorPaste}
-      onDragOver={handleContentLayerDragOver}
-      onDrop={handleContentLayerDrop}
-    >
-      <div
-        ref={contentLayerRef}
-        className="markdown-hybrid-content-layer"
-        onMouseDownCapture={handleContentLayerMouseDownCapture}
-        onDragOver={handleContentLayerDragOver}
-        onDrop={handleContentLayerDrop}
-      >
-        {cardGroupRails.length > 0 ? (
-          <div className="markdown-hybrid-card-group-rails-layer" aria-hidden="true">
-            {cardGroupRails.map((rail) => (
-              <span
-                key={`card-group-rail:${rail.groupId}`}
-                className={`md-card-group-rail markdown-hybrid-card-group-rail${
-                  rail.showStartCap ? " has-start-cap" : ""
-                }${rail.showEndCap ? " has-end-cap" : ""}`}
-                data-md-card-group-id={rail.groupId}
-                style={{ top: rail.top, height: rail.height }}
-              />
-            ))}
-          </div>
-        ) : null}
-        {blocks.map((block, index) => {
-          const isActive = activeBlockIndex === index && !disabled;
-          const headingEditorPlaceholder = isActive
-            ? resolveHeadingEditorPlaceholder(block, activeDraft)
-            : null;
-          const isStructuralBlankSeparator =
-            !isActive && isStructuralSeparatorBlankBlock(blocks, index);
-          const isRangeSelected = !disabled && isBlockIndexSelected(selectedBlockSelection, index);
-          const isGroupDrag = Boolean(
-            draggedBlockIndex !== null &&
-              selectedBlockSelection &&
-              selectedBlockSelection.selectedIndices.length > 1 &&
-              isBlockIndexSelected(selectedBlockSelection, draggedBlockIndex),
-          );
-          const isDragging = isGroupDrag
-            ? isBlockIndexSelected(selectedBlockSelection, index)
-            : draggedBlockIndex === index;
-          const hasDropIndicatorTop = dropIndicatorIndex === index;
-          const hasDropIndicatorBottom = dropIndicatorIndex === index + 1;
-          const mathBlockBodySource = isActive && block.kind === "math-block"
-            ? extractMathBlockBody(activeDraft)
-            : "";
-          const codeFencePreviewItems = block.kind === "code-fence"
-            ? resolveCodeFencePreviewItems(block.raw)
-            : [];
-          const hasSvgCodeFenceMediaPreview = block.kind === "code-fence" &&
-            codeFencePreviewItems.some((item) => item.type === "svg");
-          const syncedSvgCodeFenceHeight = resolveStoredSvgCodeFencePreviewHeight(block);
-          const useSyncedSvgCodeFenceEditorHeight = isActive &&
-            hasSvgCodeFenceMediaPreview &&
-            syncedSvgCodeFenceHeight !== null;
-          const cardGroupId = block.meta?.cardGroupId;
-          const cardGroupRole = block.meta?.cardGroupRole;
-          const listGroupId = block.meta?.listGroupId;
-          const listDepthValue = typeof block.meta?.listDepth === "number"
-            ? Math.max(0, block.meta.listDepth)
-            : null;
-          const listParentStartLine = block.meta?.listParentStartLine;
-          const isListBlock = block.kind === "ordered-list" || block.kind === "unordered-list";
-          const previousBlock = index > 0 ? blocks[index - 1] : null;
-          const listMarkerVariant = isListBlock
-            ? resolveListMarkerVariant(
-              block.kind === "ordered-list" ? "ordered-list" : "unordered-list",
-              listDepthValue ?? 0,
-            )
-            : null;
-          const isListGroupContinuation = Boolean(
-            isListBlock &&
-              listGroupId &&
-              previousBlock &&
-              (previousBlock.kind === "ordered-list" || previousBlock.kind === "unordered-list") &&
-              previousBlock.meta?.listGroupId === listGroupId,
-          );
-          const listDepthStyle = listDepthValue !== null
-            ? ({ "--mdh-list-depth": String(listDepthValue) } as CSSProperties)
-            : undefined;
-          const inactiveBlockBody = !isActive
-            ? (inactiveBlockBodyByIndex.get(index) ?? <div className="markdown-hybrid-empty-placeholder" aria-hidden="true" />)
-            : null;
-          return (
-            <div
-              key={blockRenderKeys[index] ?? block.id}
-              className={`markdown-hybrid-block markdown-hybrid-block-${block.kind}${
-                isActive ? " is-active" : ""
-              }${isStructuralBlankSeparator ? " is-structural-separator" : ""}${
-                isListGroupContinuation ? " is-list-group-continuation" : ""
-              }${
-                isRangeSelected ? " is-range-selected" : ""
-              }${
-                isDragging ? " is-dragging" : ""
-              }${hasDropIndicatorTop ? " has-drop-indicator-top" : ""}${
-                hasDropIndicatorBottom ? " has-drop-indicator-bottom" : ""
-              }`}
-              style={listDepthStyle}
-              aria-selected={isRangeSelected || undefined}
-              data-md-block-selected={isRangeSelected ? "true" : undefined}
-              data-md-block-kind={block.kind}
-              data-md-code-fence-media-preview={hasSvgCodeFenceMediaPreview ? "true" : undefined}
-              data-md-block-index={index}
-              data-md-block-id={String(index)}
-              data-md-card-group-id={cardGroupId ?? undefined}
-              data-md-card-group-role={cardGroupRole ?? undefined}
-              data-md-list-group-id={listGroupId ?? undefined}
-              data-md-list-depth={listDepthValue !== null ? String(listDepthValue) : undefined}
-              data-md-list-parent-start-line={
-                typeof listParentStartLine === "number" ? String(listParentStartLine) : undefined
-              }
-              data-md-list-item-type={block.meta?.listItemType ?? undefined}
-              data-md-list-indent-width={
-                typeof block.meta?.listIndentWidth === "number"
-                  ? String(block.meta.listIndentWidth)
-                  : undefined
-              }
-              data-md-unordered-marker={block.meta?.unorderedMarker ?? undefined}
-              data-md-list-marker-variant={listMarkerVariant ?? undefined}
-              onMouseDownCapture={handleBlockMouseDownCapture(index)}
-              onMouseDown={handleBlockMouseDown(index)}
-              onMouseEnter={handleBlockMouseEnter(index)}
-              onMouseLeave={handleBlockMouseLeave(index)}
-              onDragOver={handleBlockDragOver(index)}
-              onDrop={handleBlockDrop(index)}
-            >
-              <div className="markdown-hybrid-block-body">
-                {block.kind === "table" ? (
-                  <MarkdownHybridTableBlock
-                    blockIndex={index}
-                    raw={block.raw}
-                    active={isActive}
-                    codeViewPolicy={tableCodeViewPolicy}
-                    disabled={disabled}
-                    vaultFiles={vaultFiles}
-                    vaultPngAssets={vaultPngAssets}
-                    renderPreview={renderPreviewWithPageLinks}
-                    pendingActivation={
-                      pendingTableActivation?.blockIndex === index
-                        ? pendingTableActivation.request
-                        : null
-                    }
-                    onConsumePendingActivation={() => clearPendingTableActivation(index)}
-                    onRequestActivate={(request) => handleTableBlockRequestActivate(index, request)}
-                    onCommitRaw={(nextRaw) => {
-                      handleTableBlockCommitRaw(index, nextRaw);
-                    }}
-                    onDirtyChange={(dirty) => {
-                      if (activeBlockIndex === index) {
-                        setActiveTableDirty(dirty);
-                      }
-                    }}
-                    registerSession={(controller) => {
-                      if (activeBlockIndex === index || controller === null) {
-                        registerActiveTableSession(controller);
-                      }
-                    }}
-                    onGlobalUndo={handleGlobalUndo}
-                    onGlobalRedo={handleGlobalRedo}
-                  />
-                ) : block.kind === "database-block" ? (
-                  <MarkdownHybridDatabaseBlock
-                    raw={block.raw}
-                    vaultFiles={vaultFiles}
-                    vaultPath={vaultPath}
-                    sourceRelativePath={sourceRelativePath}
-                    onNavigateWikilink={onNavigateWikilink}
-                    runnableExamRelativePaths={runnableExamRelativePaths}
-                    onOpenExamFromDatabaseRecord={onOpenExamFromDatabaseRecord}
-                    monitoringProfiles={monitoringProfiles}
-                    blockIndex={index}
-                    onCommitRaw={(nextRaw) => {
-                      handleTableBlockCommitRaw(index, nextRaw);
-                    }}
-                    allowCellEditing={!disabled}
-                  />
-                ) : block.kind === "canvas-block" ? (
-                  <CanvasEmbeddedBlock
-                    raw={block.raw}
-                    blockIndex={index}
-                    allowEditing={!disabled}
-                    canvasCustomColors={canvasCustomColors}
-                    onCanvasCustomColorsChange={onCanvasCustomColorsChange}
-                    onCommitRaw={(nextRaw) => {
-                      handleTableBlockCommitRaw(index, nextRaw);
-                    }}
-                  />
-                ) : isActive ? (
-                  block.kind === "math-block" ? (
-                    <div className="markdown-hybrid-math-block-shell is-editing">
-                      <div className="markdown-hybrid-math-block-toolbar">
-                        <button
-                          type="button"
-                          className="markdown-hybrid-math-toolbox-trigger"
-                          data-md-block-control="true"
-                          data-md-math-toolbox-trigger="true"
-                          aria-label="Open math toolbox"
-                          title="Open math toolbox"
-                          onMouseDown={handleMathToolboxButtonMouseDown}
-                          onClick={handleMathToolboxButtonClick(index)}
-                        >
-                          <InsertMenuIconGraphic icon="math-block" />
-                        </button>
-                      </div>
-                      {mathToolboxState?.blockIndex === index ? (
-                        <div className="markdown-hybrid-math-preview-shell is-structural-editor-active">
-                          <MathBlockRenderer source={mathBlockBodySource} />
-                        </div>
-                      ) : (
-                        <div className="markdown-hybrid-math-editor-shell">
-                          <textarea
-                            ref={textareaRef}
-                            className="markdown-hybrid-block-editor markdown-hybrid-math-editor"
-                            data-input-scope="editor"
-                            value={activeDraft}
-                            rows={Math.max(3, activeDraft.split("\n").length)}
-                            onChange={(event) =>
-                              handleTextareaChange(event.target.value, event.target.selectionStart)}
-                            onBlur={handleTextareaBlur}
-                            onCompositionStart={handleTextareaCompositionStart}
-                            onCompositionEnd={handleTextareaCompositionEnd}
-                            onKeyDown={handleTextareaKeyDown}
-                            onKeyUp={handleTextareaKeyUp}
-                            onSelect={handleTextareaSelect}
-                            onMouseUp={handleTextareaPointerUp}
-                            onScroll={handleTextareaScroll}
-                            aria-label="Math block editor"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div
-                      className={`markdown-hybrid-block-editor-shell${
-                        useSyncedSvgCodeFenceEditorHeight
-                          ? " markdown-hybrid-code-fence-editor-shell"
-                          : ""
-                      }`}
-                    >
-                      <div
-                        className={`markdown-hybrid-block-editor-overlay${
-                          useSyncedSvgCodeFenceEditorHeight
-                            ? " markdown-hybrid-code-fence-editor-overlay"
-                            : ""
-                        }`}
-                        aria-hidden="true"
-                      >
-                        <div
-                          ref={editorSyntaxOverlayContentRef}
-                          className={`markdown-hybrid-block-editor-overlay-content${
-                            useSyncedSvgCodeFenceEditorHeight
-                              ? " markdown-hybrid-code-fence-editor-overlay-content"
-                              : ""
-                          }`}
-                        >
-                          {activeEditorSyntaxOverlayContent}
-                        </div>
-                      </div>
-                      <textarea
-                        ref={textareaRef}
-                        className={`markdown-hybrid-block-editor markdown-hybrid-block-editor-syntax-overlay${
-                          useSyncedSvgCodeFenceEditorHeight
-                            ? " markdown-hybrid-code-fence-editor"
-                            : ""
-                        }`}
-                        data-input-scope="editor"
-                        style={
-                          useSyncedSvgCodeFenceEditorHeight
-                            ? { height: `${syncedSvgCodeFenceHeight}px` }
-                            : undefined
-                        }
-                        value={activeDraft}
-                        rows={Math.max(1, activeDraft.split("\n").length)}
-                        onChange={(event) =>
-                          handleTextareaChange(event.target.value, event.target.selectionStart)}
-                        onBlur={handleTextareaBlur}
-                        onCompositionStart={handleTextareaCompositionStart}
-                        onCompositionEnd={handleTextareaCompositionEnd}
-                        onKeyDown={handleTextareaKeyDown}
-                        onKeyUp={handleTextareaKeyUp}
-                        onSelect={handleTextareaSelect}
-                        onMouseUp={handleTextareaPointerUp}
-                        onScroll={handleTextareaScroll}
-                        aria-label="Markdown block editor"
-                      />
-                      {headingEditorPlaceholder ? (
-                        <div
-                          className={`markdown-hybrid-heading-editor-placeholder markdown-hybrid-heading-editor-placeholder-level-${headingEditorPlaceholder.level}`}
-                          aria-hidden="true"
-                        >
-                          <span className="markdown-hybrid-heading-editor-placeholder-prefix">
-                            {headingEditorPlaceholder.prefix}
-                          </span>
-                          <span className="markdown-hybrid-heading-editor-placeholder-text">
-                            {headingEditorPlaceholder.label}
-                          </span>
-                        </div>
-                      ) : null}
-                    </div>
-                  )
-                ) : inactiveBlockBody}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      {selectionMarqueeRect ? (
-        <div
-          className="markdown-hybrid-selection-marquee"
-          aria-hidden="true"
-          style={{
-            left: selectionMarqueeRect.left,
-            top: selectionMarqueeRect.top,
-            width: selectionMarqueeRect.width,
-            height: selectionMarqueeRect.height,
-          }}
-        />
-      ) : null}
-      <div className="markdown-hybrid-controls-overlay">
-        {overlayRows.map((overlayRow) => {
-          if (
-            activeBlockIndex !== overlayRow.index &&
-            isStructuralSeparatorBlankBlock(blocks, overlayRow.index)
-          ) {
-            return null;
-          }
-          const overlayBlock = blocks[overlayRow.index];
-          return renderOverlayRow({
-            blockIndex: overlayRow.index,
-            kind: overlayRow.kind,
-            top: overlayRow.top,
-            height: overlayRow.height,
-            cardGroupId: overlayBlock?.meta?.cardGroupId,
-            cardGroupRole: overlayBlock?.meta?.cardGroupRole,
-          });
-        })}
-        {activeDropSlotTop !== null ? (
-          <div
-            className="markdown-hybrid-drop-slot-indicator"
-            style={{ top: activeDropSlotTop }}
-            aria-hidden="true"
-          >
-            <span className="markdown-hybrid-drop-slot-line" />
-          </div>
-        ) : null}
-      </div>
-      {dragPreviewOverlay}
-      {pageLinkPickerPopup}
-      {typedImageLinkPickerPopup}
-      {mathToolboxPopup}
-      {inlineFormattingToolbarPopup}
-      {selectionContextMenu}
-    </div>
-  );
-});
+  },
+);
 
 MarkdownHybridEditor.displayName = "MarkdownHybridEditor";

@@ -3,6 +3,7 @@ import { act, createElement, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { DatabaseToolbar } from "./database-toolbar";
+import { setNativeValue } from "../../../../../test/dom";
 
 const render = (element: ReactElement) => {
   const container = document.createElement("div");
@@ -68,11 +69,17 @@ describe("DatabaseToolbar", () => {
     const { container, cleanup } = render(createElement(DatabaseToolbar, props));
 
     const mainRow = container.querySelector(".database-block-toolbar-row-main");
-    const viewButton = container.querySelector<HTMLButtonElement>(".database-block-view-name-button");
-    const sourceButton = container.querySelector<HTMLButtonElement>(".database-block-source-button");
+    const viewButton = container.querySelector<HTMLButtonElement>(
+      ".database-block-view-name-button",
+    );
+    const sourceButton = container.querySelector<HTMLButtonElement>(
+      ".database-block-source-button",
+    );
     const sortButton = container.querySelector<HTMLButtonElement>("button[aria-label='Sortieren']");
     const filterButton = container.querySelector<HTMLButtonElement>("button[aria-label='Filtern']");
-    const propertiesButton = container.querySelector<HTMLButtonElement>("button[aria-label='Eigenschaften']");
+    const propertiesButton = container.querySelector<HTMLButtonElement>(
+      "button[aria-label='Eigenschaften']",
+    );
     const searchButton = container.querySelector<HTMLButtonElement>("button[aria-label='Suche']");
 
     expect(mainRow).toBeTruthy();
@@ -80,7 +87,9 @@ describe("DatabaseToolbar", () => {
     expect(sourceButton?.textContent).toBe("Quelle");
     expect(sortButton?.classList.contains("database-block-toolbar-button-icon-only")).toBe(true);
     expect(filterButton?.classList.contains("database-block-toolbar-button-icon-only")).toBe(true);
-    expect(propertiesButton?.classList.contains("database-block-toolbar-button-icon-only")).toBe(true);
+    expect(propertiesButton?.classList.contains("database-block-toolbar-button-icon-only")).toBe(
+      true,
+    );
     expect(searchButton?.classList.contains("database-block-toolbar-button-icon-only")).toBe(true);
     expect(container.querySelector(".database-block-toolbar-search-input")).toBeNull();
 
@@ -91,10 +100,14 @@ describe("DatabaseToolbar", () => {
     const props = buildProps();
     const { container, cleanup } = render(createElement(DatabaseToolbar, props));
 
-    const sourceButton = container.querySelector<HTMLButtonElement>(".database-block-source-button");
+    const sourceButton = container.querySelector<HTMLButtonElement>(
+      ".database-block-source-button",
+    );
     const sortButton = container.querySelector<HTMLButtonElement>("button[aria-label='Sortieren']");
     const filterButton = container.querySelector<HTMLButtonElement>("button[aria-label='Filtern']");
-    const propertiesButton = container.querySelector<HTMLButtonElement>("button[aria-label='Eigenschaften']");
+    const propertiesButton = container.querySelector<HTMLButtonElement>(
+      "button[aria-label='Eigenschaften']",
+    );
     const viewSelect = container.querySelector<HTMLSelectElement>(".database-block-view-select");
 
     act(() => {
@@ -103,7 +116,7 @@ describe("DatabaseToolbar", () => {
       filterButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       propertiesButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       if (viewSelect) {
-        viewSelect.value = "kanban";
+        setNativeValue(viewSelect, "kanban");
         viewSelect.dispatchEvent(new Event("change", { bubbles: true }));
       }
     });
@@ -127,12 +140,14 @@ describe("DatabaseToolbar", () => {
       searchButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    const searchInput = container.querySelector<HTMLInputElement>(".database-block-toolbar-search-input");
+    const searchInput = container.querySelector<HTMLInputElement>(
+      ".database-block-toolbar-search-input",
+    );
     expect(searchInput).toBeTruthy();
 
     act(() => {
       if (searchInput) {
-        searchInput.value = "IUFS";
+        setNativeValue(searchInput, "IUFS");
         searchInput.dispatchEvent(new Event("input", { bubbles: true }));
       }
     });
@@ -165,15 +180,18 @@ describe("DatabaseToolbar", () => {
     const props = buildProps();
     const { container, cleanup } = render(createElement(DatabaseToolbar, props));
 
-    const viewButton = container.querySelector<HTMLButtonElement>(".database-block-view-name-button");
+    const viewButton = container.querySelector<HTMLButtonElement>(
+      ".database-block-view-name-button",
+    );
 
     act(() => {
       viewButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     const activeItem = container.querySelector(".database-block-view-dropdown-item.is-active");
-    const secondItem = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"))
-      .find((button) => button.textContent?.includes("Kanban Fokus"));
+    const secondItem = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"),
+    ).find((button) => button.textContent?.includes("Kanban Fokus"));
 
     expect(activeItem?.textContent).toContain("Default View");
 
@@ -187,13 +205,16 @@ describe("DatabaseToolbar", () => {
       viewButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    const createInput = container.querySelector<HTMLInputElement>(".database-block-toolbar-create-view-input");
-    const createButton = Array.from(container.querySelectorAll<HTMLButtonElement>("button"))
-      .find((button) => button.textContent?.includes("Create View"));
+    const createInput = container.querySelector<HTMLInputElement>(
+      ".database-block-toolbar-create-view-input",
+    );
+    const createButton = Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find(
+      (button) => button.textContent?.includes("Create View"),
+    );
 
     act(() => {
       if (createInput) {
-        createInput.value = "Neue View";
+        setNativeValue(createInput, "Neue View");
         createInput.dispatchEvent(new Event("input", { bubbles: true }));
       }
       createButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -206,106 +227,131 @@ describe("DatabaseToolbar", () => {
 
   it("supports context-menu rename/delete/duplicate/move actions for saved views", () => {
     const props = buildProps();
-    const confirmSpy = vi.spyOn(window, "confirm")
+    const confirmSpy = vi
+      .spyOn(window, "confirm")
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(true);
     const { container, cleanup } = render(createElement(DatabaseToolbar, props));
 
-    const viewButton = container.querySelector<HTMLButtonElement>(".database-block-view-name-button");
+    const viewButton = container.querySelector<HTMLButtonElement>(
+      ".database-block-view-name-button",
+    );
     act(() => {
       viewButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    const targetItem = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"))
-      .find((button) => button.textContent?.includes("Kanban Fokus"));
+    const targetItem = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"),
+    ).find((button) => button.textContent?.includes("Kanban Fokus"));
     expect(targetItem).toBeTruthy();
 
     const targetRow = targetItem?.closest(".database-block-view-dropdown-row");
-    const menuTrigger = targetRow?.querySelector<HTMLButtonElement>(".database-block-view-dropdown-menu-trigger");
+    const menuTrigger = targetRow?.querySelector<HTMLButtonElement>(
+      ".database-block-view-dropdown-menu-trigger",
+    );
     act(() => {
       menuTrigger?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    const renameButton = Array.from(document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"))
-      .find((button) => button.textContent?.includes("Rename"));
+    const renameButton = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"),
+    ).find((button) => button.textContent?.includes("Rename"));
     act(() => {
       renameButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    const renameInput = container.querySelector<HTMLInputElement>(".database-block-view-dropdown-rename-input");
+    const renameInput = container.querySelector<HTMLInputElement>(
+      ".database-block-view-dropdown-rename-input",
+    );
     expect(renameInput).toBeTruthy();
     act(() => {
       if (renameInput) {
-        renameInput.value = "Kanban Fokus 2";
+        setNativeValue(renameInput, "Kanban Fokus 2");
         renameInput.dispatchEvent(new Event("input", { bubbles: true }));
         renameInput.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }));
       }
     });
     expect(props.onRenameSavedView).toHaveBeenCalledWith("view-kanban", "Kanban Fokus 2");
 
-    const renamedTargetItem = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"))
-      .find((button) => button.textContent?.includes("Kanban Fokus"));
+    const renamedTargetItem = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"),
+    ).find((button) => button.textContent?.includes("Kanban Fokus"));
     act(() => {
-      renamedTargetItem?.dispatchEvent(new MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        clientX: 125,
-        clientY: 145,
-      }));
+      renamedTargetItem?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 125,
+          clientY: 145,
+        }),
+      );
     });
-    const duplicateButton = Array.from(document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"))
-      .find((button) => button.textContent?.includes("Duplicate"));
+    const duplicateButton = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"),
+    ).find((button) => button.textContent?.includes("Duplicate"));
     act(() => {
       duplicateButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(props.onDuplicateSavedView).toHaveBeenCalledWith("view-kanban");
 
-    const duplicateTargetItem = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"))
-      .find((button) => button.textContent?.includes("Kanban Fokus"));
+    const duplicateTargetItem = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"),
+    ).find((button) => button.textContent?.includes("Kanban Fokus"));
     act(() => {
-      duplicateTargetItem?.dispatchEvent(new MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        clientX: 130,
-        clientY: 150,
-      }));
+      duplicateTargetItem?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 130,
+          clientY: 150,
+        }),
+      );
     });
-    const moveUpButton = Array.from(document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"))
-      .find((button) => button.textContent?.includes("Move up"));
+    const moveUpButton = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"),
+    ).find((button) => button.textContent?.includes("Move up"));
     act(() => {
       moveUpButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(props.onMoveSavedView).toHaveBeenCalledWith("view-kanban", "up");
 
-    const deleteTargetItem = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"))
-      .find((button) => button.textContent?.includes("Kanban Fokus"));
+    const deleteTargetItem = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"),
+    ).find((button) => button.textContent?.includes("Kanban Fokus"));
     act(() => {
-      deleteTargetItem?.dispatchEvent(new MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        clientX: 135,
-        clientY: 155,
-      }));
+      deleteTargetItem?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 135,
+          clientY: 155,
+        }),
+      );
     });
-    const deleteButton = Array.from(document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"))
-      .find((button) => button.textContent?.includes("Delete"));
+    const deleteButton = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"),
+    ).find((button) => button.textContent?.includes("Delete"));
     act(() => {
       deleteButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     expect(props.onDeleteSavedView).not.toHaveBeenCalled();
 
-    const deleteConfirmTargetItem = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"))
-      .find((button) => button.textContent?.includes("Kanban Fokus"));
+    const deleteConfirmTargetItem = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"),
+    ).find((button) => button.textContent?.includes("Kanban Fokus"));
     act(() => {
-      deleteConfirmTargetItem?.dispatchEvent(new MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        clientX: 140,
-        clientY: 160,
-      }));
+      deleteConfirmTargetItem?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 140,
+          clientY: 160,
+        }),
+      );
     });
-    const deleteButtonConfirm = Array.from(document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"))
-      .find((button) => button.textContent?.includes("Delete"));
+    const deleteButtonConfirm = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"),
+    ).find((button) => button.textContent?.includes("Delete"));
     act(() => {
       deleteButtonConfirm?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -320,12 +366,16 @@ describe("DatabaseToolbar", () => {
     const props = buildProps();
     const { container, cleanup } = render(createElement(DatabaseToolbar, props));
 
-    const viewButton = container.querySelector<HTMLButtonElement>(".database-block-view-name-button");
+    const viewButton = container.querySelector<HTMLButtonElement>(
+      ".database-block-view-name-button",
+    );
     act(() => {
       viewButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    const items = Array.from(container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"));
+    const items = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"),
+    );
     const firstItem = items[0];
     const secondItem = items[1];
     expect(firstItem).toBeTruthy();
@@ -346,13 +396,16 @@ describe("DatabaseToolbar", () => {
   it("renders view-specific controls in the fixed second row", () => {
     const baseProps = buildProps();
 
-    const kanban = render(createElement(DatabaseToolbar, {
-      ...baseProps,
-      viewType: "kanban",
-    }));
+    const kanban = render(
+      createElement(DatabaseToolbar, {
+        ...baseProps,
+        viewType: "kanban",
+      }),
+    );
     const secondaryKanban = kanban.container.querySelector(".database-block-toolbar-row-secondary");
-    const kanbanButton = Array.from(kanban.container.querySelectorAll<HTMLButtonElement>("button"))
-      .find((button) => button.textContent?.includes("Kanban Optionen"));
+    const kanbanButton = Array.from(
+      kanban.container.querySelectorAll<HTMLButtonElement>("button"),
+    ).find((button) => button.textContent?.includes("Kanban Optionen"));
     expect(secondaryKanban).toBeTruthy();
     expect(kanbanButton).toBeTruthy();
     expect(secondaryKanban?.querySelector(".database-block-view-select-secondary")).toBeNull();
@@ -363,12 +416,15 @@ describe("DatabaseToolbar", () => {
     kanban.cleanup();
 
     const ganttProps = buildProps();
-    const gantt = render(createElement(DatabaseToolbar, {
-      ...ganttProps,
-      viewType: "gantt",
-    }));
-    const timelineButton = Array.from(gantt.container.querySelectorAll<HTMLButtonElement>("button"))
-      .find((button) => button.textContent?.includes("Timeline Optionen"));
+    const gantt = render(
+      createElement(DatabaseToolbar, {
+        ...ganttProps,
+        viewType: "gantt",
+      }),
+    );
+    const timelineButton = Array.from(
+      gantt.container.querySelectorAll<HTMLButtonElement>("button"),
+    ).find((button) => button.textContent?.includes("Timeline Optionen"));
     expect(timelineButton).toBeTruthy();
     act(() => {
       timelineButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -377,12 +433,15 @@ describe("DatabaseToolbar", () => {
     gantt.cleanup();
 
     const projectProps = buildProps();
-    const project = render(createElement(DatabaseToolbar, {
-      ...projectProps,
-      viewType: "project",
-    }));
-    const projectButton = Array.from(project.container.querySelectorAll<HTMLButtonElement>("button"))
-      .find((button) => button.textContent?.includes("Project Optionen"));
+    const project = render(
+      createElement(DatabaseToolbar, {
+        ...projectProps,
+        viewType: "project",
+      }),
+    );
+    const projectButton = Array.from(
+      project.container.querySelectorAll<HTMLButtonElement>("button"),
+    ).find((button) => button.textContent?.includes("Project Optionen"));
     expect(projectButton).toBeTruthy();
     act(() => {
       projectButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -391,12 +450,15 @@ describe("DatabaseToolbar", () => {
     project.cleanup();
 
     const pieProps = buildProps();
-    const pie = render(createElement(DatabaseToolbar, {
-      ...pieProps,
-      viewType: "pie",
-    }));
-    const pieButton = Array.from(pie.container.querySelectorAll<HTMLButtonElement>("button"))
-      .find((button) => button.textContent?.includes("Pie Optionen"));
+    const pie = render(
+      createElement(DatabaseToolbar, {
+        ...pieProps,
+        viewType: "pie",
+      }),
+    );
+    const pieButton = Array.from(pie.container.querySelectorAll<HTMLButtonElement>("button")).find(
+      (button) => button.textContent?.includes("Pie Optionen"),
+    );
     expect(pieButton).toBeTruthy();
     act(() => {
       pieButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));

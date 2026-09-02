@@ -29,6 +29,7 @@ const createMockState = (language: "de" | "en") => {
       language,
       setLanguage: noop,
       recentVaults: [] as Array<{ path: string }>,
+      currentSystemRecentVaults: [] as Array<{ path: string }>,
       showHiddenFolders: false,
       showEmptyFolders: true,
       setShowHiddenFolders: noop,
