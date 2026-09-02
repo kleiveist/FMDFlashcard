@@ -12,7 +12,7 @@ Use the repository-root command contract:
 ./control install
 ```
 
-The supported toolchain versions are declared in `.github/toolchains.json`, `apps/fmd-desktop/package.json`, and `rust-toolchain.toml`. Dependency installs use committed lockfiles.
+The real install creates a repository-local `.venv`; all root wrappers automatically use it on subsequent calls. Direct callers should activate `.venv` or run `.venv/bin/python tools/control.py ...` (Windows: `.venv\Scripts\python.exe`). The supported toolchain versions are declared in `.github/toolchains.json`, `apps/fmd-desktop/package.json`, and `rust-toolchain.toml`. Dependency installs use committed lockfiles.
 
 ## Pull requests
 

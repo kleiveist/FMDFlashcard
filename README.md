@@ -14,6 +14,7 @@ The root wrappers all forward to the same Python implementation:
 ```
 
 On PowerShell use `.\\control.ps1`; on Command Prompt use `control.cmd`. Direct invocation with `python tools/control.py` remains supported. Help works before project dependencies are installed.
+The real install creates `.venv`, and the wrappers automatically select its Python for quality, documentation, and tooling commands.
 
 Run the local gates before opening a pull request:
 

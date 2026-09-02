@@ -30,7 +30,7 @@ Use `--dry-run` to validate any plan on any host. Real supported packages requir
 |---|---|---|---|
 | `linux-x86_64` | Ubuntu 22.04 x86_64 | `x86_64-unknown-linux-gnu` | DEB, RPM, AppImage |
 | `windows-x86_64` | Windows Server 2022 | `x86_64-pc-windows-msvc` | MSI, NSIS setup, portable ZIP |
-| `macos-aarch64` | macOS 14 Apple Silicon | `aarch64-apple-darwin` | DMG, app tarball |
+| `macos-aarch64` | macOS 15 Apple Silicon | `aarch64-apple-darwin` | DMG, app tarball |
 | `macos-x86_64` | macOS 15 Intel | `x86_64-apple-darwin` | DMG, app tarball |
 
 `tools/release-matrix.json` is the machine-readable source shared by local validation and GitHub Actions. Linux ARM64, Windows ARM64, and universal macOS are not in the required contract because complete native installer sets have not been proven for this repository.

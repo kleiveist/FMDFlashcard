@@ -4,7 +4,7 @@
 
 The release workflow never creates or pushes a tag. Manual dispatch defaults to validation only. Native jobs build and upload evidence but cannot publish; only the final job receives `contents: write`, `attestations: write`, and `id-token: write` after every prerequisite succeeds.
 
-The current repository has no verified license terms. `release check` warns during ordinary local validation and fails for a tagged build until the owner adds a license file and matching package metadata.
+The current repository has no verified license terms. `release check` warns during ordinary local validation and fails for a tagged build until the owner adds one canonical root license, the same explicit SPDX expression to `package.json` and `Cargo.toml`, and a Tauri `bundle.licenseFile` reference that includes that root license in native bundles. A license file alone does not clear the gate.
 
 ## Local release candidate validation
 
@@ -40,9 +40,14 @@ Validate every native plan even when the current host cannot build it:
 
 For a manual validation, dispatch `release.yml` with `publish=false`. Manual publication requires `publish=true` and an explicit existing matching tag. Existing stable releases are never overwritten automatically.
 
+Configure a repository ruleset for `v*` tags that blocks updates and deletion. The
+workflow binds every build to the gated 40-character commit SHA and rechecks the
+remote tag before and after draft creation, while the server-side rule closes the
+remaining tag-mutation race.
+
 ## Signing policy
 
-Set repository variable `FMD_SIGNING_POLICY` to `optional` or `required`. Required policy fails before publication when credentials or verified signatures are absent. Optional unsigned artifacts remain explicitly `unsigned` in the manifest.
+Set repository variable `FMD_RELEASE_SIGNING_POLICY` to `optional` or `required`. Required policy fails before publication when credentials or verified signatures are absent. Optional unsigned artifacts remain explicitly `unsigned` in the manifest. Non-publishing manual validation never receives signing credentials and always assembles explicitly unsigned evidence.
 
 Configure these Actions secrets by purpose; never store values in source:
 
@@ -56,6 +61,12 @@ Configure these Actions secrets by purpose; never store values in source:
 | `APPLE_ID` | Notarization Apple ID |
 | `APPLE_PASSWORD` | App-specific notarization password |
 | `APPLE_TEAM_ID` | Apple Developer team identifier |
+
+Optionally set the non-secret repository variable `WINDOWS_TIMESTAMP_URL` to
+an absolute HTTPS RFC 3161 timestamp endpoint supplied by the certificate
+provider. Windows signing always uses SHA-256; when the variable is present,
+both Tauri and the portable executable signer timestamp their signatures before
+the post-build Authenticode check.
 
 Unsigned pull-request builds never import certificates. Windows signatures are checked after build. macOS code signatures are verified with `codesign`; notarization is recorded only after the notarization/stapling verification succeeds. The workflow does not add Tauri updater keys because no updater is implemented.
 
