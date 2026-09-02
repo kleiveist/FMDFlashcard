@@ -83,7 +83,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python .github/scripts/run_logged.py `
             --log .reports/ci/nightly-cargo-audit.log `
-            -- cargo audit --file apps/fmd-desktop/src-tauri/Cargo.lock
+            -- cargo audit --deny yanked --file apps/fmd-desktop/src-tauri/Cargo.lock
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Upload nightly gate evidence

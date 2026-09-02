@@ -237,6 +237,15 @@ def test_required_workflows_do_not_suppress_failures_or_write_to_main() -> None:
     assert violations == []
 
 
+def test_dependency_audits_block_high_frontend_and_yanked_rust_packages() -> None:
+    for name in ("ci-nightly.yml", "release.yml"):
+        workflow = (WORKFLOW_ROOT / name).read_text(encoding="utf-8")
+        assert "pnpm -C apps/fmd-desktop audit --prod --audit-level high" in workflow
+        assert (
+            "cargo audit --deny yanked --file apps/fmd-desktop/src-tauri/Cargo.lock"
+        ) in workflow
+
+
 def test_shell_scripts_never_interpolate_workflow_contexts_directly() -> None:
     unsafe = re.compile(r"\$\{\{\s*(?:github|inputs|matrix|needs|secrets)\.")
     violations: list[str] = []
