@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "python": "3.12",
+  "node": "22.12.0",
+  "corepack": "0.34.0",
+  "pnpm": "10.17.1",
+  "rust": "1.89.0",
+  "pip": "25.2",
+  "cargo_tools": {
+    "cargo_audit": "0.21.2"
+  },
+  "texlive": "2025",
+  "runners": {
+    "linux_x86_64": "ubuntu-22.04",
+    "windows_x86_64": "windows-2022",
+    "macos_aarch64": "macos-15",
+    "macos_x86_64": "macos-15-intel"
+  }
+}

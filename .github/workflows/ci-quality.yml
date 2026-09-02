@@ -1,0 +1,73 @@
+name: Quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  quality:
+    name: quality
+    # Windows exercises frontend/Python gates plus real Cargo fmt, Clippy,
+    # tests, and checks without privileged Linux dependency installation.
+    runs-on: windows-2022
+    timeout-minutes: 45
+    env:
+      CI: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONHASHSEED: "0"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up pinned FMDFlashcard environment
+        uses: ./.github/actions/setup-fmd-environment
+
+      - name: Run the complete read-only quality gate
+        shell: pwsh
+        run: |
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/quality.log `
+            -- python tools/control.py quality
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify quality checks did not change tracked files
+        shell: pwsh
+        run: |
+          git diff --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Write quality summary
+        if: always()
+        shell: pwsh
+        run: |
+          @"
+          ## Quality gate
+
+          The canonical `python tools/control.py quality` gate covers frontend,
+          Rust, Python tooling, versions, lockfiles, documentation, generated
+          files, and workflow policy. See the uploaded log for full evidence.
+          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+      - name: Upload quality evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: quality-evidence
+          path: .reports
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14

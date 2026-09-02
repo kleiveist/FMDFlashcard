@@ -1,0 +1,141 @@
+name: Set up FMDFlashcard environment
+description: Set up the centrally pinned Python, Node, pnpm, and Rust toolchains.
+
+inputs:
+  rust-target:
+    description: Optional Rust compilation target to install.
+    required: false
+    default: ""
+  install-frontend:
+    description: Install frontend dependencies with the frozen pnpm lockfile.
+    required: false
+    default: "true"
+
+outputs:
+  python-version:
+    description: Configured Python version.
+    value: ${{ steps.versions.outputs.python }}
+  node-version:
+    description: Configured Node.js version.
+    value: ${{ steps.versions.outputs.node }}
+  pnpm-version:
+    description: Configured pnpm version.
+    value: ${{ steps.versions.outputs.pnpm }}
+  corepack-version:
+    description: Configured Corepack version.
+    value: ${{ steps.versions.outputs.corepack }}
+  rust-version:
+    description: Configured Rust version.
+    value: ${{ steps.versions.outputs.rust }}
+
+runs:
+  using: composite
+  steps:
+    - id: versions
+      name: Read central toolchain contract
+      shell: pwsh
+      run: |
+        $config = Get-Content -LiteralPath .github/toolchains.json -Raw | ConvertFrom-Json
+        "python=$($config.python)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        "node=$($config.node)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        "corepack=$($config.corepack)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        "pnpm=$($config.pnpm)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        "rust=$($config.rust)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        "pip=$($config.pip)" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+    - name: Set up Python
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      with:
+        python-version: ${{ steps.versions.outputs.python }}
+
+    - name: Install locked Python quality and documentation tools
+      shell: pwsh
+      run: |
+        python -m pip install --disable-pip-version-check --upgrade "pip==${{ steps.versions.outputs.pip }}"
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        python -m pip install --disable-pip-version-check --requirement tools/requirements-dev.txt
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    - name: Set up Node.js
+      uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+      with:
+        node-version: ${{ steps.versions.outputs.node }}
+
+    - name: Activate pinned pnpm
+      shell: pwsh
+      run: |
+        npm install --global "corepack@${{ steps.versions.outputs.corepack }}" --ignore-scripts --no-audit --no-fund
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        if ((corepack --version).Trim() -ne "${{ steps.versions.outputs.corepack }}") {
+          throw "corepack version does not match .github/toolchains.json"
+        }
+        corepack enable
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        corepack prepare "pnpm@${{ steps.versions.outputs.pnpm }}" --activate
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        if ((pnpm --version).Trim() -ne "${{ steps.versions.outputs.pnpm }}") {
+          throw "pnpm version does not match .github/toolchains.json"
+        }
+
+    - id: pnpm-store
+      name: Locate pnpm store
+      shell: pwsh
+      run: |
+        $storePath = (pnpm store path).Trim()
+        if (-not $storePath) { throw "pnpm store path is empty" }
+        "path=$storePath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+    - name: Restore pnpm package cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.pnpm-store.outputs.path }}
+        key: fmd-pnpm-${{ runner.os }}-${{ runner.arch }}-${{ steps.versions.outputs.pnpm }}-${{ hashFiles('apps/fmd-desktop/pnpm-lock.yaml') }}
+        restore-keys: |
+          fmd-pnpm-${{ runner.os }}-${{ runner.arch }}-${{ steps.versions.outputs.pnpm }}-
+
+    - name: Install frontend dependencies from lockfile
+      if: inputs.install-frontend == 'true'
+      shell: pwsh
+      run: |
+        pnpm -C apps/fmd-desktop install --frozen-lockfile
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+    - name: Set up pinned Rust toolchain
+      shell: pwsh
+      env:
+        FMD_RUST_VERSION: ${{ steps.versions.outputs.rust }}
+        FMD_RUST_TARGET: ${{ inputs.rust-target }}
+      run: |
+        rustup toolchain install $env:FMD_RUST_VERSION `
+          --profile minimal `
+          --component rustfmt `
+          --component clippy `
+          --no-self-update
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        if ($env:FMD_RUST_TARGET) {
+          rustup target add --toolchain $env:FMD_RUST_VERSION $env:FMD_RUST_TARGET
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        }
+        "RUSTUP_TOOLCHAIN=$env:FMD_RUST_VERSION" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+    - name: Restore Rust package and build caches
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          apps/fmd-desktop/src-tauri/target
+        key: fmd-rust-${{ runner.os }}-${{ runner.arch }}-${{ steps.versions.outputs.rust }}-${{ inputs.rust-target }}-${{ hashFiles('apps/fmd-desktop/src-tauri/Cargo.lock') }}
+        restore-keys: |
+          fmd-rust-${{ runner.os }}-${{ runner.arch }}-${{ steps.versions.outputs.rust }}-${{ inputs.rust-target }}-
+
+    - name: Record active toolchains
+      shell: pwsh
+      run: |
+        python --version
+        node --version
+        pnpm --version
+        rustc --version
+        cargo --version
+        rustfmt --version
+        cargo clippy --version

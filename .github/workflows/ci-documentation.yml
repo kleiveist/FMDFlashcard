@@ -1,0 +1,117 @@
+name: Documentation
+
+on:
+  workflow_call:
+    inputs:
+      source-ref:
+        description: Commit or existing tag to check out; defaults to the caller SHA.
+        required: false
+        default: ""
+        type: string
+      retention-days:
+        description: Retention period for documentation artifacts.
+        required: false
+        default: 14
+        type: number
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: documentation-${{ github.workflow }}-${{ inputs.source-ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  documentation:
+    name: documentation
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONHASHSEED: "0"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - name: Check out exact documentation source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.source-ref || github.sha }}
+          persist-credentials: false
+
+      - name: Set up pinned FMDFlashcard environment
+        uses: ./.github/actions/setup-fmd-environment
+        with:
+          install-frontend: "false"
+
+      - name: Validate links, navigation, indexes, and strict MkDocs output
+        shell: pwsh
+        run: |
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/documentation.log `
+            -- python tools/control.py docs check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/control.py docs index --dry-run
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m mkdocs build --strict --site-dir .dist/mkdocs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git diff --check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build release documentation PDF with pinned TeX Live
+        uses: xu-cheng/latex-action@6549dc21effb2730855a1281407ecfcececc6c1b # v4
+        with:
+          root_file: FMDFlashcard.tex
+          working_directory: docs/pdf
+          args: -pdf -file-line-error -halt-on-error -interaction=nonstopmode
+          docker_image: ghcr.io/xu-cheng/texlive-historic-debian@sha256:d3e42adc0c8d84bc913bfc33571feaf7037616260a771bb6f027504661568bf6 # 2025 image
+
+      - id: normalize-pdf
+        name: Normalize and verify the public PDF name
+        shell: pwsh
+        run: |
+          $version = (Get-Content -LiteralPath VERSION -Raw).Trim()
+          if ($version -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$') {
+            throw "VERSION is not semantic versioning: $version"
+          }
+          $outputDirectory = ".dist/documentation"
+          $outputName = "FMDFlashcard-v$version-documentation.pdf"
+          New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
+          Copy-Item -LiteralPath docs/pdf/FMDFlashcard.pdf -Destination (Join-Path $outputDirectory $outputName)
+          python .github/scripts/verify_pdf.py (Join-Path $outputDirectory $outputName)
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "filename=$outputName" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Upload strict MkDocs site
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: documentation-site
+          path: .dist/mkdocs
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: ${{ inputs.retention-days || 14 }}
+
+      - name: Upload release documentation PDF
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: documentation-pdf
+          path: .dist/documentation/${{ steps.normalize-pdf.outputs.filename }}
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: ${{ inputs.retention-days || 14 }}
+
+      - name: Upload documentation diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: documentation-diagnostics
+          path: |
+            .reports/ci/documentation.log
+            docs/pdf/*.log
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7

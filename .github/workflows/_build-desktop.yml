@@ -1,0 +1,447 @@
+name: Reusable native desktop build
+
+on:
+  workflow_call:
+    inputs:
+      matrix-id:
+        description: Target id from tools/release-matrix.json.
+        required: true
+        type: string
+      runner:
+        description: Exact native runner declared by the release matrix.
+        required: true
+        type: string
+      rust-target:
+        description: Exact Rust target declared by the release matrix.
+        required: true
+        type: string
+      source-ref:
+        description: Full commit SHA to check out; defaults to the caller SHA.
+        required: false
+        default: ""
+        type: string
+      release-tag:
+        description: Validated release tag recorded in manifests; empty for non-release builds.
+        required: false
+        default: ""
+        type: string
+      signing-policy:
+        description: Either optional or required. Required fails before building when credentials are absent.
+        required: false
+        default: optional
+        type: string
+      retention-days:
+        description: Retention period for verified native artifacts.
+        required: false
+        default: 14
+        type: number
+    secrets:
+      # Base64-encoded PFX and password for Authenticode. The canonical build
+      # tooling consumes WINDOWS_CERTIFICATE_THUMBPRINT after secure import.
+      WINDOWS_CERTIFICATE_BASE64:
+        required: false
+      WINDOWS_CERTIFICATE_PASSWORD:
+        required: false
+      # Base64-encoded Developer ID certificate plus Apple notarization values.
+      APPLE_CERTIFICATE:
+        required: false
+      APPLE_CERTIFICATE_PASSWORD:
+        required: false
+      APPLE_SIGNING_IDENTITY:
+        required: false
+      APPLE_ID:
+        required: false
+      APPLE_PASSWORD:
+        required: false
+      APPLE_TEAM_ID:
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-${{ inputs.matrix-id }}-${{ inputs.source-ref || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  build-desktop:
+    name: native-${{ inputs.matrix-id }}
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 120
+    env:
+      FMD_EXPECTED_RUNNER: ${{ inputs.runner }}
+      FMD_MATRIX_ID: ${{ inputs.matrix-id }}
+      FMD_RELEASE_SOURCE_REF: ${{ inputs.source-ref || github.sha }}
+      FMD_RELEASE_TAG_INPUT: ${{ inputs.release-tag }}
+      FMD_RUST_TARGET: ${{ inputs.rust-target }}
+      FMD_SIGNING_POLICY_INPUT: ${{ inputs.signing-policy }}
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONHASHSEED: "0"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - name: Check out exact source revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.source-ref || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify immutable source revision before executing repository code
+        shell: pwsh
+        run: |
+          if ($env:FMD_RELEASE_SOURCE_REF -notmatch '^[0-9a-f]{40}$') {
+            throw "native build source-ref must be a full lowercase commit SHA"
+          }
+          $actualCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actualCommit -ne $env:FMD_RELEASE_SOURCE_REF) {
+            throw "native build checkout does not match the requested immutable commit"
+          }
+          if (
+            $env:FMD_RELEASE_TAG_INPUT -and
+            $env:FMD_RELEASE_TAG_INPUT -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$'
+          ) {
+            throw "release tag input is not exact v-prefixed SemVer"
+          }
+
+      - name: Initialize diagnostic log
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path .reports/ci | Out-Null
+          New-Item -ItemType File -Force -Path ".reports/ci/native-$($env:FMD_MATRIX_ID).log" | Out-Null
+
+      - name: Set up pinned FMDFlashcard environment
+        uses: ./.github/actions/setup-fmd-environment
+        with:
+          rust-target: ${{ inputs.rust-target }}
+
+      - name: Install native Linux packaging prerequisites
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            libappindicator3-dev \
+            librsvg2-dev \
+            libwebkit2gtk-4.1-dev \
+            patchelf \
+            rpm \
+            xdg-utils
+
+      - name: Validate signing and notarization policy
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          $osName = switch ($env:RUNNER_OS) {
+            "Windows" { "windows" }
+            "macOS" { "macos" }
+            default { "linux" }
+          }
+          python .github/scripts/signing_preflight.py `
+            --os $osName `
+            --policy $env:FMD_SIGNING_POLICY_INPUT `
+            --github-env $env:GITHUB_ENV
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Import Windows signing certificate
+        if: runner.os == 'Windows' && env.FMD_WINDOWS_SIGNING_CONFIGURED == 'true'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          WINDOWS_TIMESTAMP_URL: ${{ vars.WINDOWS_TIMESTAMP_URL }}
+        run: |
+          $certificatePath = Join-Path $env:RUNNER_TEMP "fmd-release-certificate.pfx"
+          "FMD_WINDOWS_CERTIFICATE_PATH=$certificatePath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          [IO.File]::WriteAllBytes(
+            $certificatePath,
+            [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_BASE64)
+          )
+          $password = ConvertTo-SecureString $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
+          $certificates = @(Import-PfxCertificate `
+            -FilePath $certificatePath `
+            -CertStoreLocation Cert:\CurrentUser\My `
+            -Password $password)
+          $certificates = @($certificates | Where-Object { $_ -and $_.Thumbprint })
+          if ($certificates.Count -eq 0) {
+            throw "Windows certificate import did not return any certificates"
+          }
+          $importedThumbprints = @($certificates.Thumbprint | Sort-Object -Unique)
+          foreach ($importedThumbprint in $importedThumbprints) {
+            Write-Output "::add-mask::$importedThumbprint"
+          }
+          $thumbprintsPath = Join-Path $env:RUNNER_TEMP "fmd-imported-certificate-thumbprints.txt"
+          [IO.File]::WriteAllLines($thumbprintsPath, $importedThumbprints)
+          "FMD_WINDOWS_IMPORTED_THUMBPRINTS_PATH=$thumbprintsPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $signingCertificates = @($certificates | Where-Object { $_.HasPrivateKey })
+          if ($signingCertificates.Count -ne 1) {
+            throw "Windows certificate import must contain exactly one private-key signing certificate"
+          }
+          $certificate = $signingCertificates[0]
+          "WINDOWS_CERTIFICATE_THUMBPRINT=$($certificate.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "FMD_WINDOWS_CERTIFICATE_THUMBPRINT=$($certificate.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $windowsConfig = @{
+            certificateThumbprint = $certificate.Thumbprint
+            digestAlgorithm = "sha256"
+          }
+          if ($env:WINDOWS_TIMESTAMP_URL) {
+            $timestampUri = $null
+            if (-not [Uri]::TryCreate($env:WINDOWS_TIMESTAMP_URL, [UriKind]::Absolute, [ref]$timestampUri) -or $timestampUri.Scheme -ne "https") {
+              throw "WINDOWS_TIMESTAMP_URL must be an absolute HTTPS RFC 3161 endpoint"
+            }
+            $windowsConfig.timestampUrl = $env:WINDOWS_TIMESTAMP_URL
+            $windowsConfig.tsp = $true
+            "FMD_WINDOWS_TIMESTAMP_URL=$env:WINDOWS_TIMESTAMP_URL" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+          $tauriConfig = @{
+            bundle = @{
+              windows = $windowsConfig
+            }
+          } | ConvertTo-Json -Depth 4 -Compress
+          $signingConfigPath = Join-Path $env:RUNNER_TEMP "fmd-tauri-signing-config.json"
+          [IO.File]::WriteAllText($signingConfigPath, $tauriConfig)
+          "FMD_TAURI_SIGNING_CONFIG_PATH=$signingConfigPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Import macOS signing certificate into an ephemeral keychain
+        if: runner.os == 'macOS' && env.FMD_MACOS_SIGNING_CONFIGURED == 'true'
+        shell: pwsh
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          $certificatePath = Join-Path $env:RUNNER_TEMP "fmd-release-certificate.p12"
+          $keychainPath = Join-Path $env:RUNNER_TEMP "fmd-release.keychain-db"
+          $keychainPassword = [Guid]::NewGuid().ToString("N")
+          "FMD_MACOS_CERTIFICATE_PATH=$certificatePath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "FMD_MACOS_KEYCHAIN_PATH=$keychainPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          [IO.File]::WriteAllBytes(
+            $certificatePath,
+            [Convert]::FromBase64String($env:APPLE_CERTIFICATE)
+          )
+          & security create-keychain -p $keychainPassword $keychainPath
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & security set-keychain-settings -lut 21600 $keychainPath
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & security unlock-keychain -p $keychainPassword $keychainPath
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & security import $certificatePath -k $keychainPath -P $env:APPLE_CERTIFICATE_PASSWORD -T /usr/bin/codesign
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k $keychainPassword $keychainPath
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & security list-keychains -d user -s $keychainPath
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "APPLE_SIGNING_IDENTITY=$env:APPLE_SIGNING_IDENTITY" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Configure macOS notarization environment
+        if: runner.os == 'macOS' && env.FMD_MACOS_NOTARIZATION_CONFIGURED == 'true'
+        shell: pwsh
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          "APPLE_ID=$env:APPLE_ID" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "APPLE_PASSWORD=$env:APPLE_PASSWORD" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "APPLE_TEAM_ID=$env:APPLE_TEAM_ID" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - id: build-start
+        name: Record clean build boundary
+        shell: pwsh
+        run: |
+          $marker = Join-Path $env:RUNNER_TEMP "fmd-$($env:FMD_MATRIX_ID).started"
+          [IO.File]::WriteAllText($marker, [DateTime]::UtcNow.ToString("O"))
+          "path=$marker" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Build declared packages through the canonical CLI
+        shell: pwsh
+        run: |
+          python .github/scripts/run_logged.py `
+            --log ".reports/ci/native-$($env:FMD_MATRIX_ID).log" `
+            -- python .github/scripts/run_release_matrix_build.py `
+            --matrix-id $env:FMD_MATRIX_ID `
+            --expected-runner $env:FMD_EXPECTED_RUNNER `
+            --expected-rust-target $env:FMD_RUST_TARGET
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify native build outputs
+        shell: pwsh
+        env:
+          FMD_RELEASE_MATRIX_ID: ${{ inputs.matrix-id }}
+        run: |
+          python tools/control.py tauri verify-artifacts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Apply explicit ad-hoc signature to unsigned macOS CI app
+        if: runner.os == 'macOS' && env.FMD_MACOS_SIGNING_CONFIGURED != 'true'
+        shell: pwsh
+        run: |
+          $bundleRoot = Join-Path "apps/fmd-desktop/src-tauri/target" "$($env:FMD_RUST_TARGET)/release/bundle"
+          $apps = @(Get-ChildItem -Path (Join-Path $bundleRoot "macos/*.app") -Directory)
+          if ($apps.Count -ne 1) { throw "expected exactly one macOS app bundle for ad-hoc signing" }
+          & codesign --force --deep --sign - $apps[0].FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify Windows Authenticode signatures
+        if: runner.os == 'Windows' && env.FMD_WINDOWS_SIGNING_CONFIGURED == 'true'
+        shell: pwsh
+        run: |
+          $releaseRoot = Join-Path "apps/fmd-desktop/src-tauri/target" "$($env:FMD_RUST_TARGET)/release"
+          $files = @()
+          $files += Get-ChildItem -LiteralPath $releaseRoot -File -Filter *.exe
+          $files += Get-ChildItem -Path (Join-Path $releaseRoot "bundle/msi/*.msi") -File
+          $files += Get-ChildItem -Path (Join-Path $releaseRoot "bundle/nsis/*.exe") -File
+          $portableArchives = @(Get-ChildItem -Path (Join-Path $releaseRoot "bundle/portable/*.zip") -File)
+          if ($portableArchives.Count -ne 1) { throw "expected exactly one portable ZIP" }
+          $portableVerifyRoot = Join-Path $env:RUNNER_TEMP "fmd-portable-signature-verification"
+          if (Test-Path -LiteralPath $portableVerifyRoot) {
+            Remove-Item -LiteralPath $portableVerifyRoot -Recurse -Force
+          }
+          Expand-Archive -LiteralPath $portableArchives[0].FullName -DestinationPath $portableVerifyRoot
+          $portableExecutables = @(
+            Get-ChildItem -LiteralPath $portableVerifyRoot -Recurse -File -Filter fmd-flashcard-desktop.exe
+          )
+          if ($portableExecutables.Count -ne 1) {
+            throw "portable ZIP must contain exactly one release executable"
+          }
+          $files += $portableExecutables[0]
+          $files = @($files | Sort-Object -Property FullName -Unique)
+          if ($files.Count -lt 4) { throw "expected signed app, MSI, NSIS, and portable executables" }
+          foreach ($file in $files) {
+            $signature = Get-AuthenticodeSignature -LiteralPath $file.FullName
+            if (
+              $signature.Status -ne "Valid" -or
+              -not $signature.SignerCertificate -or
+              $signature.SignerCertificate.Thumbprint -ne $env:FMD_WINDOWS_CERTIFICATE_THUMBPRINT
+            ) {
+              throw "invalid Authenticode signature on $($file.Name): $($signature.Status)"
+            }
+          }
+          Remove-Item -LiteralPath $portableVerifyRoot -Recurse -Force
+          "FMD_SIGNING_STATE=signed" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Verify macOS code signatures
+        if: runner.os == 'macOS'
+        shell: pwsh
+        run: |
+          $bundleRoot = Join-Path "apps/fmd-desktop/src-tauri/target" "$($env:FMD_RUST_TARGET)/release/bundle"
+          $apps = @(Get-ChildItem -Path (Join-Path $bundleRoot "macos/*.app") -Directory)
+          if ($apps.Count -ne 1) { throw "expected exactly one macOS app bundle" }
+          foreach ($app in $apps) {
+            & codesign --verify --deep --strict --verbose=2 $app.FullName
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          if ($env:FMD_MACOS_SIGNING_CONFIGURED -eq "true") {
+            $images = @(Get-ChildItem -Path (Join-Path $bundleRoot "dmg/*.dmg") -File)
+            if ($images.Count -ne 1) { throw "expected exactly one signed DMG" }
+            foreach ($image in $images) {
+              & codesign --verify --strict --verbose=2 $image.FullName
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            }
+            "FMD_SIGNING_STATE=signed" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+
+      - name: Verify macOS notarization and stapling
+        if: runner.os == 'macOS' && env.FMD_MACOS_NOTARIZATION_CONFIGURED == 'true'
+        shell: pwsh
+        run: |
+          $bundleRoot = Join-Path "apps/fmd-desktop/src-tauri/target" "$($env:FMD_RUST_TARGET)/release/bundle"
+          $apps = @(Get-ChildItem -Path (Join-Path $bundleRoot "macos/*.app") -Directory)
+          $images = @(Get-ChildItem -Path (Join-Path $bundleRoot "dmg/*.dmg") -File)
+          if ($apps.Count -ne 1) { throw "expected exactly one notarized app bundle" }
+          if ($images.Count -ne 1) { throw "expected exactly one notarized DMG" }
+          foreach ($app in $apps) {
+            & xcrun stapler validate $app.FullName
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            & spctl --assess --type execute --verbose=2 $app.FullName
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          foreach ($image in $images) {
+            & xcrun stapler validate $image.FullName
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            & spctl --assess --type open --context context:primary-signature --verbose=2 $image.FullName
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          "FMD_NOTARIZATION_STATE=notarized" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Normalize assets and create manifest fragment
+        shell: pwsh
+        env:
+          FMD_BUILD_MARKER: ${{ steps.build-start.outputs.path }}
+          FMD_RELEASE_MATRIX_ID: ${{ inputs.matrix-id }}
+        run: |
+          $actualCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actualCommit -notmatch '^[0-9a-f]{40}$') {
+            throw "could not resolve the native build commit"
+          }
+          $env:GITHUB_SHA = $actualCommit
+          if ($env:FMD_RELEASE_TAG_INPUT) {
+            if ($env:FMD_RELEASE_TAG_INPUT -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$') {
+              throw "release tag input is not exact v-prefixed SemVer"
+            }
+            $env:GITHUB_REF_NAME = $env:FMD_RELEASE_TAG_INPUT
+          }
+          $output = Join-Path ".dist/release-fragments" $env:FMD_MATRIX_ID
+          python tools/control.py release collect `
+            --matrix-id $env:FMD_MATRIX_ID `
+            --built-after $env:FMD_BUILD_MARKER `
+            --output-dir $output
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Remove imported Windows certificate
+        if: always() && runner.os == 'Windows' && env.FMD_WINDOWS_SIGNING_CONFIGURED == 'true'
+        shell: pwsh
+        run: |
+          if ($env:FMD_WINDOWS_IMPORTED_THUMBPRINTS_PATH -and (Test-Path -LiteralPath $env:FMD_WINDOWS_IMPORTED_THUMBPRINTS_PATH)) {
+            foreach ($thumbprint in [IO.File]::ReadAllLines($env:FMD_WINDOWS_IMPORTED_THUMBPRINTS_PATH)) {
+              if ($thumbprint -notmatch '^[0-9A-Fa-f]{40}$') { throw "unsafe imported certificate thumbprint" }
+              $storePath = "Cert:\CurrentUser\My\$thumbprint"
+              if (Test-Path -LiteralPath $storePath) { Remove-Item -LiteralPath $storePath -Force }
+            }
+            Remove-Item -LiteralPath $env:FMD_WINDOWS_IMPORTED_THUMBPRINTS_PATH -Force
+          }
+          if ($env:FMD_WINDOWS_CERTIFICATE_PATH -and (Test-Path -LiteralPath $env:FMD_WINDOWS_CERTIFICATE_PATH)) {
+            Remove-Item -LiteralPath $env:FMD_WINDOWS_CERTIFICATE_PATH -Force
+          }
+          if ($env:FMD_TAURI_SIGNING_CONFIG_PATH -and (Test-Path -LiteralPath $env:FMD_TAURI_SIGNING_CONFIG_PATH)) {
+            Remove-Item -LiteralPath $env:FMD_TAURI_SIGNING_CONFIG_PATH -Force
+          }
+
+      - name: Remove ephemeral macOS keychain and certificate
+        if: always() && runner.os == 'macOS' && env.FMD_MACOS_SIGNING_CONFIGURED == 'true'
+        shell: pwsh
+        run: |
+          if ($env:FMD_MACOS_KEYCHAIN_PATH -and (Test-Path -LiteralPath $env:FMD_MACOS_KEYCHAIN_PATH)) {
+            & security delete-keychain $env:FMD_MACOS_KEYCHAIN_PATH
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          if ($env:FMD_MACOS_CERTIFICATE_PATH -and (Test-Path -LiteralPath $env:FMD_MACOS_CERTIFICATE_PATH)) {
+            Remove-Item -LiteralPath $env:FMD_MACOS_CERTIFICATE_PATH -Force
+          }
+
+      - name: Upload verified native release fragment
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: desktop-${{ inputs.matrix-id }}
+          path: .dist/release-fragments/${{ inputs.matrix-id }}
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: ${{ inputs.retention-days }}
+
+      - name: Upload native build diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: desktop-${{ inputs.matrix-id }}-diagnostics
+          path: .reports/ci/native-${{ inputs.matrix-id }}.log
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7

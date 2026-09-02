@@ -1,0 +1,270 @@
+name: Nightly integration
+
+on:
+  schedule:
+    - cron: "23 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  integration-gate:
+    name: nightly-integration-gate
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      CI: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONHASHSEED: "0"
+      PYTHONNOUSERSITE: "1"
+      FMD_SIGNING_POLICY: optional
+    steps:
+      - name: Check out complete source history
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Initialize nightly diagnostics
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path .reports/ci | Out-Null
+
+      - name: Set up pinned FMDFlashcard environment
+        uses: ./.github/actions/setup-fmd-environment
+
+      - name: Run complete quality and test gates
+        shell: pwsh
+        run: |
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/nightly-quality.log `
+            -- python tools/control.py quality
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/nightly-tests.log `
+            -- python tools/control.py test --suite all --coverage --report --ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/nightly-web.log `
+            -- python tools/control.py build web
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Validate release, version, and tooling contracts
+        shell: pwsh
+        run: |
+          python tools/control.py tooling verify
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/control.py version check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/nightly-release-check.log `
+            -- python tools/control.py release check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run locked frontend dependency audit
+        shell: pwsh
+        run: |
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/nightly-pnpm-audit.log `
+            -- pnpm -C apps/fmd-desktop audit --prod --audit-level high
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Install pinned cargo-audit and audit the Cargo lockfile
+        shell: pwsh
+        run: |
+          $config = Get-Content -LiteralPath .github/toolchains.json -Raw | ConvertFrom-Json
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/nightly-cargo-audit-install.log `
+            -- cargo install cargo-audit --version $config.cargo_tools.cargo_audit --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/nightly-cargo-audit.log `
+            -- cargo audit --file apps/fmd-desktop/src-tauri/Cargo.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload nightly gate evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nightly-integration-evidence
+          path: |
+            .reports
+            .dist/web
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7
+
+  native-package-matrix:
+    name: nightly-native-${{ matrix.id }}
+    needs: integration-gate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: linux-x86_64
+            runner: ubuntu-22.04
+            rust-target: x86_64-unknown-linux-gnu
+          - id: windows-x86_64
+            runner: windows-2022
+            rust-target: x86_64-pc-windows-msvc
+          - id: macos-aarch64
+            runner: macos-15
+            rust-target: aarch64-apple-darwin
+          - id: macos-x86_64
+            runner: macos-15-intel
+            rust-target: x86_64-apple-darwin
+    uses: ./.github/workflows/_build-desktop.yml
+    with:
+      matrix-id: ${{ matrix.id }}
+      runner: ${{ matrix.runner }}
+      rust-target: ${{ matrix.rust-target }}
+      source-ref: ${{ github.sha }}
+      signing-policy: optional
+      retention-days: 7
+
+  documentation:
+    name: nightly-documentation
+    needs: integration-gate
+    uses: ./.github/workflows/ci-documentation.yml
+    with:
+      source-ref: ${{ github.sha }}
+      retention-days: 7
+
+  assemble:
+    name: nightly-verified-assembly
+    needs: [integration-gate, native-package-matrix, documentation]
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 35
+    env:
+      FMD_SIGNING_POLICY: optional
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONHASHSEED: "0"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - name: Require every nightly prerequisite to succeed
+        shell: pwsh
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          $failed = @()
+          ($env:NEEDS_JSON | ConvertFrom-Json).psobject.Properties | ForEach-Object {
+            if ($_.Value.result -ne "success") { $failed += "$($_.Name)=$($_.Value.result)" }
+          }
+          if ($failed.Count -gt 0) { throw "nightly prerequisite failed: $($failed -join ', ')" }
+
+      - name: Check out exact nightly source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up pinned assembly environment
+        uses: ./.github/actions/setup-fmd-environment
+        with:
+          install-frontend: "false"
+
+      - name: Prepare isolated assembly input
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path .dist/release-input/sbom | Out-Null
+          New-Item -ItemType Directory -Force -Path .reports/ci | Out-Null
+          $epoch = (git show -s --format=%ct HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $epoch -notmatch '^[0-9]+$') { throw "could not derive SOURCE_DATE_EPOCH" }
+          "SOURCE_DATE_EPOCH=$epoch" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Generate SPDX JSON with checksum-pinned Syft
+        shell: pwsh
+        run: |
+          python .github/scripts/generate_sbom.py --output .dist/release-input/sbom/SBOM.spdx.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Download Linux release fragment
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: desktop-linux-x86_64
+          path: .dist/release-input/linux-x86_64
+
+      - name: Download Windows release fragment
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: desktop-windows-x86_64
+          path: .dist/release-input/windows-x86_64
+
+      - name: Download Apple Silicon release fragment
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: desktop-macos-aarch64
+          path: .dist/release-input/macos-aarch64
+
+      - name: Download Intel macOS release fragment
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: desktop-macos-x86_64
+          path: .dist/release-input/macos-x86_64
+
+      - name: Download release documentation
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: documentation-pdf
+          path: .dist/release-input/documentation
+
+      - name: Assemble and verify all nightly release assets
+        shell: pwsh
+        run: |
+          $version = (Get-Content -LiteralPath VERSION -Raw).Trim()
+          $actualCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actualCommit -notmatch '^[0-9a-f]{40}$') {
+            throw "could not resolve the nightly assembly commit"
+          }
+          $env:GITHUB_SHA = $actualCommit
+          $env:GITHUB_REF_NAME = "v$version"
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/nightly-assembly.log `
+            -- python tools/control.py release assemble `
+            --input-dir .dist/release-input `
+            --output-dir .dist/nightly-release `
+            --tag "v$version"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/control.py release verify --directory .dist/nightly-release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python .github/scripts/write_artifact_summary.py `
+            --manifest .dist/nightly-release/release-manifest.json `
+            --title "Verified nightly artifacts"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force -Path .dist/nightly-evidence | Out-Null
+          python tools/control.py release notes --output .dist/nightly-evidence/RELEASE-NOTES.md
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload complete verified nightly assembly
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nightly-verified-release-assets
+          path: .dist/nightly-release
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7
+
+      - name: Upload nightly release notes evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nightly-release-notes
+          path: .dist/nightly-evidence/RELEASE-NOTES.md
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7
+
+      - name: Upload nightly assembly diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nightly-assembly-diagnostics
+          path: .reports/ci/nightly-assembly.log
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7

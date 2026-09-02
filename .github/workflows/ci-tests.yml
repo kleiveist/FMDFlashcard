@@ -1,0 +1,204 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  frontend:
+    name: tests-frontend
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    env:
+      CI: "1"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up pinned FMDFlashcard environment
+        uses: ./.github/actions/setup-fmd-environment
+      - name: Run frontend tests with coverage and reports
+        shell: pwsh
+        run: |
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/tests-frontend.log `
+            -- python tools/control.py test --suite frontend --coverage --report --ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Write frontend test summary
+        if: always()
+        shell: pwsh
+        run: |
+          "## Frontend tests`n`nCoverage and machine-readable reports are attached." |
+            Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+      - name: Upload frontend test evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tests-frontend-evidence
+          path: .reports
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+
+  tooling:
+    name: tests-tooling
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      CI: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONHASHSEED: "0"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up pinned FMDFlashcard environment
+        uses: ./.github/actions/setup-fmd-environment
+        with:
+          install-frontend: "false"
+      - name: Run tooling tests with reports
+        shell: pwsh
+        run: |
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/tests-tooling.log `
+            -- python tools/control.py test --suite tooling --report --ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Write tooling test summary
+        if: always()
+        shell: pwsh
+        run: |
+          "## Tooling tests`n`nParser, safety, release, and workflow reports are attached." |
+            Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+      - name: Upload tooling test evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tests-tooling-evidence
+          path: .reports
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+
+  rust:
+    name: tests-rust
+    runs-on: windows-2022
+    timeout-minutes: 45
+    env:
+      CI: "1"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up pinned FMDFlashcard environment
+        uses: ./.github/actions/setup-fmd-environment
+        with:
+          install-frontend: "false"
+      - name: Run locked Rust tests with reports
+        shell: pwsh
+        run: |
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/tests-rust.log `
+            -- python tools/control.py test --suite rust --report --ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Write Rust test summary
+        if: always()
+        shell: pwsh
+        run: |
+          "## Rust tests`n`nLocked Cargo test evidence is attached." |
+            Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+      - name: Upload Rust test evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tests-rust-evidence
+          path: .reports
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+
+  tauri:
+    name: tests-tauri-plans
+    runs-on: windows-2022
+    timeout-minutes: 30
+    env:
+      CI: "1"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up pinned FMDFlashcard environment
+        uses: ./.github/actions/setup-fmd-environment
+      - name: Run Tauri structure and build-plan tests
+        shell: pwsh
+        run: |
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/tests-tauri.log `
+            -- python tools/control.py test --suite tauri --report --ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Write Tauri test summary
+        if: always()
+        shell: pwsh
+        run: |
+          "## Tauri tests`n`nStructure and platform build-plan evidence is attached." |
+            Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+      - name: Upload Tauri test evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tests-tauri-evidence
+          path: .reports
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+
+  web-build:
+    name: tests-web-build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      CI: "1"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up pinned FMDFlashcard environment
+        uses: ./.github/actions/setup-fmd-environment
+      - name: Build deterministic web archive
+        shell: pwsh
+        run: |
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/tests-web-build.log `
+            -- python tools/control.py build web
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload web build evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tests-web-build-artifact
+          path: .dist/web
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7
+      - name: Upload web build diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tests-web-build-diagnostics
+          path: .reports/ci/tests-web-build.log
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7

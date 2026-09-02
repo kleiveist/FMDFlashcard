@@ -1,0 +1,427 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish only from the explicitly supplied existing matching tag.
+        required: true
+        default: false
+        type: boolean
+      tag:
+        description: Existing v<VERSION> tag; required when publish is true.
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: release-gate
+    runs-on: windows-2022
+    timeout-minutes: 100
+    outputs:
+      version: ${{ steps.identity.outputs.version }}
+      tag: ${{ steps.identity.outputs.tag }}
+      source_ref: ${{ steps.identity.outputs.source_ref }}
+      source_sha: ${{ steps.identity.outputs.source_sha }}
+      publish: ${{ steps.identity.outputs.publish }}
+      prerelease: ${{ steps.identity.outputs.prerelease }}
+    env:
+      CI: "1"
+      FMD_SIGNING_POLICY: ${{ vars.FMD_RELEASE_SIGNING_POLICY || 'optional' }}
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONHASHSEED: "0"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - name: Check out exact release source with tags
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.tag || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Initialize release gate diagnostics
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path .reports/ci | Out-Null
+
+      - name: Set up pinned FMDFlashcard environment
+        uses: ./.github/actions/setup-fmd-environment
+
+      - id: identity
+        name: Verify immutable release identity and safe publication intent
+        shell: pwsh
+        env:
+          FMD_EVENT_NAME: ${{ github.event_name }}
+          FMD_EVENT_REF_TYPE: ${{ github.ref_type }}
+          FMD_EVENT_REF_NAME: ${{ github.ref_name }}
+          FMD_MANUAL_TAG: ${{ inputs.tag }}
+          FMD_REQUESTED_PUBLISH: ${{ inputs.publish || false }}
+          FMD_EVENT_SHA: ${{ github.sha }}
+        run: |
+          python .github/scripts/release_gate.py `
+            --event-name $env:FMD_EVENT_NAME `
+            --ref-type $env:FMD_EVENT_REF_TYPE `
+            --ref-name $env:FMD_EVENT_REF_NAME `
+            --manual-tag $env:FMD_MANUAL_TAG `
+            --publish $env:FMD_REQUESTED_PUBLISH `
+            --sha $env:FMD_EVENT_SHA `
+            --github-output $env:GITHUB_OUTPUT
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run immutable quality, test, build, and documentation gates
+        shell: pwsh
+        run: |
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/release-quality.log `
+            -- python tools/control.py quality
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/release-tests.log `
+            -- python tools/control.py test --suite all --coverage --report --ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/release-web.log `
+            -- python tools/control.py build web
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/control.py tooling verify
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/control.py version check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/control.py docs check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run complete release policy check
+        shell: pwsh
+        env:
+          FMD_WINDOWS_CERTIFICATE_BASE64_PRESENT: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 != '' }}
+          FMD_WINDOWS_CERTIFICATE_PASSWORD_PRESENT: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD != '' }}
+          FMD_APPLE_CERTIFICATE_PRESENT: ${{ secrets.APPLE_CERTIFICATE != '' }}
+          FMD_APPLE_CERTIFICATE_PASSWORD_PRESENT: ${{ secrets.APPLE_CERTIFICATE_PASSWORD != '' }}
+          FMD_APPLE_SIGNING_IDENTITY_PRESENT: ${{ secrets.APPLE_SIGNING_IDENTITY != '' }}
+          FMD_APPLE_ID_PRESENT: ${{ secrets.APPLE_ID != '' }}
+          FMD_APPLE_PASSWORD_PRESENT: ${{ secrets.APPLE_PASSWORD != '' }}
+          FMD_APPLE_TEAM_ID_PRESENT: ${{ secrets.APPLE_TEAM_ID != '' }}
+        run: |
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/release-policy.log `
+            -- python tools/control.py release check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run locked dependency security audits
+        shell: pwsh
+        run: |
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/release-pnpm-audit.log `
+            -- pnpm -C apps/fmd-desktop audit --prod --audit-level high
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $config = Get-Content -LiteralPath .github/toolchains.json -Raw | ConvertFrom-Json
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/release-cargo-audit-install.log `
+            -- cargo install cargo-audit --version $config.cargo_tools.cargo_audit --locked
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/release-cargo-audit.log `
+            -- cargo audit --file apps/fmd-desktop/src-tauri/Cargo.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload complete release-gate evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-gate-evidence
+          path: |
+            .reports
+            .dist/web
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
+  native_packages:
+    name: release-native-${{ matrix.id }}
+    needs: gate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: linux-x86_64
+            runner: ubuntu-22.04
+            rust-target: x86_64-unknown-linux-gnu
+          - id: windows-x86_64
+            runner: windows-2022
+            rust-target: x86_64-pc-windows-msvc
+          - id: macos-aarch64
+            runner: macos-15
+            rust-target: aarch64-apple-darwin
+          - id: macos-x86_64
+            runner: macos-15-intel
+            rust-target: x86_64-apple-darwin
+    uses: ./.github/workflows/_build-desktop.yml
+    with:
+      matrix-id: ${{ matrix.id }}
+      runner: ${{ matrix.runner }}
+      rust-target: ${{ matrix.rust-target }}
+      source-ref: ${{ needs.gate.outputs.source_sha }}
+      release-tag: ${{ needs.gate.outputs.tag }}
+      signing-policy: ${{ needs.gate.outputs.publish == 'true' && (vars.FMD_RELEASE_SIGNING_POLICY || 'optional') || 'optional' }}
+      retention-days: 30
+    secrets:
+      WINDOWS_CERTIFICATE_BASE64: ${{ needs.gate.outputs.publish == 'true' && matrix.id == 'windows-x86_64' && secrets.WINDOWS_CERTIFICATE_BASE64 || '' }}
+      WINDOWS_CERTIFICATE_PASSWORD: ${{ needs.gate.outputs.publish == 'true' && matrix.id == 'windows-x86_64' && secrets.WINDOWS_CERTIFICATE_PASSWORD || '' }}
+      APPLE_CERTIFICATE: ${{ needs.gate.outputs.publish == 'true' && startsWith(matrix.id, 'macos-') && secrets.APPLE_CERTIFICATE || '' }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ needs.gate.outputs.publish == 'true' && startsWith(matrix.id, 'macos-') && secrets.APPLE_CERTIFICATE_PASSWORD || '' }}
+      APPLE_SIGNING_IDENTITY: ${{ needs.gate.outputs.publish == 'true' && startsWith(matrix.id, 'macos-') && secrets.APPLE_SIGNING_IDENTITY || '' }}
+      APPLE_ID: ${{ needs.gate.outputs.publish == 'true' && startsWith(matrix.id, 'macos-') && secrets.APPLE_ID || '' }}
+      APPLE_PASSWORD: ${{ needs.gate.outputs.publish == 'true' && startsWith(matrix.id, 'macos-') && secrets.APPLE_PASSWORD || '' }}
+      APPLE_TEAM_ID: ${{ needs.gate.outputs.publish == 'true' && startsWith(matrix.id, 'macos-') && secrets.APPLE_TEAM_ID || '' }}
+
+  documentation:
+    name: release-documentation
+    needs: gate
+    uses: ./.github/workflows/ci-documentation.yml
+    with:
+      source-ref: ${{ needs.gate.outputs.source_sha }}
+      retention-days: 30
+
+  assemble:
+    name: release-verified-assembly
+    needs: [gate, native_packages, documentation]
+    if: always()
+    runs-on: ubuntu-22.04
+    timeout-minutes: 40
+    env:
+      FMD_SIGNING_POLICY: ${{ needs.gate.outputs.publish == 'true' && (vars.FMD_RELEASE_SIGNING_POLICY || 'optional') || 'optional' }}
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONHASHSEED: "0"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - name: Require every release prerequisite to succeed
+        shell: pwsh
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          $failed = @()
+          ($env:NEEDS_JSON | ConvertFrom-Json).psobject.Properties | ForEach-Object {
+            if ($_.Value.result -ne "success") { $failed += "$($_.Name)=$($_.Value.result)" }
+          }
+          if ($failed.Count -gt 0) { throw "release prerequisite failed: $($failed -join ', ')" }
+
+      - name: Check out exact verified release source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.gate.outputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up pinned release assembly environment
+        uses: ./.github/actions/setup-fmd-environment
+        with:
+          install-frontend: "false"
+
+      - name: Prepare isolated assembly input and timestamps
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path .dist/release-input/sbom | Out-Null
+          New-Item -ItemType Directory -Force -Path .dist/release-metadata | Out-Null
+          New-Item -ItemType Directory -Force -Path .reports/ci | Out-Null
+          New-Item -ItemType File -Force -Path .reports/ci/release-assembly.log | Out-Null
+          $epoch = (git show -s --format=%ct HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $epoch -notmatch '^[0-9]+$') { throw "could not derive SOURCE_DATE_EPOCH" }
+          "SOURCE_DATE_EPOCH=$epoch" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Generate SPDX JSON with checksum-pinned Syft
+        shell: pwsh
+        run: |
+          python .github/scripts/generate_sbom.py --output .dist/release-input/sbom/SBOM.spdx.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Download Linux release fragment
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: desktop-linux-x86_64
+          path: .dist/release-input/linux-x86_64
+      - name: Download Windows release fragment
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: desktop-windows-x86_64
+          path: .dist/release-input/windows-x86_64
+      - name: Download Apple Silicon release fragment
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: desktop-macos-aarch64
+          path: .dist/release-input/macos-aarch64
+      - name: Download Intel macOS release fragment
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: desktop-macos-x86_64
+          path: .dist/release-input/macos-x86_64
+      - name: Download release documentation PDF
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: documentation-pdf
+          path: .dist/release-input/documentation
+
+      - name: Assemble, checksum, and verify final release assets
+        shell: pwsh
+        env:
+          FMD_RELEASE_TAG: ${{ needs.gate.outputs.tag }}
+          FMD_RELEASE_SHA: ${{ needs.gate.outputs.source_sha }}
+        run: |
+          $actualCommit = (git rev-parse HEAD).Trim()
+          if ($LASTEXITCODE -ne 0 -or $actualCommit -notmatch '^[0-9a-f]{40}$') {
+            throw "could not resolve the release assembly commit"
+          }
+          if ($actualCommit -ne $env:FMD_RELEASE_SHA) {
+            throw "release assembly checkout does not match the gated commit"
+          }
+          $env:GITHUB_SHA = $actualCommit
+          $env:GITHUB_REF_NAME = $env:FMD_RELEASE_TAG
+          python .github/scripts/run_logged.py `
+            --log .reports/ci/release-assembly.log `
+            -- python tools/control.py release assemble `
+            --input-dir .dist/release-input `
+            --output-dir .dist/release-assets `
+            --tag $env:FMD_RELEASE_TAG
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/control.py release verify --directory .dist/release-assets
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python .github/scripts/write_artifact_summary.py `
+            --manifest .dist/release-assets/release-manifest.json `
+            --title "Verified release artifacts"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/control.py release notes --output .dist/release-metadata/RELEASE-NOTES.md
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Upload immutable verified release assets
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-verified-assets
+          path: .dist/release-assets
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
+      - name: Upload extracted release notes
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-notes
+          path: .dist/release-metadata/RELEASE-NOTES.md
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
+      - name: Upload release assembly diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-assembly-diagnostics
+          path: .reports/ci/release-assembly.log
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
+  publish:
+    name: release-publication
+    needs: [gate, assemble]
+    if: needs.gate.outputs.publish == 'true' && needs.assemble.result == 'success'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      FMD_SIGNING_POLICY: ${{ vars.FMD_RELEASE_SIGNING_POLICY || 'optional' }}
+      FMD_RELEASE_PRERELEASE: ${{ needs.gate.outputs.prerelease }}
+      FMD_RELEASE_SHA: ${{ needs.gate.outputs.source_sha }}
+      FMD_RELEASE_TAG: ${{ needs.gate.outputs.tag }}
+      FMD_RELEASE_VERSION: ${{ needs.gate.outputs.version }}
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONHASHSEED: "0"
+      PYTHONNOUSERSITE: "1"
+    permissions:
+      attestations: write
+      contents: write
+      id-token: write
+    steps:
+      - name: Check out the immutable gated commit
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.gate.outputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up pinned final verification environment
+        uses: ./.github/actions/setup-fmd-environment
+        with:
+          install-frontend: "false"
+
+      - name: Download immutable verified release assets
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-verified-assets
+          path: .dist/release-assets
+
+      - name: Download extracted release notes
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-notes
+          path: .dist/release-metadata
+
+      - name: Reverify release identity, assets, and checksums
+        shell: pwsh
+        run: |
+          $headCommit = (git rev-parse HEAD).Trim()
+          if ($headCommit -ne $env:FMD_RELEASE_SHA) { throw "checkout does not match the gated release SHA" }
+          python .github/scripts/verify_release_tag.py --tag $env:FMD_RELEASE_TAG --sha $env:FMD_RELEASE_SHA
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/control.py release verify --directory .dist/release-assets
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Refuse to overwrite any existing GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          & gh release view $env:FMD_RELEASE_TAG --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -eq 0) {
+            throw "a GitHub Release already exists for $env:FMD_RELEASE_TAG; immutable releases are never overwritten"
+          }
+
+      - name: Attest final checksummed release subjects
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-checksums: .dist/release-assets/SHA256SUMS
+
+      - name: Create a verified draft, then publish it atomically
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python .github/scripts/verify_release_tag.py --tag $env:FMD_RELEASE_TAG --sha $env:FMD_RELEASE_SHA
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $assets = @(Get-ChildItem -LiteralPath .dist/release-assets -File | Sort-Object -Property Name)
+          if ($assets.Count -ne 14) { throw "expected 14 final release assets; found $($assets.Count)" }
+          $assetPaths = @($assets.FullName)
+          $releaseOptions = @(
+            "--repo", $env:GITHUB_REPOSITORY,
+            "--verify-tag",
+            "--draft",
+            "--title", "FMDFlashcard $env:FMD_RELEASE_VERSION",
+            "--notes-file", ".dist/release-metadata/RELEASE-NOTES.md"
+          )
+          if ($env:FMD_RELEASE_PRERELEASE -eq "true") {
+            $releaseOptions += "--prerelease"
+          }
+          & gh release create $env:FMD_RELEASE_TAG @assetPaths @releaseOptions
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python .github/scripts/verify_release_tag.py --tag $env:FMD_RELEASE_TAG --sha $env:FMD_RELEASE_SHA
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & gh release edit $env:FMD_RELEASE_TAG `
+            --repo $env:GITHUB_REPOSITORY `
+            --draft=false
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

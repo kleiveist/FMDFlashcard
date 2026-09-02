@@ -24,7 +24,7 @@ STABLE_APPIMAGE_NAME = "FMDFlashcard.AppImage"
 STABLE_ICON_BASENAME = "fmdflashcard"
 NAME_PREFERENCE_TOKEN = "fmdflashcard"
 
-BUILD_APPIMAGE_REL = Path("apps/fmd-desktop/src-tauri/target/release/bundle/appimage")
+BUILD_APPIMAGE_REL = Path(".dist/desktop/linux-x86_64/linux")
 ICON_SOURCE_REL = Path("apps/fmd-desktop/src-tauri/icons")
 
 TARGET_APPIMAGE_PATH = Path.home() / "Applications" / STABLE_APPIMAGE_NAME
@@ -272,12 +272,18 @@ def run_install(dry_run: bool = False, project_root: str | None = None) -> int:
         if dry_run:
             warn("Dry run enabled: no files will be modified.")
 
-        if not appimage_dir.is_dir():
-            raise InstallError(f"Build folder does not exist: {appimage_dir}")
+        if not appimage_dir.is_dir() and not dry_run:
+            raise InstallError(f"Verified build folder does not exist: {appimage_dir}")
         if not icon_source_dir.is_dir():
             raise InstallError(f"Icon folder does not exist: {icon_source_dir}")
 
-        source_appimage = _select_appimage(appimage_dir)
+        try:
+            source_appimage = _select_appimage(appimage_dir)
+        except InstallError:
+            if not dry_run:
+                raise
+            source_appimage = appimage_dir / "<verified-FMDFlashcard.AppImage>"
+            warn("No verified AppImage is present yet; the dry-run shows the future install plan.")
         source_icon = _select_icon(icon_source_dir)
         target_icon = TARGET_ICON_DIR / f"{STABLE_ICON_BASENAME}{source_icon.suffix.lower()}"
 

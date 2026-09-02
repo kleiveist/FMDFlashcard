@@ -1,0 +1,170 @@
+name: Tauri native CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tauri-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  native-smoke:
+    name: tauri-smoke-${{ matrix.id }}
+    if: github.event_name == 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: linux-x86_64
+            runner: ubuntu-22.04
+            rust-target: x86_64-unknown-linux-gnu
+            cli-target: linux
+          - id: windows-x86_64
+            runner: windows-2022
+            rust-target: x86_64-pc-windows-msvc
+            cli-target: windows
+          - id: macos-aarch64
+            runner: macos-15
+            rust-target: aarch64-apple-darwin
+            cli-target: macos
+          - id: macos-x86_64
+            runner: macos-15-intel
+            rust-target: x86_64-apple-darwin
+            cli-target: macos
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 75
+    env:
+      CI: "1"
+      FMD_CI_CLI_TARGET: ${{ matrix.cli-target }}
+      FMD_CI_MATRIX_ID: ${{ matrix.id }}
+      FMD_CI_RUNNER: ${{ matrix.runner }}
+      FMD_CI_RUST_TARGET: ${{ matrix.rust-target }}
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONHASHSEED: "0"
+      PYTHONNOUSERSITE: "1"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Initialize native smoke evidence
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path .reports/ci | Out-Null
+          New-Item -ItemType File -Force -Path ".reports/ci/tauri-smoke-$($env:FMD_CI_MATRIX_ID).log" | Out-Null
+
+      - name: Set up pinned FMDFlashcard environment
+        uses: ./.github/actions/setup-fmd-environment
+        with:
+          rust-target: ${{ matrix.rust-target }}
+
+      - name: Exercise command contracts and the native build plan
+        shell: pwsh
+        run: |
+          python tools/control.py tooling verify
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/control.py test --suite tauri --report --ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/control.py build desktop `
+            --target $env:FMD_CI_CLI_TARGET `
+            --rust-target $env:FMD_CI_RUST_TARGET `
+            --dry-run
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      # Linux WebKit development packages require privileged apt installation on
+      # ubuntu-22.04. Pull requests deliberately validate its complete build plan
+      # without elevating; the non-PR full-package job below performs the native
+      # Linux compile and package smoke on the same declared runner.
+      - name: Record Linux pull-request smoke boundary
+        if: runner.os == 'Linux'
+        shell: pwsh
+        run: |
+          @{
+            id = $env:FMD_CI_MATRIX_ID
+            runner = $env:FMD_CI_RUNNER
+            rust_target = $env:FMD_CI_RUST_TARGET
+            status = "build-plan-verified"
+            reason = "privileged Linux system dependency installation is prohibited for pull requests"
+          } | ConvertTo-Json | Set-Content -LiteralPath ".reports/ci/tauri-smoke-$($env:FMD_CI_MATRIX_ID).json" -Encoding utf8
+          "Linux pull-request smoke stops after a verified native plan; main and nightly build real packages." |
+            Tee-Object -FilePath ".reports/ci/tauri-smoke-$($env:FMD_CI_MATRIX_ID).log" -Append
+
+      - name: Compile the unsigned native desktop application
+        if: runner.os != 'Linux'
+        shell: pwsh
+        run: |
+          python .github/scripts/run_logged.py `
+            --log ".reports/ci/tauri-smoke-$($env:FMD_CI_MATRIX_ID).log" `
+            -- pnpm -C apps/fmd-desktop exec tauri build `
+            --no-bundle `
+            --target $env:FMD_CI_RUST_TARGET
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify native compile evidence
+        if: runner.os != 'Linux'
+        shell: pwsh
+        run: |
+          $suffix = if ($env:RUNNER_OS -eq "Windows") { ".exe" } else { "" }
+          $executable = Join-Path `
+            "apps/fmd-desktop/src-tauri/target/$($env:FMD_CI_RUST_TARGET)/release" `
+            "fmd-flashcard-desktop$suffix"
+          if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
+            throw "native smoke executable is missing: $executable"
+          }
+          $file = Get-Item -LiteralPath $executable
+          if ($file.Length -le 0) { throw "native smoke executable is empty: $executable" }
+          @{
+            id = $env:FMD_CI_MATRIX_ID
+            runner = $env:FMD_CI_RUNNER
+            rust_target = $env:FMD_CI_RUST_TARGET
+            status = "compiled"
+            executable = $file.Name
+            size = $file.Length
+          } | ConvertTo-Json | Set-Content -LiteralPath ".reports/ci/tauri-smoke-$($env:FMD_CI_MATRIX_ID).json" -Encoding utf8
+
+      - name: Upload native smoke evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tauri-smoke-${{ matrix.id }}-evidence
+          path: |
+            .reports/ci/tauri-smoke-${{ matrix.id }}.log
+            .reports/ci/tauri-smoke-${{ matrix.id }}.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7
+
+  full-package-matrix:
+    name: tauri-packages-${{ matrix.id }}
+    if: github.event_name != 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: linux-x86_64
+            runner: ubuntu-22.04
+            rust-target: x86_64-unknown-linux-gnu
+          - id: windows-x86_64
+            runner: windows-2022
+            rust-target: x86_64-pc-windows-msvc
+          - id: macos-aarch64
+            runner: macos-15
+            rust-target: aarch64-apple-darwin
+          - id: macos-x86_64
+            runner: macos-15-intel
+            rust-target: x86_64-apple-darwin
+    uses: ./.github/workflows/_build-desktop.yml
+    with:
+      matrix-id: ${{ matrix.id }}
+      runner: ${{ matrix.runner }}
+      rust-target: ${{ matrix.rust-target }}
+      source-ref: ${{ github.sha }}
+      signing-policy: optional
+      retention-days: 7

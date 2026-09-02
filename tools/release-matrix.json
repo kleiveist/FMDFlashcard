@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "product": "FMDFlashcard",
+  "repository": "https://github.com/kleiveist/FMDFlashcard",
+  "targets": [
+    {
+      "id": "linux-x86_64",
+      "os": "linux",
+      "runner": "ubuntu-22.04",
+      "rust_target": "x86_64-unknown-linux-gnu",
+      "architecture": "x86_64",
+      "builds": [
+        {
+          "cli_target": "linux",
+          "bundles": ["deb", "rpm", "appimage"]
+        }
+      ],
+      "artifacts": [
+        {
+          "package_type": "deb",
+          "source_glob": "apps/fmd-desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb",
+          "filename": "FMDFlashcard-v{version}-linux-x86_64.deb"
+        },
+        {
+          "package_type": "rpm",
+          "source_glob": "apps/fmd-desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm",
+          "filename": "FMDFlashcard-v{version}-linux-x86_64.rpm"
+        },
+        {
+          "package_type": "appimage",
+          "source_glob": "apps/fmd-desktop/src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage",
+          "filename": "FMDFlashcard-v{version}-linux-x86_64.AppImage",
+          "executable": true
+        }
+      ]
+    },
+    {
+      "id": "windows-x86_64",
+      "os": "windows",
+      "runner": "windows-2022",
+      "rust_target": "x86_64-pc-windows-msvc",
+      "architecture": "x86_64",
+      "builds": [
+        {
+          "cli_target": "windows",
+          "bundles": ["msi", "nsis"]
+        },
+        {
+          "cli_target": "windows-portable",
+          "bundles": []
+        }
+      ],
+      "artifacts": [
+        {
+          "package_type": "msi",
+          "source_glob": "apps/fmd-desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi",
+          "filename": "FMDFlashcard-v{version}-windows-x86_64.msi"
+        },
+        {
+          "package_type": "nsis",
+          "source_glob": "apps/fmd-desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe",
+          "filename": "FMDFlashcard-v{version}-windows-x86_64-setup.exe"
+        },
+        {
+          "package_type": "portable-zip",
+          "source_glob": "apps/fmd-desktop/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/portable/*.zip",
+          "filename": "FMDFlashcard-v{version}-windows-x86_64-portable.zip"
+        }
+      ]
+    },
+    {
+      "id": "macos-aarch64",
+      "os": "macos",
+      "runner": "macos-15",
+      "rust_target": "aarch64-apple-darwin",
+      "architecture": "aarch64",
+      "builds": [
+        {
+          "cli_target": "macos",
+          "bundles": ["app", "dmg"]
+        }
+      ],
+      "artifacts": [
+        {
+          "package_type": "dmg",
+          "source_glob": "apps/fmd-desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg",
+          "filename": "FMDFlashcard-v{version}-macos-aarch64.dmg"
+        },
+        {
+          "package_type": "app-archive",
+          "source_glob": "apps/fmd-desktop/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app",
+          "filename": "FMDFlashcard-v{version}-macos-aarch64-app.tar.gz",
+          "archive": "tar.gz"
+        }
+      ]
+    },
+    {
+      "id": "macos-x86_64",
+      "os": "macos",
+      "runner": "macos-15-intel",
+      "rust_target": "x86_64-apple-darwin",
+      "architecture": "x86_64",
+      "builds": [
+        {
+          "cli_target": "macos",
+          "bundles": ["app", "dmg"]
+        }
+      ],
+      "artifacts": [
+        {
+          "package_type": "dmg",
+          "source_glob": "apps/fmd-desktop/src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg",
+          "filename": "FMDFlashcard-v{version}-macos-x86_64.dmg"
+        },
+        {
+          "package_type": "app-archive",
+          "source_glob": "apps/fmd-desktop/src-tauri/target/x86_64-apple-darwin/release/bundle/macos/*.app",
+          "filename": "FMDFlashcard-v{version}-macos-x86_64-app.tar.gz",
+          "archive": "tar.gz"
+        }
+      ]
+    }
+  ]
+}
