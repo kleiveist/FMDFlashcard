@@ -1,62 +1,44 @@
-<!-- AUTO-GENERATED:backlink START -->
-[← Back](tools.md)
-<!-- AUTO-GENERATED:backlink END -->
 # Control Script Reference
 
-Source: `python3 tools/control.py --help`
+Use `./control`, `.\control.ps1`, `control.cmd`, or `python tools/control.py`. All forms return the canonical handler's exit code.
 
-## Usage
+## Canonical commands
 
-```bash
-python3 tools/control.py [flags]
-```
+| Group | Commands and important options | Bare behavior |
+|---|---|---|
+| Environment | `doctor [--json|--watch --interval N]`, `install [--dry-run] [--skip-*]` | root help |
+| Lifecycle | `run [--foreground|--no-follow]`, `stop` | executes selected action |
+| Tests | `test --suite frontend|rust|tooling|tauri|all [--coverage] [--report] [--ci]` | suite guide |
+| Quality | `quality [check|lint|format] [--format text|json] [--release] [--fix]` | complete read-only gate |
+| Build | `build web`, `build desktop --target ... [--bundles ...] [--dry-run]` | build guide |
+| Documentation | `docs check`, `docs index [--dry-run]` | docs guide |
+| Tauri | `tauri doctor|install|install-appimage|run|stop|build|test|copy|verify-artifacts` | Tauri guide |
+| Version | `version check`, `version sync` | version guide |
+| Release | `release check` | release guide |
+| Self-check | `tooling verify [--json]` | tooling guide |
 
-Windows PowerShell equivalent:
+Release CI also uses `release collect`, `release assemble`, `release verify`, and `release notes`. These commands normalize native evidence but never publish or create a tag.
 
-```powershell
-py -3 .\tools\control.py [flags]
-```
+## Legacy compatibility
 
-## Flags
+Legacy forms are normalized before parsing, emit a deprecation notice on stderr, and then use the canonical handler. `--doctor --json` keeps stdout machine-readable and suppresses the notice.
 
-- `-h`, `--help`: show help.
-- `--doctor`: run system/tooling checks.
-- `--check`: alias for `--doctor`.
-- `--json`: additional JSON output for `--doctor`.
-- `--install`: run OS-matched install routine.
-- `--VScode`, `--vscode`: install Visual Studio Code helper (Linux).
-- `--tauri`: install Tauri prerequisites (Linux).
-- `--run`, `--start`: run desktop app in dev mode.
-- `--install-appimage`, `--appimage`: install latest local Linux AppImage.
-- `--build`: build helper output (target overview); dispatcher for build subflows.
-- `--winlinux`: enable Windows cross-compile on Linux (use with `--build`).
-- `--copy`: copy built artifacts to configured external destinations (use with `--build`).
-- `--build-lin`: build Linux bundles.
-- `--build-win`: build Windows bundles.
-- `-p`, `--portable`: portable mode for `--build-win`.
-- `--build-mac`: build macOS bundles.
-- `--test`: run desktop app tests.
-- `--dry-run`: print intended actions without executing.
+| Existing invocation | Canonical behavior |
+|---|---|
+| `--doctor`, `--check` | `doctor` |
+| `--doctor --json` | `doctor --json` |
+| `--install` | `install` |
+| `--run`, `--start` | `run` |
+| `--test` | `test --suite frontend` |
+| `--tauri` | `tauri install` |
+| `--install-appimage`, `--appimage` | `tauri install-appimage` |
+| `--build` | bare build guide |
+| `--build-lin` | `build desktop --target linux` |
+| `--build-win` | `build desktop --target windows` |
+| `--build-win -p`, `--portable` | `build desktop --target windows-portable` |
+| `--build-mac` | `build desktop --target macos` |
+| `--build --winlinux` | `build desktop --target windows-cross-linux` |
+| `--build --copy` | `tauri copy` |
+| `--VScode`, `--vscode` | explicit legacy Linux VS Code install helper |
 
-## Valid combinations and constraints
-
-- `--winlinux` requires `--build`.
-- `--copy` requires `--build`.
-- `--portable` is intended with `--build-win`.
-- `--install-appimage` is Linux-only.
-- `--tauri` and `--vscode` routines are Linux-only.
-
-## Examples
-
-```bash
-python3 tools/control.py --doctor
-python3 tools/control.py --install
-python3 tools/control.py --start
-python3 tools/control.py --test
-python3 tools/control.py --build --dry-run
-python3 tools/control.py --build-lin
-python3 tools/control.py --build-win -p
-python3 tools/control.py --build --winlinux
-python3 tools/control.py --build --copy
-python3 tools/control.py --install-appimage
-```
+`--dry-run` is propagated. Ambiguous combinations and unknown arguments print actionable help and exit `2`; nothing is silently ignored.

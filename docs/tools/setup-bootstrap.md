@@ -1,69 +1,48 @@
-<!-- AUTO-GENERATED:backlink START -->
-[← Back](tools.md)
-<!-- AUTO-GENERATED:backlink END -->
 # Setup and Bootstrap
 
-This page covers environment checks and bootstrap commands handled by `tools/control.py`.
+## Supported toolchains
 
-## 1) Health checks
+The hosted contract is pinned in `.github/toolchains.json`. The frontend also pins pnpm through `packageManager`, and Rust uses `rust-toolchain.toml`. At minimum, install Git, Python, Node.js, pnpm/Corepack, Rust/Cargo, and the native Tauri prerequisites for your OS.
 
-```bash
-python3 tools/control.py --doctor
-```
+## Inspect first
 
-Alias:
+`doctor` is read-only and returns nonzero when a required prerequisite is missing:
 
 ```bash
-python3 tools/control.py --check
+./control doctor
+./control doctor --json
+./control doctor --watch --interval 10
 ```
 
-Optional JSON output:
+JSON mode writes only the stable JSON document to stdout.
+
+## Install
+
+Preview the exact host-specific plan before allowing package installation:
 
 ```bash
-python3 tools/control.py --doctor --json
+./control install --dry-run
+./control install
 ```
 
-## 2) Install base dependencies
+Stages can be disabled explicitly:
 
 ```bash
-python3 tools/control.py --install
+./control install --skip-system-deps
+./control install --skip-rust
+./control install --skip-node
+./control install --skip-frontend
 ```
 
-Dry-run:
+Frontend dependencies use `pnpm install --frozen-lockfile`. Dry-run starts no child process and changes no file. System-package installation can require host administrator privileges; review the dry-run first.
+
+## Direct development dependencies
+
+For Python tooling checks, use an isolated environment:
 
 ```bash
-python3 tools/control.py --install --dry-run
+python -m venv .venv
+.venv/bin/python -m pip install --requirement tools/requirements-dev.txt
 ```
 
-## 3) Optional Linux bootstrap helpers
-
-Install VS Code helper (Linux only):
-
-```bash
-python3 tools/control.py --vscode
-```
-
-Install Tauri prerequisites (Linux only):
-
-```bash
-python3 tools/control.py --tauri
-```
-
-Dry-run for Tauri bootstrap:
-
-```bash
-python3 tools/control.py --tauri --dry-run
-```
-
-## Recommended bootstrap order
-
-1. `--doctor`
-2. `--install`
-3. `--tauri` (Linux)
-4. continue with [Run and test](run-test.md)
-
-## Notes
-
-- `--install`, `--tauri`, and most runner-backed commands support `--dry-run`.
-- If `pnpm` is missing, follow the hint from the tooling output (corepack/pnpm installation).
-- If rust toolchain checks fail, re-run `--tauri` on Linux or install Rust/Tauri prerequisites for your host OS.
+On Windows, the environment interpreter is `.venv\Scripts\python.exe`.

@@ -1,36 +1,51 @@
-<!-- AUTO-GENERATED:backlink START -->
-[← Back](README.md)
-<!-- AUTO-GENERATED:backlink END -->
 # Contributing
 
-Thanks for your interest in contributing.
+Thank you for contributing to FMDFlashcard.
 
-## Development quickstart
+## Development setup
 
-Follow the full setup guide:
+Use the repository-root command contract:
 
-- `docs/dev/setup.md`
+```bash
+./control doctor
+./control install --dry-run
+./control install
+```
 
-## Branch / PR workflow
+The supported toolchain versions are declared in `.github/toolchains.json`, `apps/fmd-desktop/package.json`, and `rust-toolchain.toml`. Dependency installs use committed lockfiles.
 
-- Create a feature branch from the default branch.
-- Keep PRs focused (one feature/fix per PR).
-- Describe:
-  - what changed,
-  - why it changed,
-  - how you tested it.
+## Pull requests
 
-## Quality guidelines
+- Keep changes focused and preserve the Tauri application identifier.
+- Explain what changed, why it changed, and how it was tested.
+- Add regression tests for changed behavior.
+- Do not commit `.dist/`, `.reports/`, `.tooling-state/`, runtime profiles, vault data, caches, or secrets.
+- Do not create tags, publish releases, or weaken Tauri capabilities as part of ordinary changes.
 
-- If you change evaluation/scoring logic, add tests.
-- Avoid UI regressions: keep layout changes intentional and minimal.
-- Update documentation when behavior changes (especially parsing and review rules).
+Run these gates before requesting review:
 
-## Reporting issues
+```bash
+./control quality
+./control test --suite all --report --ci
+./control build web
+./control docs check
+./control tooling verify
+./control version check
+./control release check
+git diff --check
+```
 
-When reporting a bug, include:
+Platform-specific native packages must be validated by the matching GitHub Actions runner. Local dry-run plans are required when the host cannot execute a target:
 
-- OS and version
-- steps to reproduce
-- expected vs. actual behavior
-- a minimal example `#card` block if the issue is related to parsing/review
+```bash
+./control build desktop --target windows --dry-run
+./control build desktop --target macos --dry-run
+```
+
+## Formatting and fixes
+
+`./control quality` is read-only. Use `./control quality --fix` only when you intend to apply formatter-owned edits, then review every changed file.
+
+## Security reports
+
+Follow [SECURITY.md](SECURITY.md). Do not include credentials, private vault content, signing material, or user data in public issues or test fixtures.

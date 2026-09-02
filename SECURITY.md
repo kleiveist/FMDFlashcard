@@ -5,7 +5,7 @@
 
 ## Supported Versions
 
-This project is under active development. Security fixes may be released without notice.
+The current `VERSION` line is supported while the project is under active development. Published packages must include checksums, an SPDX SBOM, an artifact manifest, and explicit signing/notarization state.
 
 ## Reporting a Vulnerability
 
@@ -22,3 +22,9 @@ Please include:
 - any suggested mitigation.
 
 Thank you for reporting responsibly.
+
+## Release integrity
+
+Release consumers should verify `SHA256SUMS`, `release-manifest.json`, and GitHub provenance attestations before running downloaded packages. Instructions are in [Artifact verification](docs/tools/artifact-verification.md).
+
+The repository currently has no verified license file. Tagged release publication is blocked until maintainers resolve that legal metadata requirement.

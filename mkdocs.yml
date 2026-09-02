@@ -22,7 +22,10 @@ nav:
       - Run and test: tools/run-test.md
       - Build and packaging: tools/build-package.md
       - Control script reference: tools/control-reference.md
-  - ADRs:
-      - ADR index: adr/adr.md
-      - ADR 0001: adr/0001-documentation-source-of-truth.md
-      - ADR 0002: adr/0002-hybrid-editor-performance-redesign.md
+      - CI architecture: tools/ci-architecture.md
+      - Release maintainer guide: tools/release-maintainer.md
+      - Artifact verification: tools/artifact-verification.md
+      - Platform build troubleshooting: tools/platform-troubleshooting.md
+      - Tooling architecture: tools/python-code/python-code.md
+      - Python module reference: tools/python-code/module-reference.md
+      - Extension guide: tools/python-code/extension-guide.md

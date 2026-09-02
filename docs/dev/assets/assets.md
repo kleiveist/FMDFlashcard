@@ -1,7 +1,7 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back](../dev.md)
 <!-- AUTO-GENERATED:backlink END -->
-[← Back](../index.md)
+[← Back](../dev.md)
 
 # Assets
 

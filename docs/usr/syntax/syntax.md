@@ -1,7 +1,7 @@
 <!-- AUTO-GENERATED:backlink START -->
 [← Back](../usr.md)
 <!-- AUTO-GENERATED:backlink END -->
-[← Back](../user.md)
+[← Back](../usr.md)
 
 # Syntax
 
