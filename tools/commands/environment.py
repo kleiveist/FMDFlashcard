@@ -97,9 +97,12 @@ def _print_doctor_text(document: dict[str, object]) -> None:
     for item in document["checks"]:
         check = item if isinstance(item, dict) else {}
         status = str(check.get("status", "fail"))
+        required = bool(check.get("required", True))
         message = f"{check.get('name', 'unknown')}: {check.get('detail', '')}"
         if status == "ok":
             logger.ok(message)
+        elif not required:
+            logger.warn(message)
         else:
             logger.error(message)
     logger.info(f"Doctor status: {document['status']}")

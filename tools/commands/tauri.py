@@ -128,7 +128,12 @@ def _tauri_doctor(*, json_output: bool) -> int:
     else:
         for check in checks:
             message = f"{check.name}: {check.detail}"
-            (logger.ok if check.status == "ok" else logger.error)(message)
+            if check.status == "ok":
+                logger.ok(message)
+            elif check.required:
+                logger.error(message)
+            else:
+                logger.warn(message)
         logger.info(f"Tauri doctor status: {document['status']}")
     return 0 if passed else 1
 

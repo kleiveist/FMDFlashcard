@@ -52,6 +52,34 @@ def test_doctor_json_has_stable_schema(
     assert captured.err == ""
 
 
+def test_doctor_text_distinguishes_optional_warnings_from_required_errors(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    environment._print_doctor_text(
+        {
+            "checks": [
+                {
+                    "name": "optional",
+                    "status": "fail",
+                    "required": False,
+                    "detail": "missing",
+                },
+                {
+                    "name": "required",
+                    "status": "fail",
+                    "required": True,
+                    "detail": "missing",
+                },
+            ],
+            "status": "fail",
+        }
+    )
+
+    captured = capsys.readouterr()
+    assert "[WARN] optional: missing" in captured.err
+    assert "[ERROR] required: missing" in captured.err
+
+
 def test_install_dry_run_starts_nothing_and_changes_nothing(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
