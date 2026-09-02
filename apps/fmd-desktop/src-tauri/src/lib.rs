@@ -388,16 +388,13 @@ fn format_relative_path(path: &Path) -> String {
 }
 
 fn to_unix_millis(value: SystemTime) -> Option<u64> {
-    value
-        .duration_since(UNIX_EPOCH)
-        .ok()
-        .and_then(|duration| {
-            let millis = duration.as_millis();
-            if millis > u64::MAX as u128 {
-                return None;
-            }
-            Some(millis as u64)
-        })
+    value.duration_since(UNIX_EPOCH).ok().and_then(|duration| {
+        let millis = duration.as_millis();
+        if millis > u64::MAX as u128 {
+            return None;
+        }
+        Some(millis as u64)
+    })
 }
 
 fn natural_compare_segments(left: &str, right: &str) -> Ordering {
@@ -535,9 +532,7 @@ fn read_spaced_repetition_file(
         return Ok(HashMap::new());
     }
 
-    if let Ok(map) =
-        serde_json::from_str::<HashMap<String, SpacedRepetitionStorage>>(&data)
-    {
+    if let Ok(map) = serde_json::from_str::<HashMap<String, SpacedRepetitionStorage>>(&data) {
         return Ok(map);
     }
 
@@ -574,10 +569,7 @@ fn read_fast_flashcard_data(path: &Path) -> Result<FastFlashcardStorage, String>
     }
 }
 
-fn write_fast_flashcard_data(
-    path: &Path,
-    storage: &FastFlashcardStorage,
-) -> Result<(), String> {
+fn write_fast_flashcard_data(path: &Path, storage: &FastFlashcardStorage) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent).map_err(|err| err.to_string())?;
     }
@@ -798,10 +790,7 @@ fn load_exam_run_data(app: tauri::AppHandle) -> Result<ExamRunStorage, String> {
 }
 
 #[tauri::command]
-fn save_exam_run_data(
-    app: tauri::AppHandle,
-    storage: ExamRunStorage,
-) -> Result<(), String> {
+fn save_exam_run_data(app: tauri::AppHandle, storage: ExamRunStorage) -> Result<(), String> {
     let path = exam_runs_path(&app)?;
     write_exam_runs_data(&path, &storage)
 }
@@ -1193,10 +1182,7 @@ fn delete_file(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn delete_markdown_file(
-    vault_path: String,
-    relative_path: String,
-) -> Result<(), String> {
+fn delete_markdown_file(vault_path: String, relative_path: String) -> Result<(), String> {
     let root = PathBuf::from(&vault_path);
     if !root.exists() {
         return Err("Vault path does not exist.".to_string());
@@ -1384,10 +1370,7 @@ fn get_system_identity() -> Result<String, String> {
 }
 
 #[tauri::command]
-fn create_markdown_file(
-    vault_path: String,
-    relative_path: String,
-) -> Result<VaultFile, String> {
+fn create_markdown_file(vault_path: String, relative_path: String) -> Result<VaultFile, String> {
     let root = PathBuf::from(&vault_path);
     if !root.exists() {
         return Err("Vault path does not exist.".to_string());
@@ -1510,12 +1493,16 @@ mod tests {
             },
         ];
 
-        files.sort_by(|left, right| natural_compare_text(&left.relative_path, &right.relative_path));
+        files
+            .sort_by(|left, right| natural_compare_text(&left.relative_path, &right.relative_path));
         let sorted_relative_paths = files
             .iter()
             .map(|entry| entry.relative_path.as_str())
             .collect::<Vec<_>>();
-        assert_eq!(sorted_relative_paths, vec!["1-file.md", "2-file.md", "10-file.md"]);
+        assert_eq!(
+            sorted_relative_paths,
+            vec!["1-file.md", "2-file.md", "10-file.md"]
+        );
     }
 }
 
