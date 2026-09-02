@@ -7,7 +7,7 @@ Database blocks work by normalizing heterogeneous Markdown/frontmatter values in
 
 ## Record Model
 
-`DatabaseRecord` is defined in [`database-types.ts`](../../../apps/fmd-desktop/src/features/preview/database/database-types.ts).
+`DatabaseRecord` is defined in [`database-types.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-types.ts).
 
 | Field | Meaning |
 | --- | --- |
@@ -34,7 +34,7 @@ Attribute metadata also records whether a field is sortable, filterable, aggrega
 
 ## Field Type Normalization
 
-Normalization is implemented in [`database-normalizers.ts`](../../../apps/fmd-desktop/src/features/preview/database/database-normalizers.ts).
+Normalization is implemented in [`database-normalizers.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-normalizers.ts).
 
 | Field type family | Normalized behavior |
 | --- | --- |
@@ -64,7 +64,7 @@ This compatibility metadata is why some properties appear in one view's controls
 
 ## Filtering
 
-Filters are implemented in [`database-filters.ts`](../../../apps/fmd-desktop/src/features/preview/database/database-filters.ts). A filter tree is a group with `and` or `or`, containing rules or nested groups.
+Filters are implemented in [`database-filters.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-filters.ts). A filter tree is a group with `and` or `or`, containing rules or nested groups.
 
 | Filter element | Meaning |
 | --- | --- |
@@ -89,7 +89,7 @@ Search is applied together with configured filters. It operates on visible/searc
 
 ## Sorting
 
-Sorting is implemented in [`database-sorts.ts`](../../../apps/fmd-desktop/src/features/preview/database/database-sorts.ts).
+Sorting is implemented in [`database-sorts.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-sorts.ts).
 
 | Sort concept | Behavior |
 | --- | --- |
@@ -115,13 +115,13 @@ Formula configuration is stored as field definitions in database block config an
 
 | Order | Operation | Primary module |
 | --- | --- | --- |
-| 1 | Build inferred attributes from records. | [`database-store.ts`](../../../apps/fmd-desktop/src/features/preview/database/database-store.ts) |
-| 2 | Merge explicit field definitions. | [`database-store.ts`](../../../apps/fmd-desktop/src/features/preview/database/database-store.ts) |
-| 3 | Normalize/evaluate field values and formulas. | [`database-normalizers.ts`](../../../apps/fmd-desktop/src/features/preview/database/database-normalizers.ts), formula modules. |
-| 4 | Resolve visible columns/properties. | [`database-store.ts`](../../../apps/fmd-desktop/src/features/preview/database/database-store.ts) |
-| 5 | Apply filter group and search query. | [`database-filters.ts`](../../../apps/fmd-desktop/src/features/preview/database/database-filters.ts) |
-| 6 | Apply sort rules. | [`database-sorts.ts`](../../../apps/fmd-desktop/src/features/preview/database/database-sorts.ts) |
-| 7 | Render active view. | [`features/preview/database/views/`](../../../apps/fmd-desktop/src/features/preview/database/views) |
+| 1 | Build inferred attributes from records. | [`database-store.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-store.ts) |
+| 2 | Merge explicit field definitions. | [`database-store.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-store.ts) |
+| 3 | Normalize/evaluate field values and formulas. | [`database-normalizers.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-normalizers.ts), formula modules. |
+| 4 | Resolve visible columns/properties. | [`database-store.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-store.ts) |
+| 5 | Apply filter group and search query. | [`database-filters.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-filters.ts) |
+| 6 | Apply sort rules. | [`database-sorts.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-sorts.ts) |
+| 7 | Render active view. | [`features/preview/database/views/`](https://github.com/kleiveist/FMDFlashcard/tree/main/apps/fmd-desktop/src/features/preview/database/views) |
 
 ## Developer Guidance
 

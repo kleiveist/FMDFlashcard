@@ -7,7 +7,7 @@ The Markdown database feature is an embedded view system over vault files. It do
 
 ## Block Syntax
 
-Database blocks use a standalone `::::` marker for both opening and closing. Marker detection is shared in [`lib/databaseBlockSyntax.ts`](../../../apps/fmd-desktop/src/lib/databaseBlockSyntax.ts), and config parsing lives in [`database-block-parser.ts`](../../../apps/fmd-desktop/src/features/preview/database/database-block-parser.ts).
+Database blocks use a standalone `::::` marker for both opening and closing. Marker detection is shared in [`lib/databaseBlockSyntax.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/lib/databaseBlockSyntax.ts), and config parsing lives in [`database-block-parser.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-block-parser.ts).
 
 ```markdown
 ::::
@@ -53,7 +53,7 @@ The persisted source of truth for user-defined database modes is `views.items`. 
 
 ## Source Resolution
 
-Source resolution is implemented in [`database-source-resolver.ts`](../../../apps/fmd-desktop/src/features/preview/database/database-source-resolver.ts). It starts from the vault file list and returns the Markdown files visible to one database block.
+Source resolution is implemented in [`database-source-resolver.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-source-resolver.ts). It starts from the vault file list and returns the Markdown files visible to one database block.
 
 | Source type | Current behavior |
 | --- | --- |
@@ -68,7 +68,7 @@ Source resolution is implemented in [`database-source-resolver.ts`](../../../app
 
 ## View Modes
 
-The available database view types are defined in [`database-types.ts`](../../../apps/fmd-desktop/src/features/preview/database/database-types.ts): `table`, `kanban`, `gantt`, `pie`, and `project`.
+The available database view types are defined in [`database-types.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-types.ts): `table`, `kanban`, `gantt`, `pie`, and `project`.
 
 | View mode | Interpretation | Key config |
 | --- | --- | --- |
@@ -108,8 +108,8 @@ Switching saved views changes the active interpretation without changing the und
 
 | Change goal | Start here |
 | --- | --- |
-| Change database config parsing/serialization. | [`database-block-parser.ts`](../../../apps/fmd-desktop/src/features/preview/database/database-block-parser.ts). |
-| Change source scope behavior. | [`database-source-resolver.ts`](../../../apps/fmd-desktop/src/features/preview/database/database-source-resolver.ts). |
-| Change view UI behavior. | [`features/preview/database/views/`](../../../apps/fmd-desktop/src/features/preview/database/views). |
-| Change toolbar/panels for source, filters, sort, properties, or view selection. | [`features/preview/database/ui/`](../../../apps/fmd-desktop/src/features/preview/database/ui). |
-| Change block-level runtime orchestration. | [`database-block.tsx`](../../../apps/fmd-desktop/src/features/preview/database/database-block.tsx). |
+| Change database config parsing/serialization. | [`database-block-parser.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-block-parser.ts). |
+| Change source scope behavior. | [`database-source-resolver.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-source-resolver.ts). |
+| Change view UI behavior. | [`features/preview/database/views/`](https://github.com/kleiveist/FMDFlashcard/tree/main/apps/fmd-desktop/src/features/preview/database/views). |
+| Change toolbar/panels for source, filters, sort, properties, or view selection. | [`features/preview/database/ui/`](https://github.com/kleiveist/FMDFlashcard/tree/main/apps/fmd-desktop/src/features/preview/database/ui). |
+| Change block-level runtime orchestration. | [`database-block.tsx`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-block.tsx). |

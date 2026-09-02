@@ -1,0 +1,125 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage{catchfile}
+\geometry{margin=25mm}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  urlcolor=blue,
+  pdftitle={FMDFlashcard Release Documentation},
+  pdfauthor={FMDFlashcard contributors}
+}
+
+\CatchFileDef{\FMDVersion}{../../VERSION}{\endlinechar=-1 }
+\newcommand{\command}[1]{\texttt{#1}}
+
+\title{FMDFlashcard\\Release Documentation}
+\author{FMDFlashcard contributors}
+\date{Version \FMDVersion}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+\section{Purpose}
+
+FMDFlashcard is a local-first desktop application for Markdown-based flashcards,
+exams, and spaced-repetition study. The source documentation is maintained in
+the repository's \command{docs/} directory and built strictly with MkDocs. This
+PDF is release evidence: it records the supported package contract, integrity
+checks, and maintainer-facing installation guidance for the corresponding
+release.
+
+\section{Supported desktop packages}
+
+\begin{longtable}{@{}lll@{}}
+\toprule
+Platform & Architecture & Packages \\
+\midrule
+Windows & x86\_64 & MSI, NSIS setup executable, portable ZIP \\
+Linux & x86\_64 & Debian package, RPM package, AppImage \\
+macOS & Apple Silicon & DMG, compressed application bundle \\
+macOS & Intel & DMG, compressed application bundle \\
+\bottomrule
+\end{longtable}
+
+Every production package is built on a native GitHub-hosted runner. The
+Linux-to-Windows cross-build command is an explicitly experimental local
+fallback and is not accepted as a production Windows release source.
+
+\section{Install and run from source}
+
+From the repository root, inspect the host and install project dependencies:
+
+\begin{verbatim}
+./control doctor
+./control install --dry-run
+./control install
+./control run --foreground
+\end{verbatim}
+
+PowerShell users can use \command{.\textbackslash control.ps1}; Command Prompt
+users can use \command{control.cmd}. The canonical implementation remains
+\command{python tools/control.py}.
+
+\section{Quality and tests}
+
+The complete local gates are exposed through stable commands:
+
+\begin{verbatim}
+./control quality
+./control test --suite all --report --ci
+./control docs check
+./control version check
+./control release check
+\end{verbatim}
+
+The frontend, Rust crate, Python tooling, documentation, workflow contracts,
+and platform-independent Tauri plans are checked independently so a failure
+cannot be hidden by another suite.
+
+\section{Artifact integrity}
+
+A release contains \command{release-manifest.json}, \command{SHA256SUMS}, and
+\command{SBOM.spdx.json}. Verify downloaded files from the asset directory:
+
+\begin{verbatim}
+sha256sum --check SHA256SUMS
+python tools/control.py release verify --directory .
+\end{verbatim}
+
+The manifest records each artifact's file name, size, SHA-256 digest, build
+target, architecture, runner family, commit, signature state, notarization
+state, and toolchain versions. GitHub provenance attestations can additionally
+be checked with the GitHub CLI:
+
+\begin{verbatim}
+gh attestation verify <asset> --repo kleiveist/FMDFlashcard
+\end{verbatim}
+
+\section{Signing status}
+
+Unsigned CI packages remain useful for pull-request and smoke validation.
+Published assets state whether they are signed and, for macOS, whether
+notarization was verified. A release configured with the required signing
+policy fails before publication when credentials or verification evidence are
+missing. Updater signing is intentionally absent because the application does
+not implement the Tauri updater.
+
+\section{Further documentation}
+
+The full user and developer documentation is available in the release source
+and at the repository:
+\begin{itemize}
+  \item \url{https://github.com/kleiveist/FMDFlashcard/tree/main/docs/usr}
+  \item \url{https://github.com/kleiveist/FMDFlashcard/tree/main/docs/dev}
+  \item \url{https://github.com/kleiveist/FMDFlashcard/tree/main/docs/tools}
+\end{itemize}
+
+\end{document}

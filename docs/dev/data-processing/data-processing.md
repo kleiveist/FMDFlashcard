@@ -45,13 +45,13 @@ Important: the current app does not use SQLite, IndexedDB, or a SQL query engine
 
 | Concern | Primary modules |
 | --- | --- |
-| Tauri filesystem bridge | [`src-tauri/src/lib.rs`](../../../apps/fmd-desktop/src-tauri/src/lib.rs) |
-| Vault scanning hook | [`features/vault/useVault.ts`](../../../apps/fmd-desktop/src/features/vault/useVault.ts) |
-| Markdown block segmentation | [`features/preview/markdownBlocks.ts`](../../../apps/fmd-desktop/src/features/preview/markdownBlocks.ts) |
-| Frontmatter parsing and updates | [`features/preview/frontmatter.ts`](../../../apps/fmd-desktop/src/features/preview/frontmatter.ts), [`features/preview/database/frontmatter-update.ts`](../../../apps/fmd-desktop/src/features/preview/database/frontmatter-update.ts) |
-| Database block parser/types/store | [`database-block-parser.ts`](../../../apps/fmd-desktop/src/features/preview/database/database-block-parser.ts), [`database-types.ts`](../../../apps/fmd-desktop/src/features/preview/database/database-types.ts), [`database-store.ts`](../../../apps/fmd-desktop/src/features/preview/database/database-store.ts) |
-| Database views | [`features/preview/database/views/`](../../../apps/fmd-desktop/src/features/preview/database/views) |
-| Profile/user vault storage | [`features/user-vault/storage.ts`](../../../apps/fmd-desktop/src/features/user-vault/storage.ts), [`lib/userVault.ts`](../../../apps/fmd-desktop/src/lib/userVault.ts) |
+| Tauri filesystem bridge | [`src-tauri/src/lib.rs`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src-tauri/src/lib.rs) |
+| Vault scanning hook | [`features/vault/useVault.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/vault/useVault.ts) |
+| Markdown block segmentation | [`features/preview/markdownBlocks.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/markdownBlocks.ts) |
+| Frontmatter parsing and updates | [`features/preview/frontmatter.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/frontmatter.ts), [`features/preview/database/frontmatter-update.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/frontmatter-update.ts) |
+| Database block parser/types/store | [`database-block-parser.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-block-parser.ts), [`database-types.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-types.ts), [`database-store.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/database-store.ts) |
+| Database views | [`features/preview/database/views/`](https://github.com/kleiveist/FMDFlashcard/tree/main/apps/fmd-desktop/src/features/preview/database/views) |
+| Profile/user vault storage | [`features/user-vault/storage.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/user-vault/storage.ts), [`lib/userVault.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/lib/userVault.ts) |
 
 ## How To Read This Section
 

@@ -1,5 +1,5 @@
 <!-- AUTO-GENERATED:backlink START -->
-[← Back](../README.md)
+[← Back](https://github.com/kleiveist/FMDFlashcard#readme)
 <!-- AUTO-GENERATED:backlink END -->
 # Docs
 

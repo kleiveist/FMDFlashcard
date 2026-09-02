@@ -17,7 +17,7 @@ Markdown files are the primary content database for FMDFlashcard. The app keeps 
 
 ## YAML Frontmatter Boundary
 
-Frontmatter is recognized only when it appears at the beginning of a Markdown document and is enclosed by `---` markers. The parser is implemented in [`features/preview/frontmatter.ts`](../../../apps/fmd-desktop/src/features/preview/frontmatter.ts).
+Frontmatter is recognized only when it appears at the beginning of a Markdown document and is enclosed by `---` markers. The parser is implemented in [`features/preview/frontmatter.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/frontmatter.ts).
 
 | Parser behavior | Implementation effect |
 | --- | --- |
@@ -51,7 +51,7 @@ Each resolved Markdown file normally becomes one `DatabaseRecord`. The body text
 
 ## Editable Frontmatter Updates
 
-Database views can write back to Markdown frontmatter through [`frontmatter-update.ts`](../../../apps/fmd-desktop/src/features/preview/database/frontmatter-update.ts).
+Database views can write back to Markdown frontmatter through [`frontmatter-update.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/frontmatter-update.ts).
 
 | Operation | Behavior |
 | --- | --- |
@@ -77,8 +77,8 @@ Database views can write back to Markdown frontmatter through [`frontmatter-upda
 
 | Change goal | Start here |
 | --- | --- |
-| Change frontmatter parsing or serialization. | [`frontmatter.ts`](../../../apps/fmd-desktop/src/features/preview/frontmatter.ts) and its tests. |
-| Change how database cell edits update Markdown files. | [`frontmatter-update.ts`](../../../apps/fmd-desktop/src/features/preview/database/frontmatter-update.ts). |
-| Change block segmentation around database blocks. | [`markdownBlocks.ts`](../../../apps/fmd-desktop/src/features/preview/markdownBlocks.ts) and [`databaseBlockSyntax.ts`](../../../apps/fmd-desktop/src/lib/databaseBlockSyntax.ts). |
+| Change frontmatter parsing or serialization. | [`frontmatter.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/frontmatter.ts) and its tests. |
+| Change how database cell edits update Markdown files. | [`frontmatter-update.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/database/frontmatter-update.ts). |
+| Change block segmentation around database blocks. | [`markdownBlocks.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/features/preview/markdownBlocks.ts) and [`databaseBlockSyntax.ts`](https://github.com/kleiveist/FMDFlashcard/blob/main/apps/fmd-desktop/src/lib/databaseBlockSyntax.ts). |
 | Change user-facing Markdown syntax rules. | Update parser code and the matching docs under `docs/usr/syntax/` or `docs/dev/rendering/`. |
 
