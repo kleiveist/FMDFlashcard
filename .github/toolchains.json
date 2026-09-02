@@ -7,7 +7,7 @@
   "rust": "1.89.0",
   "pip": "25.2",
   "cargo_tools": {
-    "cargo_audit": "0.21.2"
+    "cargo_audit": "0.22.2"
   },
   "texlive": "2025",
   "runners": {
