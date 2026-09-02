@@ -44,6 +44,8 @@ class CommandRunner:
             env=self.env,
             capture_output=False,
         )
+        if result.returncode != 0:
+            print(f"[FAIL] command exited with code {result.returncode}", file=sys.stderr)
         return result.returncode
 
 

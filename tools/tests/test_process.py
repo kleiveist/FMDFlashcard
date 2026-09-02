@@ -34,6 +34,18 @@ def test_child_return_code_is_preserved(monkeypatch: pytest.MonkeyPatch, tmp_pat
     assert observed["errors"] == "replace"
 
 
+def test_command_runner_reports_nonzero_exit(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    result = process.CommandResult(("example",), tmp_path, 3221225477)
+    monkeypatch.setattr(process, "run_command", lambda *_args, **_kwargs: result)
+
+    assert process.CommandRunner().run(["example"], cwd=tmp_path) == 3221225477
+    assert "[FAIL] command exited with code 3221225477" in capsys.readouterr().err
+
+
 def test_missing_executable_returns_127(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     def missing(*_args: object, **_kwargs: object) -> None:
         raise FileNotFoundError("missing")
