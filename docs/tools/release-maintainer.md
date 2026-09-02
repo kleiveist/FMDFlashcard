@@ -74,4 +74,6 @@ Unsigned pull-request builds never import certificates. Windows signatures are c
 
 Validation is idempotent because it creates no release. Publication refuses an existing immutable stable release and uploads all verified assets in one `gh release create --verify-tag` operation. If any platform fails, fix the commit and create a new version/tag according to the release policy; do not replace already published stable assets.
 
+An upload or network failure after GitHub creates the draft can leave a partial draft behind. Before retrying, inspect that draft and its assets in GitHub. If it belongs to the same verified tag and was never published, delete the incomplete draft deliberately, then rerun the unchanged tag; otherwise create a new version and tag. The workflow never uses asset overwrite/`--clobber` behavior and will not reuse an existing draft or stable release automatically.
+
 See [Artifact verification](artifact-verification.md) and [Build and packaging](build-package.md) for the exact inventory.

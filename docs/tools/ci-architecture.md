@@ -14,7 +14,21 @@ FMDFlashcard uses purpose-separated GitHub Actions workflows. Every workflow has
 
 ## Branch protection
 
-Configure branch protection using the stable job names emitted by the quality, test, documentation, and Tauri smoke workflows. At minimum require their jobs for tooling quality, frontend quality, Rust quality, frontend tests/coverage/build, Rust tests, tooling tests, documentation, and the three native smoke OS families. Confirm the exact names shown by GitHub after the first workflow run before making the rules mandatory; workflow source tests protect those names from accidental drift.
+Configure branch protection with these exact stable check names after they have run once on the repository:
+
+- `quality`
+- `tests-frontend`
+- `tests-tooling`
+- `tests-rust`
+- `tests-tauri-plans`
+- `tests-web-build`
+- `documentation`
+- `tauri-smoke-linux-x86_64`
+- `tauri-smoke-windows-x86_64`
+- `tauri-smoke-macos-aarch64`
+- `tauri-smoke-macos-x86_64`
+
+Confirm that GitHub displays this exact inventory before making the rules mandatory; workflow source tests protect the names from accidental drift. Push/manual full-package checks are useful release evidence but are not substitutes for the pull-request smoke checks above.
 
 Path filters are intentionally avoided on required gates so a pull request cannot make a required check disappear. Fork pull requests receive no release/signing secrets and cannot enter a publication path.
 
