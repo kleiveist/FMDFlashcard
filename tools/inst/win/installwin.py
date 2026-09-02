@@ -142,7 +142,9 @@ def _install_winget(packages: List[str], dry_run: bool) -> int:
         if rc != 0:
             # If install fails but package is now detected as installed, continue.
             if not dry_run and _winget_is_installed(pkg_id, winget_source):
-                print(f"{ICONS['warn']} winget returned {rc}, but {pkg_id} is now installed; continuing.")
+                print(
+                    f"{ICONS['warn']} winget returned {rc}, but {pkg_id} is now installed; continuing."
+                )
                 continue
             print(f"{ICONS['err']} winget failed for {pkg_id} (exit {rc})")
             return rc

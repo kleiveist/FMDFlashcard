@@ -33,9 +33,11 @@ from console import (
     err,
     info,
     kv,
+    ok,
     section,
     warn,
-    ok,
+)
+from console import (
     cmd as console_cmd,
 )
 
@@ -77,7 +79,11 @@ def _confirm_allow_cross() -> bool:
         return False
     while True:
         try:
-            answer = input("Nicht-Windows Host erkannt. ALLOW_CROSS=1 setzen und weiterbauen? (j/n) ").strip().lower()
+            answer = (
+                input("Nicht-Windows Host erkannt. ALLOW_CROSS=1 setzen und weiterbauen? (j/n) ")
+                .strip()
+                .lower()
+            )
         except (KeyboardInterrupt, EOFError):
             print()
             return False
@@ -162,7 +168,10 @@ def run_install(dry_run: bool = False) -> int:
     section("Settings")
     kv("PORTABLE", "1 (no installer bundling)")
     kv("ALLOW_CROSS", f"{allow_cross_env} ({'allow' if allow_cross_enabled else 'strict'})")
-    kv("CLEAN_PORTABLE", f"{clean_portable_value} ({'cleanup' if clean_portable_enabled else 'skip'})")
+    kv(
+        "CLEAN_PORTABLE",
+        f"{clean_portable_value} ({'cleanup' if clean_portable_enabled else 'skip'})",
+    )
     if dry_run:
         warn("Dry run mode enabled: commands will not execute.")
 

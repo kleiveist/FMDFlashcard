@@ -26,9 +26,11 @@ from console import (
     err,
     info,
     kv,
+    ok,
     section,
     warn,
-    ok,
+)
+from console import (
     cmd as console_cmd,
 )
 
@@ -93,7 +95,11 @@ def _confirm_allow_cross_mac() -> bool:
         return False
     while True:
         try:
-            answer = input("Nicht-macOS Host erkannt. ALLOW_CROSS=1 setzen und weiterbauen? (j/n) ").strip().lower()
+            answer = (
+                input("Nicht-macOS Host erkannt. ALLOW_CROSS=1 setzen und weiterbauen? (j/n) ")
+                .strip()
+                .lower()
+            )
         except (KeyboardInterrupt, EOFError):
             print()
             return False

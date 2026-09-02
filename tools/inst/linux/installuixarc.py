@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 from typing import Dict, Iterable, List, Set
 
-from doctor import Check, CRITICAL_CATEGORIES, collect_checks, missing_checks
+from doctor import CRITICAL_CATEGORIES, Check, collect_checks, missing_checks
 
 ICONS = {
     "ok": "✅",

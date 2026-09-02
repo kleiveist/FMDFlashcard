@@ -21,7 +21,7 @@ import os
 import platform
 import shutil
 import subprocess
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -168,7 +168,7 @@ def collect_checks() -> List[Check]:
         Check(
             "PATH (Top 8)",
             True,
-            "\n" + "\n".join([f"    {i+1}. {p}" for i, p in enumerate(top)]),
+            "\n" + "\n".join([f"    {i + 1}. {p}" for i, p in enumerate(top)]),
             "Shell",
         )
     )
@@ -184,7 +184,9 @@ def collect_checks() -> List[Check]:
 
         # Unix tools: show as skipped (not required on Windows)
         for tool in ["file", "pkg-config", "make", "gcc", "g++"]:
-            checks.append(Check(tool, True, "skipped (Unix tool; not required on Windows)", "Core Tools"))
+            checks.append(
+                Check(tool, True, "skipped (Unix tool; not required on Windows)", "Core Tools")
+            )
     else:
         for tool in ["git", "curl", "file", "pkg-config", "cmake", "make", "gcc", "g++"]:
             p = which(tool)
@@ -201,20 +203,35 @@ def collect_checks() -> List[Check]:
     if rustup:
         v = run_cmd([rustup, "--version"]) or "version unavailable"
         active = run_cmd([rustup, "show", "active-toolchain"]) or "(active toolchain unknown)"
-        checks.append(Check("rustup", True, _with_path_hint(v, rustup_from_cargo, cargo_env, cargo_bin), "Rust"))
-        checks.append(Check("toolchain", True, _with_path_hint(active, rustup_from_cargo, cargo_env, cargo_bin), "Rust"))
+        checks.append(
+            Check(
+                "rustup", True, _with_path_hint(v, rustup_from_cargo, cargo_env, cargo_bin), "Rust"
+            )
+        )
+        checks.append(
+            Check(
+                "toolchain",
+                True,
+                _with_path_hint(active, rustup_from_cargo, cargo_env, cargo_bin),
+                "Rust",
+            )
+        )
     else:
         checks.append(Check("rustup", False, "not found", "Rust"))
 
     if rustc:
         v = run_cmd([rustc, "-V"]) or "version unavailable"
-        checks.append(Check("rustc", True, _with_path_hint(v, rustc_from_cargo, cargo_env, cargo_bin), "Rust"))
+        checks.append(
+            Check("rustc", True, _with_path_hint(v, rustc_from_cargo, cargo_env, cargo_bin), "Rust")
+        )
     else:
         checks.append(Check("rustc", False, "not found", "Rust"))
 
     if cargo:
         v = run_cmd([cargo, "-V"]) or "version unavailable"
-        checks.append(Check("cargo", True, _with_path_hint(v, cargo_from_cargo, cargo_env, cargo_bin), "Rust"))
+        checks.append(
+            Check("cargo", True, _with_path_hint(v, cargo_from_cargo, cargo_env, cargo_bin), "Rust")
+        )
     else:
         checks.append(Check("cargo", False, "not found", "Rust"))
 
@@ -224,7 +241,9 @@ def collect_checks() -> List[Check]:
     pnpm = which("pnpm")
     corepack = which("corepack")
 
-    checks.append(Check("node", bool(node), (run_cmd(["node", "-v"]) if node else "not found"), "Node"))
+    checks.append(
+        Check("node", bool(node), (run_cmd(["node", "-v"]) if node else "not found"), "Node")
+    )
     checks.append(Check("npm", bool(npm), (run_cmd(["npm", "-v"]) if npm else "not found"), "Node"))
 
     if pnpm:
@@ -275,7 +294,14 @@ def collect_checks() -> List[Check]:
                     found = q
                     found_pkg = pkg
                     break
-            checks.append(Check(d, bool(found), f"{found_pkg}: {found}" if found else f"{'/'.join(pkgs)}: not installed", "Tauri System Libs"))
+            checks.append(
+                Check(
+                    d,
+                    bool(found),
+                    f"{found_pkg}: {found}" if found else f"{'/'.join(pkgs)}: not installed",
+                    "Tauri System Libs",
+                )
+            )
     else:
         for d in deps:
             checks.append(Check(d, True, "skipped (Linux package check only)", "Tauri System Libs"))
@@ -283,14 +309,18 @@ def collect_checks() -> List[Check]:
     # Optional
     sqlite = which("sqlite3")
     if sqlite:
-        checks.append(Check("sqlite3", True, run_cmd(["sqlite3", "--version"]) or sqlite, "Optional"))
+        checks.append(
+            Check("sqlite3", True, run_cmd(["sqlite3", "--version"]) or sqlite, "Optional")
+        )
     else:
         checks.append(Check("sqlite3", True, "not installed (optional)", "Optional"))
 
     return checks
 
 
-def missing_checks(checks: List[Check], categories: Optional[List[str] | tuple[str, ...]] = None) -> List[Check]:
+def missing_checks(
+    checks: List[Check], categories: Optional[List[str] | tuple[str, ...]] = None
+) -> List[Check]:
     wanted = categories or CRITICAL_CATEGORIES
     return [c for c in checks if (not c.ok) and (c.category in wanted)]
 

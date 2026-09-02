@@ -26,9 +26,11 @@ from console import (
     err,
     info,
     kv,
+    ok,
     section,
     warn,
-    ok,
+)
+from console import (
     cmd as console_cmd,
 )
 
@@ -154,9 +156,7 @@ def run_install(dry_run: bool = False) -> int:
         return install_rc
 
     section("Tauri Build")
-    build_rc, build_time = _run(
-        [pnpm, "tauri", "build"], cwd=app_dir, env=env, dry_run=dry_run
-    )
+    build_rc, build_time = _run([pnpm, "tauri", "build"], cwd=app_dir, env=env, dry_run=dry_run)
     step_times["build"] = build_time
     if build_rc != 0:
         err("pnpm tauri build failed.")

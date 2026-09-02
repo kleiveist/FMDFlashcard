@@ -11,12 +11,12 @@ Default behavior:
 
 from __future__ import annotations
 
+import json
 import os
-import signal
 import shutil
+import signal
 import subprocess
 import time
-import json
 from pathlib import Path
 
 from console import (
@@ -140,10 +140,7 @@ def _discover_test_files(app_dir: Path) -> list[str]:
     src_dir = app_dir / "src"
     if not src_dir.exists():
         return []
-    return sorted(
-        path.relative_to(app_dir).as_posix()
-        for path in src_dir.rglob("*.test.ts")
-    )
+    return sorted(path.relative_to(app_dir).as_posix() for path in src_dir.rglob("*.test.ts"))
 
 
 def _terminate_process(
@@ -323,11 +320,7 @@ def run_install(dry_run: bool = False) -> int:
         timeout_seconds=timeout_seconds,
     )
 
-    should_isolate_after_timeout = (
-        rc == TIMEOUT_EXIT_CODE
-        and isolate_on_timeout
-        and not dry_run
-    )
+    should_isolate_after_timeout = rc == TIMEOUT_EXIT_CODE and isolate_on_timeout and not dry_run
     should_isolate_after_failure = (
         rc not in {0, USER_ABORT_EXIT_CODE, TIMEOUT_EXIT_CODE}
         and isolate_on_failure

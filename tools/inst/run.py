@@ -13,13 +13,13 @@ What it does (default):
 
 from __future__ import annotations
 
+import json
 import os
 import platform
 import shutil
+import signal
 import subprocess
 import sys
-import signal
-import json
 from pathlib import Path
 from typing import List, Optional
 
@@ -185,9 +185,7 @@ def cmd_ok(cmd: List[str]) -> bool:
         return True
     try:
         return (
-            subprocess.run(
-                cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-            ).returncode
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode
             == 0
         )
     except Exception:

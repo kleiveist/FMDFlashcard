@@ -37,6 +37,8 @@ from console import (
     ok,
     section,
     warn,
+)
+from console import (
     cmd as console_cmd,
 )
 
@@ -384,7 +386,9 @@ def run_install(dry_run: bool = False) -> int:
     exe = _find_portable_exe(release_dir)
     if not exe:
         err(f"No portable .exe found in: {release_dir}")
-        err("Expected the app binary in src-tauri/target/<target>/release after a successful build.")
+        err(
+            "Expected the app binary in src-tauri/target/<target>/release after a successful build."
+        )
         return 1
 
     zip_path = None

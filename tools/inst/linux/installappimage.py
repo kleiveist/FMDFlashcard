@@ -114,9 +114,7 @@ def _select_appimage(appimage_dir: Path) -> Path:
     if not candidates:
         raise InstallError(f"No AppImage found in build directory: {appimage_dir}")
 
-    preferred = [
-        path for path in candidates if NAME_PREFERENCE_TOKEN in _normalize_name(path.name)
-    ]
+    preferred = [path for path in candidates if NAME_PREFERENCE_TOKEN in _normalize_name(path.name)]
     pool = preferred if preferred else candidates
 
     if len(candidates) > 1:
@@ -136,8 +134,7 @@ def _select_appimage(appimage_dir: Path) -> Path:
     if len(newest) > 1:
         lines = "\n".join(f"  - {path.name}" for path in newest)
         raise InstallError(
-            "Ambiguous AppImage selection: multiple equally recent candidates:\n"
-            f"{lines}"
+            f"Ambiguous AppImage selection: multiple equally recent candidates:\n{lines}"
         )
     return newest[0]
 
