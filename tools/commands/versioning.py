@@ -40,6 +40,21 @@ def _read_json(path: Path) -> dict[str, object]:
     return payload
 
 
+def _replace_json_version(text: str, expected: str) -> str:
+    payload = json.loads(text)
+    if not isinstance(payload, dict) or "version" not in payload:
+        raise ValueError("JSON metadata has no top-level version")
+    updated, count = re.subn(
+        r'("version"\s*:\s*)"[^"\r\n]*"',
+        rf'\g<1>"{expected}"',
+        text,
+        count=1,
+    )
+    if count != 1:
+        raise ValueError("JSON metadata version could not be replaced")
+    return updated
+
+
 def collect_version_checks(paths: ProjectPaths | None = None) -> list[VersionCheck]:
     project = paths or project_paths()
     try:
@@ -198,18 +213,19 @@ def sync_versions(paths: ProjectPaths | None = None) -> int:
     try:
         expected = application_version(project)
         package_path = project.desktop / "package.json"
-        package = _read_json(package_path)
-        package["version"] = expected
+        package_text = package_path.read_text(encoding="utf-8")
+        package = json.loads(package_text)
+        if not isinstance(package, dict):
+            raise ValueError(f"{package_path} must contain a JSON object")
         package_path.write_text(
-            json.dumps(package, indent=2, ensure_ascii=False) + "\n",
+            _replace_json_version(package_text, expected),
             encoding="utf-8",
             newline="\n",
         )
         tauri_path = project.tauri / "tauri.conf.json"
-        tauri = _read_json(tauri_path)
-        tauri["version"] = expected
+        tauri_text = tauri_path.read_text(encoding="utf-8")
         tauri_path.write_text(
-            json.dumps(tauri, indent=2, ensure_ascii=False) + "\n",
+            _replace_json_version(tauri_text, expected),
             encoding="utf-8",
             newline="\n",
         )

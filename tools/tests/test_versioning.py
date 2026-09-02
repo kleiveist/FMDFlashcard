@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
@@ -17,7 +16,7 @@ def _version_project(tmp_path: Path, *, changelog_version: str = "1.2.3-rc.1") -
     tauri.mkdir(parents=True)
     (tmp_path / "VERSION").write_text("1.2.3-rc.1\n", encoding="utf-8")
     (desktop / "package.json").write_text(
-        json.dumps({"name": "fmd-flashcard", "version": "0.1.0"}) + "\n",
+        '{\n  "name": "fmd-flashcard",\n  "version": "0.1.0",\n  "private": true\n}\n',
         encoding="utf-8",
     )
     (tauri / "Cargo.toml").write_text(
@@ -29,7 +28,7 @@ def _version_project(tmp_path: Path, *, changelog_version: str = "1.2.3-rc.1") -
         encoding="utf-8",
     )
     (tauri / "tauri.conf.json").write_text(
-        json.dumps({"productName": "FMDFlashcard", "version": "0.1.0"}) + "\n",
+        '{\n  "productName": "FMDFlashcard",\n  "version": "0.1.0",\n  "scope": ["**"]\n}\n',
         encoding="utf-8",
     )
     (tmp_path / "CHANGELOG.md").write_text(
@@ -76,10 +75,18 @@ def test_version_check_is_read_only_and_reports_every_owned_mismatch(tmp_path: P
 
 def test_version_sync_updates_owned_metadata_and_is_deterministic(tmp_path: Path) -> None:
     paths = _version_project(tmp_path)
+    package_before = paths.package_json.read_text(encoding="utf-8")
+    tauri_before = paths.tauri_config.read_text(encoding="utf-8")
 
     assert sync_versions(paths) == 0
     first = _owned_version_bytes(paths)
     assert all(item.passed for item in collect_version_checks(paths))
+    assert paths.package_json.read_text(encoding="utf-8") == package_before.replace(
+        '"version": "0.1.0"', '"version": "1.2.3-rc.1"'
+    )
+    assert paths.tauri_config.read_text(encoding="utf-8") == tauri_before.replace(
+        '"version": "0.1.0"', '"version": "1.2.3-rc.1"'
+    )
 
     assert sync_versions(paths) == 0
     assert _owned_version_bytes(paths) == first
