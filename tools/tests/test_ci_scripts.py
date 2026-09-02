@@ -43,7 +43,8 @@ def test_run_logged_preserves_unicode_when_parent_is_forced_to_cp1252(tmp_path: 
     environment = os.environ.copy()
     environment["PYTHONIOENCODING"] = "cp1252"
     environment["PYTHONUTF8"] = "0"
-    expected = "✓ 665 modules transformed.\n✖ one problem.\n"
+    expected_log = "✓ 665 modules transformed.\n✖ one problem.\n"
+    expected_console = expected_log.replace("\n", os.linesep)
     result = subprocess.run(
         [
             sys.executable,
@@ -62,8 +63,8 @@ def test_run_logged_preserves_unicode_when_parent_is_forced_to_cp1252(tmp_path: 
     )
 
     assert result.returncode == 0
-    assert result.stdout.decode("utf-8") == expected
-    assert log.read_text(encoding="utf-8") == expected
+    assert result.stdout.decode("utf-8") == expected_console
+    assert log.read_bytes() == expected_log.encode("utf-8")
 
 
 def test_run_logged_replaces_invalid_child_bytes(tmp_path: Path) -> None:
@@ -85,5 +86,5 @@ def test_run_logged_replaces_invalid_child_bytes(tmp_path: Path) -> None:
     )
 
     assert result.returncode == 0
-    assert result.stdout.decode("utf-8") == "before � after\n"
-    assert log.read_text(encoding="utf-8") == "before � after\n"
+    assert result.stdout.decode("utf-8") == f"before � after{os.linesep}"
+    assert log.read_bytes() == "before � after\n".encode("utf-8")

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import pytest
 
@@ -14,8 +14,8 @@ SPEC.loader.exec_module(INSTALLER)
 
 def test_desktop_exec_path_is_one_quoted_argument() -> None:
     content = INSTALLER._desktop_file_content(
-        Path('/home/Test User/$Apps/An "App".AppImage'),
-        Path("/home/Test User/.local/share/icons/fmdflashcard.png"),
+        PurePosixPath('/home/Test User/$Apps/An "App".AppImage'),
+        PurePosixPath("/home/Test User/.local/share/icons/fmdflashcard.png"),
     )
 
     assert 'Exec="/home/Test User/\\$Apps/An \\"App\\".AppImage"' in content
@@ -25,4 +25,4 @@ def test_desktop_exec_path_is_one_quoted_argument() -> None:
 @pytest.mark.parametrize("control", ["\n", "\r", "\0"])
 def test_desktop_exec_path_rejects_control_characters(control: str) -> None:
     with pytest.raises(INSTALLER.InstallError, match="control characters"):
-        INSTALLER._desktop_exec_argument(Path(f"/tmp/FMD{control}Flashcard.AppImage"))
+        INSTALLER._desktop_exec_argument(PurePosixPath(f"/tmp/FMD{control}Flashcard.AppImage"))

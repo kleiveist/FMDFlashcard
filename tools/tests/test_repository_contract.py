@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -8,6 +9,7 @@ import pytest
 
 from tools.commands.docs import proposed_indexes, update_indexes
 from tools.paths import PathSafetyError, project_paths, relative_to_root, require_within
+from tools.process import run_command
 
 ROOT = Path(__file__).resolve().parents[2]
 START = "<!-- AUTO-GENERATED:docs-index START -->"
@@ -32,6 +34,12 @@ def test_root_wrappers_resolve_checkout_and_forward_all_arguments() -> None:
     assert os.access(ROOT / "control", os.X_OK)
 
 
+def test_checkout_normalizes_text_files_to_lf() -> None:
+    attributes = (ROOT / ".gitattributes").read_text(encoding="utf-8").splitlines()
+    assert "* text=auto eol=lf" in attributes
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX wrapper is not executable on Windows")
 def test_posix_wrapper_works_from_outside_the_checkout(tmp_path: Path) -> None:
     result = subprocess.run(
         [str(ROOT / "control"), "--help"],
@@ -40,6 +48,32 @@ def test_posix_wrapper_works_from_outside_the_checkout(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
     )
+
+    assert result.returncode == 0
+    assert "command map:" in result.stdout
+    assert result.stderr == ""
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows wrappers require Windows")
+@pytest.mark.parametrize("wrapper", ["control.cmd", "control.ps1"])
+def test_windows_wrappers_work_from_outside_the_checkout(
+    wrapper: str,
+    tmp_path: Path,
+) -> None:
+    if wrapper == "control.cmd":
+        command = [str(ROOT / wrapper), "--help"]
+    else:
+        powershell = shutil.which("pwsh") or shutil.which("powershell.exe")
+        assert powershell is not None
+        command = [
+            powershell,
+            "-NoProfile",
+            "-NonInteractive",
+            "-File",
+            str(ROOT / wrapper),
+            "--help",
+        ]
+    result = run_command(command, cwd=tmp_path)
 
     assert result.returncode == 0
     assert "command map:" in result.stdout

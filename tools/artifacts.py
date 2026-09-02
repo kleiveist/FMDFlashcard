@@ -127,6 +127,11 @@ def _zip_timestamp() -> tuple[int, int, int, int, int, int]:
     return (value.year, value.month, value.day, value.hour, value.minute, value.second)
 
 
+def _path_sort_key(path: Path) -> str:
+    """Return a case-sensitive path key independent of the host path flavour."""
+    return path.as_posix()
+
+
 def _safe_archive_name(name: str) -> PurePosixPath:
     normalized = name.replace("\\", "/")
     candidate = PurePosixPath(normalized)
@@ -219,7 +224,7 @@ def _archive_link_stays_inside(base: PurePosixPath, link: PurePosixPath) -> bool
 def _write_deterministic_zip(source: Path, destination: Path) -> None:
     compression = zipfile.ZIP_DEFLATED
     with zipfile.ZipFile(destination, "w", compression=compression, compresslevel=9) as archive:
-        sources = [source] if source.is_file() else sorted(source.rglob("*"))
+        sources = [source] if source.is_file() else sorted(source.rglob("*"), key=_path_sort_key)
         for path in sources:
             if path.is_symlink():
                 raise ArtifactError(f"portable ZIP cannot contain symlinks: {path}")
@@ -227,7 +232,9 @@ def _write_deterministic_zip(source: Path, destination: Path) -> None:
                 continue
             relative = Path(source.name) if source.is_file() else path.relative_to(source.parent)
             info = zipfile.ZipInfo(relative.as_posix(), date_time=_zip_timestamp())
-            mode = path.stat().st_mode & 0o777
+            source_executable = bool(stat.S_IMODE(path.stat().st_mode) & 0o111)
+            windows_executable = path.suffix.casefold() in {".bat", ".cmd", ".com", ".exe"}
+            mode = 0o755 if source_executable or windows_executable else 0o644
             info.external_attr = (stat.S_IFREG | mode) << 16
             info.compress_type = compression
             archive.writestr(info, path.read_bytes())
@@ -252,12 +259,32 @@ def _safe_symlink(source_root: Path, path: Path) -> None:
     ensure_within(resolved, source_root.resolve())
 
 
+def _deterministic_tar_mode(source: Path, path: Path, info: tarfile.TarInfo) -> int:
+    """Normalize archive modes while retaining executable application code."""
+    if info.isdir():
+        return 0o755
+    if info.issym() or info.islnk():
+        return 0o777
+    if not info.isfile():
+        return stat.S_IMODE(info.mode)
+
+    relative = path.relative_to(source)
+    app_executable = (
+        source.suffix.casefold() == ".app"
+        and len(relative.parts) >= 3
+        and relative.parts[0].casefold() == "contents"
+        and relative.parts[1].casefold() == "macos"
+    )
+    source_executable = bool(stat.S_IMODE(path.stat().st_mode) & 0o111)
+    return 0o755 if app_executable or source_executable else 0o644
+
+
 def _write_deterministic_tar(source: Path, destination: Path) -> None:
     epoch = _source_date_epoch()
     with destination.open("wb") as raw:
         with gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=epoch) as compressed:
             with tarfile.open(fileobj=compressed, mode="w", format=tarfile.PAX_FORMAT) as archive:
-                paths = [source, *sorted(source.rglob("*"))]
+                paths = [source, *sorted(source.rglob("*"), key=_path_sort_key)]
                 for path in paths:
                     if path.is_symlink():
                         _safe_symlink(source, path)
@@ -268,6 +295,7 @@ def _write_deterministic_tar(source: Path, destination: Path) -> None:
                     info.uname = ""
                     info.gname = ""
                     info.mtime = epoch
+                    info.mode = _deterministic_tar_mode(source, path, info)
                     if info.isfile():
                         with path.open("rb") as handle:
                             archive.addfile(info, handle)
@@ -292,7 +320,7 @@ def _discover_source(
     *,
     built_after: Path | None,
 ) -> Path:
-    candidates = sorted(paths.root.glob(spec.source_glob))
+    candidates = sorted(paths.root.glob(spec.source_glob), key=_path_sort_key)
     if len(candidates) != 1:
         names = ", ".join(str(item.relative_to(paths.root)) for item in candidates)
         raise ArtifactError(
@@ -579,7 +607,8 @@ def collect_local_build_artifacts(
     )
     checksums = output / "SHA256SUMS"
     checksum_targets = sorted(
-        path for path in output.iterdir() if path.is_file() and path.name != "SHA256SUMS"
+        (path for path in output.iterdir() if path.is_file() and path.name != "SHA256SUMS"),
+        key=lambda path: path.name,
     )
     checksums.write_text(
         "".join(f"{sha256_file(path)}  {path.name}\n" for path in checksum_targets),
@@ -987,7 +1016,7 @@ def verify_local_desktop_root(
     ensure_within(root, project.root, label="local desktop artifact root")
     if root.is_symlink() or not root.is_dir():
         raise ArtifactError(f"desktop artifact directory is missing or unsafe: {root}")
-    manifests = sorted(root.rglob("build-manifest.json"))
+    manifests = sorted(root.rglob("build-manifest.json"), key=_path_sort_key)
     if not manifests:
         raise ArtifactError(f"desktop artifact directory has no verified builds: {root}")
     allowed_directories = {root}
@@ -1011,7 +1040,7 @@ def verify_local_desktop_root(
         allowed_directories.update({build_root.parent, build_root})
 
     files: list[Path] = []
-    for path in sorted(root.rglob("*")):
+    for path in sorted(root.rglob("*"), key=_path_sort_key):
         if path.is_symlink():
             raise ArtifactError(f"local desktop artifact tree contains a symlink: {path}")
         if path.is_dir():
@@ -1089,7 +1118,7 @@ def _load_fragments(
     expected_targets: dict[str, TargetSpec],
     expected_commit: str,
 ) -> list[dict[str, Any]]:
-    fragments = sorted(input_dir.rglob("manifest-fragment.json"))
+    fragments = sorted(input_dir.rglob("manifest-fragment.json"), key=_path_sort_key)
     if len(fragments) != len(expected_targets):
         raise ArtifactError(
             f"expected {len(expected_targets)} native manifest fragments; found {len(fragments)}"
@@ -1277,7 +1306,8 @@ def assemble_release(
     _atomic_json(manifest_path, manifest)
     checksums_path = output / "SHA256SUMS"
     checksum_targets = sorted(
-        path for path in output.iterdir() if path.is_file() and path.name != "SHA256SUMS"
+        (path for path in output.iterdir() if path.is_file() and path.name != "SHA256SUMS"),
+        key=lambda path: path.name,
     )
     lines = [f"{sha256_file(path)}  {path.name}" for path in checksum_targets]
     checksums_path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")

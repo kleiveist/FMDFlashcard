@@ -605,6 +605,8 @@ fn load_app_settings(app: tauri::AppHandle) -> Result<AppSettings, String> {
     read_settings(&path)
 }
 
+// Tauri exposes these persisted settings as individually named IPC arguments.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 fn save_app_settings(
     app: tauri::AppHandle,
@@ -1449,6 +1451,50 @@ fn delete_directory(vault_path: String, relative_path: String) -> Result<(), Str
     fs::remove_dir_all(&full_path).map_err(|err| err.to_string())
 }
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
+        .invoke_handler(tauri::generate_handler![
+            load_app_settings,
+            save_app_settings,
+            load_spaced_repetition_data,
+            save_spaced_repetition_data,
+            load_fast_flashcard_data,
+            save_fast_flashcard_data,
+            load_exam_run_data,
+            save_exam_run_data,
+            load_vault_path,
+            save_vault_path,
+            list_markdown_files,
+            list_vault_entries,
+            get_path_info,
+            list_directories,
+            list_files,
+            ensure_directory,
+            read_json_file,
+            write_json_file,
+            rename_json_file,
+            export_input_debug_log,
+            read_text_file,
+            write_text_file,
+            write_text_file_atomic,
+            delete_file,
+            delete_markdown_file,
+            move_markdown_file,
+            move_directory,
+            rename_directory,
+            get_os_username,
+            get_system_identity,
+            create_markdown_file,
+            create_directory,
+            delete_directory
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
+
 #[cfg(test)]
 mod tests {
     use super::{natural_compare_text, VaultFile};
@@ -1504,48 +1550,4 @@ mod tests {
             vec!["1-file.md", "2-file.md", "10-file.md"]
         );
     }
-}
-
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![
-            load_app_settings,
-            save_app_settings,
-            load_spaced_repetition_data,
-            save_spaced_repetition_data,
-            load_fast_flashcard_data,
-            save_fast_flashcard_data,
-            load_exam_run_data,
-            save_exam_run_data,
-            load_vault_path,
-            save_vault_path,
-            list_markdown_files,
-            list_vault_entries,
-            get_path_info,
-            list_directories,
-            list_files,
-            ensure_directory,
-            read_json_file,
-            write_json_file,
-            rename_json_file,
-            export_input_debug_log,
-            read_text_file,
-            write_text_file,
-            write_text_file_atomic,
-            delete_file,
-            delete_markdown_file,
-            move_markdown_file,
-            move_directory,
-            rename_directory,
-            get_os_username,
-            get_system_identity,
-            create_markdown_file,
-            create_directory,
-            delete_directory
-        ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
 }

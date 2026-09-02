@@ -98,7 +98,8 @@ def test_deterministic_portable_zip_preserves_name_mode_and_bytes(
     monkeypatch.setenv("SOURCE_DATE_EPOCH", "1700000000")
     executable = tmp_path / "fmd-flashcard-desktop.exe"
     executable.write_bytes(b"MZ\x00portable executable")
-    executable.chmod(0o755)
+    # Windows filesystems do not expose a meaningful POSIX executable bit.
+    executable.chmod(0o644)
     first = tmp_path / "first.zip"
     second = tmp_path / "second.zip"
 
@@ -123,6 +124,10 @@ def test_deterministic_tar_preserves_app_executable_permissions(
     executable.parent.mkdir(parents=True)
     executable.write_bytes(b"mach-o-placeholder")
     executable.chmod(0o755)
+    # Exercise the Windows case, where the source filesystem cannot retain POSIX execute bits.
+    helper = executable.parent / "fmd-helper"
+    helper.write_bytes(b"mach-o-helper-placeholder")
+    helper.chmod(0o644)
     (app / "Contents" / "Info.plist").write_text("plist", encoding="utf-8")
     first = tmp_path / "first.tar.gz"
     second = tmp_path / "second.tar.gz"
@@ -136,6 +141,10 @@ def test_deterministic_tar_preserves_app_executable_permissions(
         member = archive.getmember("FMDFlashcard.app/Contents/MacOS/fmd-flashcard-desktop")
         assert stat.S_IMODE(member.mode) == 0o755
         assert member.uid == member.gid == 0
+        helper_member = archive.getmember("FMDFlashcard.app/Contents/MacOS/fmd-helper")
+        assert stat.S_IMODE(helper_member.mode) == 0o755
+        plist = archive.getmember("FMDFlashcard.app/Contents/Info.plist")
+        assert stat.S_IMODE(plist.mode) == 0o644
 
 
 def test_deterministic_archivers_reject_symlink_escape(tmp_path: Path) -> None:

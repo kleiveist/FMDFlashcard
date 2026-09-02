@@ -227,6 +227,26 @@ def _wait_until_stopped(pid: int, timeout: float) -> bool:
     return not is_process_alive(pid)
 
 
+def _signal_process_tree(
+    pid: int,
+    group: int,
+    *,
+    force: bool,
+    paths: ProjectPaths,
+) -> int:
+    """Signal a previously validated process tree on the current platform."""
+
+    if pid <= 0 or group <= 0:
+        raise LifecycleError("refusing to signal an invalid process identity")
+    if os.name == "nt":
+        command = ["taskkill", "/PID", str(pid), "/T"]
+        if force:
+            command.append("/F")
+        return run_command(command, cwd=paths.root).returncode
+    os.killpg(group, signal.SIGKILL if force else signal.SIGTERM)
+    return 0
+
+
 def stop(_args: argparse.Namespace, *, paths: ProjectPaths | None = None) -> int:
     project = paths or project_paths()
     try:
@@ -239,12 +259,9 @@ def stop(_args: argparse.Namespace, *, paths: ProjectPaths | None = None) -> int
             logger.info("Tracked process is no longer running; stale state was removed")
             return 0
 
-        if os.name == "nt":
-            result = run_command(["taskkill", "/PID", str(pid), "/T"], cwd=project.root)
-            if result.returncode != 0:
-                return result.returncode
-        else:
-            os.killpg(group, signal.SIGTERM)
+        signal_result = _signal_process_tree(pid, group, force=False, paths=project)
+        if signal_result != 0:
+            return signal_result
         if not _wait_until_stopped(pid, 5.0):
             # Revalidate every identity immediately before the destructive escalation.
             try:
@@ -253,12 +270,9 @@ def stop(_args: argparse.Namespace, *, paths: ProjectPaths | None = None) -> int
                 _remove_state(state_path, project)
                 logger.ok("Tracked Tauri development process stopped")
                 return 0
-            if os.name == "nt":
-                result = run_command(["taskkill", "/PID", str(pid), "/T", "/F"], cwd=project.root)
-                if result.returncode != 0:
-                    return result.returncode
-            else:
-                os.killpg(group, signal.SIGKILL)
+            signal_result = _signal_process_tree(pid, group, force=True, paths=project)
+            if signal_result != 0:
+                return signal_result
             if not _wait_until_stopped(pid, 2.0):
                 raise LifecycleError("tracked process did not stop")
         _remove_state(state_path, project)
