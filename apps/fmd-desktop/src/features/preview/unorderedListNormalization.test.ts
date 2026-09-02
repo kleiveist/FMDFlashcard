@@ -25,40 +25,23 @@ describe("normalizeLegacyUnorderedListIndentation", () => {
     ].join("\n");
     const result = normalizeLegacyUnorderedListIndentation(source);
 
-    expect(result).toBe([
-      "- test",
-      "    - text",
-      "        - text",
-      "        - text",
-    ].join("\n"));
+    expect(result).toBe(["- test", "    - text", "        - text", "        - text"].join("\n"));
   });
 
   it("adds marker spacing for compact unordered markers", () => {
     const source = ["- parent", "    -child", "        +next", "            *last"].join("\n");
     const result = normalizeLegacyUnorderedListIndentation(source);
 
-    expect(result).toBe([
-      "- parent",
-      "    - child",
-      "        - next",
-      "            - last",
-    ].join("\n"));
+    expect(result).toBe(
+      ["- parent", "    - child", "        - next", "            - last"].join("\n"),
+    );
   });
 
   it("drops editor spacer blank lines between nested list descendants", () => {
-    const source = [
-      "- root!",
-      "    - child",
-      "      ",
-      "           - grand",
-    ].join("\n");
+    const source = ["- root!", "    - child", "      ", "           - grand"].join("\n");
     const result = normalizeLegacyUnorderedListIndentation(source);
 
-    expect(result).toBe([
-      "- root!",
-      "    - child",
-      "        - grand",
-    ].join("\n"));
+    expect(result).toBe(["- root!", "    - child", "        - grand"].join("\n"));
   });
 
   it("normalizes nested descendants when editor injects NBSP indentation", () => {
@@ -71,27 +54,14 @@ describe("normalizeLegacyUnorderedListIndentation", () => {
     ].join("\n");
     const result = normalizeLegacyUnorderedListIndentation(source);
 
-    expect(result).toBe([
-      "- root!",
-      "    - child",
-      "        - grand",
-    ].join("\n"));
+    expect(result).toBe(["- root!", "    - child", "        - grand"].join("\n"));
   });
 
   it("drops unicode-only spacer lines between nested list descendants", () => {
-    const source = [
-      "- root!",
-      "    - child",
-      "\u200b\u200b",
-      "           - grand",
-    ].join("\n");
+    const source = ["- root!", "    - child", "\u200b\u200b", "           - grand"].join("\n");
     const result = normalizeLegacyUnorderedListIndentation(source);
 
-    expect(result).toBe([
-      "- root!",
-      "    - child",
-      "        - grand",
-    ].join("\n"));
+    expect(result).toBe(["- root!", "    - child", "        - grand"].join("\n"));
   });
 
   it("normalizes nested descendants when editor inserts invisible format chars", () => {
@@ -103,11 +73,7 @@ describe("normalizeLegacyUnorderedListIndentation", () => {
     ].join("\n");
     const result = normalizeLegacyUnorderedListIndentation(source);
 
-    expect(result).toBe([
-      "- root!",
-      "    - child",
-      "        - grand",
-    ].join("\n"));
+    expect(result).toBe(["- root!", "    - child", "        - grand"].join("\n"));
   });
 
   it("normalizes nested descendants when indentation uses unicode whitespace", () => {
@@ -120,11 +86,7 @@ describe("normalizeLegacyUnorderedListIndentation", () => {
     ].join("\n");
     const result = normalizeLegacyUnorderedListIndentation(source);
 
-    expect(result).toBe([
-      "- root!",
-      "    - child",
-      "        - grand",
-    ].join("\n"));
+    expect(result).toBe(["- root!", "    - child", "        - grand"].join("\n"));
   });
 
   it("keeps fenced code and math block contents untouched", () => {

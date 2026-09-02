@@ -17,10 +17,7 @@ import {
   type MarkdownMediaPreviewData as RawMarkdownMediaPreviewData,
   type MarkdownMediaToken,
 } from "./markdownMedia";
-import {
-  buildVaultRelativePathCandidates,
-  normalizeVaultAssetRelativePath,
-} from "./vaultAssets";
+import { buildVaultRelativePathCandidates, normalizeVaultAssetRelativePath } from "./vaultAssets";
 
 export type MediaKind = "png" | "svg";
 
@@ -220,9 +217,10 @@ const buildMediaItem = (
   options?: ParseMediaOptions,
   occurrence = 0,
 ): MediaItem => {
-  const rawBlock = base.type === "png"
-    ? serializePngEmbed(base.src, base.label)
-    : serializeSvgFence(base.inlineSvg ?? "");
+  const rawBlock =
+    base.type === "png"
+      ? serializePngEmbed(base.src, base.label)
+      : serializeSvgFence(base.inlineSvg ?? "");
   return {
     ...base,
     id: buildMediaId(base, options, occurrence),
@@ -254,10 +252,7 @@ export const mediaTokenToItem = (
   };
 };
 
-export const mediaTokensToItems = (
-  tokens: MarkdownMediaToken[],
-  options?: ParseMediaOptions,
-) =>
+export const mediaTokensToItems = (tokens: MarkdownMediaToken[], options?: ParseMediaOptions) =>
   tokens.map((token, occurrence) => mediaTokenToItem(token, options, occurrence));
 
 const createMediaDraftId = () => {
@@ -267,9 +262,7 @@ const createMediaDraftId = () => {
   return `media-draft-${hashString(`${Date.now()}-${Math.random()}`)}`;
 };
 
-export const createEditorMediaDraft = (
-  partial?: Partial<EditorMediaDraft>,
-): EditorMediaDraft => ({
+export const createEditorMediaDraft = (partial?: Partial<EditorMediaDraft>): EditorMediaDraft => ({
   id: partial?.id ?? createMediaDraftId(),
   type: partial?.type ?? "png",
   src: partial?.src ?? "",
@@ -313,7 +306,7 @@ export const mediaItemToDraft = (item: MediaItem): EditorMediaDraft =>
     id: item.id,
     type: item.type,
     src: item.type === "png" ? item.src : "",
-    inlineSvg: item.type === "svg" ? item.inlineSvg ?? "" : "",
+    inlineSvg: item.type === "svg" ? (item.inlineSvg ?? "") : "",
     label: item.label ?? "",
   });
 
@@ -409,7 +402,7 @@ type ResolveMediaPngAssetOptions = {
 const normalizeAssetRelativePath = (value: string) =>
   normalizeRelativePath(value).replace(/^\/+/, "");
 
-const isUniqueMatch = <T,>(items: T[]) => (items.length === 1 ? items[0] ?? null : null);
+const isUniqueMatch = <T>(items: T[]) => (items.length === 1 ? (items[0] ?? null) : null);
 
 export const resolveMediaPngAsset = (
   item: MediaItem,
@@ -433,18 +426,13 @@ export const resolveMediaPngAsset = (
   const lowerTarget = normalizedTarget?.toLowerCase() ?? "";
 
   if (lowerTarget) {
-    const exact = assetEntries.find(
-      (entry) => entry.relPath.toLowerCase() === lowerTarget,
-    );
+    const exact = assetEntries.find((entry) => entry.relPath.toLowerCase() === lowerTarget);
     if (exact) {
       return exact.asset;
     }
   }
 
-  const contextCandidates = buildVaultRelativePathCandidates(
-    item.src,
-    options?.sourceRelativePath,
-  );
+  const contextCandidates = buildVaultRelativePathCandidates(item.src, options?.sourceRelativePath);
   if (contextCandidates.length > 0) {
     const candidateSet = new Set(contextCandidates.map((candidate) => candidate.toLowerCase()));
     const contextMatch = isUniqueMatch(

@@ -6,12 +6,7 @@
  */
 
 export type MarkdownHistoryReason =
-  | "block-commit"
-  | "block-delete"
-  | "math-toolbox-live"
-  | "write-save"
-  | "cancel"
-  | "external-load";
+  "block-commit" | "block-delete" | "math-toolbox-live" | "write-save" | "cancel" | "external-load";
 
 export type MarkdownHistoryEntry = {
   markdown: string;
@@ -70,9 +65,10 @@ export const pushMarkdownHistory = (
     };
   }
   const nextPast = [...state.past, state.present];
-  const cappedPast = nextPast.length > MAX_MARKDOWN_HISTORY
-    ? nextPast.slice(nextPast.length - MAX_MARKDOWN_HISTORY)
-    : nextPast;
+  const cappedPast =
+    nextPast.length > MAX_MARKDOWN_HISTORY
+      ? nextPast.slice(nextPast.length - MAX_MARKDOWN_HISTORY)
+      : nextPast;
   return {
     past: cappedPast,
     present: createEntry(markdown, reason, options?.mergeKey),
@@ -80,11 +76,9 @@ export const pushMarkdownHistory = (
   };
 };
 
-export const canUndoMarkdownHistory = (state: MarkdownHistoryState) =>
-  state.past.length > 0;
+export const canUndoMarkdownHistory = (state: MarkdownHistoryState) => state.past.length > 0;
 
-export const canRedoMarkdownHistory = (state: MarkdownHistoryState) =>
-  state.future.length > 0;
+export const canRedoMarkdownHistory = (state: MarkdownHistoryState) => state.future.length > 0;
 
 export const undoMarkdownHistory = (state: MarkdownHistoryState): MarkdownHistoryState => {
   if (state.past.length === 0) {
@@ -110,9 +104,10 @@ export const redoMarkdownHistory = (state: MarkdownHistoryState): MarkdownHistor
     return state;
   }
   const nextPast = [...state.past, state.present];
-  const cappedPast = nextPast.length > MAX_MARKDOWN_HISTORY
-    ? nextPast.slice(nextPast.length - MAX_MARKDOWN_HISTORY)
-    : nextPast;
+  const cappedPast =
+    nextPast.length > MAX_MARKDOWN_HISTORY
+      ? nextPast.slice(nextPast.length - MAX_MARKDOWN_HISTORY)
+      : nextPast;
   return {
     past: cappedPast,
     present: next,

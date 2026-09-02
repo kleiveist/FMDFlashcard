@@ -1,4 +1,3 @@
-
 /*
  * @file apps/fmd-desktop/src/styles/components/content.css
  *
@@ -179,8 +178,7 @@
   border-radius: var(--ui-radius-control);
 }
 
-.study-section-nav.icon-only
-  :is(.study-section-main-tab, .study-section-secondary-tab) {
+.study-section-nav.icon-only :is(.study-section-main-tab, .study-section-secondary-tab) {
   flex: 0 0 var(--ui-nav-button-size);
   max-width: none;
 }
@@ -414,8 +412,7 @@ h2 {
   min-height: var(--ui-tree-row-height);
   padding: 0 var(--ui-space-sm);
   padding-left: calc(
-    var(--ui-space-sm) +
-      (var(--tree-depth, 0) * var(--ui-tree-indent-step, 12px))
+    var(--ui-space-sm) + (var(--tree-depth, 0) * var(--ui-tree-indent-step, 12px))
   );
   border-radius: var(--ui-radius-control);
   background: var(--ui-tree-row-bg);
@@ -469,9 +466,7 @@ h2 {
 }
 
 .vault-tree-scroll.vault-tree-scroll-wide .tree-item {
-  min-width: calc(
-    100% + (var(--tree-overflow-depth, 0) * var(--ui-tree-indent-step, 12px))
-  );
+  min-width: calc(100% + (var(--tree-overflow-depth, 0) * var(--ui-tree-indent-step, 12px)));
 }
 
 .tree-dir summary {
@@ -550,9 +545,7 @@ h2 {
 }
 
 .vault-tree-scroll.vault-tree-scroll-wide .tree-file {
-  min-width: calc(
-    100% + (var(--tree-overflow-depth, 0) * var(--ui-tree-indent-step, 12px)) - 8px
-  );
+  min-width: calc(100% + (var(--tree-overflow-depth, 0) * var(--ui-tree-indent-step, 12px)) - 8px);
 }
 
 .tree-name {
@@ -845,7 +838,8 @@ body.focus-mode .fast-flashcard-panel {
 }
 
 .fast-flashcard-tools-settings--dividers
-.fast-flashcard-tools-settings-section + .fast-flashcard-tools-settings-section {
+  .fast-flashcard-tools-settings-section
+  + .fast-flashcard-tools-settings-section {
   border-top: 1px solid var(--line);
   padding-top: var(--ui-space-md);
 }
@@ -1334,13 +1328,8 @@ body.focus-mode .spaced-repetition-sidebar {
   right: 0;
   bottom: 0;
   height: var(--stat-fill, 0%);
-  background: color-mix(
-    in srgb,
-    var(--stat-fill-color, var(--accent)) 24%,
-    transparent
-  );
-  border-top: 1px solid
-    color-mix(in srgb, var(--stat-fill-color, var(--accent)) 36%, transparent);
+  background: color-mix(in srgb, var(--stat-fill-color, var(--accent)) 24%, transparent);
+  border-top: 1px solid color-mix(in srgb, var(--stat-fill-color, var(--accent)) 36%, transparent);
   transition: height 0.25s ease;
 }
 
@@ -2065,7 +2054,8 @@ body.focus-mode .spaced-repetition-sidebar {
   margin-top: 0;
 }
 
-.exam-markdown :is(aside#app-sidebar, aside[id$="app-sidebar"], nav[aria-label="Primary navigation"], .sidebar) {
+.exam-markdown
+  :is(aside#app-sidebar, aside[id$="app-sidebar"], nav[aria-label="Primary navigation"], .sidebar) {
   display: none !important;
 }
 
@@ -2511,10 +2501,7 @@ body.focus-mode .spaced-repetition-sidebar {
     display: flex;
   }
 
-  .exam-layout
-  .study-ultrawide-task-pair
-  > .study-ultrawide-task-secondary
-  .exam-task {
+  .exam-layout .study-ultrawide-task-pair > .study-ultrawide-task-secondary .exam-task {
     flex: 1 1 auto;
     height: 100%;
   }
@@ -2537,7 +2524,9 @@ body.focus-mode .spaced-repetition-sidebar {
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .exam-results-task-trigger:hover {

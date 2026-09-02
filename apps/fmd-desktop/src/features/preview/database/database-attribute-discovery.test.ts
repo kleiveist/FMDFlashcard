@@ -7,20 +7,8 @@ import {
 describe("database-attribute-discovery", () => {
   it("extracts vault attributes, dedupes case-insensitively, and keeps counts", () => {
     const index = buildVaultAttributeIndexFromMarkdownDocuments([
-      [
-        "---",
-        "Status: open",
-        "units: 2",
-        "---",
-        "# A",
-      ].join("\n"),
-      [
-        "---",
-        "status: done",
-        "priority: high",
-        "---",
-        "# B",
-      ].join("\n"),
+      ["---", "Status: open", "units: 2", "---", "# A"].join("\n"),
+      ["---", "status: done", "priority: high", "---", "# B"].join("\n"),
       "# no frontmatter",
     ]);
 
@@ -36,12 +24,7 @@ describe("database-attribute-discovery", () => {
 
   it("keeps original casing when there is no case conflict", () => {
     const index = buildVaultAttributeIndexFromMarkdownDocuments([
-      [
-        "---",
-        "Priority: 1",
-        "---",
-        "# A",
-      ].join("\n"),
+      ["---", "Priority: 1", "---", "# A"].join("\n"),
     ]);
 
     expect(index.suggestions).toEqual([

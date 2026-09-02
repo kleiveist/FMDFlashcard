@@ -176,9 +176,7 @@ describe("SidebarNav active user switcher", () => {
     expect(menu?.textContent).toContain("Alice Doe");
     expect(menu?.textContent).toContain("Bob Smith");
 
-    const activeItem = menu?.querySelector(
-      '[role="menuitemradio"][aria-checked="true"]',
-    );
+    const activeItem = menu?.querySelector('[role="menuitemradio"][aria-checked="true"]');
     expect(activeItem?.textContent).toContain("Alice Doe");
     cleanup();
   });
@@ -193,9 +191,7 @@ describe("SidebarNav active user switcher", () => {
         '#sidebar-active-user-menu [role="menuitemradio"]',
       ),
     );
-    const bobButton = userButtons.find((button) =>
-      button.textContent?.includes("Bob Smith"),
-    );
+    const bobButton = userButtons.find((button) => button.textContent?.includes("Bob Smith"));
     act(() => {
       bobButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -338,11 +334,7 @@ describe("SidebarNav active user switcher", () => {
       container.querySelectorAll<HTMLButtonElement>(".sidebar-main-content .nav .nav-item"),
       (button) => button.textContent?.trim() ?? "",
     );
-    expect(navButtons).toEqual([
-      "Attribute Rules",
-      "Card Monitoring",
-      "Points Profiles",
-    ]);
+    expect(navButtons).toEqual(["Attribute Rules", "Card Monitoring", "Points Profiles"]);
     expect(navButtons).not.toContain("Exam");
     expect(navButtons).not.toContain("Flashcard");
 

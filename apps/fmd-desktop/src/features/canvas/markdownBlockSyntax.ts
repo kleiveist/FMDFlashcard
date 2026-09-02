@@ -33,8 +33,7 @@ const getLines = (value: string) => normalizeNewlines(value).split("\n");
 export const isCanvasDirectiveStartLine = (line: string) =>
   canvasDirectiveStartLinePattern.test(line);
 
-export const isCanvasDirectiveEndLine = (line: string) =>
-  canvasDirectiveEndLinePattern.test(line);
+export const isCanvasDirectiveEndLine = (line: string) => canvasDirectiveEndLinePattern.test(line);
 
 export const parseCanvasFenceStartLine = (line: string) => {
   const match = line.match(codeFenceStartLinePattern);
@@ -133,9 +132,7 @@ export const maskCanvasBlockLines = (lines: string[]) => {
   return masked;
 };
 
-export const parseMarkdownCanvasBlock = (
-  raw: string,
-): CanvasMarkdownBlockParseResult => {
+export const parseMarkdownCanvasBlock = (raw: string): CanvasMarkdownBlockParseResult => {
   const normalized = normalizeNewlines(raw);
   const lines = getLines(normalized);
   const firstLine = lines[0] ?? "";
@@ -143,8 +140,8 @@ export const parseMarkdownCanvasBlock = (
   let block: CanvasMarkdownBlock | null = null;
 
   if (isCanvasDirectiveStartLine(firstLine)) {
-    const closeLineIndex = lines.findIndex((line, index) =>
-      index > 0 && isCanvasDirectiveEndLine(line)
+    const closeLineIndex = lines.findIndex(
+      (line, index) => index > 0 && isCanvasDirectiveEndLine(line),
     );
     const sourceEndLine = closeLineIndex >= 0 ? closeLineIndex : lines.length;
     const source = lines.slice(1, sourceEndLine).join("\n").trim();
@@ -153,13 +150,14 @@ export const parseMarkdownCanvasBlock = (
       source,
       format: "directive",
       openLine: firstLine,
-      closeLine: closeLineIndex >= 0 ? lines[closeLineIndex] ?? CANVAS_BLOCK_END : CANVAS_BLOCK_END,
+      closeLine:
+        closeLineIndex >= 0 ? (lines[closeLineIndex] ?? CANVAS_BLOCK_END) : CANVAS_BLOCK_END,
     };
   } else {
     const fence = parseCanvasFenceStartLine(firstLine);
     if (fence) {
-      const closeLineIndex = lines.findIndex((line, index) =>
-        index > 0 && fence.closePattern.test(line)
+      const closeLineIndex = lines.findIndex(
+        (line, index) => index > 0 && fence.closePattern.test(line),
       );
       const sourceEndLine = closeLineIndex >= 0 ? closeLineIndex : lines.length;
       const source = lines.slice(1, sourceEndLine).join("\n").trim();
@@ -168,7 +166,7 @@ export const parseMarkdownCanvasBlock = (
         source,
         format: "fenced",
         openLine: firstLine,
-        closeLine: closeLineIndex >= 0 ? lines[closeLineIndex] ?? lastLine : "```",
+        closeLine: closeLineIndex >= 0 ? (lines[closeLineIndex] ?? lastLine) : "```",
       };
     }
   }
@@ -200,19 +198,14 @@ export const serializeMarkdownCanvasBlock = (
   return [CANVAS_BLOCK_START, source, CANVAS_BLOCK_END].join("\n");
 };
 
-export const replaceMarkdownCanvasBlockSource = (
-  raw: string,
-  nextSource: string,
-) => {
+export const replaceMarkdownCanvasBlockSource = (raw: string, nextSource: string) => {
   const parsed = parseMarkdownCanvasBlock(raw);
   const block = parsed.ok ? parsed.block : parsed.block;
   const format = block?.format ?? "directive";
   if (format === "fenced") {
-    return [
-      block?.openLine ?? "```canvas",
-      nextSource.trimEnd(),
-      block?.closeLine ?? "```",
-    ].join("\n");
+    return [block?.openLine ?? "```canvas", nextSource.trimEnd(), block?.closeLine ?? "```"].join(
+      "\n",
+    );
   }
   return [
     block?.openLine ?? CANVAS_BLOCK_START,

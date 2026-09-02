@@ -55,9 +55,7 @@ export const FastHeader = ({
           Flashcard
         </button>
       </h2>
-      {!hasScannedCards ? (
-        <p className="muted">{fastFlashcardStatusLabel}</p>
-      ) : null}
+      {!hasScannedCards ? <p className="muted">{fastFlashcardStatusLabel}</p> : null}
     </div>
     <div className="panel-actions">
       {showTimeToggle && onTimeToggle ? (
@@ -82,9 +80,7 @@ export const FastHeader = ({
           </span>
           <span className="timer-start-text">
             <span className="timer-start-meta">Time</span>
-            <span className="timer-start-action">
-              {isTimeModeEnabled ? "Stop" : "Start"}
-            </span>
+            <span className="timer-start-action">{isTimeModeEnabled ? "Stop" : "Start"}</span>
           </span>
         </button>
       ) : null}

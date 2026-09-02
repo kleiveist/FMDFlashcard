@@ -40,9 +40,7 @@ type SpacedRepetitionSettingsSectionProps = {
   setSpacedRepetitionBoxes: (value: SpacedRepetitionBoxes) => void;
   setSpacedRepetitionOrder: (value: SpacedRepetitionOrder) => void;
   setSpacedRepetitionPageSize: (value: SpacedRepetitionPageSize) => void;
-  setSpacedRepetitionRepetitionStrength: (
-    value: SpacedRepetitionRepetitionStrength,
-  ) => void;
+  setSpacedRepetitionRepetitionStrength: (value: SpacedRepetitionRepetitionStrength) => void;
   helpEnabled: boolean;
   setHelpEnabled: (value: boolean) => void;
   flashcardMode: FlashcardMode;
@@ -85,9 +83,7 @@ export const SpacedRepetitionSettingsSection = ({
         <div className="pill-grid">
           <button
             type="button"
-            className={`pill pill-button ${
-              spacedRepetitionOrder === "in-order" ? "active" : ""
-            }`}
+            className={`pill pill-button ${spacedRepetitionOrder === "in-order" ? "active" : ""}`}
             aria-pressed={spacedRepetitionOrder === "in-order"}
             onClick={() => setSpacedRepetitionOrder("in-order")}
           >
@@ -95,9 +91,7 @@ export const SpacedRepetitionSettingsSection = ({
           </button>
           <button
             type="button"
-            className={`pill pill-button ${
-              spacedRepetitionOrder === "random" ? "active" : ""
-            }`}
+            className={`pill pill-button ${spacedRepetitionOrder === "random" ? "active" : ""}`}
             aria-pressed={spacedRepetitionOrder === "random"}
             onClick={() => setSpacedRepetitionOrder("random")}
           >
@@ -105,9 +99,7 @@ export const SpacedRepetitionSettingsSection = ({
           </button>
           <button
             type="button"
-            className={`pill pill-button ${
-              spacedRepetitionOrder === "repetition" ? "active" : ""
-            }`}
+            className={`pill pill-button ${spacedRepetitionOrder === "repetition" ? "active" : ""}`}
             aria-pressed={spacedRepetitionOrder === "repetition"}
             onClick={() => setSpacedRepetitionOrder("repetition")}
           >
@@ -116,15 +108,11 @@ export const SpacedRepetitionSettingsSection = ({
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">
-          {tSettings(language, "settings.spacedRepetition.mode")}
-        </span>
+        <span className="label">{tSettings(language, "settings.spacedRepetition.mode")}</span>
         <select
           className="text-input"
           value={flashcardMode}
-          onChange={(event) =>
-            setFlashcardMode(event.target.value as FlashcardMode)
-          }
+          onChange={(event) => setFlashcardMode(event.target.value as FlashcardMode)}
           aria-label="Select mode filter"
         >
           <option value="all">{tSettings(language, "settings.flashcardTools.mode.all")}</option>
@@ -145,17 +133,13 @@ export const SpacedRepetitionSettingsSection = ({
         </select>
       </div>
       <div className="setting-row">
-        <span className="label">
-          {tSettings(language, "settings.spacedRepetition.pageSize")}
-        </span>
+        <span className="label">{tSettings(language, "settings.spacedRepetition.pageSize")}</span>
         <div className="pill-grid">
           {spacedRepetitionPageSizes.map((size) => (
             <button
               key={size}
               type="button"
-              className={`pill pill-button ${
-                spacedRepetitionPageSize === size ? "active" : ""
-              }`}
+              className={`pill pill-button ${spacedRepetitionPageSize === size ? "active" : ""}`}
               aria-pressed={spacedRepetitionPageSize === size}
               onClick={() => setSpacedRepetitionPageSize(size)}
             >
@@ -181,9 +165,7 @@ export const SpacedRepetitionSettingsSection = ({
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">
-          {tSettings(language, "settings.spacedRepetition.autoTime")}
-        </span>
+        <span className="label">{tSettings(language, "settings.spacedRepetition.autoTime")}</span>
         <div className="setting-inline">
           <label className="switch">
             <input
@@ -238,9 +220,7 @@ export const SpacedRepetitionSettingsSection = ({
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">
-          {tSettings(language, "settings.spacedRepetition.helpHints")}
-        </span>
+        <span className="label">{tSettings(language, "settings.spacedRepetition.helpHints")}</span>
         <div className="setting-inline">
           <label className="switch">
             <input

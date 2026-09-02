@@ -85,10 +85,7 @@ export const createCardBlueprint = (type: CardType): CardBlueprint => {
   }
 };
 
-export const createTaskBlueprint = (
-  order: number,
-  cardType: CardType,
-): ExamTaskBlueprint => ({
+export const createTaskBlueprint = (order: number, cardType: CardType): ExamTaskBlueprint => ({
   id: buildId("task"),
   order,
   title: "",

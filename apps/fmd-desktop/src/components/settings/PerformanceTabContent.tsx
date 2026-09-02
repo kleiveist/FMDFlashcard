@@ -44,9 +44,7 @@ export const PerformanceTabContent = ({
 }: PerformanceTabContentProps) => (
   <>
     <div className="setting-row">
-      <span className="label">
-        {tSettings(language, "settings.performance.maxFilesPerScan")}
-      </span>
+      <span className="label">{tSettings(language, "settings.performance.maxFilesPerScan")}</span>
       <input
         type="text"
         inputMode="numeric"
@@ -62,9 +60,7 @@ export const PerformanceTabContent = ({
       </span>
     </div>
     <div className="setting-row">
-      <span className="label">
-        {tSettings(language, "settings.performance.scanParallelism")}
-      </span>
+      <span className="label">{tSettings(language, "settings.performance.scanParallelism")}</span>
       <div className="pill-grid">
         {(["low", "medium", "high"] as const).map((level) => (
           <button

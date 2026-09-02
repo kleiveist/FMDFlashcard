@@ -21,10 +21,7 @@ describe("filterFlashcardFiles", () => {
       { path: "/c.md", relative_path: "c.md", flashcardCount: 5 },
     ];
 
-    expect(filterFlashcardFiles(files).map((file) => file.path)).toEqual([
-      "/b.md",
-      "/c.md",
-    ]);
+    expect(filterFlashcardFiles(files).map((file) => file.path)).toEqual(["/b.md", "/c.md"]);
   });
 
   it("treats missing flashcardCount as 0", () => {

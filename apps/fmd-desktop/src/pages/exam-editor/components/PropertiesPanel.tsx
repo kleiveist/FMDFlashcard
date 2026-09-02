@@ -13,10 +13,7 @@ type PropertiesPanelProps = {
   selection: ExamEditorSelection;
   className?: string;
   onExamUpdate: (updates: Pick<ExamBlueprint, "title" | "description">) => void;
-  onTaskUpdate: (
-    taskId: string,
-    updates: { title?: string; useCardWrapper?: boolean },
-  ) => void;
+  onTaskUpdate: (taskId: string, updates: { title?: string; useCardWrapper?: boolean }) => void;
   onCardTypeChange: (taskId: string, cardId: string, type: CardType) => void;
 };
 
@@ -51,9 +48,7 @@ export const PropertiesPanel = ({
             <input
               className="text-input"
               value={task.title}
-              onChange={(event) =>
-                onTaskUpdate(task.id, { title: event.target.value })
-              }
+              onChange={(event) => onTaskUpdate(task.id, { title: event.target.value })}
               placeholder="Optional heading"
             />
           </label>
@@ -72,9 +67,7 @@ export const PropertiesPanel = ({
               </span>
               <span>Wrap task in #card block</span>
             </label>
-            <span className="muted small">
-              Applies to the full task, including all parts.
-            </span>
+            <span className="muted small">Applies to the full task, including all parts.</span>
           </div>
         </div>
       </aside>
@@ -111,9 +104,7 @@ export const PropertiesPanel = ({
                 </option>
               ))}
             </select>
-            <span className="muted small">
-              Changing the type resets card-specific content.
-            </span>
+            <span className="muted small">Changing the type resets card-specific content.</span>
           </label>
         </div>
       </aside>

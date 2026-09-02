@@ -39,7 +39,11 @@ describe("formula-source-resolver", () => {
       createRecord({ id: "2", relativePath: "Course/two.md", fields: { score: 20 } }),
     ];
     const historyRecords = [
-      createRecord({ id: "h1", relativePath: ".profile/exam-runs/run-a.md", fields: { score: 30 } }),
+      createRecord({
+        id: "h1",
+        relativePath: ".profile/exam-runs/run-a.md",
+        fields: { score: 30 },
+      }),
     ];
 
     const scoped = resolveFormulaSourceRecords({

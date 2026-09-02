@@ -20,8 +20,7 @@ describe("settingsI18n", () => {
     const originalDe = __TEST_ONLY_SETTINGS_TRANSLATIONS.de[key];
     const enValue = __TEST_ONLY_SETTINGS_TRANSLATIONS.en[key];
 
-    (__TEST_ONLY_SETTINGS_TRANSLATIONS.de as Record<string, string | undefined>)[key] =
-      undefined;
+    (__TEST_ONLY_SETTINGS_TRANSLATIONS.de as Record<string, string | undefined>)[key] = undefined;
 
     try {
       expect(tSettings("de", key)).toBe(enValue);

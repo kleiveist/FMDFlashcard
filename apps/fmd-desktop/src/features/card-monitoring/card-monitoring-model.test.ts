@@ -10,7 +10,11 @@ import {
   type CardMonitoringScannedFile,
 } from "./card-monitoring-model";
 
-const buildScan = (path: string, relativePath: string, markdown: string): CardMonitoringScannedFile => ({
+const buildScan = (
+  path: string,
+  relativePath: string,
+  markdown: string,
+): CardMonitoringScannedFile => ({
   sourcePath: path,
   relativePath,
   parsedEntries: parseFlashcardEntries(markdown),
@@ -159,7 +163,9 @@ describe("card-monitoring-model", () => {
     expect(result.removedCount).toBe(2);
     expect(result.skippedCount).toBe(0);
     expect(result.nextContents).toBe(
-      ["Before", "Question 1", "-a answer", "Middle", "Question 2", "-a answer", "After"].join("\n"),
+      ["Before", "Question 1", "-a answer", "Middle", "Question 2", "-a answer", "After"].join(
+        "\n",
+      ),
     );
   });
 });

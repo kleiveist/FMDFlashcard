@@ -76,137 +76,140 @@ const flushAsyncWork = async () => {
   });
 };
 
-const createSingleProjectViewRaw = (resolution = 1) => [
-  "::::",
-  "title: Main",
-  "source:",
-  "  type: current-folder",
-  "views:",
-  "  activeViewId: view-main",
-  "  items:",
-  "    - id: view-main",
-  "      name: Main",
-  "      view:",
-  "        type: project",
-  "        projectStartField: unitsstart",
-  "        projectUnitField: units",
-  `        blockResolution: ${resolution}`,
-  "        defaultUnits: 2",
-  "        projectMissingPlacement: show-unplaced",
-  "      properties:",
-  "        - StatusCode",
-  "      filters:",
-  "        op: and",
-  "        rules: []",
-  "      sort: []",
-  "options:",
-  "  editable: true",
-  "  showSearch: false",
-  "  showToolbar: true",
-  "::::",
-].join("\n");
+const createSingleProjectViewRaw = (resolution = 1) =>
+  [
+    "::::",
+    "title: Main",
+    "source:",
+    "  type: current-folder",
+    "views:",
+    "  activeViewId: view-main",
+    "  items:",
+    "    - id: view-main",
+    "      name: Main",
+    "      view:",
+    "        type: project",
+    "        projectStartField: unitsstart",
+    "        projectUnitField: units",
+    `        blockResolution: ${resolution}`,
+    "        defaultUnits: 2",
+    "        projectMissingPlacement: show-unplaced",
+    "      properties:",
+    "        - StatusCode",
+    "      filters:",
+    "        op: and",
+    "        rules: []",
+    "      sort: []",
+    "options:",
+    "  editable: true",
+    "  showSearch: false",
+    "  showToolbar: true",
+    "::::",
+  ].join("\n");
 
-const createTwoProjectViewsRaw = () => [
-  "::::",
-  "title: Main",
-  "source:",
-  "  type: current-folder",
-  "views:",
-  "  activeViewId: view-main",
-  "  items:",
-  "    - id: view-main",
-  "      name: Main",
-  "      view:",
-  "        type: project",
-  "        projectStartField: unitsstart",
-  "        projectUnitField: units",
-  "        blockResolution: 1",
-  "      properties:",
-  "        - StatusCode",
-  "      filters:",
-  "        op: and",
-  "        rules: []",
-  "      sort: []",
-  "    - id: view-alt",
-  "      name: Alt",
-  "      view:",
-  "        type: project",
-  "        projectStartField: unitsstart",
-  "        projectUnitField: units",
-  "        blockResolution: 1",
-  "        projectBarFillConfigs:",
-  "          - recordId: tasks/task-a.md",
-  "            attributeKey: StatusCode",
-  "            mode: text-code",
-  "            mappings:",
-  "              - from: text2",
-  "                to: 80",
-  "      properties:",
-  "        - StatusCode",
-  "      filters:",
-  "        op: and",
-  "        rules: []",
-  "      sort: []",
-  "options:",
-  "  editable: true",
-  "  showSearch: false",
-  "  showToolbar: true",
-  "::::",
-].join("\n");
+const createTwoProjectViewsRaw = () =>
+  [
+    "::::",
+    "title: Main",
+    "source:",
+    "  type: current-folder",
+    "views:",
+    "  activeViewId: view-main",
+    "  items:",
+    "    - id: view-main",
+    "      name: Main",
+    "      view:",
+    "        type: project",
+    "        projectStartField: unitsstart",
+    "        projectUnitField: units",
+    "        blockResolution: 1",
+    "      properties:",
+    "        - StatusCode",
+    "      filters:",
+    "        op: and",
+    "        rules: []",
+    "      sort: []",
+    "    - id: view-alt",
+    "      name: Alt",
+    "      view:",
+    "        type: project",
+    "        projectStartField: unitsstart",
+    "        projectUnitField: units",
+    "        blockResolution: 1",
+    "        projectBarFillConfigs:",
+    "          - recordId: tasks/task-a.md",
+    "            attributeKey: StatusCode",
+    "            mode: text-code",
+    "            mappings:",
+    "              - from: text2",
+    "                to: 80",
+    "      properties:",
+    "        - StatusCode",
+    "      filters:",
+    "        op: and",
+    "        rules: []",
+    "      sort: []",
+    "options:",
+    "  editable: true",
+    "  showSearch: false",
+    "  showToolbar: true",
+    "::::",
+  ].join("\n");
 
-const createThreeProjectViewsRaw = () => [
-  "::::",
-  "title: Main",
-  "source:",
-  "  type: current-folder",
-  "views:",
-  "  activeViewId: view-main",
-  "  items:",
-  "    - id: view-main",
-  "      name: Main",
-  "      view:",
-  "        type: project",
-  "        projectStartField: unitsstart",
-  "        projectUnitField: units",
-  "        blockResolution: 1",
-  "      properties:",
-  "        - StatusCode",
-  "      filters:",
-  "        op: and",
-  "        rules: []",
-  "      sort: []",
-  "    - id: view-alt",
-  "      name: Alt",
-  "      view:",
-  "        type: project",
-  "        projectStartField: unitsstart",
-  "        projectUnitField: units",
-  "        blockResolution: 1",
-  "      properties:",
-  "        - StatusCode",
-  "      filters:",
-  "        op: and",
-  "        rules: []",
-  "      sort: []",
-  "    - id: view-extra",
-  "      name: Extra",
-  "      view:",
-  "        type: project",
-  "        projectStartField: unitsstart",
-  "        projectUnitField: units",
-  "        blockResolution: 1",
-  "      properties:",
-  "        - StatusCode",
-  "      filters:",
-  "        op: and",
-  "        rules: []",
-  "      sort: []",
-  "options:",
-  "  editable: true",
-  "  showSearch: false",
-  "  showToolbar: true",
-  "::::",
-].join("\n");
+const createThreeProjectViewsRaw = () =>
+  [
+    "::::",
+    "title: Main",
+    "source:",
+    "  type: current-folder",
+    "views:",
+    "  activeViewId: view-main",
+    "  items:",
+    "    - id: view-main",
+    "      name: Main",
+    "      view:",
+    "        type: project",
+    "        projectStartField: unitsstart",
+    "        projectUnitField: units",
+    "        blockResolution: 1",
+    "      properties:",
+    "        - StatusCode",
+    "      filters:",
+    "        op: and",
+    "        rules: []",
+    "      sort: []",
+    "    - id: view-alt",
+    "      name: Alt",
+    "      view:",
+    "        type: project",
+    "        projectStartField: unitsstart",
+    "        projectUnitField: units",
+    "        blockResolution: 1",
+    "      properties:",
+    "        - StatusCode",
+    "      filters:",
+    "        op: and",
+    "        rules: []",
+    "      sort: []",
+    "    - id: view-extra",
+    "      name: Extra",
+    "      view:",
+    "        type: project",
+    "        projectStartField: unitsstart",
+    "        projectUnitField: units",
+    "        blockResolution: 1",
+    "      properties:",
+    "        - StatusCode",
+    "      filters:",
+    "        op: and",
+    "        rules: []",
+    "      sort: []",
+    "options:",
+    "  editable: true",
+    "  showSearch: false",
+    "  showToolbar: true",
+    "::::",
+  ].join("\n");
 
 const getLatestCommittedRaw = (onCommitRaw: ReturnType<typeof vi.fn>) => {
   const latestCall = onCommitRaw.mock.calls[onCommitRaw.mock.calls.length - 1];
@@ -218,8 +221,9 @@ const getLatestCommittedRaw = (onCommitRaw: ReturnType<typeof vi.fn>) => {
 };
 
 const getViewButtonByText = (text: string) =>
-  Array.from(document.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"))
-    .find((button) => (button.textContent ?? "").trim() === text);
+  Array.from(
+    document.querySelectorAll<HTMLButtonElement>(".database-block-view-dropdown-item"),
+  ).find((button) => (button.textContent ?? "").trim() === text);
 
 const setSelectValue = (select: HTMLSelectElement, value: string) => {
   const descriptor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value");
@@ -259,8 +263,9 @@ describe("MarkdownHybridDatabaseBlock project presentation config", () => {
     );
     await flushAsyncWork();
 
-    const projectOptionsButton = Array.from(container.querySelectorAll<HTMLButtonElement>("button"))
-      .find((button) => (button.textContent ?? "").includes("Project Optionen"));
+    const projectOptionsButton = Array.from(
+      container.querySelectorAll<HTMLButtonElement>("button"),
+    ).find((button) => (button.textContent ?? "").includes("Project Optionen"));
     act(() => {
       projectOptionsButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -305,7 +310,9 @@ describe("MarkdownHybridDatabaseBlock project presentation config", () => {
     const initialBar = container.querySelector<HTMLElement>(".database-project-bar");
     expect(initialBar?.style.width).toBe("360px");
 
-    const viewTypeSelect = container.querySelector<HTMLSelectElement>(".database-block-view-select");
+    const viewTypeSelect = container.querySelector<HTMLSelectElement>(
+      ".database-block-view-select",
+    );
     expect(viewTypeSelect).toBeTruthy();
     act(() => {
       if (viewTypeSelect) {
@@ -347,11 +354,13 @@ describe("MarkdownHybridDatabaseBlock project presentation config", () => {
 
     const bar = container.querySelector<HTMLElement>(".database-project-bar");
     act(() => {
-      bar?.dispatchEvent(new MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        button: 2,
-      }));
+      bar?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          button: 2,
+        }),
+      );
     });
 
     let popup = document.querySelector<HTMLElement>(".database-project-bar-config");
@@ -367,9 +376,9 @@ describe("MarkdownHybridDatabaseBlock project presentation config", () => {
     });
 
     popup = document.querySelector<HTMLElement>(".database-project-bar-config");
-    const mappingInputs = popup?.querySelectorAll<HTMLInputElement>(
-      ".database-project-bar-config-mapping-row input",
-    ) ?? [];
+    const mappingInputs =
+      popup?.querySelectorAll<HTMLInputElement>(".database-project-bar-config-mapping-row input") ??
+      [];
     act(() => {
       if (mappingInputs[0]) {
         setInputValue(mappingInputs[0], "text2");
@@ -379,17 +388,22 @@ describe("MarkdownHybridDatabaseBlock project presentation config", () => {
       }
     });
 
-    const saveButton = Array.from(popup?.querySelectorAll<HTMLButtonElement>("button") ?? [])
-      .find((button) => (button.textContent ?? "").includes("Speichern"));
+    const saveButton = Array.from(popup?.querySelectorAll<HTMLButtonElement>("button") ?? []).find(
+      (button) => (button.textContent ?? "").includes("Speichern"),
+    );
     act(() => {
       saveButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     await flushAsyncWork();
 
-    expect(container.querySelector<HTMLElement>(".database-project-bar-fill")?.style.width).toBe("20%");
+    expect(container.querySelector<HTMLElement>(".database-project-bar-fill")?.style.width).toBe(
+      "20%",
+    );
     let parsed = parseDatabaseBlockConfigFromRaw(getLatestCommittedRaw(onCommitRaw));
     expect(parsed.errors).toEqual([]);
-    expect(parsed.config.views.items.find((view) => view.id === "view-main")?.view.projectBarFillConfigs).toEqual([
+    expect(
+      parsed.config.views.items.find((view) => view.id === "view-main")?.view.projectBarFillConfigs,
+    ).toEqual([
       {
         recordId: "tasks/task-a.md",
         attributeKey: "StatusCode",
@@ -397,7 +411,9 @@ describe("MarkdownHybridDatabaseBlock project presentation config", () => {
         mappings: [{ from: "text2", to: 20 }],
       },
     ]);
-    expect(parsed.config.views.items.find((view) => view.id === "view-alt")?.view.projectBarFillConfigs).toEqual([
+    expect(
+      parsed.config.views.items.find((view) => view.id === "view-alt")?.view.projectBarFillConfigs,
+    ).toEqual([
       {
         recordId: "tasks/task-a.md",
         attributeKey: "StatusCode",
@@ -406,7 +422,9 @@ describe("MarkdownHybridDatabaseBlock project presentation config", () => {
       },
     ]);
 
-    const nameButton = container.querySelector<HTMLButtonElement>(".database-block-view-name-button");
+    const nameButton = container.querySelector<HTMLButtonElement>(
+      ".database-block-view-name-button",
+    );
     act(() => {
       nameButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -414,7 +432,9 @@ describe("MarkdownHybridDatabaseBlock project presentation config", () => {
       getViewButtonByText("Alt")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     await flushAsyncWork();
-    expect(container.querySelector<HTMLElement>(".database-project-bar-fill")?.style.width).toBe("80%");
+    expect(container.querySelector<HTMLElement>(".database-project-bar-fill")?.style.width).toBe(
+      "80%",
+    );
 
     act(() => {
       nameButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -423,25 +443,31 @@ describe("MarkdownHybridDatabaseBlock project presentation config", () => {
       getViewButtonByText("Main")?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     await flushAsyncWork();
-    expect(container.querySelector<HTMLElement>(".database-project-bar-fill")?.style.width).toBe("20%");
+    expect(container.querySelector<HTMLElement>(".database-project-bar-fill")?.style.width).toBe(
+      "20%",
+    );
 
     parsed = parseDatabaseBlockConfigFromRaw(getLatestCommittedRaw(onCommitRaw));
     expect(parsed.errors).toEqual([]);
     expect(parsed.config.views.activeViewId).toBe("view-main");
-    expect(parsed.config.views.items.find((view) => view.id === "view-main")?.view.projectBarFillConfigs?.[0])
-      .toMatchObject({
-        recordId: "tasks/task-a.md",
-        attributeKey: "StatusCode",
-        mode: "text-code",
-        mappings: [{ from: "text2", to: 20 }],
-      });
-    expect(parsed.config.views.items.find((view) => view.id === "view-alt")?.view.projectBarFillConfigs?.[0])
-      .toMatchObject({
-        recordId: "tasks/task-a.md",
-        attributeKey: "StatusCode",
-        mode: "text-code",
-        mappings: [{ from: "text2", to: 80 }],
-      });
+    expect(
+      parsed.config.views.items.find((view) => view.id === "view-main")?.view
+        .projectBarFillConfigs?.[0],
+    ).toMatchObject({
+      recordId: "tasks/task-a.md",
+      attributeKey: "StatusCode",
+      mode: "text-code",
+      mappings: [{ from: "text2", to: 20 }],
+    });
+    expect(
+      parsed.config.views.items.find((view) => view.id === "view-alt")?.view
+        .projectBarFillConfigs?.[0],
+    ).toMatchObject({
+      recordId: "tasks/task-a.md",
+      attributeKey: "StatusCode",
+      mode: "text-code",
+      mappings: [{ from: "text2", to: 80 }],
+    });
     cleanup();
   });
 
@@ -459,26 +485,33 @@ describe("MarkdownHybridDatabaseBlock project presentation config", () => {
     );
     await flushAsyncWork();
 
-    const nameButton = container.querySelector<HTMLButtonElement>(".database-block-view-name-button");
+    const nameButton = container.querySelector<HTMLButtonElement>(
+      ".database-block-view-name-button",
+    );
     act(() => {
       nameButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
     const altItem = getViewButtonByText("Alt");
     act(() => {
-      altItem?.dispatchEvent(new MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        clientX: 180,
-        clientY: 200,
-      }));
+      altItem?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 180,
+          clientY: 200,
+        }),
+      );
     });
-    const renameAction = Array.from(document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"))
-      .find((button) => (button.textContent ?? "").includes("Rename"));
+    const renameAction = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"),
+    ).find((button) => (button.textContent ?? "").includes("Rename"));
     act(() => {
       renameAction?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    const renameInput = container.querySelector<HTMLInputElement>(".database-block-view-dropdown-rename-input");
+    const renameInput = container.querySelector<HTMLInputElement>(
+      ".database-block-view-dropdown-rename-input",
+    );
     expect(renameInput).toBeTruthy();
     act(() => {
       if (renameInput) {
@@ -512,15 +545,18 @@ describe("MarkdownHybridDatabaseBlock project presentation config", () => {
 
     const reorderedMainItem = getViewButtonByText("Main");
     act(() => {
-      reorderedMainItem?.dispatchEvent(new MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        clientX: 190,
-        clientY: 210,
-      }));
+      reorderedMainItem?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 190,
+          clientY: 210,
+        }),
+      );
     });
-    const deleteAction = Array.from(document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"))
-      .find((button) => (button.textContent ?? "").includes("Delete"));
+    const deleteAction = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"),
+    ).find((button) => (button.textContent ?? "").includes("Delete"));
     act(() => {
       deleteAction?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -549,21 +585,26 @@ describe("MarkdownHybridDatabaseBlock project presentation config", () => {
     );
     await flushAsyncWork();
 
-    const nameButton = container.querySelector<HTMLButtonElement>(".database-block-view-name-button");
+    const nameButton = container.querySelector<HTMLButtonElement>(
+      ".database-block-view-name-button",
+    );
     act(() => {
       nameButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
     const mainItem = getViewButtonByText("Main");
     act(() => {
-      mainItem?.dispatchEvent(new MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        clientX: 180,
-        clientY: 200,
-      }));
+      mainItem?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 180,
+          clientY: 200,
+        }),
+      );
     });
-    const deleteAction = Array.from(document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"))
-      .find((button) => (button.textContent ?? "").includes("Delete"));
+    const deleteAction = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(".database-block-view-context-menu-item"),
+    ).find((button) => (button.textContent ?? "").includes("Delete"));
     expect(deleteAction?.disabled).toBe(true);
     act(() => {
       deleteAction?.dispatchEvent(new MouseEvent("click", { bubbles: true }));

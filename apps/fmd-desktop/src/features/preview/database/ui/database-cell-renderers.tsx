@@ -5,10 +5,7 @@
  */
 
 import { type ReactNode } from "react";
-import {
-  type DatabaseAttributeMeta,
-  type DatabaseNormalizedFieldValue,
-} from "../database-types";
+import { type DatabaseAttributeMeta, type DatabaseNormalizedFieldValue } from "../database-types";
 import { type DatabaseFormulaGroupedCountEntry } from "../../formula/database-formula-types";
 import {
   renderMonitoringValue,
@@ -53,7 +50,9 @@ const renderArrayValue = (value: string[]) => {
   return (
     <div className="database-cell-chip-list">
       {value.map((entry) => (
-        <span key={entry} className="database-cell-chip">{entry}</span>
+        <span key={entry} className="database-cell-chip">
+          {entry}
+        </span>
       ))}
     </div>
   );
@@ -104,7 +103,9 @@ const renderPercentValue = (value: Extract<DatabaseNormalizedFieldValue, { value
   );
 };
 
-const renderScoreValue = (value: Extract<DatabaseNormalizedFieldValue, { value: number; max: number; ratio: number }>) => {
+const renderScoreValue = (
+  value: Extract<DatabaseNormalizedFieldValue, { value: number; max: number; ratio: number }>,
+) => {
   const numerator = Number(value.value ?? Number.NaN);
   const denominator = Number(value.max ?? Number.NaN);
   const ratio = Number(value.ratio ?? Number.NaN);
@@ -181,11 +182,7 @@ export const DatabaseCellRenderer = ({
           ? String((value as { raw?: unknown }).raw ?? "")
           : "";
     return (
-      <MonitoringRenderValue
-        result={monitoringResult}
-        fallback={fallback}
-        compact={compact}
-      />
+      <MonitoringRenderValue result={monitoringResult} fallback={fallback} compact={compact} />
     );
   }
 
@@ -194,19 +191,34 @@ export const DatabaseCellRenderer = ({
     return renderArrayValue(values);
   }
 
-  if (attribute.type === "status" && typeof value === "object" && value !== null && "raw" in value) {
+  if (
+    attribute.type === "status" &&
+    typeof value === "object" &&
+    value !== null &&
+    "raw" in value
+  ) {
     return renderStatusValue(value as Extract<DatabaseNormalizedFieldValue, { raw: string }>);
   }
 
-  if (attribute.type === "percent" && typeof value === "object" && value !== null && "value" in value) {
+  if (
+    attribute.type === "percent" &&
+    typeof value === "object" &&
+    value !== null &&
+    "value" in value
+  ) {
     return renderPercentValue(value as Extract<DatabaseNormalizedFieldValue, { value: number }>);
   }
 
   if (attribute.type === "score" && typeof value === "object" && value !== null && "max" in value) {
-    return renderScoreValue(value as Extract<DatabaseNormalizedFieldValue, { value: number; max: number; ratio: number }>);
+    return renderScoreValue(
+      value as Extract<DatabaseNormalizedFieldValue, { value: number; max: number; ratio: number }>,
+    );
   }
 
-  if ((attribute.type === "date" || attribute.type === "time" || attribute.type === "datetime") && value instanceof Date) {
+  if (
+    (attribute.type === "date" || attribute.type === "time" || attribute.type === "datetime") &&
+    value instanceof Date
+  ) {
     return formatDateValue(value, attribute.type);
   }
 

@@ -9,22 +9,12 @@ import type { ExamTask } from "../exam";
 import { resolveExamTaskAutoCardTypeInstances, type AutoCardType } from "./autoCards";
 import type { ExamPointsProfile } from "./pointsProfiles";
 
-const TASK_TYPE_PRIORITY: AutoCardType[] = [
-  "qa",
-  "tf",
-  "m1",
-  "m2",
-  "cl",
-  "cd",
-  "cld",
-];
+const TASK_TYPE_PRIORITY: AutoCardType[] = ["qa", "tf", "m1", "m2", "cl", "cd", "cld"];
 
 const clampNonNegative = (value: number) =>
   Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
 
-export const resolvePrimaryAutoCardType = (
-  detectedTypes: AutoCardType[],
-): AutoCardType => {
+export const resolvePrimaryAutoCardType = (detectedTypes: AutoCardType[]): AutoCardType => {
   const normalized = Array.from(new Set(detectedTypes));
   const prioritized = TASK_TYPE_PRIORITY.find((type) => normalized.includes(type));
   return prioritized ?? "qa";

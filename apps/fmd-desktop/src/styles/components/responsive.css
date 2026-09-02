@@ -1,4 +1,3 @@
-
 /*
  * @file apps/fmd-desktop/src/styles/components/responsive.css
  *
@@ -108,14 +107,15 @@
   }
 
   .app-shell[data-active-tab="dashboard"][data-study-subview="exam"]
-  .exam-editor-page.study-view
-  .exam-editor-points {
+    .exam-editor-page.study-view
+    .exam-editor-points {
     grid-template-columns: 1fr;
   }
 
   .app-shell[data-active-tab="dashboard"][data-study-subview="exam"]
-  .exam-editor-page.study-view
-  .points-profile-editor .panel-body {
+    .exam-editor-page.study-view
+    .points-profile-editor
+    .panel-body {
     max-height: min(64vh, 760px);
     overflow-y: auto;
   }
@@ -185,7 +185,9 @@ body.focus-mode .app-shell[data-active-tab="exam"] .mobile-nav-header {
     margin: 0;
   }
 
-  .app-shell[data-active-tab="dashboard"][data-study-subview="exam"] .dashboard-page > .content-header {
+  .app-shell[data-active-tab="dashboard"][data-study-subview="exam"]
+    .dashboard-page
+    > .content-header {
     display: none;
   }
 

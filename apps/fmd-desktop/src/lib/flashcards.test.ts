@@ -522,16 +522,10 @@ Answer: Confirmed.
     expect(part.kind).toBe("cloze");
     if (part.kind === "cloze") {
       const blanks = part.segments.filter(
-        (segment): segment is Extract<ClozeSegment, { type: "blank" }> =>
-          segment.type === "blank",
+        (segment): segment is Extract<ClozeSegment, { type: "blank" }> => segment.type === "blank",
       );
       expect(blanks).toHaveLength(4);
-      expect(blanks.map((blank) => blank.solution)).toEqual([
-        "first",
-        "second",
-        "third",
-        "fourth",
-      ]);
+      expect(blanks.map((blank) => blank.solution)).toEqual(["first", "second", "third", "fourth"]);
       expect(part.dragTokens).toEqual([
         { id: "token-0", value: "second" },
         { id: "token-1", value: "third" },
@@ -554,9 +548,7 @@ Answer: Confirmed.
     expect(part.kind).toBe("cloze");
     if (part.kind === "cloze") {
       const rendered = part.segments
-        .map((segment) =>
-          segment.type === "text" ? segment.value : `@@${segment.solution}@@`,
-        )
+        .map((segment) => (segment.type === "text" ? segment.value : `@@${segment.solution}@@`))
         .join("");
       const lines = rendered.split("\n");
       expect(lines[0]).toContain("| Term | Answer |");
@@ -582,15 +574,10 @@ SQL cld example with %Outside% and "token".
     if (part.kind === "cloze") {
       expect(part.subtype).toBe("cld");
       const inputBlanks = part.segments.filter(
-        (
-          segment,
-        ): segment is Extract<ClozeSegment, { type: "blank" }> & { kind: "input" } =>
+        (segment): segment is Extract<ClozeSegment, { type: "blank" }> & { kind: "input" } =>
           segment.type === "blank" && segment.kind === "input",
       );
-      expect(inputBlanks.map((blank) => blank.solution)).toEqual([
-        "Outside",
-        "Nachname",
-      ]);
+      expect(inputBlanks.map((blank) => blank.solution)).toEqual(["Outside", "Nachname"]);
       expect(part.dragTokens.map((token) => token.value)).toEqual([
         "token",
         "SELECT",
@@ -835,9 +822,7 @@ Eine Transaktion ist eine atomare Einheit von Operationen.
     expect(part.kind).toBe("free-text");
     if (part.kind === "free-text") {
       expect(part.front).toBe("1. Was ist eine Transaktion?");
-      expect(part.back).toBe(
-        "Eine Transaktion ist eine atomare Einheit von Operationen.",
-      );
+      expect(part.back).toBe("Eine Transaktion ist eine atomare Einheit von Operationen.");
     }
   });
 
@@ -870,9 +855,7 @@ Reponse: SQL est un langage pour interroger des bases de donnees.
     expect(part.kind).toBe("free-text");
     if (part.kind === "free-text") {
       expect(part.front).toBe("Que signifie SQL ?");
-      expect(part.back).toBe(
-        "SQL est un langage pour interroger des bases de donnees.",
-      );
+      expect(part.back).toBe("SQL est un langage pour interroger des bases de donnees.");
     }
   });
 
@@ -1245,9 +1228,7 @@ Outside "gamma" and %delta%.
     const part = getSinglePart(cards[0]);
     expect(part.kind).toBe("cloze");
     if (part.kind === "cloze") {
-      expect(part.question).toBe(
-        'Inline code only: `"alpha"` and `%beta%`.',
-      );
+      expect(part.question).toBe('Inline code only: `"alpha"` and `%beta%`.');
       const blanks = part.segments.filter((segment) => segment.type === "blank");
       expect(blanks).toHaveLength(2);
       expect(part.dragTokens.map((token) => token.value)).toEqual(["gamma"]);
@@ -1411,7 +1392,7 @@ Valid %answer% and "unfinished.
       expect(part.segments).toEqual([
         { type: "text", value: "Valid " },
         { type: "blank", id: "blank-0", kind: "input", solution: "answer" },
-        { type: "text", value: " and \"unfinished." },
+        { type: "text", value: ' and "unfinished.' },
       ]);
     }
   });
@@ -1468,19 +1449,11 @@ Outside token: "SELECT"
     expect(part.kind).toBe("cloze");
     if (part.kind === "cloze") {
       const blanks = part.segments.filter(
-        (
-          segment,
-        ): segment is Extract<ClozeSegment, { type: "blank" }> & { kind: "input" } =>
+        (segment): segment is Extract<ClozeSegment, { type: "blank" }> & { kind: "input" } =>
           segment.type === "blank" && segment.kind === "input",
       );
-      expect(blanks.map((blank) => blank.solution)).toEqual([
-        "min_bestellungen",
-        "sort_spalte",
-      ]);
-      expect(part.dragTokens.map((token) => token.value)).toEqual([
-        "COUNT",
-        "SELECT",
-      ]);
+      expect(blanks.map((blank) => blank.solution)).toEqual(["min_bestellungen", "sort_spalte"]);
+      expect(part.dragTokens.map((token) => token.value)).toEqual(["COUNT", "SELECT"]);
     }
   });
 
@@ -1516,20 +1489,11 @@ After.
     expect(part.kind).toBe("cloze");
     if (part.kind === "cloze") {
       const blanks = part.segments.filter(
-        (
-          segment,
-        ): segment is Extract<ClozeSegment, { type: "blank" }> & { kind: "input" } =>
+        (segment): segment is Extract<ClozeSegment, { type: "blank" }> & { kind: "input" } =>
           segment.type === "blank" && segment.kind === "input",
       );
-      expect(blanks.map((blank) => blank.solution)).toEqual([
-        "first",
-        "inside",
-        "second",
-      ]);
-      expect(part.dragTokens.map((token) => token.value)).toEqual([
-        "token1",
-        "token2",
-      ]);
+      expect(blanks.map((blank) => blank.solution)).toEqual(["first", "inside", "second"]);
+      expect(part.dragTokens.map((token) => token.value)).toEqual(["token1", "token2"]);
     }
   });
 
@@ -1561,14 +1525,9 @@ Answer: Real answer
     expect(isInputAnswerMatch(" Atomic Values ", "atomic values")).toBe(true);
     expect(isInputAnswerMatch("Atomic", "atom")).toBe(false);
     expect(
-      isInputAnswerMatch("erste normalform", "1NF", [
-        "1 Normalform",
-        "erste Normalform",
-      ]),
+      isInputAnswerMatch("erste normalform", "1NF", ["1 Normalform", "erste Normalform"]),
     ).toBe(true);
-    expect(
-      isInputAnswerMatch("3NF", "1NF", ["1 Normalform", "erste Normalform"]),
-    ).toBe(false);
+    expect(isInputAnswerMatch("3NF", "1NF", ["1 Normalform", "erste Normalform"])).toBe(false);
   });
 
   it("matches drag tokens by trimmed exact value", () => {
@@ -1583,18 +1542,18 @@ describe("parseFlashcards Canvas isolation", () => {
     const markdown = [
       "#canvas",
       "{",
-      "  \"nodes\": [",
+      '  "nodes": [',
       "    {",
-      "      \"id\": \"node-1\",",
-      "      \"type\": \"text\",",
-      "      \"text\": \"#card\\nQuestion?\\nAnswer: Wrong\\n#endcard\",",
-      "      \"x\": 0,",
-      "      \"y\": 0,",
-      "      \"width\": 240,",
-      "      \"height\": 120",
+      '      "id": "node-1",',
+      '      "type": "text",',
+      '      "text": "#card\\nQuestion?\\nAnswer: Wrong\\n#endcard",',
+      '      "x": 0,',
+      '      "y": 0,',
+      '      "width": 240,',
+      '      "height": 120',
       "    }",
       "  ],",
-      "  \"edges\": []",
+      '  "edges": []',
       "}",
       "#canvasend",
       "",
@@ -1621,8 +1580,8 @@ describe("parseFlashcards Canvas isolation", () => {
       "Question before canvas?",
       "#canvas",
       "{",
-      "  \"nodes\": [{ \"id\": \"node-1\", \"type\": \"text\", \"text\": \"---\", \"x\": 0, \"y\": 0, \"width\": 100, \"height\": 80 }],",
-      "  \"edges\": []",
+      '  "nodes": [{ "id": "node-1", "type": "text", "text": "---", "x": 0, "y": 0, "width": 100, "height": 80 }],',
+      '  "edges": []',
       "}",
       "#canvasend",
       "Answer: Stable",

@@ -68,12 +68,10 @@ const isSingleLineMathBlockLine = (line: string) =>
   !isMathBlockDelimiterLine(line) && /^\s*\$\$[\s\S]*\$\$\s*$/.test(line);
 const isHeadingLine = (line: string) => /^\s{0,3}#{1,4}(?:\s+|$)/.test(line);
 const isBlockquoteLine = (line: string) => /^\s*>/.test(line);
-const isHorizontalRuleLine = (line: string) =>
-  /^\s*(?:(?:-\s*){3,}|(?:\*\s*){3,})$/.test(line);
+const isHorizontalRuleLine = (line: string) => /^\s*(?:(?:-\s*){3,}|(?:\*\s*){3,})$/.test(line);
 const isHorizontalRuleLineForNormalization = (line: string) =>
   /^\s*(?:(?:-\s*){3,}|(?:\*\s*){3,}|(?:_\s*){3,})$/.test(line);
-const frontmatterPrefixPattern =
-  /^(?:\uFEFF)?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/;
+const frontmatterPrefixPattern = /^(?:\uFEFF)?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/;
 const leadingBlockquoteMarkersPattern = /^\s*(?:>\s*)+/;
 const quotePrefixedHashLinePattern = /^(\s*)(?:>\s*)+(#.*)$/;
 const quotedStructuralDirectivePattern = /^\s*(?:>\s*)+(#(?:card|endcard|help|helpend))\s*$/i;
@@ -113,8 +111,7 @@ const isDatabaseBlockMarker = (line: string) => isDatabaseBlockMarkerLine(line);
 const isCardBlockStartLine = (line: string) => resolveStructuralDirectiveToken(line) === "#card";
 const isCardBlockEndLine = (line: string) => resolveStructuralDirectiveToken(line) === "#endcard";
 
-const resolveOrderedDelimiter = (raw: string): "." | ")" =>
-  raw === "." ? "." : ")";
+const resolveOrderedDelimiter = (raw: string): "." | ")" => (raw === "." ? "." : ")");
 
 const matchOrderedListLine = (line: string) => line.match(orderedListLinePattern);
 const matchUnorderedListLine = (line: string) =>
@@ -122,8 +119,7 @@ const matchUnorderedListLine = (line: string) =>
 
 const isOrderedListLine = (line: string) => Boolean(matchOrderedListLine(line));
 
-const isUnorderedListLine = (line: string) =>
-  Boolean(matchUnorderedListLine(line));
+const isUnorderedListLine = (line: string) => Boolean(matchUnorderedListLine(line));
 
 const isListStartLine = (line: string) => isOrderedListLine(line) || isUnorderedListLine(line);
 
@@ -266,15 +262,15 @@ export const assignListGroupMeta = (blocks: MarkdownBlock[]): MarkdownBlock[] =>
     return blocks;
   }
 
-  const hasHybridListMeta = blocks.some((block) =>
-    (block.kind === "ordered-list" || block.kind === "unordered-list") &&
-    (
-      typeof block.meta?.listDepth === "number" ||
-      typeof block.meta?.listIndentWidth === "number" ||
-      typeof block.meta?.listParentStartLine === "number" ||
-      typeof block.meta?.listItemType === "string" ||
-      typeof block.meta?.listGroupId === "string"
-    ));
+  const hasHybridListMeta = blocks.some(
+    (block) =>
+      (block.kind === "ordered-list" || block.kind === "unordered-list") &&
+      (typeof block.meta?.listDepth === "number" ||
+        typeof block.meta?.listIndentWidth === "number" ||
+        typeof block.meta?.listParentStartLine === "number" ||
+        typeof block.meta?.listItemType === "string" ||
+        typeof block.meta?.listGroupId === "string"),
+  );
   if (!hasHybridListMeta) {
     return blocks;
   }
@@ -376,8 +372,7 @@ const resolveListLineMatch = (line: string): ListLineMatch | null => {
   const unorderedMatch = matchUnorderedListLine(line);
   if (unorderedMatch) {
     const marker = unorderedMatch[2];
-    const unorderedMarker: "-" | "+" | "*" =
-      marker === "+" || marker === "*" ? marker : "-";
+    const unorderedMarker: "-" | "+" | "*" = marker === "+" || marker === "*" ? marker : "-";
     return {
       kind: "unordered-list",
       itemType: "unordered",
@@ -547,7 +542,9 @@ export const parseMarkdownBlocks = (
 
     const parsedTable = parseMarkdownPipeTableAt(lines, i);
     if (parsedTable) {
-      blocks.push(buildBlock(markdown, lines, lineStarts, blockIndex, "table", i, parsedTable.endLine));
+      blocks.push(
+        buildBlock(markdown, lines, lineStarts, blockIndex, "table", i, parsedTable.endLine),
+      );
       blockIndex += 1;
       i = parsedTable.endLine + 1;
       continue;
@@ -597,7 +594,8 @@ export const parseMarkdownBlocks = (
         }
         while (
           listParentStack.length > 0 &&
-          (listParentStack[listParentStack.length - 1]?.indentWidth ?? 0) >= listLineMatch.indentWidth
+          (listParentStack[listParentStack.length - 1]?.indentWidth ?? 0) >=
+            listLineMatch.indentWidth
         ) {
           listParentStack.pop();
         }
@@ -704,9 +702,7 @@ export const normalizeOrderedListBlockSource = (blockRaw: string) => {
   const counters = new Map<number, number>();
   const delimiters = new Map<number, "." | ")">();
 
-  return lines
-    .map((line) => normalizeOrderedListLine(line, counters, delimiters))
-    .join("\n");
+  return lines.map((line) => normalizeOrderedListLine(line, counters, delimiters)).join("\n");
 };
 
 export const normalizeQuotePrefixedHashLines = (markdown: string) => {
@@ -749,9 +745,7 @@ export const normalizeHelpBlockSource = (blockRaw: string) => {
   const shouldStripQuoteMarkers = isQuotedStructuralDirectiveLine(firstNonBlankLine, "#help");
   const normalizedLines: string[] = [];
   for (const sourceLine of sourceLines) {
-    const line = shouldStripQuoteMarkers
-      ? stripLeadingBlockquoteMarkers(sourceLine)
-      : sourceLine;
+    const line = shouldStripQuoteMarkers ? stripLeadingBlockquoteMarkers(sourceLine) : sourceLine;
     const directive = resolveStructuralDirectiveToken(line);
     if (directive === "#help") {
       normalizedLines.push("#help");
@@ -763,7 +757,10 @@ export const normalizeHelpBlockSource = (blockRaw: string) => {
     }
 
     // Sonderregel: Keine Leerzeile direkt vor dem Endmarker behalten.
-    while (normalizedLines.length > 0 && /^\s*$/.test(normalizedLines[normalizedLines.length - 1] ?? "")) {
+    while (
+      normalizedLines.length > 0 &&
+      /^\s*$/.test(normalizedLines[normalizedLines.length - 1] ?? "")
+    ) {
       normalizedLines.pop();
     }
     // Endmarker immer linksbuendig und ohne zusaetzliche Leerzeichen/Tabs.
@@ -781,9 +778,7 @@ export const normalizeCardBlockSource = (blockRaw: string) => {
   const firstNonBlankLine = sourceLines.find((line) => line.trim().length > 0) ?? "";
   const shouldStripQuoteMarkers = isQuotedStructuralDirectiveLine(firstNonBlankLine, "#card");
   const lines = sourceLines.map((sourceLine) => {
-    const line = shouldStripQuoteMarkers
-      ? stripLeadingBlockquoteMarkers(sourceLine)
-      : sourceLine;
+    const line = shouldStripQuoteMarkers ? stripLeadingBlockquoteMarkers(sourceLine) : sourceLine;
     const directive = resolveStructuralDirectiveToken(line);
     if (directive === "#card") {
       return "#card";
@@ -861,10 +856,7 @@ const normalizeHorizontalRuleSpacingInBody = (markdown: string) => {
     const previousBlock = i > 0 ? blocks[i - 1] : null;
     const nextBlock = i + 1 < blocks.length ? blocks[i + 1] : null;
 
-    if (
-      block.kind === "blank" &&
-      (previousBlock?.kind === "hr" || nextBlock?.kind === "hr")
-    ) {
+    if (block.kind === "blank" && (previousBlock?.kind === "hr" || nextBlock?.kind === "hr")) {
       // parseMarkdownBlocks already folds one blank line into the hr block itself.
       // Any additional adjacent blank block here is extra spacing and should collapse.
       continue;

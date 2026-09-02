@@ -167,9 +167,9 @@ const buildClozeSegmentStructureKey = (segments: ClozeCardType["segments"]) =>
     .join(SEGMENT_KEY_SEPARATOR);
 
 const buildClozeTokenStructureKey = (tokens: ClozeCardType["dragTokens"]) =>
-  tokens.map((token) => `${token.id}${SEGMENT_VALUE_SEPARATOR}${token.value}`).join(
-    TOKEN_KEY_SEPARATOR,
-  );
+  tokens
+    .map((token) => `${token.id}${SEGMENT_VALUE_SEPARATOR}${token.value}`)
+    .join(TOKEN_KEY_SEPARATOR);
 
 const createShuffleEntropy = () => {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -304,21 +304,18 @@ const ClozeCardComponent = ({
   const [activeDropBlankId, setActiveDropBlankId] = useState<string | null>(null);
   const [selectedToken, setSelectedToken] = useState<SelectedTokenState | null>(null);
   const blanks = useMemo(() => getClozeBlanks(stableSegments), [stableSegments]);
-  const dragBlanks = useMemo(
-    () => blanks.filter((blank) => blank.kind === "drag"),
-    [blanks],
-  );
-  const dragBlankIds = useMemo(
-    () => new Set(dragBlanks.map((blank) => blank.id)),
-    [dragBlanks],
-  );
+  const dragBlanks = useMemo(() => blanks.filter((blank) => blank.kind === "drag"), [blanks]);
+  const dragBlankIds = useMemo(() => new Set(dragBlanks.map((blank) => blank.id)), [dragBlanks]);
   const tokenById = useMemo(
     () => new Map(stableDragTokens.map((token) => [token.id, token.value])),
     [stableDragTokens],
   );
   const { placeholderText, blankById, blankOrderById } = useMemo(() => {
     let text = "";
-    const blankMap = new Map<string, Extract<ClozeCardType["segments"][number], { type: "blank" }>>();
+    const blankMap = new Map<
+      string,
+      Extract<ClozeCardType["segments"][number], { type: "blank" }>
+    >();
     const orderMap = new Map<string, number>();
     let blankIndex = 0;
 
@@ -416,19 +413,16 @@ const ClozeCardComponent = ({
     pendingFocusRestoreRef.current = false;
   }, []);
 
-  const updateTrackedInputSelection = useCallback(
-    (blankId: string, input: HTMLInputElement) => {
-      if (activeInputStateRef.current.blankId !== blankId) {
-        return;
-      }
-      activeInputStateRef.current = {
-        blankId,
-        selectionStart: input.selectionStart,
-        selectionEnd: input.selectionEnd,
-      };
-    },
-    [],
-  );
+  const updateTrackedInputSelection = useCallback((blankId: string, input: HTMLInputElement) => {
+    if (activeInputStateRef.current.blankId !== blankId) {
+      return;
+    }
+    activeInputStateRef.current = {
+      blankId,
+      selectionStart: input.selectionStart,
+      selectionEnd: input.selectionEnd,
+    };
+  }, []);
 
   const trackFocusedInput = useCallback((blankId: string, input: HTMLInputElement) => {
     suppressFocusRestoreRef.current = false;
@@ -440,22 +434,16 @@ const ClozeCardComponent = ({
     };
   }, []);
 
-  const registerInputElement = useCallback(
-    (blankId: string, element: HTMLInputElement | null) => {
-      if (element) {
-        inputElementByBlankIdRef.current.set(blankId, element);
-        return;
-      }
-      if (
-        activeInputStateRef.current.blankId === blankId &&
-        !suppressFocusRestoreRef.current
-      ) {
-        pendingFocusRestoreRef.current = true;
-      }
-      inputElementByBlankIdRef.current.delete(blankId);
-    },
-    [],
-  );
+  const registerInputElement = useCallback((blankId: string, element: HTMLInputElement | null) => {
+    if (element) {
+      inputElementByBlankIdRef.current.set(blankId, element);
+      return;
+    }
+    if (activeInputStateRef.current.blankId === blankId && !suppressFocusRestoreRef.current) {
+      pendingFocusRestoreRef.current = true;
+    }
+    inputElementByBlankIdRef.current.delete(blankId);
+  }, []);
 
   const getInputRefCallback = useCallback(
     (blankId: string) => {
@@ -554,34 +542,36 @@ const ClozeCardComponent = ({
     pendingFocusRestoreRef.current = false;
   });
 
-  const resolveDropBlankId = useCallback((clientX: number, clientY: number) => {
-    if (typeof document === "undefined" || !document.elementsFromPoint) {
+  const resolveDropBlankId = useCallback(
+    (clientX: number, clientY: number) => {
+      if (typeof document === "undefined" || !document.elementsFromPoint) {
+        return null;
+      }
+      const elements = document.elementsFromPoint(clientX, clientY);
+      for (const element of elements) {
+        if (!(element instanceof HTMLElement)) {
+          continue;
+        }
+        const dropzone = element.closest<HTMLElement>('[data-dropzone="cloze-blank"]');
+        if (!dropzone) {
+          continue;
+        }
+        if (cardRef.current && !cardRef.current.contains(dropzone)) {
+          continue;
+        }
+        const blankId = dropzone.dataset.blankId;
+        if (blankId && dragBlankIds.has(blankId)) {
+          return blankId;
+        }
+      }
       return null;
-    }
-    const elements = document.elementsFromPoint(clientX, clientY);
-    for (const element of elements) {
-      if (!(element instanceof HTMLElement)) {
-        continue;
-      }
-      const dropzone = element.closest<HTMLElement>('[data-dropzone="cloze-blank"]');
-      if (!dropzone) {
-        continue;
-      }
-      if (cardRef.current && !cardRef.current.contains(dropzone)) {
-        continue;
-      }
-      const blankId = dropzone.dataset.blankId;
-      if (blankId && dragBlankIds.has(blankId)) {
-        return blankId;
-      }
-    }
-    return null;
-  }, [dragBlankIds]);
+    },
+    [dragBlankIds],
+  );
 
   const createSyntheticDragEvent = useCallback((payload: ClozeDragPayload) => {
     const dataTransfer = {
-      getData: (type: string) =>
-        type === CLOZE_TOKEN_DRAG_TYPE ? JSON.stringify(payload) : "",
+      getData: (type: string) => (type === CLOZE_TOKEN_DRAG_TYPE ? JSON.stringify(payload) : ""),
     };
     return {
       preventDefault: () => {},
@@ -641,169 +631,166 @@ const ClozeCardComponent = ({
     onSubmitRef.current(cardIndex, canSubmit);
   }, [cardIndex, canSubmit]);
 
-  const handleTokenPointerDown = useCallback((
-    event: ReactPointerEvent<HTMLButtonElement>,
-    tokenId: string,
-    tokenValue: string,
-    sourceBlankId?: string,
-  ) => {
-    if (submitted) {
-      return;
-    }
-    if (event.pointerType === "mouse") {
-      return;
-    }
-    if (event.button !== 0) {
-      return;
-    }
-    setSelectedToken(null);
-    const rect = event.currentTarget.getBoundingClientRect();
-    pointerDragRef.current = {
-      pointerId: event.pointerId,
-      tokenId,
-      tokenValue,
-      sourceBlankId,
-      startX: event.clientX,
-      startY: event.clientY,
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top,
-      dragging: false,
-    };
-    setActiveDropBlankId(null);
-    setDragGhost(null);
-  }, [submitted]);
-
-  const handleTokenPointerMove = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
-    const state = pointerDragRef.current;
-    if (!state || event.pointerId !== state.pointerId) {
-      return;
-    }
-    const deltaX = event.clientX - state.startX;
-    const deltaY = event.clientY - state.startY;
-    if (!state.dragging) {
-      if (Math.hypot(deltaX, deltaY) < POINTER_DRAG_THRESHOLD) {
+  const handleTokenPointerDown = useCallback(
+    (
+      event: ReactPointerEvent<HTMLButtonElement>,
+      tokenId: string,
+      tokenValue: string,
+      sourceBlankId?: string,
+    ) => {
+      if (submitted) {
         return;
       }
-      state.dragging = true;
-      event.preventDefault();
-      event.currentTarget.setPointerCapture?.(event.pointerId);
-      setDragGhost({
-        tokenId: state.tokenId,
-        tokenValue: state.tokenValue,
-        x: event.clientX,
-        y: event.clientY,
-        offsetX: state.offsetX,
-        offsetY: state.offsetY,
-        sourceBlankId: state.sourceBlankId,
-      });
-    } else {
-      event.preventDefault();
-      setDragGhost((prev) =>
-        prev ? { ...prev, x: event.clientX, y: event.clientY } : prev,
-      );
-    }
-    const blankId = resolveDropBlankId(event.clientX, event.clientY);
-    setActiveDropBlankId(blankId);
-  }, [resolveDropBlankId]);
-
-  const finishPointerDrag = useCallback((
-    event: ReactPointerEvent<HTMLButtonElement>,
-    cancelled: boolean,
-  ) => {
-    const state = pointerDragRef.current;
-    if (!state || event.pointerId !== state.pointerId) {
-      return;
-    }
-    pointerDragRef.current = null;
-    if (state.dragging) {
-      event.preventDefault();
-      event.currentTarget.releasePointerCapture?.(event.pointerId);
-      suppressClickRef.current = true;
-      const blankId = cancelled
-        ? null
-        : resolveDropBlankId(event.clientX, event.clientY);
-      if (blankId) {
-        const payload: ClozeDragPayload = {
-          cardIndex,
-          tokenId: state.tokenId,
-          partIndex,
-        };
-        dispatchTokenDropFromPayload(payload, blankId);
-      } else if (state.sourceBlankId) {
-        dispatchTokenRemove(state.sourceBlankId);
+      if (event.pointerType === "mouse") {
+        return;
       }
-    }
-    setDragGhost(null);
-    setActiveDropBlankId(null);
-  }, [
-    cardIndex,
-    dispatchTokenDropFromPayload,
-    dispatchTokenRemove,
-    partIndex,
-    resolveDropBlankId,
-  ]);
+      if (event.button !== 0) {
+        return;
+      }
+      setSelectedToken(null);
+      const rect = event.currentTarget.getBoundingClientRect();
+      pointerDragRef.current = {
+        pointerId: event.pointerId,
+        tokenId,
+        tokenValue,
+        sourceBlankId,
+        startX: event.clientX,
+        startY: event.clientY,
+        offsetX: event.clientX - rect.left,
+        offsetY: event.clientY - rect.top,
+        dragging: false,
+      };
+      setActiveDropBlankId(null);
+      setDragGhost(null);
+    },
+    [submitted],
+  );
+
+  const handleTokenPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) => {
+      const state = pointerDragRef.current;
+      if (!state || event.pointerId !== state.pointerId) {
+        return;
+      }
+      const deltaX = event.clientX - state.startX;
+      const deltaY = event.clientY - state.startY;
+      if (!state.dragging) {
+        if (Math.hypot(deltaX, deltaY) < POINTER_DRAG_THRESHOLD) {
+          return;
+        }
+        state.dragging = true;
+        event.preventDefault();
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        setDragGhost({
+          tokenId: state.tokenId,
+          tokenValue: state.tokenValue,
+          x: event.clientX,
+          y: event.clientY,
+          offsetX: state.offsetX,
+          offsetY: state.offsetY,
+          sourceBlankId: state.sourceBlankId,
+        });
+      } else {
+        event.preventDefault();
+        setDragGhost((prev) => (prev ? { ...prev, x: event.clientX, y: event.clientY } : prev));
+      }
+      const blankId = resolveDropBlankId(event.clientX, event.clientY);
+      setActiveDropBlankId(blankId);
+    },
+    [resolveDropBlankId],
+  );
+
+  const finishPointerDrag = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>, cancelled: boolean) => {
+      const state = pointerDragRef.current;
+      if (!state || event.pointerId !== state.pointerId) {
+        return;
+      }
+      pointerDragRef.current = null;
+      if (state.dragging) {
+        event.preventDefault();
+        event.currentTarget.releasePointerCapture?.(event.pointerId);
+        suppressClickRef.current = true;
+        const blankId = cancelled ? null : resolveDropBlankId(event.clientX, event.clientY);
+        if (blankId) {
+          const payload: ClozeDragPayload = {
+            cardIndex,
+            tokenId: state.tokenId,
+            partIndex,
+          };
+          dispatchTokenDropFromPayload(payload, blankId);
+        } else if (state.sourceBlankId) {
+          dispatchTokenRemove(state.sourceBlankId);
+        }
+      }
+      setDragGhost(null);
+      setActiveDropBlankId(null);
+    },
+    [cardIndex, dispatchTokenDropFromPayload, dispatchTokenRemove, partIndex, resolveDropBlankId],
+  );
 
   const handleTokenPointerUp = useCallback(
-    (event: ReactPointerEvent<HTMLButtonElement>) =>
-      finishPointerDrag(event, false),
+    (event: ReactPointerEvent<HTMLButtonElement>) => finishPointerDrag(event, false),
     [finishPointerDrag],
   );
 
   const handleTokenPointerCancel = useCallback(
-    (event: ReactPointerEvent<HTMLButtonElement>) =>
-      finishPointerDrag(event, true),
+    (event: ReactPointerEvent<HTMLButtonElement>) => finishPointerDrag(event, true),
     [finishPointerDrag],
   );
 
-  const handleTokenClick = useCallback((
-    event: ReactMouseEvent<HTMLButtonElement>,
-    tokenId: string,
-    tokenValue: string,
-    sourceBlankId?: string,
-  ) => {
-    if (submitted) {
-      return;
-    }
-    if (suppressClickRef.current) {
-      suppressClickRef.current = false;
-      return;
-    }
-    event.stopPropagation();
-    if (selectedToken?.tokenId === tokenId) {
-      setSelectedToken(null);
-      return;
-    }
-    setSelectedToken({ tokenId, tokenValue, sourceBlankId });
-  }, [selectedToken?.tokenId, submitted]);
+  const handleTokenClick = useCallback(
+    (
+      event: ReactMouseEvent<HTMLButtonElement>,
+      tokenId: string,
+      tokenValue: string,
+      sourceBlankId?: string,
+    ) => {
+      if (submitted) {
+        return;
+      }
+      if (suppressClickRef.current) {
+        suppressClickRef.current = false;
+        return;
+      }
+      event.stopPropagation();
+      if (selectedToken?.tokenId === tokenId) {
+        setSelectedToken(null);
+        return;
+      }
+      setSelectedToken({ tokenId, tokenValue, sourceBlankId });
+    },
+    [selectedToken?.tokenId, submitted],
+  );
 
-  const handleBlankClick = useCallback((blankId: string) => {
-    if (submitted) {
-      return;
-    }
-    if (!selectedToken) {
-      return;
-    }
-    const payload: ClozeDragPayload = {
-      cardIndex,
-      tokenId: selectedToken.tokenId,
-      partIndex,
-    };
-    dispatchTokenDropFromPayload(payload, blankId);
-    setSelectedToken(null);
-  }, [
-    cardIndex,
-    dispatchTokenDropFromPayload,
-    partIndex,
-    selectedToken,
-    submitted,
-  ]);
-
-  const handleTokenRemoveClick = useCallback((blankId: string, tokenId: string) => {
-    if (selectedToken?.tokenId === tokenId) {
+  const handleBlankClick = useCallback(
+    (blankId: string) => {
+      if (submitted) {
+        return;
+      }
+      if (!selectedToken) {
+        return;
+      }
+      const payload: ClozeDragPayload = {
+        cardIndex,
+        tokenId: selectedToken.tokenId,
+        partIndex,
+      };
+      dispatchTokenDropFromPayload(payload, blankId);
       setSelectedToken(null);
-    }
-    dispatchTokenRemove(blankId);
-  }, [dispatchTokenRemove, selectedToken?.tokenId]);
+    },
+    [cardIndex, dispatchTokenDropFromPayload, partIndex, selectedToken, submitted],
+  );
+
+  const handleTokenRemoveClick = useCallback(
+    (blankId: string, tokenId: string) => {
+      if (selectedToken?.tokenId === tokenId) {
+        setSelectedToken(null);
+      }
+      dispatchTokenRemove(blankId);
+    },
+    [dispatchTokenRemove, selectedToken?.tokenId],
+  );
 
   const renderBlank = useCallback(
     (blankId: string) => {
@@ -836,15 +823,9 @@ const ClozeCardComponent = ({
               value={value}
               onFocus={(event) => trackFocusedInput(segment.id, event.currentTarget)}
               onBlur={(event) => handleInputBlur(segment.id, event)}
-              onSelect={(event) =>
-                updateTrackedInputSelection(segment.id, event.currentTarget)
-              }
-              onClick={(event) =>
-                updateTrackedInputSelection(segment.id, event.currentTarget)
-              }
-              onKeyUp={(event) =>
-                updateTrackedInputSelection(segment.id, event.currentTarget)
-              }
+              onSelect={(event) => updateTrackedInputSelection(segment.id, event.currentTarget)}
+              onClick={(event) => updateTrackedInputSelection(segment.id, event.currentTarget)}
+              onKeyUp={(event) => updateTrackedInputSelection(segment.id, event.currentTarget)}
               onChange={(event) => {
                 updateTrackedInputSelection(segment.id, event.currentTarget);
                 dispatchInputChange(segment.id, event.target.value);
@@ -858,13 +839,9 @@ const ClozeCardComponent = ({
       }
 
       const assignedTokenId = stableResponses[segment.id] ?? "";
-      const assignedValue = assignedTokenId
-        ? tokenById.get(assignedTokenId) ?? ""
-        : "";
+      const assignedValue = assignedTokenId ? (tokenById.get(assignedTokenId) ?? "") : "";
       const hasToken = Boolean(assignedValue);
-      const isBlankCorrect = reveal
-        ? isDragAnswerMatch(assignedValue, segment.solution)
-        : false;
+      const isBlankCorrect = reveal ? isDragAnswerMatch(assignedValue, segment.solution) : false;
       const blankClasses = [
         "cloze-blank",
         "drag",
@@ -904,12 +881,7 @@ const ClozeCardComponent = ({
                   handleTokenClick(event, assignedTokenId, assignedValue, segment.id)
                 }
                 onPointerDown={(event) =>
-                  handleTokenPointerDown(
-                    event,
-                    assignedTokenId,
-                    assignedValue,
-                    segment.id,
-                  )
+                  handleTokenPointerDown(event, assignedTokenId, assignedValue, segment.id)
                 }
                 onPointerMove={handleTokenPointerMove}
                 onPointerUp={handleTokenPointerUp}
@@ -1029,9 +1001,7 @@ const ClozeCardComponent = ({
                     })
                   }
                   onClick={(event) => handleTokenClick(event, token.id, token.value)}
-                  onPointerDown={(event) =>
-                    handleTokenPointerDown(event, token.id, token.value)
-                  }
+                  onPointerDown={(event) => handleTokenPointerDown(event, token.id, token.value)}
                   onPointerMove={handleTokenPointerMove}
                   onPointerUp={handleTokenPointerUp}
                   onPointerCancel={handleTokenPointerCancel}

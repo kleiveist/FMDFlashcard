@@ -47,10 +47,7 @@ import { type VaultFile } from "../lib/tree";
 import type { LoadState } from "../lib/types";
 import { useFlashcards } from "../features/flashcards/useFlashcards";
 import { useFlashcardNoteFiles } from "../features/flashcards/useFlashcardNoteFiles";
-import {
-  usePreview,
-  type PreviewFileOpenOptions,
-} from "../features/preview/usePreview";
+import { usePreview, type PreviewFileOpenOptions } from "../features/preview/usePreview";
 import {
   buildRecentVaultId,
   createRecentVaultEntry,
@@ -75,11 +72,7 @@ import {
   type ExamSelectionPlacementTarget,
   type ExamSelectionRows,
 } from "../lib/examSelectionRows";
-import {
-  addTaskWrapper,
-  findTaskWrapper,
-  removeTaskWrapper,
-} from "../lib/exam/autoCards";
+import { addTaskWrapper, findTaskWrapper, removeTaskWrapper } from "../lib/exam/autoCards";
 import { LargeVaultWarningModal } from "./LargeVaultWarningModal";
 import { VaultManagerModal } from "./VaultManagerModal";
 import { DEFAULT_HELP_TOPIC_ID } from "../pages/help/helpContent";
@@ -94,10 +87,7 @@ type AppActions = {
   handleToggleExamFileSelection: (path: string) => void;
   handleSetSelectedExamFiles: (paths: string[]) => void;
   handleSetSelectedExamFileRows: (rows: ExamSelectionRows) => void;
-  handlePlaceSelectedExamFile: (
-    sourcePath: string,
-    target: ExamSelectionPlacementTarget,
-  ) => void;
+  handlePlaceSelectedExamFile: (sourcePath: string, target: ExamSelectionPlacementTarget) => void;
   handleMoveSelectedExamFile: (sourcePath: string, targetPath: string) => void;
   handleClearSelectedExamFiles: () => void;
   handleThemeChange: (nextTheme: ThemeMode) => void;
@@ -211,21 +201,12 @@ const removeRecordKeys = <T,>(map: Record<string, T>, keys: string[]) => {
 
 export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const settings = useAppSettings();
-  const [activeHelpTopicId, setActiveHelpTopicId] = useState<string>(
-    DEFAULT_HELP_TOPIC_ID,
-  );
-  const [activeFolderPath, setActiveFolderPathState] = useState<string | null>(
-    null,
-  );
-  const [largeVaultWarningCount, setLargeVaultWarningCount] = useState<
-    number | null
-  >(null);
+  const [activeHelpTopicId, setActiveHelpTopicId] = useState<string>(DEFAULT_HELP_TOPIC_ID);
+  const [activeFolderPath, setActiveFolderPathState] = useState<string | null>(null);
+  const [largeVaultWarningCount, setLargeVaultWarningCount] = useState<number | null>(null);
   const [isVaultManagerOpen, setIsVaultManagerOpen] = useState(false);
-  const [activeSettingsPage, setActiveSettingsPage] =
-    useState<SettingsPageId>("appearance");
-  const [selectedExamFileRows, setSelectedExamFileRows] = useState<ExamSelectionRows>(
-    [],
-  );
+  const [activeSettingsPage, setActiveSettingsPage] = useState<SettingsPageId>("appearance");
+  const [selectedExamFileRows, setSelectedExamFileRows] = useState<ExamSelectionRows>([]);
   const [stagedTaskAreaTogglesByKey, setStagedTaskAreaTogglesByKey] = useState<
     Record<string, StagedTaskAreaToggle>
   >({});
@@ -349,10 +330,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     files: vault.files,
     vaultPath: vault.vaultPath,
   });
-  const examFilePathSet = useMemo(
-    () => new Set(examFiles.map((file) => file.path)),
-    [examFiles],
-  );
+  const examFilePathSet = useMemo(() => new Set(examFiles.map((file) => file.path)), [examFiles]);
   const selectedExamFilePaths = useMemo(
     () => flattenExamSelectionRows(selectedExamFileRows),
     [selectedExamFileRows],
@@ -448,14 +426,12 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       setSpacedRepetitionBoxes: settings.setSpacedRepetitionBoxes,
       setSpacedRepetitionOrder: settings.setSpacedRepetitionOrder,
       setSpacedRepetitionPageSize: settings.setSpacedRepetitionPageSize,
-      setSpacedRepetitionRepetitionStrength:
-        settings.setSpacedRepetitionRepetitionStrength,
+      setSpacedRepetitionRepetitionStrength: settings.setSpacedRepetitionRepetitionStrength,
       setSpacedRepetitionStatsView: settings.setSpacedRepetitionStatsView,
       spacedRepetitionBoxes: settings.spacedRepetitionBoxes,
       spacedRepetitionOrder: settings.spacedRepetitionOrder,
       spacedRepetitionPageSize: settings.spacedRepetitionPageSize,
-      spacedRepetitionRepetitionStrength:
-        settings.spacedRepetitionRepetitionStrength,
+      spacedRepetitionRepetitionStrength: settings.spacedRepetitionRepetitionStrength,
       spacedRepetitionStatsView: settings.spacedRepetitionStatsView,
     },
   });
@@ -511,9 +487,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       return null;
     }
     return (
-      recentVaults.find(
-        (entry) => normalizeVaultPath(entry.path) === normalizedActivePath,
-      ) ?? null
+      recentVaults.find((entry) => normalizeVaultPath(entry.path) === normalizedActivePath) ?? null
     );
   }, [recentVaults, vaultPath]);
 
@@ -544,12 +518,10 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         lastOpenedAt: updates.lastOpenedAt ?? current.lastOpenedAt,
         status: updates.status ?? current.status,
         lastSeenAt:
-          typeof updates.lastSeenAt === "undefined"
-            ? current.lastSeenAt
-            : updates.lastSeenAt,
+          typeof updates.lastSeenAt === "undefined" ? current.lastSeenAt : updates.lastSeenAt,
         lastError:
           typeof updates.lastError === "undefined"
-            ? current.lastError ?? null
+            ? (current.lastError ?? null)
             : updates.lastError,
       });
       const unchanged =
@@ -591,9 +563,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       }
       const now = new Date().toISOString();
       const existing =
-        recentVaults.find(
-          (entry) => normalizeVaultPath(entry.path) === normalizedPath,
-        ) ?? null;
+        recentVaults.find((entry) => normalizeVaultPath(entry.path) === normalizedPath) ?? null;
       const nextEntry = createRecentVaultEntry(path, {
         id: existing?.id ?? buildRecentVaultId(path, currentSystemId),
         systemId: currentSystemId,
@@ -624,9 +594,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         return null;
       }
       const existing =
-        recentVaults.find(
-          (entry) => normalizeVaultPath(entry.path) === normalizedPath,
-        ) ?? null;
+        recentVaults.find((entry) => normalizeVaultPath(entry.path) === normalizedPath) ?? null;
       if (existing) {
         return updateRecentVaultEntry(existing.id, {
           status: "missing",
@@ -692,17 +660,14 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       const normalizedStoredVaultPath = normalizeVaultPath(storedVaultPath);
       const hasCurrentSystemVault =
         normalizedStoredVaultPath &&
-        recentVaults.some(
-          (entry) => normalizeVaultPath(entry.path) === normalizedStoredVaultPath,
-        );
+        recentVaults.some((entry) => normalizeVaultPath(entry.path) === normalizedStoredVaultPath);
       if (!hasCurrentSystemVault) {
         return;
       }
       const results = await loadVault(storedVaultPath, {
         persist: false,
         clearOnFailure: false,
-        errorMessage:
-          "Saved vault is unavailable. Please reselect.",
+        errorMessage: "Saved vault is unavailable. Please reselect.",
       });
       if (!results && !cancelled) {
         await markRecentVaultMissingByPath(
@@ -717,13 +682,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       cancelled = true;
     };
-  }, [
-    loadVault,
-    markRecentVaultMissingByPath,
-    recentVaults,
-    settingsLoaded,
-    storedVaultPath,
-  ]);
+  }, [loadVault, markRecentVaultMissingByPath, recentVaults, settingsLoaded, storedVaultPath]);
 
   useEffect(() => {
     if (!settingsLoaded) {
@@ -760,8 +719,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
     const storedFile = vault.files.find(
-      (file) =>
-        file.relative_path === activeNotePath || file.path === activeNotePath,
+      (file) => file.relative_path === activeNotePath || file.path === activeNotePath,
     );
     if (!storedFile) {
       setActiveNotePath(null);
@@ -860,10 +818,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         restorePreviewSnapshot(previewSnapshot);
         restoreFlashcardsSnapshot(flashcardsSnapshot);
         const inspected = await inspectVaultPath(path);
-        await markRecentVaultMissingByPath(
-          path,
-          inspected.lastError ?? errorMessage,
-        );
+        await markRecentVaultMissingByPath(path, inspected.lastError ?? errorMessage);
         return false;
       }
 
@@ -996,11 +951,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const handleRelinkVault = useCallback(
-    async (
-      vaultId: string,
-      nextPath: string,
-      source = "unknown",
-    ): Promise<VaultRecheckResult> => {
+    async (vaultId: string, nextPath: string, source = "unknown"): Promise<VaultRecheckResult> => {
       const entry = recentVaults.find((candidate) => candidate.id === vaultId);
       if (!entry) {
         return {
@@ -1069,12 +1020,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
           : "Vault verfuegbar, Laden fehlgeschlagen.",
       };
     },
-    [
-      handleSwitchVault,
-      inspectVaultPath,
-      recentVaults,
-      updateRecentVaultEntry,
-    ],
+    [handleSwitchVault, inspectVaultPath, recentVaults, updateRecentVaultEntry],
   );
 
   const handleRemoveRecentVault = useCallback(
@@ -1086,9 +1032,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       if (lastRecentVaultRef.current === normalized) {
         lastRecentVaultRef.current = null;
       }
-      const next = recentVaults.filter(
-        (entry) => normalizeVaultPath(entry.path) !== normalized,
-      );
+      const next = recentVaults.filter((entry) => normalizeVaultPath(entry.path) !== normalized);
       if (next.length === recentVaults.length) {
         return;
       }
@@ -1223,9 +1167,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         setAccentColor(nextValue);
       } else {
         setAccentError(
-          settings.language === "de"
-            ? "HEX muss #RRGGBB sein."
-            : "HEX must be #RRGGBB.",
+          settings.language === "de" ? "HEX muss #RRGGBB sein." : "HEX must be #RRGGBB.",
         );
       }
     },
@@ -1251,21 +1193,18 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [vaultPath]);
 
-  const stageTaskAreaToggle = useCallback(
-    (scope: TaskMutationScope, nextEnabled: boolean) => {
-      const key = buildTaskMutationScopeKey(scope);
-      setStagedTaskAreaTogglesByKey((prev) => ({
-        ...prev,
-        [key]: {
-          scope,
-          nextEnabled,
-          stagedAt: Date.now(),
-        },
-      }));
-      setTaskAreaToggleNoticeByKey((prev) => removeRecordKeys(prev, [key]));
-    },
-    [],
-  );
+  const stageTaskAreaToggle = useCallback((scope: TaskMutationScope, nextEnabled: boolean) => {
+    const key = buildTaskMutationScopeKey(scope);
+    setStagedTaskAreaTogglesByKey((prev) => ({
+      ...prev,
+      [key]: {
+        scope,
+        nextEnabled,
+        stagedAt: Date.now(),
+      },
+    }));
+    setTaskAreaToggleNoticeByKey((prev) => removeRecordKeys(prev, [key]));
+  }, []);
 
   const getStagedTaskAreaToggle = useCallback(
     (scope: TaskMutationScope) => {
@@ -1330,14 +1269,11 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
           failedNoticeByKey[key] =
             "Card-area update could not be saved. Local switch state was reverted.";
           if (import.meta.env.DEV) {
-            console.warn(
-              "[task-area-toggle] Failed to flush staged task-area toggle",
-              {
-                trigger,
-                key,
-                error: asErrorMessage(error, "Unknown error"),
-              },
-            );
+            console.warn("[task-area-toggle] Failed to flush staged task-area toggle", {
+              trigger,
+              key,
+              error: asErrorMessage(error, "Unknown error"),
+            });
           }
         } finally {
           processedKeys.push(key);
@@ -1369,69 +1305,72 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     await fastFlashcards.handleFlashcardScan();
   }, [fastFlashcards, flushPendingTaskAreaToggles]);
 
-  const handleRescanVault = useCallback(async (source = "unknown") => {
-    await flushPendingTaskAreaToggles(`vault-rescan:${source}`);
-    if (!vaultPath) {
-      setListError("Kein aktiver Vault zum Aktualisieren.");
-      return false;
-    }
-    if (listState === "loading") {
+  const handleRescanVault = useCallback(
+    async (source = "unknown") => {
+      await flushPendingTaskAreaToggles(`vault-rescan:${source}`);
+      if (!vaultPath) {
+        setListError("Kein aktiver Vault zum Aktualisieren.");
+        return false;
+      }
+      if (listState === "loading") {
+        if (import.meta.env.DEV) {
+          console.info("[vault] Refresh skipped because a scan is already running.", {
+            source,
+          });
+        }
+        return false;
+      }
       if (import.meta.env.DEV) {
-        console.info("[vault] Refresh skipped because a scan is already running.", {
-          source,
+        console.info("[vault] Refresh requested", { vaultPath, source });
+      }
+      if (activeVaultEntry?.status === "missing") {
+        const result = await handleRecheckVault(activeVaultEntry.id, {
+          loadIfAvailable: true,
+          source: `${source}:active-missing`,
         });
+        if (!result.available) {
+          setListError(result.message);
+        }
+        return result.available && result.loaded;
       }
-      return false;
-    }
-    if (import.meta.env.DEV) {
-      console.info("[vault] Refresh requested", { vaultPath, source });
-    }
-    if (activeVaultEntry?.status === "missing") {
-      const result = await handleRecheckVault(activeVaultEntry.id, {
-        loadIfAvailable: true,
-        source: `${source}:active-missing`,
-      });
-      if (!result.available) {
-        setListError(result.message);
+      const success = await rescanVault();
+      if (success) {
+        if (activeVaultEntry) {
+          await updateRecentVaultEntry(activeVaultEntry.id, {
+            status: "available",
+            lastSeenAt: new Date().toISOString(),
+            lastError: null,
+          });
+        } else {
+          await markRecentVaultAvailable(vaultPath);
+        }
+      } else if (activeVaultEntry) {
+        const inspected = await inspectVaultPath(vaultPath);
+        if (!inspected.available) {
+          await updateRecentVaultEntry(activeVaultEntry.id, {
+            status: "missing",
+            lastError: inspected.lastError ?? "Vault path unavailable.",
+          });
+        }
       }
-      return result.available && result.loaded;
-    }
-    const success = await rescanVault();
-    if (success) {
-      if (activeVaultEntry) {
-        await updateRecentVaultEntry(activeVaultEntry.id, {
-          status: "available",
-          lastSeenAt: new Date().toISOString(),
-          lastError: null,
-        });
-      } else {
-        await markRecentVaultAvailable(vaultPath);
+      if (!success && import.meta.env.DEV) {
+        console.warn("[vault] Refresh failed", { vaultPath, source });
       }
-    } else if (activeVaultEntry) {
-      const inspected = await inspectVaultPath(vaultPath);
-      if (!inspected.available) {
-        await updateRecentVaultEntry(activeVaultEntry.id, {
-          status: "missing",
-          lastError: inspected.lastError ?? "Vault path unavailable.",
-        });
-      }
-    }
-    if (!success && import.meta.env.DEV) {
-      console.warn("[vault] Refresh failed", { vaultPath, source });
-    }
-    return success;
-  }, [
-    activeVaultEntry,
-    handleRecheckVault,
-    inspectVaultPath,
-    listState,
-    markRecentVaultAvailable,
-    rescanVault,
-    setListError,
-    updateRecentVaultEntry,
-    vaultPath,
-    flushPendingTaskAreaToggles,
-  ]);
+      return success;
+    },
+    [
+      activeVaultEntry,
+      handleRecheckVault,
+      inspectVaultPath,
+      listState,
+      markRecentVaultAvailable,
+      rescanVault,
+      setListError,
+      updateRecentVaultEntry,
+      vaultPath,
+      flushPendingTaskAreaToggles,
+    ],
+  );
 
   const handleResetIndex = useCallback(() => {
     if (!vaultPath) {

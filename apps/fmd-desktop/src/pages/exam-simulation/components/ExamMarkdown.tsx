@@ -71,11 +71,7 @@ const markdownSchema = {
   ],
   attributes: {
     ...defaultSchema.attributes,
-    div: [
-      ...(defaultSchema.attributes?.div ?? []),
-      "data-fmd-media-block",
-      "data-media-index",
-    ],
+    div: [...(defaultSchema.attributes?.div ?? []), "data-fmd-media-block", "data-media-index"],
     mark: [...(defaultSchema.attributes?.mark ?? []), "className"],
     ol: [...(defaultSchema.attributes?.ol ?? []), "data-md-ordered-delimiter"],
     table: [...(defaultSchema.attributes?.table ?? []), "className"],
@@ -139,9 +135,7 @@ const readMarkdownElementProperty = (node: unknown, key: string) => {
   if (key in properties) {
     return properties[key];
   }
-  const camelKey = key.replace(/-([a-z])/g, (_match, character: string) =>
-    character.toUpperCase()
-  );
+  const camelKey = key.replace(/-([a-z])/g, (_match, character: string) => character.toUpperCase());
   return properties[camelKey];
 };
 
@@ -155,10 +149,7 @@ const toClassNameTokens = (value: unknown): string[] => {
   return [];
 };
 
-const readMarkdownElementStringProperty = (
-  node: unknown,
-  key: string,
-): string | null => {
+const readMarkdownElementStringProperty = (node: unknown, key: string): string | null => {
   const value = readMarkdownElementProperty(node, key);
   if (typeof value === "string") {
     return value.trim() || null;
@@ -260,12 +251,14 @@ const readMarkdownNodeSource = (node: unknown, source: string): string => {
       start?: { offset?: number; line?: number; column?: number };
       end?: { offset?: number; line?: number; column?: number };
     };
-    const startOffset = typeof position.start?.offset === "number"
-      ? position.start.offset
-      : resolveOffsetFromLineColumn(position.start?.line, position.start?.column);
-    const endOffset = typeof position.end?.offset === "number"
-      ? position.end.offset
-      : resolveOffsetFromLineColumn(position.end?.line, position.end?.column);
+    const startOffset =
+      typeof position.start?.offset === "number"
+        ? position.start.offset
+        : resolveOffsetFromLineColumn(position.start?.line, position.start?.column);
+    const endOffset =
+      typeof position.end?.offset === "number"
+        ? position.end.offset
+        : resolveOffsetFromLineColumn(position.end?.line, position.end?.column);
     if (
       typeof startOffset === "number" &&
       typeof endOffset === "number" &&
@@ -322,19 +315,13 @@ const renderExamMathInNode = (node: ReactNode, keyPrefix = "exam-md-math"): Reac
 };
 
 const renderExamMathChildren = (children: ReactNode, keyPrefix: string) =>
-  Children.map(children, (child, index) =>
-    renderExamMathInNode(child, `${keyPrefix}-${index}`),
-  );
+  Children.map(children, (child, index) => renderExamMathInNode(child, `${keyPrefix}-${index}`));
 
 const renderTextWithLineBreaks = (text: string, keyPrefix: string): ReactNode[] => {
   const lines = text.split("\n");
   const nodes: ReactNode[] = [];
   lines.forEach((line, lineIndex) => {
-    nodes.push(
-      <Fragment key={`${keyPrefix}-line-${lineIndex}`}>
-        {line}
-      </Fragment>,
-    );
+    nodes.push(<Fragment key={`${keyPrefix}-line-${lineIndex}`}>{line}</Fragment>);
     if (lineIndex < lines.length - 1) {
       nodes.push(<br key={`${keyPrefix}-br-${lineIndex}`} />);
     }
@@ -380,10 +367,7 @@ const renderExamTableCellContent = ({
     }
     if (segment.kind === "media") {
       return (
-        <div
-          className={`exam-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`}
-          key={segmentKey}
-        >
+        <div className={`exam-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`} key={segmentKey}>
           <FlashcardMediaGroup
             media={segment.items}
             vaultPngAssets={vaultPngAssets}
@@ -393,10 +377,7 @@ const renderExamTableCellContent = ({
       );
     }
     return (
-      <div
-        className={`exam-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`}
-        key={segmentKey}
-      >
+      <div className={`exam-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`} key={segmentKey}>
         <img
           src={segment.src}
           alt={segment.alt ?? ""}
@@ -428,11 +409,7 @@ export const ExamMarkdown = ({
   return (
     <div className={classes}>
       <ReactMarkdown
-        remarkPlugins={[
-          remarkGfm,
-          remarkPreserveSoftBreaks,
-          remarkPreserveOrderedListDelimiters,
-        ]}
+        remarkPlugins={[remarkGfm, remarkPreserveSoftBreaks, remarkPreserveOrderedListDelimiters]}
         rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
         components={{
           h1: ({ node: _node, children, ...props }) => (
@@ -457,7 +434,10 @@ export const ExamMarkdown = ({
             <p {...props}>{renderExamMathChildren(children, "exam-p")}</p>
           ),
           ol: ({ node, ...props }) => {
-            const delimiterFromNode = readMarkdownElementProperty(node, "data-md-ordered-delimiter");
+            const delimiterFromNode = readMarkdownElementProperty(
+              node,
+              "data-md-ordered-delimiter",
+            );
             const delimiterFromPosition = resolveOrderedListDelimiter(
               mediaPreview.markdown,
               readMarkdownNodeStartPosition(node),
@@ -466,9 +446,10 @@ export const ExamMarkdown = ({
               return <ol {...props} />;
             }
             const startRaw = props.start;
-            const startValue = typeof startRaw === "number"
-              ? startRaw
-              : Number.parseInt(String(startRaw ?? "1"), 10);
+            const startValue =
+              typeof startRaw === "number"
+                ? startRaw
+                : Number.parseInt(String(startRaw ?? "1"), 10);
             const previous = Number.isNaN(startValue) ? 0 : Math.max(0, startValue - 1);
             const style = {
               ...(props.style ?? {}),
@@ -480,7 +461,9 @@ export const ExamMarkdown = ({
             <li {...props}>{renderExamMathChildren(children, "exam-li")}</li>
           ),
           blockquote: ({ node: _node, children, ...props }) => (
-            <blockquote {...props}>{renderExamMathChildren(children, "exam-blockquote")}</blockquote>
+            <blockquote {...props}>
+              {renderExamMathChildren(children, "exam-blockquote")}
+            </blockquote>
           ),
           aside: ({ node, children, ...props }) => {
             if (isGlobalNavigationNode(node)) {
@@ -508,16 +491,15 @@ export const ExamMarkdown = ({
               return <div {...props}>{renderExamMathChildren(children, "exam-div")}</div>;
             }
             const mediaIndexRaw = readMarkdownElementProperty(node, "data-media-index");
-            let mediaIndex = Number.parseInt(
-              String(mediaIndexRaw ?? ""),
-              10,
-            );
+            let mediaIndex = Number.parseInt(String(mediaIndexRaw ?? ""), 10);
             if (!Number.isFinite(mediaIndex) && hasPlaceholderIndex) {
               mediaIndex = placeholderIndex;
             }
             const mediaGroup = Number.isFinite(mediaIndex)
               ? (mediaPreview.groups[mediaIndex] ?? null)
-              : (mediaPreview.groups.length === 1 ? mediaPreview.groups[0] ?? null : null);
+              : mediaPreview.groups.length === 1
+                ? (mediaPreview.groups[0] ?? null)
+                : null;
             if (!mediaGroup) {
               return null;
             }

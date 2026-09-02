@@ -58,10 +58,7 @@ export const MediaBlockCard = ({
   }, [item.rawBlock, preferredMode]);
 
   const toggleMode = (
-    event?:
-      | MouseEvent<HTMLElement>
-      | KeyboardEvent<HTMLElement>
-      | KeyboardEvent<HTMLInputElement>,
+    event?: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement> | KeyboardEvent<HTMLInputElement>,
   ) => {
     event?.preventDefault();
     event?.stopPropagation();
@@ -103,10 +100,7 @@ export const MediaBlockCard = ({
 
     return (
       <div className="flashcard-media-source-fallback">
-        <span
-          className="svg-preview-badge"
-          title={svgValidation?.invalidReason ?? "SVG invalid"}
-        >
+        <span className="svg-preview-badge" title={svgValidation?.invalidReason ?? "SVG invalid"}>
           SVG invalid
         </span>
         <pre className="flashcard-code-block media-block-card-source">

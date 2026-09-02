@@ -32,9 +32,10 @@ const getRecordValueByField = (
     return record.normalizedFields[field] ?? null;
   }
   const normalizedField = toLower(field);
-  const matchedKey = Object.keys(record.normalizedFields)
-    .find((key) => toLower(key) === normalizedField);
-  return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
+  const matchedKey = Object.keys(record.normalizedFields).find(
+    (key) => toLower(key) === normalizedField,
+  );
+  return matchedKey ? (record.normalizedFields[matchedKey] ?? null) : null;
 };
 
 export const normalizeDatabasePieExcludedValues = (
@@ -73,9 +74,7 @@ export const toDatabasePieLabel = (
     return DATABASE_PIE_EMPTY_LABEL;
   }
   if (Array.isArray(value)) {
-    const normalized = value
-      .map((entry) => String(entry).trim())
-      .filter(Boolean);
+    const normalized = value.map((entry) => String(entry).trim()).filter(Boolean);
     return normalized.length > 0 ? normalized.join(", ") : DATABASE_PIE_EMPTY_LABEL;
   }
   if (typeof value === "boolean") {
@@ -100,9 +99,7 @@ export const getDatabasePieGroupLabels = (
 ): string[] => {
   if (groupType === "tags" || groupType === "multiselect") {
     if (Array.isArray(value)) {
-      const labels = value
-        .map((entry) => String(entry).trim())
-        .filter(Boolean);
+      const labels = value.map((entry) => String(entry).trim()).filter(Boolean);
       return labels.length > 0 ? labels : [DATABASE_PIE_EMPTY_LABEL];
     }
     if (typeof value === "string") {

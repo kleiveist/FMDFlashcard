@@ -40,8 +40,7 @@ type KeyboardShortcutsSectionProps = {
   setKeyboardShortcuts: (settings: KeyboardShortcutSettings) => void;
 };
 
-const buildRowId = (commandId: string) =>
-  `shortcut-row-${commandId.replace(/[^a-z0-9_-]/gi, "-")}`;
+const buildRowId = (commandId: string) => `shortcut-row-${commandId.replace(/[^a-z0-9_-]/gi, "-")}`;
 
 const areBindingsEqual = (
   left: KeyboardShortcutSettings["bindings"],
@@ -101,22 +100,14 @@ const SHORTCUT_COMMAND_NOTES_KEYS: Partial<Record<string, SettingsI18nKey>> = {
   "vault.refresh": "settings.keyboard.command.vaultRefresh.notes",
 };
 
-const resolveShortcutCommandCopy = (
-  language: SettingsLanguage,
-  command: ShortcutCommand,
-) => {
+const resolveShortcutCommandCopy = (language: SettingsLanguage, command: ShortcutCommand) => {
   const titleKey = SHORTCUT_COMMAND_TITLE_KEYS[command.id];
   const descriptionKey = SHORTCUT_COMMAND_DESCRIPTION_KEYS[command.id];
   const notesKey = SHORTCUT_COMMAND_NOTES_KEYS[command.id];
   return {
     title: titleKey ? tSettings(language, titleKey) : command.title,
-    description: descriptionKey
-      ? tSettings(language, descriptionKey)
-      : command.description,
-    notes:
-      command.notes && notesKey
-        ? tSettings(language, notesKey)
-        : command.notes,
+    description: descriptionKey ? tSettings(language, descriptionKey) : command.description,
+    notes: command.notes && notesKey ? tSettings(language, notesKey) : command.notes,
   };
 };
 
@@ -203,12 +194,10 @@ export const KeyboardShortcutsSection = ({
   setKeyboardShortcuts,
 }: KeyboardShortcutsSectionProps) => {
   const platform = getShortcutPlatform();
-  const [draftShortcuts, setDraftShortcuts] =
-    useState<KeyboardShortcutSettings>(keyboardShortcuts);
+  const [draftShortcuts, setDraftShortcuts] = useState<KeyboardShortcutSettings>(keyboardShortcuts);
   const [editingCommandId, setEditingCommandId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [contextFilter, setContextFilter] =
-    useState<ShortcutContextId | "all">("all");
+  const [contextFilter, setContextFilter] = useState<ShortcutContextId | "all">("all");
 
   const commandById = useMemo(() => {
     return new Map(SHORTCUT_COMMANDS.map((command) => [command.id, command]));
@@ -232,11 +221,8 @@ export const KeyboardShortcutsSection = ({
 
   const updateBinding = useCallback(
     (command: ShortcutCommand, nextBinding: string | null) => {
-      const normalizedDefault = normalizeBinding(
-        getDefaultBinding(command, platform),
-      );
-      const normalizedNext =
-        nextBinding === null ? null : normalizeBinding(nextBinding);
+      const normalizedDefault = normalizeBinding(getDefaultBinding(command, platform));
+      const normalizedNext = nextBinding === null ? null : normalizeBinding(nextBinding);
       setDraftShortcuts((prev) => {
         const nextBindings = { ...prev.bindings };
         if (normalizedNext === null) {
@@ -368,9 +354,7 @@ export const KeyboardShortcutsSection = ({
           related: new Set<string>(),
         };
         entry.bindings.add(conflict.binding);
-        conflict.commandIds
-          .filter((id) => id !== commandId)
-          .forEach((id) => entry.related.add(id));
+        conflict.commandIds.filter((id) => id !== commandId).forEach((id) => entry.related.add(id));
         map.set(commandId, entry);
       });
     });
@@ -424,25 +408,17 @@ export const KeyboardShortcutsSection = ({
           <select
             className="text-input"
             value={contextFilter}
-            onChange={(event) =>
-              setContextFilter(event.target.value as ShortcutContextId | "all")
-            }
+            onChange={(event) => setContextFilter(event.target.value as ShortcutContextId | "all")}
             aria-label="Filter by context"
           >
-            <option value="all">
-              {tSettings(language, "settings.keyboard.allContexts")}
-            </option>
+            <option value="all">{tSettings(language, "settings.keyboard.allContexts")}</option>
             {SHORTCUT_CONTEXTS.map((context) => (
               <option key={context.id} value={context.id}>
                 {tSettings(language, SHORTCUT_CONTEXT_LABEL_KEYS[context.id])}
               </option>
             ))}
           </select>
-          <button
-            type="button"
-            className="ghost small"
-            onClick={handleRestoreDefaults}
-          >
+          <button type="button" className="ghost small" onClick={handleRestoreDefaults}>
             {tSettings(language, "settings.keyboard.restoreDefaults")}
           </button>
         </div>
@@ -452,12 +428,7 @@ export const KeyboardShortcutsSection = ({
             <p className="shortcut-conflicts-title">
               {formatSettingsText(language, "settings.keyboard.resolveConflicts", {
                 count: conflictSummary.length,
-                suffix:
-                  conflictSummary.length === 1
-                    ? ""
-                    : language === "de"
-                      ? "e"
-                      : "s",
+                suffix: conflictSummary.length === 1 ? "" : language === "de" ? "e" : "s",
               })}
             </p>
             {conflictSummary.map((conflict) => (
@@ -500,9 +471,7 @@ export const KeyboardShortcutsSection = ({
             const isEditing = editingCommandId === command.id;
             const isConflicting = Boolean(conflictInfo?.bindings.size);
             const conflictBindings = conflictInfo
-              ? Array.from(conflictInfo.bindings).map((binding) =>
-                  formatBinding(binding, platform),
-                )
+              ? Array.from(conflictInfo.bindings).map((binding) => formatBinding(binding, platform))
               : [];
             const relatedCommands = conflictInfo
               ? Array.from(conflictInfo.related)
@@ -529,11 +498,7 @@ export const KeyboardShortcutsSection = ({
                 <div className="shortcut-row-top">
                   <div className="shortcut-row-left">
                     {isEditing ? (
-                      <button
-                        type="button"
-                        className="ghost small"
-                        onClick={handleCancelEditing}
-                      >
+                      <button type="button" className="ghost small" onClick={handleCancelEditing}>
                         {tSettings(language, "settings.keyboard.cancel")}
                       </button>
                     ) : (

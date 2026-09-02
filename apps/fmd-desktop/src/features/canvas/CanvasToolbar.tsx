@@ -11,10 +11,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { ModalShell } from "../../components/ModalShell";
-import {
-  type CanvasCustomColorSlot,
-  normalizeCanvasHex,
-} from "./canvasSettings";
+import { type CanvasCustomColorSlot, normalizeCanvasHex } from "./canvasSettings";
 import { type CanvasNodeShape } from "./document";
 
 type IconProps = {
@@ -28,9 +25,7 @@ type CanvasPopoverPosition = {
 
 const POPOVER_OFFSET = 6;
 
-const resolvePopoverPosition = (
-  anchor: HTMLElement | null,
-): CanvasPopoverPosition => {
+const resolvePopoverPosition = (anchor: HTMLElement | null): CanvasPopoverPosition => {
   const rect = anchor?.getBoundingClientRect();
   if (!rect) {
     return { top: 0, left: 0 };
@@ -41,13 +36,7 @@ const resolvePopoverPosition = (
   };
 };
 
-const SvgIcon = ({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) => (
+const SvgIcon = ({ children, className }: { children: ReactNode; className?: string }) => (
   <svg
     className={className}
     viewBox="0 0 24 24"
@@ -222,13 +211,7 @@ export const CanvasPasteIcon = ({ className }: IconProps) => (
   </SvgIcon>
 );
 
-const ShapeIcon = ({
-  shape,
-  className,
-}: {
-  shape: CanvasNodeShape;
-  className?: string;
-}) => (
+const ShapeIcon = ({ shape, className }: { shape: CanvasNodeShape; className?: string }) => (
   <SvgIcon className={className}>
     {shape === "ellipse" ? (
       <ellipse cx="12" cy="12" rx="7" ry="5" />
@@ -251,12 +234,8 @@ const EdgeDirectionIcon = ({
 }) => (
   <SvgIcon className={className}>
     <path d="M5 12h14" strokeDasharray={direction === "none" ? "3 3" : undefined} />
-    {(direction === "forward" || direction === "both") ? (
-      <path d="m16 8 4 4-4 4" />
-    ) : null}
-    {(direction === "backward" || direction === "both") ? (
-      <path d="m8 8-4 4 4 4" />
-    ) : null}
+    {direction === "forward" || direction === "both" ? <path d="m16 8 4 4-4 4" /> : null}
+    {direction === "backward" || direction === "both" ? <path d="m8 8-4 4 4 4" /> : null}
   </SvgIcon>
 );
 
@@ -277,11 +256,9 @@ export const CanvasIconButton = ({
 }) => (
   <button
     type="button"
-    className={[
-      "canvas-toolbar-icon-button",
-      active ? "active" : "",
-      className,
-    ].filter(Boolean).join(" ")}
+    className={["canvas-toolbar-icon-button", active ? "active" : "", className]
+      .filter(Boolean)
+      .join(" ")}
     onClick={onClick}
     disabled={disabled}
     aria-label={label}
@@ -302,11 +279,9 @@ export const CanvasFloatingToolbar = ({
   className?: string;
 }) => (
   <div
-    className={[
-      "canvas-floating-toolbar",
-      "business-canvas-floating-toolbar",
-      className,
-    ].filter(Boolean).join(" ")}
+    className={["canvas-floating-toolbar", "business-canvas-floating-toolbar", className]
+      .filter(Boolean)
+      .join(" ")}
     style={style}
   >
     {children}
@@ -345,10 +320,7 @@ const CanvasToolbarPortalPopover = ({
 
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
-      if (
-        target &&
-        (anchorRef.current?.contains(target) || popoverRef.current?.contains(target))
-      ) {
+      if (target && (anchorRef.current?.contains(target) || popoverRef.current?.contains(target))) {
         return;
       }
       onClose();
@@ -444,10 +416,7 @@ export const CanvasEdgeDirectionPicker = ({
   value: "none" | "forward" | "backward" | "both";
   onChange: (direction: "none" | "forward" | "backward" | "both") => void;
 }) => {
-  const directions = useMemo(
-    () => ["none", "forward", "backward", "both"] as const,
-    [],
-  );
+  const directions = useMemo(() => ["none", "forward", "backward", "both"] as const, []);
   return (
     <div className="canvas-edge-direction-icons" role="group" aria-label="Edge direction">
       {directions.map((direction) => (
@@ -513,11 +482,7 @@ export const CanvasColorPalette = ({
 
   return (
     <div className="canvas-toolbar-picker" ref={rootRef}>
-      <CanvasIconButton
-        label={label}
-        active={open}
-        onClick={() => setOpen((current) => !current)}
-      >
+      <CanvasIconButton label={label} active={open} onClick={() => setOpen((current) => !current)}>
         <CanvasPaletteIcon />
       </CanvasIconButton>
       {open ? (
@@ -634,12 +599,7 @@ export const CanvasDeleteConfirmDialog = ({
   >
     <p>{description}</p>
     <div className="modal-actions">
-      <button
-        type="button"
-        className="ghost small"
-        data-canvas-delete-cancel
-        onClick={onCancel}
-      >
+      <button type="button" className="ghost small" data-canvas-delete-cancel onClick={onCancel}>
         Abbrechen
       </button>
       <button type="button" className="ghost small danger" onClick={onConfirm}>

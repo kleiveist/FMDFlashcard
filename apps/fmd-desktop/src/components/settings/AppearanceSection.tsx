@@ -42,14 +42,9 @@ type AppearanceSectionProps = {
   editorBlueprintGrid: boolean;
   editorBlueprintGridIntensity: "light" | "medium" | "strong";
   onMarkdownEditorAccentEnabledToggle: (value: boolean) => void;
-  onMarkdownEditorAccentHexChange: (
-    mode: "light" | "dark",
-    value: string,
-  ) => void;
+  onMarkdownEditorAccentHexChange: (mode: "light" | "dark", value: string) => void;
   onEditorBlueprintGridToggle: (value: boolean) => void;
-  onEditorBlueprintGridIntensityChange: (
-    value: "light" | "medium" | "strong",
-  ) => void;
+  onEditorBlueprintGridIntensityChange: (value: "light" | "medium" | "strong") => void;
   onDesignModeChange: (nextMode: DesignMode) => void;
   onThemeToggle: (nextTheme: ThemeMode) => void;
   designMode: DesignMode;
@@ -101,9 +96,7 @@ export const AppearanceSection = ({
         </button>
         <button
           type="button"
-          className={`pill pill-button ${
-            activeTab === "editor-accent" ? "active" : ""
-          }`}
+          className={`pill pill-button ${activeTab === "editor-accent" ? "active" : ""}`}
           role="tab"
           aria-selected={activeTab === "editor-accent"}
           aria-current={activeTab === "editor-accent" ? "page" : undefined}
@@ -141,9 +134,7 @@ export const AppearanceSection = ({
                       <input
                         type="checkbox"
                         checked={theme === "dark"}
-                        onChange={(event) =>
-                          onThemeToggle(event.target.checked ? "dark" : "light")
-                        }
+                        onChange={(event) => onThemeToggle(event.target.checked ? "dark" : "light")}
                         aria-label="Theme umschalten"
                       />
                       <span className="slider" />
@@ -167,9 +158,7 @@ export const AppearanceSection = ({
                   >
                     <button
                       type="button"
-                      className={`design-mode-option ${
-                        designMode === "smart" ? "active" : ""
-                      }`}
+                      className={`design-mode-option ${designMode === "smart" ? "active" : ""}`}
                       onClick={() => onDesignModeChange("smart")}
                       aria-pressed={designMode === "smart"}
                     >
@@ -177,9 +166,7 @@ export const AppearanceSection = ({
                     </button>
                     <button
                       type="button"
-                      className={`design-mode-option ${
-                        designMode === "modern" ? "active" : ""
-                      }`}
+                      className={`design-mode-option ${designMode === "modern" ? "active" : ""}`}
                       onClick={() => onDesignModeChange("modern")}
                       aria-pressed={designMode === "modern"}
                     >
@@ -187,9 +174,7 @@ export const AppearanceSection = ({
                     </button>
                     <button
                       type="button"
-                      className={`design-mode-option ${
-                        designMode === "desktop" ? "active" : ""
-                      }`}
+                      className={`design-mode-option ${designMode === "desktop" ? "active" : ""}`}
                       onClick={() => onDesignModeChange("desktop")}
                       aria-pressed={designMode === "desktop"}
                     >
@@ -239,8 +224,7 @@ export const AppearanceSection = ({
                     </button>
                   </div>
                   <span className={`helper-text ${accentError ? "error-text" : ""}`}>
-                    {accentError ||
-                      tSettings(language, "settings.appearance.accentColor.helper")}
+                    {accentError || tSettings(language, "settings.appearance.accentColor.helper")}
                   </span>
                 </div>
               </div>
@@ -261,14 +245,10 @@ export const AppearanceSection = ({
             markdownEditorAccentDarkHex={markdownEditorAccentDarkHex}
             editorBlueprintGrid={editorBlueprintGrid}
             editorBlueprintGridIntensity={editorBlueprintGridIntensity}
-            onMarkdownEditorAccentEnabledToggle={
-              onMarkdownEditorAccentEnabledToggle
-            }
+            onMarkdownEditorAccentEnabledToggle={onMarkdownEditorAccentEnabledToggle}
             onMarkdownEditorAccentHexChange={onMarkdownEditorAccentHexChange}
             onEditorBlueprintGridToggle={onEditorBlueprintGridToggle}
-            onEditorBlueprintGridIntensityChange={
-              onEditorBlueprintGridIntensityChange
-            }
+            onEditorBlueprintGridIntensityChange={onEditorBlueprintGridIntensityChange}
           />
         </div>
       </div>

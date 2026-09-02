@@ -24,9 +24,12 @@ export const DRAG_CHANNELS = {
 
 export type DragChannel = (typeof DRAG_CHANNELS)[keyof typeof DRAG_CHANNELS];
 
-type DragEventLike = {
-  dataTransfer?: DataTransfer | null;
-} | null | undefined;
+type DragEventLike =
+  | {
+      dataTransfer?: DataTransfer | null;
+    }
+  | null
+  | undefined;
 
 type InternalDragSession = {
   payload: unknown;
@@ -54,11 +57,7 @@ const resolveDataTransfer = (event: DragEventLike) => event?.dataTransfer ?? nul
 const buildInternalDragMimeType = (channel: DragChannel) =>
   `${INTERNAL_DRAG_MIME_PREFIX}${channel}`;
 
-const setDataSafe = (
-  dataTransfer: DataTransfer,
-  type: string,
-  value: string,
-) => {
+const setDataSafe = (dataTransfer: DataTransfer, type: string, value: string) => {
   try {
     dataTransfer.setData(type, value);
     return true;
@@ -126,10 +125,7 @@ export const readPlainTextDragData = (event: DragEventLike) => {
   return getDataSafe(dataTransfer, "text/plain");
 };
 
-export const setDropEffectSafe = (
-  event: DragEventLike,
-  effect: DataTransfer["dropEffect"],
-) => {
+export const setDropEffectSafe = (event: DragEventLike, effect: DataTransfer["dropEffect"]) => {
   const dataTransfer = resolveDataTransfer(event);
   if (!dataTransfer) {
     return;
@@ -156,12 +152,7 @@ export const setEffectAllowedSafe = (
   }
 };
 
-export const setDragImageSafe = (
-  event: DragEventLike,
-  element: Element,
-  x: number,
-  y: number,
-) => {
+export const setDragImageSafe = (event: DragEventLike, element: Element, x: number, y: number) => {
   const dataTransfer = resolveDataTransfer(event);
   if (!dataTransfer) {
     return;
@@ -175,7 +166,12 @@ export const setDragImageSafe = (
 
 export const startInternalDrag = <TPayload>(
   event: DragEventLike,
-  { channel, payload, plainTextFallback, effectAllowed = "move" }: InternalDragStartOptions<TPayload>,
+  {
+    channel,
+    payload,
+    plainTextFallback,
+    effectAllowed = "move",
+  }: InternalDragStartOptions<TPayload>,
 ) => {
   internalDragSessions.set(channel, {
     payload,

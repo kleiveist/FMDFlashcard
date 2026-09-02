@@ -110,8 +110,7 @@ const SEGMENT_WIDTH_BY_ZOOM: Record<DatabaseGanttZoom, number> = {
 const toLower = (value: string) => value.trim().toLowerCase();
 const isExamFieldKey = (key: string) => toLower(key) === "exam";
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, value));
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const getNearestScrollHost = (element: HTMLElement | null): HTMLElement | null => {
   if (!element || typeof window === "undefined") {
@@ -120,8 +119,10 @@ const getNearestScrollHost = (element: HTMLElement | null): HTMLElement | null =
   let current: HTMLElement | null = element;
   while (current) {
     const style = window.getComputedStyle(current);
-    const canScrollX = /(auto|scroll)/.test(style.overflowX) && current.scrollWidth > current.clientWidth;
-    const canScrollY = /(auto|scroll)/.test(style.overflowY) && current.scrollHeight > current.clientHeight;
+    const canScrollX =
+      /(auto|scroll)/.test(style.overflowX) && current.scrollWidth > current.clientWidth;
+    const canScrollY =
+      /(auto|scroll)/.test(style.overflowY) && current.scrollHeight > current.clientHeight;
     if (canScrollX || canScrollY) {
       return current;
     }
@@ -153,11 +154,7 @@ const formatTime = (timestamp: number) =>
     minute: "2-digit",
   });
 
-const getTickLabel = (
-  timestamp: number,
-  zoom: DatabaseGanttZoom,
-  mode: DatabaseTimelineMode,
-) => {
+const getTickLabel = (timestamp: number, zoom: DatabaseGanttZoom, mode: DatabaseTimelineMode) => {
   const date = new Date(timestamp);
   if (zoom === "year") {
     return String(date.getFullYear());
@@ -194,12 +191,14 @@ const resolveModeAnchorTimestamp = (mode: DatabaseTimelineMode, baseDate: string
   }
   const now = new Date();
   const currentTime = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
-  return parseTimelineTimestamp({
-    value: currentTime,
-    fieldType: "time",
-    mode: "time",
-    baseDate,
-  }) ?? Date.now();
+  return (
+    parseTimelineTimestamp({
+      value: currentTime,
+      fieldType: "time",
+      mode: "time",
+      baseDate,
+    }) ?? Date.now()
+  );
 };
 
 const getRowTitle = (record: DatabaseRecord) => {
@@ -210,22 +209,25 @@ const getRowTitle = (record: DatabaseRecord) => {
   return record.relativePath;
 };
 
-const getRecordValueByField = (record: DatabaseRecord, field: string): DatabaseNormalizedFieldValue => {
+const getRecordValueByField = (
+  record: DatabaseRecord,
+  field: string,
+): DatabaseNormalizedFieldValue => {
   if (field in record.normalizedFields) {
     return record.normalizedFields[field] ?? null;
   }
   const normalizedField = toLower(field);
-  const matchedKey = Object.keys(record.normalizedFields)
-    .find((key) => toLower(key) === normalizedField);
-  return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
+  const matchedKey = Object.keys(record.normalizedFields).find(
+    (key) => toLower(key) === normalizedField,
+  );
+  return matchedKey ? (record.normalizedFields[matchedKey] ?? null) : null;
 };
 
 const toStatusLabel = (
   record: DatabaseRecord,
   monitoringProfiles: MonitoringRenderProfile[],
 ): string | null => {
-  const entry = Object.entries(record.normalizedFields)
-    .find(([key]) => toLower(key) === "status");
+  const entry = Object.entries(record.normalizedFields).find(([key]) => toLower(key) === "status");
   if (!entry) {
     return null;
   }
@@ -407,7 +409,9 @@ export const DatabaseGanttView = ({
   onCommitRange,
 }: DatabaseGanttViewProps) => {
   const [interaction, setInteraction] = useState<InteractionState | null>(null);
-  const [draftByRecordId, setDraftByRecordId] = useState<Record<string, { startTs: number; endTs: number }>>({});
+  const [draftByRecordId, setDraftByRecordId] = useState<
+    Record<string, { startTs: number; endTs: number }>
+  >({});
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     typeof window !== "undefined" ? window.innerWidth < 1200 : false,
   );
@@ -435,18 +439,21 @@ export const DatabaseGanttView = ({
   }, [baseDate, endAttribute, mode, monitoringProfiles, records, startAttribute]);
 
   const pendingIds = useMemo(() => new Set(pendingRecordIds), [pendingRecordIds]);
-  const recordById = useMemo(() => new Map(records.map((record) => [record.fileId, record])), [records]);
+  const recordById = useMemo(
+    () => new Map(records.map((record) => [record.fileId, record])),
+    [records],
+  );
 
   const timelineScale = useMemo(() => {
     const scheduled = Array.from(entryByRecordId.values());
     const now = resolveModeAnchorTimestamp(mode, baseDate);
     const defaultDuration = getTimelineDefaultDurationMs(mode);
-    const minTs = scheduled.length > 0
-      ? Math.min(...scheduled.map((entry) => entry.startTs), now)
-      : now;
-    const maxTs = scheduled.length > 0
-      ? Math.max(...scheduled.map((entry) => entry.endTs), now + defaultDuration)
-      : now + defaultDuration;
+    const minTs =
+      scheduled.length > 0 ? Math.min(...scheduled.map((entry) => entry.startTs), now) : now;
+    const maxTs =
+      scheduled.length > 0
+        ? Math.max(...scheduled.map((entry) => entry.endTs), now + defaultDuration)
+        : now + defaultDuration;
 
     const rangeStartDate = toStartOfTimelineZoom(minTs - defaultDuration, zoom);
     let rangeEndDate = toStartOfTimelineZoom(maxTs + defaultDuration, zoom);
@@ -483,7 +490,7 @@ export const DatabaseGanttView = ({
         if (timestamp >= left && timestamp <= right) {
           const span = Math.max(1, right - left);
           const ratio = (timestamp - left) / span;
-          return (index * segmentWidth) + (ratio * segmentWidth);
+          return index * segmentWidth + ratio * segmentWidth;
         }
       }
       return totalWidth;
@@ -495,8 +502,8 @@ export const DatabaseGanttView = ({
       const index = clamp(rawIndex, 0, Math.max(0, boundaries.length - 2));
       const left = boundaries[index]!;
       const right = boundaries[index + 1]!;
-      const ratio = (boundedX - (index * segmentWidth)) / segmentWidth;
-      return left + ((right - left) * clamp(ratio, 0, 1));
+      const ratio = (boundedX - index * segmentWidth) / segmentWidth;
+      return left + (right - left) * clamp(ratio, 0, 1);
     };
 
     const segments = boundaries.slice(0, -1).map((startBoundary, index) => ({
@@ -566,7 +573,8 @@ export const DatabaseGanttView = ({
       if (!record || !onCommitRange) {
         return;
       }
-      const changed = Math.round(nextRange.startTs) !== Math.round(interaction.originStartTs) ||
+      const changed =
+        Math.round(nextRange.startTs) !== Math.round(interaction.originStartTs) ||
         Math.round(nextRange.endTs) !== Math.round(interaction.originEndTs);
       if (!changed) {
         return;
@@ -587,19 +595,11 @@ export const DatabaseGanttView = ({
   }, [draftByRecordId, interaction, onCommitRange, recordById, timelineScale]);
 
   if (startAttribute && !startAttribute.viewCompatibility.supportsTimeline) {
-    return (
-      <div className="database-view-empty">
-        Startfeld muss ein Zeit-/Datumsfeld sein.
-      </div>
-    );
+    return <div className="database-view-empty">Startfeld muss ein Zeit-/Datumsfeld sein.</div>;
   }
 
   if (endAttribute && !endAttribute.viewCompatibility.supportsTimeline) {
-    return (
-      <div className="database-view-empty">
-        Endfeld muss ein Zeit-/Datumsfeld sein.
-      </div>
-    );
+    return <div className="database-view-empty">Endfeld muss ein Zeit-/Datumsfeld sein.</div>;
   }
 
   const sidebarWidth = isSidebarCollapsed ? 0 : SIDEBAR_WIDTH;
@@ -641,7 +641,8 @@ export const DatabaseGanttView = ({
     >
       {!startAttribute ? (
         <p className="database-block-state">
-          Noch kein Start-Zeitfeld konfiguriert. Zieh einen Eintrag in die Timeline, um `start`/`end` automatisch anzulegen.
+          Noch kein Start-Zeitfeld konfiguriert. Zieh einen Eintrag in die Timeline, um
+          `start`/`end` automatisch anzulegen.
         </p>
       ) : null}
       <div className="database-gantt-mobile-controls">
@@ -685,16 +686,23 @@ export const DatabaseGanttView = ({
             const displayStart = draft?.startTs ?? entry?.startTs ?? null;
             const displayEnd = draft?.endTs ?? entry?.endTs ?? null;
             const hasRange = displayStart !== null && displayEnd !== null;
-            const startX = hasRange ? timelineScale.timestampToX(Math.min(displayStart, displayEnd)) : null;
-            const endX = hasRange ? timelineScale.timestampToX(Math.max(displayStart, displayEnd)) : null;
+            const startX = hasRange
+              ? timelineScale.timestampToX(Math.min(displayStart, displayEnd))
+              : null;
+            const endX = hasRange
+              ? timelineScale.timestampToX(Math.max(displayStart, displayEnd))
+              : null;
             const width = startX !== null && endX !== null ? Math.max(8, endX - startX) : 0;
-            const isMilestone = hasRange && Math.abs((displayEnd ?? 0) - (displayStart ?? 0)) < 1000;
+            const isMilestone =
+              hasRange && Math.abs((displayEnd ?? 0) - (displayStart ?? 0)) < 1000;
             const rowTitle = getRowTitle(record);
             const isPending = pendingIds.has(record.fileId);
-            const excludedPropertyKeys = new Set<string>([
-              ...(startAttribute ? [startAttribute.key] : []),
-              ...(endAttribute ? [endAttribute.key] : []),
-            ].map((key) => toLower(key)));
+            const excludedPropertyKeys = new Set<string>(
+              [
+                ...(startAttribute ? [startAttribute.key] : []),
+                ...(endAttribute ? [endAttribute.key] : []),
+              ].map((key) => toLower(key)),
+            );
             const propertyRows = visibleProperties
               .filter((attribute) => !excludedPropertyKeys.has(toLower(attribute.key)))
               .map((attribute) => {
@@ -724,20 +732,24 @@ export const DatabaseGanttView = ({
                   value,
                 };
               })
-              .filter((entry): entry is (
-                | { key: string; kind: "text"; label: string; value: string }
-                | { key: string; kind: "action" }
-              ) => Boolean(entry));
-            const rowMetaLeft = hasRange && endX !== null
-              ? clamp(
-                endX + 10,
-                ROW_META_EDGE_PADDING,
-                Math.max(
-                  ROW_META_EDGE_PADDING,
-                  timelineScale.totalWidth - (ROW_META_MAX_WIDTH + ROW_META_EDGE_PADDING),
-                ),
-              )
-              : 10;
+              .filter(
+                (
+                  entry,
+                ): entry is
+                  | { key: string; kind: "text"; label: string; value: string }
+                  | { key: string; kind: "action" } => Boolean(entry),
+              );
+            const rowMetaLeft =
+              hasRange && endX !== null
+                ? clamp(
+                    endX + 10,
+                    ROW_META_EDGE_PADDING,
+                    Math.max(
+                      ROW_META_EDGE_PADDING,
+                      timelineScale.totalWidth - (ROW_META_MAX_WIDTH + ROW_META_EDGE_PADDING),
+                    ),
+                  )
+                : 10;
 
             return (
               <Fragment key={record.fileId}>
@@ -869,10 +881,7 @@ export const DatabaseGanttView = ({
                     )
                   ) : null}
                   {propertyRows.length > 0 ? (
-                    <div
-                      className="database-gantt-row-meta"
-                      style={{ left: `${rowMetaLeft}px` }}
-                    >
+                    <div className="database-gantt-row-meta" style={{ left: `${rowMetaLeft}px` }}>
                       {propertyRows.map((entry) => (
                         <p key={entry.key} className="database-row-meta-item">
                           {entry.kind === "action" ? (

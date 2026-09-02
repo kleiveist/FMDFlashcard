@@ -70,14 +70,8 @@ export const Tooltip = ({
     }
     const rect = anchor.getBoundingClientRect();
     setPosition({
-      top:
-        placement === "top"
-          ? rect.top + window.scrollY
-          : rect.bottom + window.scrollY,
-      left:
-        rect.left +
-        window.scrollX +
-        (horizontalAlign === "start" ? 0 : rect.width / 2),
+      top: placement === "top" ? rect.top + window.scrollY : rect.bottom + window.scrollY,
+      left: rect.left + window.scrollX + (horizontalAlign === "start" ? 0 : rect.width / 2),
     });
   }, [horizontalAlign, placement]);
 

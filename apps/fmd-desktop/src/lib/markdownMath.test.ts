@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  normalizeMultilineInlineMathOnCommit,
-  tokenizeMarkdownMath,
-} from "./markdownMath";
+import { normalizeMultilineInlineMathOnCommit, tokenizeMarkdownMath } from "./markdownMath";
 
 describe("tokenizeMarkdownMath", () => {
   it("detects inline math with punctuation, operators, and whitespace", () => {
@@ -18,8 +15,9 @@ describe("tokenizeMarkdownMath", () => {
 
   it("detects multiple inline and display math segments in the same paragraph", () => {
     const source = "A $x$ and $y$ with $$z = x + y$$ done";
-    const tokens = tokenizeMarkdownMath(source).filter((token) =>
-      token.type === "inline-math" || token.type === "display-math");
+    const tokens = tokenizeMarkdownMath(source).filter(
+      (token) => token.type === "inline-math" || token.type === "display-math",
+    );
     expect(tokens.map((token) => token.type)).toEqual([
       "inline-math",
       "inline-math",
@@ -46,15 +44,7 @@ describe("tokenizeMarkdownMath", () => {
   });
 
   it("does not tokenize math in inline code or fenced code", () => {
-    const source = [
-      "Inline code: `$a$`",
-      "",
-      "```",
-      "$b$",
-      "```",
-      "",
-      "Visible $c$",
-    ].join("\n");
+    const source = ["Inline code: `$a$`", "", "```", "$b$", "```", "", "Visible $c$"].join("\n");
     const mathTokens = tokenizeMarkdownMath(source).filter(
       (token) => token.type === "inline-math" || token.type === "display-math",
     );

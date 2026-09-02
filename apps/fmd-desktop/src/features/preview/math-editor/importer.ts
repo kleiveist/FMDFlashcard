@@ -57,13 +57,15 @@ const SYMBOL_COMMANDS = new Set([
 
 const FUNCTION_COMMANDS = new Set(["sin", "cos", "tan", "log", "ln", "exp"]);
 
-type ParseResult<T> = {
-  ok: true;
-  value: T;
-} | {
-  ok: false;
-  reason: string;
-};
+type ParseResult<T> =
+  | {
+      ok: true;
+      value: T;
+    }
+  | {
+      ok: false;
+      reason: string;
+    };
 
 class LatexParser {
   source: string;
@@ -137,7 +139,7 @@ class LatexParser {
       this.consume();
       return { ok: true, value: createLeaf("symbol", next) };
     }
-    if (next === "|" ) {
+    if (next === "|") {
       this.consume();
       return { ok: true, value: createLeaf("symbol", "|") };
     }
@@ -229,7 +231,9 @@ class LatexParser {
       if (!argument.ok) {
         return argument;
       }
-      return this.parseTrailingScripts(createFunctionCallNode(command, argument.value ?? createRow()));
+      return this.parseTrailingScripts(
+        createFunctionCallNode(command, argument.value ?? createRow()),
+      );
     }
     if (GREEK_COMMANDS.has(command) || SYMBOL_COMMANDS.has(command)) {
       return this.parseTrailingScripts(
@@ -398,7 +402,12 @@ class LatexParser {
     }
     return {
       ok: true,
-      value: createSeriesNode(kind, lower.value ?? createRow(), upper.value ?? createRow(), body.value ?? createRow()),
+      value: createSeriesNode(
+        kind,
+        lower.value ?? createRow(),
+        upper.value ?? createRow(),
+        body.value ?? createRow(),
+      ),
     };
   }
 
@@ -415,7 +424,12 @@ class LatexParser {
     if (!body.ok) {
       return body;
     }
-    const integral = createIntegralNode(lower.value ?? createRow(), upper.value ?? createRow(), createRow(), createRow());
+    const integral = createIntegralNode(
+      lower.value ?? createRow(),
+      upper.value ?? createRow(),
+      createRow(),
+      createRow(),
+    );
     const integrand = body.value ?? createRow();
     const differential = splitDifferentialRow(integrand);
     integral.integrand = differential.integrand;
@@ -528,7 +542,7 @@ const classifyInlineCharacter = (character: string) => {
   if (/[+\-*/]/.test(character)) {
     return "operator" as const;
   }
-  return /[a-zA-Z]/.test(character) ? "identifier" as const : "symbol" as const;
+  return /[a-zA-Z]/.test(character) ? ("identifier" as const) : ("symbol" as const);
 };
 
 const splitTopLevel = (source: string, separator: string) => {

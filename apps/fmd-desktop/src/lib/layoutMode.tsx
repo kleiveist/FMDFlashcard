@@ -1,10 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { DESKTOP_QUERY } from "./breakpoints";
 
 export type LayoutMode = "desktop" | "table";
@@ -38,11 +32,7 @@ export const LayoutModeProvider = ({ children }: { children: ReactNode }) => {
     return () => mediaQuery.removeListener(handleChange);
   }, []);
 
-  return (
-    <LayoutModeContext.Provider value={mode}>
-      {children}
-    </LayoutModeContext.Provider>
-  );
+  return <LayoutModeContext.Provider value={mode}>{children}</LayoutModeContext.Provider>;
 };
 
 export const useLayoutMode = () => useContext(LayoutModeContext);

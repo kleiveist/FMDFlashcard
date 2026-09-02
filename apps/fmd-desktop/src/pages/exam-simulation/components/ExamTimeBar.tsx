@@ -46,10 +46,10 @@ export const ExamTimeBar = ({
   const label = !isEnabled
     ? "Timer disabled"
     : isTimeUp
-    ? "Time up"
-    : isRunning
-      ? `Remaining: ${formatTime(remainingMs)}`
-      : `Time limit: ${limitMinutes} min`;
+      ? "Time up"
+      : isRunning
+        ? `Remaining: ${formatTime(remainingMs)}`
+        : `Time limit: ${limitMinutes} min`;
   const subLabel = isRunning && isEnabled ? `Total: ${limitMinutes} min` : null;
 
   return (

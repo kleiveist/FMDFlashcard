@@ -85,11 +85,7 @@ type CompositeCardProps = {
   onBlankDragOver: (event: DragEvent<HTMLElement>) => void;
   onTextInputChange: (cardIndex: number, partIndex: number, value: string) => void;
   onTextCheck: (cardIndex: number, partIndex: number) => void;
-  onSelfGrade: (
-    cardIndex: number,
-    partIndex: number,
-    grade: FlashcardSelfGrade,
-  ) => void;
+  onSelfGrade: (cardIndex: number, partIndex: number, grade: FlashcardSelfGrade) => void;
   onSubmit: (cardIndex: number, canSubmit: boolean) => void;
 };
 
@@ -140,18 +136,15 @@ export const CompositeCard = ({
         : "Incorrect"
     : "";
   const resultClass = `flashcard-result ${
-    cardResult === "pending"
-      ? "pending"
-      : cardResult === "correct"
-        ? "correct"
-        : "incorrect"
+    cardResult === "pending" ? "pending" : cardResult === "correct" ? "correct" : "incorrect"
   }`;
   const hasHelp = helpEnabled && hasHelpContent(helpText);
   const showActions = showSubmit || (submitted && showResult) || hasHelp;
   const optionSelectHandlers = useMemo(
     () =>
-      Array.from({ length: partCount }, (_, partIndex) => (index: number, keys: string[]) =>
-        onOptionSelect(index, partIndex, keys)
+      Array.from(
+        { length: partCount },
+        (_, partIndex) => (index: number, keys: string[]) => onOptionSelect(index, partIndex, keys),
       ),
     [onOptionSelect, partCount],
   );
@@ -159,9 +152,8 @@ export const CompositeCard = ({
     () =>
       Array.from(
         { length: partCount },
-        (_, partIndex) =>
-          (index: number, itemId: string, value: TrueFalseSelection) =>
-            onTrueFalseSelect(index, partIndex, itemId, value),
+        (_, partIndex) => (index: number, itemId: string, value: TrueFalseSelection) =>
+          onTrueFalseSelect(index, partIndex, itemId, value),
       ),
     [onTrueFalseSelect, partCount],
   );
@@ -186,14 +178,7 @@ export const CompositeCard = ({
             validTokenIds: Set<string>,
             dragBlankIds: Set<string>,
           ) =>
-            onClozeTokenDrop(
-              event,
-              index,
-              partIndex,
-              blankId,
-              validTokenIds,
-              dragBlankIds,
-            ),
+            onClozeTokenDrop(event, index, partIndex, blankId, validTokenIds, dragBlankIds),
       ),
     [onClozeTokenDrop, partCount],
   );
@@ -217,8 +202,9 @@ export const CompositeCard = ({
   );
   const textCheckHandlers = useMemo(
     () =>
-      Array.from({ length: partCount }, (_, partIndex) => (index: number) =>
-        onTextCheck(index, partIndex)
+      Array.from(
+        { length: partCount },
+        (_, partIndex) => (index: number) => onTextCheck(index, partIndex),
       ),
     [onTextCheck, partCount],
   );
@@ -336,9 +322,7 @@ export const CompositeCard = ({
               Submit
             </button>
           ) : null}
-          {showResultLabel ? (
-            <span className={resultClass}>{resultLabel}</span>
-          ) : null}
+          {showResultLabel ? <span className={resultClass}>{resultLabel}</span> : null}
           {showResultLabel ? resultHeaderAction : null}
           <HelpButton
             helpText={helpText}

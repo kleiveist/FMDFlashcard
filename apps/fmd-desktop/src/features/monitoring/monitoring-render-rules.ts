@@ -4,17 +4,10 @@
  * Global monitoring render-rule model + engine.
  */
 
-export type MonitoringRenderScope =
-  | "monitoring-page"
-  | "database"
-  | "properties";
+export type MonitoringRenderScope = "monitoring-page" | "database" | "properties";
 
 export type MonitoringInputFormat =
-  | "ratio"
-  | "numeric-percent"
-  | "code"
-  | "text"
-  | "short-structured-text-with-number";
+  "ratio" | "numeric-percent" | "code" | "text" | "short-structured-text-with-number";
 
 export type MonitoringValueMapEntry = {
   from: string;
@@ -49,50 +42,50 @@ type MonitoringRuleTargetContext = {
 type MonitoringRuleContext = MonitoringRulePreviewContext & MonitoringRuleTargetContext;
 
 export type MonitoringRenderRule =
-  | {
+  | ({
       id: string;
       type: "value-map";
       mappings: MonitoringValueMapEntry[];
       caseSensitive?: boolean;
       displayMode?: "append" | "replace";
       separator?: string;
-    } & MonitoringRuleContext
-  | {
+    } & MonitoringRuleContext)
+  | ({
       id: string;
       type: "ratio-derived-percent";
       decimals?: number;
       showBase?: boolean;
       wrapInParentheses?: boolean;
-    } & MonitoringRuleContext
-  | {
+    } & MonitoringRuleContext)
+  | ({
       id: string;
       type: "percent-format";
       decimals?: number;
       clamp?: boolean;
-    } & MonitoringRuleContext
-  | {
+    } & MonitoringRuleContext)
+  | ({
       id: string;
       type: "progress-visual";
       visualStyle?: MonitoringProgressVisualStyle;
       min?: number;
       max?: number;
-    } & MonitoringRuleContext
-  | {
+    } & MonitoringRuleContext)
+  | ({
       id: string;
       type: "threshold-symbol";
       thresholds: MonitoringThresholdRuleEntry[];
       displayMode?: "append" | "replace";
       appendToText?: boolean;
       separator?: string;
-    } & MonitoringRuleContext
-  | {
+    } & MonitoringRuleContext)
+  | ({
       id: string;
       type: "grouped-label-map";
       groups: MonitoringGroupedLabelMapEntry[];
       caseSensitive?: boolean;
       replaceText?: boolean;
       separator?: string;
-    } & MonitoringRuleContext;
+    } & MonitoringRuleContext);
 
 export type MonitoringRenderProfile = {
   id: string;
@@ -149,9 +142,7 @@ export const MONITORING_SCORE_ALIASES = ["score", "corrected score"];
 export const MONITORING_PERCENT_ALIASES = ["percent", "corrected percent"];
 export const MONITORING_STATUS_ALIASES = ["status", "corrected status"];
 
-export const resolveMonitoringPreviewRawDefault = (
-  inputFormat: MonitoringInputFormat,
-) => {
+export const resolveMonitoringPreviewRawDefault = (inputFormat: MonitoringInputFormat) => {
   if (inputFormat === "ratio") {
     return "59/69";
   }
@@ -167,14 +158,9 @@ export const resolveMonitoringPreviewRawDefault = (
   return "";
 };
 
-const DEFAULT_SCOPES: MonitoringRenderScope[] = [
-  "monitoring-page",
-  "database",
-  "properties",
-];
+const DEFAULT_SCOPES: MonitoringRenderScope[] = ["monitoring-page", "database", "properties"];
 
-const createRuleId = (prefix: string) =>
-  `${prefix}-${Math.random().toString(16).slice(2, 10)}`;
+const createRuleId = (prefix: string) => `${prefix}-${Math.random().toString(16).slice(2, 10)}`;
 
 export const createMonitoringRenderRule = (
   type: MonitoringRenderRule["type"],
@@ -334,10 +320,7 @@ const normalizeStandaloneRuleTargetAttributes = (value: unknown) => {
   return next.length > 0 ? next : undefined;
 };
 
-const normalizeRuleTargetAttributes = (
-  value: unknown,
-  profileAliases: string[],
-) => {
+const normalizeRuleTargetAttributes = (value: unknown, profileAliases: string[]) => {
   if (!Array.isArray(value) || profileAliases.length === 0) {
     return undefined;
   }
@@ -380,27 +363,19 @@ const isRuleTargetedToAttribute = (
     return true;
   }
   const validAliases = new Set(profileAliases.map((alias) => toLower(alias)));
-  const effectiveTargets = targets.filter((target) =>
-    validAliases.has(toLower(target)),
-  );
+  const effectiveTargets = targets.filter((target) => validAliases.has(toLower(target)));
   if (effectiveTargets.length === 0) {
     return true;
   }
   return effectiveTargets.some((target) => toLower(target) === normalizedAttributeKey);
 };
 
-const resolveRulePreviewAlias = (
-  rule: MonitoringRenderRule,
-  profileAliases: string[],
-) => {
+const resolveRulePreviewAlias = (rule: MonitoringRenderRule, profileAliases: string[]) => {
   const value = rule.rulePreviewAlias;
   if (profileAliases.length === 0) {
     return value?.trim() ?? "";
   }
-  const explicitTargets = normalizeRuleTargetAttributes(
-    rule.targetAttributes,
-    profileAliases,
-  );
+  const explicitTargets = normalizeRuleTargetAttributes(rule.targetAttributes, profileAliases);
   if (explicitTargets && explicitTargets.length > 0) {
     const normalizedPreviewAlias = toLower(value ?? "");
     if (normalizedPreviewAlias) {
@@ -427,15 +402,10 @@ const hydrateRulePreviewContext = (
   fallbackRawValue: string,
 ): MonitoringRenderRule => ({
   ...rule,
-  targetAttributes: normalizeRuleTargetAttributes(
-    rule.targetAttributes,
-    profileAliases,
-  ),
+  targetAttributes: normalizeRuleTargetAttributes(rule.targetAttributes, profileAliases),
   rulePreviewAlias: resolveRulePreviewAlias(rule, profileAliases),
   rulePreviewRawValue:
-    typeof rule.rulePreviewRawValue === "string"
-      ? rule.rulePreviewRawValue
-      : fallbackRawValue,
+    typeof rule.rulePreviewRawValue === "string" ? rule.rulePreviewRawValue : fallbackRawValue,
 });
 
 const cloneDefaultProfiles = () =>
@@ -484,11 +454,7 @@ const normalizeScopes = (value: unknown): MonitoringRenderScope[] => {
   }
   const next: MonitoringRenderScope[] = [];
   value.forEach((entry) => {
-    if (
-      entry === "monitoring-page" ||
-      entry === "database" ||
-      entry === "properties"
-    ) {
+    if (entry === "monitoring-page" || entry === "database" || entry === "properties") {
       if (!next.includes(entry)) {
         next.push(entry);
       }
@@ -563,13 +529,12 @@ const normalizeGroupedMaps = (value: unknown): MonitoringGroupedLabelMapEntry[] 
       }
       const label = String(entry.label ?? "").trim();
       const hasSymbol = Object.prototype.hasOwnProperty.call(entry, "symbol");
-      const symbol = entry.symbol === undefined || entry.symbol === null
-        ? null
-        : String(entry.symbol).trim() || null;
+      const symbol =
+        entry.symbol === undefined || entry.symbol === null
+          ? null
+          : String(entry.symbol).trim() || null;
       const values = Array.isArray(entry.values)
-        ? entry.values
-            .map((item) => String(item ?? "").trim())
-            .filter((item) => item.length > 0)
+        ? entry.values.map((item) => String(item ?? "").trim()).filter((item) => item.length > 0)
         : [];
       if (!label || values.length === 0) {
         return null;
@@ -586,15 +551,18 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
   if (!isRecord(value)) {
     return null;
   }
-  const rawType = String(value.type ?? "").trim().toLowerCase();
-  const legacyProgressStyle = rawType === "progress-bar"
-    ? "bar"
-    : rawType === "progress-ring" || rawType === "progresswing"
-      ? "ring"
-      : null;
-  const type = (rawType === "progress-visual" || legacyProgressStyle
-    ? "progress-visual"
-    : rawType) as MonitoringRenderRule["type"];
+  const rawType = String(value.type ?? "")
+    .trim()
+    .toLowerCase();
+  const legacyProgressStyle =
+    rawType === "progress-bar"
+      ? "bar"
+      : rawType === "progress-ring" || rawType === "progresswing"
+        ? "ring"
+        : null;
+  const type = (
+    rawType === "progress-visual" || legacyProgressStyle ? "progress-visual" : rawType
+  ) as MonitoringRenderRule["type"];
   const id = String(value.id ?? "").trim() || createRuleId("rule");
   const rulePreviewAlias =
     typeof value.rulePreviewAlias === "string" ? value.rulePreviewAlias.trim() : "";
@@ -603,9 +571,7 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
   const ruleContext: MonitoringRuleContext = {
     rulePreviewAlias: rulePreviewAlias || undefined,
     rulePreviewRawValue,
-    targetAttributes: normalizeStandaloneRuleTargetAttributes(
-      value.targetAttributes,
-    ),
+    targetAttributes: normalizeStandaloneRuleTargetAttributes(value.targetAttributes),
   };
 
   if (type === "value-map") {
@@ -643,10 +609,13 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
   if (type === "progress-visual") {
     const min = Number(value.min ?? Number.NaN);
     const max = Number(value.max ?? Number.NaN);
-    const styleValue = String(value.visualStyle ?? "").trim().toLowerCase();
-    const visualStyle = styleValue === "bar" || styleValue === "ring" || styleValue === "pie"
-      ? styleValue
-      : legacyProgressStyle ?? "bar";
+    const styleValue = String(value.visualStyle ?? "")
+      .trim()
+      .toLowerCase();
+    const visualStyle =
+      styleValue === "bar" || styleValue === "ring" || styleValue === "pie"
+        ? styleValue
+        : (legacyProgressStyle ?? "bar");
     return {
       id,
       type,
@@ -658,9 +627,7 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
   }
   if (type === "threshold-symbol") {
     const displayMode =
-      value.displayMode === "replace" || value.appendToText === false
-        ? "replace"
-        : "append";
+      value.displayMode === "replace" || value.appendToText === false ? "replace" : "append";
     return {
       id,
       type,
@@ -684,9 +651,7 @@ const normalizeRule = (value: unknown): MonitoringRenderRule | null => {
   return null;
 };
 
-export const normalizeMonitoringRenderProfiles = (
-  value: unknown,
-): MonitoringRenderProfile[] => {
+export const normalizeMonitoringRenderProfiles = (value: unknown): MonitoringRenderProfile[] => {
   if (!Array.isArray(value)) {
     return cloneDefaultProfiles();
   }
@@ -702,9 +667,10 @@ export const normalizeMonitoringRenderProfiles = (
         ? entry.attributeAliases.map((alias) => String(alias ?? ""))
         : [];
       const inputFormat = normalizeInputFormat(entry.inputFormat);
-      const previewRawValue = typeof entry.previewRawValue === "string"
-        ? entry.previewRawValue
-        : resolveMonitoringPreviewRawDefault(inputFormat);
+      const previewRawValue =
+        typeof entry.previewRawValue === "string"
+          ? entry.previewRawValue
+          : resolveMonitoringPreviewRawDefault(inputFormat);
       const rules = Array.isArray(entry.rules)
         ? entry.rules
             .map((rule) => normalizeRule(rule))
@@ -776,7 +742,11 @@ const toRawText = (value: unknown): string => {
   }
   if (isRecord(value) && "value" in value) {
     const candidate = value.value;
-    if (typeof candidate === "string" || typeof candidate === "number" || typeof candidate === "boolean") {
+    if (
+      typeof candidate === "string" ||
+      typeof candidate === "number" ||
+      typeof candidate === "boolean"
+    ) {
       return String(candidate);
     }
   }
@@ -873,10 +843,7 @@ const parseShortStructuredNumeric = (value: unknown): number | null => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-const parseProfileInput = (
-  inputFormat: MonitoringInputFormat,
-  raw: unknown,
-): ParsedValueState => {
+const parseProfileInput = (inputFormat: MonitoringInputFormat, raw: unknown): ParsedValueState => {
   const rawText = toRawText(raw);
   const textValue = rawText.trim();
   const ratio = parseRatioParts(raw);
@@ -933,11 +900,7 @@ const clampPercent = (value: number, min = 0, max = 100) => {
   return Math.max(0, Math.min(100, normalized));
 };
 
-const compareThreshold = (
-  left: number,
-  op: MonitoringThresholdOperator,
-  right: number,
-) => {
+const compareThreshold = (left: number, op: MonitoringThresholdOperator, right: number) => {
   if (op === ">=") {
     return left >= right;
   }
@@ -959,9 +922,7 @@ const formatNumber = (value: number, decimals: number) =>
     maximumFractionDigits: Math.max(0, decimals),
   });
 
-export const resolveMonitoringAliasType = (
-  key: string,
-): "score" | "percent" | "status" | null => {
+export const resolveMonitoringAliasType = (key: string): "score" | "percent" | "status" | null => {
   const normalized = toLower(key);
   if (MONITORING_SCORE_ALIASES.some((alias) => alias === normalized)) {
     return "score";
@@ -1009,7 +970,8 @@ export const renderMonitoringValue = ({
       const match = rule.mappings.find((mapping) =>
         rule.caseSensitive
           ? mapping.from === sourceValue
-          : toLower(mapping.from) === toLower(sourceValue));
+          : toLower(mapping.from) === toLower(sourceValue),
+      );
       if (!match) {
         return;
       }
@@ -1039,9 +1001,10 @@ export const renderMonitoringValue = ({
           ? `${formatNumber(parsed.ratioNumerator, 0)}/${formatNumber(parsed.ratioDenominator, 0)}`
           : "";
       if (baseText) {
-        displayText = rule.wrapInParentheses === false
-          ? `${baseText} ${formattedPercent}`.trim()
-          : `${baseText} (${formattedPercent})`;
+        displayText =
+          rule.wrapInParentheses === false
+            ? `${baseText} ${formattedPercent}`.trim()
+            : `${baseText} (${formattedPercent})`;
       } else {
         displayText = formattedPercent;
       }
@@ -1089,7 +1052,8 @@ export const renderMonitoringValue = ({
         return;
       }
       const match = rule.thresholds.find((threshold) =>
-        compareThreshold(basis, threshold.op, threshold.value));
+        compareThreshold(basis, threshold.op, threshold.value),
+      );
       if (!match) {
         return;
       }
@@ -1110,7 +1074,9 @@ export const renderMonitoringValue = ({
         group.values.some((entry) =>
           rule.caseSensitive
             ? entry === parsed.textValue
-            : toLower(entry) === toLower(parsed.textValue)));
+            : toLower(entry) === toLower(parsed.textValue),
+        ),
+      );
       if (!matchedGroup) {
         return;
       }

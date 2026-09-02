@@ -54,8 +54,5 @@ export const toggleDatabaseSortRuleByField = (
     field: fieldKey,
     dir: "desc",
   };
-  return [
-    nextRule,
-    ...rulesWithoutField,
-  ];
+  return [nextRule, ...rulesWithoutField];
 };

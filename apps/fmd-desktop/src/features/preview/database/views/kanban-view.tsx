@@ -62,15 +62,13 @@ const getRecordValueByField = (record: DatabaseRecord, field: string) => {
     return record.normalizedFields[field] ?? null;
   }
   const normalizedField = toLower(field);
-  const matchedKey = Object.keys(record.normalizedFields)
-    .find((key) => toLower(key) === normalizedField);
-  return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
+  const matchedKey = Object.keys(record.normalizedFields).find(
+    (key) => toLower(key) === normalizedField,
+  );
+  return matchedKey ? (record.normalizedFields[matchedKey] ?? null) : null;
 };
 
-const applyGroupOrder = (
-  records: DatabaseRecord[],
-  order: string[] | undefined,
-) => {
+const applyGroupOrder = (records: DatabaseRecord[], order: string[] | undefined) => {
   if (!order || order.length === 0 || records.length <= 1) {
     return records;
   }
@@ -89,20 +87,23 @@ const applyGroupOrder = (
     }
     fallback.push(record);
   });
-  prioritized.sort((left, right) =>
-    (orderIndex.get(left.fileId) ?? Number.MAX_SAFE_INTEGER) -
-      (orderIndex.get(right.fileId) ?? Number.MAX_SAFE_INTEGER));
+  prioritized.sort(
+    (left, right) =>
+      (orderIndex.get(left.fileId) ?? Number.MAX_SAFE_INTEGER) -
+      (orderIndex.get(right.fileId) ?? Number.MAX_SAFE_INTEGER),
+  );
   return [...prioritized, ...fallback];
 };
 
-const stringifyMetaValue = (value: DatabaseNormalizedFieldValue, type: DatabaseFieldType): string | null => {
+const stringifyMetaValue = (
+  value: DatabaseNormalizedFieldValue,
+  type: DatabaseFieldType,
+): string | null => {
   if (value === null || typeof value === "undefined") {
     return null;
   }
   if (value instanceof Date) {
-    return type === "date"
-      ? value.toLocaleDateString()
-      : value.toLocaleString();
+    return type === "date" ? value.toLocaleDateString() : value.toLocaleString();
   }
   if (Array.isArray(value)) {
     const entries = value.map((entry) => String(entry).trim()).filter(Boolean);
@@ -195,9 +196,10 @@ export const DatabaseKanbanView = ({
       return [] as Array<{ key: string; label: string; records: DatabaseRecord[] }>;
     }
     const buckets = new Map<string, DatabaseRecord[]>();
-    const visibleGroupValueSet = typeof visibleGroupValues === "undefined"
-      ? null
-      : new Set(visibleGroupValues.map((entry) => entry.trim()).filter(Boolean));
+    const visibleGroupValueSet =
+      typeof visibleGroupValues === "undefined"
+        ? null
+        : new Set(visibleGroupValues.map((entry) => entry.trim()).filter(Boolean));
     visibleGroupValueSet?.forEach((value) => {
       buckets.set(value, []);
     });
@@ -222,7 +224,8 @@ export const DatabaseKanbanView = ({
         records: applyGroupOrder(bucketRecords, orderByGroup[key]),
       }))
       .sort((left, right) =>
-        left.label.localeCompare(right.label, undefined, { sensitivity: "base" }));
+        left.label.localeCompare(right.label, undefined, { sensitivity: "base" }),
+      );
   }, [groupAttribute, monitoringProfiles, orderByGroup, records, visibleGroupValues]);
   const clearTouchSelection = () => {
     touchSelectedRecordIdRef.current = null;
@@ -271,9 +274,7 @@ export const DatabaseKanbanView = ({
     clearTouchSelection();
   };
 
-  const handleColumnTap = (
-    groupKey: string,
-  ) => {
+  const handleColumnTap = (groupKey: string) => {
     if (!touchSelectedRecordIdRef.current) {
       return;
     }
@@ -300,10 +301,7 @@ export const DatabaseKanbanView = ({
     selectTouchSourceRecord(record, groupKey);
   };
 
-  const handleBodyTap = (
-    event: ReactMouseEvent<HTMLDivElement>,
-    groupKey: string,
-  ) => {
+  const handleBodyTap = (event: ReactMouseEvent<HTMLDivElement>, groupKey: string) => {
     const target = event.target as HTMLElement | null;
     const nearestControl = target?.closest("[data-md-block-control='true']") ?? null;
     if (nearestControl && nearestControl !== event.currentTarget) {
@@ -313,10 +311,7 @@ export const DatabaseKanbanView = ({
     handleColumnTap(groupKey);
   };
 
-  const handleSectionTap = (
-    event: ReactMouseEvent<HTMLElement>,
-    groupKey: string,
-  ) => {
+  const handleSectionTap = (event: ReactMouseEvent<HTMLElement>, groupKey: string) => {
     const target = event.target as HTMLElement | null;
     const nearestControl = target?.closest("[data-md-block-control='true']") ?? null;
     if (nearestControl && nearestControl !== event.currentTarget) {
@@ -341,13 +336,7 @@ export const DatabaseKanbanView = ({
       touchSourceGroupKeyRef.current = nextGroupKey;
       setTouchSourceGroupKey(nextGroupKey);
     }
-  }, [
-    groupAttribute,
-    pendingIds,
-    recordsById,
-    touchSelectedRecordId,
-    touchSourceGroupKey,
-  ]);
+  }, [groupAttribute, pendingIds, recordsById, touchSelectedRecordId, touchSourceGroupKey]);
 
   useEffect(() => {
     touchSelectedRecordIdRef.current = touchSelectedRecordId;
@@ -401,9 +390,7 @@ export const DatabaseKanbanView = ({
         <section
           key={group.key}
           className={`database-kanban-column${
-            touchSelectedRecordId && touchSourceGroupKey === group.key
-              ? " is-touch-source"
-              : ""
+            touchSelectedRecordId && touchSourceGroupKey === group.key ? " is-touch-source" : ""
           }`}
           onClick={(event) => handleSectionTap(event, group.key)}
           data-md-block-control="true"
@@ -452,8 +439,7 @@ export const DatabaseKanbanView = ({
             {group.records.map((record, index) => {
               const coverSource = showCover ? resolveCoverSource(record, attributes) : null;
               const metaRows = visibleProperties
-                .filter((attribute) =>
-                  toLower(attribute.key) !== toLower(groupAttribute.key))
+                .filter((attribute) => toLower(attribute.key) !== toLower(groupAttribute.key))
                 .map((attribute) => {
                   if (isExamFieldKey(attribute.key)) {
                     const isExamEligible = getRecordValueByField(record, attribute.key) === true;
@@ -474,11 +460,7 @@ export const DatabaseKanbanView = ({
                     }),
                     rawMetaValue,
                   );
-                  const value = monitoringText ||
-                    stringifyMetaValue(
-                      rawMetaValue,
-                      attribute.type,
-                    );
+                  const value = monitoringText || stringifyMetaValue(rawMetaValue, attribute.type);
                   if (!value) {
                     return null;
                   }
@@ -489,10 +471,13 @@ export const DatabaseKanbanView = ({
                     value,
                   };
                 })
-                .filter((entry): entry is (
-                  | { key: string; kind: "text"; label: string; value: string }
-                  | { key: string; kind: "action" }
-                ) => Boolean(entry));
+                .filter(
+                  (
+                    entry,
+                  ): entry is
+                    | { key: string; kind: "text"; label: string; value: string }
+                    | { key: string; kind: "action" } => Boolean(entry),
+                );
 
               const hoverOnlyMeta = Boolean(showCover && coverSource);
 
@@ -501,9 +486,7 @@ export const DatabaseKanbanView = ({
                   key={record.fileId}
                   className={`database-kanban-card${pendingIds.has(record.fileId) ? " is-pending" : ""}${
                     touchSelectedRecordId === record.fileId ? " is-touch-selected" : ""
-                  }${
-                    coverSource ? " has-cover" : ""
-                  }`}
+                  }${coverSource ? " has-cover" : ""}`}
                   draggable={!pendingIds.has(record.fileId)}
                   onClick={(event) => handleCardTap(event, group.key, record)}
                   data-md-block-control="true"
@@ -535,7 +518,9 @@ export const DatabaseKanbanView = ({
                     onClick={() => onOpenRecord(record)}
                     data-md-block-control="true"
                   >
-                    {record.systemFields.Dateiname ? String(record.systemFields.Dateiname) : record.fileId}
+                    {record.systemFields.Dateiname
+                      ? String(record.systemFields.Dateiname)
+                      : record.fileId}
                   </button>
                   <div className="database-kanban-card-order-actions">
                     <button
@@ -559,11 +544,11 @@ export const DatabaseKanbanView = ({
                       ↓
                     </button>
                   </div>
-                  <p className="database-kanban-card-meta">
-                    {record.relativePath}
-                  </p>
+                  <p className="database-kanban-card-meta">{record.relativePath}</p>
                   {metaRows.length > 0 ? (
-                    <div className={`database-kanban-card-properties${hoverOnlyMeta ? " is-hover-only" : ""}`}>
+                    <div
+                      className={`database-kanban-card-properties${hoverOnlyMeta ? " is-hover-only" : ""}`}
+                    >
                       {metaRows.map((entry) => (
                         <p key={entry.key} className="database-kanban-card-meta-row">
                           {entry.kind === "action" ? (

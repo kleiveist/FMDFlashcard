@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  evaluateDatabaseAggregationFormula,
-} from "./database-formulas";
+import { evaluateDatabaseAggregationFormula } from "./database-formulas";
 import {
   type DatabaseFormulaDefinitionV1,
   DEFAULT_DATABASE_FORMULA_SHORT_TEXT_RULE,
@@ -17,13 +15,12 @@ const createRecord = ({
   relativePath: string;
   fields: Record<string, unknown>;
 }): DatabaseRecord => {
-  const normalizedFields = Object.entries(fields).reduce<Record<string, string | number | boolean | string[] | null>>(
-    (bucket, [key, value]) => {
-      bucket[key] = value as string | number | boolean | string[] | null;
-      return bucket;
-    },
-    {},
-  );
+  const normalizedFields = Object.entries(fields).reduce<
+    Record<string, string | number | boolean | string[] | null>
+  >((bucket, [key, value]) => {
+    bucket[key] = value as string | number | boolean | string[] | null;
+    return bucket;
+  }, {});
 
   const slashIndex = relativePath.lastIndexOf("/");
   const folder = slashIndex >= 0 ? relativePath.slice(0, slashIndex) : "";
@@ -117,7 +114,10 @@ describe("database-formulas", () => {
     });
 
     const explicitFolderSum = evaluateDatabaseAggregationFormula({
-      definition: baseFormula({ operation: "sum", source: { type: "explicit-folder", path: "beta" } }),
+      definition: baseFormula({
+        operation: "sum",
+        source: { type: "explicit-folder", path: "beta" },
+      }),
       records,
       currentRecord: records[0]!,
     });
@@ -141,8 +141,16 @@ describe("database-formulas", () => {
       createRecord({ id: "1", relativePath: "alpha/one.md", fields: { Status: 1 } }),
     ];
     const historyRecords = [
-      createRecord({ id: "h1", relativePath: ".profile/exam-runs/run-a.md", fields: { Status: 2 } }),
-      createRecord({ id: "h2", relativePath: ".profile/exam-runs/run-b.md", fields: { Status: 4 } }),
+      createRecord({
+        id: "h1",
+        relativePath: ".profile/exam-runs/run-a.md",
+        fields: { Status: 2 },
+      }),
+      createRecord({
+        id: "h2",
+        relativePath: ".profile/exam-runs/run-b.md",
+        fields: { Status: 4 },
+      }),
     ];
 
     const historySum = evaluateDatabaseAggregationFormula({
@@ -212,7 +220,10 @@ describe("database-formulas", () => {
     expect(avg).toBe(2);
     expect(count).toBe(2);
     expect(grouped).toEqual([
-      { value: "Das ist ein langer Fliesstext ohne stabilen Zahlenkern fuer eine Aggregation.", count: 1 },
+      {
+        value: "Das ist ein langer Fliesstext ohne stabilen Zahlenkern fuer eine Aggregation.",
+        count: 1,
+      },
       { value: "Kurz 2", count: 1 },
     ]);
   });

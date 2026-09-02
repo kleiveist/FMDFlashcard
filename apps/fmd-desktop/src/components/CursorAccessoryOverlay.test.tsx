@@ -92,7 +92,7 @@ afterEach(() => {
   const overlayRoot = document.getElementById("cursor-accessory-overlay-root");
   overlayRoot?.remove();
   document
-    .querySelectorAll("input, textarea, [role=\"textbox\"], [contenteditable=\"true\"]")
+    .querySelectorAll('input, textarea, [role="textbox"], [contenteditable="true"]')
     .forEach((node) => node.remove());
   Object.defineProperty(window, "innerWidth", {
     configurable: true,
@@ -187,9 +187,7 @@ describe("CursorAccessoryOverlay", () => {
       input.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
     });
 
-    const button = document.querySelector(
-      ".cursor-accessory-button",
-    ) as HTMLButtonElement | null;
+    const button = document.querySelector(".cursor-accessory-button") as HTMLButtonElement | null;
     expect(button).toBeTruthy();
     expect(button?.style.width).toBe("32px");
     expect(button?.style.height).toBe("32px");
@@ -209,9 +207,7 @@ describe("CursorAccessoryOverlay", () => {
       input.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
     });
 
-    const button = document.querySelector(
-      ".cursor-accessory-button",
-    ) as HTMLButtonElement | null;
+    const button = document.querySelector(".cursor-accessory-button") as HTMLButtonElement | null;
     expect(button).toBeTruthy();
     expect(button?.style.width).toBe("48px");
     expect(button?.style.height).toBe("48px");
@@ -232,15 +228,11 @@ describe("CursorAccessoryOverlay", () => {
       textarea.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
     });
 
-    const button = document.querySelector(
-      ".cursor-accessory-button",
-    ) as HTMLButtonElement | null;
+    const button = document.querySelector(".cursor-accessory-button") as HTMLButtonElement | null;
     expect(button).toBeTruthy();
 
     act(() => {
-      button?.dispatchEvent(
-        new MouseEvent("pointerdown", { bubbles: true, cancelable: true }),
-      );
+      button?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, cancelable: true }));
     });
 
     expect(document.activeElement).toBe(textarea);

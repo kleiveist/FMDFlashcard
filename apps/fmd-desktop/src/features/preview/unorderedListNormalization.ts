@@ -12,9 +12,7 @@ const editorInjectedInvisibleCharPattern = /[\u200b\u200c\u200d\u2060\ufeff]/g;
 const normalizeLineEndings = (value: string) => value.replace(/\r\n?/g, "\n");
 const resolveLineEnding = (value: string) => (value.includes("\r\n") ? "\r\n" : "\n");
 const normalizeIndentWhitespace = (value: string) =>
-  value
-    .replace(/\u00a0/g, " ")
-    .replace(editorInjectedInvisibleCharPattern, "");
+  value.replace(/\u00a0/g, " ").replace(editorInjectedInvisibleCharPattern, "");
 const isEditorWhitespaceOnly = (value: string) =>
   normalizeIndentWhitespace(value).replace(/\s/g, "").length === 0;
 
@@ -23,12 +21,11 @@ const resolveIndentWidthFromWhitespace = (indent: string) =>
 
 const isInteractionMarkerLine = (line: string) => {
   const trimmed = line.trim().toLowerCase();
-  return trimmed === "-true" ||
+  return (
+    trimmed === "-true" ||
     trimmed === "-false" ||
-    (trimmed.length === 2 &&
-      trimmed[0] === "-" &&
-      trimmed[1] >= "a" &&
-      trimmed[1] <= "d");
+    (trimmed.length === 2 && trimmed[0] === "-" && trimmed[1] >= "a" && trimmed[1] <= "d")
+  );
 };
 
 const isHorizontalRuleLine = (line: string) => /^-{3,}\s*$/.test(line.trim());
@@ -94,12 +91,12 @@ export const normalizeLegacyUnorderedListIndentation = (
     if (isEditorWhitespaceOnly(normalizedLine)) {
       const previousNonBlankIndex = findPreviousNonBlankIndex(index - 1);
       const nextNonBlankIndex = findNextNonBlankIndex(index + 1);
-      const previousNonBlankLine = previousNonBlankIndex >= 0
-        ? normalizeIndentWhitespace(lines[previousNonBlankIndex] ?? "")
-        : "";
-      const nextNonBlankLine = nextNonBlankIndex >= 0
-        ? normalizeIndentWhitespace(lines[nextNonBlankIndex] ?? "")
-        : "";
+      const previousNonBlankLine =
+        previousNonBlankIndex >= 0
+          ? normalizeIndentWhitespace(lines[previousNonBlankIndex] ?? "")
+          : "";
+      const nextNonBlankLine =
+        nextNonBlankIndex >= 0 ? normalizeIndentWhitespace(lines[nextNonBlankIndex] ?? "") : "";
       const hasPreviousUnorderedListLine = isUnorderedListLine(previousNonBlankLine);
       const hasFollowingUnorderedListLine = isUnorderedListLine(nextNonBlankLine);
       if (hasPreviousUnorderedListLine && hasFollowingUnorderedListLine) {
@@ -166,24 +163,20 @@ export const normalizeLegacyUnorderedListIndentation = (
         ) {
           levelStack.pop();
         }
-        nextLevel = levelStack.length === 0
-          ? 0
-          : levelStack[levelStack.length - 1].level;
+        nextLevel = levelStack.length === 0 ? 0 : levelStack[levelStack.length - 1].level;
       }
     }
 
-    while (
-      levelStack.length > 0 &&
-      levelStack[levelStack.length - 1].level >= nextLevel
-    ) {
+    while (levelStack.length > 0 && levelStack[levelStack.length - 1].level >= nextLevel) {
       levelStack.pop();
     }
     levelStack.push({ level: nextLevel, rawIndentWidth });
 
     const normalizedIndent = " ".repeat(nextLevel * indentWidth);
-    const rebuiltLine = normalizedContent.length > 0
-      ? `${normalizedIndent}${marker} ${normalizedContent}`
-      : `${normalizedIndent}${marker} `;
+    const rebuiltLine =
+      normalizedContent.length > 0
+        ? `${normalizedIndent}${marker} ${normalizedContent}`
+        : `${normalizedIndent}${marker} `;
 
     if (rebuiltLine !== line) {
       lines[index] = rebuiltLine;

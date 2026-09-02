@@ -66,37 +66,24 @@ export const HelpPage = ({ onCloseHelp }: HelpPageProps) => {
   }, [activeTopicId, resolvedTopicId, setActiveTopicId]);
 
   const normalizedActiveTopic =
-    helpTopics.find((topic) => topic.id === resolvedTopicId) ??
-    helpTopics[0] ??
-    null;
-  const isFlashcardSyntaxTopic =
-    normalizedActiveTopic?.id === "flashcard-syntax";
-  const isStructuredSyntaxTopic =
-    normalizedActiveTopic?.id === "structured-syntax";
+    helpTopics.find((topic) => topic.id === resolvedTopicId) ?? helpTopics[0] ?? null;
+  const isFlashcardSyntaxTopic = normalizedActiveTopic?.id === "flashcard-syntax";
+  const isStructuredSyntaxTopic = normalizedActiveTopic?.id === "structured-syntax";
   const isSyntaxTopic = isFlashcardSyntaxTopic || isStructuredSyntaxTopic;
   const isAppSectionsTopic = normalizedActiveTopic?.id === "app-sections";
   const isLoadVaultTopic = normalizedActiveTopic?.id === "vault";
-  const syntaxEntries = isStructuredSyntaxTopic
-    ? structuredSyntaxEntries
-    : flashcardSyntaxEntries;
+  const syntaxEntries = isStructuredSyntaxTopic ? structuredSyntaxEntries : flashcardSyntaxEntries;
   const syntaxOverview = isStructuredSyntaxTopic
     ? structuredSyntaxOverview
     : flashcardSyntaxOverview;
-  const activeSyntaxId = isStructuredSyntaxTopic
-    ? structuredSyntaxId
-    : flashcardSyntaxId;
+  const activeSyntaxId = isStructuredSyntaxTopic ? structuredSyntaxId : flashcardSyntaxId;
   const activeSyntax =
-    syntaxEntries.find((entry) => entry.id === activeSyntaxId) ??
-    syntaxEntries[0] ??
-    null;
+    syntaxEntries.find((entry) => entry.id === activeSyntaxId) ?? syntaxEntries[0] ?? null;
   const titleText = resolveText(helpHeader.title, language);
 
   const copyLabel = resolveText(helpLabels.copy, language);
   const copiedLabel = resolveText(helpLabels.copied, language);
-  const syntaxCopyExampleLabel = resolveText(
-    helpLabels.copyExample,
-    language,
-  );
+  const syntaxCopyExampleLabel = resolveText(helpLabels.copyExample, language);
   const syntaxCopyPromptLabel = resolveText(helpLabels.copyPrompt, language);
   const syntaxCopiedLabel = resolveText(helpLabels.copied, language);
   const syntaxPromptLabel = resolveText(helpLabels.promptTemplate, language);
@@ -105,10 +92,7 @@ export const HelpPage = ({ onCloseHelp }: HelpPageProps) => {
   const syntaxWhatItIsLabel = resolveText(helpLabels.whatItIs, language);
   const syntaxMistakesLabel = resolveText(helpLabels.mistakes, language);
   const syntaxMarkersLabel = resolveText(helpLabels.markers, language);
-  const syntaxOverviewBullets = resolveList(
-    syntaxOverview.bullets,
-    language,
-  );
+  const syntaxOverviewBullets = resolveList(syntaxOverview.bullets, language);
 
   const handleCopy = async (text: string, copyId: string) => {
     try {

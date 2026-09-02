@@ -37,7 +37,9 @@ const SORT_PANEL_HINTS: Record<DatabaseViewType, string> = {
   pie: "Sortierung steuert die Reihenfolge von Segmenten und Legende.",
 };
 
-const createDefaultSortRule = (suggestions: DatabaseVaultAttributeSuggestion[]): DatabaseSortRule => ({
+const createDefaultSortRule = (
+  suggestions: DatabaseVaultAttributeSuggestion[],
+): DatabaseSortRule => ({
   id: `sort-rule-${Date.now()}-${Math.random().toString(16).slice(2)}`,
   field: suggestions[0]?.key ?? "",
   dir: "asc",
@@ -56,12 +58,7 @@ export const DatabaseSortPanel = ({
   const viewHint = SORT_PANEL_HINTS[viewType];
 
   const updateRule = (ruleId: string, patch: Partial<DatabaseSortRule>) => {
-    onChange(
-      sortRules.map((rule) =>
-        rule.id === ruleId
-          ? { ...rule, ...patch }
-          : rule),
-    );
+    onChange(sortRules.map((rule) => (rule.id === ruleId ? { ...rule, ...patch } : rule)));
   };
 
   const removeRule = (ruleId: string) => {
@@ -116,7 +113,12 @@ export const DatabaseSortPanel = ({
     >
       <header className="database-block-panel-header">
         <h5>Sortierung</h5>
-        <button type="button" className="database-block-panel-close" onClick={onClose} aria-label="Schliessen">
+        <button
+          type="button"
+          className="database-block-panel-close"
+          onClick={onClose}
+          aria-label="Schliessen"
+        >
           ×
         </button>
       </header>
@@ -126,8 +128,10 @@ export const DatabaseSortPanel = ({
       ) : null}
       <div className="database-block-sort-list">
         {sortRules.map((rule) => {
-          const selectedAttribute = attributes.find((attribute) =>
-            attribute.key.trim().toLowerCase() === rule.field.trim().toLowerCase()) ?? null;
+          const selectedAttribute =
+            attributes.find(
+              (attribute) => attribute.key.trim().toLowerCase() === rule.field.trim().toLowerCase(),
+            ) ?? null;
           const isNaturalAllowed = selectedAttribute?.type !== "number";
 
           return (
@@ -154,14 +158,18 @@ export const DatabaseSortPanel = ({
               />
               <select
                 value={rule.dir}
-                onChange={(event) => updateRule(rule.id, { dir: event.target.value === "desc" ? "desc" : "asc" })}
+                onChange={(event) =>
+                  updateRule(rule.id, { dir: event.target.value === "desc" ? "desc" : "asc" })
+                }
               >
                 <option value="asc">ASC</option>
                 <option value="desc">DESC</option>
               </select>
               <select
                 value={rule.nulls ?? "last"}
-                onChange={(event) => updateRule(rule.id, { nulls: event.target.value === "first" ? "first" : "last" })}
+                onChange={(event) =>
+                  updateRule(rule.id, { nulls: event.target.value === "first" ? "first" : "last" })
+                }
               >
                 <option value="last">Nulls last</option>
                 <option value="first">Nulls first</option>
@@ -175,7 +183,11 @@ export const DatabaseSortPanel = ({
                 />
                 Natural
               </label>
-              <button type="button" className="database-block-toolbar-button" onClick={() => removeRule(rule.id)}>
+              <button
+                type="button"
+                className="database-block-toolbar-button"
+                onClick={() => removeRule(rule.id)}
+              >
                 Entfernen
               </button>
             </div>

@@ -21,10 +21,7 @@ export type TaskAreaMutation = {
 };
 
 export type TaskAreaMutators = {
-  findWrapper?: (
-    lines: string[],
-    range: TaskMutationSourceRange,
-  ) => unknown | null;
+  findWrapper?: (lines: string[], range: TaskMutationSourceRange) => unknown | null;
   addWrapper: (lines: string[], range: TaskMutationSourceRange) => TaskAreaMutation;
   removeWrapper: (lines: string[], range: TaskMutationSourceRange) => TaskAreaMutation;
 };
@@ -108,9 +105,7 @@ export const applyTaskAreaToggle = async ({
   let lines = contents.replace(/\r\n?/g, "\n").split("\n");
 
   const removeWrapperMissing =
-    !nextEnabled &&
-    mutators.findWrapper &&
-    !mutators.findWrapper(lines, scope.sourceRange);
+    !nextEnabled && mutators.findWrapper && !mutators.findWrapper(lines, scope.sourceRange);
 
   if (removeWrapperMissing && removeMissingWrapperPolicy === "error") {
     throw new Error("Could not identify an exact #card/#endcard wrapper for this task.");
@@ -156,9 +151,7 @@ export const applyTaskAreaToggle = async ({
 
 export const toggleTaskMembership = applyTaskAreaToggle;
 
-export const removeTaskAreaToggle = async (
-  params: Omit<TaskAreaToggleParams, "nextEnabled">,
-) =>
+export const removeTaskAreaToggle = async (params: Omit<TaskAreaToggleParams, "nextEnabled">) =>
   applyTaskAreaToggle({
     ...params,
     nextEnabled: false,

@@ -6,10 +6,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import {
-  buildVaultRelativePathCandidates,
-  extractVaultAssetRelativePath,
-} from "./vaultAssets";
+import { buildVaultRelativePathCandidates, extractVaultAssetRelativePath } from "./vaultAssets";
 
 describe("extractVaultAssetRelativePath", () => {
   it("extracts target from quoted wikilink", () => {
@@ -19,9 +16,7 @@ describe("extractVaultAssetRelativePath", () => {
   });
 
   it("extracts target from wikilink alias", () => {
-    expect(extractVaultAssetRelativePath("[[images/a.png|Alias]]")).toBe(
-      "images/a.png",
-    );
+    expect(extractVaultAssetRelativePath("[[images/a.png|Alias]]")).toBe("images/a.png");
   });
 
   it("extracts target from image embeds with optional labels", () => {
@@ -42,9 +37,7 @@ describe("extractVaultAssetRelativePath", () => {
 
 describe("buildVaultRelativePathCandidates", () => {
   it("keeps direct normalized candidates", () => {
-    expect(buildVaultRelativePathCandidates("images\\\\A.PNG")).toEqual([
-      "images/A.PNG",
-    ]);
+    expect(buildVaultRelativePathCandidates("images\\\\A.PNG")).toEqual(["images/A.PNG"]);
   });
 
   it("resolves dot-segments relative to source paths", () => {

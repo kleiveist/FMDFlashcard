@@ -52,10 +52,7 @@ type FastCardHostProps = {
     flashcardTextRevealed: Record<number, boolean>;
     flashcardSelfGrades: Record<number, any>;
     flashcardSelections: Record<number, string[]>;
-    handleClozeTokenDragStart: (
-      event: DragEvent<HTMLElement>,
-      payload: ClozeDragPayload,
-    ) => void;
+    handleClozeTokenDragStart: (event: DragEvent<HTMLElement>, payload: ClozeDragPayload) => void;
     handleClozeBlankDragOver: (event: DragEvent<HTMLElement>) => void;
   };
   orderedEntries: FastEntry[];
@@ -63,11 +60,7 @@ type FastCardHostProps = {
   canGoNext: boolean;
   setFastCardPosition: (value: (prev: number) => number) => void;
   handleOptionSelect: (cardIndex: number, keys: string[]) => void;
-  handleTrueFalseSelect: (
-    cardIndex: number,
-    itemId: string,
-    value: "wahr" | "falsch",
-  ) => void;
+  handleTrueFalseSelect: (cardIndex: number, itemId: string, value: "wahr" | "falsch") => void;
   handleClozeInputChange: (cardIndex: number, blankId: string, value: string) => void;
   handleClozeTokenDrop: (
     event: DragEvent<HTMLElement>,
@@ -79,11 +72,7 @@ type FastCardHostProps = {
   handleClozeTokenRemove: (cardIndex: number, blankId: string) => void;
   handleTextInputChange: (cardIndex: number, value: string) => void;
   handleTextCheck: (cardIndex: number) => void;
-  handleCompositeOptionSelect: (
-    cardIndex: number,
-    partIndex: number,
-    keys: string[],
-  ) => void;
+  handleCompositeOptionSelect: (cardIndex: number, partIndex: number, keys: string[]) => void;
   handleCompositeTrueFalseSelect: (
     cardIndex: number,
     partIndex: number,
@@ -104,16 +93,8 @@ type FastCardHostProps = {
     validTokenIds: Set<string>,
     dragBlankIds: Set<string>,
   ) => void;
-  handleCompositeClozeTokenRemove: (
-    cardIndex: number,
-    partIndex: number,
-    blankId: string,
-  ) => void;
-  handleCompositeTextInputChange: (
-    cardIndex: number,
-    partIndex: number,
-    value: string,
-  ) => void;
+  handleCompositeClozeTokenRemove: (cardIndex: number, partIndex: number, blankId: string) => void;
+  handleCompositeTextInputChange: (cardIndex: number, partIndex: number, value: string) => void;
   handleCompositeTextCheck: (cardIndex: number, partIndex: number) => void;
   handleCompositeSelfGrade: (
     cardIndex: number,
@@ -236,8 +217,7 @@ export const FastCardHost = ({
           helpEnabled={entryHelpEnabled}
           resultHeaderAction={entryHeaderAction}
           responses={
-            fastFlashcards.flashcardClozeResponses[entry.cardIndex] ??
-            EMPTY_CLOZE_RESPONSES
+            fastFlashcards.flashcardClozeResponses[entry.cardIndex] ?? EMPTY_CLOZE_RESPONSES
           }
           onInputChange={handleClozeInputChange}
           onTokenDrop={handleClozeTokenDrop}
@@ -314,9 +294,7 @@ export const FastCardHost = ({
   return (
     <div className="panel-body">
       {!hasScannedCards ? (
-        <div className="empty-state">
-          Select a note from DASHBOARD and start the flashcard scan
-        </div>
+        <div className="empty-state">Select a note from DASHBOARD and start the flashcard scan</div>
       ) : !hasFilteredCards ? (
         <div className="empty-state">No cards match the selected mode.</div>
       ) : currentEntry ? (

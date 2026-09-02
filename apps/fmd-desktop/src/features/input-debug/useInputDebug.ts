@@ -160,9 +160,7 @@ const redactKeyboardKey = (key: string, redactContent: boolean) => {
 const isElementNode = (value: unknown): value is Element =>
   typeof Element !== "undefined" && value instanceof Element;
 
-const isInputElement = (
-  value: unknown,
-): value is HTMLInputElement | HTMLTextAreaElement => {
+const isInputElement = (value: unknown): value is HTMLInputElement | HTMLTextAreaElement => {
   if (typeof HTMLInputElement !== "undefined" && value instanceof HTMLInputElement) {
     return true;
   }
@@ -300,7 +298,9 @@ const enqueueMicrotask = (fn: () => void) => {
     queueMicrotask(fn);
     return;
   }
-  Promise.resolve().then(fn).catch(() => undefined);
+  Promise.resolve()
+    .then(fn)
+    .catch(() => undefined);
 };
 
 const createInputDebugStore = () => {
@@ -342,10 +342,7 @@ const createInputDebugStore = () => {
       if (record.ts < minTs) {
         break;
       }
-      if (
-        record.eventType === "beforeinput" &&
-        record.inputType === "deleteContentBackward"
-      ) {
+      if (record.eventType === "beforeinput" && record.inputType === "deleteContentBackward") {
         hasDeleteBeforeInput = true;
       }
       if (record.eventType === "keydown" && record.key === "Backspace") {
@@ -409,13 +406,12 @@ const createInputDebugStore = () => {
         ? document.activeElement
         : null;
     const targetElement =
-      toElement(event.target) ??
-      (eventType === "selectionchange" ? activeElement : null);
+      toElement(event.target) ?? (eventType === "selectionchange" ? activeElement : null);
     const inputMeta = resolveInputMeta(targetElement ?? activeElement);
     const isPasswordField = Boolean(
       (inputMeta && inputMeta.isPasswordField) ||
-        isPasswordInput(targetElement) ||
-        isPasswordInput(activeElement),
+      isPasswordInput(targetElement) ||
+      isPasswordInput(activeElement),
     );
 
     let data: string | null = null;
@@ -430,10 +426,7 @@ const createInputDebugStore = () => {
 
     if ("key" in event && "code" in event) {
       const keyboardEvent = event as KeyboardEvent;
-      key = redactKeyboardKey(
-        keyboardEvent.key,
-        state.redactContent || isPasswordField,
-      );
+      key = redactKeyboardKey(keyboardEvent.key, state.redactContent || isPasswordField);
       code = keyboardEvent.code;
       repeat = keyboardEvent.repeat;
       modifiers = {
@@ -446,8 +439,7 @@ const createInputDebugStore = () => {
 
     if ("inputType" in event) {
       const inputEvent = event as InputEvent;
-      inputType =
-        typeof inputEvent.inputType === "string" ? inputEvent.inputType : null;
+      inputType = typeof inputEvent.inputType === "string" ? inputEvent.inputType : null;
       if (typeof inputEvent.data === "string") {
         dataLength = inputEvent.data.length;
         if (!state.redactContent && !isPasswordField) {
@@ -488,8 +480,7 @@ const createInputDebugStore = () => {
     }
 
     const viewportWidth = typeof window !== "undefined" ? window.innerWidth : null;
-    const viewportHeight =
-      typeof window !== "undefined" ? window.innerHeight : null;
+    const viewportHeight = typeof window !== "undefined" ? window.innerHeight : null;
 
     return {
       sessionId: state.sessionId,
@@ -504,10 +495,7 @@ const createInputDebugStore = () => {
       target: describeElement(targetElement),
       activeElement: describeElement(activeElement),
       inputMeta,
-      contentEditableSelection: resolveContentEditableSelection(
-        targetElement,
-        activeElement,
-      ),
+      contentEditableSelection: resolveContentEditableSelection(targetElement, activeElement),
       inputType,
       data,
       dataLength,
@@ -595,9 +583,7 @@ const createInputDebugStore = () => {
     state.composing = false;
   };
 
-  const buildSessionMetadata = (
-    includeSystemInfo: boolean,
-  ): InputDebugSessionMetadata => {
+  const buildSessionMetadata = (includeSystemInfo: boolean): InputDebugSessionMetadata => {
     const base: InputDebugSessionMetadata = {
       sessionId: state.sessionId,
       startedAt: state.sessionStartedAt,
@@ -637,9 +623,7 @@ const createInputDebugStore = () => {
     return lines.join("\n");
   };
 
-  const exportLog = async (
-    includeSystemInfo: boolean,
-  ): Promise<InputDebugExportResult | null> => {
+  const exportLog = async (includeSystemInfo: boolean): Promise<InputDebugExportResult | null> => {
     const suggestedName = `input-debug-${resolveTimestampToken(new Date())}.jsonl`;
     const selectedPath = await save({
       title: "Export Input Debug Log",
@@ -736,8 +720,7 @@ export const useInputDebug = () => {
   }, []);
 
   const exportLog = useCallback(
-    async (includeSystemInfo: boolean) =>
-      inputDebugStore.exportLog(includeSystemInfo),
+    async (includeSystemInfo: boolean) => inputDebugStore.exportLog(includeSystemInfo),
     [],
   );
 
@@ -747,4 +730,3 @@ export const useInputDebug = () => {
     exportLog,
   };
 };
-

@@ -51,33 +51,27 @@ describe("parseProfileId", () => {
 
 describe("resolveActiveProfileRoot", () => {
   it("resolves auto mode to vault/.profile", () => {
-    expect(resolveActiveProfileRoot("auto", "/vault/main", null)).toBe(
-      "/vault/main/.profile",
-    );
+    expect(resolveActiveProfileRoot("auto", "/vault/main", null)).toBe("/vault/main/.profile");
     expect(resolveActiveProfileRoot("auto", "C:\\Vault\\Main", null)).toBe(
       "C:\\Vault\\Main\\.profile",
     );
   });
 
   it("normalizes custom path to a profile subfolder", () => {
-    expect(
-      resolveActiveProfileRoot("custom", "/vault/main", "  /data/user "),
-    ).toBe("/data/user/.profile");
-    expect(
-      resolveActiveProfileRoot("custom", "/vault/main", "C:\\Vault\\Portable\\"),
-    ).toBe("C:\\Vault\\Portable\\.profile");
+    expect(resolveActiveProfileRoot("custom", "/vault/main", "  /data/user ")).toBe(
+      "/data/user/.profile",
+    );
+    expect(resolveActiveProfileRoot("custom", "/vault/main", "C:\\Vault\\Portable\\")).toBe(
+      "C:\\Vault\\Portable\\.profile",
+    );
   });
 
   it("keeps custom path when it already points to profile", () => {
+    expect(resolveActiveProfileRoot("custom", "/vault/main", "/data/user/profile")).toBe(
+      "/data/user/profile",
+    );
     expect(
-      resolveActiveProfileRoot("custom", "/vault/main", "/data/user/profile"),
-    ).toBe("/data/user/profile");
-    expect(
-      resolveActiveProfileRoot(
-        "custom",
-        "/vault/main",
-        "C:\\Vault\\Portable\\profile\\",
-      ),
+      resolveActiveProfileRoot("custom", "/vault/main", "C:\\Vault\\Portable\\profile\\"),
     ).toBe("C:\\Vault\\Portable\\profile");
   });
 
@@ -95,9 +89,7 @@ describe("resolveActiveProfileRoot", () => {
 
 describe("resolveCustomProfileRootPath", () => {
   it("appends profile when selecting a parent folder", () => {
-    expect(resolveCustomProfileRootPath("/workspace/IUFS")).toBe(
-      "/workspace/IUFS/.profile",
-    );
+    expect(resolveCustomProfileRootPath("/workspace/IUFS")).toBe("/workspace/IUFS/.profile");
     expect(resolveCustomProfileRootPath("D:\\workspace\\IUFS\\")).toBe(
       "D:\\workspace\\IUFS\\.profile",
     );
@@ -107,9 +99,7 @@ describe("resolveCustomProfileRootPath", () => {
   });
 
   it("keeps existing profile folders untouched", () => {
-    expect(resolveCustomProfileRootPath("/workspace/IUFS/profile")).toBe(
-      "/workspace/IUFS/profile",
-    );
+    expect(resolveCustomProfileRootPath("/workspace/IUFS/profile")).toBe("/workspace/IUFS/profile");
     expect(resolveCustomProfileRootPath("D:\\workspace\\IUFS\\profile\\")).toBe(
       "D:\\workspace\\IUFS\\profile",
     );
@@ -120,7 +110,6 @@ describe("resolveCustomProfileRootPath", () => {
     expect(resolveCustomProfileRootPath("   ")).toBeNull();
   });
 });
-
 
 describe("mergeProfileData", () => {
   const base: UserVaultProfileData = {
@@ -134,7 +123,19 @@ describe("mergeProfileData", () => {
         lastActiveUserId: "u1",
       },
     },
-    fastFlashcardSessions: [{ id: "s1", endedAt: "2026-01-14", score: 10, correct: 1, incorrect: 0, total: 1, accuracy: 100, pace: 1, durationMs: 1000 }],
+    fastFlashcardSessions: [
+      {
+        id: "s1",
+        endedAt: "2026-01-14",
+        score: 10,
+        correct: 1,
+        incorrect: 0,
+        total: 1,
+        accuracy: 100,
+        pace: 1,
+        durationMs: 1000,
+      },
+    ],
     examRuns: [
       {
         id: "e1",
@@ -167,8 +168,28 @@ describe("mergeProfileData", () => {
       },
     },
     fastFlashcardSessions: [
-      { id: "s1", endedAt: "2026-01-13", score: 5, correct: 0, incorrect: 1, total: 1, accuracy: 0, pace: 1, durationMs: 1000 },
-      { id: "s2", endedAt: "2026-01-15", score: 15, correct: 2, incorrect: 0, total: 2, accuracy: 100, pace: 1, durationMs: 1000 },
+      {
+        id: "s1",
+        endedAt: "2026-01-13",
+        score: 5,
+        correct: 0,
+        incorrect: 1,
+        total: 1,
+        accuracy: 0,
+        pace: 1,
+        durationMs: 1000,
+      },
+      {
+        id: "s2",
+        endedAt: "2026-01-15",
+        score: 15,
+        correct: 2,
+        incorrect: 0,
+        total: 2,
+        accuracy: 100,
+        pace: 1,
+        durationMs: 1000,
+      },
     ],
     examRuns: [
       {
@@ -210,19 +231,13 @@ describe("mergeProfileData", () => {
     const merged = mergeProfileData(base, incoming, "merge");
     expect(Object.keys(merged.spacedRepetitionByVaultId)).toEqual(["vault1"]);
     expect(merged.spacedRepetitionByVaultId.vault1?.users.length).toBe(2);
-    expect(merged.fastFlashcardSessions.map((session) => session.id)).toEqual([
-      "s1",
-      "s2",
-    ]);
+    expect(merged.fastFlashcardSessions.map((session) => session.id)).toEqual(["s1", "s2"]);
     expect(merged.examRuns.map((run) => run.id)).toEqual(["e1", "e2"]);
   });
 
   it("overwrites when strategy is overwrite", () => {
     const merged = mergeProfileData(base, incoming, "overwrite");
-    expect(merged.fastFlashcardSessions.map((session) => session.id)).toEqual([
-      "s1",
-      "s2",
-    ]);
+    expect(merged.fastFlashcardSessions.map((session) => session.id)).toEqual(["s1", "s2"]);
     expect(merged.examRuns.map((run) => run.id)).toEqual(["e1", "e2"]);
   });
 
@@ -235,11 +250,7 @@ describe("mergeProfileData", () => {
       ...createEmptyProfileData(),
     };
     delete incomingWithoutSettings.settings;
-    const merged = mergeProfileData(
-      baseWithSettings,
-      incomingWithoutSettings,
-      "overwrite",
-    );
+    const merged = mergeProfileData(baseWithSettings, incomingWithoutSettings, "overwrite");
     expect(merged.settings).toEqual({ theme: "dark" });
   });
 });

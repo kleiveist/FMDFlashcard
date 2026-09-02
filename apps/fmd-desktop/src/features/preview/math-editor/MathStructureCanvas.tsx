@@ -11,7 +11,10 @@ import type {
 
 const pathKey = (path: SlotPath) =>
   path
-    .map((segment) => `${segment.nodeId}:${segment.slotName}:${segment.rowIndex ?? ""}:${segment.colIndex ?? ""}`)
+    .map(
+      (segment) =>
+        `${segment.nodeId}:${segment.slotName}:${segment.rowIndex ?? ""}:${segment.colIndex ?? ""}`,
+    )
     .join("/");
 
 export const MathStructureCanvas = ({
@@ -50,12 +53,7 @@ export const MathStructureCanvas = ({
     });
   }, [state.cursor.rowPath]);
 
-  const renderRow = (
-    row: FormulaRowNode,
-    path: SlotPath,
-    label: string,
-    compact = false,
-  ) => {
+  const renderRow = (row: FormulaRowNode, path: SlotPath, label: string, compact = false) => {
     const isActive = areSlotPathsEqual(path, state.cursor.rowPath);
     const selection = isActive ? state.cursor.selection : null;
     return (

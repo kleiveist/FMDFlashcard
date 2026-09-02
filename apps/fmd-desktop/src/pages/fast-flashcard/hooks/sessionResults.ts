@@ -1,8 +1,6 @@
 import type { FastFlashcardResult } from "../../../lib/fastFlashcard";
 
-export type SessionResultResolver = (
-  index: number,
-) => FastFlashcardResult | null;
+export type SessionResultResolver = (index: number) => FastFlashcardResult | null;
 
 export const processSessionResults = (
   indices: number[],

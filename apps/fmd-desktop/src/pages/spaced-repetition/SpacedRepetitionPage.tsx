@@ -20,14 +20,7 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { AnchoredPopup } from "../../components/AnchoredPopup";
 import { FlashcardAreaMenuTrigger } from "../../components/flashcards/FlashcardAreaMenu";
 import { SrCardHost } from "./components/SrCardHost";
@@ -49,13 +42,8 @@ type SpacedRepetitionPageProps = {
 };
 
 export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPageProps) => {
-  const {
-    actions,
-    flashcardNoteFiles,
-    flashcardNoteFilesError,
-    flashcardNoteFilesState,
-    preview,
-  } = useAppState();
+  const { actions, flashcardNoteFiles, flashcardNoteFilesError, flashcardNoteFilesState, preview } =
+    useAppState();
   const {
     flashcards,
     spacedRepetition,
@@ -115,10 +103,7 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
   const autoTimeBarStyle = useMemo(
     () =>
       ({
-        "--exam-time-progress": `${Math.max(
-          0,
-          Math.min(100, autoTimeProgressPercent),
-        )}%`,
+        "--exam-time-progress": `${Math.max(0, Math.min(100, autoTimeProgressPercent))}%`,
       }) as CSSProperties,
     [autoTimeProgressPercent],
   );
@@ -248,43 +233,29 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
     <div
       className={`spaced-repetition-layout ${
         isDesktopView ? "desktop-rail-layout" : ""
-      } ${isFocusMode ? "focus-mode" : ""} ${
-        isTableView ? "table-view" : ""
-      }`}
+      } ${isFocusMode ? "focus-mode" : ""} ${isTableView ? "table-view" : ""}`}
     >
       <div className="spaced-repetition-main">
         {isFocusMode ? null : (
           <SrStatsAndChart
             statsView={statsView}
-            setSpacedRepetitionStatsView={
-              spacedRepetition.setSpacedRepetitionStatsView
-            }
+            setSpacedRepetitionStatsView={spacedRepetition.setSpacedRepetitionStatsView}
             spacedRepetitionBoxCounts={spacedRepetition.spacedRepetitionBoxCounts}
             maxBoxCount={maxBoxCount}
             activeBoxFilter={activeBoxFilter}
             toggleBoxFilter={toggleBoxFilter}
             vaultName={vaultName}
             vaultFilesCount={vault.files.length}
-            spacedRepetitionFlashcardsLength={
-              spacedRepetition.spacedRepetitionFlashcards.length
-            }
-            spacedRepetitionCompletedChartData={
-              spacedRepetition.spacedRepetitionCompletedChartData
-            }
+            spacedRepetitionFlashcardsLength={spacedRepetition.spacedRepetitionFlashcards.length}
+            spacedRepetitionCompletedChartData={spacedRepetition.spacedRepetitionCompletedChartData}
             spacedRepetitionCompletedChartLabels={
               spacedRepetition.spacedRepetitionCompletedChartLabels
             }
             statsChartClass={statsChartClass}
             statsChartStyle={statsChartStyle}
-            spacedRepetitionCorrectCount={
-              spacedRepetition.spacedRepetitionCorrectCount
-            }
-            spacedRepetitionIncorrectCount={
-              spacedRepetition.spacedRepetitionIncorrectCount
-            }
-            spacedRepetitionTotalQuestions={
-              spacedRepetition.spacedRepetitionTotalQuestions
-            }
+            spacedRepetitionCorrectCount={spacedRepetition.spacedRepetitionCorrectCount}
+            spacedRepetitionIncorrectCount={spacedRepetition.spacedRepetitionIncorrectCount}
+            spacedRepetitionTotalQuestions={spacedRepetition.spacedRepetitionTotalQuestions}
             kpiItems={kpiItems}
             isCollapsible={isTableView}
             isCollapsed={isTableView && !isDiagramOpen}
@@ -306,18 +277,12 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
             <div className="exam-time-bar-header">
               <span className="label">{autoTimeStatusLabel}</span>
             </div>
-            <div
-              className="exam-time-bar-track"
-              aria-hidden="true"
-              style={autoTimeBarStyle}
-            />
+            <div className="exam-time-bar-track" aria-hidden="true" style={autoTimeBarStyle} />
           </div>
         ) : null}
 
         <section
-          className={`panel sr-flashcards-panel ${
-            isFlashcardsPanelEmpty ? "is-empty" : ""
-          }`}
+          className={`panel sr-flashcards-panel ${isFlashcardsPanelEmpty ? "is-empty" : ""}`}
         >
           <SrHeader
             isFocusMode={isFocusMode}
@@ -334,27 +299,15 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
               helpEnabled={spacedRepetitionHelpEnabled}
               vaultPath={vault.vaultPath}
               vaultPngAssets={vault.pngAssets}
-              spacedRepetitionCompositeStates={
-                spacedRepetition.spacedRepetitionCompositeStates
-              }
-              spacedRepetitionClozeResponses={
-                spacedRepetition.spacedRepetitionClozeResponses
-              }
+              spacedRepetitionCompositeStates={spacedRepetition.spacedRepetitionCompositeStates}
+              spacedRepetitionClozeResponses={spacedRepetition.spacedRepetitionClozeResponses}
               spacedRepetitionTrueFalseSelections={
                 spacedRepetition.spacedRepetitionTrueFalseSelections
               }
-              spacedRepetitionTextResponses={
-                spacedRepetition.spacedRepetitionTextResponses
-              }
-              spacedRepetitionTextRevealed={
-                spacedRepetition.spacedRepetitionTextRevealed
-              }
-              spacedRepetitionSelfGrades={
-                spacedRepetition.spacedRepetitionSelfGrades
-              }
-              spacedRepetitionSelections={
-                spacedRepetition.spacedRepetitionSelections
-              }
+              spacedRepetitionTextResponses={spacedRepetition.spacedRepetitionTextResponses}
+              spacedRepetitionTextRevealed={spacedRepetition.spacedRepetitionTextRevealed}
+              spacedRepetitionSelfGrades={spacedRepetition.spacedRepetitionSelfGrades}
+              spacedRepetitionSelections={spacedRepetition.spacedRepetitionSelections}
               handleCompositeOptionSelect={handleCompositeOptionSelect}
               handleCompositeTrueFalseSelect={handleCompositeTrueFalseSelect}
               handleCompositeClozeInputChange={handleCompositeClozeInputChange}
@@ -371,9 +324,7 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
               handleTextInputChange={handleTextInputChange}
               handleTextCheck={handleTextCheck}
               handleSelfGrade={handleSelfGrade}
-              handleSpacedRepetitionSubmit={
-                spacedRepetition.handleSpacedRepetitionSubmit
-              }
+              handleSpacedRepetitionSubmit={spacedRepetition.handleSpacedRepetitionSubmit}
               handleClozeTokenDragStart={flashcards.handleClozeTokenDragStart}
               handleClozeBlankDragOver={flashcards.handleClozeBlankDragOver}
               spacedRepetitionCanGoBack={flashcardsPanelCanGoBack}
@@ -387,29 +338,25 @@ export const SpacedRepetitionPage = ({ onSectionSelect }: SpacedRepetitionPagePr
         </section>
       </div>
 
-      {isDesktopView ? (
-        null
-      ) : (
-        isFocusMode ? null : (
-          <aside className="spaced-repetition-sidebar">
-            {noteFilesPanel}
-            <SrToolsPanel
-              spacedRepetitionBoxes={spacedRepetition.spacedRepetitionBoxes}
-              setSpacedRepetitionBoxes={spacedRepetition.setSpacedRepetitionBoxes}
-              spacedRepetitionPageSize={spacedRepetition.spacedRepetitionPageSize}
-              setSpacedRepetitionPageSize={spacedRepetition.setSpacedRepetitionPageSize}
-              flashcardFilterMode={flashcardFilterMode}
-              setFlashcardFilterMode={setFlashcardFilterMode}
-              autoTimeEnabled={autoTimeEnabled}
-              setAutoTimeEnabled={setAutoTimeEnabled}
-              statusLabel={spacedRepetition.spacedRepetitionStatusLabel}
-              isCollapsible={isTableView}
-              isCollapsed={isTableView && !isToolsOpen}
-              onToggleCollapse={() => setIsToolsOpen((prev) => !prev)}
-              controlsId="sr-tools-body"
-            />
-          </aside>
-        )
+      {isDesktopView ? null : isFocusMode ? null : (
+        <aside className="spaced-repetition-sidebar">
+          {noteFilesPanel}
+          <SrToolsPanel
+            spacedRepetitionBoxes={spacedRepetition.spacedRepetitionBoxes}
+            setSpacedRepetitionBoxes={spacedRepetition.setSpacedRepetitionBoxes}
+            spacedRepetitionPageSize={spacedRepetition.spacedRepetitionPageSize}
+            setSpacedRepetitionPageSize={spacedRepetition.setSpacedRepetitionPageSize}
+            flashcardFilterMode={flashcardFilterMode}
+            setFlashcardFilterMode={setFlashcardFilterMode}
+            autoTimeEnabled={autoTimeEnabled}
+            setAutoTimeEnabled={setAutoTimeEnabled}
+            statusLabel={spacedRepetition.spacedRepetitionStatusLabel}
+            isCollapsible={isTableView}
+            isCollapsed={isTableView && !isToolsOpen}
+            onToggleCollapse={() => setIsToolsOpen((prev) => !prev)}
+            controlsId="sr-tools-body"
+          />
+        </aside>
       )}
       <AnchoredPopup
         isOpen={isDesktopView && !isFocusMode && isNoteFilesPopupOpen}

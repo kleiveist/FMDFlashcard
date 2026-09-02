@@ -343,8 +343,7 @@ describe("monitoring-render-rules", () => {
     });
     const invalidResult = renderMonitoringValue({
       attributeKey: "health",
-      value:
-        "Das ist ein langer Freitext ohne stabile Kurzstruktur mit einer Zahl 2 im Satz.",
+      value: "Das ist ein langer Freitext ohne stabile Kurzstruktur mit einer Zahl 2 im Satz.",
       profiles: [shortStructured],
     });
 

@@ -13,9 +13,7 @@ import { useMediaQuery } from "../lib/useMediaQuery";
 const examEditorMock = vi.hoisted(() => ({
   queue: [] as ExamEditorControlsState[],
 }));
-const capturedPreviewPanelProps = vi.hoisted(
-  () => [] as Array<Record<string, unknown>>,
-);
+const capturedPreviewPanelProps = vi.hoisted(() => [] as Array<Record<string, unknown>>);
 
 vi.mock("../components/AppStateProvider", () => ({
   useAppState: vi.fn(),
@@ -26,7 +24,11 @@ vi.mock("../lib/useMediaQuery", () => ({
 }));
 
 vi.mock("../components/FileList", () => ({
-  FileList: ({ onSelectFile }: { onSelectFile: (file: { path: string; relative_path: string }) => void }) =>
+  FileList: ({
+    onSelectFile,
+  }: {
+    onSelectFile: (file: { path: string; relative_path: string }) => void;
+  }) =>
     React.createElement(
       "button",
       {
@@ -47,14 +49,10 @@ vi.mock("../components/PreviewPanel", () => ({
     onOpenTaskProfileEditor,
     ...props
   }: {
-    onOpenTaskProfileEditor?: (payload: {
-      taskValue: string | null;
-      propertyKey: string;
-    }) => void;
+    onOpenTaskProfileEditor?: (payload: { taskValue: string | null; propertyKey: string }) => void;
   } & Record<string, unknown>) => {
     capturedPreviewPanelProps.push(props);
-    return (
-    React.createElement(
+    return React.createElement(
       "button",
       {
         type: "button",
@@ -66,7 +64,6 @@ vi.mock("../components/PreviewPanel", () => ({
           }),
       },
       "Open task profile editor",
-    )
     );
   },
 }));
@@ -103,13 +100,8 @@ vi.mock("../components/ModalShell", () => ({
 }));
 
 vi.mock("../components/NoteModal", () => ({
-  NoteModal: ({
-    isOpen,
-    children,
-  }: {
-    isOpen: boolean;
-    children: React.ReactNode;
-  }) => (isOpen ? React.createElement("div", null, children) : null),
+  NoteModal: ({ isOpen, children }: { isOpen: boolean; children: React.ReactNode }) =>
+    isOpen ? React.createElement("div", null, children) : null,
 }));
 
 vi.mock("./exam-editor/ExamEditorView", async () => {
@@ -395,14 +387,12 @@ const renderDashboard = ({
       });
     }, [latestAppState.vault.files, latestAppState.vault.vaultPath]);
 
-    return (
-      React.createElement(DashboardPage, {
-        initialVaultView,
-        onOpenPointsProfilesPage,
-        markdownTabs,
-        onMarkdownTabsChange: setMarkdownTabs,
-      })
-    );
+    return React.createElement(DashboardPage, {
+      initialVaultView,
+      onOpenPointsProfilesPage,
+      markdownTabs,
+      onMarkdownTabsChange: setMarkdownTabs,
+    });
   };
 
   act(() => {
@@ -507,9 +497,7 @@ describe("DashboardPage exam leave guard", () => {
     expect(container.querySelector(".note-column .exam-editor-controls-panel")).toBeFalsy();
     expect(container.querySelector(".right-overlay-rail.dashboard-overlay-rail")).toBeFalsy();
     expect(container.querySelector(".note-column")).toBeTruthy();
-    expect(container.querySelector(".workspace")?.classList.contains("no-inline-note")).toBe(
-      false,
-    );
+    expect(container.querySelector(".workspace")?.classList.contains("no-inline-note")).toBe(false);
     expect(container.querySelectorAll('[data-testid="mock-file-select"]')).toHaveLength(1);
 
     cleanup();
@@ -527,8 +515,8 @@ describe("DashboardPage exam leave guard", () => {
         handleSelectFile,
         markdownPreviewDefaultMode: mode,
       });
-      const setEditorModeWithDefaultsMock =
-        appState.preview.setEditorModeWithDefaults as ReturnType<typeof vi.fn>;
+      const setEditorModeWithDefaultsMock = appState.preview
+        .setEditorModeWithDefaults as ReturnType<typeof vi.fn>;
       const { cleanup } = renderDashboard({
         initialVaultView: "markdown",
         appState,
@@ -591,9 +579,7 @@ describe("DashboardPage exam leave guard", () => {
     const { container, cleanup } = renderDashboard({ initialVaultView: "markdown" });
 
     expect(container.querySelector(".right-overlay-rail.dashboard-overlay-rail")).toBeFalsy();
-    expect(container.querySelector(".workspace")?.classList.contains("no-inline-note")).toBe(
-      false,
-    );
+    expect(container.querySelector(".workspace")?.classList.contains("no-inline-note")).toBe(false);
     expect(container.querySelectorAll('[data-testid="mock-file-select"]')).toHaveLength(1);
 
     cleanup();
@@ -880,9 +866,7 @@ describe("DashboardPage exam leave guard", () => {
       await onWriteSave?.();
     });
 
-    const writeCalls = invokeMock.mock.calls.filter(
-      ([command]) => command === "write_text_file",
-    );
+    const writeCalls = invokeMock.mock.calls.filter(([command]) => command === "write_text_file");
     expect(writeCalls).toHaveLength(0);
 
     cleanup();

@@ -5,14 +5,7 @@
  */
 
 import { invoke } from "@tauri-apps/api/core";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { ModalShell } from "../components/ModalShell";
 import { useAppState } from "../components/AppStateProvider";
 import { TrashIcon } from "../components/icons";
@@ -66,11 +59,7 @@ import {
   type MonitoringRenderScope,
 } from "../features/monitoring/monitoring-render-rules";
 
-const ALL_SCOPES: MonitoringRenderScope[] = [
-  "monitoring-page",
-  "database",
-  "properties",
-];
+const ALL_SCOPES: MonitoringRenderScope[] = ["monitoring-page", "database", "properties"];
 
 const ALL_INPUT_FORMATS: MonitoringInputFormat[] = [
   "ratio",
@@ -104,9 +93,7 @@ const FORMULA_OPERATION_LABELS: Record<DatabaseFormulaDefinitionV1["operation"],
 };
 
 const toLabel = (value: string) =>
-  value
-    .replace(/-/g, " ")
-    .replace(/\b\w/g, (match) => match.toUpperCase());
+  value.replace(/-/g, " ").replace(/\b\w/g, (match) => match.toUpperCase());
 
 const normalizeLower = (value: string) => value.trim().toLowerCase();
 
@@ -135,10 +122,7 @@ const parseCsv = (input: string) =>
       .filter(Boolean),
   );
 
-const pruneRuleTextDraftMap = (
-  current: Record<string, string>,
-  activeRuleIds: Set<string>,
-) => {
+const pruneRuleTextDraftMap = (current: Record<string, string>, activeRuleIds: Set<string>) => {
   const next: Record<string, string> = {};
   let changed = false;
   Object.entries(current).forEach(([ruleId, value]) => {
@@ -221,7 +205,10 @@ const parseThresholdsText = (input: string) =>
         symbol,
       };
     })
-    .filter((entry): entry is { op: ">=" | ">" | "<=" | "<" | "="; value: number; symbol: string } => Boolean(entry));
+    .filter(
+      (entry): entry is { op: ">=" | ">" | "<=" | "<" | "="; value: number; symbol: string } =>
+        Boolean(entry),
+    );
 
 const groupedMapToText = (rule: Extract<MonitoringRenderRule, { type: "grouped-label-map" }>) =>
   rule.groups
@@ -250,12 +237,11 @@ const parseGroupedMapText = (input: string) =>
         values,
       };
     })
-    .filter((entry): entry is { label: string; symbol: string | null; values: string[] } => Boolean(entry));
+    .filter((entry): entry is { label: string; symbol: string | null; values: string[] } =>
+      Boolean(entry),
+    );
 
-const resolveRulePreviewAlias = (
-  rule: MonitoringRenderRule,
-  aliases: string[],
-) => {
+const resolveRulePreviewAlias = (rule: MonitoringRenderRule, aliases: string[]) => {
   if (aliases.length === 0) {
     return rule.rulePreviewAlias?.trim() ?? "";
   }
@@ -295,10 +281,7 @@ const resolveRulePreviewAlias = (
   return matched ?? aliases[0] ?? "";
 };
 
-const normalizeRuleTargetAttributes = (
-  value: unknown,
-  aliases: string[],
-) => {
+const normalizeRuleTargetAttributes = (value: unknown, aliases: string[]) => {
   if (!Array.isArray(value) || aliases.length === 0) {
     return undefined;
   }
@@ -327,13 +310,8 @@ const normalizeRuleTargetAttributes = (
   return next.length > 0 ? next : undefined;
 };
 
-const resolveRulePreviewRawValue = (
-  rule: MonitoringRenderRule,
-  fallbackRawValue: string,
-) =>
-  typeof rule.rulePreviewRawValue === "string"
-    ? rule.rulePreviewRawValue
-    : fallbackRawValue;
+const resolveRulePreviewRawValue = (rule: MonitoringRenderRule, fallbackRawValue: string) =>
+  typeof rule.rulePreviewRawValue === "string" ? rule.rulePreviewRawValue : fallbackRawValue;
 
 const truncateRulePreview = (value: string, maxLength = 60) => {
   const compact = value.replace(/\s+/g, " ").trim();
@@ -400,11 +378,12 @@ const buildRuleListLabel = ({
     formatMonitoringCompactText(previewResult, summarizeRuleFallback(rule)),
   );
   const rawPreview = truncateRulePreview(previewRawValue, 32);
-  const relationPreview = rawPreview && renderedPreview
-    ? rawPreview === renderedPreview
-      ? rawPreview
-      : `${rawPreview} -> ${renderedPreview}`
-    : rawPreview || renderedPreview;
+  const relationPreview =
+    rawPreview && renderedPreview
+      ? rawPreview === renderedPreview
+        ? rawPreview
+        : `${rawPreview} -> ${renderedPreview}`
+      : rawPreview || renderedPreview;
   return relationPreview ? `${prefix} ${relationPreview}` : prefix;
 };
 
@@ -438,10 +417,7 @@ const hydrateRuleForAliases = (
   aliases: string[],
   fallbackRawValue: string,
 ): MonitoringRenderRule => {
-  const normalizedTargets = normalizeRuleTargetAttributes(
-    rule.targetAttributes,
-    aliases,
-  );
+  const normalizedTargets = normalizeRuleTargetAttributes(rule.targetAttributes, aliases);
   const ruleWithTargets: MonitoringRenderRule = {
     ...cloneRule(rule),
     targetAttributes: normalizedTargets,
@@ -501,8 +477,7 @@ const isFormulaPropertyKey = (key: string) => normalizeLower(key).startsWith("f-
 
 const buildFormulaGroupId = (key: string) => normalizeLower(key);
 
-const FRONTMATTER_BLOCK_PATTERN =
-  /^(?:\uFEFF)?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
+const FRONTMATTER_BLOCK_PATTERN = /^(?:\uFEFF)?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
 
 const stableSerialize = (value: unknown): string => {
   if (Array.isArray(value)) {
@@ -526,9 +501,7 @@ const buildFormulaAttributeOptions = (suggestions: string[]): FormulaBuilderAttr
       supportsMath: true,
     }));
 
-const collectFolderSuggestions = (
-  files: Array<{ relative_path: string }>,
-) =>
+const collectFolderSuggestions = (files: Array<{ relative_path: string }>) =>
   dedupeAliases(
     files.map((file) => {
       const normalized = file.relative_path.replace(/\\/g, "/");
@@ -554,9 +527,7 @@ const buildNextFormulaKey = (existingGroups: FormulaGroup[]) => {
 };
 
 const buildFallbackFormulaDefinition = (formulaKey: string): DatabaseFormulaDefinitionV1 => {
-  const fallbackAttributeKey = formulaKey
-    .replace(/^f-/i, "")
-    .trim() || "score";
+  const fallbackAttributeKey = formulaKey.replace(/^f-/i, "").trim() || "score";
   return {
     version: 1,
     operation: "count",
@@ -587,42 +558,42 @@ const pruneDatabaseFilterGroupByKeys = (
   };
 };
 
-const pruneDatabaseSortRulesByKeys = (
-  rules: DatabaseSortRule[],
-  removalKeys: Set<string>,
-) => rules.filter((rule) => !removalKeys.has(normalizeLower(rule.field)));
+const pruneDatabaseSortRulesByKeys = (rules: DatabaseSortRule[], removalKeys: Set<string>) =>
+  rules.filter((rule) => !removalKeys.has(normalizeLower(rule.field)));
 
 const pruneDatabaseViewSpecByKeys = (
   view: DatabaseViewSpec,
   removalKeys: Set<string>,
 ): DatabaseViewSpec => ({
   ...view,
-  groupBy: removalKeys.has(normalizeLower(view.groupBy ?? "")) ? null : view.groupBy ?? null,
+  groupBy: removalKeys.has(normalizeLower(view.groupBy ?? "")) ? null : (view.groupBy ?? null),
   kanbanExcludedValues: removalKeys.has(normalizeLower(view.groupBy ?? ""))
     ? []
     : [...(view.kanbanExcludedValues ?? [])],
   timelineStartField: removalKeys.has(normalizeLower(view.timelineStartField ?? ""))
     ? null
-    : view.timelineStartField ?? null,
+    : (view.timelineStartField ?? null),
   timelineEndField: removalKeys.has(normalizeLower(view.timelineEndField ?? ""))
     ? null
-    : view.timelineEndField ?? null,
+    : (view.timelineEndField ?? null),
   projectStartField: removalKeys.has(normalizeLower(view.projectStartField ?? ""))
     ? null
-    : view.projectStartField ?? null,
+    : (view.projectStartField ?? null),
   projectUnitField: removalKeys.has(normalizeLower(view.projectUnitField ?? ""))
     ? null
-    : view.projectUnitField ?? null,
+    : (view.projectUnitField ?? null),
   projectBarFillConfigs: (view.projectBarFillConfigs ?? [])
     .filter((entry) => !removalKeys.has(normalizeLower(entry.attributeKey ?? "")))
     .map((entry) => ({
       ...entry,
       mappings: (entry.mappings ?? []).map((mapping) => ({ ...mapping })),
     })),
-  pieGroupField: removalKeys.has(normalizeLower(view.pieGroupField ?? "")) ? null : view.pieGroupField ?? null,
+  pieGroupField: removalKeys.has(normalizeLower(view.pieGroupField ?? ""))
+    ? null
+    : (view.pieGroupField ?? null),
   pieAggregateField: removalKeys.has(normalizeLower(view.pieAggregateField ?? ""))
     ? null
-    : view.pieAggregateField ?? null,
+    : (view.pieAggregateField ?? null),
   pieExcludedValues: removalKeys.has(normalizeLower(view.pieGroupField ?? ""))
     ? []
     : [...(view.pieExcludedValues ?? [])],
@@ -871,7 +842,8 @@ const normalizeFormulaRegistryEntries = (
     });
   });
   return Array.from(dedupedByKey.values()).sort((left, right) =>
-    left.key.localeCompare(right.key, undefined, { sensitivity: "base" }));
+    left.key.localeCompare(right.key, undefined, { sensitivity: "base" }),
+  );
 };
 
 const upsertFormulaRegistryEntry = (
@@ -880,16 +852,10 @@ const upsertFormulaRegistryEntry = (
 ) => {
   const normalizedKey = buildFormulaGroupId(nextEntry.key);
   const filtered = entries.filter((entry) => buildFormulaGroupId(entry.key) !== normalizedKey);
-  return normalizeFormulaRegistryEntries([
-    ...filtered,
-    nextEntry,
-  ]);
+  return normalizeFormulaRegistryEntries([...filtered, nextEntry]);
 };
 
-const removeFormulaRegistryEntryByKey = (
-  entries: FormulaRegistryEntry[],
-  key: string,
-) => {
+const removeFormulaRegistryEntryByKey = (entries: FormulaRegistryEntry[], key: string) => {
   const normalizedKey = buildFormulaGroupId(key);
   return normalizeFormulaRegistryEntries(
     entries.filter((entry) => buildFormulaGroupId(entry.key) !== normalizedKey),
@@ -955,7 +921,8 @@ const collectFormulaGroups = (
     });
 
     formulaKeysByNormalized.forEach((displayKey, normalizedKey) => {
-      const resolvedDefinition = parsedDefinitionsByNormalized.get(normalizedKey) ??
+      const resolvedDefinition =
+        parsedDefinitionsByNormalized.get(normalizedKey) ??
         buildFallbackFormulaDefinition(displayKey);
       const occurrenceSource =
         formulaOccurrenceSourceByNormalized.get(normalizedKey) ?? "frontmatter";
@@ -984,12 +951,14 @@ const collectFormulaGroups = (
         normalizedKey,
         displayKey,
         definition: resolvedDefinition,
-        occurrences: [{
-          filePath: file.filePath,
-          fileRelativePath: file.fileRelativePath,
-          key: displayKey,
-          source: occurrenceSource,
-        }],
+        occurrences: [
+          {
+            filePath: file.filePath,
+            fileRelativePath: file.fileRelativePath,
+            key: displayKey,
+            source: occurrenceSource,
+          },
+        ],
         definitionSignatures: new Set([signature]),
         hasRegistryEntry: false,
       });
@@ -1026,15 +995,17 @@ const collectFormulaGroups = (
       normalizedKey: group.normalizedKey,
       displayKey: group.displayKey,
       definition: group.definition,
-      occurrences: group.occurrences
-        .slice()
-        .sort((left, right) =>
-          left.fileRelativePath.localeCompare(right.fileRelativePath, undefined, { sensitivity: "base" })),
+      occurrences: group.occurrences.slice().sort((left, right) =>
+        left.fileRelativePath.localeCompare(right.fileRelativePath, undefined, {
+          sensitivity: "base",
+        }),
+      ),
       hasConflict: group.definitionSignatures.size > 1,
       hasRegistryEntry: group.hasRegistryEntry,
     }))
     .sort((left, right) =>
-      left.displayKey.localeCompare(right.displayKey, undefined, { sensitivity: "base" }));
+      left.displayKey.localeCompare(right.displayKey, undefined, { sensitivity: "base" }),
+    );
 
   return nextGroups;
 };
@@ -1052,18 +1023,14 @@ export const MonitoringRulesPage = () => {
   const [draft, setDraft] = useState<MonitoringRenderProfile | null>(
     profiles[0] ? cloneProfile(profiles[0]) : null,
   );
-  const [aliasesDraft, setAliasesDraft] = useState(
-    draft?.attributeAliases.join(", ") ?? "",
-  );
-  const [previewRawByProfileId, setPreviewRawByProfileId] = useState<Record<string, string>>(
-    () =>
-      Object.fromEntries(
-        profiles.map((profile) => [
-          profile.id,
-          profile.previewRawValue ??
-            resolveMonitoringPreviewRawDefault(profile.inputFormat),
-        ]),
-      ),
+  const [aliasesDraft, setAliasesDraft] = useState(draft?.attributeAliases.join(", ") ?? "");
+  const [previewRawByProfileId, setPreviewRawByProfileId] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      profiles.map((profile) => [
+        profile.id,
+        profile.previewRawValue ?? resolveMonitoringPreviewRawDefault(profile.inputFormat),
+      ]),
+    ),
   );
   const [attributeAliasSuggestions, setAttributeAliasSuggestions] = useState<string[]>([]);
   const [aliasSuggestionsOpen, setAliasSuggestionsOpen] = useState(false);
@@ -1076,7 +1043,9 @@ export const MonitoringRulesPage = () => {
   const [groupedMapTextByRuleId, setGroupedMapTextByRuleId] = useState<Record<string, string>>({});
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
   const [isRuleEditorOpen, setIsRuleEditorOpen] = useState(false);
-  const [targetAttributesPickerRuleId, setTargetAttributesPickerRuleId] = useState<string | null>(null);
+  const [targetAttributesPickerRuleId, setTargetAttributesPickerRuleId] = useState<string | null>(
+    null,
+  );
   const [statusMessage, setStatusMessage] = useState("");
   const [statusError, setStatusError] = useState("");
   const [activeSubview, setActiveSubview] = useState<MonitoringRulesSubview>("attribute-pools");
@@ -1086,9 +1055,8 @@ export const MonitoringRulesPage = () => {
   );
   const [selectedFormulaGroupId, setSelectedFormulaGroupId] = useState<string | null>(null);
   const [formulaKeyDraft, setFormulaKeyDraft] = useState("");
-  const [formulaDefinitionDraft, setFormulaDefinitionDraft] = useState<DatabaseFormulaDefinitionV1 | null>(
-    null,
-  );
+  const [formulaDefinitionDraft, setFormulaDefinitionDraft] =
+    useState<DatabaseFormulaDefinitionV1 | null>(null);
   const [formulaSavePending, setFormulaSavePending] = useState(false);
   const [profileDeleteTargetId, setProfileDeleteTargetId] = useState<string | null>(null);
   const [profileDeletePending, setProfileDeletePending] = useState(false);
@@ -1102,65 +1070,66 @@ export const MonitoringRulesPage = () => {
     [profiles, selectedId],
   );
 
-  const loadFormulaGroups = useCallback(async (registryOverride?: FormulaRegistryEntry[]) => {
-    const effectiveRegistryEntries = normalizeFormulaRegistryEntries(
-      registryOverride ?? formulaAttributeRegistry,
-    );
-    const toPathKey = (value: string) => value.replace(/\\/g, "/").toLowerCase();
-    const markdownFilesByPath = new Map<
-      string,
-      { path: string; relativePath: string }
-    >();
-    vault.files.forEach((file) => {
-      if (!file.path.toLowerCase().endsWith(".md")) {
-        return;
-      }
-      markdownFilesByPath.set(toPathKey(file.path), {
-        path: file.path,
-        relativePath: file.relative_path,
-      });
-    });
-    const historyResult = await loadFormulaHistoryFiles({ vaultPath: vault.vaultPath });
-    setFormulaHistoryFolderPath(historyResult.historyFolderPath);
-    setFormulaHistoryWarning(historyResult.warning);
-    historyResult.files.forEach((entry) => {
-      const entryPathKey = toPathKey(entry.path);
-      if (markdownFilesByPath.has(entryPathKey)) {
-        return;
-      }
-      markdownFilesByPath.set(entryPathKey, {
-        path: entry.path,
-        relativePath: entry.relativePath,
-      });
-    });
-    const markdownFiles = Array.from(markdownFilesByPath.values());
-    if (markdownFiles.length === 0) {
-      setFormulaGroups(collectFormulaGroups([], effectiveRegistryEntries));
-      setFormulaGroupsState("ready");
-      return;
-    }
-
-    setFormulaGroupsState("loading");
-    const loadedMarkdownByPath = await Promise.all(
-      markdownFiles.map(async (file) => {
-        try {
-          const markdown = await invoke<string>("read_text_file", { path: file.path });
-          return {
-            filePath: file.path,
-            fileRelativePath: file.relativePath,
-            markdown,
-          };
-        } catch {
-          return null;
+  const loadFormulaGroups = useCallback(
+    async (registryOverride?: FormulaRegistryEntry[]) => {
+      const effectiveRegistryEntries = normalizeFormulaRegistryEntries(
+        registryOverride ?? formulaAttributeRegistry,
+      );
+      const toPathKey = (value: string) => value.replace(/\\/g, "/").toLowerCase();
+      const markdownFilesByPath = new Map<string, { path: string; relativePath: string }>();
+      vault.files.forEach((file) => {
+        if (!file.path.toLowerCase().endsWith(".md")) {
+          return;
         }
-      }),
-    );
-    const readyFiles = loadedMarkdownByPath.filter(
-      (entry): entry is { filePath: string; fileRelativePath: string; markdown: string } => Boolean(entry),
-    );
-    setFormulaGroups(collectFormulaGroups(readyFiles, effectiveRegistryEntries));
-    setFormulaGroupsState("ready");
-  }, [formulaAttributeRegistry, vault.files, vault.vaultPath]);
+        markdownFilesByPath.set(toPathKey(file.path), {
+          path: file.path,
+          relativePath: file.relative_path,
+        });
+      });
+      const historyResult = await loadFormulaHistoryFiles({ vaultPath: vault.vaultPath });
+      setFormulaHistoryFolderPath(historyResult.historyFolderPath);
+      setFormulaHistoryWarning(historyResult.warning);
+      historyResult.files.forEach((entry) => {
+        const entryPathKey = toPathKey(entry.path);
+        if (markdownFilesByPath.has(entryPathKey)) {
+          return;
+        }
+        markdownFilesByPath.set(entryPathKey, {
+          path: entry.path,
+          relativePath: entry.relativePath,
+        });
+      });
+      const markdownFiles = Array.from(markdownFilesByPath.values());
+      if (markdownFiles.length === 0) {
+        setFormulaGroups(collectFormulaGroups([], effectiveRegistryEntries));
+        setFormulaGroupsState("ready");
+        return;
+      }
+
+      setFormulaGroupsState("loading");
+      const loadedMarkdownByPath = await Promise.all(
+        markdownFiles.map(async (file) => {
+          try {
+            const markdown = await invoke<string>("read_text_file", { path: file.path });
+            return {
+              filePath: file.path,
+              fileRelativePath: file.relativePath,
+              markdown,
+            };
+          } catch {
+            return null;
+          }
+        }),
+      );
+      const readyFiles = loadedMarkdownByPath.filter(
+        (entry): entry is { filePath: string; fileRelativePath: string; markdown: string } =>
+          Boolean(entry),
+      );
+      setFormulaGroups(collectFormulaGroups(readyFiles, effectiveRegistryEntries));
+      setFormulaGroupsState("ready");
+    },
+    [formulaAttributeRegistry, vault.files, vault.vaultPath],
+  );
 
   const selectedFormulaGroup = useMemo(
     () => formulaGroups.find((group) => group.id === selectedFormulaGroupId) ?? null,
@@ -1183,9 +1152,10 @@ export const MonitoringRulesPage = () => {
       },
     ) => {
       const normalizedOccurrencePath = occurrence.filePath.replace(/\\/g, "/").toLowerCase();
-      const file = vault.files.find((candidate) =>
-        candidate.path === occurrence.filePath ||
-        candidate.path.replace(/\\/g, "/").toLowerCase() === normalizedOccurrencePath
+      const file = vault.files.find(
+        (candidate) =>
+          candidate.path === occurrence.filePath ||
+          candidate.path.replace(/\\/g, "/").toLowerCase() === normalizedOccurrencePath,
       ) ?? {
         path: occurrence.filePath,
         relative_path: occurrence.fileRelativePath,
@@ -1214,9 +1184,7 @@ export const MonitoringRulesPage = () => {
         }
         return;
       }
-      const markdownFiles = vault.files.filter((file) =>
-        file.path.toLowerCase().endsWith(".md")
-      );
+      const markdownFiles = vault.files.filter((file) => file.path.toLowerCase().endsWith(".md"));
       if (markdownFiles.length === 0) {
         if (!cancelled) {
           setAttributeAliasSuggestions([]);
@@ -1236,9 +1204,7 @@ export const MonitoringRulesPage = () => {
         return;
       }
       const suggestionIndex = buildFrontmatterSuggestionIndex(markdownDocuments);
-      setAttributeAliasSuggestions(
-        sortFrontmatterKeySuggestions(suggestionIndex.keyIndex),
-      );
+      setAttributeAliasSuggestions(sortFrontmatterKeySuggestions(suggestionIndex.keyIndex));
     };
     void rebuildAliasSuggestions();
     return () => {
@@ -1251,7 +1217,8 @@ export const MonitoringRulesPage = () => {
     setPreviewRawByProfileId((current) => {
       const next: Record<string, string> = {};
       profiles.forEach((profile) => {
-        next[profile.id] = current[profile.id] ??
+        next[profile.id] =
+          current[profile.id] ??
           profile.previewRawValue ??
           resolveMonitoringPreviewRawDefault(profile.inputFormat);
       });
@@ -1370,13 +1337,19 @@ export const MonitoringRulesPage = () => {
   }, [formulaAttributeRegistry, vault.files, vault.vaultPath]);
 
   useEffect(() => {
-    if (profileDeleteTargetId && !profiles.some((profile) => profile.id === profileDeleteTargetId)) {
+    if (
+      profileDeleteTargetId &&
+      !profiles.some((profile) => profile.id === profileDeleteTargetId)
+    ) {
       setProfileDeleteTargetId(null);
     }
   }, [profileDeleteTargetId, profiles]);
 
   useEffect(() => {
-    if (formulaDeleteTargetId && !formulaGroups.some((group) => group.id === formulaDeleteTargetId)) {
+    if (
+      formulaDeleteTargetId &&
+      !formulaGroups.some((group) => group.id === formulaDeleteTargetId)
+    ) {
       setFormulaDeleteTargetId(null);
     }
   }, [formulaDeleteTargetId, formulaGroups]);
@@ -1391,7 +1364,7 @@ export const MonitoringRulesPage = () => {
     setSelectedFormulaGroupId((current) =>
       formulaGroups.some((group) => group.id === current)
         ? current
-        : formulaGroups[0]?.id ?? null,
+        : (formulaGroups[0]?.id ?? null),
     );
   }, [formulaGroups]);
 
@@ -1407,20 +1380,19 @@ export const MonitoringRulesPage = () => {
 
   const previewAliases = useMemo(() => parseCsv(aliasesDraft), [aliasesDraft]);
   const availableRuleAliases = useMemo(
-    () => (previewAliases.length > 0 ? previewAliases : draft?.attributeAliases ?? []),
+    () => (previewAliases.length > 0 ? previewAliases : (draft?.attributeAliases ?? [])),
     [draft?.attributeAliases, previewAliases],
   );
-  const previewAttribute =
-    previewAliases[0] ??
-    draft?.attributeAliases[0] ??
-    "";
+  const previewAttribute = previewAliases[0] ?? draft?.attributeAliases[0] ?? "";
   const activePreviewRawValue = useMemo(() => {
     if (!selectedProfile) {
       return "";
     }
-    return previewRawByProfileId[selectedProfile.id] ??
+    return (
+      previewRawByProfileId[selectedProfile.id] ??
       selectedProfile.previewRawValue ??
-      resolveMonitoringPreviewRawDefault(selectedProfile.inputFormat);
+      resolveMonitoringPreviewRawDefault(selectedProfile.inputFormat)
+    );
   }, [previewRawByProfileId, selectedProfile]);
 
   const currentAliasToken = useMemo(
@@ -1431,15 +1403,15 @@ export const MonitoringRulesPage = () => {
   const filteredAliasSuggestions = useMemo(() => {
     const query = currentAliasToken.trim().toLowerCase();
     const ranked = query
-      ? attributeAliasSuggestions.filter((suggestion) =>
-          suggestion.toLowerCase().includes(query))
+      ? attributeAliasSuggestions.filter((suggestion) => suggestion.toLowerCase().includes(query))
       : attributeAliasSuggestions;
     return ranked.slice(0, 120);
   }, [attributeAliasSuggestions, currentAliasToken]);
 
   useEffect(() => {
     setAliasSuggestionCursor((current) =>
-      Math.min(current, Math.max(0, filteredAliasSuggestions.length - 1)));
+      Math.min(current, Math.max(0, filteredAliasSuggestions.length - 1)),
+    );
   }, [filteredAliasSuggestions.length]);
 
   const previewResult = useMemo(() => {
@@ -1449,7 +1421,8 @@ export const MonitoringRulesPage = () => {
     const hydratedProfile: MonitoringRenderProfile = {
       ...cloneProfile(draft),
       rules: draft.rules.map((rule) =>
-        hydrateRuleForAliases(rule, availableRuleAliases, activePreviewRawValue)),
+        hydrateRuleForAliases(rule, availableRuleAliases, activePreviewRawValue),
+      ),
     };
     return renderMonitoringValue({
       attributeKey: previewAttribute,
@@ -1463,19 +1436,9 @@ export const MonitoringRulesPage = () => {
       return [];
     }
     return draft.rules.map((rule, index) => {
-      const hydratedRule = hydrateRuleForAliases(
-        rule,
-        availableRuleAliases,
-        activePreviewRawValue,
-      );
-      const rulePreviewAlias = resolveRulePreviewAlias(
-        hydratedRule,
-        availableRuleAliases,
-      );
-      const rulePreviewRawValue = resolveRulePreviewRawValue(
-        hydratedRule,
-        activePreviewRawValue,
-      );
+      const hydratedRule = hydrateRuleForAliases(rule, availableRuleAliases, activePreviewRawValue);
+      const rulePreviewAlias = resolveRulePreviewAlias(hydratedRule, availableRuleAliases);
+      const rulePreviewRawValue = resolveRulePreviewRawValue(hydratedRule, activePreviewRawValue);
       const rulePreviewProfile: MonitoringRenderProfile = {
         ...cloneProfile(draft),
         rules: [cloneRule(hydratedRule)],
@@ -1552,8 +1515,8 @@ export const MonitoringRulesPage = () => {
     }
     setPreviewRawByProfileId((current) => ({
       ...current,
-      [profile.id]: profile.previewRawValue ??
-        resolveMonitoringPreviewRawDefault(profile.inputFormat),
+      [profile.id]:
+        profile.previewRawValue ?? resolveMonitoringPreviewRawDefault(profile.inputFormat),
     }));
     setSelectedId(profile.id);
     setStatusError("");
@@ -1577,9 +1540,7 @@ export const MonitoringRulesPage = () => {
       delete next[profileId];
       return next;
     });
-    setSelectedId((current) =>
-      current === profileId ? (nextProfiles[0]?.id ?? null) : current,
-    );
+    setSelectedId((current) => (current === profileId ? (nextProfiles[0]?.id ?? null) : current));
     setProfileDeleteTargetId(null);
     setStatusError("");
     setStatusMessage("Profil entfernt.");
@@ -1612,10 +1573,7 @@ export const MonitoringRulesPage = () => {
   const handleAddRule = () => {
     const nextRule = {
       ...createMonitoringRenderRule("value-map"),
-      rulePreviewAlias:
-        availableRuleAliases[0] ??
-        draft?.attributeAliases[0] ??
-        "",
+      rulePreviewAlias: availableRuleAliases[0] ?? draft?.attributeAliases[0] ?? "",
       rulePreviewRawValue: activePreviewRawValue,
     };
     updateDraft((profile) => ({
@@ -1690,22 +1648,14 @@ export const MonitoringRulesPage = () => {
     }));
   };
 
-  const handleToggleRuleTargetAttribute = (
-    ruleId: string,
-    alias: string,
-    checked: boolean,
-  ) => {
+  const handleToggleRuleTargetAttribute = (ruleId: string, alias: string, checked: boolean) => {
     updateRule(ruleId, (current) => {
-      const selectedTargets = normalizeRuleTargetAttributes(
-        current.targetAttributes,
-        availableRuleAliases,
-      ) ?? [];
+      const selectedTargets =
+        normalizeRuleTargetAttributes(current.targetAttributes, availableRuleAliases) ?? [];
       const normalizedAlias = normalizeLower(alias);
       const nextTargets = checked
         ? dedupeAliases([...selectedTargets, alias])
-        : selectedTargets.filter(
-            (entry) => normalizeLower(entry) !== normalizedAlias,
-          );
+        : selectedTargets.filter((entry) => normalizeLower(entry) !== normalizedAlias);
       return hydrateRuleForAliases(
         {
           ...current,
@@ -1730,9 +1680,7 @@ export const MonitoringRulesPage = () => {
     setAliasesDraft(value);
     setAliasSuggestionsOpen(true);
     setAliasSuggestionCursor(0);
-    setAliasCaretPosition(
-      caretPosition === null ? value.length : caretPosition,
-    );
+    setAliasCaretPosition(caretPosition === null ? value.length : caretPosition);
   };
 
   const handleAliasInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -1748,16 +1696,17 @@ export const MonitoringRulesPage = () => {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       const offset = event.key === "ArrowDown" ? 1 : -1;
-      setAliasSuggestionCursor((current) =>
-        (current + offset + filteredAliasSuggestions.length) %
-        filteredAliasSuggestions.length);
+      setAliasSuggestionCursor(
+        (current) =>
+          (current + offset + filteredAliasSuggestions.length) % filteredAliasSuggestions.length,
+      );
       return;
     }
 
     if (event.key === "Enter") {
       event.preventDefault();
-      const suggestion = filteredAliasSuggestions[aliasSuggestionCursor] ??
-        filteredAliasSuggestions[0];
+      const suggestion =
+        filteredAliasSuggestions[aliasSuggestionCursor] ?? filteredAliasSuggestions[0];
       if (!suggestion) {
         return;
       }
@@ -1779,7 +1728,8 @@ export const MonitoringRulesPage = () => {
       ...cloneProfile(draft),
       name: draft.name.trim() || "Monitoring Profil",
       attributeAliases: aliases,
-      previewRawValue: previewRawByProfileId[draft.id] ??
+      previewRawValue:
+        previewRawByProfileId[draft.id] ??
         draft.previewRawValue ??
         resolveMonitoringPreviewRawDefault(draft.inputFormat),
       scopes: draft.scopes.length > 0 ? draft.scopes : ["database"],
@@ -1828,10 +1778,13 @@ export const MonitoringRulesPage = () => {
           rule,
           normalizedDraftWithPendingRuleText.attributeAliases,
           normalizedDraftWithPendingRuleText.previewRawValue ?? "",
-        )),
+        ),
+      ),
     };
     const nextProfiles = profiles.map((profile) =>
-      profile.id === normalizedDraftWithRulePreviewContext.id ? normalizedDraftWithRulePreviewContext : profile,
+      profile.id === normalizedDraftWithRulePreviewContext.id
+        ? normalizedDraftWithRulePreviewContext
+        : profile,
     );
     const saved = await persistProfiles(nextProfiles);
     if (!saved) {
@@ -1870,22 +1823,19 @@ export const MonitoringRulesPage = () => {
         formulaAttributeRegistry,
         selectedFormulaGroup.displayKey,
       );
-      const nextRegistry = upsertFormulaRegistryEntry(
-        registryWithoutSelected,
-        { key: nextKey, definition: normalizedDefinition },
-      );
+      const nextRegistry = upsertFormulaRegistryEntry(registryWithoutSelected, {
+        key: nextKey,
+        definition: normalizedDefinition,
+      });
       const frontmatterOccurrences = selectedFormulaGroup.occurrences.filter(
         (occurrence) => occurrence.source === "frontmatter",
       );
-      const occurrencesByFile = frontmatterOccurrences.reduce(
-        (map, occurrence) => {
-          const current = map.get(occurrence.filePath) ?? [];
-          current.push(occurrence);
-          map.set(occurrence.filePath, current);
-          return map;
-        },
-        new Map<string, FormulaOccurrence[]>(),
-      );
+      const occurrencesByFile = frontmatterOccurrences.reduce((map, occurrence) => {
+        const current = map.get(occurrence.filePath) ?? [];
+        current.push(occurrence);
+        map.set(occurrence.filePath, current);
+        return map;
+      }, new Map<string, FormulaOccurrence[]>());
 
       const preparedWrites = new Map<string, { nextMarkdown: string }>();
       for (const [filePath, occurrences] of occurrencesByFile.entries()) {
@@ -1912,7 +1862,9 @@ export const MonitoringRulesPage = () => {
             });
             if (removeResult.error) {
               setStatusMessage("");
-              setStatusError(`${occurrences[0]?.fileRelativePath ?? filePath}: ${removeResult.error}`);
+              setStatusError(
+                `${occurrences[0]?.fileRelativePath ?? filePath}: ${removeResult.error}`,
+              );
               return;
             }
             nextMarkdown = removeResult.markdown;
@@ -1927,7 +1879,9 @@ export const MonitoringRulesPage = () => {
             });
             if (updateResult.error) {
               setStatusMessage("");
-              setStatusError(`${occurrences[0]?.fileRelativePath ?? filePath}: ${updateResult.error}`);
+              setStatusError(
+                `${occurrences[0]?.fileRelativePath ?? filePath}: ${updateResult.error}`,
+              );
               return;
             }
             nextMarkdown = updateResult.markdown;
@@ -1948,7 +1902,7 @@ export const MonitoringRulesPage = () => {
           invoke("write_text_file", {
             path: filePath,
             contents: prepared.nextMarkdown,
-          })
+          }),
         ),
       );
       await loadFormulaGroups(nextRegistry);
@@ -1968,9 +1922,10 @@ export const MonitoringRulesPage = () => {
   };
 
   const handleCreateFormulaAttribute = async () => {
-    const defaultAttributeKey = attributeAliasSuggestions.find((entry) => !isFormulaPropertyKey(entry))
-      ?? draft?.attributeAliases[0]
-      ?? "score";
+    const defaultAttributeKey =
+      attributeAliasSuggestions.find((entry) => !isFormulaPropertyKey(entry)) ??
+      draft?.attributeAliases[0] ??
+      "score";
     const nextKey = buildNextFormulaKey(formulaGroups);
     const defaultDefinition: DatabaseFormulaDefinitionV1 = {
       version: 1,
@@ -1981,13 +1936,10 @@ export const MonitoringRulesPage = () => {
     };
 
     try {
-      const nextRegistry = upsertFormulaRegistryEntry(
-        formulaAttributeRegistry,
-        {
-          key: nextKey,
-          definition: defaultDefinition,
-        },
-      );
+      const nextRegistry = upsertFormulaRegistryEntry(formulaAttributeRegistry, {
+        key: nextKey,
+        definition: defaultDefinition,
+      });
       const saved = await persistFormulaRegistry(nextRegistry);
       if (!saved) {
         return;
@@ -2007,24 +1959,19 @@ export const MonitoringRulesPage = () => {
   };
 
   const handleDeleteFormulaAttribute = async (group: FormulaGroup) => {
-    const occurrencesByFile = group.occurrences.reduce(
-      (map, occurrence) => {
-        const current = map.get(occurrence.filePath) ?? [];
-        current.push(occurrence);
-        map.set(occurrence.filePath, current);
-        return map;
-      },
-      new Map<string, FormulaOccurrence[]>(),
-    );
+    const occurrencesByFile = group.occurrences.reduce((map, occurrence) => {
+      const current = map.get(occurrence.filePath) ?? [];
+      current.push(occurrence);
+      map.set(occurrence.filePath, current);
+      return map;
+    }, new Map<string, FormulaOccurrence[]>());
     const preparedWrites = new Map<string, { nextMarkdown: string }>();
     for (const [filePath, occurrences] of occurrencesByFile.entries()) {
       const markdown = await invoke<string>("read_text_file", { path: filePath });
       let nextMarkdown = markdown;
       const frontmatterSourceKeys = Array.from(
         new Set(
-          occurrences
-            .filter((entry) => entry.source === "frontmatter")
-            .map((entry) => entry.key),
+          occurrences.filter((entry) => entry.source === "frontmatter").map((entry) => entry.key),
         ),
       );
       for (const sourceKey of frontmatterSourceKeys) {
@@ -2071,9 +2018,7 @@ export const MonitoringRulesPage = () => {
       ),
     );
     await loadFormulaGroups(nextRegistry);
-    setSelectedFormulaGroupId((current) =>
-      current === group.id ? null : current,
-    );
+    setSelectedFormulaGroupId((current) => (current === group.id ? null : current));
     setFormulaDeleteTargetId(null);
     setStatusError("");
     setStatusMessage(
@@ -2115,7 +2060,9 @@ export const MonitoringRulesPage = () => {
     }
   };
 
-  const handleFormulaOperationChange = (nextOperation: DatabaseFormulaDefinitionV1["operation"]) => {
+  const handleFormulaOperationChange = (
+    nextOperation: DatabaseFormulaDefinitionV1["operation"],
+  ) => {
     setFormulaDefinitionDraft((current) => {
       if (!current) {
         return current;
@@ -2127,7 +2074,9 @@ export const MonitoringRulesPage = () => {
     });
   };
 
-  const handleFormulaSourceTypeChange = (nextType: DatabaseFormulaDefinitionV1["source"]["type"]) => {
+  const handleFormulaSourceTypeChange = (
+    nextType: DatabaseFormulaDefinitionV1["source"]["type"],
+  ) => {
     setFormulaDefinitionDraft((current) => {
       if (!current) {
         return current;
@@ -2175,7 +2124,11 @@ export const MonitoringRulesPage = () => {
         <div className="monitoring-rules-header-actions">
           {activeSubview === "attribute-pools" ? (
             <>
-              <button type="button" className="ghost small" onClick={() => void handleCreateProfile()}>
+              <button
+                type="button"
+                className="ghost small"
+                onClick={() => void handleCreateProfile()}
+              >
                 Neues Profil
               </button>
               <button
@@ -2200,7 +2153,9 @@ export const MonitoringRulesPage = () => {
               <button
                 type="button"
                 className="ghost small"
-                disabled={formulaGroupsState === "loading" || formulaSavePending || formulaDeletePending}
+                disabled={
+                  formulaGroupsState === "loading" || formulaSavePending || formulaDeletePending
+                }
                 onClick={() => void handleCreateFormulaAttribute()}
               >
                 Formel erstellen
@@ -2208,7 +2163,12 @@ export const MonitoringRulesPage = () => {
               <button
                 type="button"
                 className="primary small"
-                disabled={!selectedFormulaGroup || !formulaDefinitionDraft || formulaSavePending || formulaDeletePending}
+                disabled={
+                  !selectedFormulaGroup ||
+                  !formulaDefinitionDraft ||
+                  formulaSavePending ||
+                  formulaDeletePending
+                }
                 onClick={() => void handleSaveFormulaAttribute()}
               >
                 Formel speichern
@@ -2258,831 +2218,849 @@ export const MonitoringRulesPage = () => {
           <div className="monitoring-rules-editor">
             {draft ? (
               <>
-              <section className="monitoring-rules-section monitoring-rules-profile-section">
-                <div className="monitoring-rules-profile-compact-grid">
-                  <h3 className="monitoring-rules-profile-title">Profil</h3>
-                  <span className="monitoring-rules-profile-label monitoring-rules-profile-label-name">
-                    Name
-                  </span>
-                  <span className="monitoring-rules-profile-label monitoring-rules-profile-label-alias">
-                    Alias-Attribute (comma-separated)
-                  </span>
-                  <span className="monitoring-rules-profile-label monitoring-rules-profile-label-format">
-                    Input-Format
-                  </span>
-                  <label className="monitoring-rules-profile-active-toggle">
-                    <input
-                      type="checkbox"
-                      checked={draft.enabled !== false}
-                      onChange={(event) => {
-                        const next = event.target.checked;
-                        updateDraft((profile) => ({ ...profile, enabled: next }));
-                      }}
-                    />
-                    Aktiv
-                  </label>
-
-                  <div className="monitoring-rules-profile-control monitoring-rules-profile-control-name">
-                    <input
-                      className="text-input"
-                      type="text"
-                      value={draft.name}
-                      onChange={(event) => {
-                        const nextName = event.target.value;
-                        updateDraft((profile) => ({ ...profile, name: nextName }));
-                      }}
-                    />
-                  </div>
-                  <div className="monitoring-rules-profile-control monitoring-rules-profile-control-alias">
-                    <div className="monitoring-rules-alias-combobox">
+                <section className="monitoring-rules-section monitoring-rules-profile-section">
+                  <div className="monitoring-rules-profile-compact-grid">
+                    <h3 className="monitoring-rules-profile-title">Profil</h3>
+                    <span className="monitoring-rules-profile-label monitoring-rules-profile-label-name">
+                      Name
+                    </span>
+                    <span className="monitoring-rules-profile-label monitoring-rules-profile-label-alias">
+                      Alias-Attribute (comma-separated)
+                    </span>
+                    <span className="monitoring-rules-profile-label monitoring-rules-profile-label-format">
+                      Input-Format
+                    </span>
+                    <label className="monitoring-rules-profile-active-toggle">
                       <input
-                        ref={aliasInputRef}
-                        className="text-input"
-                        type="text"
-                        role="combobox"
-                        aria-autocomplete="list"
-                        aria-expanded={aliasSuggestionsOpen}
-                        aria-controls={
-                          aliasSuggestionsOpen
-                            ? "monitoring-rules-alias-suggestions"
-                            : undefined
-                        }
-                        value={aliasesDraft}
-                        onFocus={(event) => {
-                          setAliasSuggestionsOpen(true);
-                          setAliasCaretPosition(event.currentTarget.selectionStart ?? aliasesDraft.length);
-                        }}
-                        onClick={(event) => {
-                          setAliasSuggestionsOpen(true);
-                          setAliasCaretPosition(event.currentTarget.selectionStart ?? aliasesDraft.length);
-                        }}
+                        type="checkbox"
+                        checked={draft.enabled !== false}
                         onChange={(event) => {
-                          handleAliasInputChange(
-                            event.target.value,
-                            event.target.selectionStart,
-                          );
-                        }}
-                        onKeyUp={(event) => {
-                          setAliasCaretPosition(
-                            event.currentTarget.selectionStart ?? aliasesDraft.length,
-                          );
-                        }}
-                        onKeyDown={handleAliasInputKeyDown}
-                        onBlur={() => {
-                          window.setTimeout(() => {
-                            setAliasSuggestionsOpen(false);
-                          }, 80);
+                          const next = event.target.checked;
+                          updateDraft((profile) => ({ ...profile, enabled: next }));
                         }}
                       />
-                      {aliasSuggestionsOpen ? (
-                        <ul
-                          id="monitoring-rules-alias-suggestions"
-                          className="frontmatter-suggestions monitoring-rules-alias-suggestions"
-                          role="listbox"
-                          aria-label="Alias Attribut Vorschlaege"
-                        >
-                          {filteredAliasSuggestions.length === 0 ? (
-                            <li className="monitoring-rules-alias-empty">
-                              Keine passenden Attribute
-                            </li>
-                          ) : (
-                            filteredAliasSuggestions.map((suggestion, suggestionIndex) => (
-                              <li key={`monitoring-alias-${suggestion}`}>
-                                <button
-                                  type="button"
-                                  className={`frontmatter-suggestion-option ${
-                                    suggestionIndex === aliasSuggestionCursor ? "active" : ""
-                                  }`}
-                                  role="option"
-                                  aria-selected={suggestionIndex === aliasSuggestionCursor}
-                                  tabIndex={-1}
-                                  onMouseEnter={() => setAliasSuggestionCursor(suggestionIndex)}
-                                  onMouseDown={(event) => {
-                                    event.preventDefault();
-                                    handleAliasSuggestionSelect(suggestion);
-                                  }}
-                                >
-                                  {suggestion}
-                                </button>
-                              </li>
-                            ))
-                          )}
-                        </ul>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="monitoring-rules-profile-control monitoring-rules-profile-control-format">
-                    <select
-                      value={draft.inputFormat}
-                      onChange={(event) => {
-                        const next = event.target.value as MonitoringInputFormat;
-                        const previousFormat = draft.inputFormat;
-                        updateDraft((profile) => ({ ...profile, inputFormat: next }));
-                        if (!selectedId) {
-                          return;
-                        }
-                        const previousDefault = resolveMonitoringPreviewRawDefault(previousFormat);
-                        if (!(selectedId in previewRawByProfileId)) {
-                          setPreviewRawByProfileId((current) => ({
-                            ...current,
-                            [selectedId]: resolveMonitoringPreviewRawDefault(next),
-                          }));
-                          return;
-                        }
-                        setPreviewRawByProfileId((current) => {
-                          const currentRaw = current[selectedId];
-                          if (
-                            typeof currentRaw === "string" &&
-                            currentRaw.trim() !== "" &&
-                            currentRaw !== previousDefault
-                          ) {
-                            return current;
-                          }
-                          return {
-                            ...current,
-                            [selectedId]: resolveMonitoringPreviewRawDefault(next),
-                          };
-                        });
-                      }}
-                    >
-                      {ALL_INPUT_FORMATS.map((format) => (
-                        <option key={format} value={format}>
-                          {toLabel(format)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </section>
+                      Aktiv
+                    </label>
 
-              <section className="monitoring-rules-section">
-                <h3>Live-Preview</h3>
-                <div className="monitoring-rules-preview-inputs">
-                  <label>
-                    Attribut-Alias
-                    <input
-                      className="text-input"
-                      type="text"
-                      value={previewAttribute}
-                      readOnly
-                      title="Preview nutzt den ersten Alias des Profils"
-                    />
-                  </label>
-                  <label>
-                    Rohwert
-                    <input
-                      className="text-input"
-                      type="text"
-                      value={activePreviewRawValue}
-                      onChange={(event) => {
-                        if (!selectedId) {
-                          return;
-                        }
-                        const next = event.target.value;
-                        setPreviewRawByProfileId((current) => ({
-                          ...current,
-                          [selectedId]: next,
-                        }));
-                      }}
-                    />
-                  </label>
-                </div>
-                <div className="monitoring-rules-preview-output">
-                  <MonitoringRenderValue
-                    result={previewResult}
-                    fallback={activePreviewRawValue}
-                  />
-                </div>
-              </section>
-
-              <section className="monitoring-rules-section">
-                <h3>Geltungsbereich</h3>
-                <fieldset className="monitoring-rules-scopes">
-                  <div>
-                    {ALL_SCOPES.map((scope) => {
-                      const checked = draft.scopes.includes(scope);
-                      return (
-                        <label key={scope}>
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={(event) => {
-                              const nextChecked = event.target.checked;
-                              updateDraft((profile) => {
-                                const nextScopes = nextChecked
-                                  ? Array.from(new Set([...profile.scopes, scope]))
-                                  : profile.scopes.filter((entry) => entry !== scope);
-                                return {
-                                  ...profile,
-                                  scopes: nextScopes,
-                                };
-                              });
-                            }}
-                          />
-                          {toLabel(scope)}
-                        </label>
-                      );
-                    })}
-                  </div>
-                </fieldset>
-              </section>
-
-              <section className="monitoring-rules-section">
-                <div className="monitoring-rules-section-header">
-                  <h3>Regeln</h3>
-                  <button
-                    type="button"
-                    className="ghost small"
-                    onClick={handleAddRule}
-                  >
-                    Regel hinzufuegen
-                  </button>
-                </div>
-
-                <div
-                  className="monitoring-rules-rule-button-list"
-                  role="list"
-                  aria-label="Attribute Regeln"
-                >
-                  {preparedRuleEntries.map((entry) => (
-                    <div
-                      key={entry.rule.id}
-                      role="listitem"
-                      className={`monitoring-rules-rule-row${
-                        selectedRuleId === entry.rule.id ? " is-active" : ""
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        className="monitoring-rules-rule-button"
-                        onClick={() => openRuleEditor(entry.rule.id)}
-                      >
-                        <span className="monitoring-rules-rule-button-text">
-                          {entry.buttonLabel}
-                        </span>
-                        {entry.previewResult?.progressVisual ? (
-                          <span className="monitoring-rules-rule-button-indicator" aria-hidden="true">
-                            <MonitoringRenderValue
-                              result={entry.previewResult}
-                              compact
-                              showText={false}
-                            />
-                          </span>
-                        ) : entry.previewResult?.symbol ? (
-                          <span
-                            className="monitoring-rules-rule-button-indicator"
-                            aria-hidden="true"
-                          >
-                            {entry.previewResult.symbol}
-                          </span>
-                        ) : null}
-                      </button>
-                      <button
-                        type="button"
-                        className="monitoring-rules-rule-remove-button"
-                        aria-label={`Regel ${entry.index + 1} entfernen`}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleRemoveRule(entry.rule.id, { openEditorAfter: false });
-                        }}
-                        disabled={draft.rules.length <= 1}
-                      >
-                        <TrashIcon />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              {isRuleEditorOpen && activeRule ? (
-                <ModalShell
-                  isOpen={isRuleEditorOpen}
-                  title={`Regel ${activeRuleIndex + 1} bearbeiten`}
-                  onClose={() => setIsRuleEditorOpen(false)}
-                  className="monitoring-rules-rule-modal-panel"
-                  bodyClassName="monitoring-rules-rule-modal-body"
-                >
-                  <article className="monitoring-rules-rule-card">
-                    <header className="monitoring-rules-rule-head">
-                      <select
-                        value={activeRule.type}
+                    <div className="monitoring-rules-profile-control monitoring-rules-profile-control-name">
+                      <input
+                        className="text-input"
+                        type="text"
+                        value={draft.name}
                         onChange={(event) => {
-                          const nextType = event.target.value as MonitoringRenderRule["type"];
-                          updateRule(activeRule.id, (current) => ({
-                            ...createMonitoringRenderRule(nextType),
-                            id: current.id,
-                            rulePreviewAlias: current.rulePreviewAlias,
-                            rulePreviewRawValue: current.rulePreviewRawValue,
-                            targetAttributes: current.targetAttributes,
-                          }));
+                          const nextName = event.target.value;
+                          updateDraft((profile) => ({ ...profile, name: nextName }));
+                        }}
+                      />
+                    </div>
+                    <div className="monitoring-rules-profile-control monitoring-rules-profile-control-alias">
+                      <div className="monitoring-rules-alias-combobox">
+                        <input
+                          ref={aliasInputRef}
+                          className="text-input"
+                          type="text"
+                          role="combobox"
+                          aria-autocomplete="list"
+                          aria-expanded={aliasSuggestionsOpen}
+                          aria-controls={
+                            aliasSuggestionsOpen ? "monitoring-rules-alias-suggestions" : undefined
+                          }
+                          value={aliasesDraft}
+                          onFocus={(event) => {
+                            setAliasSuggestionsOpen(true);
+                            setAliasCaretPosition(
+                              event.currentTarget.selectionStart ?? aliasesDraft.length,
+                            );
+                          }}
+                          onClick={(event) => {
+                            setAliasSuggestionsOpen(true);
+                            setAliasCaretPosition(
+                              event.currentTarget.selectionStart ?? aliasesDraft.length,
+                            );
+                          }}
+                          onChange={(event) => {
+                            handleAliasInputChange(event.target.value, event.target.selectionStart);
+                          }}
+                          onKeyUp={(event) => {
+                            setAliasCaretPosition(
+                              event.currentTarget.selectionStart ?? aliasesDraft.length,
+                            );
+                          }}
+                          onKeyDown={handleAliasInputKeyDown}
+                          onBlur={() => {
+                            window.setTimeout(() => {
+                              setAliasSuggestionsOpen(false);
+                            }, 80);
+                          }}
+                        />
+                        {aliasSuggestionsOpen ? (
+                          <ul
+                            id="monitoring-rules-alias-suggestions"
+                            className="frontmatter-suggestions monitoring-rules-alias-suggestions"
+                            role="listbox"
+                            aria-label="Alias Attribut Vorschlaege"
+                          >
+                            {filteredAliasSuggestions.length === 0 ? (
+                              <li className="monitoring-rules-alias-empty">
+                                Keine passenden Attribute
+                              </li>
+                            ) : (
+                              filteredAliasSuggestions.map((suggestion, suggestionIndex) => (
+                                <li key={`monitoring-alias-${suggestion}`}>
+                                  <button
+                                    type="button"
+                                    className={`frontmatter-suggestion-option ${
+                                      suggestionIndex === aliasSuggestionCursor ? "active" : ""
+                                    }`}
+                                    role="option"
+                                    aria-selected={suggestionIndex === aliasSuggestionCursor}
+                                    tabIndex={-1}
+                                    onMouseEnter={() => setAliasSuggestionCursor(suggestionIndex)}
+                                    onMouseDown={(event) => {
+                                      event.preventDefault();
+                                      handleAliasSuggestionSelect(suggestion);
+                                    }}
+                                  >
+                                    {suggestion}
+                                  </button>
+                                </li>
+                              ))
+                            )}
+                          </ul>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="monitoring-rules-profile-control monitoring-rules-profile-control-format">
+                      <select
+                        value={draft.inputFormat}
+                        onChange={(event) => {
+                          const next = event.target.value as MonitoringInputFormat;
+                          const previousFormat = draft.inputFormat;
+                          updateDraft((profile) => ({ ...profile, inputFormat: next }));
+                          if (!selectedId) {
+                            return;
+                          }
+                          const previousDefault =
+                            resolveMonitoringPreviewRawDefault(previousFormat);
+                          if (!(selectedId in previewRawByProfileId)) {
+                            setPreviewRawByProfileId((current) => ({
+                              ...current,
+                              [selectedId]: resolveMonitoringPreviewRawDefault(next),
+                            }));
+                            return;
+                          }
+                          setPreviewRawByProfileId((current) => {
+                            const currentRaw = current[selectedId];
+                            if (
+                              typeof currentRaw === "string" &&
+                              currentRaw.trim() !== "" &&
+                              currentRaw !== previousDefault
+                            ) {
+                              return current;
+                            }
+                            return {
+                              ...current,
+                              [selectedId]: resolveMonitoringPreviewRawDefault(next),
+                            };
+                          });
                         }}
                       >
-                        {ALL_RULE_TYPES.map((type) => (
-                          <option key={type} value={type}>
-                            {toLabel(type)}
+                        {ALL_INPUT_FORMATS.map((format) => (
+                          <option key={format} value={format}>
+                            {toLabel(format)}
                           </option>
                         ))}
                       </select>
-                    </header>
+                    </div>
+                  </div>
+                </section>
 
-                    {activeRule.type === "value-map" ? (
-                      <div className="monitoring-rules-rule-fields">
-                        <label>
-                          Display-Modus
-                          <select
-                            value={activeRule.displayMode ?? "append"}
-                            onChange={(event) => {
-                              const next = event.target.value === "replace" ? "replace" : "append";
-                              updateRule(activeRule.id, (current) =>
-                                current.type === "value-map"
-                                  ? { ...current, displayMode: next }
-                                  : current,
-                              );
-                            }}
-                          >
-                            <option value="append">Append</option>
-                            <option value="replace">Replace</option>
-                          </select>
-                        </label>
-                        <label>
-                          Separator
-                          <input
-                            className="text-input"
-                            type="text"
-                            value={activeRule.separator ?? " "}
-                            onChange={(event) => {
-                              const next = event.target.value;
-                              updateRule(activeRule.id, (current) =>
-                                current.type === "value-map"
-                                  ? { ...current, separator: next }
-                                  : current,
-                              );
-                            }}
-                          />
-                        </label>
-                        <label className="monitoring-rules-enabled-toggle monitoring-rules-enabled-toggle-switch">
-                          <span className="monitoring-rules-enabled-toggle-text">Case-sensitive</span>
-                          <span className="switch">
+                <section className="monitoring-rules-section">
+                  <h3>Live-Preview</h3>
+                  <div className="monitoring-rules-preview-inputs">
+                    <label>
+                      Attribut-Alias
+                      <input
+                        className="text-input"
+                        type="text"
+                        value={previewAttribute}
+                        readOnly
+                        title="Preview nutzt den ersten Alias des Profils"
+                      />
+                    </label>
+                    <label>
+                      Rohwert
+                      <input
+                        className="text-input"
+                        type="text"
+                        value={activePreviewRawValue}
+                        onChange={(event) => {
+                          if (!selectedId) {
+                            return;
+                          }
+                          const next = event.target.value;
+                          setPreviewRawByProfileId((current) => ({
+                            ...current,
+                            [selectedId]: next,
+                          }));
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <div className="monitoring-rules-preview-output">
+                    <MonitoringRenderValue
+                      result={previewResult}
+                      fallback={activePreviewRawValue}
+                    />
+                  </div>
+                </section>
+
+                <section className="monitoring-rules-section">
+                  <h3>Geltungsbereich</h3>
+                  <fieldset className="monitoring-rules-scopes">
+                    <div>
+                      {ALL_SCOPES.map((scope) => {
+                        const checked = draft.scopes.includes(scope);
+                        return (
+                          <label key={scope}>
                             <input
                               type="checkbox"
-                              checked={Boolean(activeRule.caseSensitive)}
+                              checked={checked}
                               onChange={(event) => {
-                                const next = event.target.checked;
+                                const nextChecked = event.target.checked;
+                                updateDraft((profile) => {
+                                  const nextScopes = nextChecked
+                                    ? Array.from(new Set([...profile.scopes, scope]))
+                                    : profile.scopes.filter((entry) => entry !== scope);
+                                  return {
+                                    ...profile,
+                                    scopes: nextScopes,
+                                  };
+                                });
+                              }}
+                            />
+                            {toLabel(scope)}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+                </section>
+
+                <section className="monitoring-rules-section">
+                  <div className="monitoring-rules-section-header">
+                    <h3>Regeln</h3>
+                    <button type="button" className="ghost small" onClick={handleAddRule}>
+                      Regel hinzufuegen
+                    </button>
+                  </div>
+
+                  <div
+                    className="monitoring-rules-rule-button-list"
+                    role="list"
+                    aria-label="Attribute Regeln"
+                  >
+                    {preparedRuleEntries.map((entry) => (
+                      <div
+                        key={entry.rule.id}
+                        role="listitem"
+                        className={`monitoring-rules-rule-row${
+                          selectedRuleId === entry.rule.id ? " is-active" : ""
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          className="monitoring-rules-rule-button"
+                          onClick={() => openRuleEditor(entry.rule.id)}
+                        >
+                          <span className="monitoring-rules-rule-button-text">
+                            {entry.buttonLabel}
+                          </span>
+                          {entry.previewResult?.progressVisual ? (
+                            <span
+                              className="monitoring-rules-rule-button-indicator"
+                              aria-hidden="true"
+                            >
+                              <MonitoringRenderValue
+                                result={entry.previewResult}
+                                compact
+                                showText={false}
+                              />
+                            </span>
+                          ) : entry.previewResult?.symbol ? (
+                            <span
+                              className="monitoring-rules-rule-button-indicator"
+                              aria-hidden="true"
+                            >
+                              {entry.previewResult.symbol}
+                            </span>
+                          ) : null}
+                        </button>
+                        <button
+                          type="button"
+                          className="monitoring-rules-rule-remove-button"
+                          aria-label={`Regel ${entry.index + 1} entfernen`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleRemoveRule(entry.rule.id, { openEditorAfter: false });
+                          }}
+                          disabled={draft.rules.length <= 1}
+                        >
+                          <TrashIcon />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                {isRuleEditorOpen && activeRule ? (
+                  <ModalShell
+                    isOpen={isRuleEditorOpen}
+                    title={`Regel ${activeRuleIndex + 1} bearbeiten`}
+                    onClose={() => setIsRuleEditorOpen(false)}
+                    className="monitoring-rules-rule-modal-panel"
+                    bodyClassName="monitoring-rules-rule-modal-body"
+                  >
+                    <article className="monitoring-rules-rule-card">
+                      <header className="monitoring-rules-rule-head">
+                        <select
+                          value={activeRule.type}
+                          onChange={(event) => {
+                            const nextType = event.target.value as MonitoringRenderRule["type"];
+                            updateRule(activeRule.id, (current) => ({
+                              ...createMonitoringRenderRule(nextType),
+                              id: current.id,
+                              rulePreviewAlias: current.rulePreviewAlias,
+                              rulePreviewRawValue: current.rulePreviewRawValue,
+                              targetAttributes: current.targetAttributes,
+                            }));
+                          }}
+                        >
+                          {ALL_RULE_TYPES.map((type) => (
+                            <option key={type} value={type}>
+                              {toLabel(type)}
+                            </option>
+                          ))}
+                        </select>
+                      </header>
+
+                      {activeRule.type === "value-map" ? (
+                        <div className="monitoring-rules-rule-fields">
+                          <label>
+                            Display-Modus
+                            <select
+                              value={activeRule.displayMode ?? "append"}
+                              onChange={(event) => {
+                                const next =
+                                  event.target.value === "replace" ? "replace" : "append";
                                 updateRule(activeRule.id, (current) =>
                                   current.type === "value-map"
-                                    ? { ...current, caseSensitive: next }
+                                    ? { ...current, displayMode: next }
                                     : current,
                                 );
-                              }}
-                            />
-                            <span className="slider" />
-                          </span>
-                        </label>
-                        <label>
-                          Mappings (`from=to`, eine Zeile je Mapping)
-                          <textarea
-                            value={valueMapTextByRuleId[activeRule.id] ?? mappingsToText(activeRule)}
-                            onChange={(event) => {
-                              const nextText = event.target.value;
-                              setValueMapTextByRuleId((current) => ({
-                                ...current,
-                                [activeRule.id]: nextText,
-                              }));
-                              const mappings = parseMappingsText(nextText);
-                              updateRule(activeRule.id, (current) =>
-                                current.type === "value-map"
-                                  ? { ...current, mappings }
-                                  : current,
-                              );
-                            }}
-                          />
-                        </label>
-                      </div>
-                    ) : null}
-
-                    {activeRule.type === "ratio-derived-percent" ? (
-                      <div className="monitoring-rules-rule-fields monitoring-rules-rule-fields--ratio">
-                        <label>
-                          Decimals
-                          <input
-                            type="number"
-                            min={0}
-                            max={6}
-                            value={activeRule.decimals ?? 0}
-                            onChange={(event) => {
-                              const next = Math.max(0, Math.min(6, Number(event.target.value) || 0));
-                              updateRule(activeRule.id, (current) =>
-                                current.type === "ratio-derived-percent"
-                                  ? { ...current, decimals: next }
-                                  : current,
-                              );
-                            }}
-                          />
-                        </label>
-                        <label className="monitoring-rules-enabled-toggle monitoring-rules-enabled-toggle-switch monitoring-rules-enabled-toggle-switch-compact">
-                          <span className="monitoring-rules-enabled-toggle-text">
-                            Basiswert anzeigen
-                          </span>
-                          <span className="switch">
-                            <input
-                              type="checkbox"
-                              checked={activeRule.showBase !== false}
-                              onChange={(event) => {
-                                const next = event.target.checked;
-                                updateRule(activeRule.id, (current) =>
-                                  current.type === "ratio-derived-percent"
-                                    ? { ...current, showBase: next }
-                                    : current,
-                                );
-                              }}
-                            />
-                            <span className="slider" />
-                          </span>
-                        </label>
-                        <label className="monitoring-rules-enabled-toggle monitoring-rules-enabled-toggle-switch monitoring-rules-enabled-toggle-switch-compact">
-                          <span className="monitoring-rules-enabled-toggle-text">
-                            Prozent in Klammern
-                          </span>
-                          <span className="switch">
-                            <input
-                              type="checkbox"
-                              checked={activeRule.wrapInParentheses !== false}
-                              onChange={(event) => {
-                                const next = event.target.checked;
-                                updateRule(activeRule.id, (current) =>
-                                  current.type === "ratio-derived-percent"
-                                    ? { ...current, wrapInParentheses: next }
-                                    : current,
-                                );
-                              }}
-                            />
-                            <span className="slider" />
-                          </span>
-                        </label>
-                      </div>
-                    ) : null}
-
-                    {activeRule.type === "percent-format" ? (
-                      <div className="monitoring-rules-rule-fields monitoring-rules-rule-fields--decimals-toggle">
-                        <label>
-                          Decimals
-                          <input
-                            type="number"
-                            min={0}
-                            max={6}
-                            value={activeRule.decimals ?? 0}
-                            onChange={(event) => {
-                              const next = Math.max(0, Math.min(6, Number(event.target.value) || 0));
-                              updateRule(activeRule.id, (current) =>
-                                current.type === "percent-format"
-                                  ? { ...current, decimals: next }
-                                  : current,
-                              );
-                            }}
-                          />
-                        </label>
-                        <label className="monitoring-rules-enabled-toggle monitoring-rules-enabled-toggle-switch">
-                          <span className="monitoring-rules-enabled-toggle-text">Clamp 0-100</span>
-                          <span className="switch">
-                            <input
-                              type="checkbox"
-                              checked={activeRule.clamp !== false}
-                              onChange={(event) => {
-                                const next = event.target.checked;
-                                updateRule(activeRule.id, (current) =>
-                                  current.type === "percent-format"
-                                    ? { ...current, clamp: next }
-                                    : current,
-                                );
-                              }}
-                            />
-                            <span className="slider" />
-                          </span>
-                        </label>
-                      </div>
-                    ) : null}
-
-                    {activeRule.type === "progress-visual" ? (
-                      <div className="monitoring-rules-rule-fields monitoring-rules-rule-fields--progress-visual">
-                        <label>
-                          Visual Style
-                          <select
-                            value={activeRule.visualStyle ?? "bar"}
-                            onChange={(event) => {
-                              const nextStyle: "bar" | "ring" | "pie" = event.target.value === "ring"
-                                ? "ring"
-                                : event.target.value === "pie"
-                                  ? "pie"
-                                  : "bar";
-                              updateRule(activeRule.id, (current) =>
-                                current.type === "progress-visual"
-                                  ? { ...current, visualStyle: nextStyle }
-                                  : current,
-                              );
-                            }}
-                          >
-                            <option value="bar">▭ Balken</option>
-                            <option value="ring">◌ Ring</option>
-                            <option value="pie">◔ Torte</option>
-                          </select>
-                        </label>
-                        <label>
-                          Min
-                          <input
-                            type="number"
-                            value={activeRule.min ?? 0}
-                            onChange={(event) => {
-                              const next = Number(event.target.value);
-                              updateRule(activeRule.id, (current) =>
-                                current.type === "progress-visual"
-                                  ? { ...current, min: Number.isFinite(next) ? next : 0 }
-                                  : current,
-                              );
-                            }}
-                          />
-                        </label>
-                        <label>
-                          Max
-                          <input
-                            type="number"
-                            value={activeRule.max ?? 100}
-                            onChange={(event) => {
-                              const next = Number(event.target.value);
-                              updateRule(activeRule.id, (current) =>
-                                current.type === "progress-visual"
-                                  ? { ...current, max: Number.isFinite(next) ? next : 100 }
-                                  : current,
-                              );
-                            }}
-                          />
-                        </label>
-                      </div>
-                    ) : null}
-
-                    {activeRule.type === "threshold-symbol" ? (
-                      <div className="monitoring-rules-rule-fields">
-                        <label>
-                          Display-Modus
-                          <select
-                            value={activeRule.displayMode ?? "append"}
-                            onChange={(event) => {
-                              const next = event.target.value === "replace" ? "replace" : "append";
-                              updateRule(activeRule.id, (current) =>
-                                current.type === "threshold-symbol"
-                                  ? { ...current, displayMode: next }
-                                  : current,
-                              );
-                            }}
-                          >
-                            <option value="append">Append</option>
-                            <option value="replace">Replace</option>
-                          </select>
-                        </label>
-                        <label>
-                          Separator
-                          <input
-                            className="text-input"
-                            type="text"
-                            value={activeRule.separator ?? " "}
-                            onChange={(event) => {
-                              const next = event.target.value;
-                              updateRule(activeRule.id, (current) =>
-                                current.type === "threshold-symbol"
-                                  ? { ...current, separator: next }
-                                  : current,
-                              );
-                            }}
-                          />
-                        </label>
-                        <label>
-                          {"Thresholds (`>= 90 ⭐`, eine Zeile je Regel)"}
-                          <textarea
-                            value={thresholdTextByRuleId[activeRule.id] ?? thresholdsToText(activeRule)}
-                            onChange={(event) => {
-                              const nextText = event.target.value;
-                              setThresholdTextByRuleId((current) => ({
-                                ...current,
-                                [activeRule.id]: nextText,
-                              }));
-                              const thresholds = parseThresholdsText(nextText);
-                              updateRule(activeRule.id, (current) =>
-                                current.type === "threshold-symbol"
-                                  ? { ...current, thresholds }
-                                  : current,
-                              );
-                            }}
-                          />
-                        </label>
-                      </div>
-                    ) : null}
-
-                    {activeRule.type === "grouped-label-map" ? (
-                      <div className="monitoring-rules-rule-fields">
-                        <label className="monitoring-rules-enabled-toggle monitoring-rules-enabled-toggle-switch">
-                          <span className="monitoring-rules-enabled-toggle-text">Case-sensitive</span>
-                          <span className="switch">
-                            <input
-                              type="checkbox"
-                              checked={Boolean(activeRule.caseSensitive)}
-                              onChange={(event) => {
-                                const next = event.target.checked;
-                                updateRule(activeRule.id, (current) =>
-                                  current.type === "grouped-label-map"
-                                    ? { ...current, caseSensitive: next }
-                                    : current,
-                                );
-                              }}
-                            />
-                            <span className="slider" />
-                          </span>
-                        </label>
-                        <label className="monitoring-rules-enabled-toggle monitoring-rules-enabled-toggle-switch">
-                          <span className="monitoring-rules-enabled-toggle-text">Text ersetzen</span>
-                          <span className="switch">
-                            <input
-                              type="checkbox"
-                              checked={Boolean(activeRule.replaceText)}
-                              onChange={(event) => {
-                                const next = event.target.checked;
-                                updateRule(activeRule.id, (current) =>
-                                  current.type === "grouped-label-map"
-                                    ? { ...current, replaceText: next }
-                                    : current,
-                                );
-                              }}
-                            />
-                            <span className="slider" />
-                          </span>
-                        </label>
-                        <label>
-                          Separator
-                          <input
-                            className="text-input"
-                            type="text"
-                            value={activeRule.separator ?? " "}
-                            onChange={(event) => {
-                              const next = event.target.value;
-                              updateRule(activeRule.id, (current) =>
-                                current.type === "grouped-label-map"
-                                  ? { ...current, separator: next }
-                                  : current,
-                              );
-                            }}
-                          />
-                        </label>
-                        <label>
-                          Gruppen (`Label|Symbol|v1,v2,v3`)
-                          <textarea
-                            value={groupedMapTextByRuleId[activeRule.id] ?? groupedMapToText(activeRule)}
-                            onChange={(event) => {
-                              const nextText = event.target.value;
-                              setGroupedMapTextByRuleId((current) => ({
-                                ...current,
-                                [activeRule.id]: nextText,
-                              }));
-                              const groups = parseGroupedMapText(nextText);
-                              updateRule(activeRule.id, (current) =>
-                                current.type === "grouped-label-map"
-                                  ? { ...current, groups }
-                                  : current,
-                              );
-                            }}
-                          />
-                        </label>
-                      </div>
-                    ) : null}
-
-                    <div
-                      className="monitoring-rules-rule-target-control"
-                      ref={targetAttributesControlRef}
-                    >
-                      <span className="monitoring-rules-rule-target-label">Attr:</span>
-                      <button
-                        type="button"
-                        className="ghost small monitoring-rules-rule-target-toggle"
-                        onClick={() =>
-                          setTargetAttributesPickerRuleId((current) =>
-                            current === activeRule.id ? null : activeRule.id)
-                        }
-                      >
-                        {resolveRuleTargetAttributesSummary(
-                          availableRuleAliases,
-                          activeRuleTargetAttributes,
-                        )}{" "}
-                        ▾
-                      </button>
-                      {targetAttributesPickerRuleId === activeRule.id ? (
-                        <div
-                          className="monitoring-rules-rule-target-popover"
-                          role="menu"
-                          aria-label="Target Attributes"
-                        >
-                          <div className="monitoring-rules-rule-target-actions">
-                            <button
-                              type="button"
-                              className="ghost small"
-                              onClick={() => {
-                                handleSetRuleTargetAttributes(activeRule.id, undefined);
-                                setTargetAttributesPickerRuleId(null);
                               }}
                             >
-                              All (auto)
-                            </button>
-                            <button
-                              type="button"
-                              className="ghost small"
-                              onClick={() =>
-                                handleSetRuleTargetAttributes(
-                                  activeRule.id,
-                                  availableRuleAliases,
-                                )
+                              <option value="append">Append</option>
+                              <option value="replace">Replace</option>
+                            </select>
+                          </label>
+                          <label>
+                            Separator
+                            <input
+                              className="text-input"
+                              type="text"
+                              value={activeRule.separator ?? " "}
+                              onChange={(event) => {
+                                const next = event.target.value;
+                                updateRule(activeRule.id, (current) =>
+                                  current.type === "value-map"
+                                    ? { ...current, separator: next }
+                                    : current,
+                                );
+                              }}
+                            />
+                          </label>
+                          <label className="monitoring-rules-enabled-toggle monitoring-rules-enabled-toggle-switch">
+                            <span className="monitoring-rules-enabled-toggle-text">
+                              Case-sensitive
+                            </span>
+                            <span className="switch">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(activeRule.caseSensitive)}
+                                onChange={(event) => {
+                                  const next = event.target.checked;
+                                  updateRule(activeRule.id, (current) =>
+                                    current.type === "value-map"
+                                      ? { ...current, caseSensitive: next }
+                                      : current,
+                                  );
+                                }}
+                              />
+                              <span className="slider" />
+                            </span>
+                          </label>
+                          <label>
+                            Mappings (`from=to`, eine Zeile je Mapping)
+                            <textarea
+                              value={
+                                valueMapTextByRuleId[activeRule.id] ?? mappingsToText(activeRule)
                               }
-                            >
-                              Select all
-                            </button>
-                          </div>
-                          <div className="monitoring-rules-rule-target-list">
-                            {availableRuleAliases.length === 0 ? (
-                              <span className="monitoring-rules-rule-target-empty">
-                                Keine Alias-Attribute
-                              </span>
-                            ) : (
-                              availableRuleAliases.map((alias) => {
-                                const checked = Boolean(
-                                  activeRuleTargetAttributes?.some(
-                                    (entry) => normalizeLower(entry) === normalizeLower(alias),
-                                  ),
+                              onChange={(event) => {
+                                const nextText = event.target.value;
+                                setValueMapTextByRuleId((current) => ({
+                                  ...current,
+                                  [activeRule.id]: nextText,
+                                }));
+                                const mappings = parseMappingsText(nextText);
+                                updateRule(activeRule.id, (current) =>
+                                  current.type === "value-map" ? { ...current, mappings } : current,
                                 );
-                                return (
-                                  <label key={`rule-target-${activeRule.id}-${alias}`}>
-                                    <input
-                                      type="checkbox"
-                                      checked={checked}
-                                      onChange={(event) => {
-                                        handleToggleRuleTargetAttribute(
-                                          activeRule.id,
-                                          alias,
-                                          event.target.checked,
-                                        );
-                                      }}
-                                    />
-                                    {alias}
-                                  </label>
-                                );
-                              })
-                            )}
-                          </div>
+                              }}
+                            />
+                          </label>
                         </div>
                       ) : null}
-                    </div>
 
-                    <div className="monitoring-rules-rule-actions">
-                      <button
-                        type="button"
-                        className="ghost small monitoring-rules-danger-action"
-                        onClick={() => {
-                          handleRemoveRule(activeRule.id);
-                        }}
-                        disabled={draft.rules.length <= 1}
+                      {activeRule.type === "ratio-derived-percent" ? (
+                        <div className="monitoring-rules-rule-fields monitoring-rules-rule-fields--ratio">
+                          <label>
+                            Decimals
+                            <input
+                              type="number"
+                              min={0}
+                              max={6}
+                              value={activeRule.decimals ?? 0}
+                              onChange={(event) => {
+                                const next = Math.max(
+                                  0,
+                                  Math.min(6, Number(event.target.value) || 0),
+                                );
+                                updateRule(activeRule.id, (current) =>
+                                  current.type === "ratio-derived-percent"
+                                    ? { ...current, decimals: next }
+                                    : current,
+                                );
+                              }}
+                            />
+                          </label>
+                          <label className="monitoring-rules-enabled-toggle monitoring-rules-enabled-toggle-switch monitoring-rules-enabled-toggle-switch-compact">
+                            <span className="monitoring-rules-enabled-toggle-text">
+                              Basiswert anzeigen
+                            </span>
+                            <span className="switch">
+                              <input
+                                type="checkbox"
+                                checked={activeRule.showBase !== false}
+                                onChange={(event) => {
+                                  const next = event.target.checked;
+                                  updateRule(activeRule.id, (current) =>
+                                    current.type === "ratio-derived-percent"
+                                      ? { ...current, showBase: next }
+                                      : current,
+                                  );
+                                }}
+                              />
+                              <span className="slider" />
+                            </span>
+                          </label>
+                          <label className="monitoring-rules-enabled-toggle monitoring-rules-enabled-toggle-switch monitoring-rules-enabled-toggle-switch-compact">
+                            <span className="monitoring-rules-enabled-toggle-text">
+                              Prozent in Klammern
+                            </span>
+                            <span className="switch">
+                              <input
+                                type="checkbox"
+                                checked={activeRule.wrapInParentheses !== false}
+                                onChange={(event) => {
+                                  const next = event.target.checked;
+                                  updateRule(activeRule.id, (current) =>
+                                    current.type === "ratio-derived-percent"
+                                      ? { ...current, wrapInParentheses: next }
+                                      : current,
+                                  );
+                                }}
+                              />
+                              <span className="slider" />
+                            </span>
+                          </label>
+                        </div>
+                      ) : null}
+
+                      {activeRule.type === "percent-format" ? (
+                        <div className="monitoring-rules-rule-fields monitoring-rules-rule-fields--decimals-toggle">
+                          <label>
+                            Decimals
+                            <input
+                              type="number"
+                              min={0}
+                              max={6}
+                              value={activeRule.decimals ?? 0}
+                              onChange={(event) => {
+                                const next = Math.max(
+                                  0,
+                                  Math.min(6, Number(event.target.value) || 0),
+                                );
+                                updateRule(activeRule.id, (current) =>
+                                  current.type === "percent-format"
+                                    ? { ...current, decimals: next }
+                                    : current,
+                                );
+                              }}
+                            />
+                          </label>
+                          <label className="monitoring-rules-enabled-toggle monitoring-rules-enabled-toggle-switch">
+                            <span className="monitoring-rules-enabled-toggle-text">
+                              Clamp 0-100
+                            </span>
+                            <span className="switch">
+                              <input
+                                type="checkbox"
+                                checked={activeRule.clamp !== false}
+                                onChange={(event) => {
+                                  const next = event.target.checked;
+                                  updateRule(activeRule.id, (current) =>
+                                    current.type === "percent-format"
+                                      ? { ...current, clamp: next }
+                                      : current,
+                                  );
+                                }}
+                              />
+                              <span className="slider" />
+                            </span>
+                          </label>
+                        </div>
+                      ) : null}
+
+                      {activeRule.type === "progress-visual" ? (
+                        <div className="monitoring-rules-rule-fields monitoring-rules-rule-fields--progress-visual">
+                          <label>
+                            Visual Style
+                            <select
+                              value={activeRule.visualStyle ?? "bar"}
+                              onChange={(event) => {
+                                const nextStyle: "bar" | "ring" | "pie" =
+                                  event.target.value === "ring"
+                                    ? "ring"
+                                    : event.target.value === "pie"
+                                      ? "pie"
+                                      : "bar";
+                                updateRule(activeRule.id, (current) =>
+                                  current.type === "progress-visual"
+                                    ? { ...current, visualStyle: nextStyle }
+                                    : current,
+                                );
+                              }}
+                            >
+                              <option value="bar">▭ Balken</option>
+                              <option value="ring">◌ Ring</option>
+                              <option value="pie">◔ Torte</option>
+                            </select>
+                          </label>
+                          <label>
+                            Min
+                            <input
+                              type="number"
+                              value={activeRule.min ?? 0}
+                              onChange={(event) => {
+                                const next = Number(event.target.value);
+                                updateRule(activeRule.id, (current) =>
+                                  current.type === "progress-visual"
+                                    ? { ...current, min: Number.isFinite(next) ? next : 0 }
+                                    : current,
+                                );
+                              }}
+                            />
+                          </label>
+                          <label>
+                            Max
+                            <input
+                              type="number"
+                              value={activeRule.max ?? 100}
+                              onChange={(event) => {
+                                const next = Number(event.target.value);
+                                updateRule(activeRule.id, (current) =>
+                                  current.type === "progress-visual"
+                                    ? { ...current, max: Number.isFinite(next) ? next : 100 }
+                                    : current,
+                                );
+                              }}
+                            />
+                          </label>
+                        </div>
+                      ) : null}
+
+                      {activeRule.type === "threshold-symbol" ? (
+                        <div className="monitoring-rules-rule-fields">
+                          <label>
+                            Display-Modus
+                            <select
+                              value={activeRule.displayMode ?? "append"}
+                              onChange={(event) => {
+                                const next =
+                                  event.target.value === "replace" ? "replace" : "append";
+                                updateRule(activeRule.id, (current) =>
+                                  current.type === "threshold-symbol"
+                                    ? { ...current, displayMode: next }
+                                    : current,
+                                );
+                              }}
+                            >
+                              <option value="append">Append</option>
+                              <option value="replace">Replace</option>
+                            </select>
+                          </label>
+                          <label>
+                            Separator
+                            <input
+                              className="text-input"
+                              type="text"
+                              value={activeRule.separator ?? " "}
+                              onChange={(event) => {
+                                const next = event.target.value;
+                                updateRule(activeRule.id, (current) =>
+                                  current.type === "threshold-symbol"
+                                    ? { ...current, separator: next }
+                                    : current,
+                                );
+                              }}
+                            />
+                          </label>
+                          <label>
+                            {"Thresholds (`>= 90 ⭐`, eine Zeile je Regel)"}
+                            <textarea
+                              value={
+                                thresholdTextByRuleId[activeRule.id] ?? thresholdsToText(activeRule)
+                              }
+                              onChange={(event) => {
+                                const nextText = event.target.value;
+                                setThresholdTextByRuleId((current) => ({
+                                  ...current,
+                                  [activeRule.id]: nextText,
+                                }));
+                                const thresholds = parseThresholdsText(nextText);
+                                updateRule(activeRule.id, (current) =>
+                                  current.type === "threshold-symbol"
+                                    ? { ...current, thresholds }
+                                    : current,
+                                );
+                              }}
+                            />
+                          </label>
+                        </div>
+                      ) : null}
+
+                      {activeRule.type === "grouped-label-map" ? (
+                        <div className="monitoring-rules-rule-fields">
+                          <label className="monitoring-rules-enabled-toggle monitoring-rules-enabled-toggle-switch">
+                            <span className="monitoring-rules-enabled-toggle-text">
+                              Case-sensitive
+                            </span>
+                            <span className="switch">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(activeRule.caseSensitive)}
+                                onChange={(event) => {
+                                  const next = event.target.checked;
+                                  updateRule(activeRule.id, (current) =>
+                                    current.type === "grouped-label-map"
+                                      ? { ...current, caseSensitive: next }
+                                      : current,
+                                  );
+                                }}
+                              />
+                              <span className="slider" />
+                            </span>
+                          </label>
+                          <label className="monitoring-rules-enabled-toggle monitoring-rules-enabled-toggle-switch">
+                            <span className="monitoring-rules-enabled-toggle-text">
+                              Text ersetzen
+                            </span>
+                            <span className="switch">
+                              <input
+                                type="checkbox"
+                                checked={Boolean(activeRule.replaceText)}
+                                onChange={(event) => {
+                                  const next = event.target.checked;
+                                  updateRule(activeRule.id, (current) =>
+                                    current.type === "grouped-label-map"
+                                      ? { ...current, replaceText: next }
+                                      : current,
+                                  );
+                                }}
+                              />
+                              <span className="slider" />
+                            </span>
+                          </label>
+                          <label>
+                            Separator
+                            <input
+                              className="text-input"
+                              type="text"
+                              value={activeRule.separator ?? " "}
+                              onChange={(event) => {
+                                const next = event.target.value;
+                                updateRule(activeRule.id, (current) =>
+                                  current.type === "grouped-label-map"
+                                    ? { ...current, separator: next }
+                                    : current,
+                                );
+                              }}
+                            />
+                          </label>
+                          <label>
+                            Gruppen (`Label|Symbol|v1,v2,v3`)
+                            <textarea
+                              value={
+                                groupedMapTextByRuleId[activeRule.id] ??
+                                groupedMapToText(activeRule)
+                              }
+                              onChange={(event) => {
+                                const nextText = event.target.value;
+                                setGroupedMapTextByRuleId((current) => ({
+                                  ...current,
+                                  [activeRule.id]: nextText,
+                                }));
+                                const groups = parseGroupedMapText(nextText);
+                                updateRule(activeRule.id, (current) =>
+                                  current.type === "grouped-label-map"
+                                    ? { ...current, groups }
+                                    : current,
+                                );
+                              }}
+                            />
+                          </label>
+                        </div>
+                      ) : null}
+
+                      <div
+                        className="monitoring-rules-rule-target-control"
+                        ref={targetAttributesControlRef}
                       >
-                        Entfernen
-                      </button>
-                    </div>
+                        <span className="monitoring-rules-rule-target-label">Attr:</span>
+                        <button
+                          type="button"
+                          className="ghost small monitoring-rules-rule-target-toggle"
+                          onClick={() =>
+                            setTargetAttributesPickerRuleId((current) =>
+                              current === activeRule.id ? null : activeRule.id,
+                            )
+                          }
+                        >
+                          {resolveRuleTargetAttributesSummary(
+                            availableRuleAliases,
+                            activeRuleTargetAttributes,
+                          )}{" "}
+                          ▾
+                        </button>
+                        {targetAttributesPickerRuleId === activeRule.id ? (
+                          <div
+                            className="monitoring-rules-rule-target-popover"
+                            role="menu"
+                            aria-label="Target Attributes"
+                          >
+                            <div className="monitoring-rules-rule-target-actions">
+                              <button
+                                type="button"
+                                className="ghost small"
+                                onClick={() => {
+                                  handleSetRuleTargetAttributes(activeRule.id, undefined);
+                                  setTargetAttributesPickerRuleId(null);
+                                }}
+                              >
+                                All (auto)
+                              </button>
+                              <button
+                                type="button"
+                                className="ghost small"
+                                onClick={() =>
+                                  handleSetRuleTargetAttributes(activeRule.id, availableRuleAliases)
+                                }
+                              >
+                                Select all
+                              </button>
+                            </div>
+                            <div className="monitoring-rules-rule-target-list">
+                              {availableRuleAliases.length === 0 ? (
+                                <span className="monitoring-rules-rule-target-empty">
+                                  Keine Alias-Attribute
+                                </span>
+                              ) : (
+                                availableRuleAliases.map((alias) => {
+                                  const checked = Boolean(
+                                    activeRuleTargetAttributes?.some(
+                                      (entry) => normalizeLower(entry) === normalizeLower(alias),
+                                    ),
+                                  );
+                                  return (
+                                    <label key={`rule-target-${activeRule.id}-${alias}`}>
+                                      <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={(event) => {
+                                          handleToggleRuleTargetAttribute(
+                                            activeRule.id,
+                                            alias,
+                                            event.target.checked,
+                                          );
+                                        }}
+                                      />
+                                      {alias}
+                                    </label>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
 
-                    <div className="monitoring-rules-rule-preview-layout">
-                      <div className="monitoring-rules-rule-preview">
-                        <span className="monitoring-rules-rule-preview-label">
-                          Regel-Vorschau
-                        </span>
-                        <div className="monitoring-rules-rule-preview-value">
-                          <MonitoringRenderValue
-                            result={activeRulePreviewResult}
-                            fallback={activeRulePreviewRawValue}
-                          />
+                      <div className="monitoring-rules-rule-actions">
+                        <button
+                          type="button"
+                          className="ghost small monitoring-rules-danger-action"
+                          onClick={() => {
+                            handleRemoveRule(activeRule.id);
+                          }}
+                          disabled={draft.rules.length <= 1}
+                        >
+                          Entfernen
+                        </button>
+                      </div>
+
+                      <div className="monitoring-rules-rule-preview-layout">
+                        <div className="monitoring-rules-rule-preview">
+                          <span className="monitoring-rules-rule-preview-label">
+                            Regel-Vorschau
+                          </span>
+                          <div className="monitoring-rules-rule-preview-value">
+                            <MonitoringRenderValue
+                              result={activeRulePreviewResult}
+                              fallback={activeRulePreviewRawValue}
+                            />
+                          </div>
+                        </div>
+                        <div className="monitoring-rules-rule-preview-fields">
+                          <label className="monitoring-rules-rule-preview-field">
+                            Rohwert
+                            <input
+                              className="text-input monitoring-rules-rule-preview-raw"
+                              type="text"
+                              value={activeRulePreviewRawValue}
+                              onChange={(event) => {
+                                const nextRawValue = event.target.value;
+                                updateRule(activeRule.id, (current) => ({
+                                  ...current,
+                                  rulePreviewRawValue: nextRawValue,
+                                }));
+                              }}
+                            />
+                          </label>
                         </div>
                       </div>
-                      <div className="monitoring-rules-rule-preview-fields">
-                        <label className="monitoring-rules-rule-preview-field">
-                          Rohwert
-                          <input
-                            className="text-input monitoring-rules-rule-preview-raw"
-                            type="text"
-                            value={activeRulePreviewRawValue}
-                            onChange={(event) => {
-                              const nextRawValue = event.target.value;
-                              updateRule(activeRule.id, (current) => ({
-                                ...current,
-                                rulePreviewRawValue: nextRawValue,
-                              }));
-                            }}
-                          />
-                        </label>
-                      </div>
-                    </div>
-                  </article>
-                </ModalShell>
-              ) : null}
-
+                    </article>
+                  </ModalShell>
+                ) : null}
               </>
             ) : (
               <div className="database-view-empty">Kein Monitoring-Profil verfuegbar.</div>
@@ -3096,7 +3074,8 @@ export const MonitoringRulesPage = () => {
               <div className="database-view-empty">Formelattribute werden geladen...</div>
             ) : formulaGroups.length === 0 ? (
               <div className="database-view-empty">
-                Keine Formelattribute gefunden. Weder Registry-Eintraege noch Frontmatter-Keys mit `f-` verfuegbar.
+                Keine Formelattribute gefunden. Weder Registry-Eintraege noch Frontmatter-Keys mit
+                `f-` verfuegbar.
               </div>
             ) : (
               formulaGroups.map((group) => (
@@ -3145,8 +3124,8 @@ export const MonitoringRulesPage = () => {
               <>
                 {selectedFormulaGroup.hasConflict ? (
                   <div className="monitoring-rules-formula-conflict-warning" role="status">
-                    Abweichende Definitionen gefunden. Speichern ueberschreibt alle Fundstellen mit der aktuellen
-                    Definition.
+                    Abweichende Definitionen gefunden. Speichern ueberschreibt alle Fundstellen mit
+                    der aktuellen Definition.
                   </div>
                 ) : null}
                 <section className="monitoring-rules-section">
@@ -3236,7 +3215,10 @@ export const MonitoringRulesPage = () => {
             )}
           </div>
 
-          <aside className="monitoring-rules-section monitoring-rules-formula-info" aria-label="Formula references">
+          <aside
+            className="monitoring-rules-section monitoring-rules-formula-info"
+            aria-label="Formula references"
+          >
             {selectedFormulaGroup ? (
               <>
                 <h3>Fundstellen</h3>
@@ -3299,7 +3281,8 @@ export const MonitoringRulesPage = () => {
       >
         <div className="monitoring-rules-confirm-content">
           <p>
-            Soll das Profil <strong>{profileDeleteTarget?.name ?? ""}</strong> wirklich geloescht werden?
+            Soll das Profil <strong>{profileDeleteTarget?.name ?? ""}</strong> wirklich geloescht
+            werden?
           </p>
           <div className="monitoring-rules-confirm-actions">
             <button
@@ -3328,7 +3311,8 @@ export const MonitoringRulesPage = () => {
       >
         <div className="monitoring-rules-confirm-content">
           <p>
-            Soll die Formel <strong>{formulaDeleteTarget?.displayKey ?? ""}</strong> global geloescht werden?
+            Soll die Formel <strong>{formulaDeleteTarget?.displayKey ?? ""}</strong> global
+            geloescht werden?
           </p>
           <p className="muted">
             Registry-Eintrag und alle Fundstellen in Markdown-Dateien werden entfernt.

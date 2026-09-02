@@ -111,11 +111,7 @@ const isPipeDelimiter = (value: string, index: number, state: InlinePipeState) =
   state.bracketDepth === 0 &&
   state.linkDestinationDepth === 0;
 
-const updateInlinePipeState = (
-  value: string,
-  index: number,
-  state: InlinePipeState,
-) => {
+const updateInlinePipeState = (value: string, index: number, state: InlinePipeState) => {
   const char = value[index] ?? "";
   if (!char || isEscapedAt(value, index)) {
     return;
@@ -181,10 +177,7 @@ export const normalizeMarkdownTableCellPreviewValue = (value: string) =>
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/\n{3,}/g, "\n\n");
 
-const normalizeBoundaryEscapes = (
-  line: string,
-  options?: NormalizeMarkdownPipeTablesOptions,
-) => {
+const normalizeBoundaryEscapes = (line: string, options?: NormalizeMarkdownPipeTablesOptions) => {
   const trimmed = line.trim();
   if (!options?.unescapeEscapedBoundaryPipes) {
     return trimmed;
@@ -198,10 +191,7 @@ const normalizeBoundaryEscapes = (
   return trimmed.replace(/^\\\|/, "|").replace(/\\\|$/, "|");
 };
 
-const splitPipeRow = (
-  line: string,
-  options?: SplitPipeRowOptions,
-) => {
+const splitPipeRow = (line: string, options?: SplitPipeRowOptions) => {
   const normalized = normalizeBoundaryEscapes(line, options);
   if (!normalized) {
     return null;
@@ -253,8 +243,7 @@ const splitPipeRow = (
 
 const isSeparatorToken = (value: string) => /^:?-{3,}:?$/.test(value.trim());
 
-const normalizeSeparatorToken = (value: string) =>
-  isSeparatorToken(value) ? value.trim() : "---";
+const normalizeSeparatorToken = (value: string) => (isSeparatorToken(value) ? value.trim() : "---");
 
 const cloneCell = (cell: MarkdownPipeTableCell): MarkdownPipeTableCell => ({ raw: cell.raw });
 
@@ -289,7 +278,8 @@ const normalizeModel = (model: MarkdownPipeTableModel): MarkdownPipeTableModel =
   return {
     header: padCellRow(model.header, columnCount),
     separator: Array.from({ length: columnCount }, (_, index) =>
-      normalizeSeparatorToken(model.separator[index] ?? "---")),
+      normalizeSeparatorToken(model.separator[index] ?? "---"),
+    ),
     bodyRows: model.bodyRows.map((row) => padCellRow(row, columnCount)),
     columnCount,
   };
@@ -304,7 +294,11 @@ const buildModel = (parts: {
     header: parts.header.map((raw) => ({ raw })),
     separator: parts.separator,
     bodyRows: parts.bodyRows.map((row) => row.map((raw) => ({ raw }))),
-    columnCount: Math.max(parts.header.length, parts.separator.length, ...parts.bodyRows.map((row) => row.length)),
+    columnCount: Math.max(
+      parts.header.length,
+      parts.separator.length,
+      ...parts.bodyRows.map((row) => row.length),
+    ),
   });
 
 const parseMarkdownPipeTableAtInternal = (
@@ -478,7 +472,8 @@ export const insertTableRow = (
 
 export const deleteTableRows = (model: MarkdownPipeTableModel, rowIndices: number[]) => {
   const next = cloneModel(model);
-  const indices = [...new Set(rowIndices)].filter((index) => index >= 0 && index < next.bodyRows.length)
+  const indices = [...new Set(rowIndices)]
+    .filter((index) => index >= 0 && index < next.bodyRows.length)
     .sort((left, right) => right - left);
   indices.forEach((index) => {
     next.bodyRows.splice(index, 1);
@@ -486,11 +481,7 @@ export const deleteTableRows = (model: MarkdownPipeTableModel, rowIndices: numbe
   return normalizeModel(next);
 };
 
-export const moveTableRow = (
-  model: MarkdownPipeTableModel,
-  fromIndex: number,
-  toIndex: number,
-) => {
+export const moveTableRow = (model: MarkdownPipeTableModel, fromIndex: number, toIndex: number) => {
   const next = cloneModel(model);
   if (fromIndex < 0 || fromIndex >= next.bodyRows.length) {
     return next;
@@ -520,7 +511,8 @@ export const insertTableColumn = (model: MarkdownPipeTableModel, columnIndex: nu
 
 export const deleteTableColumns = (model: MarkdownPipeTableModel, columnIndices: number[]) => {
   const next = cloneModel(model);
-  const indices = [...new Set(columnIndices)].filter((index) => index >= 0 && index < next.columnCount)
+  const indices = [...new Set(columnIndices)]
+    .filter((index) => index >= 0 && index < next.columnCount)
     .sort((left, right) => right - left);
   if (next.columnCount - indices.length < 1) {
     return next;
@@ -546,7 +538,7 @@ export const moveTableColumn = (
     return next;
   }
   const insertIndex = Math.max(0, Math.min(toIndex, next.columnCount));
-  const moveInArray = <T,>(items: T[]) => {
+  const moveInArray = <T>(items: T[]) => {
     const clone = [...items];
     const [moved] = clone.splice(fromIndex, 1);
     if (typeof moved === "undefined") {
@@ -566,10 +558,7 @@ export const moveTableColumn = (
 const sortUniqueIndices = (values: number[]) =>
   [...new Set(values)].sort((left, right) => left - right);
 
-const normalizeIndexedSelection = (
-  selection: IndexedSelectionState | null,
-  maxCount: number,
-) => {
+const normalizeIndexedSelection = (selection: IndexedSelectionState | null, maxCount: number) => {
   if (!selection || maxCount <= 0) {
     return null;
   }
@@ -588,12 +577,10 @@ const normalizeIndexedSelection = (
   };
 };
 
-const applyMoveMutationToIndex = (
-  index: number,
-  mutation: SelectionMoveMutation,
-) => {
+const applyMoveMutationToIndex = (index: number, mutation: SelectionMoveMutation) => {
   if (index === mutation.fromIndex) {
-    const targetIndex = mutation.toIndex > mutation.fromIndex ? mutation.toIndex - 1 : mutation.toIndex;
+    const targetIndex =
+      mutation.toIndex > mutation.fromIndex ? mutation.toIndex - 1 : mutation.toIndex;
     return targetIndex;
   }
   if (mutation.fromIndex < mutation.toIndex) {
@@ -623,13 +610,17 @@ const applyMutationToSelection = (
       anchorIndex: selection.anchorIndex,
       selectedIndices: selection.selectedIndices
         .filter((index) => !removed.has(index))
-        .map((index) =>
-          index - mutation.removedIndices.filter((removedIndex) => removedIndex < index).length),
+        .map(
+          (index) =>
+            index - mutation.removedIndices.filter((removedIndex) => removedIndex < index).length,
+        ),
     };
   } else {
     nextSelection = {
       anchorIndex: applyMoveMutationToIndex(selection.anchorIndex, mutation),
-      selectedIndices: selection.selectedIndices.map((index) => applyMoveMutationToIndex(index, mutation)),
+      selectedIndices: selection.selectedIndices.map((index) =>
+        applyMoveMutationToIndex(index, mutation),
+      ),
     };
   }
   return normalizeIndexedSelection(nextSelection, maxCount);

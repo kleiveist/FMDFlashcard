@@ -130,9 +130,7 @@ export const normalizeProjectBarFillConfigs = (
   return Array.from(byRecordId.values());
 };
 
-export const normalizeDatabaseProjectFillProfile = (
-  value: unknown,
-): DatabaseProjectFillProfile => {
+export const normalizeDatabaseProjectFillProfile = (value: unknown): DatabaseProjectFillProfile => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {
       barFillConfigs: [],
@@ -152,19 +150,21 @@ const normalizeStore = (value: unknown): DatabaseProjectFillProfileStore => {
     };
   }
   const candidate = value as { profiles?: unknown };
-  const profiles = candidate.profiles && typeof candidate.profiles === "object" && !Array.isArray(candidate.profiles)
-    ? Object.entries(candidate.profiles as Record<string, unknown>).reduce<Record<string, DatabaseProjectFillProfile>>(
-      (next, [key, profile]) => {
-        const normalizedKey = key.trim();
-        if (!normalizedKey) {
+  const profiles =
+    candidate.profiles &&
+    typeof candidate.profiles === "object" &&
+    !Array.isArray(candidate.profiles)
+      ? Object.entries(candidate.profiles as Record<string, unknown>).reduce<
+          Record<string, DatabaseProjectFillProfile>
+        >((next, [key, profile]) => {
+          const normalizedKey = key.trim();
+          if (!normalizedKey) {
+            return next;
+          }
+          next[normalizedKey] = normalizeDatabaseProjectFillProfile(profile);
           return next;
-        }
-        next[normalizedKey] = normalizeDatabaseProjectFillProfile(profile);
-        return next;
-      },
-      {},
-    )
-    : {};
+        }, {})
+      : {};
   return {
     schemaVersion: PROJECT_FILL_SCHEMA_VERSION,
     profiles,
@@ -180,12 +180,12 @@ const cloneProjectBarFillConfigForRecord = (
   mode: template.mode,
   ...(template.mode === "text-code"
     ? {
-      mappings: (template.mappings ?? []).map((mapping) => ({ ...mapping })),
-    }
+        mappings: (template.mappings ?? []).map((mapping) => ({ ...mapping })),
+      }
     : {
-      ...(typeof template.min === "number" ? { min: template.min } : {}),
-      ...(typeof template.max === "number" ? { max: template.max } : {}),
-    }),
+        ...(typeof template.min === "number" ? { min: template.min } : {}),
+        ...(typeof template.max === "number" ? { max: template.max } : {}),
+      }),
 });
 
 export const applyProjectBarFillConfigToRecordIds = (

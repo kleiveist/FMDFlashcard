@@ -997,9 +997,7 @@ Noch eine Zeile ohne Antwortmarker.
     const card = task?.cards[0];
     if (card?.type === "qa" || card?.type === "cd" || card?.type === "cld") {
       expect(card.prompt).toContain("Frage?");
-      expect(card.prompt).not.toContain(
-        "Unnummerierter Kontext ohne Kartenmarker.",
-      );
+      expect(card.prompt).not.toContain("Unnummerierter Kontext ohne Kartenmarker.");
     }
   });
 
@@ -1154,9 +1152,7 @@ Answer: B
       passiveSegments: imported.passiveSegments,
     });
     expect(serialized).toContain("Orphan zwischen Aufgaben.");
-    expect(serialized).toMatch(
-      /Answer: A\n---\nOrphan zwischen Aufgaben\.\n2\) Zweite Aufgabe/,
-    );
+    expect(serialized).toMatch(/Answer: A\n---\nOrphan zwischen Aufgaben\.\n2\) Zweite Aufgabe/);
   });
 
   it("captures task provenance metadata and preserves M1 raw body source", () => {

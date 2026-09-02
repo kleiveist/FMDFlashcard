@@ -41,8 +41,7 @@ export const SrBoxesPanel = ({
     </div>
     <div className="sr-box-chart-grid">
       {spacedRepetitionBoxCounts.map((count, index) => {
-        const heightPercent =
-          maxBoxCount > 0 ? Math.round((count / maxBoxCount) * 100) : 0;
+        const heightPercent = maxBoxCount > 0 ? Math.round((count / maxBoxCount) * 100) : 0;
         const barStyle = {
           "--bar-height": count > 0 ? `${Math.max(heightPercent, 6)}%` : "0%",
         } as CSSProperties;

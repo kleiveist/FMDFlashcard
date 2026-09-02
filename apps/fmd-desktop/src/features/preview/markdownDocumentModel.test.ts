@@ -111,16 +111,9 @@ describe("markdownDocumentModel", () => {
   });
 
   it("falls back safely when incremental stitching cannot match the source", () => {
-    const initial = [
-      "Para",
-      "",
-      "#card",
-      "Question",
-      "Answer: A",
-      "#endcard",
-      "",
-      "Outro",
-    ].join("\n");
+    const initial = ["Para", "", "#card", "Question", "Answer: A", "#endcard", "", "Outro"].join(
+      "\n",
+    );
 
     const snapshot = createMarkdownDocumentSnapshot(initial, 0);
     const nextMarkdown = [

@@ -114,13 +114,15 @@ const languageLoaders: Record<string, () => Promise<HighlightJsLanguageFactory>>
   csharp: () => import("highlight.js/lib/languages/csharp").then((module) => module.default),
   css: () => import("highlight.js/lib/languages/css").then((module) => module.default),
   diff: () => import("highlight.js/lib/languages/diff").then((module) => module.default),
-  dockerfile: () => import("highlight.js/lib/languages/dockerfile").then((module) => module.default),
+  dockerfile: () =>
+    import("highlight.js/lib/languages/dockerfile").then((module) => module.default),
   go: () => import("highlight.js/lib/languages/go").then((module) => module.default),
   graphql: () => import("highlight.js/lib/languages/graphql").then((module) => module.default),
   groovy: () => import("highlight.js/lib/languages/groovy").then((module) => module.default),
   ini: () => import("highlight.js/lib/languages/ini").then((module) => module.default),
   java: () => import("highlight.js/lib/languages/java").then((module) => module.default),
-  javascript: () => import("highlight.js/lib/languages/javascript").then((module) => module.default),
+  javascript: () =>
+    import("highlight.js/lib/languages/javascript").then((module) => module.default),
   json: () => import("highlight.js/lib/languages/json").then((module) => module.default),
   kotlin: () => import("highlight.js/lib/languages/kotlin").then((module) => module.default),
   latex: () => import("highlight.js/lib/languages/latex").then((module) => module.default),
@@ -129,10 +131,12 @@ const languageLoaders: Record<string, () => Promise<HighlightJsLanguageFactory>>
   makefile: () => import("highlight.js/lib/languages/makefile").then((module) => module.default),
   markdown: () => import("highlight.js/lib/languages/markdown").then((module) => module.default),
   matlab: () => import("highlight.js/lib/languages/matlab").then((module) => module.default),
-  objectivec: () => import("highlight.js/lib/languages/objectivec").then((module) => module.default),
+  objectivec: () =>
+    import("highlight.js/lib/languages/objectivec").then((module) => module.default),
   perl: () => import("highlight.js/lib/languages/perl").then((module) => module.default),
   php: () => import("highlight.js/lib/languages/php").then((module) => module.default),
-  powershell: () => import("highlight.js/lib/languages/powershell").then((module) => module.default),
+  powershell: () =>
+    import("highlight.js/lib/languages/powershell").then((module) => module.default),
   python: () => import("highlight.js/lib/languages/python").then((module) => module.default),
   r: () => import("highlight.js/lib/languages/r").then((module) => module.default),
   ruby: () => import("highlight.js/lib/languages/ruby").then((module) => module.default),
@@ -142,7 +146,8 @@ const languageLoaders: Record<string, () => Promise<HighlightJsLanguageFactory>>
   swift: () => import("highlight.js/lib/languages/swift").then((module) => module.default),
   // highlight.js ships TOML highlighting via the INI grammar module.
   toml: () => import("highlight.js/lib/languages/ini").then((module) => module.default),
-  typescript: () => import("highlight.js/lib/languages/typescript").then((module) => module.default),
+  typescript: () =>
+    import("highlight.js/lib/languages/typescript").then((module) => module.default),
   vbnet: () => import("highlight.js/lib/languages/vbnet").then((module) => module.default),
   xml: () => import("highlight.js/lib/languages/xml").then((module) => module.default),
   yaml: () => import("highlight.js/lib/languages/yaml").then((module) => module.default),
@@ -154,9 +159,7 @@ let highlightJsCorePromise: Promise<HighlightJsCore | null> | null = null;
 
 const languageClassPattern = /(?:^|\s)(?:language|lang)-([A-Za-z0-9_+-]+)(?=\s|$)/i;
 
-const extractRawLanguageTokenFromClassName = (
-  value: string | null | undefined,
-): string | null => {
+const extractRawLanguageTokenFromClassName = (value: string | null | undefined): string | null => {
   if (!value) {
     return null;
   }
@@ -253,7 +256,11 @@ const sanitizeHighlightHtml = (html: string): string | null => {
   return template.innerHTML;
 };
 
-const buildPlainResult = (code: string, cacheKey: string, language: string | null): MarkdownCodeHighlightResult => ({
+const buildPlainResult = (
+  code: string,
+  cacheKey: string,
+  language: string | null,
+): MarkdownCodeHighlightResult => ({
   cacheKey,
   html: escapeHtml(code),
   highlighted: false,
@@ -305,9 +312,8 @@ const ensureLanguageRegistered = async (
 };
 
 const resolveAutoDetectCandidates = (value: readonly string[] | undefined) => {
-  const source = value && value.length > 0
-    ? value
-    : MARKDOWN_CODE_HIGHLIGHT_CONFIG.autoDetectCandidateLanguages;
+  const source =
+    value && value.length > 0 ? value : MARKDOWN_CODE_HIGHLIGHT_CONFIG.autoDetectCandidateLanguages;
 
   const normalized = source
     .map((entry) => normalizeLanguage(entry))
@@ -325,11 +331,15 @@ const applyHighlightMetadata = (
   const effectiveLanguage = result.language ?? requestedLanguage;
   const languageLabel = effectiveLanguage ? formatCodeLanguageLabel(effectiveLanguage) : null;
 
-  const cleanClassNames = (className: string) => className
-    .split(/\s+/)
-    .map((entry) => entry.trim())
-    .filter(Boolean)
-    .filter((entry) => !entry.startsWith("hljs") && !/^language-/i.test(entry) && !/^lang-/i.test(entry));
+  const cleanClassNames = (className: string) =>
+    className
+      .split(/\s+/)
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .filter(
+        (entry) =>
+          !entry.startsWith("hljs") && !/^language-/i.test(entry) && !/^lang-/i.test(entry),
+      );
 
   const codeClassNames = cleanClassNames(codeElement.className);
   if (result.highlighted) {
@@ -403,9 +413,7 @@ export const normalizeLanguage = (value: string | null | undefined): string | nu
     return null;
   }
 
-  const normalizedToken = firstToken
-    .replace(/^language-/, "")
-    .replace(/^lang-/, "");
+  const normalizedToken = firstToken.replace(/^language-/, "").replace(/^lang-/, "");
 
   const mapped = languageAliasMap[normalizedToken] ?? normalizedToken;
   if (mapped === "plaintext") {
@@ -420,9 +428,8 @@ export const extractLanguageFromClassName = (value: string | null | undefined): 
   return rawToken ? normalizeLanguage(rawToken) : null;
 };
 
-export const extractRawLanguageFromClassName = (
-  value: string | null | undefined,
-): string | null => extractRawLanguageTokenFromClassName(value);
+export const extractRawLanguageFromClassName = (value: string | null | undefined): string | null =>
+  extractRawLanguageTokenFromClassName(value);
 
 export const formatCodeLanguageLabel = (language: string): string => {
   const normalized = normalizeLanguage(language) ?? language.trim().toLowerCase();
@@ -470,7 +477,9 @@ export const formatCodeLanguageLabel = (language: string): string => {
     makefile: "Makefile",
   };
 
-  return explicitLabels[normalized] ?? `${normalized[0]?.toUpperCase() ?? ""}${normalized.slice(1)}`;
+  return (
+    explicitLabels[normalized] ?? `${normalized[0]?.toUpperCase() ?? ""}${normalized.slice(1)}`
+  );
 };
 
 export const flattenCodeTextContent = (value: ReactNode): string | null => {
@@ -509,10 +518,7 @@ export const flattenCodeTextContent = (value: ReactNode): string | null => {
   return text;
 };
 
-export const scheduleIdleTask = (
-  run: () => void,
-  timeout = 120,
-): (() => void) => {
+export const scheduleIdleTask = (run: () => void, timeout = 120): (() => void) => {
   if (typeof window === "undefined") {
     run();
     return () => {};
@@ -546,11 +552,14 @@ const computeCodeHighlight = async (
   options: HighlightMarkdownCodeOptions,
 ): Promise<MarkdownCodeHighlightResult> => {
   const code = options.code ?? "";
-  const hasExplicitLanguage = typeof options.language === "string" && options.language.trim().length > 0;
+  const hasExplicitLanguage =
+    typeof options.language === "string" && options.language.trim().length > 0;
   const requestedLanguage = deriveRequestedLanguage(options.language);
   const hasUnsupportedLanguage = hasExplicitLanguage && !requestedLanguage;
-  const autoDetect = (options.autoDetectWithoutLanguage
-    ?? MARKDOWN_CODE_HIGHLIGHT_CONFIG.autoDetectWithoutLanguage) && !hasUnsupportedLanguage;
+  const autoDetect =
+    (options.autoDetectWithoutLanguage ??
+      MARKDOWN_CODE_HIGHLIGHT_CONFIG.autoDetectWithoutLanguage) &&
+    !hasUnsupportedLanguage;
   const cacheLanguage = requestedLanguage
     ? requestedLanguage
     : hasUnsupportedLanguage
@@ -669,11 +678,14 @@ const buildInitialHighlightResult = (
   options: HighlightMarkdownCodeOptions,
 ): MarkdownCodeHighlightResult => {
   const code = options.code ?? "";
-  const hasExplicitLanguage = typeof options.language === "string" && options.language.trim().length > 0;
+  const hasExplicitLanguage =
+    typeof options.language === "string" && options.language.trim().length > 0;
   const requestedLanguage = deriveRequestedLanguage(options.language);
   const hasUnsupportedLanguage = hasExplicitLanguage && !requestedLanguage;
-  const autoDetect = (options.autoDetectWithoutLanguage
-    ?? MARKDOWN_CODE_HIGHLIGHT_CONFIG.autoDetectWithoutLanguage) && !hasUnsupportedLanguage;
+  const autoDetect =
+    (options.autoDetectWithoutLanguage ??
+      MARKDOWN_CODE_HIGHLIGHT_CONFIG.autoDetectWithoutLanguage) &&
+    !hasUnsupportedLanguage;
   const cacheLanguage = requestedLanguage
     ? requestedLanguage
     : hasUnsupportedLanguage
@@ -690,18 +702,18 @@ const buildInitialHighlightResult = (
     };
   }
 
-  return buildPlainResult(code, cacheKey, requestedLanguage && requestedLanguage !== "plaintext"
-    ? requestedLanguage
-    : null);
+  return buildPlainResult(
+    code,
+    cacheKey,
+    requestedLanguage && requestedLanguage !== "plaintext" ? requestedLanguage : null,
+  );
 };
 
 export const highlightMarkdownCode = async (
   options: HighlightMarkdownCodeOptions,
 ): Promise<MarkdownCodeHighlightResult> => computeCodeHighlight(options);
 
-export const useMarkdownCodeHighlight = (
-  options: UseMarkdownCodeHighlightOptions,
-) => {
+export const useMarkdownCodeHighlight = (options: UseMarkdownCodeHighlightOptions) => {
   const stableOptions = useMemo(
     () => ({
       code: options.code,
@@ -718,7 +730,8 @@ export const useMarkdownCodeHighlight = (
   );
 
   const [result, setResult] = useState<MarkdownCodeHighlightResult>(() =>
-    buildInitialHighlightResult(stableOptions));
+    buildInitialHighlightResult(stableOptions),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -730,11 +743,12 @@ export const useMarkdownCodeHighlight = (
         }
         setResult((current) =>
           current.cacheKey === nextResult.cacheKey &&
-            current.html === nextResult.html &&
-            current.language === nextResult.language &&
-            current.highlighted === nextResult.highlighted
+          current.html === nextResult.html &&
+          current.language === nextResult.language &&
+          current.highlighted === nextResult.highlighted
             ? current
-            : nextResult);
+            : nextResult,
+        );
       });
     };
 
@@ -756,9 +770,7 @@ export const useMarkdownCodeHighlight = (
   return result;
 };
 
-export const applyHighlightToCodeElement = async (
-  options: ApplyHighlightToCodeElementOptions,
-) => {
+export const applyHighlightToCodeElement = async (options: ApplyHighlightToCodeElementOptions) => {
   const codeElement = options.codeElement;
   const preElement = options.preElement ?? codeElement.closest("pre");
   const rawLanguage =

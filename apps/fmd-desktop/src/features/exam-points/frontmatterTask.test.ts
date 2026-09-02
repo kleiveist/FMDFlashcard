@@ -7,9 +7,7 @@ import {
 
 describe("exam points frontmatter task helpers", () => {
   it("reads Task from frontmatter", () => {
-    const markdown = ["---", "Task: Exam", "---", "#exam", "1) Demo", "#endexam"].join(
-      "\n",
-    );
+    const markdown = ["---", "Task: Exam", "---", "#exam", "1) Demo", "#endexam"].join("\n");
     expect(resolveExamTaskFrontmatterValue(markdown)).toBe("Exam");
   });
 

@@ -45,11 +45,7 @@ type ExamResultsPanelProps = {
   getTaskCardWrapDisabledReason: (task: ExamSessionTask) => string;
 };
 
-const noopOptionSelect = (
-  _taskIndex: number,
-  _partIndex: number,
-  _keys: string[],
-) => {};
+const noopOptionSelect = (_taskIndex: number, _partIndex: number, _keys: string[]) => {};
 const noopTrueFalseSelect = (
   _taskIndex: number,
   _partIndex: number,
@@ -70,26 +66,14 @@ const noopClozeTokenDrop = (
   _validTokenIds: Set<string>,
   _dragBlankIds: Set<string>,
 ) => {};
-const noopClozeTokenRemove = (
-  _taskIndex: number,
-  _partIndex: number,
-  _blankId: string,
-) => {};
+const noopClozeTokenRemove = (_taskIndex: number, _partIndex: number, _blankId: string) => {};
 const noopClozeTokenDragStart = (
   _event: DragEvent<HTMLElement>,
   _payload: { cardIndex: number; tokenId: string; partIndex?: number },
 ) => {};
 const noopBlankDragOver = (_event: DragEvent<HTMLElement>) => {};
-const noopTextInputChange = (
-  _taskIndex: number,
-  _partIndex: number,
-  _value: string,
-) => {};
-const noopAwardedPointsChange = (
-  _taskIndex: number,
-  _value: string,
-  _maxPoints: number,
-) => {};
+const noopTextInputChange = (_taskIndex: number, _partIndex: number, _value: string) => {};
+const noopAwardedPointsChange = (_taskIndex: number, _value: string, _maxPoints: number) => {};
 const noopAutoGradeDecision = (_taskIndex: number, _decision: boolean) => {};
 const noopNav = () => {};
 
@@ -187,9 +171,7 @@ export const ExamResultsPanel = ({
                 Quelle: {item.sourceTitle} (#{item.originalTaskNumber})
               </div>
               {showCorrectness ? (
-                <div className="muted">
-                  {item.isCorrect ? "Correct" : "Incorrect"}
-                </div>
+                <div className="muted">{item.isCorrect ? "Correct" : "Incorrect"}</div>
               ) : null}
             </button>
           );
@@ -198,11 +180,7 @@ export const ExamResultsPanel = ({
 
       <ModalShell
         isOpen={Boolean(selectedBreakdownItem)}
-        title={
-          selectedBreakdownItem
-            ? `Task ${selectedBreakdownItem.index} Result`
-            : "Task Result"
-        }
+        title={selectedBreakdownItem ? `Task ${selectedBreakdownItem.index} Result` : "Task Result"}
         onClose={() => setSelectedTaskSessionId(null)}
         className="exam-results-task-modal-panel"
         bodyClassName="exam-results-task-modal-body"
@@ -231,13 +209,9 @@ export const ExamResultsPanel = ({
                     Wrap task in <code>#card</code> block
                   </span>
                 </label>
-                <span className="muted small">
-                  Applies to the full task, including all parts.
-                </span>
+                <span className="muted small">Applies to the full task, including all parts.</span>
               </div>
-              {selectedTogglePending ? (
-                <span className="muted small">Saving...</span>
-              ) : null}
+              {selectedTogglePending ? <span className="muted small">Saving...</span> : null}
             </div>
           ) : null
         }
@@ -249,13 +223,9 @@ export const ExamResultsPanel = ({
                 {selectedToggleDisabledReason}
               </div>
             ) : null}
-            {selectedToggleError ? (
-              <div className="error">{selectedToggleError}</div>
-            ) : null}
+            {selectedToggleError ? <div className="error">{selectedToggleError}</div> : null}
             {!selectedToggleError && selectedToggleNotice ? (
-              <div className="muted exam-results-task-modal-note">
-                {selectedToggleNotice}
-              </div>
+              <div className="muted exam-results-task-modal-note">{selectedToggleNotice}</div>
             ) : null}
             <ExamTaskRunner
               task={selectedBreakdownItem.detail.task}

@@ -85,8 +85,9 @@ const getTemporalComparable = (value: unknown, type: "date" | "datetime" | "time
   return typeof parsed === "number" && Number.isFinite(parsed) ? parsed : Number.NaN;
 };
 
-const isFilterGroupEntry = (entry: DatabaseFilterRule | DatabaseFilterGroup): entry is DatabaseFilterGroup =>
-  "rules" in entry;
+const isFilterGroupEntry = (
+  entry: DatabaseFilterRule | DatabaseFilterGroup,
+): entry is DatabaseFilterGroup => "rules" in entry;
 
 const toText = (value: unknown) => {
   if (value === null || typeof value === "undefined") {
@@ -104,12 +105,7 @@ const toText = (value: unknown) => {
   if (Array.isArray(value)) {
     return value
       .map((item) => {
-        if (
-          item &&
-          typeof item === "object" &&
-          "value" in item &&
-          "count" in item
-        ) {
+        if (item && typeof item === "object" && "value" in item && "count" in item) {
           return `${String((item as { count?: unknown }).count ?? "")} ${String((item as { value?: unknown }).value ?? "")}`.trim();
         }
         return String(item);
@@ -166,9 +162,7 @@ const toStringList = (value: unknown) => {
   if (!Array.isArray(value)) {
     return [];
   }
-  return value
-    .map((entry) => toText(entry).trim())
-    .filter((entry) => entry.length > 0);
+  return value.map((entry) => toText(entry).trim()).filter((entry) => entry.length > 0);
 };
 
 const compareNumber = (
@@ -240,9 +234,8 @@ const evaluateNumberRule = (value: unknown, rule: DatabaseFilterRule) => {
   }
   const left = toNumericValue(value);
   const right = toNumericValue(rule.value);
-  const rightBoundary = typeof rule.valueTo === "undefined"
-    ? Number.NaN
-    : toNumericValue(rule.valueTo);
+  const rightBoundary =
+    typeof rule.valueTo === "undefined" ? Number.NaN : toNumericValue(rule.valueTo);
   return compareNumber(left, right, rule.op, rightBoundary);
 };
 
@@ -302,9 +295,9 @@ const evaluateSelectRule = (value: unknown, rule: DatabaseFilterRule) => {
     const options = Array.isArray(rule.value)
       ? rule.value.map((entry) => toLower(entry))
       : toLower(rule.value)
-        .split(",")
-        .map((entry) => entry.trim())
-        .filter(Boolean);
+          .split(",")
+          .map((entry) => entry.trim())
+          .filter(Boolean);
     const hasMatch = options.includes(left);
     return rule.op === "any of" ? hasMatch : !hasMatch;
   }
@@ -331,9 +324,9 @@ const evaluateTagsRule = (value: unknown, rule: DatabaseFilterRule) => {
   const rightItems = Array.isArray(rule.value)
     ? rule.value.map((entry) => toText(entry).trim().toLowerCase()).filter(Boolean)
     : toText(rule.value)
-      .split(",")
-      .map((entry) => entry.trim().toLowerCase())
-      .filter(Boolean);
+        .split(",")
+        .map((entry) => entry.trim().toLowerCase())
+        .filter(Boolean);
 
   if (rightItems.length === 0) {
     return true;
@@ -355,11 +348,12 @@ const evaluateBooleanRule = (value: unknown, rule: DatabaseFilterRule) => {
   if (rule.op === "is empty") {
     return isEmptyValue(value);
   }
-  const boolValue = typeof value === "boolean"
-    ? value
-    : typeof value === "string"
-      ? value.trim().toLowerCase() === "true"
-      : false;
+  const boolValue =
+    typeof value === "boolean"
+      ? value
+      : typeof value === "string"
+        ? value.trim().toLowerCase() === "true"
+        : false;
   if (rule.op === "is true") {
     return boolValue;
   }
@@ -404,9 +398,10 @@ const getNormalizedFieldValue = (record: DatabaseRecord, field: string) => {
     return record.normalizedFields[field] ?? null;
   }
   const normalizedField = field.trim().toLowerCase();
-  const matchedKey = Object.keys(record.normalizedFields)
-    .find((key) => key.trim().toLowerCase() === normalizedField);
-  return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
+  const matchedKey = Object.keys(record.normalizedFields).find(
+    (key) => key.trim().toLowerCase() === normalizedField,
+  );
+  return matchedKey ? (record.normalizedFields[matchedKey] ?? null) : null;
 };
 
 export const getFilterOperatorsForType = (type: DatabaseFieldType): DatabaseFilterOperator[] => {
@@ -460,7 +455,8 @@ const evaluateFilterGroup = (
   return group.rules[evaluator]((entry) =>
     isFilterGroupEntry(entry)
       ? evaluateFilterGroup(record, entry, attributeByKey)
-      : evaluateFilterRule(record, entry, attributeByKey));
+      : evaluateFilterRule(record, entry, attributeByKey),
+  );
 };
 
 export const applyDatabaseFilters = (
@@ -484,11 +480,13 @@ export const applyDatabaseFilters = (
       return true;
     }
 
-    const searchFields = searchableFields && searchableFields.length > 0
-      ? searchableFields
-      : attributes.map((attribute) => attribute.key);
+    const searchFields =
+      searchableFields && searchableFields.length > 0
+        ? searchableFields
+        : attributes.map((attribute) => attribute.key);
 
     return searchFields.some((field) =>
-      toLower(getNormalizedFieldValue(record, field)).includes(normalizedQuery));
+      toLower(getNormalizedFieldValue(record, field)).includes(normalizedQuery),
+    );
   });
 };

@@ -19,14 +19,9 @@ const defaultTypePoints: Record<AutoCardType, number> = {
 };
 
 const parseSingleExamTask = (cardLines: string[]) => {
-  const markdown = [
-    "#exam",
-    "1) Composite MC",
-    "#card",
-    ...cardLines,
-    "#endcard",
-    "#endexam",
-  ].join("\n");
+  const markdown = ["#exam", "1) Composite MC", "#card", ...cardLines, "#endcard", "#endexam"].join(
+    "\n",
+  );
   const parsed = parseExamTasks(markdown);
   expect(parsed.tasks).toHaveLength(1);
   const [task] = parsed.tasks;
@@ -68,29 +63,25 @@ const resolvePoints = ({
 
 describe("resolveAutoTaskAwardedPoints", () => {
   it("scores a multiple-choice question with two correct options", () => {
-    const task = parseSingleExamTask([
-      "Select two",
-      "a) A",
-      "b) B",
-      "c) C",
-      "d) D",
-      "-a",
-      "-c",
-    ]);
+    const task = parseSingleExamTask(["Select two", "a) A", "b) B", "c) C", "d) D", "-a", "-c"]);
 
     const profile = buildTaskOrderProfile(4);
-    expect(resolvePoints({
-      task,
-      partStates: [{ selections: ["a", "c"] }],
-      maxPoints: 4,
-      profile,
-    })).toBe(4);
-    expect(resolvePoints({
-      task,
-      partStates: [{ selections: ["a"] }],
-      maxPoints: 4,
-      profile,
-    })).toBe(0);
+    expect(
+      resolvePoints({
+        task,
+        partStates: [{ selections: ["a", "c"] }],
+        maxPoints: 4,
+        profile,
+      }),
+    ).toBe(4);
+    expect(
+      resolvePoints({
+        task,
+        partStates: [{ selections: ["a"] }],
+        maxPoints: 4,
+        profile,
+      }),
+    ).toBe(0);
   });
 
   it("awards partial points for two m2 subtasks with two correct options each", () => {
@@ -113,12 +104,14 @@ describe("resolveAutoTaskAwardedPoints", () => {
     ]);
 
     expect(task.card.parts).toHaveLength(2);
-    expect(resolvePoints({
-      task,
-      partStates: [{ selections: ["a", "c"] }, { selections: ["a"] }],
-      maxPoints: 8,
-      profile: buildTaskOrderProfile(8),
-    })).toBe(4);
+    expect(
+      resolvePoints({
+        task,
+        partStates: [{ selections: ["a", "c"] }, { selections: ["a"] }],
+        maxPoints: 8,
+        profile: buildTaskOrderProfile(8),
+      }),
+    ).toBe(4);
   });
 
   it("awards partial points for two m2 subtasks with three correct options each", () => {
@@ -142,12 +135,14 @@ describe("resolveAutoTaskAwardedPoints", () => {
       "-c",
     ]);
 
-    expect(resolvePoints({
-      task,
-      partStates: [{ selections: ["a", "b", "c"] }, { selections: ["a", "b"] }],
-      maxPoints: 6,
-      profile: buildTaskOrderProfile(6),
-    })).toBe(3);
+    expect(
+      resolvePoints({
+        task,
+        partStates: [{ selections: ["a", "b", "c"] }, { selections: ["a", "b"] }],
+        maxPoints: 6,
+        profile: buildTaskOrderProfile(6),
+      }),
+    ).toBe(3);
   });
 
   it("keeps distinct subtask keys independent when correct options differ", () => {
@@ -169,12 +164,14 @@ describe("resolveAutoTaskAwardedPoints", () => {
       "-d",
     ]);
 
-    expect(resolvePoints({
-      task,
-      partStates: [{ selections: ["a", "c"] }, { selections: ["a", "c"] }],
-      maxPoints: 8,
-      profile: buildTaskOrderProfile(8),
-    })).toBe(4);
+    expect(
+      resolvePoints({
+        task,
+        partStates: [{ selections: ["a", "c"] }, { selections: ["a", "c"] }],
+        maxPoints: 8,
+        profile: buildTaskOrderProfile(8),
+      }),
+    ).toBe(4);
   });
 
   it("scores subtasks correctly when both use identical correct keys", () => {
@@ -196,12 +193,14 @@ describe("resolveAutoTaskAwardedPoints", () => {
       "-b",
     ]);
 
-    expect(resolvePoints({
-      task,
-      partStates: [{ selections: ["a", "b"] }, { selections: ["a", "b"] }],
-      maxPoints: 8,
-      profile: buildTaskOrderProfile(8),
-    })).toBe(8);
+    expect(
+      resolvePoints({
+        task,
+        partStates: [{ selections: ["a", "b"] }, { selections: ["a", "b"] }],
+        maxPoints: 8,
+        profile: buildTaskOrderProfile(8),
+      }),
+    ).toBe(8);
   });
 
   it("supports more than two multiple-choice subtasks in one task", () => {
@@ -232,15 +231,13 @@ describe("resolveAutoTaskAwardedPoints", () => {
     ]);
 
     expect(task.card.parts).toHaveLength(3);
-    expect(resolvePoints({
-      task,
-      partStates: [
-        { selections: ["a", "c"] },
-        { selections: ["a", "c"] },
-        { selections: ["a"] },
-      ],
-      maxPoints: 9,
-      profile: buildTaskOrderProfile(9),
-    })).toBe(6);
+    expect(
+      resolvePoints({
+        task,
+        partStates: [{ selections: ["a", "c"] }, { selections: ["a", "c"] }, { selections: ["a"] }],
+        maxPoints: 9,
+        profile: buildTaskOrderProfile(9),
+      }),
+    ).toBe(6);
   });
 });

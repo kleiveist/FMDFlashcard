@@ -43,9 +43,7 @@ describe("StatsPanel", () => {
 
     const header = container.querySelector(".stats-panel-header");
     const heading = header?.querySelector("h2");
-    const action = header?.querySelector(
-      ".stats-panel-header-actions .probe-stats-action",
-    );
+    const action = header?.querySelector(".stats-panel-header-actions .probe-stats-action");
 
     expect(heading?.textContent).toBe("Statistics");
     expect(action).toBeTruthy();

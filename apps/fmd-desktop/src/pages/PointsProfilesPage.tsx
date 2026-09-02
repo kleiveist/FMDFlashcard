@@ -264,9 +264,7 @@ export const PointsProfilesPage = () => {
 
   const activeUsage = useMemo(
     () =>
-      activeUsageKey
-        ? profileUsages.find((usage) => usage.key === activeUsageKey) ?? null
-        : null,
+      activeUsageKey ? (profileUsages.find((usage) => usage.key === activeUsageKey) ?? null) : null,
     [activeUsageKey, profileUsages],
   );
 
@@ -312,9 +310,7 @@ export const PointsProfilesPage = () => {
     const usage = profileUsages.find((entry) => entry.profileId === selected.id);
     if (usage && usage.assignedFileCount > 0) {
       const preview = usage.assignedFiles.slice(0, 3).join(", ");
-      const suffix = usage.assignedFileCount > 3
-        ? ` (+${usage.assignedFileCount - 3} more)`
-        : "";
+      const suffix = usage.assignedFileCount > 3 ? ` (+${usage.assignedFileCount - 3} more)` : "";
       setPointsError(
         `Profile "${selected.name}" is still used in ${usage.assignedFileCount} file(s): ${preview}${suffix}`,
       );
@@ -368,10 +364,7 @@ export const PointsProfilesPage = () => {
       EXAM_POINTS_MAX_TASK_COUNT,
       Math.max(1, clampNonNegativeInteger(draftTaskCount, selected.taskCount)),
     );
-    const normalizedMax = clampNonNegativeInteger(
-      draftMaxTotalPoints,
-      selected.maxTotalPoints,
-    );
+    const normalizedMax = clampNonNegativeInteger(draftMaxTotalPoints, selected.maxTotalPoints);
     const normalizedDurationMinutes = Math.min(
       240,
       clampNonNegativeInteger(draftDurationMinutes, selected.durationMinutes),
@@ -382,15 +375,18 @@ export const PointsProfilesPage = () => {
       normalizedMax,
     );
     const nextTypeRules = normalizeTypeRules(
-      AUTO_CARD_TYPES.reduce((acc, type) => {
-        const draft = draftTypeRules[type];
-        acc[type] = {
-          points: clampNonNegativeInteger(draft?.points ?? "0", 0),
-          mode: draft?.mode === "partial" ? "partial" : "all-or-nothing",
-          penalty: clampNonNegativeInteger(draft?.penalty ?? "0", 0),
-        };
-        return acc;
-      }, {} as Record<string, { points: number; mode: string; penalty: number }>),
+      AUTO_CARD_TYPES.reduce(
+        (acc, type) => {
+          const draft = draftTypeRules[type];
+          acc[type] = {
+            points: clampNonNegativeInteger(draft?.points ?? "0", 0),
+            mode: draft?.mode === "partial" ? "partial" : "all-or-nothing",
+            penalty: clampNonNegativeInteger(draft?.penalty ?? "0", 0),
+          };
+          return acc;
+        },
+        {} as Record<string, { points: number; mode: string; penalty: number }>,
+      ),
       1,
     );
 
@@ -444,9 +440,7 @@ export const PointsProfilesPage = () => {
         <div className="panel-header">
           <div>
             <h2>Points Profiles Profile Editor</h2>
-            <p className="muted">
-              Manage scoring profiles independently from the Exam Editor.
-            </p>
+            <p className="muted">Manage scoring profiles independently from the Exam Editor.</p>
           </div>
         </div>
 
@@ -474,7 +468,9 @@ export const PointsProfilesPage = () => {
                         <span>{profile.name}</span>
                         <span className="points-profile-list-meta">
                           {usageCount > 0 ? (
-                            <span className="muted small">{usageCount} file{usageCount === 1 ? "" : "s"}</span>
+                            <span className="muted small">
+                              {usageCount} file{usageCount === 1 ? "" : "s"}
+                            </span>
                           ) : null}
                           {isDefault ? <span className="muted small">Default</span> : null}
                         </span>
@@ -688,7 +684,9 @@ export const PointsProfilesPage = () => {
             anchorRef={usagePopupAnchorRef}
             closeLayerId="points-profile-monitoring-popup"
             ariaLabel={
-              activeUsage ? `Profile assignments: ${activeUsage.profileName}` : "Profile assignments"
+              activeUsage
+                ? `Profile assignments: ${activeUsage.profileName}`
+                : "Profile assignments"
             }
             mode="centered"
             className="points-profile-monitoring-popup"

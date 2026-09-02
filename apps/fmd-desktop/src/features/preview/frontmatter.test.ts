@@ -98,31 +98,19 @@ describe("parseFrontmatterDocument", () => {
       "IDBS01",
       "Exam",
     ]);
-    expect(parsed.properties.find((property) => property.key === "Cover")?.kind).toBe(
-      "cover",
-    );
-    expect(parsed.properties.find((property) => property.key === "link1")?.kind).toBe(
-      "link",
-    );
+    expect(parsed.properties.find((property) => property.key === "Cover")?.kind).toBe("cover");
+    expect(parsed.properties.find((property) => property.key === "link1")?.kind).toBe("link");
   });
 
   it("accepts loose wikilink lines and keeps normal properties visible", () => {
-    const source = [
-      "---",
-      "title: Demo",
-      "[[IDBS01-TestL6]]",
-      "rank: SE1",
-      "---",
-      "Body",
-    ].join("\n");
+    const source = ["---", "title: Demo", "[[IDBS01-TestL6]]", "rank: SE1", "---", "Body"].join(
+      "\n",
+    );
 
     const parsed = parseFrontmatterDocument(source);
 
     expect(parsed.error).toBeNull();
-    expect(parsed.properties.map((property) => property.key)).toEqual([
-      "title",
-      "rank",
-    ]);
+    expect(parsed.properties.map((property) => property.key)).toEqual(["title", "rank"]);
   });
 
   it("parses Task attribute as dedicated task kind", () => {
@@ -230,22 +218,12 @@ describe("composeMarkdownWithBody", () => {
 
     const next = composeMarkdownWithBody(source, body);
 
-    expect(next).toBe(
-      ["---", "title: Demo", "---", "#exam", "#endexam"].join("\n"),
-    );
+    expect(next).toBe(["---", "title: Demo", "---", "#exam", "#endexam"].join("\n"));
   });
 
   it("keeps non-identical leading frontmatter blocks unchanged", () => {
     const source = ["---", "title: Demo", "---", "Old body"].join("\n");
-    const body = [
-      "---",
-      "title: Other",
-      "---",
-      "---",
-      "title: Demo",
-      "---",
-      "Body",
-    ].join("\n");
+    const body = ["---", "title: Other", "---", "---", "title: Demo", "---", "Body"].join("\n");
 
     const next = composeMarkdownWithBody(source, body);
 
@@ -253,23 +231,10 @@ describe("composeMarkdownWithBody", () => {
   });
 
   it("reuses original frontmatter prefix when bodyMayContainFrontmatter is false", () => {
-    const source = [
-      "---",
-      "title: Demo",
-      "status: '🔵'",
-      "---",
-      "Old body",
-    ].join("\n");
-    const body = [
-      "---",
-      "title: Other",
-      "---",
-      "```md",
-      "---",
-      "inner: fence",
-      "---",
-      "```",
-    ].join("\n");
+    const source = ["---", "title: Demo", "status: '🔵'", "---", "Old body"].join("\n");
+    const body = ["---", "title: Other", "---", "```md", "---", "inner: fence", "---", "```"].join(
+      "\n",
+    );
 
     const next = composeMarkdownWithBody(source, body, {
       bodyMayContainFrontmatter: false,
@@ -303,14 +268,7 @@ describe("composeMarkdownWithBody", () => {
       "---",
       "Old body",
     ].join("\n");
-    const body = [
-      "$$",
-      "a---b",
-      "$$",
-      "",
-      "---",
-      "not frontmatter",
-    ].join("\n");
+    const body = ["$$", "a---b", "$$", "", "---", "not frontmatter"].join("\n");
 
     const next = composeMarkdownWithBody(source, body, {
       bodyMayContainFrontmatter: false,
@@ -360,9 +318,7 @@ describe("updateFrontmatterProperty", () => {
     expect(updated.error).toBeNull();
     expect(updated.markdown).toContain("title: Changed");
     expect(updated.markdown).toContain("meta:\n  nested: true");
-    expect(updated.markdown.slice(-originalParsed.body.length)).toBe(
-      originalParsed.body,
-    );
+    expect(updated.markdown.slice(-originalParsed.body.length)).toBe(originalParsed.body);
   });
 
   it("serializes tags as YAML list and clears empty values to null", () => {
@@ -390,14 +346,9 @@ describe("updateFrontmatterProperty", () => {
 
 describe("removeFrontmatterProperty", () => {
   it("removes a key while keeping body unchanged", () => {
-    const source = [
-      "---",
-      "title: Demo",
-      "rank: SE1",
-      "section: IUFS",
-      "---",
-      "Body line",
-    ].join("\n");
+    const source = ["---", "title: Demo", "rank: SE1", "section: IUFS", "---", "Body line"].join(
+      "\n",
+    );
 
     const updated = removeFrontmatterProperty({
       markdown: source,
@@ -424,14 +375,16 @@ describe("addFrontmatterProperty", () => {
     });
 
     expect(updated.error).toBeNull();
-    expect(updated.markdown).toBe([
-      "---",
-      "Cover: '[[cover/IDBS01-TestL1.png]]'",
-      "---",
-      "# Mein Dokument",
-      "",
-      "Inhalt ohne YAML-Block.",
-    ].join("\n"));
+    expect(updated.markdown).toBe(
+      [
+        "---",
+        "Cover: '[[cover/IDBS01-TestL1.png]]'",
+        "---",
+        "# Mein Dokument",
+        "",
+        "Inhalt ohne YAML-Block.",
+      ].join("\n"),
+    );
     expect(updated.markdown).not.toContain("Section:");
     expect(updated.markdown).not.toContain("Rank:");
     expect(updated.markdown).not.toContain("Projekt:");
@@ -616,14 +569,9 @@ describe("addFrontmatterProperty", () => {
 
 describe("reorderFrontmatterProperties", () => {
   it("moves a property before another key and keeps body intact", () => {
-    const source = [
-      "---",
-      "title: Demo",
-      "rank: SE1",
-      "section: IUFS",
-      "---",
-      "Body line",
-    ].join("\n");
+    const source = ["---", "title: Demo", "rank: SE1", "section: IUFS", "---", "Body line"].join(
+      "\n",
+    );
 
     const updated = reorderFrontmatterProperties({
       markdown: source,
@@ -654,9 +602,7 @@ describe("reorderFrontmatterProperties", () => {
 describe("normalizeWikilinkValue", () => {
   it("normalizes plain input into wikilink format", () => {
     expect(normalizeWikilinkValue("Folder/Note")).toBe("[[Folder/Note]]");
-    expect(normalizeWikilinkValue("[[Already/Linked]]")).toBe(
-      "[[Already/Linked]]",
-    );
+    expect(normalizeWikilinkValue("[[Already/Linked]]")).toBe("[[Already/Linked]]");
   });
 });
 
@@ -688,11 +634,7 @@ describe("parseFrontmatterLinks", () => {
 
     expect(parsed.error).toBeNull();
     expect(parsed.layout).toBe("link-keys");
-    expect(parsed.links).toEqual([
-      "[[IDBS01-TestL5]]",
-      "[[IDBS01-TestL6]]",
-      "[[IDBS01-TestL7]]",
-    ]);
+    expect(parsed.links).toEqual(["[[IDBS01-TestL5]]", "[[IDBS01-TestL6]]", "[[IDBS01-TestL7]]"]);
   });
 });
 
@@ -796,9 +738,7 @@ describe("frontmatter value suggestions", () => {
 describe("frontmatter suggestion index", () => {
   it("builds key and value counts across markdown documents", () => {
     const index = buildFrontmatterSuggestionIndex([
-      ["---", "Section: IUFS", "Rank: SE1", "tags:", "  - alpha", "---", "Body"].join(
-        "\n",
-      ),
+      ["---", "Section: IUFS", "Rank: SE1", "tags:", "  - alpha", "---", "Body"].join("\n"),
       ["---", "Section: IUFS", "Rank: SE2", "---", "Body"].join("\n"),
       ["---", "Rank: SE2", "---", "Body"].join("\n"),
     ]);

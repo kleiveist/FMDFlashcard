@@ -50,9 +50,7 @@ export const NoteFilesPanel = ({
         ) : null}
         {listError ? <div className="error">{listError}</div> : null}
         {vaultPath && listState === "idle" && files.length === 0 ? (
-          <div className="empty-state">
-            Keine Markdown-Dateien mit Flashcards gefunden.
-          </div>
+          <div className="empty-state">Keine Markdown-Dateien mit Flashcards gefunden.</div>
         ) : null}
         {vaultPath && listState !== "error" ? (
           <div className={`exam-file-list ${isScrollable ? "is-scrollable" : ""}`}>
@@ -61,9 +59,7 @@ export const NoteFilesPanel = ({
                 <li key={file.path}>
                   <button
                     type="button"
-                    className={`file-item ${
-                      selectedFile?.path === file.path ? "active" : ""
-                    }`}
+                    className={`file-item ${selectedFile?.path === file.path ? "active" : ""}`}
                     onClick={() => onSelectFile(file)}
                   >
                     <span className="file-name">{file.relative_path}</span>

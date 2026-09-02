@@ -105,9 +105,7 @@ describe("database theme contracts", () => {
     expect(previewCss).toMatch(
       /\.database-gantt-grid-scroll\s*\{[\s\S]*?overflow:\s*visible;[\s\S]*?\}/,
     );
-    expect(previewCss).toMatch(
-      /\.database-project-view\s*\{[\s\S]*?overflow:\s*hidden;[\s\S]*?\}/,
-    );
+    expect(previewCss).toMatch(/\.database-project-view\s*\{[\s\S]*?overflow:\s*hidden;[\s\S]*?\}/);
     expect(previewCss).toMatch(
       /\.database-project-grid-scroll\s*\{[\s\S]*?overflow-x:\s*auto;[\s\S]*?overflow-y:\s*auto;[\s\S]*?\}/,
     );

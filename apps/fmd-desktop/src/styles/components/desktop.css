@@ -21,7 +21,8 @@
  * ✨ Vault status receives explicit hover emphasis so the whole field is visibly highlighted.
  * ♿ Focus-visible keeps a strong outline to preserve keyboard accessibility.
  */
-:root[data-design-mode="desktop"] :is(
+:root[data-design-mode="desktop"]
+  :is(
     .panel,
     .modal-panel,
     .sidebar,
@@ -92,7 +93,8 @@
   box-shadow: none;
 }
 
-:root[data-design-mode="desktop"] :is(
+:root[data-design-mode="desktop"]
+  :is(
     .panel,
     .modal-panel,
     .sidebar,
@@ -106,7 +108,8 @@
   border-radius: var(--ui-radius-panel);
 }
 
-:root[data-design-mode="desktop"] :is(
+:root[data-design-mode="desktop"]
+  :is(
     .context-menu,
     .vault-status-menu,
     .sidebar-active-user-menu,
@@ -119,7 +122,8 @@
   border-radius: 999px;
 }
 
-:root[data-design-mode="desktop"] :is(
+:root[data-design-mode="desktop"]
+  :is(
     .primary,
     .ghost,
     .design-mode-option,
@@ -139,7 +143,8 @@
   border-color: var(--ui-border-subtle);
 }
 
-:root[data-design-mode="desktop"] :is(
+:root[data-design-mode="desktop"]
+  :is(
     .ghost:hover,
     .ghost.small.active,
     .design-mode-option.active,
@@ -164,11 +169,7 @@
   box-shadow: none;
 }
 
-:root[data-design-mode="desktop"] :is(
-    .text-input,
-    .hex-input,
-    .inline-rename-input
-  ):focus-visible {
+:root[data-design-mode="desktop"] :is(.text-input, .hex-input, .inline-rename-input):focus-visible {
   outline: var(--ui-focus-outline);
   outline-offset: 1px;
   border-color: var(--ui-control-border-active);
@@ -181,7 +182,8 @@
   box-shadow: none;
 }
 
-:root[data-design-mode="desktop"] :is(
+:root[data-design-mode="desktop"]
+  :is(
     .panel-header,
     .panel-actions,
     .preview-actions,
@@ -196,7 +198,8 @@
   gap: var(--ui-space-sm);
 }
 
-:root[data-design-mode="desktop"] :is(
+:root[data-design-mode="desktop"]
+  :is(
     .context-menu-item,
     .vault-status-menu-item,
     .sidebar-active-user-menu-item,
@@ -224,7 +227,10 @@
     align-items: stretch;
   }
 
-  :root[data-design-mode="desktop"] body.focus-mode .app-shell[data-active-tab="exam"] #app-sidebar.sidebar {
+  :root[data-design-mode="desktop"]
+    body.focus-mode
+    .app-shell[data-active-tab="exam"]
+    #app-sidebar.sidebar {
     display: none;
   }
 
@@ -279,12 +285,9 @@
   box-shadow: none;
 }
 
-:root[data-design-mode="desktop"] section.panel.list-panel.note-panel :is(
-    li:hover,
-    li:focus-visible,
-    .file-item:hover,
-    .file-item.active
-  ) {
+:root[data-design-mode="desktop"]
+  section.panel.list-panel.note-panel
+  :is(li:hover, li:focus-visible, .file-item:hover, .file-item.active) {
   border: none;
 }
 
@@ -381,11 +384,16 @@
   top: 3px;
 }
 
-:root[data-design-mode="desktop"] .monitoring-rules-enabled-toggle-switch .switch input:checked + .slider::before {
+:root[data-design-mode="desktop"]
+  .monitoring-rules-enabled-toggle-switch
+  .switch
+  input:checked
+  + .slider::before {
   transform: translateX(20px);
 }
 
-:root[data-design-mode="desktop"] :is(
+:root[data-design-mode="desktop"]
+  :is(
     .status-checkbox input,
     .option-choice input,
     .md-preview li.task-list-item > input[type="checkbox"],
@@ -415,7 +423,8 @@
   --mdh-right-gutter-width: 24px;
 }
 
-:root[data-design-mode="desktop"] :is(
+:root[data-design-mode="desktop"]
+  :is(
     .exam-editor-page,
     .exam-editor-header,
     .exam-editor-toolbar,
@@ -470,7 +479,8 @@
   --db-panel-shadow: none;
 }
 
-:root[data-design-mode="desktop"] :is(
+:root[data-design-mode="desktop"]
+  :is(
     .database-block-view-select,
     .database-block-toolbar-button,
     .database-block-toolbar-create-view-input,
@@ -482,7 +492,8 @@
   box-shadow: none;
 }
 
-:root[data-design-mode="desktop"] :is(
+:root[data-design-mode="desktop"]
+  :is(
     .database-block-panel,
     .database-block-toolbar-dropdown-panel,
     .database-attribute-typeahead-dropdown
@@ -499,7 +510,8 @@
   border-radius: 3px;
 }
 
-:root[data-design-mode="desktop"] :is(
+:root[data-design-mode="desktop"]
+  :is(
     .database-pie-view,
     .database-gantt-view,
     .database-project-view,

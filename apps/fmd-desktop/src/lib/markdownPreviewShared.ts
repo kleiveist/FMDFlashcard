@@ -121,8 +121,8 @@ const preserveOrderedListDelimiter = (node: MarkdownAstNode, source: string) => 
   node.children.forEach((child) => preserveOrderedListDelimiter(child, source));
 };
 
-export const remarkPreserveOrderedListDelimiters = () =>
-  (tree: MarkdownAstNode, file: { value?: unknown }) => {
+export const remarkPreserveOrderedListDelimiters =
+  () => (tree: MarkdownAstNode, file: { value?: unknown }) => {
     const source = typeof file.value === "string" ? file.value : "";
     if (!source) {
       return;
@@ -137,7 +137,7 @@ const previewInlineFormattingPatterns: ReadonlyArray<readonly [RegExp, string]> 
   [/(?<!\\)\*\*\*([^\n*]+?)(?<!\\)\*\*\*/g, "<strong><em>$1</em></strong>"],
   [/(?<!\\)\*\*([^\n*]+?)(?<!\\)\*\*/g, "<strong>$1</strong>"],
   [/(?<!\\)__([^_\n]+?)(?<!\\)__/g, "<u>$1</u>"],
-  [/(?<!\\)==([^=\n]+?)(?<!\\)==/g, "<mark class=\"md-inline-highlight\">$1</mark>"],
+  [/(?<!\\)==([^=\n]+?)(?<!\\)==/g, '<mark class="md-inline-highlight">$1</mark>'],
   [/(?<!\\)\*(?!\*)([^*\n]+?)(?<!\\)\*(?!\*)/g, "<em>$1</em>"],
 ];
 
@@ -152,9 +152,8 @@ const applyPreviewInlineFormattingToPlainText = (segment: string) => {
 const applyPreviewInlineFormattingToSegment = (segment: string) =>
   tokenizeMarkdownMath(segment)
     .map((token) =>
-      token.type === "text"
-        ? applyPreviewInlineFormattingToPlainText(token.value)
-        : token.raw)
+      token.type === "text" ? applyPreviewInlineFormattingToPlainText(token.value) : token.raw,
+    )
     .join("");
 
 export const normalizeInlineFormattingForPreview = (source: string) => {
@@ -182,7 +181,8 @@ export const normalizeInlineFormattingForPreview = (source: string) => {
       .map((segment) =>
         segment.startsWith("`") && segment.endsWith("`")
           ? segment
-          : applyPreviewInlineFormattingToSegment(segment))
+          : applyPreviewInlineFormattingToSegment(segment),
+      )
       .join("");
   });
 

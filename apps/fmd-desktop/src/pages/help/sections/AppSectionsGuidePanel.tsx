@@ -25,12 +25,10 @@ const APP_SECTION_CATEGORY_STORAGE_KEY = "help:app-sections:selected-category";
 const APP_SECTION_ITEM_STORAGE_KEY = "help:app-sections:selected-item";
 
 const isValidCategoryId = (value: unknown): value is AppSectionCategoryId =>
-  typeof value === "string" &&
-  APP_SECTION_CATEGORY_ORDER.includes(value as AppSectionCategoryId);
+  typeof value === "string" && APP_SECTION_CATEGORY_ORDER.includes(value as AppSectionCategoryId);
 
 const isValidItemId = (value: unknown): value is AppSectionItemId =>
-  typeof value === "string" &&
-  Object.prototype.hasOwnProperty.call(APP_SECTION_ITEMS, value);
+  typeof value === "string" && Object.prototype.hasOwnProperty.call(APP_SECTION_ITEMS, value);
 
 const resolveFirstItemForCategory = (categoryId: AppSectionCategoryId) =>
   APP_SECTION_CATEGORIES[categoryId]?.itemOrder[0] ?? null;
@@ -49,9 +47,7 @@ export const AppSectionsGuidePanel = ({ language }: AppSectionsGuidePanelProps) 
       return defaultCategoryId;
     }
     try {
-      const storedCategory = window.localStorage.getItem(
-        APP_SECTION_CATEGORY_STORAGE_KEY,
-      );
+      const storedCategory = window.localStorage.getItem(APP_SECTION_CATEGORY_STORAGE_KEY);
       if (isValidCategoryId(storedCategory)) {
         return storedCategory;
       }
@@ -77,8 +73,7 @@ export const AppSectionsGuidePanel = ({ language }: AppSectionsGuidePanelProps) 
   });
 
   const selectedCategory =
-    APP_SECTION_CATEGORIES[selectedCategoryId] ??
-    APP_SECTION_CATEGORIES[defaultCategoryId];
+    APP_SECTION_CATEGORIES[selectedCategoryId] ?? APP_SECTION_CATEGORIES[defaultCategoryId];
 
   const resolvedSelectedItemId = useMemo(() => {
     if (selectedItemId && selectedCategory.itemOrder.includes(selectedItemId)) {
@@ -87,9 +82,7 @@ export const AppSectionsGuidePanel = ({ language }: AppSectionsGuidePanelProps) 
     return selectedCategory.itemOrder[0] ?? null;
   }, [selectedCategory.itemOrder, selectedItemId]);
 
-  const selectedItem = resolvedSelectedItemId
-    ? APP_SECTION_ITEMS[resolvedSelectedItemId]
-    : null;
+  const selectedItem = resolvedSelectedItemId ? APP_SECTION_ITEMS[resolvedSelectedItemId] : null;
   const selectedActions = selectedItem?.detail.actions ?? [];
   const [selectedActionId, setSelectedActionId] = useState<string | null>(
     selectedActions[0]?.id ?? null,
@@ -143,16 +136,12 @@ export const AppSectionsGuidePanel = ({ language }: AppSectionsGuidePanelProps) 
   }, [selectedCategoryId, selectedItemId]);
 
   const activeAction =
-    selectedActions.find((action) => action.id === selectedActionId) ??
-    selectedActions[0] ??
-    null;
+    selectedActions.find((action) => action.id === selectedActionId) ?? selectedActions[0] ?? null;
 
   return (
     <div className="help-detail-sections">
       <div className="toolbar-section">
-        <span className="label">
-          {resolveText(APP_SECTION_LABELS.categoryLabel, language)}
-        </span>
+        <span className="label">{resolveText(APP_SECTION_LABELS.categoryLabel, language)}</span>
         <div className="pill-grid" role="tablist" aria-label="App sections categories">
           {APP_SECTION_CATEGORY_ORDER.map((categoryId) => {
             const category = APP_SECTION_CATEGORIES[categoryId];
@@ -175,9 +164,7 @@ export const AppSectionsGuidePanel = ({ language }: AppSectionsGuidePanelProps) 
             );
           })}
         </div>
-        <p className="muted">
-          {resolveText(selectedCategory.summary, language)}
-        </p>
+        <p className="muted">{resolveText(selectedCategory.summary, language)}</p>
       </div>
       <div className="help-syntax-layout">
         <div className="help-syntax-cards" role="tablist" aria-label="App sections entries">
@@ -193,18 +180,14 @@ export const AppSectionsGuidePanel = ({ language }: AppSectionsGuidePanelProps) 
                 role="tab"
                 aria-selected={isActive}
               >
-                <div className="help-syntax-card-title">
-                  {resolveText(item.title, language)}
-                </div>
+                <div className="help-syntax-card-title">{resolveText(item.title, language)}</div>
                 <div className="help-syntax-card-meta">
                   <span className="help-syntax-card-label">
                     {resolveText(APP_SECTION_LABELS.typicalAction, language)}
                   </span>
                   <span>{resolveText(item.action, language)}</span>
                 </div>
-                <div className="help-syntax-card-rule">
-                  {resolveText(item.summary, language)}
-                </div>
+                <div className="help-syntax-card-rule">{resolveText(item.summary, language)}</div>
               </button>
             );
           })}
@@ -259,9 +242,7 @@ export const AppSectionsGuidePanel = ({ language }: AppSectionsGuidePanelProps) 
               ) : null}
               <div className="help-syntax-section">
                 <div className="help-syntax-section-header">
-                  <span className="label">
-                    {resolveText(APP_SECTION_LABELS.whatIs, language)}
-                  </span>
+                  <span className="label">{resolveText(APP_SECTION_LABELS.whatIs, language)}</span>
                 </div>
                 <p className="help-syntax-text">
                   {resolveText(selectedItem.detail.whatIs, language)}
@@ -269,9 +250,7 @@ export const AppSectionsGuidePanel = ({ language }: AppSectionsGuidePanelProps) 
               </div>
               <div className="help-syntax-section">
                 <div className="help-syntax-section-header">
-                  <span className="label">
-                    {resolveText(APP_SECTION_LABELS.purpose, language)}
-                  </span>
+                  <span className="label">{resolveText(APP_SECTION_LABELS.purpose, language)}</span>
                 </div>
                 <ul className="help-syntax-list">
                   {selectedItem.detail.purpose.map((item, index) => (
@@ -316,9 +295,7 @@ export const AppSectionsGuidePanel = ({ language }: AppSectionsGuidePanelProps) 
               {selectedItem.detail.tips ? (
                 <div className="help-syntax-section">
                   <div className="help-syntax-section-header">
-                    <span className="label">
-                      {resolveText(APP_SECTION_LABELS.tips, language)}
-                    </span>
+                    <span className="label">{resolveText(APP_SECTION_LABELS.tips, language)}</span>
                   </div>
                   <p className="help-syntax-text">
                     {resolveText(selectedItem.detail.tips, language)}

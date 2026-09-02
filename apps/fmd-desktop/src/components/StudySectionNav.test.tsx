@@ -180,9 +180,7 @@ describe("StudySectionNav", () => {
     expect(settingsButton).toBeTruthy();
 
     await act(async () => {
-      settingsButton?.dispatchEvent(
-        new MouseEvent("click", { bubbles: true, cancelable: true }),
-      );
+      settingsButton?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
     });
 
     expect(onSettingsAction).toHaveBeenCalledTimes(1);

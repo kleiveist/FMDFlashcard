@@ -52,4 +52,3 @@ export const normalizeExamDotNumberedLines = (lines: string[]) => {
     return stripDotNumberMarkerFromLine(line);
   });
 };
-

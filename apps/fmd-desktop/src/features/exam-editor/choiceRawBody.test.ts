@@ -3,11 +3,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import {
-  mergeChoiceOptions,
-  parseChoiceRawBody,
-  serializeChoiceRawBody,
-} from "./choiceRawBody";
+import { mergeChoiceOptions, parseChoiceRawBody, serializeChoiceRawBody } from "./choiceRawBody";
 
 describe("choiceRawBody", () => {
   it("serializes prompt/options into raw choice syntax", () => {
@@ -26,13 +22,7 @@ describe("choiceRawBody", () => {
   });
 
   it("parses valid raw syntax and detects recommended type", () => {
-    const parsed = parseChoiceRawBody([
-      "Question",
-      "a) Alpha",
-      "b) Beta",
-      "-a",
-      "-b",
-    ].join("\n"));
+    const parsed = parseChoiceRawBody(["Question", "a) Alpha", "b) Beta", "-a", "-b"].join("\n"));
 
     expect(parsed.error).toBeUndefined();
     expect(parsed.parsed?.prompt).toBe("Question");

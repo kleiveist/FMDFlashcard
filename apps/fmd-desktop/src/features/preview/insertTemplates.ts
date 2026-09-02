@@ -6,24 +6,10 @@
  * - Gruppierung, Kontextfilterung und Priorisierung fuer den Advanced-Bereich.
  */
 
-export type AdvancedInsertTemplateMode =
-  | "cd"
-  | "cl"
-  | "cld"
-  | "help"
-  | "m1"
-  | "m2"
-  | "qa"
-  | "tf";
+export type AdvancedInsertTemplateMode = "cd" | "cl" | "cld" | "help" | "m1" | "m2" | "qa" | "tf";
 
 export type AdvancedInsertTemplateGroupId =
-  | "flashcard"
-  | "qa"
-  | "true-false"
-  | "choice"
-  | "cloze"
-  | "exam"
-  | "markdown";
+  "flashcard" | "qa" | "true-false" | "choice" | "cloze" | "exam" | "markdown";
 
 export type AdvancedInsertTemplateIconId =
   | "advanced-qa"
@@ -94,8 +80,7 @@ export const ADVANCED_INSERT_TEMPLATE_CATALOG: ReadonlyArray<AdvancedInsertTempl
     icon: "advanced-qa",
     payload: "#card\nQUESTION TEXT\n\nAnswer: ANSWER TEXT\n#endcard",
     firstPlaceholder: "QUESTION TEXT",
-    taskPayload:
-      "{{TASK_NUMBER}}) TASK HEADING\nTASK DESCRIPTION\nAnswer: ANSWER TEXT\n\n---",
+    taskPayload: "{{TASK_NUMBER}}) TASK HEADING\nTASK DESCRIPTION\nAnswer: ANSWER TEXT\n\n---",
     taskFirstPlaceholder: "TASK HEADING",
     contextRules: {
       hideInsideCard: true,
@@ -110,8 +95,7 @@ export const ADVANCED_INSERT_TEMPLATE_CATALOG: ReadonlyArray<AdvancedInsertTempl
     icon: "advanced-tf",
     payload: "#card\nSTATEMENT TEXT\n-true\n#endcard",
     firstPlaceholder: "STATEMENT TEXT",
-    taskPayload:
-      "{{TASK_NUMBER}}) TASK HEADING\nTASK DESCRIPTION\n-true\n\n---",
+    taskPayload: "{{TASK_NUMBER}}) TASK HEADING\nTASK DESCRIPTION\n-true\n\n---",
     taskFirstPlaceholder: "TASK HEADING",
     contextRules: {
       hideInsideCard: true,
@@ -159,8 +143,7 @@ export const ADVANCED_INSERT_TEMPLATE_CATALOG: ReadonlyArray<AdvancedInsertTempl
     icon: "advanced-cl",
     payload: "#card\nSENTENCE BEFORE %ANSWER1% SENTENCE AFTER\n#endcard",
     firstPlaceholder: "ANSWER1",
-    taskPayload:
-      "{{TASK_NUMBER}}) TASK HEADING\nTASK DESCRIPTION WITH %ANSWER1%\n\n---",
+    taskPayload: "{{TASK_NUMBER}}) TASK HEADING\nTASK DESCRIPTION WITH %ANSWER1%\n\n---",
     taskFirstPlaceholder: "TASK HEADING",
     contextRules: {
       hideInsideCard: true,
@@ -245,7 +228,9 @@ export const buildAdvancedInsertTemplateVariant = (
   }
 
   return {
-    payload: template.taskPayload.split(ADVANCED_TASK_NUMBER_PLACEHOLDER).join(String(sequenceNumber)),
+    payload: template.taskPayload
+      .split(ADVANCED_TASK_NUMBER_PLACEHOLDER)
+      .join(String(sequenceNumber)),
     firstPlaceholder: template.taskFirstPlaceholder,
   };
 };
@@ -268,7 +253,10 @@ export const getAdvancedInsertTemplateSections = (
 
   const baseOrder = ADVANCED_INSERT_TEMPLATE_GROUPS.map((group) => group.id);
   const groupOrder = context.insideExam
-    ? (["exam", ...baseOrder.filter((groupId) => groupId !== "exam")] as AdvancedInsertTemplateGroupId[])
+    ? ([
+        "exam",
+        ...baseOrder.filter((groupId) => groupId !== "exam"),
+      ] as AdvancedInsertTemplateGroupId[])
     : baseOrder;
 
   return groupOrder
@@ -280,8 +268,10 @@ export const getAdvancedInsertTemplateSections = (
       const items = visibleItems
         .filter((item) => item.groupId === groupId)
         .sort((left, right) => {
-          const leftPriority = context.insideExam && left.contextRules?.prioritizeInsideExam ? 0 : 1;
-          const rightPriority = context.insideExam && right.contextRules?.prioritizeInsideExam ? 0 : 1;
+          const leftPriority =
+            context.insideExam && left.contextRules?.prioritizeInsideExam ? 0 : 1;
+          const rightPriority =
+            context.insideExam && right.contextRules?.prioritizeInsideExam ? 0 : 1;
           if (leftPriority !== rightPriority) {
             return leftPriority - rightPriority;
           }

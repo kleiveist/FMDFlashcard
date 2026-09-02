@@ -5,12 +5,7 @@ export type FormulaRowNode = {
 };
 
 export type FormulaLeafKind =
-  | "identifier"
-  | "number"
-  | "operator"
-  | "relation"
-  | "symbol"
-  | "placeholder";
+  "identifier" | "number" | "operator" | "relation" | "symbol" | "placeholder";
 
 export type FormulaLeafNode = {
   id: string;
@@ -248,21 +243,17 @@ export type MathEditorCommand =
 
 export type MathImportResult =
   | {
-    mode: "structured";
-    ast: FormulaRowNode;
-    rawLatex: string;
-  }
+      mode: "structured";
+      ast: FormulaRowNode;
+      rawLatex: string;
+    }
   | {
-    mode: "raw-fallback";
-    rawLatex: string;
-    reason: string;
-  };
+      mode: "raw-fallback";
+      rawLatex: string;
+      reason: string;
+    };
 
-export type MathTemplateGroupId =
-  | "operators"
-  | "structures"
-  | "symbols"
-  | "text-format";
+export type MathTemplateGroupId = "operators" | "structures" | "symbols" | "text-format";
 
 export type MathTemplateIconId =
   | "plus"

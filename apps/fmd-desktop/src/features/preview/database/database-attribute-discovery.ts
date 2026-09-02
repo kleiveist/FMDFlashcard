@@ -75,10 +75,10 @@ export const buildVaultAttributeIndexFromMarkdownDocuments = (
 
   variantsByNormalized.forEach((variants, normalizedKey) => {
     const sortedVariants = Array.from(variants).sort((left, right) =>
-      left.localeCompare(right, undefined, { sensitivity: "base" }));
-    const displayKey = sortedVariants.length > 1
-      ? normalizedKey
-      : (sortedVariants[0] ?? normalizedKey);
+      left.localeCompare(right, undefined, { sensitivity: "base" }),
+    );
+    const displayKey =
+      sortedVariants.length > 1 ? normalizedKey : (sortedVariants[0] ?? normalizedKey);
     const count = totalCountsByNormalized.get(normalizedKey) ?? 0;
 
     const suggestion: DatabaseVaultAttributeSuggestion = {

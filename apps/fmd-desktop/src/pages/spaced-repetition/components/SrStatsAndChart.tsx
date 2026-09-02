@@ -106,9 +106,7 @@ export const SrStatsAndChart = ({
             </div>
             <h2 className="sr-panel-title">{activeTitle}</h2>
           </div>
-          {headerActions ? (
-            <div className="sr-panel-header-actions">{headerActions}</div>
-          ) : null}
+          {headerActions ? <div className="sr-panel-header-actions">{headerActions}</div> : null}
         </div>
         {showCollapseToggle ? (
           <button
@@ -158,9 +156,7 @@ export const SrStatsAndChart = ({
                   </button>
                   <button
                     type="button"
-                    className={`pill pill-button ${
-                      statsView === "completed" ? "active" : ""
-                    }`}
+                    className={`pill pill-button ${statsView === "completed" ? "active" : ""}`}
                     aria-pressed={statsView === "completed"}
                     onClick={() => setSpacedRepetitionStatsView("completed")}
                   >
@@ -203,18 +199,10 @@ export const SrStatsAndChart = ({
                       role="img"
                       aria-label="Completed per day"
                     >
-                      <line
-                        x1="0"
-                        y1="40"
-                        x2="100"
-                        y2="40"
-                        className="sr-chart-axis"
-                      />
+                      <line x1="0" y1="40" x2="100" y2="40" className="sr-chart-axis" />
                       <polyline
                         className="sr-chart-line"
-                        points={buildLineChartPoints(
-                          spacedRepetitionCompletedChartData
-                        )}
+                        points={buildLineChartPoints(spacedRepetitionCompletedChartData)}
                       />
                     </svg>
                   </div>
@@ -232,21 +220,15 @@ export const SrStatsAndChart = ({
                 <div className="stats-counters">
                   <div className="stats-counter">
                     <span className="stats-label">Correct</span>
-                    <span className="stats-value">
-                      {spacedRepetitionCorrectCount}
-                    </span>
+                    <span className="stats-value">{spacedRepetitionCorrectCount}</span>
                   </div>
                   <div className="stats-counter">
                     <span className="stats-label">Incorrect</span>
-                    <span className="stats-value">
-                      {spacedRepetitionIncorrectCount}
-                    </span>
+                    <span className="stats-value">{spacedRepetitionIncorrectCount}</span>
                   </div>
                   <div className="stats-counter">
                     <span className="stats-label">Total</span>
-                    <span className="stats-value">
-                      {spacedRepetitionTotalQuestions}
-                    </span>
+                    <span className="stats-value">{spacedRepetitionTotalQuestions}</span>
                   </div>
                 </div>
                 <div
@@ -256,9 +238,7 @@ export const SrStatsAndChart = ({
                   aria-label={`Correct ${spacedRepetitionCorrectCount}, Incorrect ${spacedRepetitionIncorrectCount}, Total ${spacedRepetitionTotalQuestions}`}
                 >
                   <div className="stats-chart-label">
-                    <span className="stats-chart-total">
-                      {spacedRepetitionTotalQuestions}
-                    </span>
+                    <span className="stats-chart-total">{spacedRepetitionTotalQuestions}</span>
                     <span className="stats-chart-caption">Total</span>
                   </div>
                 </div>

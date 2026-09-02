@@ -106,10 +106,7 @@ export const mergeChoiceOptions = (
   parsedOptions: ParsedChoiceOption[],
 ) =>
   parsedOptions.map((parsed, index) => ({
-    ...(currentOptions[index]
-      ? { id: currentOptions[index].id }
-      : { id: createChoiceOption().id }),
+    ...(currentOptions[index] ? { id: currentOptions[index].id } : { id: createChoiceOption().id }),
     text: parsed.text,
     isCorrect: parsed.isCorrect,
   }));
-

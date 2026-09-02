@@ -2,13 +2,7 @@ import type { CompositePartState } from "../../features/flashcards/logic";
 import type { ExamSessionTask } from "../../lib/examMixedSession";
 
 export type ExamStage =
-  | "idle"
-  | "running"
-  | "review"
-  | "scoring_manual"
-  | "finish_scoring"
-  | "correction"
-  | "finished";
+  "idle" | "running" | "review" | "scoring_manual" | "finish_scoring" | "correction" | "finished";
 
 export type ExamTaskResultDetail = {
   task: ExamSessionTask;

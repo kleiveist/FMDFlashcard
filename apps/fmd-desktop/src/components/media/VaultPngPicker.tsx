@@ -84,25 +84,15 @@ const VaultPngPickerRow = ({
     >
       <span className="vault-png-picker-thumb" aria-hidden="true">
         {thumbnailSrc ? (
-          <img
-            src={thumbnailSrc}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            draggable={false}
-          />
+          <img src={thumbnailSrc} alt="" loading="lazy" decoding="async" draggable={false} />
         ) : (
           <span className="vault-png-picker-thumb-fallback">PNG</span>
         )}
       </span>
       <span className="vault-png-picker-text">
         <span className="vault-png-picker-primary">{candidate.displayName}</span>
-        <span className="vault-png-picker-secondary">
-          {candidate.folder || "Vault root"}
-        </span>
-        {sizeLabel ? (
-          <span className="vault-png-picker-meta muted">{sizeLabel}</span>
-        ) : null}
+        <span className="vault-png-picker-secondary">{candidate.folder || "Vault root"}</span>
+        {sizeLabel ? <span className="vault-png-picker-meta muted">{sizeLabel}</span> : null}
       </span>
     </button>
   );

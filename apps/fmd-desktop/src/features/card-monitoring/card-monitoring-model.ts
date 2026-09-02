@@ -8,11 +8,7 @@ import type {
   ParsedFlashcardEntry,
 } from "../../lib/flashcards";
 
-export type CardMonitoringSortBy =
-  | "file-name"
-  | "folder-path"
-  | "cards-per-file"
-  | "card-order";
+export type CardMonitoringSortBy = "file-name" | "folder-path" | "cards-per-file" | "card-order";
 
 export type CardMonitoringSortDirection = "asc" | "desc";
 
@@ -193,10 +189,8 @@ export const buildCardMonitoringEntries = (
 
 const compareNumbers = (left: number, right: number) => left - right;
 
-const applySortDirection = (
-  value: number,
-  direction: CardMonitoringSortDirection,
-) => (direction === "asc" ? value : -value);
+const applySortDirection = (value: number, direction: CardMonitoringSortDirection) =>
+  direction === "asc" ? value : -value;
 
 const compareCardMonitoringEntries = (
   left: CardMonitoringEntry,
@@ -285,17 +279,10 @@ const compareFileGroups = (
   return applySortDirection(baseCompare, direction);
 };
 
-const sortEntriesForFile = (
-  entries: CardMonitoringEntry[],
-  sortState: CardMonitoringSortState,
-) => {
-  const direction =
-    sortState.sortBy === "card-order" ? sortState.direction : "asc";
+const sortEntriesForFile = (entries: CardMonitoringEntry[], sortState: CardMonitoringSortState) => {
+  const direction = sortState.sortBy === "card-order" ? sortState.direction : "asc";
   return [...entries].sort((left, right) =>
-    applySortDirection(
-      compareNumbers(left.cardIndexInFile, right.cardIndexInFile),
-      direction,
-    ),
+    applySortDirection(compareNumbers(left.cardIndexInFile, right.cardIndexInFile), direction),
   );
 };
 
@@ -383,8 +370,7 @@ export const buildCardMonitoringSavePlan = (
     .map(([sourcePath, payload]) => ({
       sourcePath,
       ranges: [...payload.ranges].sort(
-        (left, right) =>
-          right.startLine - left.startLine || right.endLine - left.endLine,
+        (left, right) => right.startLine - left.startLine || right.endLine - left.endLine,
       ),
       entryIds: payload.entryIds,
     }));

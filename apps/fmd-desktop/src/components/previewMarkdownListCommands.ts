@@ -25,12 +25,12 @@ const rangeIntersectsNode = (range: Range, node: Node) => {
 };
 
 const resolveRangeListItem = (editor: HTMLElement, range: Range) => {
-  const startElement = range.startContainer instanceof Element
-    ? range.startContainer
-    : range.startContainer.parentElement;
-  const endElement = range.endContainer instanceof Element
-    ? range.endContainer
-    : range.endContainer.parentElement;
+  const startElement =
+    range.startContainer instanceof Element
+      ? range.startContainer
+      : range.startContainer.parentElement;
+  const endElement =
+    range.endContainer instanceof Element ? range.endContainer : range.endContainer.parentElement;
   const startListItem = startElement?.closest("li") ?? null;
   const endListItem = endElement?.closest("li") ?? null;
   if (!startListItem || !endListItem) {
@@ -170,7 +170,7 @@ export const resolveSelectedListItems = (editor: HTMLElement, range: Range): HTM
     return [];
   }
   const candidates = Array.from(editor.querySelectorAll("li")).filter((item) =>
-    rangeIntersectsNode(range, item)
+    rangeIntersectsNode(range, item),
   );
   // Range.intersectsNode also matches ancestor list items when selecting nested items.
   // Prefer the deepest intersecting items so multi-select on nested siblings targets
@@ -182,9 +182,10 @@ export const resolveSelectedListItems = (editor: HTMLElement, range: Range): HTM
 };
 
 const normalizeMarkerText = (list: HTMLElement, item: HTMLElement, index: number) => {
-  const marker = item.firstElementChild instanceof HTMLElement && isMarkerElement(item.firstElementChild)
-    ? item.firstElementChild
-    : null;
+  const marker =
+    item.firstElementChild instanceof HTMLElement && isMarkerElement(item.firstElementChild)
+      ? item.firstElementChild
+      : null;
   const raw = (marker?.textContent ?? "").trim();
   if (list.tagName === "OL") {
     const match = raw.match(/^(\d+)([.)])$/);
@@ -206,13 +207,14 @@ const normalizeMarkerText = (list: HTMLElement, item: HTMLElement, index: number
 
 export const normalizeEditableListMarkers = (editor: HTMLElement) => {
   Array.from(editor.querySelectorAll("ol,ul")).forEach((list) => {
-    const items = Array.from(list.children).filter((child): child is HTMLLIElement =>
-      child instanceof HTMLLIElement
+    const items = Array.from(list.children).filter(
+      (child): child is HTMLLIElement => child instanceof HTMLLIElement,
     );
     items.forEach((item, index) => {
-      let marker = item.firstElementChild instanceof HTMLElement && isMarkerElement(item.firstElementChild)
-        ? item.firstElementChild
-        : null;
+      let marker =
+        item.firstElementChild instanceof HTMLElement && isMarkerElement(item.firstElementChild)
+          ? item.firstElementChild
+          : null;
       if (!marker) {
         marker = item.ownerDocument.createElement("span");
         marker.className = "md-list-marker";
@@ -248,11 +250,13 @@ const canOperateInListContext = (editor: HTMLElement) => {
   if (listContext.startListItem !== listContext.endListItem) {
     return null;
   }
-  const inMarker = (range.startContainer instanceof Node
-    ? (range.startContainer instanceof Element
+  const inMarker = (
+    range.startContainer instanceof Node
+      ? range.startContainer instanceof Element
         ? range.startContainer
-        : range.startContainer.parentElement)
-    : null)?.closest(".md-list-marker");
+        : range.startContainer.parentElement
+      : null
+  )?.closest(".md-list-marker");
   if (inMarker) {
     return null;
   }
@@ -270,8 +274,10 @@ export const handleListSoftBreak = (editor: HTMLElement): CommandResult => {
     range.deleteContents();
   }
 
-  const inserted = (doc as Document & { execCommand?: (command: string) => boolean }).execCommand
-    ?.("insertLineBreak") ?? false;
+  const inserted =
+    (doc as Document & { execCommand?: (command: string) => boolean }).execCommand?.(
+      "insertLineBreak",
+    ) ?? false;
   if (!inserted) {
     const nextRange = resolveMarkdownEditorSelectionRange(editor);
     if (!nextRange) {
@@ -314,7 +320,9 @@ export const handleListEnterExitToRootParagraph = (editor: HTMLElement): Command
   extractTailIntoParagraph(activeItem, liveRange, paragraph);
   removeListMarkersFromSubtree(paragraph);
 
-  const hasParagraphContent = Array.from(paragraph.childNodes).some((child) => !isNodeEffectivelyEmpty(child));
+  const hasParagraphContent = Array.from(paragraph.childNodes).some(
+    (child) => !isNodeEffectivelyEmpty(child),
+  );
   if (!hasParagraphContent) {
     paragraph.appendChild(editor.ownerDocument.createElement("br"));
   }
@@ -339,10 +347,7 @@ const groupContiguousItems = (items: HTMLElement[]) => {
       return;
     }
     const last = previousGroup[previousGroup.length - 1];
-    if (
-      item.parentElement === last.parentElement &&
-      last.nextElementSibling === item
-    ) {
+    if (item.parentElement === last.parentElement && last.nextElementSibling === item) {
       previousGroup.push(item);
       return;
     }
@@ -377,7 +382,8 @@ export const indentSelectedListItems = (editor: HTMLElement): CommandResult => {
       (child) => child.tagName.toLowerCase() === listTag,
     ) as HTMLOListElement | HTMLUListElement | undefined;
     if (!nestedList) {
-      nestedList = first.ownerDocument.createElement(listTag) as HTMLOListElement | HTMLUListElement;
+      nestedList = first.ownerDocument.createElement(listTag) as
+        HTMLOListElement | HTMLUListElement;
       if (parentList instanceof HTMLOListElement) {
         const delimiter = parentList.getAttribute("data-md-ordered-delimiter");
         if (delimiter === ")") {

@@ -24,9 +24,7 @@ const appStateHolder = vi.hoisted(() => ({
   value: null as unknown,
 }));
 
-const capturedDashboardPageProps = vi.hoisted(
-  () => [] as Array<Record<string, unknown>>,
-);
+const capturedDashboardPageProps = vi.hoisted(() => [] as Array<Record<string, unknown>>);
 
 vi.mock("./components/AppStateProvider", async () => {
   const ReactModule = await import("react");
@@ -203,45 +201,43 @@ vi.mock("./components/StudySectionNav", () => ({
 
 vi.mock("./pages/DashboardPage", async () => {
   const ReactModule = await import("react");
-  const DashboardPage = ReactModule.forwardRef((
-    props: {
-      onOpenExamFromDatabaseRecord?: (target: { path: string; relativePath: string }) => void;
-    } & Record<string, unknown>,
-    ref,
-  ) => {
-    capturedDashboardPageProps.push(props);
-    ReactModule.useImperativeHandle(ref, () => ({
-      requestVaultViewChange: (nextView: "markdown" | "exam") => {
-        dashboardViewRequests.values.push(nextView);
-      },
-      requestLeaveDashboard: async () => {
-        dashboardGuard.requests += 1;
-        return dashboardGuard.canLeave;
-      },
-    }));
-    return ReactModule.createElement(
-      ReactModule.Fragment,
-      null,
-      ReactModule.createElement(
-        "div",
-        { "data-testid": "mock-dashboard-page" },
-        "Dashboard",
-      ),
-      ReactModule.createElement(
-        "button",
-        {
-          type: "button",
-          "data-testid": "mock-dashboard-open-exam-from-database",
-          onClick: () =>
-            props.onOpenExamFromDatabaseRecord?.({
-              path: "/vault/exam-from-database.md",
-              relativePath: "exam-from-database.md",
-            }),
+  const DashboardPage = ReactModule.forwardRef(
+    (
+      props: {
+        onOpenExamFromDatabaseRecord?: (target: { path: string; relativePath: string }) => void;
+      } & Record<string, unknown>,
+      ref,
+    ) => {
+      capturedDashboardPageProps.push(props);
+      ReactModule.useImperativeHandle(ref, () => ({
+        requestVaultViewChange: (nextView: "markdown" | "exam") => {
+          dashboardViewRequests.values.push(nextView);
         },
-        "Dashboard: open exam from database",
-      ),
-    );
-  });
+        requestLeaveDashboard: async () => {
+          dashboardGuard.requests += 1;
+          return dashboardGuard.canLeave;
+        },
+      }));
+      return ReactModule.createElement(
+        ReactModule.Fragment,
+        null,
+        ReactModule.createElement("div", { "data-testid": "mock-dashboard-page" }, "Dashboard"),
+        ReactModule.createElement(
+          "button",
+          {
+            type: "button",
+            "data-testid": "mock-dashboard-open-exam-from-database",
+            onClick: () =>
+              props.onOpenExamFromDatabaseRecord?.({
+                path: "/vault/exam-from-database.md",
+                relativePath: "exam-from-database.md",
+              }),
+          },
+          "Dashboard: open exam from database",
+        ),
+      );
+    },
+  );
   DashboardPage.displayName = "MockDashboardPage";
   return { DashboardPage };
 });
@@ -260,11 +256,7 @@ vi.mock("./pages/ExamSimulationPage", () => ({
     React.createElement(
       React.Fragment,
       null,
-      React.createElement(
-        "div",
-        { "data-testid": "mock-exam-simulation-page" },
-        "Exam",
-      ),
+      React.createElement("div", { "data-testid": "mock-exam-simulation-page" }, "Exam"),
       React.createElement(
         "div",
         { "data-testid": "mock-exam-launch-preset" },
@@ -328,20 +320,12 @@ vi.mock("./pages/CardMonitoringPage", async () => {
 
 vi.mock("./pages/PointsProfilesPage", () => ({
   PointsProfilesPage: () =>
-    React.createElement(
-      "div",
-      { "data-testid": "mock-points-profiles-page" },
-      "Points Profiles",
-    ),
+    React.createElement("div", { "data-testid": "mock-points-profiles-page" }, "Points Profiles"),
 }));
 
 vi.mock("./pages/MonitoringRulesPage", () => ({
   MonitoringRulesPage: () =>
-    React.createElement(
-      "div",
-      { "data-testid": "mock-monitoring-rules-page" },
-      "Attribute Rules",
-    ),
+    React.createElement("div", { "data-testid": "mock-monitoring-rules-page" }, "Attribute Rules"),
 }));
 
 vi.mock("./pages/FastFlashcardPage", () => ({
@@ -350,8 +334,7 @@ vi.mock("./pages/FastFlashcardPage", () => ({
 }));
 
 vi.mock("./pages/SpacedRepetitionPage", () => ({
-  SpacedRepetitionPage: () =>
-    React.createElement("div", { "data-testid": "mock-sr-page" }, "SR"),
+  SpacedRepetitionPage: () => React.createElement("div", { "data-testid": "mock-sr-page" }, "SR"),
 }));
 
 vi.mock("./pages/HelpPage", () => ({
@@ -363,23 +346,13 @@ vi.mock("./pages/SettingsPage", () => ({
 }));
 
 vi.mock("./components/ModalShell", () => ({
-  ModalShell: ({
-    isOpen,
-    children,
-  }: {
-    isOpen: boolean;
-    children: React.ReactNode;
-  }) => (isOpen ? React.createElement("div", null, children) : null),
+  ModalShell: ({ isOpen, children }: { isOpen: boolean; children: React.ReactNode }) =>
+    isOpen ? React.createElement("div", null, children) : null,
 }));
 
 vi.mock("./components/NoteModal", () => ({
-  NoteModal: ({
-    isOpen,
-    children,
-  }: {
-    isOpen: boolean;
-    children: React.ReactNode;
-  }) => (isOpen ? React.createElement("div", null, children) : null),
+  NoteModal: ({ isOpen, children }: { isOpen: boolean; children: React.ReactNode }) =>
+    isOpen ? React.createElement("div", null, children) : null,
 }));
 
 vi.mock("./components/NoteFilesPanel", () => ({
@@ -493,8 +466,8 @@ const createMockAppState = () => ({
 });
 
 const getSelectFileSpy = () =>
-  (appStateHolder.value as { actions: { handleSelectFile: ReturnType<typeof vi.fn> } })
-    .actions.handleSelectFile;
+  (appStateHolder.value as { actions: { handleSelectFile: ReturnType<typeof vi.fn> } }).actions
+    .handleSelectFile;
 
 const getSetSelectedExamFilesSpy = () =>
   (
@@ -656,10 +629,13 @@ describe("App dashboard leave guard integration", () => {
 
     await clickTestId(container, "mock-exam-open-markdown-file");
 
-    expect(getSelectFileSpy()).toHaveBeenCalledWith({
-      path: "/vault/from-exam-open.md",
-      relative_path: "from-exam-open.md",
-    }, undefined);
+    expect(getSelectFileSpy()).toHaveBeenCalledWith(
+      {
+        path: "/vault/from-exam-open.md",
+        relative_path: "from-exam-open.md",
+      },
+      undefined,
+    );
     expect(container.querySelector('[data-testid="mock-dashboard-page"]')).toBeTruthy();
 
     cleanup();
@@ -704,11 +680,10 @@ describe("App dashboard leave guard integration", () => {
     });
 
     expect(container.querySelector('[data-testid="mock-exam-simulation-page"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="mock-exam-launch-preset"]')?.textContent)
-      .toBe("nested");
-    expect(getSetSelectedExamFilesSpy()).toHaveBeenCalledWith([
-      "/vault/exam-from-database.md",
-    ]);
+    expect(container.querySelector('[data-testid="mock-exam-launch-preset"]')?.textContent).toBe(
+      "nested",
+    );
+    expect(getSetSelectedExamFilesSpy()).toHaveBeenCalledWith(["/vault/exam-from-database.md"]);
 
     cleanup();
   });
@@ -761,9 +736,11 @@ describe("App dashboard leave guard integration", () => {
       await Promise.resolve();
     });
 
-    let latestDashboardProps = getLatestDashboardPageProps() as {
-      markdownTabs?: Array<{ path: string; relativePath: string }>;
-    } | undefined;
+    let latestDashboardProps = getLatestDashboardPageProps() as
+      | {
+          markdownTabs?: Array<{ path: string; relativePath: string }>;
+        }
+      | undefined;
     expect(latestDashboardProps?.markdownTabs).toEqual([
       { path: "/vault/source.md", relativePath: "source.md" },
     ]);
@@ -778,9 +755,11 @@ describe("App dashboard leave guard integration", () => {
       await Promise.resolve();
     });
 
-    latestDashboardProps = getLatestDashboardPageProps() as {
-      markdownTabs?: Array<{ path: string; relativePath: string }>;
-    } | undefined;
+    latestDashboardProps = getLatestDashboardPageProps() as
+      | {
+          markdownTabs?: Array<{ path: string; relativePath: string }>;
+        }
+      | undefined;
     expect(latestDashboardProps?.markdownTabs).toEqual([
       { path: "/vault/source.md", relativePath: "source.md" },
       { path: "/vault/target.md", relativePath: "target.md" },
@@ -792,9 +771,11 @@ describe("App dashboard leave guard integration", () => {
     await clickTestId(container, "study-nav-open-editor-markdown");
     expect(container.querySelector('[data-testid="mock-dashboard-page"]')).toBeTruthy();
 
-    latestDashboardProps = getLatestDashboardPageProps() as {
-      markdownTabs?: Array<{ path: string; relativePath: string }>;
-    } | undefined;
+    latestDashboardProps = getLatestDashboardPageProps() as
+      | {
+          markdownTabs?: Array<{ path: string; relativePath: string }>;
+        }
+      | undefined;
     expect(latestDashboardProps?.markdownTabs).toEqual([
       { path: "/vault/source.md", relativePath: "source.md" },
       { path: "/vault/target.md", relativePath: "target.md" },
@@ -842,26 +823,28 @@ describe("App dashboard leave guard integration", () => {
       await Promise.resolve();
     });
 
-    let latestDashboardProps = getLatestDashboardPageProps() as {
-      markdownTabs?: Array<{ path: string; relativePath: string }>;
-    } | undefined;
+    let latestDashboardProps = getLatestDashboardPageProps() as
+      | {
+          markdownTabs?: Array<{ path: string; relativePath: string }>;
+        }
+      | undefined;
     expect(latestDashboardProps?.markdownTabs).toEqual([
       { path: "/vault/source.md", relativePath: "source.md" },
       { path: "/vault/target.md", relativePath: "target.md" },
     ]);
 
     appState.vault.vaultPath = "/vault-next";
-    appState.vault.files = [
-      { path: "/vault/target.md", relative_path: "target.md" },
-    ];
+    appState.vault.files = [{ path: "/vault/target.md", relative_path: "target.md" }];
     rerender();
     await act(async () => {
       await Promise.resolve();
     });
 
-    latestDashboardProps = getLatestDashboardPageProps() as {
-      markdownTabs?: Array<{ path: string; relativePath: string }>;
-    } | undefined;
+    latestDashboardProps = getLatestDashboardPageProps() as
+      | {
+          markdownTabs?: Array<{ path: string; relativePath: string }>;
+        }
+      | undefined;
     expect(latestDashboardProps?.markdownTabs).toEqual([
       { path: "/vault/target.md", relativePath: "target.md" },
     ]);

@@ -33,10 +33,7 @@ type AppErrorBoundaryState = {
 
 const isDev = import.meta.env.DEV;
 
-export class AppErrorBoundary extends Component<
-  AppErrorBoundaryProps,
-  AppErrorBoundaryState
-> {
+export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundaryState> {
   state: AppErrorBoundaryState = {
     error: null,
     errorInfo: null,
@@ -75,12 +72,9 @@ export class AppErrorBoundary extends Component<
         }}
       >
         <div style={{ maxWidth: 760, width: "100%" }}>
-          <h1 style={{ marginBottom: 12, fontSize: 20 }}>
-            App failed to render
-          </h1>
+          <h1 style={{ marginBottom: 12, fontSize: 20 }}>App failed to render</h1>
           <p style={{ marginBottom: 16 }}>
-            An unexpected error occurred during startup. Check the console for
-            details.
+            An unexpected error occurred during startup. Check the console for details.
           </p>
           <div
             style={{

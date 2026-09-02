@@ -3,7 +3,10 @@
  */
 
 import { useCallback, useMemo, useRef, useState } from "react";
-import { MarkdownHybridEditor, type MarkdownHybridEditorHandle } from "../../../features/preview/MarkdownHybridEditor";
+import {
+  MarkdownHybridEditor,
+  type MarkdownHybridEditorHandle,
+} from "../../../features/preview/MarkdownHybridEditor";
 import type { CardBlueprint, ChoiceOption } from "../../../features/exam-editor/types";
 import type { CardValidation } from "../../../features/exam-editor/validation";
 import { serializeCardTypeLabel } from "../../../features/exam-editor/serializer";
@@ -154,11 +157,7 @@ const StructuredMarkdownField = ({
 }: StructuredMarkdownFieldProps) => {
   const renderPreview = useCallback(
     (source: string) => (
-      <ExamMarkdown
-        content={source}
-        vaultPath={vaultPath}
-        vaultPngAssets={vaultPngAssets}
-      />
+      <ExamMarkdown content={source} vaultPath={vaultPath} vaultPngAssets={vaultPngAssets} />
     ),
     [vaultPath, vaultPngAssets],
   );

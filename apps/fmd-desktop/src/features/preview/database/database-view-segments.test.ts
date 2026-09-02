@@ -3,25 +3,13 @@ import { splitDatabaseViewSegments } from "./database-view-segments";
 
 describe("database-view-segments", () => {
   it("returns null when no database block exists", () => {
-    const markdown = [
-      "# Title",
-      "",
-      "Paragraph text.",
-    ].join("\n");
+    const markdown = ["# Title", "", "Paragraph text."].join("\n");
 
     expect(splitDatabaseViewSegments(markdown)).toBeNull();
   });
 
   it("splits markdown around one database block", () => {
-    const markdown = [
-      "# Title",
-      "",
-      "::::",
-      "title: Demo",
-      "::::",
-      "",
-      "After block",
-    ].join("\n");
+    const markdown = ["# Title", "", "::::", "title: Demo", "::::", "", "After block"].join("\n");
 
     const segments = splitDatabaseViewSegments(markdown);
     expect(segments).toHaveLength(3);
@@ -40,15 +28,7 @@ describe("database-view-segments", () => {
   });
 
   it("keeps consecutive database blocks as separate segments", () => {
-    const markdown = [
-      "::::",
-      "title: A",
-      "::::",
-      "",
-      "::::",
-      "title: B",
-      "::::",
-    ].join("\n");
+    const markdown = ["::::", "title: A", "::::", "", "::::", "title: B", "::::"].join("\n");
 
     const segments = splitDatabaseViewSegments(markdown);
     expect(segments?.map((segment) => segment.type)).toEqual([

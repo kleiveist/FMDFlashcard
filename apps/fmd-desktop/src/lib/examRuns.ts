@@ -6,9 +6,7 @@
  */
 
 import { invoke } from "@tauri-apps/api/core";
-import {
-  resetExamRunMarkdownHistory,
-} from "../features/user-vault/storage";
+import { resetExamRunMarkdownHistory } from "../features/user-vault/storage";
 
 export type ExamGradeScaleId = "standard-1-6";
 
@@ -57,9 +55,7 @@ type ExamRunHistoryResetListener = () => void;
 
 const examRunHistoryResetListeners = new Set<ExamRunHistoryResetListener>();
 
-export const subscribeExamRunHistoryReset = (
-  listener: ExamRunHistoryResetListener,
-) => {
+export const subscribeExamRunHistoryReset = (listener: ExamRunHistoryResetListener) => {
   examRunHistoryResetListeners.add(listener);
   return () => {
     examRunHistoryResetListeners.delete(listener);
@@ -84,14 +80,7 @@ export const resetExamRunHistory = async (profileRootPath?: string | null) => {
 
 export type ExamRunStatusFilter = "all" | "passed" | "failed";
 
-export type ExamStatusTone =
-  | "zero"
-  | "red"
-  | "orange"
-  | "yellow"
-  | "green"
-  | "blue"
-  | "diamond";
+export type ExamStatusTone = "zero" | "red" | "orange" | "yellow" | "green" | "blue" | "diamond";
 
 export type ExamStatusDescriptor = {
   value: number;
@@ -216,8 +205,7 @@ export const formatExamTimestamp = (value: string) => {
   });
 };
 
-export const getExamRunUserKey = (run: ExamRun) =>
-  run.userId || run.userName || "";
+export const getExamRunUserKey = (run: ExamRun) => run.userId || run.userName || "";
 
 export const getExamFileName = (path: string) => {
   const normalized = path.replace(/\\/g, "/");
@@ -226,9 +214,7 @@ export const getExamFileName = (path: string) => {
 };
 
 export const sortExamRunsByDateDesc = (runs: ExamRun[]) =>
-  [...runs].sort(
-    (a, b) => getTimestampValue(b.endedAt) - getTimestampValue(a.endedAt),
-  );
+  [...runs].sort((a, b) => getTimestampValue(b.endedAt) - getTimestampValue(a.endedAt));
 
 export const filterExamRuns = (runs: ExamRun[], filters: ExamRunFilters) => {
   const query = filters.query.trim().toLowerCase();

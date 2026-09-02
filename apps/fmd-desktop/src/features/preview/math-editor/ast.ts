@@ -185,8 +185,7 @@ export const createMatrixNode = (
   id: createMathNodeId("matrix"),
   kind: "matrix",
   environment,
-  cells: Array.from({ length: rows }, () =>
-    Array.from({ length: cols }, () => createRow())),
+  cells: Array.from({ length: rows }, () => Array.from({ length: cols }, () => createRow())),
 });
 
 export const createVectorNode = (
@@ -274,7 +273,12 @@ export const cloneNode = (node: FormulaNode): FormulaNode => {
       return { ...node, approach: cloneRow(node.approach), body: cloneRow(node.body) };
     case "sum":
     case "product":
-      return { ...node, lower: cloneRow(node.lower), upper: cloneRow(node.upper), body: cloneRow(node.body) };
+      return {
+        ...node,
+        lower: cloneRow(node.lower),
+        upper: cloneRow(node.upper),
+        body: cloneRow(node.body),
+      };
     case "matrix":
       return {
         ...node,
@@ -336,15 +340,17 @@ export const classifyCharacter = (character: string): FormulaLeafKind => {
 };
 
 export const serializePlainTextFromRow = (row: FormulaRowNode): string =>
-  row.children.map((child) => {
-    if (isLeafNode(child)) {
-      return child.value;
-    }
-    if (child.kind === "text") {
-      return serializePlainTextFromRow(child.body);
-    }
-    return "";
-  }).join("");
+  row.children
+    .map((child) => {
+      if (isLeafNode(child)) {
+        return child.value;
+      }
+      if (child.kind === "text") {
+        return serializePlainTextFromRow(child.body);
+      }
+      return "";
+    })
+    .join("");
 
 type LocatedRow = {
   row: FormulaRowNode;
@@ -358,36 +364,36 @@ const getNamedRowFromNode = (node: FormulaNode, slotRef: MathSlotRef): FormulaRo
       return slotRef.slotName === "numerator"
         ? node.numerator
         : slotRef.slotName === "denominator"
-        ? node.denominator
-        : null;
+          ? node.denominator
+          : null;
     case "sqrt":
       return slotRef.slotName === "radicand" ? node.radicand : null;
     case "root":
       return slotRef.slotName === "index"
         ? node.index
         : slotRef.slotName === "radicand"
-        ? node.radicand
-        : null;
+          ? node.radicand
+          : null;
     case "sup":
       return slotRef.slotName === "base"
         ? node.base
         : slotRef.slotName === "exponent"
-        ? node.exponent
-        : null;
+          ? node.exponent
+          : null;
     case "sub":
       return slotRef.slotName === "base"
         ? node.base
         : slotRef.slotName === "subscript"
-        ? node.subscript
-        : null;
+          ? node.subscript
+          : null;
     case "subsup":
       return slotRef.slotName === "base"
         ? node.base
         : slotRef.slotName === "subscript"
-        ? node.subscript
-        : slotRef.slotName === "exponent"
-        ? node.exponent
-        : null;
+          ? node.subscript
+          : slotRef.slotName === "exponent"
+            ? node.exponent
+            : null;
     case "delimited":
       return slotRef.slotName === "body" ? node.body : null;
     case "absolute":
@@ -398,27 +404,27 @@ const getNamedRowFromNode = (node: FormulaNode, slotRef: MathSlotRef): FormulaRo
       return slotRef.slotName === "lower"
         ? node.lower
         : slotRef.slotName === "upper"
-        ? node.upper
-        : slotRef.slotName === "integrand"
-        ? node.integrand
-        : slotRef.slotName === "differential"
-        ? node.differential
-        : null;
+          ? node.upper
+          : slotRef.slotName === "integrand"
+            ? node.integrand
+            : slotRef.slotName === "differential"
+              ? node.differential
+              : null;
     case "limit":
       return slotRef.slotName === "approach"
         ? node.approach
         : slotRef.slotName === "body"
-        ? node.body
-        : null;
+          ? node.body
+          : null;
     case "sum":
     case "product":
       return slotRef.slotName === "lower"
         ? node.lower
         : slotRef.slotName === "upper"
-        ? node.upper
-        : slotRef.slotName === "body"
-        ? node.body
-        : null;
+          ? node.upper
+          : slotRef.slotName === "body"
+            ? node.body
+            : null;
     case "text":
       return slotRef.slotName === "body" ? node.body : null;
     case "matrix":
@@ -465,7 +471,10 @@ const locateNodeById = (row: FormulaRowNode, id: string): FormulaNode | null => 
   return null;
 };
 
-const visitChildRows = <T,>(node: FormulaNode, visitor: (row: FormulaRowNode) => T | null): T | null => {
+const visitChildRows = <T>(
+  node: FormulaNode,
+  visitor: (row: FormulaRowNode) => T | null,
+): T | null => {
   const rows = listChildRows(node);
   for (const row of rows) {
     const result = visitor(row);
@@ -598,7 +607,8 @@ export const listNodeSlots = (node: FormulaNode): MathSlotRef[] => {
       ];
     case "matrix":
       return node.cells.flatMap((row, rowIndex) =>
-        row.map((_cell, colIndex) => slotDescriptor(node.id, "cell", rowIndex, colIndex)));
+        row.map((_cell, colIndex) => slotDescriptor(node.id, "cell", rowIndex, colIndex)),
+      );
     case "vector":
       return node.cells.map((_cell, rowIndex) => slotDescriptor(node.id, "cell", rowIndex));
     case "cases":
@@ -736,7 +746,12 @@ export const updateChildRows = (
       return { ...node, approach: updater(node.approach), body: updater(node.body) };
     case "sum":
     case "product":
-      return { ...node, lower: updater(node.lower), upper: updater(node.upper), body: updater(node.body) };
+      return {
+        ...node,
+        lower: updater(node.lower),
+        upper: updater(node.upper),
+        body: updater(node.body),
+      };
     case "matrix":
       return {
         ...node,
@@ -779,7 +794,9 @@ export const replaceRowAtPath = (
     return updater(root);
   }
   const [head, ...rest] = path;
-  const nextChildren = root.children.map((child) => replaceNodeSlotPath(child, head, rest, updater));
+  const nextChildren = root.children.map((child) =>
+    replaceNodeSlotPath(child, head, rest, updater),
+  );
   return { ...root, children: nextChildren };
 };
 
@@ -791,7 +808,9 @@ const replaceNodeSlotPath = (
 ): FormulaNode => {
   if (node.id !== head.nodeId) {
     return updateChildRows(node, (row) => {
-      const nextChildren = row.children.map((child) => replaceNodeSlotPath(child, head, rest, updater));
+      const nextChildren = row.children.map((child) =>
+        replaceNodeSlotPath(child, head, rest, updater),
+      );
       return { ...row, children: nextChildren };
     });
   }
@@ -806,7 +825,8 @@ const replaceNodeSlotPath = (
       return {
         ...node,
         numerator: head.slotName === "numerator" ? patchRow(node.numerator) : node.numerator,
-        denominator: head.slotName === "denominator" ? patchRow(node.denominator) : node.denominator,
+        denominator:
+          head.slotName === "denominator" ? patchRow(node.denominator) : node.denominator,
       };
     case "sqrt":
       return head.slotName === "radicand" ? { ...node, radicand: patchRow(node.radicand) } : node;
@@ -847,7 +867,8 @@ const replaceNodeSlotPath = (
         lower: head.slotName === "lower" ? patchRow(node.lower) : node.lower,
         upper: head.slotName === "upper" ? patchRow(node.upper) : node.upper,
         integrand: head.slotName === "integrand" ? patchRow(node.integrand) : node.integrand,
-        differential: head.slotName === "differential" ? patchRow(node.differential) : node.differential,
+        differential:
+          head.slotName === "differential" ? patchRow(node.differential) : node.differential,
       };
     case "limit":
       return {
@@ -868,24 +889,28 @@ const replaceNodeSlotPath = (
         ...node,
         cells: node.cells.map((row, rowIndex) =>
           row.map((cell, colIndex) =>
-            head.slotName === "cell" &&
-              head.rowIndex === rowIndex &&
-              head.colIndex === colIndex
+            head.slotName === "cell" && head.rowIndex === rowIndex && head.colIndex === colIndex
               ? patchRow(cell)
-              : cell)),
+              : cell,
+          ),
+        ),
       };
     case "vector":
       return {
         ...node,
         cells: node.cells.map((cell, rowIndex) =>
-          head.slotName === "cell" && head.rowIndex === rowIndex ? patchRow(cell) : cell),
+          head.slotName === "cell" && head.rowIndex === rowIndex ? patchRow(cell) : cell,
+        ),
       };
     case "cases":
       return {
         ...node,
         rows: node.rows.map((row, rowIndex) => ({
           ...row,
-          value: head.slotName === "value" && head.rowIndex === rowIndex ? patchRow(row.value) : row.value,
+          value:
+            head.slotName === "value" && head.rowIndex === rowIndex
+              ? patchRow(row.value)
+              : row.value,
           condition:
             head.slotName === "condition" && head.rowIndex === rowIndex
               ? patchRow(row.condition)
@@ -897,8 +922,12 @@ const replaceNodeSlotPath = (
         ...node,
         rows: node.rows.map((row, rowIndex) => ({
           ...row,
-          left: head.slotName === "left" && head.rowIndex === rowIndex ? patchRow(row.left) : row.left,
-          right: head.slotName === "right" && head.rowIndex === rowIndex ? patchRow(row.right) : row.right,
+          left:
+            head.slotName === "left" && head.rowIndex === rowIndex ? patchRow(row.left) : row.left,
+          right:
+            head.slotName === "right" && head.rowIndex === rowIndex
+              ? patchRow(row.right)
+              : row.right,
         })),
       };
     default:
@@ -914,23 +943,27 @@ export const insertNodesIntoRow = (
 ): FormulaRowNode => {
   const normalizedSelection = selection
     ? {
-      start: Math.max(0, Math.min(selection.start, row.children.length)),
-      end: Math.max(0, Math.min(selection.end, row.children.length)),
-    }
+        start: Math.max(0, Math.min(selection.start, row.children.length)),
+        end: Math.max(0, Math.min(selection.end, row.children.length)),
+      }
     : null;
-  const start = normalizedSelection ? Math.min(normalizedSelection.start, normalizedSelection.end) : offset;
-  const end = normalizedSelection ? Math.max(normalizedSelection.start, normalizedSelection.end) : offset;
+  const start = normalizedSelection
+    ? Math.min(normalizedSelection.start, normalizedSelection.end)
+    : offset;
+  const end = normalizedSelection
+    ? Math.max(normalizedSelection.start, normalizedSelection.end)
+    : offset;
   return {
     ...row,
-    children: [
-      ...row.children.slice(0, start),
-      ...nodes,
-      ...row.children.slice(end),
-    ],
+    children: [...row.children.slice(0, start), ...nodes, ...row.children.slice(end)],
   };
 };
 
-export const removeRowSlice = (row: FormulaRowNode, start: number, end: number): FormulaRowNode => ({
+export const removeRowSlice = (
+  row: FormulaRowNode,
+  start: number,
+  end: number,
+): FormulaRowNode => ({
   ...row,
   children: [...row.children.slice(0, start), ...row.children.slice(end)],
 });

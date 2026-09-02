@@ -67,20 +67,13 @@ export const ResetSessionHistoryModal = ({
           {tSettings(language, "settings.resetHistory.title")}
         </h3>
         <div className="modal-body" id="reset-session-history-body">
-          <p className="muted">
-            {tSettings(language, "settings.resetHistory.description")}
-          </p>
+          <p className="muted">{tSettings(language, "settings.resetHistory.description")}</p>
         </div>
         <div className="modal-actions">
           <button type="button" className="ghost" onClick={onCancel} disabled={isPending}>
             {tSettings(language, "settings.common.cancel")}
           </button>
-          <button
-            type="button"
-            className="primary"
-            onClick={onConfirm}
-            disabled={isPending}
-          >
+          <button type="button" className="primary" onClick={onConfirm} disabled={isPending}>
             {isPending
               ? tSettings(language, "settings.common.resetting")
               : tSettings(language, "settings.common.reset")}

@@ -73,17 +73,10 @@ export const StatsPanel = ({
           <div>
             <h2>Statistics</h2>
           </div>
-          {headerActions ? (
-            <div className="stats-panel-header-actions">{headerActions}</div>
-          ) : null}
+          {headerActions ? <div className="stats-panel-header-actions">{headerActions}</div> : null}
         </div>
       )}
-      <div
-        className="panel-body"
-        id={controlsId}
-        hidden={isHidden}
-        aria-hidden={isHidden}
-      >
+      <div className="panel-body" id={controlsId} hidden={isHidden} aria-hidden={isHidden}>
         <div className="stats-summary">
           <div className="stats-counters">
             <div className="stats-counter">

@@ -13,7 +13,11 @@ export const MathPalettePane = ({
     <div className="markdown-hybrid-structural-math-palette" aria-label="Math insert toolbar">
       <div className="markdown-hybrid-structural-math-pane-title">Toolbar</div>
       <div className="markdown-hybrid-structural-math-toolbar-scroll">
-        <div className="markdown-hybrid-structural-math-toolbar" role="toolbar" aria-label="Structural math inserts">
+        <div
+          className="markdown-hybrid-structural-math-toolbar"
+          role="toolbar"
+          aria-label="Structural math inserts"
+        >
           {groups.map((group) => (
             <div
               key={group.id}

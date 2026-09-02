@@ -61,10 +61,7 @@ type DatabasePropertiesPanelProps = {
     initialValue: string;
     overwriteExisting: boolean;
   }) => Promise<void>;
-  onCreateFormula: (payload: {
-    key: string;
-    definition: DatabaseFormulaDefinitionV1;
-  }) => void;
+  onCreateFormula: (payload: { key: string; definition: DatabaseFormulaDefinitionV1 }) => void;
   onRemoveFormula: (key: string) => void;
   isMutatingFrontmatter: boolean;
   onClose: () => void;
@@ -89,16 +86,14 @@ const supportsMathByFieldType = (type: DatabaseFieldType) => {
   return false;
 };
 
-const getCaseInsensitiveRecordValue = (
-  record: DatabaseRecord,
-  key: string,
-) => {
+const getCaseInsensitiveRecordValue = (record: DatabaseRecord, key: string) => {
   if (key in record.normalizedFields) {
     return record.normalizedFields[key];
   }
   const normalizedKey = toLower(key);
-  const matchedKey = Object.keys(record.normalizedFields)
-    .find((entryKey) => toLower(entryKey) === normalizedKey);
+  const matchedKey = Object.keys(record.normalizedFields).find(
+    (entryKey) => toLower(entryKey) === normalizedKey,
+  );
   return matchedKey ? record.normalizedFields[matchedKey] : null;
 };
 
@@ -115,10 +110,7 @@ const isShortNumericText = (value: string) => {
   return numericMatches.length === 1;
 };
 
-const hasMathCompatibleTextValues = (
-  records: DatabaseRecord[],
-  key: string,
-) => {
+const hasMathCompatibleTextValues = (records: DatabaseRecord[], key: string) => {
   for (const record of records) {
     const raw = getCaseInsensitiveRecordValue(record, key);
     if (typeof raw === "number" && Number.isFinite(raw)) {
@@ -158,7 +150,9 @@ const dedupeCaseInsensitive = (keys: string[]) => {
   return next;
 };
 
-const toCreateTypeSelection = (value: string): {
+const toCreateTypeSelection = (
+  value: string,
+): {
   fieldType: DatabaseFieldType;
   coreTypeId: CoreAttributeTypeId | null;
 } => {
@@ -220,7 +214,7 @@ export const DatabasePropertiesPanel = ({
     () =>
       isFormulaCreateMode
         ? (suggestion: DatabaseVaultAttributeSuggestion) =>
-          suggestion.normalizedKey.trim().toLowerCase().startsWith("f-")
+            suggestion.normalizedKey.trim().toLowerCase().startsWith("f-")
         : undefined,
     [isFormulaCreateMode],
   );
@@ -232,7 +226,8 @@ export const DatabasePropertiesPanel = ({
         .map((attribute) => ({
           key: attribute.key,
           label: attribute.label || attribute.key,
-          supportsMath: supportsMathByFieldType(attribute.type) ||
+          supportsMath:
+            supportsMathByFieldType(attribute.type) ||
             (attribute.type === "text" && hasMathCompatibleTextValues(records, attribute.key)),
         })),
     [attributes, newAttributeKey, records],
@@ -378,7 +373,12 @@ export const DatabasePropertiesPanel = ({
     >
       <header className="database-block-panel-header">
         <h5>Eigenschaften</h5>
-        <button type="button" className="database-block-panel-close" onClick={onClose} aria-label="Schliessen">
+        <button
+          type="button"
+          className="database-block-panel-close"
+          onClick={onClose}
+          aria-label="Schliessen"
+        >
           ×
         </button>
       </header>
@@ -436,10 +436,16 @@ export const DatabasePropertiesPanel = ({
                   onChange={(event) => onToggleVisibility(attribute.key, event.target.checked)}
                 />
                 <span className="database-block-properties-icon" aria-hidden="true">
-                  <FrontmatterPropertyIconView icon={resolveDatabaseFieldTypeIcon(attribute.type)} />
+                  <FrontmatterPropertyIconView
+                    icon={resolveDatabaseFieldTypeIcon(attribute.type)}
+                  />
                 </span>
-                <span className="database-block-properties-key">{attribute.label || attribute.key}</span>
-                <span className="database-block-properties-type">{resolveDatabaseFieldTypeLabel(attribute.type)}</span>
+                <span className="database-block-properties-key">
+                  {attribute.label || attribute.key}
+                </span>
+                <span className="database-block-properties-type">
+                  {resolveDatabaseFieldTypeLabel(attribute.type)}
+                </span>
                 <span className="database-block-properties-origin">{attribute.origin}</span>
                 {attribute.origin === "formula" ? (
                   <button
@@ -546,8 +552,12 @@ export const DatabasePropertiesPanel = ({
       </section>
 
       <footer className="database-block-panel-footer">
-        <button type="button" className="database-block-toolbar-button" onClick={onHideAll}>Alle ausblenden</button>
-        <button type="button" className="database-block-toolbar-button" onClick={onRestoreDefault}>Standard wiederherstellen</button>
+        <button type="button" className="database-block-toolbar-button" onClick={onHideAll}>
+          Alle ausblenden
+        </button>
+        <button type="button" className="database-block-toolbar-button" onClick={onRestoreDefault}>
+          Standard wiederherstellen
+        </button>
       </footer>
     </aside>
   );

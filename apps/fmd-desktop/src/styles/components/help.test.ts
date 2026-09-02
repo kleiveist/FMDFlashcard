@@ -26,11 +26,7 @@ describe("help.css", () => {
   });
 
   it("keeps help syntax layout consistently two-column", () => {
-    expect(helpCss).toContain(
-      "grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);",
-    );
-    expect(helpCss).not.toMatch(
-      /@media\s*\(max-width:\s*960px\)\s*\{[\s\S]*?\.help-syntax-layout/,
-    );
+    expect(helpCss).toContain("grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);");
+    expect(helpCss).not.toMatch(/@media\s*\(max-width:\s*960px\)\s*\{[\s\S]*?\.help-syntax-layout/);
   });
 });

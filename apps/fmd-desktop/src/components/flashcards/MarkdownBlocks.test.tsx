@@ -16,11 +16,7 @@ describe("MarkdownBlocks math rendering", () => {
   it("renders math in table cells", () => {
     const markup = renderToStaticMarkup(
       createElement(MarkdownBlocks, {
-        text: [
-          "| A | B |",
-          "| --- | --- |",
-          "| $x$ | $$y$$ |",
-        ].join("\n"),
+        text: ["| A | B |", "| --- | --- |", "| $x$ | $$y$$ |"].join("\n"),
       }),
     );
 
@@ -73,15 +69,7 @@ describe("MarkdownBlocks math rendering", () => {
   it("does not render math inside inline-code or fenced code", () => {
     const markup = renderToStaticMarkup(
       createElement(MarkdownBlocks, {
-        text: [
-          "Inline `$x$`",
-          "",
-          "```",
-          "$y$",
-          "```",
-          "",
-          "Visible $z$",
-        ].join("\n"),
+        text: ["Inline `$x$`", "", "```", "$y$", "```", "", "Visible $z$"].join("\n"),
       }),
     );
 
@@ -103,52 +91,40 @@ describe("MarkdownBlocks math rendering", () => {
   it("parses language info from fenced code metadata", () => {
     const markup = renderToStaticMarkup(
       createElement(MarkdownBlocks, {
-        text: [
-          "```ts title=demo.ts",
-          "const value: number = 1;",
-          "```",
-        ].join("\n"),
+        text: ["```ts title=demo.ts", "const value: number = 1;", "```"].join("\n"),
       }),
     );
 
-    expect(markup).toContain("data-md-code-language=\"typescript\"");
-    expect(markup).toContain("data-md-code-language-label=\"TypeScript\"");
+    expect(markup).toContain('data-md-code-language="typescript"');
+    expect(markup).toContain('data-md-code-language-label="TypeScript"');
   });
 
   it("renders interactive cloze placeholders inside fenced code blocks", () => {
     const markup = renderToStaticMarkup(
       createElement(MarkdownBlocks, {
-        text: [
-          "```sql",
-          "SELECT @@@CLOZE:first@@@, @@@CLOZE:second@@@;",
-          "```",
-        ].join("\n"),
+        text: ["```sql", "SELECT @@@CLOZE:first@@@, @@@CLOZE:second@@@;", "```"].join("\n"),
         renderPlaceholder: (id) => createElement("span", { className: "cloze-blank" }, id),
       }),
     );
 
     expect(markup).toContain("flashcard-code-block");
     expect(markup).toContain("<code");
-    expect(markup).toContain("<span class=\"cloze-blank\">first</span>");
-    expect(markup).toContain("<span class=\"cloze-blank\">second</span>");
+    expect(markup).toContain('<span class="cloze-blank">first</span>');
+    expect(markup).toContain('<span class="cloze-blank">second</span>');
     expect(markup).not.toContain("@@@CLOZE:");
-    expect(markup).toContain("data-md-code-highlighted=\"false\"");
+    expect(markup).toContain('data-md-code-highlighted="false"');
   });
 
   it("keeps svg codeblocks interactive when cloze placeholders are present", () => {
     const markup = renderToStaticMarkup(
       createElement(MarkdownBlocks, {
-        text: [
-          "```svg",
-          "<svg><text>@@@CLOZE:token@@@</text></svg>",
-          "```",
-        ].join("\n"),
+        text: ["```svg", "<svg><text>@@@CLOZE:token@@@</text></svg>", "```"].join("\n"),
         renderPlaceholder: (id) => createElement("span", { className: "cloze-blank" }, id),
       }),
     );
 
     expect(markup).toContain("flashcard-code-block");
-    expect(markup).toContain("<span class=\"cloze-blank\">token</span>");
+    expect(markup).toContain('<span class="cloze-blank">token</span>');
     expect(markup).not.toContain("md-svg-preview-block");
   });
 
@@ -169,16 +145,13 @@ describe("MarkdownBlocks math rendering", () => {
     expect(markup).toContain("<strong>Bold</strong>");
     expect(markup).toContain("<em>Italic</em>");
     expect(markup).toContain("<del>Strike</del>");
-    expect(markup).toContain("<mark class=\"md-inline-highlight\">Mark</mark>");
+    expect(markup).toContain('<mark class="md-inline-highlight">Mark</mark>');
   });
 
   it("preserves soft line breaks inside list items", () => {
     const markup = renderToStaticMarkup(
       createElement(MarkdownBlocks, {
-        text: [
-          "1. First line",
-          "   second line",
-        ].join("\n"),
+        text: ["1. First line", "   second line"].join("\n"),
       }),
     );
 
@@ -189,23 +162,17 @@ describe("MarkdownBlocks math rendering", () => {
   it("preserves ordered-list ) delimiter metadata", () => {
     const markup = renderToStaticMarkup(
       createElement(MarkdownBlocks, {
-        text: [
-          "1) Item A",
-          "2) Item B",
-        ].join("\n"),
+        text: ["1) Item A", "2) Item B"].join("\n"),
       }),
     );
 
-    expect(markup).toContain("data-md-ordered-delimiter=\")\"");
+    expect(markup).toContain('data-md-ordered-delimiter=")"');
   });
 
   it("renders cloze placeholders inside nested markdown lists", () => {
     const markup = renderToStaticMarkup(
       createElement(MarkdownBlocks, {
-        text: [
-          "1. **Prompt** @@@CLOZE:first@@@",
-          "   - Child @@@CLOZE:child@@@",
-        ].join("\n"),
+        text: ["1. **Prompt** @@@CLOZE:first@@@", "   - Child @@@CLOZE:child@@@"].join("\n"),
         renderPlaceholder: (id) => createElement("span", { className: "cloze-blank" }, id),
       }),
     );
@@ -213,8 +180,8 @@ describe("MarkdownBlocks math rendering", () => {
     expect(markup).toContain("<ol");
     expect(markup).toContain("<ul");
     expect(markup).toContain("<strong>Prompt</strong>");
-    expect(markup).toContain("<span class=\"cloze-blank\">first</span>");
-    expect(markup).toContain("<span class=\"cloze-blank\">child</span>");
+    expect(markup).toContain('<span class="cloze-blank">first</span>');
+    expect(markup).toContain('<span class="cloze-blank">child</span>');
     expect(markup).not.toContain("@@@CLOZE:");
   });
 });

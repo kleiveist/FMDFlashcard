@@ -106,9 +106,7 @@ describe("listUserVaultProfiles", () => {
 
     const result = await listUserVaultProfiles("/profile-root");
 
-    expect(result.map((entry) => entry.path)).toEqual([
-      "/profile-root/users/alpha",
-    ]);
+    expect(result.map((entry) => entry.path)).toEqual(["/profile-root/users/alpha"]);
   });
 
   it("falls back to legacy profiles/ entries", async () => {
@@ -118,9 +116,7 @@ describe("listUserVaultProfiles", () => {
 
     const result = await listUserVaultProfiles("/profile-root");
 
-    expect(result.map((entry) => entry.path)).toEqual([
-      "/profile-root/profiles/beta",
-    ]);
+    expect(result.map((entry) => entry.path)).toEqual(["/profile-root/profiles/beta"]);
   });
 
   it("includes user entries directly under the root when they contain profile.json", async () => {

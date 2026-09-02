@@ -68,8 +68,7 @@ export type ExamParseResult = {
   hasExamBlock: boolean;
 };
 
-const normalizeLines = (markdown: string) =>
-  markdown.replace(/\r\n?/g, "\n").split("\n");
+const normalizeLines = (markdown: string) => markdown.replace(/\r\n?/g, "\n").split("\n");
 
 const trimEmptyLines = (lines: string[]) => {
   let start = 0;
@@ -100,15 +99,13 @@ const isExamEndLine = (line: string) => examEndPattern.test(line);
 const isCardStartLine = (line: string) => cardStartPattern.test(line);
 const isCardEndLine = (line: string) => cardEndPattern.test(line);
 const isTaskSeparatorLine = (line: string) => taskSeparatorPattern.test(line);
-const isStrictCardWrapperStartLine = (line: string) =>
-  line.trim().toLowerCase() === "#card";
+const isStrictCardWrapperStartLine = (line: string) => line.trim().toLowerCase() === "#card";
 const isStrictCardWrapperEndLine = (line: string) => {
   const trimmed = line.trim().toLowerCase();
   return trimmed === "#endcard";
 };
 
-const stripWrapperLines = (lines: string[]) =>
-  lines.filter((line) => !isWrapperLine(line));
+const stripWrapperLines = (lines: string[]) => lines.filter((line) => !isWrapperLine(line));
 
 export const stripExamAndFlashcardWrapperLines = (text: string) =>
   stripWrapperLines(normalizeLines(text)).join("\n");
@@ -150,9 +147,7 @@ const isAutoGradablePart = (part: FlashcardPart) => {
   return false;
 };
 
-const resolveTaskGradingMode = (
-  card: CompositeFlashcard,
-): ExamTaskGradingMode => {
+const resolveTaskGradingMode = (card: CompositeFlashcard): ExamTaskGradingMode => {
   const hasAuto = card.parts.some(isAutoGradablePart);
   const hasManual = card.parts.some((part) => !isAutoGradablePart(part));
 
@@ -256,10 +251,7 @@ const isTaskFullyWrappedInCard = (taskChunkLines: string[]) => {
   }
 
   const openerIndex = findPreviousNonEmptyIndex(taskChunkLines, taskHeaderIndex);
-  if (
-    openerIndex === -1 ||
-    !isStrictCardWrapperStartLine(taskChunkLines[openerIndex] ?? "")
-  ) {
+  if (openerIndex === -1 || !isStrictCardWrapperStartLine(taskChunkLines[openerIndex] ?? "")) {
     return false;
   }
 
@@ -295,9 +287,8 @@ const toCompositeCard = (card: Flashcard): ExamCompositeFlashcard => {
 };
 
 const buildFallbackCard = (split: ExamAnswerSplit): ExamCompositeFlashcard => {
-  const front =
-    split.prompt || (split.hasAnswerMarker ? "" : "No task content provided.");
-  const back = split.hasAnswerMarker ? split.officialAnswer ?? "" : "";
+  const front = split.prompt || (split.hasAnswerMarker ? "" : "No task content provided.");
+  const back = split.hasAnswerMarker ? (split.officialAnswer ?? "") : "";
 
   return {
     kind: "composite",
@@ -320,9 +311,7 @@ const parseTaskChunk = (
   sourceRange: ExamTaskSourceRange,
 ): ExamTask => {
   const warnings: ExamTaskWarning[] = [];
-  const normalizedLines = normalizeExamDotNumberedLines(
-    normalizeTaskLines(chunkLines),
-  );
+  const normalizedLines = normalizeExamDotNumberedLines(normalizeTaskLines(chunkLines));
   const splitLines = splitExamTaskLines(chunkLines);
   const combinedLines = normalizeExamDotNumberedLines(splitLines.combinedLines);
   const taskLines = normalizeExamDotNumberedLines(splitLines.taskLines);
@@ -341,7 +330,11 @@ const parseTaskChunk = (
     "exam-combined-media",
   );
   const cardInputLines =
-    cardLines.length > 0 ? cardLines : taskContentLines.length > 0 ? taskContentLines : normalizedLines;
+    cardLines.length > 0
+      ? cardLines
+      : taskContentLines.length > 0
+        ? taskContentLines
+        : normalizedLines;
   const answerSplit = splitAnswerBlockLines(combinedContentLines);
   const cardSource = `#card\n${cardInputLines.join("\n")}\n#endcard`;
   const parsed = parseFlashcards(cardSource, { answerMatch: "line-start" });
@@ -366,9 +359,7 @@ const parseTaskChunk = (
     const answerBlocks = splitCardLines(combinedContentLines, "line-start");
     const qaAnswers = answerBlocks
       .map((block) => splitAnswerCard(block, { answerMatch: "line-start" }))
-      .filter(
-        (split): split is { front: string; back: string } => Boolean(split),
-      )
+      .filter((split): split is { front: string; back: string } => Boolean(split))
       .map((split) => split.back);
     if (qaAnswers.length > 0) {
       officialAnswer = qaAnswers.join("\n\n");
@@ -419,10 +410,7 @@ export const parseExamTasks = (markdown: string): ExamParseResult => {
 
   const resolveTaskStartLine = (taskHeaderIndex: number) => {
     const previousNonEmpty = findPreviousNonEmptyLineIndex(taskHeaderIndex);
-    if (
-      previousNonEmpty !== null &&
-      isCardStartLine(lines[previousNonEmpty] ?? "")
-    ) {
+    if (previousNonEmpty !== null && isCardStartLine(lines[previousNonEmpty] ?? "")) {
       return previousNonEmpty;
     }
     return taskHeaderIndex;

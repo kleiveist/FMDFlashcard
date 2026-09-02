@@ -4,10 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { importExamMarkdown } from "./importer";
-import {
-  serializeExamBlueprint,
-  serializeExamBlueprintStable,
-} from "./serializer";
+import { serializeExamBlueprint, serializeExamBlueprintStable } from "./serializer";
 import type { ExamBlueprint } from "./types";
 
 const buildExam = (): ExamBlueprint => ({
@@ -215,8 +212,7 @@ describe("serializeExamBlueprint", () => {
                   id: "media-2",
                   type: "svg",
                   src: "",
-                  inlineSvg:
-                    "<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>",
+                  inlineSvg: '<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" /></svg>',
                   label: "",
                 },
               ],
@@ -228,11 +224,9 @@ describe("serializeExamBlueprint", () => {
 
     const markdown = serializeExamBlueprint(exam);
 
+    expect(markdown).toContain("![[images/example.png|example]]\nQuestion");
     expect(markdown).toContain(
-      "![[images/example.png|example]]\nQuestion",
-    );
-    expect(markdown).toContain(
-      "---\n```svg\n<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>\n```\nStatement",
+      '---\n```svg\n<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" /></svg>\n```\nStatement',
     );
     expect(markdown).not.toContain("#media");
     expect(markdown).not.toContain("#mediaend");
@@ -570,12 +564,10 @@ describe("serializeExamBlueprintStable", () => {
           ? {
               ...task,
               cards: task.cards.map((card) =>
-                card.type === "qa"
-                  ? { ...card, prompt: "Question A updated" }
-                  : card
+                card.type === "qa" ? { ...card, prompt: "Question A updated" } : card,
               ),
             }
-          : task
+          : task,
       ),
     };
 
@@ -605,18 +597,8 @@ describe("serializeExamBlueprintStable", () => {
       "---",
       "#endexam",
     ].join("\n");
-    const firstTaskChunk = [
-      "1) First",
-      "Question A",
-      "Answer: A",
-      "---",
-    ].join("\n");
-    const secondTaskChunk = [
-      "2) Second",
-      "Question B",
-      "Answer: B",
-      "---",
-    ].join("\n");
+    const firstTaskChunk = ["1) First", "Question A", "Answer: A", "---"].join("\n");
+    const secondTaskChunk = ["2) Second", "Question B", "Answer: B", "---"].join("\n");
     const imported = importExamMarkdown(source);
     expect(imported).not.toBeNull();
     if (!imported) {

@@ -10,16 +10,9 @@ export type StudySectionKey =
 
 export type StudyMainMode = "study" | "monitoring";
 
-export type StudyModeSectionKey =
-  | "exam"
-  | "flashcard"
-  | "fast-flashcard"
-  | "spaced-repetition";
+export type StudyModeSectionKey = "exam" | "flashcard" | "fast-flashcard" | "spaced-repetition";
 
-export type MonitoringModeSectionKey =
-  | "monitoring-rules"
-  | "card-monitoring"
-  | "points-profiles";
+export type MonitoringModeSectionKey = "monitoring-rules" | "card-monitoring" | "points-profiles";
 
 export type StudySection = {
   key: StudySectionKey;
@@ -47,16 +40,14 @@ export const STUDY_SECTIONS: StudySection[] = [
 
 export const CARD_SECTIONS = [...STUDY_MODE_SECTIONS, ...MONITORING_MODE_SECTIONS];
 
-export const CARD_SECTION_KEYS: StudySectionKey[] = CARD_SECTIONS.map(
-  (section) => section.key,
-);
+export const CARD_SECTION_KEYS: StudySectionKey[] = CARD_SECTIONS.map((section) => section.key);
 
 export const STUDY_MODE_SECTION_KEYS: StudyModeSectionKey[] = STUDY_MODE_SECTIONS.map(
   (section) => section.key,
 );
 
-export const MONITORING_MODE_SECTION_KEYS: MonitoringModeSectionKey[] = MONITORING_MODE_SECTIONS
-  .map((section) => section.key);
+export const MONITORING_MODE_SECTION_KEYS: MonitoringModeSectionKey[] =
+  MONITORING_MODE_SECTIONS.map((section) => section.key);
 
 export const isStudyModeSection = (section: StudySectionKey): section is StudyModeSectionKey =>
   section === "exam" ||
@@ -67,6 +58,4 @@ export const isStudyModeSection = (section: StudySectionKey): section is StudyMo
 export const isMonitoringModeSection = (
   section: StudySectionKey,
 ): section is MonitoringModeSectionKey =>
-  section === "monitoring-rules" ||
-  section === "card-monitoring" ||
-  section === "points-profiles";
+  section === "monitoring-rules" || section === "card-monitoring" || section === "points-profiles";

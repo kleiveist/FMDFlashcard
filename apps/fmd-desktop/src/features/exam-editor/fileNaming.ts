@@ -10,8 +10,7 @@ import { normalizeRelativePath } from "../../lib/path";
 const NEW_EXAM_PREFIX = "New Exam";
 const MAX_NEW_EXAM_INDEX = 99;
 
-const normalizeDirPath = (value: string) =>
-  normalizeRelativePath(value).replace(/\/+$/, "");
+const normalizeDirPath = (value: string) => normalizeRelativePath(value).replace(/\/+$/, "");
 
 const getParentRelativePath = (value: string) => {
   const normalized = normalizeRelativePath(value).replace(/\/+$/, "");
@@ -34,10 +33,7 @@ const getFileName = (value: string) => {
 const buildNewExamFilename = (index: number) =>
   `${NEW_EXAM_PREFIX} ${String(index).padStart(2, "0")}.md`;
 
-export const findNextNewExamFilename = (
-  dir: string,
-  existingRelativePaths: Iterable<string>,
-) => {
+export const findNextNewExamFilename = (dir: string, existingRelativePaths: Iterable<string>) => {
   const normalizedDir = normalizeDirPath(dir);
   const existingNames = new Set<string>();
 

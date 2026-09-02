@@ -54,8 +54,7 @@ const getProfileFilePath = (profilePath: string) =>
 const getSettingsFilePath = (profilePath: string) =>
   `${profilePath.replace(/\\/g, "/")}/settings.json`;
 
-const getExamRunsDir = (profilePath: string) =>
-  `${profilePath.replace(/\\/g, "/")}/exam-runs`;
+const getExamRunsDir = (profilePath: string) => `${profilePath.replace(/\\/g, "/")}/exam-runs`;
 
 const getSrRegistryPath = (profilePath: string) =>
   `${profilePath.replace(/\\/g, "/")}/spaced-repetition/registry.json`;
@@ -65,11 +64,7 @@ const getSrProgressPath = (profilePath: string, userId: string) =>
     userId,
   )}/progress.json`;
 
-const srProgress = (
-  boxCanonical: number,
-  attempts: number,
-  lastReviewedAt: string | null,
-) => ({
+const srProgress = (boxCanonical: number, attempts: number, lastReviewedAt: string | null) => ({
   boxCanonical,
   attempts,
   lastResult: attempts > 0 ? ("correct" as const) : ("neutral" as const),
@@ -370,10 +365,7 @@ describe("spaced repetition folder storage", () => {
 
     expect(loadedStorage?.users.map((user) => user.id)).toEqual(["u1"]);
     expect(loadedStorage?.userStateById.u1.cardStates.cardA?.boxCanonical).toBe(3);
-    expect(registry.legacyVaultIds.sort()).toEqual([
-      "currentEmpty",
-      "filledLegacy",
-    ]);
+    expect(registry.legacyVaultIds.sort()).toEqual(["currentEmpty", "filledLegacy"]);
   });
 
   it("deduplicates legacy users and keeps the newest card progress", async () => {
@@ -445,14 +437,10 @@ describe("spaced repetition folder storage", () => {
 
     const loaded = await loadSpacedRepetitionStore(profilePath);
     const archivedU2Progress = Array.from(files.keys()).some((path) =>
-      path.startsWith(
-        `${profilePath}/spaced-repetition/users/u2/progress.deleted.`,
-      ),
+      path.startsWith(`${profilePath}/spaced-repetition/users/u2/progress.deleted.`),
     );
 
-    expect(loaded.byVaultId.__profile__?.users.map((user) => user.id)).toEqual([
-      "u1",
-    ]);
+    expect(loaded.byVaultId.__profile__?.users.map((user) => user.id)).toEqual(["u1"]);
     expect(files.has(getSrProgressPath(profilePath, "u2"))).toBe(false);
     expect(archivedU2Progress).toBe(true);
   });
@@ -497,9 +485,7 @@ describe("spaced repetition folder storage", () => {
 
     const loaded = await loadSpacedRepetitionStore(profilePath);
 
-    expect(loaded.byVaultId.__profile__?.users.map((user) => user.id)).toEqual([
-      "u1",
-    ]);
+    expect(loaded.byVaultId.__profile__?.users.map((user) => user.id)).toEqual(["u1"]);
   });
 });
 
@@ -528,13 +514,13 @@ describe("exam run markdown storage", () => {
       [
         "---",
         "date: 2024-01-01T10:10:00.000Z",
-        "user: \"User\"",
-        "exam_file: \"exam.md\"",
-        "score: \"10/20\"",
+        'user: "User"',
+        'exam_file: "exam.md"',
+        'score: "10/20"',
         "percent: 50",
         "status: 5",
-        "duration: \"00:10:00\"",
-        "id: \"run-1\"",
+        'duration: "00:10:00"',
+        'id: "run-1"',
         "---",
         "",
       ].join("\n"),
@@ -560,13 +546,13 @@ describe("exam run markdown storage", () => {
       [
         "---",
         "date: 2024-01-01T10:10:00.000Z",
-        "user: \"User\"",
-        "exam_file: \"exam.md\"",
-        "score: \"10/20\"",
+        'user: "User"',
+        'exam_file: "exam.md"',
+        'score: "10/20"',
         "percent: 50",
         "status: 5",
-        "duration: \"00:10:00\"",
-        "id: \"run-1\"",
+        'duration: "00:10:00"',
+        'id: "run-1"',
         "---",
         "",
       ].join("\n"),

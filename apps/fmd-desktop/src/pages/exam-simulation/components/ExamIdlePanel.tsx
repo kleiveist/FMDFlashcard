@@ -40,8 +40,7 @@ export const ExamIdlePanel = ({
   );
 
   const hasBlockingMissing =
-    missingSettings.length > 0 &&
-    missingSettings.some((item) => item.severity !== "warning");
+    missingSettings.length > 0 && missingSettings.some((item) => item.severity !== "warning");
 
   if (selectedCount === 0) {
     return renderSetupPanel(
@@ -53,9 +52,7 @@ export const ExamIdlePanel = ({
   }
 
   if (previewState === "loading") {
-    return renderSetupPanel(
-      <div className="empty-state">Lade ausgewaehlte Exam-Dateien...</div>,
-    );
+    return renderSetupPanel(<div className="empty-state">Lade ausgewaehlte Exam-Dateien...</div>);
   }
 
   if (previewState === "error") {

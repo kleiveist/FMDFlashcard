@@ -323,7 +323,7 @@ describe("canvas document parser", () => {
   it("serializes with trailing newline", () => {
     const serialized = serializeCanvasDocument(createEmptyCanvasDocument());
     expect(serialized.endsWith("\n")).toBe(true);
-    expect(serialized).toContain("\"nodes\": []");
+    expect(serialized).toContain('"nodes": []');
   });
 
   it("generates stable node ids when ids are missing", () => {
@@ -361,6 +361,6 @@ describe("canvas document parser", () => {
       return;
     }
     expect(parsed.document.metadata).toEqual({ source: "test" });
-    expect(serializeCanvasDocument(parsed.document)).toContain("\"metadata\"");
+    expect(serializeCanvasDocument(parsed.document)).toContain('"metadata"');
   });
 });

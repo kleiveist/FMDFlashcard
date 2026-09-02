@@ -28,9 +28,11 @@ const isValidDateParts = (year: number, month: number, day: number) => {
     return false;
   }
   const candidate = new Date(year, month - 1, day);
-  return candidate.getFullYear() === year &&
+  return (
+    candidate.getFullYear() === year &&
     candidate.getMonth() === month - 1 &&
-    candidate.getDate() === day;
+    candidate.getDate() === day
+  );
 };
 
 const isValidTimeParts = (hours: number, minutes: number) =>
@@ -119,10 +121,7 @@ export const normalizeTimelineBaseDate = (value: string | null | undefined) => {
   return normalizeDateValue(value);
 };
 
-export const normalizeTimelineValueForMode = (
-  mode: DatabaseTimelineMode,
-  value: string,
-) => {
+export const normalizeTimelineValueForMode = (mode: DatabaseTimelineMode, value: string) => {
   if (mode === "time") {
     return normalizeTimeValue(value);
   }
@@ -173,7 +172,7 @@ const parseTimeStringToMinutes = (value: string) => {
   if (!parts) {
     return null;
   }
-  return (parts.hours * 60) + parts.minutes;
+  return parts.hours * 60 + parts.minutes;
 };
 
 const resolveBaseDateTimestamp = (baseDate: string | null | undefined) => {
@@ -183,11 +182,14 @@ const resolveBaseDateTimestamp = (baseDate: string | null | undefined) => {
     now.setHours(0, 0, 0, 0);
     return now.getTime();
   }
-  return parseDateStringToLocalTimestamp(normalizedBaseDate) ?? (() => {
-    const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    return now.getTime();
-  })();
+  return (
+    parseDateStringToLocalTimestamp(normalizedBaseDate) ??
+    (() => {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      return now.getTime();
+    })()
+  );
 };
 
 const toRawString = (value: DatabaseNormalizedFieldValue | unknown): string | null => {
@@ -202,7 +204,11 @@ const toRawString = (value: DatabaseNormalizedFieldValue | unknown): string | nu
   }
   if (value && typeof value === "object" && "raw" in (value as Record<string, unknown>)) {
     const raw = (value as { raw?: unknown }).raw;
-    return typeof raw === "string" ? raw : raw === null || typeof raw === "undefined" ? null : String(raw);
+    return typeof raw === "string"
+      ? raw
+      : raw === null || typeof raw === "undefined"
+        ? null
+        : String(raw);
   }
   return null;
 };
@@ -220,7 +226,7 @@ export const parseTimelineComparableValue = ({
 }) => {
   if (value instanceof Date && Number.isFinite(value.getTime())) {
     if (mode === "time") {
-      return (value.getHours() * 60) + value.getMinutes();
+      return value.getHours() * 60 + value.getMinutes();
     }
     return value.getTime();
   }
@@ -257,9 +263,9 @@ export const parseTimelineComparableValue = ({
   if (datetimeTimestamp !== null) {
     return mode === "time"
       ? (() => {
-        const date = new Date(datetimeTimestamp);
-        return (date.getHours() * 60) + date.getMinutes();
-      })()
+          const date = new Date(datetimeTimestamp);
+          return date.getHours() * 60 + date.getMinutes();
+        })()
       : datetimeTimestamp;
   }
   const dateTimestamp = parseDateStringToLocalTimestamp(trimmed);
@@ -268,7 +274,9 @@ export const parseTimelineComparableValue = ({
   }
   const timeMinutes = parseTimeStringToMinutes(trimmed);
   if (timeMinutes !== null) {
-    return mode === "time" ? timeMinutes : resolveBaseDateTimestamp(baseDate) + (timeMinutes * 60 * 1000);
+    return mode === "time"
+      ? timeMinutes
+      : resolveBaseDateTimestamp(baseDate) + timeMinutes * 60 * 1000;
   }
 
   return null;
@@ -295,7 +303,7 @@ export const parseTimelineTimestamp = ({
     return null;
   }
   if (mode === "time") {
-    return resolveBaseDateTimestamp(baseDate) + (comparable * 60 * 1000);
+    return resolveBaseDateTimestamp(baseDate) + comparable * 60 * 1000;
   }
   return comparable;
 };
@@ -340,10 +348,7 @@ export const getTimelineDefaultDurationMs = (mode: DatabaseTimelineMode) => {
 
 const toDate = (timestamp: number) => new Date(timestamp);
 
-export const toStartOfTimelineZoom = (
-  timestamp: number,
-  zoom: DatabaseGanttZoom,
-) => {
+export const toStartOfTimelineZoom = (timestamp: number, zoom: DatabaseGanttZoom) => {
   const date = toDate(timestamp);
   if (zoom === "year") {
     date.setMonth(0, 1);
@@ -379,18 +384,14 @@ export const toStartOfTimelineZoom = (
   return date;
 };
 
-export const addTimelineZoomStep = (
-  date: Date,
-  zoom: DatabaseGanttZoom,
-  step = 1,
-) => {
+export const addTimelineZoomStep = (date: Date, zoom: DatabaseGanttZoom, step = 1) => {
   const next = new Date(date.getTime());
   if (zoom === "year") {
     next.setFullYear(next.getFullYear() + step, 0, 1);
     return next;
   }
   if (zoom === "quarter") {
-    next.setMonth(next.getMonth() + (step * 3), 1);
+    next.setMonth(next.getMonth() + step * 3, 1);
     return next;
   }
   if (zoom === "month") {
@@ -398,7 +399,7 @@ export const addTimelineZoomStep = (
     return next;
   }
   if (zoom === "week") {
-    next.setDate(next.getDate() + (step * 7));
+    next.setDate(next.getDate() + step * 7);
     return next;
   }
   if (zoom === "day") {
@@ -413,10 +414,7 @@ export const addTimelineZoomStep = (
   return next;
 };
 
-export const formatTimelineValueFromTimestamp = (
-  timestamp: number,
-  mode: DatabaseTimelineMode,
-) => {
+export const formatTimelineValueFromTimestamp = (timestamp: number, mode: DatabaseTimelineMode) => {
   const date = new Date(timestamp);
   if (mode === "time") {
     return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
@@ -426,4 +424,3 @@ export const formatTimelineValueFromTimestamp = (
   }
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 };
-

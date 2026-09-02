@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createDefaultDatabaseBlockConfig, parseDatabaseBlockConfigFromRaw, serializeDatabaseBlockConfig } from "./database-block-parser";
+import {
+  createDefaultDatabaseBlockConfig,
+  parseDatabaseBlockConfigFromRaw,
+  serializeDatabaseBlockConfig,
+} from "./database-block-parser";
 
 describe("database-block-parser", () => {
   it("parses the new saved-views schema and applies the active view mirror", () => {
@@ -141,13 +145,9 @@ describe("database-block-parser", () => {
           filters: {
             id: "root",
             op: "and",
-            rules: [
-              { id: "rule-1", field: "status", op: "is", value: "open" },
-            ],
+            rules: [{ id: "rule-1", field: "status", op: "is", value: "open" }],
           },
-          sort: [
-            { id: "sort-1", field: "unitsstart", dir: "asc" },
-          ],
+          sort: [{ id: "sort-1", field: "unitsstart", dir: "asc" }],
         },
       ],
     };
@@ -227,7 +227,7 @@ describe("database-block-parser", () => {
       "            mappings:",
       "              - from: text1",
       "                to: 10",
-      "              - from: \"\"",
+      '              - from: ""',
       "                to: 30",
       "              - from: text3",
       "                to: nope",
@@ -335,11 +335,13 @@ describe("database-block-parser", () => {
     const serialized = serializeDatabaseBlockConfig(parsed.config);
     const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
     expect(reparsed.errors).toEqual([]);
-    expect(reparsed.config.views.items.map((view) => ({
-      id: view.id,
-      blockResolution: view.view.blockResolution,
-      projectBarFillConfigs: view.view.projectBarFillConfigs,
-    }))).toEqual([
+    expect(
+      reparsed.config.views.items.map((view) => ({
+        id: view.id,
+        blockResolution: view.view.blockResolution,
+        projectBarFillConfigs: view.view.projectBarFillConfigs,
+      })),
+    ).toEqual([
       {
         id: "view-alpha",
         blockResolution: 2,
@@ -466,7 +468,9 @@ describe("database-block-parser", () => {
 
     const reparsed = parseDatabaseBlockConfigFromRaw(serialized);
     expect(reparsed.errors).toEqual([]);
-    expect(reparsed.config.fields?.[0]?.formulaDefinition).toEqual(config.fields[0]?.formulaDefinition);
+    expect(reparsed.config.fields?.[0]?.formulaDefinition).toEqual(
+      config.fields[0]?.formulaDefinition,
+    );
   });
 
   it("normalizes legacy formula source history-folder to history during parse/serialize", () => {
@@ -716,9 +720,7 @@ describe("database-block-parser", () => {
     const firstSaved = first.config.views.items[0]!;
     const secondSaved = second.config.views.items[0]!;
     expect(firstSaved.filters.id).toBe(secondSaved.filters.id);
-    expect(firstSaved.sort.map((rule) => rule.id)).toEqual(
-      secondSaved.sort.map((rule) => rule.id),
-    );
+    expect(firstSaved.sort.map((rule) => rule.id)).toEqual(secondSaved.sort.map((rule) => rule.id));
 
     const firstNested = firstSaved.filters.rules.find((entry) => "rules" in entry);
     const secondNested = secondSaved.filters.rules.find((entry) => "rules" in entry);
@@ -726,9 +728,7 @@ describe("database-block-parser", () => {
     expect(secondNested && "rules" in secondNested).toBe(true);
     if (firstNested && "rules" in firstNested && secondNested && "rules" in secondNested) {
       expect(firstNested.id).toBe(secondNested.id);
-      expect(
-        firstNested.rules.map((entry) => entry.id),
-      ).toEqual(
+      expect(firstNested.rules.map((entry) => entry.id)).toEqual(
         secondNested.rules.map((entry) => entry.id),
       );
     }

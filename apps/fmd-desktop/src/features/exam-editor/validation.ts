@@ -113,9 +113,7 @@ const analyzeTokens = (prompt: string) => {
   return { count, hasEmpty };
 };
 
-const validateQaCard = (
-  card: Extract<CardBlueprint, { type: "qa" }>,
-): CardValidation => {
+const validateQaCard = (card: Extract<CardBlueprint, { type: "qa" }>): CardValidation => {
   const validation: CardValidation = {
     valid: false,
     errors: [],
@@ -131,9 +129,7 @@ const validateQaCard = (
   return validation;
 };
 
-const validateTfCard = (
-  card: Extract<CardBlueprint, { type: "tf" }>,
-): CardValidation => {
+const validateTfCard = (card: Extract<CardBlueprint, { type: "tf" }>): CardValidation => {
   const validation: CardValidation = {
     valid: false,
     errors: [],
@@ -261,8 +257,7 @@ export const validateTask = (task: ExamTaskBlueprint): TaskValidation => {
   if (task.cards.length === 0) {
     errors.push("Task requires at least one part.");
   }
-  const isValid =
-    errors.length === 0 && cardValidations.every((entry) => entry.valid);
+  const isValid = errors.length === 0 && cardValidations.every((entry) => entry.valid);
   return {
     taskId: task.id,
     valid: isValid,
@@ -277,8 +272,7 @@ export const validateExamBlueprint = (exam: ExamBlueprint): ExamValidation => {
   if (exam.tasks.length === 0) {
     errors.push("Exam requires at least one task.");
   }
-  const valid =
-    errors.length === 0 && taskValidations.every((task) => task.valid);
+  const valid = errors.length === 0 && taskValidations.every((task) => task.valid);
   return {
     valid,
     errors,

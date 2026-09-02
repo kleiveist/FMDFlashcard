@@ -102,9 +102,7 @@ export const ExamSettingsPanel = ({
       <div className="panel-header">
         <div>
           <h2>{tSettings(language, "settings.examSettings.title")}</h2>
-          <p className="muted">
-            {tSettings(language, "settings.examSettings.description")}
-          </p>
+          <p className="muted">{tSettings(language, "settings.examSettings.description")}</p>
         </div>
       </div>
       <div className="panel-body">
@@ -137,9 +135,7 @@ export const ExamSettingsPanel = ({
             />
           </label>
           <label className="setting-inline">
-            <span className="label">
-              {tSettings(language, "settings.examSettings.duration")}
-            </span>
+            <span className="label">{tSettings(language, "settings.examSettings.duration")}</span>
             <div className="exam-time-input">
               <input
                 type="number"
@@ -203,9 +199,7 @@ export const ExamSettingsPanel = ({
         </div>
 
         {!isValid ? (
-          <div className="error">
-            {tSettings(language, "settings.examSettings.invalid")}
-          </div>
+          <div className="error">{tSettings(language, "settings.examSettings.invalid")}</div>
         ) : null}
       </div>
     </section>
@@ -234,9 +228,7 @@ export const ExamTogglesPanel = ({
     </div>
     <div className="panel-body">
       <div className="setting-row">
-        <span className="label">
-          {tSettings(language, "settings.examToggles.timeLimit")}
-        </span>
+        <span className="label">{tSettings(language, "settings.examToggles.timeLimit")}</span>
         <div className="setting-inline">
           <label className="switch">
             <input
@@ -254,9 +246,7 @@ export const ExamTogglesPanel = ({
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">
-          {tSettings(language, "settings.examToggles.timeline")}
-        </span>
+        <span className="label">{tSettings(language, "settings.examToggles.timeline")}</span>
         <div className="setting-inline">
           <label className="switch">
             <input
@@ -274,9 +264,7 @@ export const ExamTogglesPanel = ({
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">
-          {tSettings(language, "settings.examToggles.helpHints")}
-        </span>
+        <span className="label">{tSettings(language, "settings.examToggles.helpHints")}</span>
         <div className="setting-inline">
           <label className="switch">
             <input
@@ -294,9 +282,7 @@ export const ExamTogglesPanel = ({
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">
-          {tSettings(language, "settings.examToggles.taskSources")}
-        </span>
+        <span className="label">{tSettings(language, "settings.examToggles.taskSources")}</span>
         <div className="setting-inline">
           <label className="switch">
             <input
@@ -315,24 +301,18 @@ export const ExamTogglesPanel = ({
       </div>
 
       <div className="setting-row">
-        <span className="label">
-          {tSettings(language, "settings.examToggles.aiEvaluation")}
-        </span>
+        <span className="label">{tSettings(language, "settings.examToggles.aiEvaluation")}</span>
         <div className="setting-inline">
           <label className="switch">
             <input type="checkbox" checked={aiEvaluation.enabled} disabled />
             <span className="slider" />
           </label>
-          <span className="muted">
-            {tSettings(language, "settings.examToggles.comingSoon")}
-          </span>
+          <span className="muted">{tSettings(language, "settings.examToggles.comingSoon")}</span>
         </div>
       </div>
       {onResetStatistics ? (
         <div className="setting-row">
-          <span className="label">
-            {tSettings(language, "settings.examToggles.runHistory")}
-          </span>
+          <span className="label">{tSettings(language, "settings.examToggles.runHistory")}</span>
           <div className="setting-actions">
             <button
               type="button"
@@ -441,9 +421,7 @@ export const ExamTaskTypeDefaultsPanel = ({
     <div className="panel-header">
       <div>
         <h2>{tSettings(language, "settings.taskTypeDefaults.title")}</h2>
-        <p className="muted">
-          {tSettings(language, "settings.taskTypeDefaults.description")}
-        </p>
+        <p className="muted">{tSettings(language, "settings.taskTypeDefaults.description")}</p>
       </div>
       <button type="button" className="ghost small" onClick={onResetPreset}>
         {tSettings(language, "settings.taskTypeDefaults.restorePreset")}
@@ -485,9 +463,7 @@ export const ExamTaskTypeDefaultsPanel = ({
               value={pointsByType[option.type]}
               onChange={(event) => onPointChange(option.type, event.target.value)}
             />
-            <span className="muted">
-              {tSettings(language, "settings.taskTypeDefaults.points")}
-            </span>
+            <span className="muted">{tSettings(language, "settings.taskTypeDefaults.points")}</span>
             <input
               type="number"
               min={0}

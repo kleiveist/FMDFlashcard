@@ -44,16 +44,8 @@ type ExamCorrectionHostProps = {
     validTokenIds: Set<string>,
     dragBlankIds: Set<string>,
   ) => void;
-  onClozeTokenRemove: (
-    sessionTaskId: string,
-    partIndex: number,
-    blankId: string,
-  ) => void;
-  onTextInputChange: (
-    sessionTaskId: string,
-    partIndex: number,
-    value: string,
-  ) => void;
+  onClozeTokenRemove: (sessionTaskId: string, partIndex: number, blankId: string) => void;
+  onTextInputChange: (sessionTaskId: string, partIndex: number, value: string) => void;
   onSubmit: (sessionTaskId: string, canSubmit: boolean) => void;
   onBack: () => void;
   onNext: () => void;
@@ -107,20 +99,14 @@ export const ExamCorrectionHost = ({
           <h2>
             Card {queueIndex + 1} of {queueLength}
           </h2>
-          <p className="muted">
-            Practice only. This does not change your exam score.
-          </p>
+          <p className="muted">Practice only. This does not change your exam score.</p>
           <p className="muted">Max points: {maxPoints}</p>
           {showSourceBadge ? (
             <span className="exam-task-source-badge">Quelle: {task.sourceTitle}</span>
           ) : null}
         </div>
         <div className="exam-task-header-actions">
-          <button
-            type="button"
-            className="ghost small"
-            onClick={onBackToResults}
-          >
+          <button type="button" className="ghost small" onClick={onBackToResults}>
             Back to Results
           </button>
         </div>
@@ -128,9 +114,7 @@ export const ExamCorrectionHost = ({
 
       <div className="exam-correction-banner">
         <strong>Correction Mode</strong>
-        <span className="muted">
-          Work through incorrect cards again with fresh answers.
-        </span>
+        <span className="muted">Work through incorrect cards again with fresh answers.</span>
       </div>
 
       <div className="flashcard-list">
@@ -162,14 +146,7 @@ export const ExamCorrectionHost = ({
           onClozeInputChange={(_taskIndex, partIndex, blankId, value) =>
             onClozeInputChange(task.sessionTaskId, partIndex, blankId, value)
           }
-          onClozeTokenDrop={(
-            event,
-            _taskIndex,
-            partIndex,
-            blankId,
-            validTokenIds,
-            dragBlankIds,
-          ) =>
+          onClozeTokenDrop={(event, _taskIndex, partIndex, blankId, validTokenIds, dragBlankIds) =>
             onClozeTokenDrop(
               event,
               task.sessionTaskId,
@@ -189,27 +166,15 @@ export const ExamCorrectionHost = ({
           }
           onTextCheck={noopTextCheck}
           onSelfGrade={noopSelfGrade}
-          onSubmit={(_taskIndex, canSubmit) =>
-            onSubmit(task.sessionTaskId, canSubmit)
-          }
+          onSubmit={(_taskIndex, canSubmit) => onSubmit(task.sessionTaskId, canSubmit)}
         />
       </div>
 
       <div className="flashcard-pagination correction-pagination">
-        <button
-          type="button"
-          className="ghost small"
-          onClick={onBack}
-          disabled={!canGoBack}
-        >
+        <button type="button" className="ghost small" onClick={onBack} disabled={!canGoBack}>
           Previous
         </button>
-        <button
-          type="button"
-          className="ghost small"
-          onClick={onNext}
-          disabled={!canGoNext}
-        >
+        <button type="button" className="ghost small" onClick={onNext} disabled={!canGoNext}>
           Next
         </button>
       </div>

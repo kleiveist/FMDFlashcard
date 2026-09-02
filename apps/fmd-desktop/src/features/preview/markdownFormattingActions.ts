@@ -35,9 +35,9 @@ const WRAPPER_BY_TOKEN = new Map<string, string>([
   ["$", "$"],
   ["%%", "%%"],
   ["%", "%"],
-  ["\"\"", "\""],
-  ["\"", "\""],
-  ["''", "\""],
+  ['""', '"'],
+  ['"', '"'],
+  ["''", '"'],
 ]);
 
 const resolvePrefixToken = (rawToken: string) => {
@@ -70,9 +70,9 @@ const applyWrapper = (
     };
   }
   const selected = value.slice(normalized.start, normalized.end);
-  const nextValue = `${value.slice(0, normalized.start)}${marker}${selected}${marker}${
-    value.slice(normalized.end)
-  }`;
+  const nextValue = `${value.slice(0, normalized.start)}${marker}${selected}${marker}${value.slice(
+    normalized.end,
+  )}`;
   return {
     handled: true,
     value: nextValue,
@@ -104,9 +104,10 @@ const applyPrefix = (
   }
 
   const lineStart = value.lastIndexOf("\n", normalized.start - 1) + 1;
-  const effectiveEnd = normalized.end > normalized.start
-    ? Math.max(normalized.start, normalized.end - 1)
-    : normalized.end;
+  const effectiveEnd =
+    normalized.end > normalized.start
+      ? Math.max(normalized.start, normalized.end - 1)
+      : normalized.end;
   const lineEndMarker = value.indexOf("\n", effectiveEnd);
   const lineEnd = lineEndMarker === -1 ? value.length : lineEndMarker;
   const block = value.slice(lineStart, lineEnd);
@@ -139,8 +140,7 @@ export const applyMarkdownFormattingInsertion = (
     };
   }
 
-  const directWrapper = WRAPPER_BY_TOKEN.get(token) ??
-    WRAPPER_BY_TOKEN.get(token.trim());
+  const directWrapper = WRAPPER_BY_TOKEN.get(token) ?? WRAPPER_BY_TOKEN.get(token.trim());
   if (directWrapper) {
     return applyWrapper(value, selection, directWrapper);
   }

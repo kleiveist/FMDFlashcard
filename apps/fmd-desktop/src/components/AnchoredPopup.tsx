@@ -19,10 +19,7 @@ import { createPortal } from "react-dom";
 import { registerCloseLayer } from "../lib/shortcuts/closeOrBack";
 import { CloseIcon } from "./icons";
 
-type AnchoredPopupPlacement =
-  | "bottom-start"
-  | "bottom-end"
-  | "right-start";
+type AnchoredPopupPlacement = "bottom-start" | "bottom-end" | "right-start";
 type AnchoredPopupMode = "anchored" | "centered";
 
 type PopupPosition = {
@@ -254,19 +251,17 @@ export const AnchoredPopup = ({
 
   const style = position
     ? {
-      top: `${position.top}px`,
-      left: `${position.left}px`,
-    }
+        top: `${position.top}px`,
+        left: `${position.left}px`,
+      }
     : undefined;
 
   const popupPanel = (
     <div
       ref={panelRef}
-      className={[
-        "anchored-popup",
-        isCenteredMode ? "anchored-popup-centered" : "",
-        className,
-      ].filter(Boolean).join(" ")}
+      className={["anchored-popup", isCenteredMode ? "anchored-popup-centered" : "", className]
+        .filter(Boolean)
+        .join(" ")}
       role="dialog"
       aria-modal={isCenteredMode ? "true" : "false"}
       aria-label={ariaLabel}
@@ -289,11 +284,7 @@ export const AnchoredPopup = ({
 
   if (isCenteredMode && showBackdrop) {
     return createPortal(
-      <div
-        className="anchored-popup-backdrop"
-        role="presentation"
-        onMouseDown={onClose}
-      >
+      <div className="anchored-popup-backdrop" role="presentation" onMouseDown={onClose}>
         {popupPanel}
       </div>,
       document.body,

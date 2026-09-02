@@ -6,7 +6,8 @@
 
 export type DatabaseFormulaOperation = "avg" | "sum" | "count" | "group_count";
 
-export type DatabaseFormulaSourceType = "current-folder" | "explicit-folder" | "multi-folder" | "history";
+export type DatabaseFormulaSourceType =
+  "current-folder" | "explicit-folder" | "multi-folder" | "history";
 
 export type DatabaseFormulaSourceSpec = {
   type: DatabaseFormulaSourceType;
@@ -66,7 +67,12 @@ const normalizeSourceType = (value: unknown): DatabaseFormulaSourceType | null =
 
 const normalizeOperation = (value: unknown): DatabaseFormulaOperation | null => {
   const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
-  if (normalized === "avg" || normalized === "sum" || normalized === "count" || normalized === "group_count") {
+  if (
+    normalized === "avg" ||
+    normalized === "sum" ||
+    normalized === "count" ||
+    normalized === "group_count"
+  ) {
     return normalized;
   }
   return null;
@@ -157,8 +163,7 @@ export const normalizeDatabaseFormulaDefinitionV1 = (
 
 export const isDatabaseFormulaDefinitionV1 = (
   value: unknown,
-): value is DatabaseFormulaDefinitionV1 =>
-  Boolean(normalizeDatabaseFormulaDefinitionV1(value));
+): value is DatabaseFormulaDefinitionV1 => Boolean(normalizeDatabaseFormulaDefinitionV1(value));
 
 export const buildDefaultDatabaseFormulaDefinitionV1 = (): DatabaseFormulaDefinitionV1 => ({
   version: 1,

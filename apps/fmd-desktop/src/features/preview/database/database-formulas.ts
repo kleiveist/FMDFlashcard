@@ -10,10 +10,7 @@ import {
   type DatabaseFormulaShortTextRule,
 } from "../formula/database-formula-types";
 import { resolveFormulaSourceRecords } from "../formula/formula-source-resolver";
-import {
-  type DatabaseNormalizedFieldValue,
-  type DatabaseRecord,
-} from "./database-types";
+import { type DatabaseNormalizedFieldValue, type DatabaseRecord } from "./database-types";
 
 export const LEGACY_DATABASE_FORMULA_INCOMPATIBLE_MESSAGE = "Legacy-Formel inkompatibel";
 
@@ -38,14 +35,13 @@ const defaultGetFieldValue = (
     return record.normalizedFields[key] ?? null;
   }
   const normalizedKey = toLower(key);
-  const matchedKey = Object.keys(record.normalizedFields)
-    .find((entryKey) => toLower(entryKey) === normalizedKey);
-  return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
+  const matchedKey = Object.keys(record.normalizedFields).find(
+    (entryKey) => toLower(entryKey) === normalizedKey,
+  );
+  return matchedKey ? (record.normalizedFields[matchedKey] ?? null) : null;
 };
 
-const toFlatValues = (
-  value: DatabaseNormalizedFieldValue,
-): DatabaseNormalizedFieldValue[] => {
+const toFlatValues = (value: DatabaseNormalizedFieldValue): DatabaseNormalizedFieldValue[] => {
   if (value === null || typeof value === "undefined") {
     return [];
   }

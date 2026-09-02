@@ -12,7 +12,11 @@ import {
   useState,
 } from "react";
 import { AlertIcon, CheckIcon } from "../../../components/icons";
-import type { ExamBlueprint, ExamTaskBlueprint, CardType } from "../../../features/exam-editor/types";
+import type {
+  ExamBlueprint,
+  ExamTaskBlueprint,
+  CardType,
+} from "../../../features/exam-editor/types";
 import type { ExamEditorSelection } from "../types";
 import { serializeCardTypeLabel } from "../../../features/exam-editor/serializer";
 import {
@@ -56,8 +60,7 @@ type ExamCanvasProps = {
 };
 
 type DragPayload =
-  | { kind: "task"; taskId: string }
-  | { kind: "card"; taskId: string; cardId: string };
+  { kind: "task"; taskId: string } | { kind: "card"; taskId: string; cardId: string };
 
 type TaskDropTarget = {
   taskId: string;
@@ -143,9 +146,7 @@ export const ExamCanvas = ({
     () => exam.tasks.slice().sort((a, b) => a.order - b.order),
     [exam.tasks],
   );
-  const hasValidationErrors = Boolean(
-    validationSummary && validationSummary.count > 0,
-  );
+  const hasValidationErrors = Boolean(validationSummary && validationSummary.count > 0);
   const validationLabel = hasValidationErrors
     ? `Cannot save: ${validationSummary?.count ?? 0} validation ${
         validationSummary?.count === 1 ? "error" : "errors"
@@ -227,16 +228,10 @@ export const ExamCanvas = ({
       let delta = 0;
       if (pointerY < rect.top + AUTO_SCROLL_EDGE) {
         const distance = rect.top + AUTO_SCROLL_EDGE - pointerY;
-        delta = -Math.min(
-          AUTO_SCROLL_SPEED,
-          (distance / AUTO_SCROLL_EDGE) * AUTO_SCROLL_SPEED,
-        );
+        delta = -Math.min(AUTO_SCROLL_SPEED, (distance / AUTO_SCROLL_EDGE) * AUTO_SCROLL_SPEED);
       } else if (pointerY > rect.bottom - AUTO_SCROLL_EDGE) {
         const distance = pointerY - (rect.bottom - AUTO_SCROLL_EDGE);
-        delta = Math.min(
-          AUTO_SCROLL_SPEED,
-          (distance / AUTO_SCROLL_EDGE) * AUTO_SCROLL_SPEED,
-        );
+        delta = Math.min(AUTO_SCROLL_SPEED, (distance / AUTO_SCROLL_EDGE) * AUTO_SCROLL_SPEED);
       }
       if (delta !== 0) {
         container.scrollTop += delta;
@@ -299,10 +294,7 @@ export const ExamCanvas = ({
       effectAllowed: "move",
     });
     try {
-      event.dataTransfer.setData(
-        CARD_DRAG_TYPE,
-        JSON.stringify({ taskId, cardId }),
-      );
+      event.dataTransfer.setData(CARD_DRAG_TYPE, JSON.stringify({ taskId, cardId }));
     } catch {
       // ignore restricted dataTransfer implementations
     }
@@ -367,9 +359,7 @@ export const ExamCanvas = ({
     if (activeDragPayload.kind === "card") {
       event.preventDefault();
       event.stopPropagation();
-      const sourceTask = orderedTasks.find(
-        (task) => task.id === activeDragPayload.taskId,
-      );
+      const sourceTask = orderedTasks.find((task) => task.id === activeDragPayload.taskId);
       const targetTask = orderedTasks.find((task) => task.id === taskId);
       if (!sourceTask || !targetTask) {
         clearDragState();
@@ -390,12 +380,7 @@ export const ExamCanvas = ({
         clearDragState();
         return;
       }
-      onMoveCardAcrossTasks(
-        activeDragPayload.taskId,
-        taskId,
-        sourceIndex,
-        0,
-      );
+      onMoveCardAcrossTasks(activeDragPayload.taskId, taskId, sourceIndex, 0);
       onSelectCard(taskId, activeDragPayload.cardId);
       clearDragState();
       return;
@@ -406,9 +391,7 @@ export const ExamCanvas = ({
     event.preventDefault();
     event.stopPropagation();
     const position = getDropPosition(event);
-    const sourceIndex = orderedTasks.findIndex(
-      (task) => task.id === activeDragPayload.taskId,
-    );
+    const sourceIndex = orderedTasks.findIndex((task) => task.id === activeDragPayload.taskId);
     const targetIndex = orderedTasks.findIndex((task) => task.id === taskId);
     if (sourceIndex === -1 || targetIndex === -1) {
       clearDragState();
@@ -424,11 +407,7 @@ export const ExamCanvas = ({
     clearDragState();
   };
 
-  const handleCardDragOver = (
-    event: DragEvent<HTMLDivElement>,
-    taskId: string,
-    cardId: string,
-  ) => {
+  const handleCardDragOver = (event: DragEvent<HTMLDivElement>, taskId: string, cardId: string) => {
     const activeDragPayload = resolveActiveDragPayload(event);
     if (!activeDragPayload || activeDragPayload.kind !== "card") {
       return;
@@ -440,10 +419,7 @@ export const ExamCanvas = ({
     handleAutoScroll(event.clientY);
   };
 
-  const handleCardListDragOver = (
-    event: DragEvent<HTMLDivElement>,
-    taskId: string,
-  ) => {
+  const handleCardListDragOver = (event: DragEvent<HTMLDivElement>, taskId: string) => {
     const activeDragPayload = resolveActiveDragPayload(event);
     if (!activeDragPayload || activeDragPayload.kind !== "card") {
       return;
@@ -457,28 +433,20 @@ export const ExamCanvas = ({
     handleAutoScroll(event.clientY);
   };
 
-  const handleCardDrop = (
-    event: DragEvent<HTMLDivElement>,
-    taskId: string,
-    cardId: string,
-  ) => {
+  const handleCardDrop = (event: DragEvent<HTMLDivElement>, taskId: string, cardId: string) => {
     const activeDragPayload = resolveActiveDragPayload(event);
     if (!activeDragPayload || activeDragPayload.kind !== "card") {
       return;
     }
     event.preventDefault();
     event.stopPropagation();
-    const sourceTask = orderedTasks.find(
-      (entry) => entry.id === activeDragPayload.taskId,
-    );
+    const sourceTask = orderedTasks.find((entry) => entry.id === activeDragPayload.taskId);
     const targetTask = orderedTasks.find((entry) => entry.id === taskId);
     if (!sourceTask || !targetTask) {
       clearDragState();
       return;
     }
-    const sourceIndex = sourceTask.cards.findIndex(
-      (card) => card.id === activeDragPayload.cardId,
-    );
+    const sourceIndex = sourceTask.cards.findIndex((card) => card.id === activeDragPayload.cardId);
     const targetIndex = targetTask.cards.findIndex((card) => card.id === cardId);
     if (sourceIndex === -1 || targetIndex === -1) {
       clearDragState();
@@ -494,22 +462,14 @@ export const ExamCanvas = ({
       if (sameTask) {
         onReorderCard(taskId, sourceIndex, insertIndex);
       } else {
-        onMoveCardAcrossTasks(
-          activeDragPayload.taskId,
-          taskId,
-          sourceIndex,
-          insertIndex,
-        );
+        onMoveCardAcrossTasks(activeDragPayload.taskId, taskId, sourceIndex, insertIndex);
       }
       onSelectCard(taskId, activeDragPayload.cardId);
     }
     clearDragState();
   };
 
-  const handleCardListDrop = (
-    event: DragEvent<HTMLDivElement>,
-    taskId: string,
-  ) => {
+  const handleCardListDrop = (event: DragEvent<HTMLDivElement>, taskId: string) => {
     const activeDragPayload = resolveActiveDragPayload(event);
     if (!activeDragPayload || activeDragPayload.kind !== "card") {
       return;
@@ -519,17 +479,13 @@ export const ExamCanvas = ({
     }
     event.preventDefault();
     event.stopPropagation();
-    const sourceTask = orderedTasks.find(
-      (entry) => entry.id === activeDragPayload.taskId,
-    );
+    const sourceTask = orderedTasks.find((entry) => entry.id === activeDragPayload.taskId);
     const targetTask = orderedTasks.find((entry) => entry.id === taskId);
     if (!sourceTask || !targetTask) {
       clearDragState();
       return;
     }
-    const sourceIndex = sourceTask.cards.findIndex(
-      (card) => card.id === activeDragPayload.cardId,
-    );
+    const sourceIndex = sourceTask.cards.findIndex((card) => card.id === activeDragPayload.cardId);
     if (sourceIndex === -1) {
       clearDragState();
       return;
@@ -540,12 +496,7 @@ export const ExamCanvas = ({
         onReorderCard(taskId, sourceIndex, insertIndex);
       }
     } else {
-      onMoveCardAcrossTasks(
-        activeDragPayload.taskId,
-        taskId,
-        sourceIndex,
-        targetTask.cards.length,
-      );
+      onMoveCardAcrossTasks(activeDragPayload.taskId, taskId, sourceIndex, targetTask.cards.length);
     }
     onSelectCard(taskId, activeDragPayload.cardId);
     clearDragState();
@@ -583,11 +534,7 @@ export const ExamCanvas = ({
     onSelectTask(taskId);
   };
 
-  const handleMoveCard = (
-    taskId: string,
-    cardId: string,
-    direction: "up" | "down",
-  ) => {
+  const handleMoveCard = (taskId: string, cardId: string, direction: "up" | "down") => {
     const task = orderedTasks.find((entry) => entry.id === taskId);
     if (!task) {
       return;
@@ -613,17 +560,12 @@ export const ExamCanvas = ({
       ) : (
         <ul className="exam-task-list">
           {orderedTasks.map((task, index) => {
-            const isTaskSelected =
-              selection.type === "task" && selection.taskId === task.id;
-            const isTaskDragging =
-              dragPayload?.kind === "task" && dragPayload.taskId === task.id;
+            const isTaskSelected = selection.type === "task" && selection.taskId === task.id;
+            const isTaskDragging = dragPayload?.kind === "task" && dragPayload.taskId === task.id;
             const taskDropPosition =
-              taskDropTarget?.taskId === task.id
-                ? taskDropTarget.position
-                : null;
+              taskDropTarget?.taskId === task.id ? taskDropTarget.position : null;
             const isCardDropTarget =
-              dragPayload?.kind === "card" &&
-              cardDropTarget?.taskId === task.id;
+              dragPayload?.kind === "card" && cardDropTarget?.taskId === task.id;
             const warning = getTaskWarning(task);
 
             return (
@@ -636,9 +578,7 @@ export const ExamCanvas = ({
                 }${taskDropPosition ? ` drop-${taskDropPosition}` : ""}${
                   isCardDropTarget ? " card-drop-target" : ""
                 }`}
-                onDragOver={(event) =>
-                  handleTaskDragOver(event, task.id, task.cards.length === 0)
-                }
+                onDragOver={(event) => handleTaskDragOver(event, task.id, task.cards.length === 0)}
                 onDrop={(event) => handleTaskDrop(event, task.id)}
               >
                 <div
@@ -656,9 +596,7 @@ export const ExamCanvas = ({
                     }}
                   >
                     <span className="task-number">{index + 1})</span>
-                    <span className="task-title-text">
-                      {task.title.trim() || "Untitled task"}
-                    </span>
+                    <span className="task-title-text">{task.title.trim() || "Untitled task"}</span>
                   </button>
                   <div className="exam-task-actions">
                     {showMoveButtons ? (
@@ -698,9 +636,7 @@ export const ExamCanvas = ({
                   </div>
                 </div>
                 <div className="exam-task-body">
-                  {warning ? (
-                    <div className="exam-task-warning">{warning}</div>
-                  ) : null}
+                  {warning ? <div className="exam-task-warning">{warning}</div> : null}
                   <div
                     className={`exam-card-list${
                       dragPayload?.kind === "card" &&
@@ -709,9 +645,7 @@ export const ExamCanvas = ({
                         ? " drop-target drop-after"
                         : ""
                     }`}
-                    onDragOver={(event) =>
-                      handleCardListDragOver(event, task.id)
-                    }
+                    onDragOver={(event) => handleCardListDragOver(event, task.id)}
                     onDrop={(event) => handleCardListDrop(event, task.id)}
                   >
                     {task.cards.map((card, cardIndex) => {
@@ -724,8 +658,7 @@ export const ExamCanvas = ({
                         dragPayload.taskId === task.id &&
                         dragPayload.cardId === card.id;
                       const cardDropPosition =
-                        cardDropTarget?.taskId === task.id &&
-                        cardDropTarget.cardId === card.id
+                        cardDropTarget?.taskId === task.id && cardDropTarget.cardId === card.id
                           ? cardDropTarget.position
                           : null;
 
@@ -738,16 +671,10 @@ export const ExamCanvas = ({
                             cardDropPosition ? " drop-target" : ""
                           }${cardDropPosition ? ` drop-${cardDropPosition}` : ""}`}
                           draggable
-                          onDragStart={(event) =>
-                            handleCardDragStart(event, task.id, card.id)
-                          }
+                          onDragStart={(event) => handleCardDragStart(event, task.id, card.id)}
                           onDragEnd={handleDragEnd}
-                          onDragOver={(event) =>
-                            handleCardDragOver(event, task.id, card.id)
-                          }
-                          onDrop={(event) =>
-                            handleCardDrop(event, task.id, card.id)
-                          }
+                          onDragOver={(event) => handleCardDragOver(event, task.id, card.id)}
+                          onDrop={(event) => handleCardDrop(event, task.id, card.id)}
                         >
                           <button
                             type="button"
@@ -755,12 +682,8 @@ export const ExamCanvas = ({
                             onClick={() => onSelectCard(task.id, card.id)}
                           >
                             <span className="card-index">{cardIndex + 1})</span>
-                            <span className="card-type">
-                              {serializeCardTypeLabel(card.type)}
-                            </span>
-                            {card.helpText?.trim() ? (
-                              <span className="card-hint">Hint</span>
-                            ) : null}
+                            <span className="card-type">{serializeCardTypeLabel(card.type)}</span>
+                            {card.helpText?.trim() ? <span className="card-hint">Hint</span> : null}
                           </button>
                           <div className="exam-card-actions">
                             {showMoveButtons ? (
@@ -838,9 +761,7 @@ export const ExamCanvas = ({
             <p className="muted">Drop cards to create tasks and interactions.</p>
           </div>
         </div>
-        {headerActions ? (
-          <div className="exam-canvas-actions">{headerActions}</div>
-        ) : null}
+        {headerActions ? <div className="exam-canvas-actions">{headerActions}</div> : null}
       </header>
       <div
         className="panel-body"
@@ -866,9 +787,7 @@ export const ExamCanvas = ({
         ) : (
           <div className="exam-canvas-body">{taskList}</div>
         )}
-        {bottomContent ? (
-          <div className="exam-canvas-bottom">{bottomContent}</div>
-        ) : null}
+        {bottomContent ? <div className="exam-canvas-bottom">{bottomContent}</div> : null}
       </div>
     </section>
   );

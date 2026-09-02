@@ -4,12 +4,8 @@
  * Filter panel for type-aware database conditions.
  */
 
-import {
-  type ChangeEvent,
-} from "react";
-import {
-  getFilterOperatorsForType,
-} from "../database-filters";
+import { type ChangeEvent } from "react";
+import { getFilterOperatorsForType } from "../database-filters";
 import {
   type DatabaseAttributeMeta,
   type DatabaseFilterGroup,
@@ -37,8 +33,9 @@ const FILTER_PANEL_HINTS: Record<DatabaseViewType, string> = {
   pie: "Filter wirkt auf die Datengrundlage des Pie-Charts.",
 };
 
-const isFilterGroupEntry = (entry: DatabaseFilterRule | DatabaseFilterGroup): entry is DatabaseFilterGroup =>
-  "rules" in entry;
+const isFilterGroupEntry = (
+  entry: DatabaseFilterRule | DatabaseFilterGroup,
+): entry is DatabaseFilterGroup => "rules" in entry;
 
 const nextId = (() => {
   let sequence = 0;
@@ -50,7 +47,11 @@ const nextId = (() => {
 
 const resolveAttribute = (attributes: DatabaseAttributeMeta[], field: string) => {
   const lower = field.trim().toLowerCase();
-  return attributes.find((attribute) => attribute.key.trim().toLowerCase() === lower) ?? attributes[0] ?? null;
+  return (
+    attributes.find((attribute) => attribute.key.trim().toLowerCase() === lower) ??
+    attributes[0] ??
+    null
+  );
 };
 
 const toLower = (value: string) => value.trim().toLowerCase();
@@ -89,29 +90,22 @@ const replaceGroupById = (
   return {
     ...root,
     rules: root.rules.map((entry) =>
-      isFilterGroupEntry(entry)
-        ? replaceGroupById(entry, groupId, update)
-        : entry),
+      isFilterGroupEntry(entry) ? replaceGroupById(entry, groupId, update) : entry,
+    ),
   };
 };
 
 const removeGroupById = (root: DatabaseFilterGroup, groupId: string): DatabaseFilterGroup => ({
   ...root,
   rules: root.rules
-    .map((entry) =>
-      isFilterGroupEntry(entry)
-        ? removeGroupById(entry, groupId)
-        : entry)
+    .map((entry) => (isFilterGroupEntry(entry) ? removeGroupById(entry, groupId) : entry))
     .filter((entry) => (isFilterGroupEntry(entry) ? entry.id !== groupId : true)),
 });
 
 const removeRuleById = (root: DatabaseFilterGroup, ruleId: string): DatabaseFilterGroup => ({
   ...root,
   rules: root.rules
-    .map((entry) =>
-      isFilterGroupEntry(entry)
-        ? removeRuleById(entry, ruleId)
-        : entry)
+    .map((entry) => (isFilterGroupEntry(entry) ? removeRuleById(entry, ruleId) : entry))
     .filter((entry) => (isFilterGroupEntry(entry) ? true : entry.id !== ruleId)),
 });
 
@@ -130,10 +124,7 @@ const updateRuleById = (
 });
 
 const valueIsOptional = (op: string) =>
-  op === "is empty" ||
-  op === "is not empty" ||
-  op === "is true" ||
-  op === "is false";
+  op === "is empty" || op === "is not empty" || op === "is true" || op === "is false";
 
 const toRuleValueText = (value: unknown) =>
   typeof value === "string" ? value : String(value ?? "");
@@ -155,36 +146,45 @@ export const DatabaseFilterPanel = ({
   };
 
   const handleAddRule = (groupId: string) => {
-    onChange(replaceGroupById(filterGroup, groupId, (group) => ({
-      ...group,
-      rules: [...group.rules, createDefaultRule(attributes, attributeSuggestions)],
-    })));
+    onChange(
+      replaceGroupById(filterGroup, groupId, (group) => ({
+        ...group,
+        rules: [...group.rules, createDefaultRule(attributes, attributeSuggestions)],
+      })),
+    );
   };
 
   const handleAddGroup = (groupId: string) => {
-    onChange(replaceGroupById(filterGroup, groupId, (group) => ({
-      ...group,
-      rules: [...group.rules, createDefaultGroup()],
-    })));
+    onChange(
+      replaceGroupById(filterGroup, groupId, (group) => ({
+        ...group,
+        rules: [...group.rules, createDefaultGroup()],
+      })),
+    );
   };
 
   const handleFieldChange = (ruleId: string, nextField: string) => {
     const nextAttribute = resolveAttribute(attributes, nextField);
     const nextOperator = getFilterOperatorsForType(nextAttribute?.type ?? "text")[0]?.value ?? "is";
-    onChange(updateRuleById(filterGroup, ruleId, (rule) => ({
-      ...rule,
-      field: nextField,
-      op: nextOperator,
-      value: "",
-      valueTo: "",
-    })));
+    onChange(
+      updateRuleById(filterGroup, ruleId, (rule) => ({
+        ...rule,
+        field: nextField,
+        op: nextOperator,
+        value: "",
+        valueTo: "",
+      })),
+    );
   };
 
-  const resolveValueSuggestions = (field: string) =>
-    valueSuggestionsByField[toLower(field)] ?? [];
+  const resolveValueSuggestions = (field: string) => valueSuggestionsByField[toLower(field)] ?? [];
 
   const renderGroup = (group: DatabaseFilterGroup, depth: number, isRoot: boolean) => (
-    <section key={group.id} className="database-block-filter-group" style={{ marginLeft: `${depth * 10}px` }}>
+    <section
+      key={group.id}
+      className="database-block-filter-group"
+      style={{ marginLeft: `${depth * 10}px` }}
+    >
       <div className="database-block-filter-group-header">
         <label>
           Gruppe
@@ -247,15 +247,19 @@ export const DatabaseFilterPanel = ({
                 value={entry.op}
                 onChange={(event) => {
                   const nextOp = event.target.value;
-                  onChange(updateRuleById(filterGroup, entry.id, (rule) => ({
-                    ...rule,
-                    op: nextOp,
-                    valueTo: nextOp === "between" ? rule.valueTo ?? "" : undefined,
-                  })));
+                  onChange(
+                    updateRuleById(filterGroup, entry.id, (rule) => ({
+                      ...rule,
+                      op: nextOp,
+                      valueTo: nextOp === "between" ? (rule.valueTo ?? "") : undefined,
+                    })),
+                  );
                 }}
               >
                 {operators.map((operator) => (
-                  <option key={operator.value} value={operator.value}>{operator.label}</option>
+                  <option key={operator.value} value={operator.value}>
+                    {operator.label}
+                  </option>
                 ))}
               </select>
 
@@ -265,10 +269,14 @@ export const DatabaseFilterPanel = ({
                   placeholder="Wert"
                   suggestions={valueSuggestions}
                   noResultsLabel="Keine passenden Werte gefunden"
-                  onValueChange={(nextValue) => onChange(updateRuleById(filterGroup, entry.id, (rule) => ({
-                    ...rule,
-                    value: nextValue,
-                  })))}
+                  onValueChange={(nextValue) =>
+                    onChange(
+                      updateRuleById(filterGroup, entry.id, (rule) => ({
+                        ...rule,
+                        value: nextValue,
+                      })),
+                    )
+                  }
                 />
               ) : (
                 <span className="database-block-filter-value-empty">—</span>
@@ -280,10 +288,14 @@ export const DatabaseFilterPanel = ({
                   placeholder="Bis"
                   suggestions={valueSuggestions}
                   noResultsLabel="Keine passenden Werte gefunden"
-                  onValueChange={(nextValue) => onChange(updateRuleById(filterGroup, entry.id, (rule) => ({
-                    ...rule,
-                    valueTo: nextValue,
-                  })))}
+                  onValueChange={(nextValue) =>
+                    onChange(
+                      updateRuleById(filterGroup, entry.id, (rule) => ({
+                        ...rule,
+                        valueTo: nextValue,
+                      })),
+                    )
+                  }
                 />
               ) : null}
 
@@ -310,7 +322,12 @@ export const DatabaseFilterPanel = ({
     >
       <header className="database-block-panel-header">
         <h5>Filter</h5>
-        <button type="button" className="database-block-panel-close" onClick={onClose} aria-label="Schliessen">
+        <button
+          type="button"
+          className="database-block-panel-close"
+          onClick={onClose}
+          aria-label="Schliessen"
+        >
           ×
         </button>
       </header>

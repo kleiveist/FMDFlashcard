@@ -97,10 +97,7 @@ export const MobileSafeInput = forwardRef<HTMLInputElement, MobileSafeInputProps
 
 MobileSafeInput.displayName = "MobileSafeInput";
 
-export const MobileSafeTextarea = forwardRef<
-  HTMLTextAreaElement,
-  MobileSafeTextareaProps
->(
+export const MobileSafeTextarea = forwardRef<HTMLTextAreaElement, MobileSafeTextareaProps>(
   (
     {
       value,

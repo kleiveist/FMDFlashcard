@@ -31,9 +31,7 @@ export const buildEmptyCanvasCustomColorSlots = (): CanvasCustomColorSlot[] =>
     value: null,
   }));
 
-export const normalizeCanvasCustomColorSlots = (
-  value: unknown,
-): CanvasCustomColorSlot[] => {
+export const normalizeCanvasCustomColorSlots = (value: unknown): CanvasCustomColorSlot[] => {
   const slots = buildEmptyCanvasCustomColorSlots();
   if (!Array.isArray(value)) {
     return slots;

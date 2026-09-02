@@ -46,33 +46,37 @@ const hashText = (value: string) => {
 const normalizeColumnOrder = (value: unknown): string[] =>
   Array.isArray(value)
     ? value
-      .map((entry) => typeof entry === "string" ? entry.trim() : "")
-      .filter(Boolean)
-      .filter((entry, index, entries) =>
-        entries.findIndex((candidate) => candidate.toLowerCase() === entry.toLowerCase()) === index)
+        .map((entry) => (typeof entry === "string" ? entry.trim() : ""))
+        .filter(Boolean)
+        .filter(
+          (entry, index, entries) =>
+            entries.findIndex((candidate) => candidate.toLowerCase() === entry.toLowerCase()) ===
+            index,
+        )
     : [];
 
 const normalizeColumnWidths = (value: unknown): Record<string, number> => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
   }
-  return Object.entries(value as Record<string, unknown>).reduce<Record<string, number>>((next, [key, width]) => {
-    const normalizedKey = key.trim();
-    const numeric = typeof width === "number" ? width : Number(width);
-    if (!normalizedKey || !Number.isFinite(numeric)) {
+  return Object.entries(value as Record<string, unknown>).reduce<Record<string, number>>(
+    (next, [key, width]) => {
+      const normalizedKey = key.trim();
+      const numeric = typeof width === "number" ? width : Number(width);
+      if (!normalizedKey || !Number.isFinite(numeric)) {
+        return next;
+      }
+      next[normalizedKey] = Math.min(
+        MAX_TABLE_COLUMN_WIDTH,
+        Math.max(MIN_TABLE_COLUMN_WIDTH, Math.round(numeric)),
+      );
       return next;
-    }
-    next[normalizedKey] = Math.min(
-      MAX_TABLE_COLUMN_WIDTH,
-      Math.max(MIN_TABLE_COLUMN_WIDTH, Math.round(numeric)),
-    );
-    return next;
-  }, {});
+    },
+    {},
+  );
 };
 
-export const normalizeDatabaseTableLayoutProfile = (
-  value: unknown,
-): DatabaseTableLayoutProfile => {
+export const normalizeDatabaseTableLayoutProfile = (value: unknown): DatabaseTableLayoutProfile => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {
       columnOrder: [],
@@ -97,19 +101,19 @@ const normalizeStore = (value: unknown): DatabaseTableLayoutProfileStore => {
     };
   }
   const candidate = value as { layouts?: unknown };
-  const layouts = candidate.layouts && typeof candidate.layouts === "object" && !Array.isArray(candidate.layouts)
-    ? Object.entries(candidate.layouts as Record<string, unknown>).reduce<Record<string, DatabaseTableLayoutProfile>>(
-      (next, [key, layout]) => {
-        const normalizedKey = key.trim();
-        if (!normalizedKey) {
+  const layouts =
+    candidate.layouts && typeof candidate.layouts === "object" && !Array.isArray(candidate.layouts)
+      ? Object.entries(candidate.layouts as Record<string, unknown>).reduce<
+          Record<string, DatabaseTableLayoutProfile>
+        >((next, [key, layout]) => {
+          const normalizedKey = key.trim();
+          if (!normalizedKey) {
+            return next;
+          }
+          next[normalizedKey] = normalizeDatabaseTableLayoutProfile(layout);
           return next;
-        }
-        next[normalizedKey] = normalizeDatabaseTableLayoutProfile(layout);
-        return next;
-      },
-      {},
-    )
-    : {};
+        }, {})
+      : {};
   return {
     schemaVersion: TABLE_LAYOUT_SCHEMA_VERSION,
     layouts,
@@ -129,9 +133,8 @@ export const buildDatabaseTableLayoutKey = ({
   viewId: string;
 }) => {
   const source = normalizeRelativePath(sourceRelativePath ?? "__unknown__") || "__unknown__";
-  const block = Number.isInteger(blockIndex) && (blockIndex ?? -1) >= 0
-    ? String(blockIndex)
-    : "__unknown__";
+  const block =
+    Number.isInteger(blockIndex) && (blockIndex ?? -1) >= 0 ? String(blockIndex) : "__unknown__";
   return hashText(`${source}\n${block}\n${viewId.trim() || "__default__"}`);
 };
 

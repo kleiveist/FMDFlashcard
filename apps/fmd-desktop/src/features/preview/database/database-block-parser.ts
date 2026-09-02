@@ -4,10 +4,7 @@
  * Parser/serializer for the standalone markdown database block.
  */
 
-import {
-  DATABASE_BLOCK_MARKER,
-  isDatabaseBlockMarkerLine,
-} from "../../../lib/databaseBlockSyntax";
+import { DATABASE_BLOCK_MARKER, isDatabaseBlockMarkerLine } from "../../../lib/databaseBlockSyntax";
 import {
   type DatabaseBlockConfig,
   type DatabaseFieldDefinition,
@@ -316,9 +313,8 @@ const parseYamlSubset = (yamlSource: string) => {
           item[itemKey] = parseScalar(itemTail);
         } else {
           const nested = lines[index];
-          item[itemKey] = nested && nested.indent > expectedIndent
-            ? parseNode(nested.indent)
-            : null;
+          item[itemKey] =
+            nested && nested.indent > expectedIndent ? parseNode(nested.indent) : null;
         }
 
         const continuationIndent = expectedIndent + 2;
@@ -435,8 +431,8 @@ const parseFilterGroup = (value: unknown, path = "root"): DatabaseFilterGroup =>
   const rawRules = Array.isArray(value.rules)
     ? value.rules
     : Array.isArray(value.filters)
-    ? value.filters
-    : [];
+      ? value.filters
+      : [];
 
   const rules = rawRules
     .map((entry, index) => {
@@ -459,24 +455,24 @@ const parseSortRules = (value: unknown): DatabaseSortRule[] => {
     return [];
   }
   return value.reduce<DatabaseSortRule[]>((nextRules, entry, index) => {
-      if (!isRecord(entry)) {
-        return nextRules;
-      }
-      const field = asString(entry.field);
-      if (!field) {
-        return nextRules;
-      }
-      const dir = asString(entry.dir, "asc").toLowerCase() === "desc" ? "desc" : "asc";
-      const nulls = asString(entry.nulls).toLowerCase();
-      nextRules.push({
-        id: `sort-rule-${index}`,
-        field,
-        dir,
-        nulls: nulls === "first" || nulls === "last" ? nulls : undefined,
-        natural: Boolean(entry.natural),
-      });
+    if (!isRecord(entry)) {
       return nextRules;
-    }, []);
+    }
+    const field = asString(entry.field);
+    if (!field) {
+      return nextRules;
+    }
+    const dir = asString(entry.dir, "asc").toLowerCase() === "desc" ? "desc" : "asc";
+    const nulls = asString(entry.nulls).toLowerCase();
+    nextRules.push({
+      id: `sort-rule-${index}`,
+      field,
+      dir,
+      nulls: nulls === "first" || nulls === "last" ? nulls : undefined,
+      natural: Boolean(entry.natural),
+    });
+    return nextRules;
+  }, []);
 };
 
 const parseFieldDefinitions = (value: unknown): DatabaseFieldDefinition[] => {
@@ -504,12 +500,9 @@ const parseFieldDefinitions = (value: unknown): DatabaseFieldDefinition[] => {
     const formulaDefinition = normalizeDatabaseFormulaDefinitionV1(
       entry.formulaDefinition ?? (isRecord(entry.formula) ? entry.formula : null),
     );
-    const formula = typeof entry.formula === "string"
-      ? asString(entry.formula) || null
-      : null;
-    const originFallback: DatabaseAttributeOrigin = formulaDefinition || formula
-      ? "formula"
-      : "frontmatter";
+    const formula = typeof entry.formula === "string" ? asString(entry.formula) || null : null;
+    const originFallback: DatabaseAttributeOrigin =
+      formulaDefinition || formula ? "formula" : "frontmatter";
     const origin = parseAttributeOrigin(entry.origin, originFallback);
 
     fields.push({
@@ -569,7 +562,12 @@ const parseSourceSpec = (value: unknown): DatabaseSourceSpec => {
 
 const parseViewType = (value: unknown): DatabaseViewType => {
   const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
-  if (normalized === "kanban" || normalized === "gantt" || normalized === "pie" || normalized === "project") {
+  if (
+    normalized === "kanban" ||
+    normalized === "gantt" ||
+    normalized === "pie" ||
+    normalized === "project"
+  ) {
     return normalized;
   }
   return "table";
@@ -627,20 +625,26 @@ const parsePropertiesByView = (
 };
 
 const parsePositiveInteger = (value: unknown, fallback: number) => {
-  const numeric = typeof value === "number"
-    ? value
-    : typeof value === "string"
-    ? Number(value.trim())
-    : Number.NaN;
+  const numeric =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number(value.trim())
+        : Number.NaN;
   if (!Number.isFinite(numeric)) {
     return fallback;
   }
   return Number.isInteger(numeric) && numeric >= 1 ? numeric : fallback;
 };
 
-const parseProjectBlockResolution = (value: unknown, fallback = DEFAULT_PROJECT_BLOCK_RESOLUTION) => {
+const parseProjectBlockResolution = (
+  value: unknown,
+  fallback = DEFAULT_PROJECT_BLOCK_RESOLUTION,
+) => {
   const parsed = parsePositiveInteger(value, fallback);
-  return PROJECT_BLOCK_RESOLUTION_OPTIONS.includes(parsed as typeof PROJECT_BLOCK_RESOLUTION_OPTIONS[number])
+  return PROJECT_BLOCK_RESOLUTION_OPTIONS.includes(
+    parsed as (typeof PROJECT_BLOCK_RESOLUTION_OPTIONS)[number],
+  )
     ? parsed
     : fallback;
 };
@@ -670,9 +674,7 @@ const parseProjectBarFillMode = (value: unknown): DatabaseProjectBarFillMode => 
   return normalized === "text-code" ? "text-code" : "numeric";
 };
 
-const normalizeProjectBarFillMappings = (
-  value: unknown,
-): DatabaseProjectBarFillMapping[] => {
+const normalizeProjectBarFillMappings = (value: unknown): DatabaseProjectBarFillMapping[] => {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -694,9 +696,7 @@ const normalizeProjectBarFillMappings = (
     .filter((entry): entry is DatabaseProjectBarFillMapping => Boolean(entry));
 };
 
-const normalizeProjectBarFillConfigs = (
-  value: unknown,
-): DatabaseProjectBarFillConfig[] => {
+const normalizeProjectBarFillConfigs = (value: unknown): DatabaseProjectBarFillConfig[] => {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -815,8 +815,7 @@ const cloneKanbanOrderByGroup = (
   return next;
 };
 
-const parsePieExcludedValues = (value: unknown): string[] =>
-  dedupeExact(asStringArray(value));
+const parsePieExcludedValues = (value: unknown): string[] => dedupeExact(asStringArray(value));
 
 const parsePieColorSpectrum = (value: unknown): DatabasePieColorSpectrum => {
   const normalized = asString(value, "standard").toLowerCase();
@@ -832,8 +831,7 @@ const parsePieColorSpectrum = (value: unknown): DatabasePieColorSpectrum => {
   }
 };
 
-const parseKanbanExcludedValues = (value: unknown): string[] =>
-  dedupeExact(asStringArray(value));
+const parseKanbanExcludedValues = (value: unknown): string[] => dedupeExact(asStringArray(value));
 
 const parseViewSpec = (value: unknown): DatabaseViewSpec => {
   if (typeof value === "string") {
@@ -895,9 +893,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
     projectBarFillConfigs: normalizeProjectBarFillConfigs(value.projectBarFillConfigs),
     pieGroupField: asString(value.pieGroupField) || null,
     pieAggregate:
-      pieAggregateRaw === "sum" || pieAggregateRaw === "avg"
-        ? pieAggregateRaw
-        : "count",
+      pieAggregateRaw === "sum" || pieAggregateRaw === "avg" ? pieAggregateRaw : "count",
     pieAggregateField: asString(value.pieAggregateField) || null,
     pieExcludedValues: parsePieExcludedValues(value.pieExcludedValues),
     pieColorSpectrum: parsePieColorSpectrum(value.pieColorSpectrum),
@@ -906,10 +902,7 @@ const parseViewSpec = (value: unknown): DatabaseViewSpec => {
 
 const cloneFilterGroup = (group: DatabaseFilterGroup): DatabaseFilterGroup => ({
   ...group,
-  rules: group.rules.map((entry) =>
-    "rules" in entry
-      ? cloneFilterGroup(entry)
-      : { ...entry }),
+  rules: group.rules.map((entry) => ("rules" in entry ? cloneFilterGroup(entry) : { ...entry })),
 });
 
 const cloneSortRules = (rules: DatabaseSortRule[]) => rules.map((rule) => ({ ...rule }));
@@ -983,11 +976,7 @@ const resolveSavedViewForId = (
 
 const createGeneratedSavedViewId = (index: number) => `view-generated-${index + 1}`;
 
-const normalizeSavedViewId = (
-  preferredId: string,
-  fallbackIndex: number,
-  seenIds: Set<string>,
-) => {
+const normalizeSavedViewId = (preferredId: string, fallbackIndex: number, seenIds: Set<string>) => {
   const base = preferredId.trim() || createGeneratedSavedViewId(fallbackIndex);
   if (!seenIds.has(base)) {
     seenIds.add(base);
@@ -1051,9 +1040,8 @@ const parseSavedViews = (
         legacy.properties,
       );
       const scopedFallback = dedupeCaseInsensitive(fallbackPropertiesByView[parsedView.type] ?? []);
-      const fallbackProperties = scopedFallback.length > 0
-        ? scopedFallback
-        : dedupeCaseInsensitive(legacy.properties);
+      const fallbackProperties =
+        scopedFallback.length > 0 ? scopedFallback : dedupeCaseInsensitive(legacy.properties);
       const properties = explicitProperties.length > 0 ? explicitProperties : fallbackProperties;
 
       const parsedSort = parseSortRules("sort" in entry ? entry.sort : legacy.sort);
@@ -1110,10 +1098,7 @@ export const createDefaultDatabaseBlockConfig = (): DatabaseBlockConfig => {
     defaultUnits: DEFAULT_PROJECT_DEFAULT_UNITS,
     projectMissingPlacement: DEFAULT_PROJECT_MISSING_PLACEMENT,
   });
-  const defaultProperties = [
-    "Dateiname",
-    "Dateipfad",
-  ];
+  const defaultProperties = ["Dateiname", "Dateipfad"];
   const defaultFilters = createDefaultFilterGroup();
   const defaultSort: DatabaseSortRule[] = [];
   const defaultSavedViewId = "view-default";
@@ -1175,10 +1160,11 @@ const parseConfigObject = (value: unknown): DatabaseBlockConfig => {
     : dedupeCaseInsensitive(defaults.columns);
   const legacyView = parseViewSpec(record.view);
   const legacyPropertiesByView = parsePropertiesByView(record.propertiesByView, parsedColumns);
-  const scopedLegacyProperties = dedupeCaseInsensitive(legacyPropertiesByView[legacyView.type] ?? []);
-  const legacyViewProperties = scopedLegacyProperties.length > 0
-    ? scopedLegacyProperties
-    : parsedColumns;
+  const scopedLegacyProperties = dedupeCaseInsensitive(
+    legacyPropertiesByView[legacyView.type] ?? [],
+  );
+  const legacyViewProperties =
+    scopedLegacyProperties.length > 0 ? scopedLegacyProperties : parsedColumns;
   const legacyColumns = legacyViewProperties.length > 0 ? legacyViewProperties : parsedColumns;
   const legacyFilters = parseFilterGroup(record.filters);
   const legacySort = parseSortRules(record.sort);
@@ -1235,11 +1221,7 @@ const formatYamlScalar = (value: unknown) => {
   return escapeYamlString(String(value));
 };
 
-function writeFilterGroupYaml(
-  group: DatabaseFilterGroup,
-  indent: number,
-  lines: string[],
-) {
+function writeFilterGroupYaml(group: DatabaseFilterGroup, indent: number, lines: string[]) {
   const indentText = " ".repeat(indent);
   lines.push(`${indentText}op: ${group.op}`);
   if (group.rules.length === 0) {
@@ -1279,11 +1261,7 @@ function writeFilterGroupRulesYaml(
   }
 }
 
-function writeSortRulesYaml(
-  rules: DatabaseSortRule[],
-  indent: number,
-  lines: string[],
-) {
+function writeSortRulesYaml(rules: DatabaseSortRule[], indent: number, lines: string[]) {
   const indentText = " ".repeat(indent);
   if (rules.length === 0) {
     lines.push(`${indentText}sort: []`);
@@ -1338,11 +1316,7 @@ function writeProjectBarFillConfigsYaml(
   });
 }
 
-function writeViewSpecYaml(
-  view: DatabaseViewSpec,
-  indent: number,
-  lines: string[],
-) {
+function writeViewSpecYaml(view: DatabaseViewSpec, indent: number, lines: string[]) {
   const indentText = " ".repeat(indent);
   const kanbanOrderByGroup = cloneKanbanOrderByGroup(view.kanbanOrderByGroup);
   lines.push(`${indentText}type: ${formatYamlScalar(view.type)}`);
@@ -1419,7 +1393,9 @@ function writeViewSpecYaml(
     view.projectMissingPlacement &&
     (view.type === "project" || view.projectMissingPlacement !== DEFAULT_PROJECT_MISSING_PLACEMENT)
   ) {
-    lines.push(`${indentText}projectMissingPlacement: ${formatYamlScalar(view.projectMissingPlacement)}`);
+    lines.push(
+      `${indentText}projectMissingPlacement: ${formatYamlScalar(view.projectMissingPlacement)}`,
+    );
   }
   writeProjectBarFillConfigsYaml(
     normalizeProjectBarFillConfigs(view.projectBarFillConfigs),

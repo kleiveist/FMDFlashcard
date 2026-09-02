@@ -64,7 +64,8 @@ const dispatchFocusIn = (element: HTMLElement | null) => {
 
 describe("useMobileSafeInput", () => {
   it("updates state on deleteContentBackward beforeinput", () => {
-    let latestInputProps: ReturnType<typeof useMobileSafeInput<HTMLInputElement>>["inputProps"] | null = null;
+    let latestInputProps:
+      ReturnType<typeof useMobileSafeInput<HTMLInputElement>>["inputProps"] | null = null;
     const Harness = () => {
       const [value, setValue] = useState("Test");
       const { inputProps } = useMobileSafeInput<HTMLInputElement>({
@@ -179,11 +180,10 @@ describe("useMobileSafeInput", () => {
     const Harness = () => {
       const [value, setValue] = useState("Alpha");
       const [externalValue, setExternalValue] = useState("Alpha");
-      const { inputProps, shouldBlockExternalUpdates } =
-        useMobileSafeInput<HTMLInputElement>({
-          value,
-          onValueChange: setValue,
-        });
+      const { inputProps, shouldBlockExternalUpdates } = useMobileSafeInput<HTMLInputElement>({
+        value,
+        onValueChange: setValue,
+      });
 
       useEffect(() => {
         if (shouldBlockExternalUpdates()) {

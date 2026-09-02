@@ -24,8 +24,7 @@ const ARIA_TEXTBOX_SELECTOR = '[role="textbox"], [aria-multiline="true"]';
 const isInputLike = (target: TabletAccessoryTarget): target is InputLike =>
   target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
 
-const isEditableTextArea = (target: HTMLTextAreaElement) =>
-  !target.disabled && !target.readOnly;
+const isEditableTextArea = (target: HTMLTextAreaElement) => !target.disabled && !target.readOnly;
 
 const normalizeInputType = (target: HTMLInputElement) =>
   (target.getAttribute("type") ?? "text").toLowerCase();
@@ -37,12 +36,10 @@ const isEditableTextInput = (target: HTMLInputElement) => {
   return SUPPORTED_INPUT_TYPES.has(normalizeInputType(target));
 };
 
-const isNodeInside = (root: HTMLElement, node: Node) =>
-  node === root || root.contains(node);
+const isNodeInside = (root: HTMLElement, node: Node) => node === root || root.contains(node);
 
 const isRangeInsideTarget = (range: Range, target: HTMLElement) =>
-  isNodeInside(target, range.startContainer) &&
-  isNodeInside(target, range.endContainer);
+  isNodeInside(target, range.startContainer) && isNodeInside(target, range.endContainer);
 
 const hasEnabledContentEditableAttribute = (element: HTMLElement) => {
   const raw = element.getAttribute("contenteditable");
@@ -50,11 +47,7 @@ const hasEnabledContentEditableAttribute = (element: HTMLElement) => {
     return false;
   }
   const normalized = raw.trim().toLowerCase();
-  return (
-    normalized === "" ||
-    normalized === "true" ||
-    normalized === "plaintext-only"
-  );
+  return normalized === "" || normalized === "true" || normalized === "plaintext-only";
 };
 
 const isElementContentEditable = (element: HTMLElement) =>
@@ -76,9 +69,7 @@ const isEditableAriaTextbox = (element: HTMLElement) =>
   !isDisabledAriaTextbox(element) &&
   !isReadonlyAriaTextbox(element);
 
-const resolveContentEditableHost = (
-  source: HTMLElement,
-): HTMLElement | null => {
+const resolveContentEditableHost = (source: HTMLElement): HTMLElement | null => {
   if (isElementContentEditable(source)) {
     return source;
   }
@@ -93,9 +84,7 @@ const resolveContentEditableHost = (
   return host;
 };
 
-const resolveAriaTextboxHost = (
-  source: HTMLElement,
-): HTMLElement | null => {
+const resolveAriaTextboxHost = (source: HTMLElement): HTMLElement | null => {
   if (isEditableAriaTextbox(source)) {
     return source;
   }
@@ -112,8 +101,7 @@ export const resolveTabletAccessoryTarget = (
   if (!(source instanceof Node)) {
     return null;
   }
-  const element =
-    source instanceof HTMLElement ? source : source.parentElement;
+  const element = source instanceof HTMLElement ? source : source.parentElement;
   if (!element) {
     return null;
   }
@@ -138,8 +126,7 @@ export const isContentEditableTarget = (
 export const isPasswordInputTarget = (target: TabletAccessoryTarget) =>
   target instanceof HTMLInputElement && normalizeInputType(target) === "password";
 
-export const canInsertBackslash = (target: TabletAccessoryTarget) =>
-  !isPasswordInputTarget(target);
+export const canInsertBackslash = (target: TabletAccessoryTarget) => !isPasswordInputTarget(target);
 
 export const focusTabletAccessoryTarget = (target: TabletAccessoryTarget) => {
   try {
@@ -150,10 +137,7 @@ export const focusTabletAccessoryTarget = (target: TabletAccessoryTarget) => {
 };
 
 const setNativeInputValue = (target: InputLike, value: string) => {
-  const descriptor = Object.getOwnPropertyDescriptor(
-    Object.getPrototypeOf(target),
-    "value",
-  );
+  const descriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(target), "value");
   const setter = descriptor?.set;
   if (setter) {
     setter.call(target, value);
@@ -162,11 +146,7 @@ const setNativeInputValue = (target: InputLike, value: string) => {
   target.value = value;
 };
 
-const dispatchInputMutation = (
-  target: EventTarget,
-  inputType: string,
-  data: string | null,
-) => {
+const dispatchInputMutation = (target: EventTarget, inputType: string, data: string | null) => {
   try {
     target.dispatchEvent(
       new InputEvent("input", {
@@ -188,10 +168,7 @@ const insertBackslashInInputLike = (target: InputLike) => {
   if (selectionStart === null || selectionEnd === null) {
     return false;
   }
-  const nextValue =
-    target.value.slice(0, selectionStart) +
-    "\\" +
-    target.value.slice(selectionEnd);
+  const nextValue = target.value.slice(0, selectionStart) + "\\" + target.value.slice(selectionEnd);
   const caret = selectionStart + 1;
   setNativeInputValue(target, nextValue);
   target.setSelectionRange(caret, caret);
@@ -212,8 +189,7 @@ const deleteBackwardInInputLike = (target: InputLike) => {
   if (selectionStart === selectionEnd) {
     deleteStart = Math.max(0, selectionStart - 1);
   }
-  const nextValue =
-    target.value.slice(0, deleteStart) + target.value.slice(selectionEnd);
+  const nextValue = target.value.slice(0, deleteStart) + target.value.slice(selectionEnd);
   setNativeInputValue(target, nextValue);
   target.setSelectionRange(deleteStart, deleteStart);
   dispatchInputMutation(target, "deleteContentBackward", null);
@@ -227,10 +203,7 @@ const rangeAtTargetEnd = (target: HTMLElement) => {
   return range;
 };
 
-const resolveSelectionRange = (
-  target: HTMLElement,
-  fallbackRange?: Range | null,
-) => {
+const resolveSelectionRange = (target: HTMLElement, fallbackRange?: Range | null) => {
   const selection = window.getSelection();
   if (!selection) {
     return null;
@@ -364,7 +337,7 @@ const deleteBackwardInContentEditable = (
         | "lineboundary"
         | "sentenceboundary"
         | "paragraphboundary"
-        | "documentboundary"
+        | "documentboundary",
     ) => void;
   };
   if (typeof selectionWithModify.modify === "function") {

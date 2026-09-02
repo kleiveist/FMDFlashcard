@@ -16,11 +16,7 @@ import type {
 } from "../../lib/flashcards";
 import { hasClozeMarker, parseFlashcards } from "../../lib/flashcards";
 import { findTableLineIndices } from "../../lib/markdownTables";
-import {
-  mediaItemsToDrafts,
-  serializePngEmbed,
-  serializeSvgFence,
-} from "../../lib/cardMedia";
+import { mediaItemsToDrafts, serializePngEmbed, serializeSvgFence } from "../../lib/cardMedia";
 import { createBlueprintId, createExamBlueprint } from "./blueprint";
 import { serializeChoiceRawBody } from "./choiceRawBody";
 import { buildTaskFingerprint } from "./stability";
@@ -38,8 +34,7 @@ export type ExamImportResult = {
   passiveSegments: ExamPassiveSegment[];
 };
 
-const normalizeLines = (markdown: string) =>
-  markdown.replace(/\r\n?/g, "\n").split("\n");
+const normalizeLines = (markdown: string) => markdown.replace(/\r\n?/g, "\n").split("\n");
 
 const trimEmptyLines = (lines: string[]) => {
   let start = 0;
@@ -135,9 +130,7 @@ const extractTaskNumberInfo = (lines: string[]) => {
 };
 
 const findTaskHeaderIndex = (lines: string[]) =>
-  lines.findIndex(
-    (line) => line.trim() !== "" && taskLinePattern.test(line.trim()),
-  );
+  lines.findIndex((line) => line.trim() !== "" && taskLinePattern.test(line.trim()));
 
 const isHelpDirectlyAfterHeader = (
   lines: string[],
@@ -298,21 +291,16 @@ const mergeHelpText = (cardHelp?: string, taskHelp?: string) => {
   return `${trimmedCardHelp}\n\n${trimmedTaskHelp}`;
 };
 
-const deriveTaskHeadingInfo = (
-  rawLines: string[],
-  hasCardWrapper: boolean,
-): TaskHeadingInfo => {
+const deriveTaskHeadingInfo = (rawLines: string[], hasCardWrapper: boolean): TaskHeadingInfo => {
   const numberInfo = extractTaskNumberInfo(rawLines);
   const heading = (numberInfo?.text ?? "").trim();
   const numberLineHasText = Boolean(heading);
   const firstRelevantLine = rawLines.find((line) => line.trim() !== "") ?? "";
-  const wrapperBeforeHeader =
-    hasCardWrapper && cardStartPattern.test(firstRelevantLine);
+  const wrapperBeforeHeader = hasCardWrapper && cardStartPattern.test(firstRelevantLine);
   return {
     heading,
     headingLineCount: numberLineHasText ? 1 : 0,
-    removeHeadingFromPrompt:
-      numberLineHasText && (!hasCardWrapper || wrapperBeforeHeader),
+    removeHeadingFromPrompt: numberLineHasText && (!hasCardWrapper || wrapperBeforeHeader),
   };
 };
 
@@ -333,9 +321,7 @@ const serializeClozeSegments = (segments: ClozeSegment[]) => {
   return output;
 };
 
-const buildChoiceOptions = (
-  card: MultipleChoiceCard,
-): ChoiceOption[] => {
+const buildChoiceOptions = (card: MultipleChoiceCard): ChoiceOption[] => {
   const correctSet = new Set(card.correctKeys);
   return card.options.map((option) => ({
     id: createBlueprintId("option"),
@@ -386,9 +372,7 @@ const buildCardFromMultipleChoice = (part: MultipleChoiceCard): CardBlueprint =>
   };
 };
 
-const buildCardFromCloze = (
-  part: Extract<FlashcardPart, { kind: "cloze" }>,
-): CardBlueprint => {
+const buildCardFromCloze = (part: Extract<FlashcardPart, { kind: "cloze" }>): CardBlueprint => {
   const clozeText = serializeClozeSegments(part.segments);
   const question = part.question.trim();
   const prompt = !question
@@ -642,9 +626,7 @@ const clozeInputPattern = /%[^%\n]+%/;
 const clozeAssignmentPattern = /=>/;
 
 const hasExplicitClozeSyntax = (lines: string[]) =>
-  lines.some(
-    (line) => clozeInputPattern.test(line) || clozeAssignmentPattern.test(line),
-  );
+  lines.some((line) => clozeInputPattern.test(line) || clozeAssignmentPattern.test(line));
 
 const hasExplicitParsedCardSyntax = (parts: FlashcardPart[], lines: string[]) =>
   parts.some((part) => {
@@ -842,13 +824,9 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
 
   blueprint.tasks = parsed.tasks.map((task, index) => {
     const originalTask = originalParsed.tasks[index];
-    const continuationBlocks =
-      followupSegmentsByTask[index]?.continuationBlocks ?? [];
+    const continuationBlocks = followupSegmentsByTask[index]?.continuationBlocks ?? [];
     const baseHelpSourceLines = originalTask?.rawLines ?? task.rawLines;
-    const helpSourceLines = appendBlocksWithSeparators(
-      baseHelpSourceLines,
-      continuationBlocks,
-    );
+    const helpSourceLines = appendBlocksWithSeparators(baseHelpSourceLines, continuationBlocks);
     const cards: CardBlueprint[] = [];
     const taskMediaDrafts = mediaItemsToDrafts(originalTask?.media ?? task.media);
     const rawLines = task.rawLines;
@@ -864,10 +842,7 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
         : task.cardLines.length > 0
           ? task.cardLines
           : rawLines;
-    const cardSourceLines = appendBlocksWithSeparators(
-      baseCardSourceLines,
-      continuationBlocks,
-    );
+    const cardSourceLines = appendBlocksWithSeparators(baseCardSourceLines, continuationBlocks);
     const cardSourceWithoutHelp = normalizeExamDotNumberedLines(
       stripHelpBlocksFromLines(cardSourceLines),
     );
@@ -888,11 +863,8 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
 
     cardBlocks.forEach((block, blockIndex) => {
       const normalizedBlockLines = trimEmptyLines(block.contentLines);
-      const firstBlockLine =
-        normalizedBlockLines.find((line) => line.trim() !== "") ?? "";
-      const blockStartsWithTaskNumber = taskLinePattern.test(
-        firstBlockLine.trim(),
-      );
+      const firstBlockLine = normalizedBlockLines.find((line) => line.trim() !== "") ?? "";
+      const blockStartsWithTaskNumber = taskLinePattern.test(firstBlockLine.trim());
       let trimmedLines = stripLeadingTaskNumberLine(normalizedBlockLines);
       if (
         blockIndex === 0 &&
@@ -900,10 +872,7 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
         blockStartsWithTaskNumber &&
         trimmedLines.length > 0
       ) {
-        const dropCount = Math.min(
-          headingInfo.headingLineCount || 1,
-          trimmedLines.length,
-        );
+        const dropCount = Math.min(headingInfo.headingLineCount || 1, trimmedLines.length);
         const candidateLines = trimmedLines.slice(dropCount);
         if (dropCount > 0 && hasExplicitCardSyntax(candidateLines)) {
           trimmedLines = candidateLines;
@@ -933,7 +902,7 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
       parts.forEach((part) => {
         const partMediaLines = serializePartMediaLines(part);
         const partCards = buildCardsFromPart(part).map((card) =>
-          prependStructuredLinesToCard(card, partMediaLines)
+          prependStructuredLinesToCard(card, partMediaLines),
         );
         if (part.kind === "true-false" && part.items.length > 1) {
           warnings.push("Multiple true/false statements were split into separate cards.");
@@ -951,14 +920,9 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
 
     if (cards.length === 0) {
       if (task.officialAnswer !== undefined) {
-        let fallbackLines = stripLeadingTaskNumberLine(
-          trimEmptyLines(normalizeLines(task.prompt)),
-        );
+        let fallbackLines = stripLeadingTaskNumberLine(trimEmptyLines(normalizeLines(task.prompt)));
         if (headingInfo.removeHeadingFromPrompt && fallbackLines.length > 0) {
-          const dropCount = Math.min(
-            headingInfo.headingLineCount || 1,
-            fallbackLines.length,
-          );
+          const dropCount = Math.min(headingInfo.headingLineCount || 1, fallbackLines.length);
           fallbackLines = fallbackLines.slice(dropCount);
         }
         pushCard({
@@ -1001,7 +965,7 @@ export const importExamMarkdown = (markdown: string): ExamImportResult | null =>
             .join("\n")
             .trim();
         }
-        if ((firstCard.type === "m1" || firstCard.type === "m2")) {
+        if (firstCard.type === "m1" || firstCard.type === "m2") {
           const currentRawBody = firstCard.rawBody?.trim() ?? "";
           firstCard.rawBody = [...taskMediaLines, currentRawBody]
             .filter((entry) => entry.trim().length > 0)

@@ -12,15 +12,12 @@ describe("formula-history-source", () => {
   });
 
   it("normalizes and deduplicates markdown history files", () => {
-    const files = normalizeFormulaHistoryFiles(
-      "/vault/.profile/exam-runs",
-      [
-        "/vault/.profile/exam-runs/2026/run-a.md",
-        "/vault/.profile/exam-runs/2026/run-a.md",
-        "/vault/.profile/exam-runs/run-b.md",
-        "/vault/.profile/exam-runs/readme.txt",
-      ],
-    );
+    const files = normalizeFormulaHistoryFiles("/vault/.profile/exam-runs", [
+      "/vault/.profile/exam-runs/2026/run-a.md",
+      "/vault/.profile/exam-runs/2026/run-a.md",
+      "/vault/.profile/exam-runs/run-b.md",
+      "/vault/.profile/exam-runs/readme.txt",
+    ]);
 
     expect(files).toEqual([
       {

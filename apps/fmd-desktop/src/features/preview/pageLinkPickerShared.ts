@@ -119,29 +119,15 @@ export const resolveTypedLinkPickerTriggerAtCaret = (
     // include a single safe char after the trigger (e.g. "[[a" with caret at 2).
     if (queryEnd === replaceRange.end && clampedCaret >= replaceRange.end) {
       const nextChar = value[replaceRange.end] ?? "";
-      if (
-        nextChar &&
-        nextChar !== "\n" &&
-        nextChar !== "\r" &&
-        nextChar !== "]"
-      ) {
+      if (nextChar && nextChar !== "\n" && nextChar !== "\r" && nextChar !== "]") {
         queryEnd = replaceRange.end + 1;
       }
     }
-    const initialQuery = queryEnd > replaceRange.end
-      ? value.slice(replaceRange.end, queryEnd)
-      : "";
-    if (
-      initialQuery.includes("\n") ||
-      initialQuery.includes("\r") ||
-      initialQuery.includes("]]")
-    ) {
+    const initialQuery = queryEnd > replaceRange.end ? value.slice(replaceRange.end, queryEnd) : "";
+    if (initialQuery.includes("\n") || initialQuery.includes("\r") || initialQuery.includes("]]")) {
       return null;
     }
-    const closeProbe = value.slice(
-      replaceRange.end,
-      Math.min(value.length, queryEnd + 12),
-    );
+    const closeProbe = value.slice(replaceRange.end, Math.min(value.length, queryEnd + 12));
     if (closeProbe.includes("]]")) {
       return null;
     }
@@ -200,12 +186,10 @@ export const resolveTypedLinkPickerTriggerAtCaret = (
   const windowStart = Math.max(0, clampedCaret - 160);
   const windowEnd = Math.min(value.length, clampedCaret + 160);
   const windowValue = value.slice(windowStart, windowEnd);
-  let bestCandidate:
-    | {
-      mode: TypedLinkPickerMode;
-      replaceRange: PageLinkPickerReplaceRange;
-    }
-    | null = null;
+  let bestCandidate: {
+    mode: TypedLinkPickerMode;
+    replaceRange: PageLinkPickerReplaceRange;
+  } | null = null;
 
   const considerCandidate = (
     mode: TypedLinkPickerMode,
@@ -271,9 +255,10 @@ export const resolveTypedLinkPickerTriggerAtCaret = (
   return {
     mode: bestCandidate.mode,
     replaceRange: bestCandidate.replaceRange,
-    initialQuery: clampedCaret > bestCandidate.replaceRange.end
-      ? value.slice(bestCandidate.replaceRange.end, clampedCaret)
-      : "",
+    initialQuery:
+      clampedCaret > bestCandidate.replaceRange.end
+        ? value.slice(bestCandidate.replaceRange.end, clampedCaret)
+        : "",
   };
 };
 

@@ -47,11 +47,7 @@ import { ContentMode } from "./components/ContentMode";
 import { ModalShell } from "../../components/ModalShell";
 import type { EditorMediaDraft } from "../../lib/cardMedia";
 import type { VaultPngAsset } from "../../lib/tree";
-import type {
-  ExamEditorControlsState,
-  ExamEditorMode,
-  ExamEditorSelection,
-} from "./types";
+import type { ExamEditorControlsState, ExamEditorMode, ExamEditorSelection } from "./types";
 import {
   mergeChoiceOptions,
   parseChoiceRawBody,
@@ -75,11 +71,7 @@ type ExamEditorViewProps = {
   showMoveButtons?: boolean;
   variant?: "exam" | "study";
   onControlsReady?: (controls: ExamEditorControlsState | null) => void;
-  onSave?: (payload: {
-    path: string;
-    markdown: string;
-    renamedFromPath?: string;
-  }) => void;
+  onSave?: (payload: { path: string; markdown: string; renamedFromPath?: string }) => void;
 };
 
 const resolveMarkdownWithTaskProfile = ({
@@ -113,10 +105,7 @@ const isPathInsideVault = (path: string, vaultPath: string | null) => {
   if (!normalizedVault || !normalizedPath) {
     return false;
   }
-  return (
-    normalizedPath === normalizedVault ||
-    normalizedPath.startsWith(`${normalizedVault}/`)
-  );
+  return normalizedPath === normalizedVault || normalizedPath.startsWith(`${normalizedVault}/`);
 };
 
 const isAbsolutePath = (value: string) => /^(?:[A-Za-z]:[\\/]|\/)/.test(value);
@@ -138,8 +127,7 @@ const NAME_FORBIDDEN_PATTERN = /[\\/]/;
 
 const stripMarkdownExtension = (value: string) => value.replace(/\.md$/i, "");
 
-const ensureMarkdownExtension = (value: string) =>
-  /\.md$/i.test(value) ? value : `${value}.md`;
+const ensureMarkdownExtension = (value: string) => (/\.md$/i.test(value) ? value : `${value}.md`);
 
 const getPathFileName = (value: string) => {
   const normalized = value.replace(/\\/g, "/").replace(/\/+$/, "");
@@ -192,10 +180,7 @@ const deriveExamTitleFromFilePath = (path: string | null | undefined) => {
   return title || null;
 };
 
-const resolveVaultRelativePath = (
-  absolutePath: string,
-  vaultPath: string | null | undefined,
-) => {
+const resolveVaultRelativePath = (absolutePath: string, vaultPath: string | null | undefined) => {
   if (!vaultPath) {
     return null;
   }
@@ -215,17 +200,12 @@ const resolveVaultRelativePath = (
 };
 
 type ExamFilenameResolution =
-  | { ok: true; fileName: string; title: string }
-  | { ok: false; error: string };
+  { ok: true; fileName: string; title: string } | { ok: false; error: string };
 
 const resolveExamFilenameFromTitle = (value: string): ExamFilenameResolution => {
   const trimmed = value.trim();
   const requested = trimmed || DEFAULT_EXAM_TITLE;
-  if (
-    NAME_FORBIDDEN_PATTERN.test(requested) ||
-    requested === "." ||
-    requested === ".."
-  ) {
+  if (NAME_FORBIDDEN_PATTERN.test(requested) || requested === "." || requested === "..") {
     return { ok: false, error: "Title cannot include / or \\ characters." };
   }
   if (/\.[^./\\]+$/.test(requested) && !/\.md$/i.test(requested)) {
@@ -259,9 +239,7 @@ const isModalOpen = () => {
   if (typeof document === "undefined") {
     return false;
   }
-  return Boolean(
-    document.querySelector(".modal-backdrop, .context-menu-backdrop"),
-  );
+  return Boolean(document.querySelector(".modal-backdrop, .context-menu-backdrop"));
 };
 
 export const ExamEditorView = ({
@@ -298,9 +276,7 @@ export const ExamEditorView = ({
       profileName: null,
     }),
   );
-  const [assignedTaskProfileName, setAssignedTaskProfileName] = useState<string | null>(
-    null,
-  );
+  const [assignedTaskProfileName, setAssignedTaskProfileName] = useState<string | null>(null);
   const [importMessage, setImportMessage] = useState("");
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const [contentModalOpen, setContentModalOpen] = useState(false);
@@ -343,18 +319,14 @@ export const ExamEditorView = ({
       }),
     [effectiveProfileName, examBodyMarkdown, sourceDocumentMarkdown],
   );
-  const isSourceMarkdownLoading =
-    sourcePath !== undefined && sourceMarkdown === undefined;
-  const hasUnsavedChanges =
-    !isSourceMarkdownLoading && markdown !== dirtyBaselineMarkdown;
+  const isSourceMarkdownLoading = sourcePath !== undefined && sourceMarkdown === undefined;
+  const hasUnsavedChanges = !isSourceMarkdownLoading && markdown !== dirtyBaselineMarkdown;
   const validationSummary = useMemo(() => {
     if (validation.valid) {
       return null;
     }
     const ordered = exam.tasks.slice().sort((a, b) => a.order - b.order);
-    const taskLookup = new Map(
-      ordered.map((task, index) => [task.id, { task, index }]),
-    );
+    const taskLookup = new Map(ordered.map((task, index) => [task.id, { task, index }]));
     const messages: string[] = [];
     validation.errors.forEach((error) => {
       messages.push(error);
@@ -402,7 +374,7 @@ export const ExamEditorView = ({
   }, [assignedTaskProfileName, pointsProfiles]);
   const assignedProfileNameForSelect = assignedProfileResolution.missing
     ? "__missing__"
-    : assignedProfileResolution.profile?.name ?? "__standard__";
+    : (assignedProfileResolution.profile?.name ?? "__standard__");
 
   useEffect(() => {
     if (!assignedTaskProfileName || assignedTaskProfileName.trim()) {
@@ -448,12 +420,9 @@ export const ExamEditorView = ({
     [],
   );
 
-  const handleExamUpdate = useCallback(
-    (updates: Pick<ExamBlueprint, "title" | "description">) => {
-      setExam((prev) => ({ ...prev, ...updates }));
-    },
-    [],
-  );
+  const handleExamUpdate = useCallback((updates: Pick<ExamBlueprint, "title" | "description">) => {
+    setExam((prev) => ({ ...prev, ...updates }));
+  }, []);
 
   const handleTaskUpdate = useCallback(
     (
@@ -466,9 +435,7 @@ export const ExamEditorView = ({
       },
     ) => {
       updateTasks((tasks) =>
-        tasks.map((task) =>
-          task.id === taskId ? { ...task, ...updates } : task,
-        ),
+        tasks.map((task) => (task.id === taskId ? { ...task, ...updates } : task)),
       );
     },
     [updateTasks],
@@ -478,13 +445,13 @@ export const ExamEditorView = ({
     (
       taskId: string,
       cardId: string,
-        updates: {
-          prompt?: string;
-          answer?: string;
-          correct?: "true" | "false" | null;
-          helpText?: string;
-          mediaItems?: EditorMediaDraft[];
-        },
+      updates: {
+        prompt?: string;
+        answer?: string;
+        correct?: "true" | "false" | null;
+        helpText?: string;
+        mediaItems?: EditorMediaDraft[];
+      },
     ) => {
       updateTasks((tasks) =>
         tasks.map((task) => {
@@ -493,9 +460,7 @@ export const ExamEditorView = ({
           }
           return {
             ...task,
-            cards: task.cards.map((card) =>
-              card.id === cardId ? { ...card, ...updates } : card,
-            ),
+            cards: task.cards.map((card) => (card.id === cardId ? { ...card, ...updates } : card)),
           };
         }),
       );
@@ -520,7 +485,7 @@ export const ExamEditorView = ({
             if ("prompt" in card && "prompt" in nextCard) {
               nextCard.prompt = card.prompt;
             }
-            if ((nextCard.type === "m1" || nextCard.type === "m2")) {
+            if (nextCard.type === "m1" || nextCard.type === "m2") {
               nextCard.rawBody = serializeChoiceRawBody(nextCard);
             } else {
               nextCard.rawBody = undefined;
@@ -552,9 +517,7 @@ export const ExamEditorView = ({
       const newCard = createCardBlueprint(cardType);
       updateTasks((tasks) =>
         tasks.map((task) =>
-          task.id === taskId
-            ? { ...task, cards: [...task.cards, newCard] }
-            : task,
+          task.id === taskId ? { ...task, cards: [...task.cards, newCard] } : task,
         ),
       );
       setSelection({ type: "card", taskId, cardId: newCard.id });
@@ -616,12 +579,7 @@ export const ExamEditorView = ({
   );
 
   const handleMoveCardAcrossTasks = useCallback(
-    (
-      sourceTaskId: string,
-      targetTaskId: string,
-      sourceIndex: number,
-      targetIndex: number,
-    ) => {
+    (sourceTaskId: string, targetTaskId: string, sourceIndex: number, targetIndex: number) => {
       if (sourceTaskId === targetTaskId) {
         handleReorderCard(sourceTaskId, sourceIndex, targetIndex);
         return;
@@ -640,9 +598,7 @@ export const ExamEditorView = ({
           if (task.id !== sourceTaskId) {
             return [task];
           }
-          const nextCards = task.cards.filter(
-            (_, index) => index !== sourceIndex,
-          );
+          const nextCards = task.cards.filter((_, index) => index !== sourceIndex);
           if (nextCards.length === 0) {
             return [];
           }
@@ -889,10 +845,7 @@ export const ExamEditorView = ({
       ? getParentRelativePath(sourceRelativePath)
       : normalizeFolderPath(activeFolderPath);
     const existingRelativePaths = vaultFiles?.map((file) => file.relative_path) ?? [];
-    const nextFilename = findNextNewExamFilename(
-      targetRelativeDir,
-      existingRelativePaths,
-    );
+    const nextFilename = findNextNewExamFilename(targetRelativeDir, existingRelativePaths);
 
     if (!nextFilename) {
       setSaveError("All New Exam filenames (01-99) already exist in this folder.");
@@ -933,14 +886,7 @@ export const ExamEditorView = ({
       setSaveError(asErrorMessage(error, "Failed to create new exam file."));
       setSaveState("idle");
     }
-  }, [
-    activeFolderPath,
-    effectiveProfileName,
-    onSave,
-    sourceRelativePath,
-    vaultFiles,
-    vaultPath,
-  ]);
+  }, [activeFolderPath, effectiveProfileName, onSave, sourceRelativePath, vaultFiles, vaultPath]);
 
   const handleSave = useCallback(
     async (forceDialog = false) => {
@@ -964,10 +910,7 @@ export const ExamEditorView = ({
         const resolveDefaultPath = (basePath: string | null) => {
           const baseDirectory = getPathDirectory(basePath ?? "");
           if (baseDirectory) {
-            return buildPathWithFileName(
-              baseDirectory,
-              fileNameResolution.fileName,
-            );
+            return buildPathWithFileName(baseDirectory, fileNameResolution.fileName);
           }
           if (vaultPath) {
             return joinPath(vaultPath, fileNameResolution.fileName);
@@ -989,9 +932,7 @@ export const ExamEditorView = ({
         let targetPath = normalizedCurrentSavePath;
         let renamedFromPath: string | undefined;
         if (!targetPath || forceDialog) {
-          const chosenPath = await openSaveDialog(
-            resolveDefaultPath(targetPath),
-          );
+          const chosenPath = await openSaveDialog(resolveDefaultPath(targetPath));
           if (!chosenPath) {
             setSaveState("idle");
             return false;
@@ -1002,8 +943,7 @@ export const ExamEditorView = ({
             getPathDirectory(targetPath),
             fileNameResolution.fileName,
           );
-          const needsRename =
-            normalizeVaultPath(desiredPath) !== normalizeVaultPath(targetPath);
+          const needsRename = normalizeVaultPath(desiredPath) !== normalizeVaultPath(targetPath);
           if (needsRename) {
             const fromRelativePath = resolveVaultRelativePath(targetPath, vaultPath);
             const toRelativePath = resolveVaultRelativePath(desiredPath, vaultPath);
@@ -1015,24 +955,17 @@ export const ExamEditorView = ({
               : "";
             const hasKnownConflict = Boolean(
               normalizedTargetRelative &&
-                vaultFiles?.some((file) => {
-                  const existingRelative = normalizeRelativePath(file.relative_path).toLowerCase();
-                  return (
-                    existingRelative === normalizedTargetRelative &&
-                    existingRelative !== normalizedSourceRelative
-                  );
-                }),
+              vaultFiles?.some((file) => {
+                const existingRelative = normalizeRelativePath(file.relative_path).toLowerCase();
+                return (
+                  existingRelative === normalizedTargetRelative &&
+                  existingRelative !== normalizedSourceRelative
+                );
+              }),
             );
 
-            if (
-              hasKnownConflict ||
-              !vaultPath ||
-              !fromRelativePath ||
-              !toRelativePath
-            ) {
-              const chosenPath = await openSaveDialog(
-                resolveDefaultPath(desiredPath),
-              );
+            if (hasKnownConflict || !vaultPath || !fromRelativePath || !toRelativePath) {
+              const chosenPath = await openSaveDialog(resolveDefaultPath(desiredPath));
               if (!chosenPath) {
                 setSaveState("idle");
                 return false;
@@ -1048,14 +981,9 @@ export const ExamEditorView = ({
                 renamedFromPath = targetPath;
                 targetPath = moved.path;
               } catch (error) {
-                const renameError = asErrorMessage(
-                  error,
-                  "Failed to rename exam file.",
-                );
+                const renameError = asErrorMessage(error, "Failed to rename exam file.");
                 if (/already exists/i.test(renameError)) {
-                  const chosenPath = await openSaveDialog(
-                    resolveDefaultPath(desiredPath),
-                  );
+                  const chosenPath = await openSaveDialog(resolveDefaultPath(desiredPath));
                   if (!chosenPath) {
                     setSaveState("idle");
                     return false;
@@ -1075,10 +1003,7 @@ export const ExamEditorView = ({
           !renamedFromPath &&
           normalizeVaultPath(targetPath) !== normalizeVaultPath(normalizedCurrentSavePath)
         ) {
-          const fromRelativePath = resolveVaultRelativePath(
-            normalizedCurrentSavePath,
-            vaultPath,
-          );
+          const fromRelativePath = resolveVaultRelativePath(normalizedCurrentSavePath, vaultPath);
           const toRelativePath = resolveVaultRelativePath(targetPath, vaultPath);
           const normalizedSourceRelative = fromRelativePath
             ? normalizeRelativePath(fromRelativePath).toLowerCase()
@@ -1088,20 +1013,15 @@ export const ExamEditorView = ({
             : "";
           const hasKnownConflict = Boolean(
             normalizedTargetRelative &&
-              vaultFiles?.some((file) => {
-                const existingRelative = normalizeRelativePath(file.relative_path).toLowerCase();
-                return (
-                  existingRelative === normalizedTargetRelative &&
-                  existingRelative !== normalizedSourceRelative
-                );
-              }),
+            vaultFiles?.some((file) => {
+              const existingRelative = normalizeRelativePath(file.relative_path).toLowerCase();
+              return (
+                existingRelative === normalizedTargetRelative &&
+                existingRelative !== normalizedSourceRelative
+              );
+            }),
           );
-          if (
-            !hasKnownConflict &&
-            vaultPath &&
-            fromRelativePath &&
-            toRelativePath
-          ) {
+          if (!hasKnownConflict && vaultPath && fromRelativePath && toRelativePath) {
             try {
               const moved = await invoke<VaultFile>("move_markdown_file", {
                 vaultPath,
@@ -1111,10 +1031,7 @@ export const ExamEditorView = ({
               renamedFromPath = normalizedCurrentSavePath;
               targetPath = moved.path;
             } catch (error) {
-              const renameError = asErrorMessage(
-                error,
-                "Failed to rename exam file.",
-              );
+              const renameError = asErrorMessage(error, "Failed to rename exam file.");
               if (!/already exists/i.test(renameError)) {
                 throw error;
               }
@@ -1122,10 +1039,8 @@ export const ExamEditorView = ({
           }
         }
 
-        const finalTitle =
-          deriveExamTitleFromFilePath(targetPath) ?? fileNameResolution.title;
-        const nextExam =
-          exam.title === finalTitle ? exam : { ...exam, title: finalTitle };
+        const finalTitle = deriveExamTitleFromFilePath(targetPath) ?? fileNameResolution.title;
+        const nextExam = exam.title === finalTitle ? exam : { ...exam, title: finalTitle };
         const bodyMarkdown = serializeExamBlueprintStable(nextExam, {
           passiveSegments,
           sourceMarkdown: sourceDocumentMarkdown,
@@ -1211,9 +1126,7 @@ export const ExamEditorView = ({
     (direction: "up" | "down") => {
       const delta = direction === "up" ? -1 : 1;
       if (selection.type === "task") {
-        const sourceIndex = orderedTasks.findIndex(
-          (task) => task.id === selection.taskId,
-        );
+        const sourceIndex = orderedTasks.findIndex((task) => task.id === selection.taskId);
         if (sourceIndex === -1) {
           return false;
         }
@@ -1229,9 +1142,7 @@ export const ExamEditorView = ({
         if (!task) {
           return false;
         }
-        const sourceIndex = task.cards.findIndex(
-          (card) => card.id === selection.cardId,
-        );
+        const sourceIndex = task.cards.findIndex((card) => card.id === selection.cardId);
         if (sourceIndex === -1) {
           return false;
         }
@@ -1268,9 +1179,7 @@ export const ExamEditorView = ({
       if (isModalOpen()) {
         return;
       }
-      const isSaveShortcut =
-        (event.ctrlKey || event.metaKey) &&
-        event.key.toLowerCase() === "s";
+      const isSaveShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s";
       if (isSaveShortcut) {
         event.preventDefault();
         void handleSave(false);
@@ -1283,9 +1192,7 @@ export const ExamEditorView = ({
         if (isEditableTarget(event.target)) {
           return;
         }
-        const moved = handleKeyboardReorder(
-          event.key === "ArrowUp" ? "up" : "down",
-        );
+        const moved = handleKeyboardReorder(event.key === "ArrowUp" ? "up" : "down");
         if (moved) {
           event.preventDefault();
         }
@@ -1367,18 +1274,10 @@ export const ExamEditorView = ({
       return;
     }
     const lastLoaded = lastLoadedRef.current;
-    if (
-      lastLoaded.path === sourcePath &&
-      lastLoaded.markdown === sourceMarkdown
-    ) {
+    if (lastLoaded.path === sourcePath && lastLoaded.markdown === sourceMarkdown) {
       return;
     }
-    if (
-      sourcePath &&
-      savePath &&
-      sourcePath === savePath &&
-      lastSavedContent === sourceMarkdown
-    ) {
+    if (sourcePath && savePath && sourcePath === savePath && lastSavedContent === sourceMarkdown) {
       return;
     }
     lastLoadedRef.current = { path: sourcePath ?? null, markdown: sourceMarkdown };
@@ -1507,13 +1406,7 @@ export const ExamEditorView = ({
         profileName: assignedProfile?.trim() || null,
       }),
     );
-  }, [
-    exam,
-    lastSavedContent,
-    savePath,
-    sourceMarkdown,
-    sourcePath,
-  ]);
+  }, [exam, lastSavedContent, savePath, sourceMarkdown, sourcePath]);
 
   const getTaskWarning = useCallback(
     (task: ExamTaskBlueprint) =>
@@ -1580,9 +1473,7 @@ export const ExamEditorView = ({
         onChange={(event) => handleTaskProfileSelectChange(event.target.value)}
       >
         {assignedProfileResolution.missing && assignedProfileResolution.requestedName ? (
-          <option value="__missing__">
-            Missing: {assignedProfileResolution.requestedName}
-          </option>
+          <option value="__missing__">Missing: {assignedProfileResolution.requestedName}</option>
         ) : null}
         <option value="__standard__">Standard (no profile)</option>
         {profileNameOptions.map((name) => (
@@ -1593,8 +1484,8 @@ export const ExamEditorView = ({
       </select>
       {assignedProfileResolution.missing && assignedProfileResolution.requestedName ? (
         <div className="error">
-          Missing points profile "{assignedProfileResolution.requestedName}". Create or
-          reassign in the Points Profiles page.
+          Missing points profile "{assignedProfileResolution.requestedName}". Create or reassign in
+          the Points Profiles page.
         </div>
       ) : null}
     </div>
@@ -1687,11 +1578,13 @@ export const ExamEditorView = ({
       />
     </div>
   );
-  const structureSideContent = structureSplitLayout
-    ? selection.type === "exam"
-      ? <CardPalette onQuickAdd={handleAddTask} />
-      : propertiesPanel
-    : undefined;
+  const structureSideContent = structureSplitLayout ? (
+    selection.type === "exam" ? (
+      <CardPalette onQuickAdd={handleAddTask} />
+    ) : (
+      propertiesPanel
+    )
+  ) : undefined;
   const inlineSelection: ExamEditorSelection =
     propertiesPopupActive && (selection.type === "task" || selection.type === "card")
       ? { type: "exam" }
@@ -1705,16 +1598,16 @@ export const ExamEditorView = ({
       onCardTypeChange={handleCardTypeChange}
     />
   ) : null;
-  const mobileTopContent = showPropertiesInline
-    ? inlinePropertiesPanel || alerts
-      ? (
-          <>
-            {inlinePropertiesPanel}
-            {alerts}
-          </>
-        )
-      : null
-    : alerts;
+  const mobileTopContent = showPropertiesInline ? (
+    inlinePropertiesPanel || alerts ? (
+      <>
+        {inlinePropertiesPanel}
+        {alerts}
+      </>
+    ) : null
+  ) : (
+    alerts
+  );
   const desktopTopContent = (
     <>
       {examTitlePanel}
@@ -1735,9 +1628,7 @@ export const ExamEditorView = ({
           </div>
         ) : isStudyView ? (
           <div className="exam-editor-structure study-structure">
-            {paletteOverlayActive ? null : (
-              <CardPalette onQuickAdd={handleAddTask} />
-            )}
+            {paletteOverlayActive ? null : <CardPalette onQuickAdd={handleAddTask} />}
             <ExamCanvas
               {...canvasProps}
               headerActions={paletteToggleButton}
@@ -1759,9 +1650,7 @@ export const ExamEditorView = ({
                 />
               </ModalShell>
             ) : null}
-            {propertiesPopupActive &&
-            propertiesModalOpen &&
-            selection.type !== "exam" ? (
+            {propertiesPopupActive && propertiesModalOpen && selection.type !== "exam" ? (
               <ModalShell
                 isOpen={propertiesModalOpen}
                 title={selection.type === "card" ? "Card Properties" : "Task Properties"}
@@ -1783,69 +1672,65 @@ export const ExamEditorView = ({
             </div>
           </div>
         )
+      ) : isStudyView ? (
+        <div className="exam-editor-structure">
+          <ExamCanvas
+            {...canvasProps}
+            topContent={alerts}
+            bodyContent={
+              <ContentMode
+                exam={exam}
+                selection={selection}
+                validation={validation}
+                tasksHeaderSlot={taskProfileSelect}
+                onSelectTask={handleContentTaskSelect}
+                onTaskUpdate={handleTaskUpdate}
+                onCardUpdate={(taskId, cardId, updates) =>
+                  handleCardUpdate(taskId, cardId, updates)
+                }
+                onCardHelpChange={handleCardHelpChange}
+                onOptionTextChange={handleOptionTextChange}
+                onOptionToggle={handleOptionToggle}
+                onOptionSelect={handleOptionSelect}
+                onOptionAdd={handleOptionAdd}
+                onOptionRemove={handleOptionRemove}
+                onChoiceRawBodyChange={handleChoiceRawBodyChange}
+                vaultFiles={vaultFiles}
+                vaultPngAssets={vaultPngAssets}
+                vaultPath={vaultPath}
+                sourceRelativePath={sourceRelativePath}
+                popupMode={contentPopupActive}
+                popupOpen={contentModalOpen}
+                onPopupOpen={() => setContentModalOpen(true)}
+                onPopupClose={() => setContentModalOpen(false)}
+              />
+            }
+          />
+        </div>
       ) : (
-        isStudyView ? (
-          <div className="exam-editor-structure">
-            <ExamCanvas
-              {...canvasProps}
-              topContent={alerts}
-              bodyContent={
-                <ContentMode
-                  exam={exam}
-                  selection={selection}
-                  validation={validation}
-                  tasksHeaderSlot={taskProfileSelect}
-                  onSelectTask={handleContentTaskSelect}
-                  onTaskUpdate={handleTaskUpdate}
-                  onCardUpdate={(taskId, cardId, updates) =>
-                    handleCardUpdate(taskId, cardId, updates)
-                  }
-                  onCardHelpChange={handleCardHelpChange}
-                  onOptionTextChange={handleOptionTextChange}
-                  onOptionToggle={handleOptionToggle}
-                  onOptionSelect={handleOptionSelect}
-                  onOptionAdd={handleOptionAdd}
-                  onOptionRemove={handleOptionRemove}
-                  onChoiceRawBodyChange={handleChoiceRawBodyChange}
-                  vaultFiles={vaultFiles}
-                  vaultPngAssets={vaultPngAssets}
-                  vaultPath={vaultPath}
-                  sourceRelativePath={sourceRelativePath}
-                  popupMode={contentPopupActive}
-                  popupOpen={contentModalOpen}
-                  onPopupOpen={() => setContentModalOpen(true)}
-                  onPopupClose={() => setContentModalOpen(false)}
-                />
-              }
-            />
-          </div>
-        ) : (
-          <>
-            {alerts}
-            <ContentMode
-              exam={exam}
-              selection={selection}
-              validation={validation}
-              tasksHeaderSlot={taskProfileSelect}
-              onSelectTask={(taskId) => setSelection({ type: "task", taskId })}
-              onTaskUpdate={handleTaskUpdate}
-              onCardUpdate={(taskId, cardId, updates) =>
-                handleCardUpdate(taskId, cardId, updates)
-              }
-              onCardHelpChange={handleCardHelpChange}
-              onOptionTextChange={handleOptionTextChange}
-              onOptionToggle={handleOptionToggle}
-              onOptionSelect={handleOptionSelect}
-              onOptionAdd={handleOptionAdd}
-              onOptionRemove={handleOptionRemove}
-              onChoiceRawBodyChange={handleChoiceRawBodyChange}
-              vaultFiles={vaultFiles}
-              vaultPngAssets={vaultPngAssets}
-              vaultPath={vaultPath}
-              sourceRelativePath={sourceRelativePath}
-            />
-          </>
-        )
+        <>
+          {alerts}
+          <ContentMode
+            exam={exam}
+            selection={selection}
+            validation={validation}
+            tasksHeaderSlot={taskProfileSelect}
+            onSelectTask={(taskId) => setSelection({ type: "task", taskId })}
+            onTaskUpdate={handleTaskUpdate}
+            onCardUpdate={(taskId, cardId, updates) => handleCardUpdate(taskId, cardId, updates)}
+            onCardHelpChange={handleCardHelpChange}
+            onOptionTextChange={handleOptionTextChange}
+            onOptionToggle={handleOptionToggle}
+            onOptionSelect={handleOptionSelect}
+            onOptionAdd={handleOptionAdd}
+            onOptionRemove={handleOptionRemove}
+            onChoiceRawBodyChange={handleChoiceRawBodyChange}
+            vaultFiles={vaultFiles}
+            vaultPngAssets={vaultPngAssets}
+            vaultPath={vaultPath}
+            sourceRelativePath={sourceRelativePath}
+          />
+        </>
       )}
     </div>
   );

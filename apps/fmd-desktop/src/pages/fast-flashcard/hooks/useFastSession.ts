@@ -43,10 +43,7 @@ import {
   loadFastFlashcardStore,
   saveFastFlashcardStore,
 } from "../../../features/user-vault/storage";
-import {
-  processSessionResults,
-  type SessionResultResolver,
-} from "./sessionResults";
+import { processSessionResults, type SessionResultResolver } from "./sessionResults";
 import { resolveFastFlashcardDurationSeconds } from "./duration";
 
 export const fastFlashcardStatusLabel = "Not scanned yet";
@@ -55,12 +52,9 @@ export type { FastFlashcardResult, FastFlashcardSessionSummary, FastFlashcardSto
 
 type FastFlashcardHistoryResetListener = () => void;
 
-const fastFlashcardHistoryResetListeners =
-  new Set<FastFlashcardHistoryResetListener>();
+const fastFlashcardHistoryResetListeners = new Set<FastFlashcardHistoryResetListener>();
 
-export const subscribeFastFlashcardHistoryReset = (
-  listener: FastFlashcardHistoryResetListener,
-) => {
+export const subscribeFastFlashcardHistoryReset = (listener: FastFlashcardHistoryResetListener) => {
   fastFlashcardHistoryResetListeners.add(listener);
   return () => {
     fastFlashcardHistoryResetListeners.delete(listener);
@@ -142,11 +136,7 @@ export { processSessionResults, type SessionResultResolver };
 
 export const useFastSession = () => {
   const { fastFlashcards, settings, userVault } = useAppState();
-  const {
-    flashcardSubmissions,
-    handleFlashcardSelfGrade,
-    handleFlashcardSubmit,
-  } = fastFlashcards;
+  const { flashcardSubmissions, handleFlashcardSelfGrade, handleFlashcardSubmit } = fastFlashcards;
   const [fastCardPosition, setFastCardPosition] = useState(0);
   const [isTimeModeEnabled, setIsTimeModeEnabled] = useState(false);
   const selectedDuration = settings.fastFlashcardDuration;
@@ -159,12 +149,9 @@ export const useFastSession = () => {
     timeout: 0,
   });
   const [sessionElapsedMs, setSessionElapsedMs] = useState(0);
-  const [sessionHistory, setSessionHistory] = useState<
-    FastFlashcardSessionSummary[]
-  >([]);
+  const [sessionHistory, setSessionHistory] = useState<FastFlashcardSessionSummary[]>([]);
   const [sessionHistoryLoaded, setSessionHistoryLoaded] = useState(false);
-  const [fastFlashcardMigratedFromLegacy, setFastFlashcardMigratedFromLegacy] =
-    useState(false);
+  const [fastFlashcardMigratedFromLegacy, setFastFlashcardMigratedFromLegacy] = useState(false);
   const timerRef = useRef<number | null>(null);
   const sessionTimerRef = useRef<number | null>(null);
   const sessionStartRef = useRef<number | null>(null);
@@ -184,11 +171,9 @@ export const useFastSession = () => {
   const statsChartClass = statsTotal === 0 ? "stats-chart empty" : "stats-chart";
   const timeModeActive = isTimeModeEnabled;
   const isCurrentSubmitted =
-    currentCardIndex !== undefined &&
-    Boolean(flashcardSubmissions[currentCardIndex]);
+    currentCardIndex !== undefined && Boolean(flashcardSubmissions[currentCardIndex]);
   const submissionLocked = !timeModeActive;
-  const isTimerRunning =
-    timeModeActive && currentCardIndex !== undefined && !isCurrentSubmitted;
+  const isTimerRunning = timeModeActive && currentCardIndex !== undefined && !isCurrentSubmitted;
   const activeDuration = resolveFastFlashcardDurationSeconds({
     card: currentEntry?.card ?? null,
     manualDuration: selectedDuration,
@@ -220,17 +205,11 @@ export const useFastSession = () => {
   ]);
 
   const canGoBack =
-    timeModeActive &&
-    isCurrentSubmitted &&
-    currentResult === "correct" &&
-    fastCardPosition > 0;
+    timeModeActive && isCurrentSubmitted && currentResult === "correct" && fastCardPosition > 0;
   const canGoNext =
-    timeModeActive &&
-    isCurrentSubmitted &&
-    fastCardPosition < orderedEntries.length - 1;
+    timeModeActive && isCurrentSubmitted && fastCardPosition < orderedEntries.length - 1;
 
-  const correctPercent =
-    statsTotal > 0 ? Math.round((statsCorrect / statsTotal) * 100) : 0;
+  const correctPercent = statsTotal > 0 ? Math.round((statsCorrect / statsTotal) * 100) : 0;
 
   const statsChartStyle = useMemo(
     () =>
@@ -263,25 +242,22 @@ export const useFastSession = () => {
     [timeProgress],
   );
 
-  const registerSessionResult = useCallback(
-    (cardIndex: number, result: FastFlashcardResult) => {
-      const results = sessionResultsRef.current;
-      if (results.has(cardIndex)) {
-        return;
+  const registerSessionResult = useCallback((cardIndex: number, result: FastFlashcardResult) => {
+    const results = sessionResultsRef.current;
+    if (results.has(cardIndex)) {
+      return;
+    }
+    results.set(cardIndex, result);
+    setSessionStats((prev) => {
+      if (result === "correct") {
+        return { ...prev, correct: prev.correct + 1 };
       }
-      results.set(cardIndex, result);
-      setSessionStats((prev) => {
-        if (result === "correct") {
-          return { ...prev, correct: prev.correct + 1 };
-        }
-        if (result === "incorrect") {
-          return { ...prev, incorrect: prev.incorrect + 1 };
-        }
-        return { ...prev, timeout: prev.timeout + 1 };
-      });
-    },
-    [],
-  );
+      if (result === "incorrect") {
+        return { ...prev, incorrect: prev.incorrect + 1 };
+      }
+      return { ...prev, timeout: prev.timeout + 1 };
+    });
+  }, []);
 
   const resolveSessionResult = useCallback(
     (cardIndex: number): FastFlashcardResult | null => {
@@ -344,9 +320,7 @@ export const useFastSession = () => {
           let sessions = store.sessions;
           let migrated = store.migratedFromAppData;
           if (!migrated && sessions.length === 0) {
-            const legacy = await invoke<FastFlashcardStorage>(
-              "load_fast_flashcard_data",
-            );
+            const legacy = await invoke<FastFlashcardStorage>("load_fast_flashcard_data");
             sessions = Array.isArray(legacy?.sessions) ? legacy.sessions : [];
             migrated = true;
             await saveFastFlashcardStore(userVault.activeProfilePath, {
@@ -518,19 +492,10 @@ export const useFastSession = () => {
         handleFlashcardSubmit(currentEntry.cardIndex, true);
       }
     }
-  }, [
-    currentEntry,
-    flashcardSubmissions,
-    handleFlashcardSelfGrade,
-    handleFlashcardSubmit,
-  ]);
+  }, [currentEntry, flashcardSubmissions, handleFlashcardSelfGrade, handleFlashcardSubmit]);
 
   useEffect(() => {
-    if (
-      !timeModeActive ||
-      currentCardIndex === undefined ||
-      isCurrentSubmitted
-    ) {
+    if (!timeModeActive || currentCardIndex === undefined || isCurrentSubmitted) {
       if (timerRef.current !== null) {
         window.clearInterval(timerRef.current);
         timerRef.current = null;
@@ -570,13 +535,7 @@ export const useFastSession = () => {
         timerRef.current = null;
       }
     };
-  }, [
-    activeDuration,
-    currentCardIndex,
-    handleTimeout,
-    isCurrentSubmitted,
-    timeModeActive,
-  ]);
+  }, [activeDuration, currentCardIndex, handleTimeout, isCurrentSubmitted, timeModeActive]);
 
   const handleOptionSelect = useCallback(
     (cardIndex: number, keys: string[]) => {
@@ -607,13 +566,7 @@ export const useFastSession = () => {
       validTokenIds: Set<string>,
       dragBlankIds: Set<string>,
     ) => {
-      fastFlashcards.handleClozeTokenDrop(
-        event,
-        cardIndex,
-        blankId,
-        validTokenIds,
-        dragBlankIds,
-      );
+      fastFlashcards.handleClozeTokenDrop(event, cardIndex, blankId, validTokenIds, dragBlankIds);
     },
     [fastFlashcards],
   );
@@ -647,30 +600,15 @@ export const useFastSession = () => {
   );
 
   const handleCompositeTrueFalseSelect = useCallback(
-    (
-      cardIndex: number,
-      partIndex: number,
-      itemId: string,
-      value: "wahr" | "falsch",
-    ) => {
-      fastFlashcards.handleCompositeTrueFalseSelect(
-        cardIndex,
-        partIndex,
-        itemId,
-        value,
-      );
+    (cardIndex: number, partIndex: number, itemId: string, value: "wahr" | "falsch") => {
+      fastFlashcards.handleCompositeTrueFalseSelect(cardIndex, partIndex, itemId, value);
     },
     [fastFlashcards],
   );
 
   const handleCompositeClozeInputChange = useCallback(
     (cardIndex: number, partIndex: number, blankId: string, value: string) => {
-      fastFlashcards.handleCompositeClozeInputChange(
-        cardIndex,
-        partIndex,
-        blankId,
-        value,
-      );
+      fastFlashcards.handleCompositeClozeInputChange(cardIndex, partIndex, blankId, value);
     },
     [fastFlashcards],
   );
@@ -698,22 +636,14 @@ export const useFastSession = () => {
 
   const handleCompositeClozeTokenRemove = useCallback(
     (cardIndex: number, partIndex: number, blankId: string) => {
-      fastFlashcards.handleCompositeClozeTokenRemove(
-        cardIndex,
-        partIndex,
-        blankId,
-      );
+      fastFlashcards.handleCompositeClozeTokenRemove(cardIndex, partIndex, blankId);
     },
     [fastFlashcards],
   );
 
   const handleCompositeTextInputChange = useCallback(
     (cardIndex: number, partIndex: number, value: string) => {
-      fastFlashcards.handleCompositeTextInputChange(
-        cardIndex,
-        partIndex,
-        value,
-      );
+      fastFlashcards.handleCompositeTextInputChange(cardIndex, partIndex, value);
     },
     [fastFlashcards],
   );
@@ -762,15 +692,12 @@ export const useFastSession = () => {
     }
     const durationMs = Math.max(0, Date.now() - sessionStartRef.current);
     const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0;
-    const pace =
-      durationMs > 0 ? Number((total / (durationMs / 60000)).toFixed(1)) : 0;
+    const pace = durationMs > 0 ? Number((total / (durationMs / 60000)).toFixed(1)) : 0;
     const baseScore =
       correct * FAST_FLASHCARD_SCORE_BY_RESULT.correct +
       incorrect * FAST_FLASHCARD_SCORE_BY_RESULT.incorrect +
       timeout * FAST_FLASHCARD_SCORE_BY_RESULT.timeout;
-    const multiplier = autoTimeEnabled
-      ? 1
-      : getFastFlashcardMultiplier(selectedDuration);
+    const multiplier = autoTimeEnabled ? 1 : getFastFlashcardMultiplier(selectedDuration);
     const score = Math.round(baseScore * multiplier);
 
     setSessionElapsedMs(durationMs);
@@ -789,12 +716,7 @@ export const useFastSession = () => {
         durationMs,
       },
     ]);
-  }, [
-    autoTimeEnabled,
-    flashcardSubmissions,
-    recordSessionResults,
-    selectedDuration,
-  ]);
+  }, [autoTimeEnabled, flashcardSubmissions, recordSessionResults, selectedDuration]);
 
   const handleTimeToggle = useCallback(() => {
     setIsTimeModeEnabled((prev) => {
@@ -825,24 +747,18 @@ export const useFastSession = () => {
     [handleFlashcardSelfGrade, timeModeActive],
   );
 
-  const sessionCompleted =
-    sessionStats.correct + sessionStats.incorrect + sessionStats.timeout;
+  const sessionCompleted = sessionStats.correct + sessionStats.incorrect + sessionStats.timeout;
   const sessionMissed = sessionStats.incorrect + sessionStats.timeout;
   const sessionAccuracy =
-    sessionCompleted > 0
-      ? Math.round((sessionStats.correct / sessionCompleted) * 100)
-      : 0;
+    sessionCompleted > 0 ? Math.round((sessionStats.correct / sessionCompleted) * 100) : 0;
   const sessionBaseScore =
     sessionStats.correct * FAST_FLASHCARD_SCORE_BY_RESULT.correct +
     sessionStats.incorrect * FAST_FLASHCARD_SCORE_BY_RESULT.incorrect +
     sessionStats.timeout * FAST_FLASHCARD_SCORE_BY_RESULT.timeout;
-  const sessionMultiplier = autoTimeEnabled
-    ? 1
-    : getFastFlashcardMultiplier(selectedDuration);
+  const sessionMultiplier = autoTimeEnabled ? 1 : getFastFlashcardMultiplier(selectedDuration);
   const sessionScore = Math.round(sessionBaseScore * sessionMultiplier);
   const sessionMinutes = sessionElapsedMs / 60000;
-  const sessionPace =
-    sessionMinutes > 0 ? (sessionCompleted / sessionMinutes).toFixed(1) : "0.0";
+  const sessionPace = sessionMinutes > 0 ? (sessionCompleted / sessionMinutes).toFixed(1) : "0.0";
   const lastSessions = useMemo(() => {
     return [...sessionHistory]
       .sort((a, b) => getSessionTimeValue(b.endedAt) - getSessionTimeValue(a.endedAt))

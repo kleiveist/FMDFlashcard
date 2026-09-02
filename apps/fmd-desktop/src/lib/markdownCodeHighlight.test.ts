@@ -12,10 +12,10 @@ const setupModule = async (options: MockCoreOptions = {}) => {
   vi.resetModules();
 
   const registered = new Set<string>();
-  const highlightValue = options.highlightValue
-    ?? "<span class=\"hljs-keyword\">const</span> value = 1;";
-  const autoHighlightValue = options.autoHighlightValue
-    ?? "<span class=\"hljs-keyword\">SELECT</span> 1;";
+  const highlightValue =
+    options.highlightValue ?? '<span class="hljs-keyword">const</span> value = 1;';
+  const autoHighlightValue =
+    options.autoHighlightValue ?? '<span class="hljs-keyword">SELECT</span> 1;';
   const autoLanguage = options.autoLanguage ?? "sql";
 
   const core = {
@@ -38,15 +38,7 @@ const setupModule = async (options: MockCoreOptions = {}) => {
   }));
 
   const mockLanguage = () => ({ default: () => ({}) });
-  [
-    "bash",
-    "javascript",
-    "typescript",
-    "python",
-    "sql",
-    "yaml",
-    "markdown",
-  ].forEach((language) => {
+  ["bash", "javascript", "typescript", "python", "sql", "yaml", "markdown"].forEach((language) => {
     vi.doMock(`highlight.js/lib/languages/${language}`, mockLanguage);
   });
 
@@ -140,8 +132,7 @@ describe("markdownCodeHighlight", () => {
 
   it("falls back to plain output when highlighted html contains unsafe tags", async () => {
     const { module } = await setupModule({
-      highlightValue:
-        "<span class=\"hljs-keyword\">safe</span><img src=x onerror=alert(1)>",
+      highlightValue: '<span class="hljs-keyword">safe</span><img src=x onerror=alert(1)>',
     });
 
     const result = await module.highlightMarkdownCode({

@@ -12,9 +12,7 @@ export type InlineFormattingToolbarAction =
   | "cl";
 
 export type InlineFormattingMathMenuAction =
-  | "wrap-inline"
-  | "convert-inline-display"
-  | "remove-marking";
+  "wrap-inline" | "convert-inline-display" | "remove-marking";
 
 export type InlineFormattingToolbarRange = {
   start: number;
@@ -45,7 +43,10 @@ export type InlineFormattingToolbarActiveState = {
   cl: boolean;
 };
 
-export const INLINE_FORMATTING_WRAPPERS: Record<InlineFormattingToolbarAction, InlineFormattingWrapper> = {
+export const INLINE_FORMATTING_WRAPPERS: Record<
+  InlineFormattingToolbarAction,
+  InlineFormattingWrapper
+> = {
   highlight: { open: "==", close: "==" },
   bold: { open: "**", close: "**" },
   italic: { open: "*", close: "*" },
@@ -53,7 +54,7 @@ export const INLINE_FORMATTING_WRAPPERS: Record<InlineFormattingToolbarAction, I
   strikethrough: { open: "~~", close: "~~" },
   "inline-code": { open: "`", close: "`" },
   math: { open: "$", close: "$" },
-  cd: { open: "\"", close: "\"" },
+  cd: { open: '"', close: '"' },
   cl: { open: "%", close: "%" },
 };
 
@@ -72,11 +73,7 @@ export const normalizeInlineFormattingRange = (
   return { start: end, end: start };
 };
 
-const countRepeatedCharBeforeIndex = (
-  value: string,
-  startIndex: number,
-  char: string,
-) => {
+const countRepeatedCharBeforeIndex = (value: string, startIndex: number, char: string) => {
   let count = 0;
   let index = startIndex - 1;
   while (index >= 0 && value[index] === char) {
@@ -86,11 +83,7 @@ const countRepeatedCharBeforeIndex = (
   return count;
 };
 
-const countRepeatedCharAfterIndex = (
-  value: string,
-  startIndex: number,
-  char: string,
-) => {
+const countRepeatedCharAfterIndex = (value: string, startIndex: number, char: string) => {
   let count = 0;
   let index = startIndex;
   while (index < value.length && value[index] === char) {
@@ -127,14 +120,15 @@ export const toggleInlineFormattingWrapper = (
   if (wrapper.open === "*" && wrapper.close === "*" && wrapper.open.length <= 2) {
     const starRuns = resolveRepeatedMarkerRunsAroundSelection(value, normalized, "*");
     if (wrapper.open.length === 1) {
-      const isItalicActive = starRuns.left >= 1 &&
+      const isItalicActive =
+        starRuns.left >= 1 &&
         starRuns.right >= 1 &&
         starRuns.left % 2 === 1 &&
         starRuns.right % 2 === 1;
       if (isItalicActive) {
-        const nextValue = `${value.slice(0, normalized.start - 1)}${value.slice(normalized.start, normalized.end)}${
-          value.slice(normalized.end + 1)
-        }`;
+        const nextValue = `${value.slice(0, normalized.start - 1)}${value.slice(normalized.start, normalized.end)}${value.slice(
+          normalized.end + 1,
+        )}`;
         return {
           value: nextValue,
           selection: {
@@ -144,9 +138,9 @@ export const toggleInlineFormattingWrapper = (
           changed: nextValue !== value,
         };
       }
-      const nextValue = `${value.slice(0, normalized.start)}*${value.slice(normalized.start, normalized.end)}*${
-        value.slice(normalized.end)
-      }`;
+      const nextValue = `${value.slice(0, normalized.start)}*${value.slice(normalized.start, normalized.end)}*${value.slice(
+        normalized.end,
+      )}`;
       return {
         value: nextValue,
         selection: {
@@ -158,9 +152,9 @@ export const toggleInlineFormattingWrapper = (
     }
     const isBoldActive = starRuns.left >= 2 && starRuns.right >= 2;
     if (isBoldActive) {
-      const nextValue = `${value.slice(0, normalized.start - 2)}${value.slice(normalized.start, normalized.end)}${
-        value.slice(normalized.end + 2)
-      }`;
+      const nextValue = `${value.slice(0, normalized.start - 2)}${value.slice(normalized.start, normalized.end)}${value.slice(
+        normalized.end + 2,
+      )}`;
       return {
         value: nextValue,
         selection: {
@@ -170,9 +164,9 @@ export const toggleInlineFormattingWrapper = (
         changed: nextValue !== value,
       };
     }
-    const nextValue = `${value.slice(0, normalized.start)}**${value.slice(normalized.start, normalized.end)}**${
-      value.slice(normalized.end)
-    }`;
+    const nextValue = `${value.slice(0, normalized.start)}**${value.slice(normalized.start, normalized.end)}**${value.slice(
+      normalized.end,
+    )}`;
     return {
       value: nextValue,
       selection: {
@@ -184,7 +178,8 @@ export const toggleInlineFormattingWrapper = (
   }
 
   const selected = value.slice(normalized.start, normalized.end);
-  const selectedHasWrapper = selected.length >= wrapper.open.length + wrapper.close.length &&
+  const selectedHasWrapper =
+    selected.length >= wrapper.open.length + wrapper.close.length &&
     selected.startsWith(wrapper.open) &&
     selected.endsWith(wrapper.close);
   if (selectedHasWrapper) {
@@ -192,9 +187,10 @@ export const toggleInlineFormattingWrapper = (
       start: normalized.start,
       end: normalized.end - wrapper.open.length - wrapper.close.length,
     };
-    const nextValue = `${value.slice(0, normalized.start)}${
-      selected.slice(wrapper.open.length, selected.length - wrapper.close.length)
-    }${value.slice(normalized.end)}`;
+    const nextValue = `${value.slice(0, normalized.start)}${selected.slice(
+      wrapper.open.length,
+      selected.length - wrapper.close.length,
+    )}${value.slice(normalized.end)}`;
     return {
       value: nextValue,
       selection: nextSelection,
@@ -202,14 +198,15 @@ export const toggleInlineFormattingWrapper = (
     };
   }
 
-  const hasWrapperAroundSelection = normalized.start >= wrapper.open.length &&
+  const hasWrapperAroundSelection =
+    normalized.start >= wrapper.open.length &&
     normalized.end + wrapper.close.length <= value.length &&
     value.slice(normalized.start - wrapper.open.length, normalized.start) === wrapper.open &&
     value.slice(normalized.end, normalized.end + wrapper.close.length) === wrapper.close;
   if (hasWrapperAroundSelection) {
-    const nextValue = `${value.slice(0, normalized.start - wrapper.open.length)}${selected}${
-      value.slice(normalized.end + wrapper.close.length)
-    }`;
+    const nextValue = `${value.slice(0, normalized.start - wrapper.open.length)}${selected}${value.slice(
+      normalized.end + wrapper.close.length,
+    )}`;
     const nextSelection = {
       start: normalized.start - wrapper.open.length,
       end: normalized.end - wrapper.open.length,
@@ -221,9 +218,9 @@ export const toggleInlineFormattingWrapper = (
     };
   }
 
-  const nextValue = `${value.slice(0, normalized.start)}${wrapper.open}${selected}${wrapper.close}${
-    value.slice(normalized.end)
-  }`;
+  const nextValue = `${value.slice(0, normalized.start)}${wrapper.open}${selected}${wrapper.close}${value.slice(
+    normalized.end,
+  )}`;
   return {
     value: nextValue,
     selection: {
@@ -277,9 +274,7 @@ export const applyInlineMarkdownLink = (
   const existingLink = findInlineMarkdownLinkAtRange(value, normalized);
 
   if (existingLink) {
-    const replacement = url
-      ? `[${existingLink.label}](${url})`
-      : existingLink.label;
+    const replacement = url ? `[${existingLink.label}](${url})` : existingLink.label;
     const nextValue = `${value.slice(0, existingLink.start)}${replacement}${value.slice(existingLink.end)}`;
     const labelStart = existingLink.start + (url ? 1 : 0);
     return {
@@ -361,22 +356,26 @@ export const isInlineFormattingWrapperActive = (
   if (wrapper.open === "*" && wrapper.close === "*" && wrapper.open.length <= 2) {
     const starRuns = resolveRepeatedMarkerRunsAroundSelection(value, normalized, "*");
     if (wrapper.open.length === 1) {
-      return starRuns.left >= 1 &&
+      return (
+        starRuns.left >= 1 &&
         starRuns.right >= 1 &&
         starRuns.left % 2 === 1 &&
-        starRuns.right % 2 === 1;
+        starRuns.right % 2 === 1
+      );
     }
     return starRuns.left >= 2 && starRuns.right >= 2;
   }
 
   const selected = value.slice(normalized.start, normalized.end);
-  const selectionContainsWrapper = selected.length >= wrapper.open.length + wrapper.close.length &&
+  const selectionContainsWrapper =
+    selected.length >= wrapper.open.length + wrapper.close.length &&
     selected.startsWith(wrapper.open) &&
     selected.endsWith(wrapper.close);
   if (selectionContainsWrapper) {
     return true;
   }
-  const hasWrapperAroundSelection = normalized.start >= wrapper.open.length &&
+  const hasWrapperAroundSelection =
+    normalized.start >= wrapper.open.length &&
     normalized.end + wrapper.close.length <= value.length &&
     value.slice(normalized.start - wrapper.open.length, normalized.start) === wrapper.open &&
     value.slice(normalized.end, normalized.end + wrapper.close.length) === wrapper.close;
@@ -393,13 +392,29 @@ export const resolveInlineFormattingToolbarActiveState = (
   }
   const linkMatch = findInlineMarkdownLinkAtRange(value, normalized);
   return {
-    highlight: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.highlight),
+    highlight: isInlineFormattingWrapperActive(
+      value,
+      normalized,
+      INLINE_FORMATTING_WRAPPERS.highlight,
+    ),
     bold: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.bold),
     italic: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.italic),
-    underline: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.underline),
+    underline: isInlineFormattingWrapperActive(
+      value,
+      normalized,
+      INLINE_FORMATTING_WRAPPERS.underline,
+    ),
     link: Boolean(linkMatch),
-    strikethrough: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.strikethrough),
-    "inline-code": isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS["inline-code"]),
+    strikethrough: isInlineFormattingWrapperActive(
+      value,
+      normalized,
+      INLINE_FORMATTING_WRAPPERS.strikethrough,
+    ),
+    "inline-code": isInlineFormattingWrapperActive(
+      value,
+      normalized,
+      INLINE_FORMATTING_WRAPPERS["inline-code"],
+    ),
     math: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.math),
     cd: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.cd),
     cl: isInlineFormattingWrapperActive(value, normalized, INLINE_FORMATTING_WRAPPERS.cl),
@@ -417,7 +432,9 @@ export const stripInlineFormattingAroundRange = (
   let nextValue = value;
   let nextRange = normalizeInlineFormattingRange(value, range);
   let hasChanged = false;
-  const actions = options?.actions ?? (Object.keys(INLINE_FORMATTING_WRAPPERS) as InlineFormattingToolbarAction[]);
+  const actions =
+    options?.actions ??
+    (Object.keys(INLINE_FORMATTING_WRAPPERS) as InlineFormattingToolbarAction[]);
 
   for (let iteration = 0; iteration < 4; iteration += 1) {
     let iterationChanged = false;

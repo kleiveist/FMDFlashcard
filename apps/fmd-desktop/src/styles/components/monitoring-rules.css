@@ -297,12 +297,11 @@
 }
 
 .monitoring-rules-formula-builder-section {
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--panel) 86%, var(--accent-weak-bg)) 0%,
-      var(--panel) 100%
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--panel) 86%, var(--accent-weak-bg)) 0%,
+    var(--panel) 100%
+  );
 }
 
 .monitoring-rules-formula-builder-shell {
@@ -373,7 +372,8 @@
 }
 
 .monitoring-rules-formula-conflict-warning {
-  border: 1px solid color-mix(in srgb, var(--warning-border, var(--line-soft)) 70%, var(--line-soft));
+  border: 1px solid
+    color-mix(in srgb, var(--warning-border, var(--line-soft)) 70%, var(--line-soft));
   border-radius: 10px;
   padding: 8px 10px;
   background: color-mix(in srgb, var(--warning-bg, var(--panel)) 78%, transparent);
@@ -484,7 +484,9 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  transition: border-color 0.18s ease, background-color 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease;
 }
 
 .monitoring-rules-rule-row:hover {

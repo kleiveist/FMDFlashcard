@@ -5,14 +5,7 @@
  */
 
 import { invoke } from "@tauri-apps/api/core";
-import {
-  type CSSProperties,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { parseFrontmatterDocument } from "../frontmatter";
 import {
@@ -24,10 +17,7 @@ import {
   buildVaultAttributeIndexFromMarkdownDocuments,
   createEmptyVaultAttributeIndex,
 } from "./database-attribute-discovery";
-import {
-  buildNormalizedRecord,
-  createSystemFieldsForRecord,
-} from "./database-normalizers";
+import { buildNormalizedRecord, createSystemFieldsForRecord } from "./database-normalizers";
 import {
   coerceTimelineZoom,
   formatTimelineValueFromTimestamp,
@@ -61,10 +51,7 @@ import {
   cloneProjectBarFillConfigs,
   normalizeProjectBarFillConfigs,
 } from "./database-project-fill-profile";
-import {
-  buildDatabasePieValueOptions,
-  normalizeDatabasePieExcludedValues,
-} from "./pie-values";
+import { buildDatabasePieValueOptions, normalizeDatabasePieExcludedValues } from "./pie-values";
 import {
   type DatabaseAttributeMeta,
   type DatabaseFieldDefinition,
@@ -149,17 +136,13 @@ type DatabaseCellEditState = {
 
 const getFolderLabel = () => "Quelle";
 
-const toWikilinkTarget = (relativePath: string) =>
-  relativePath.replace(/\.md$/i, "");
+const toWikilinkTarget = (relativePath: string) => relativePath.replace(/\.md$/i, "");
 
 const toLower = (value: string) => value.trim().toLowerCase();
 
 const cloneFilterGroup = (group: DatabaseFilterGroup): DatabaseFilterGroup => ({
   ...group,
-  rules: group.rules.map((entry) =>
-    "rules" in entry
-      ? cloneFilterGroup(entry)
-      : { ...entry }),
+  rules: group.rules.map((entry) => ("rules" in entry ? cloneFilterGroup(entry) : { ...entry })),
 });
 
 const cloneSortRules = (rules: DatabaseSortRule[]) => rules.map((rule) => ({ ...rule }));
@@ -174,9 +157,7 @@ const cloneKanbanOrderByGroup = (
       return;
     }
     const deduped = dedupeExact(
-      (orderRaw ?? [])
-        .map((entry) => String(entry ?? "").trim())
-        .filter(Boolean),
+      (orderRaw ?? []).map((entry) => String(entry ?? "").trim()).filter(Boolean),
     );
     if (deduped.length === 0) {
       return;
@@ -209,9 +190,7 @@ const ensureFieldDefinition = (
 };
 
 const appendVisibleColumnIfMissing = (columns: string[], key: string) =>
-  columns.some((entry) => toLower(entry) === toLower(key))
-    ? columns
-    : [...columns, key];
+  columns.some((entry) => toLower(entry) === toLower(key)) ? columns : [...columns, key];
 
 const dedupeCaseInsensitive = (keys: string[]) => {
   const seen = new Set<string>();
@@ -276,7 +255,9 @@ const cloneSavedView = (savedView: DatabaseSavedViewConfig): DatabaseSavedViewCo
   ...savedView,
   view: {
     ...savedView.view,
-    kanbanExcludedValues: normalizeDatabaseKanbanExcludedValues(savedView.view.kanbanExcludedValues),
+    kanbanExcludedValues: normalizeDatabaseKanbanExcludedValues(
+      savedView.view.kanbanExcludedValues,
+    ),
     projectBarFillConfigs: cloneProjectBarFillConfigs(savedView.view.projectBarFillConfigs),
     pieExcludedValues: normalizeDatabasePieExcludedValues(savedView.view.pieExcludedValues),
     pieColorSpectrum: normalizeDatabasePieColorSpectrum(savedView.view.pieColorSpectrum),
@@ -289,7 +270,10 @@ const cloneSavedView = (savedView: DatabaseSavedViewConfig): DatabaseSavedViewCo
 const cloneSavedViews = (savedViews: DatabaseSavedViewConfig[]) =>
   savedViews.map((savedView) => cloneSavedView(savedView));
 
-const findSavedViewById = (savedViews: DatabaseSavedViewConfig[], id: string | null | undefined) => {
+const findSavedViewById = (
+  savedViews: DatabaseSavedViewConfig[],
+  id: string | null | undefined,
+) => {
   if (!id) {
     return savedViews[0] ?? null;
   }
@@ -318,9 +302,12 @@ const dedupeSavedViewsById = (savedViews: DatabaseSavedViewConfig[]): DatabaseSa
 };
 
 const createSavedViewId = (name: string, existingIds: Set<string>) => {
-  const base = name.trim().toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "view";
+  const base =
+    name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "view";
   let candidate = `view-${base}`;
   let sequence = 2;
   while (existingIds.has(candidate)) {
@@ -345,14 +332,18 @@ const createDuplicateSavedViewName = (name: string, existingNames: Set<string>) 
 const buildCellMutationKey = (recordId: string, fieldKey: string) =>
   `${recordId}::${toLower(fieldKey)}`;
 
-const getRecordValueByField = (record: DatabaseRecord, field: string): DatabaseNormalizedFieldValue => {
+const getRecordValueByField = (
+  record: DatabaseRecord,
+  field: string,
+): DatabaseNormalizedFieldValue => {
   if (field in record.normalizedFields) {
     return record.normalizedFields[field] ?? null;
   }
   const normalizedField = toLower(field);
-  const matchedKey = Object.keys(record.normalizedFields)
-    .find((key) => toLower(key) === normalizedField);
-  return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
+  const matchedKey = Object.keys(record.normalizedFields).find(
+    (key) => toLower(key) === normalizedField,
+  );
+  return matchedKey ? (record.normalizedFields[matchedKey] ?? null) : null;
 };
 
 const EMPTY_KANBAN_GROUP_KEY = "(leer)";
@@ -395,9 +386,11 @@ const applyKanbanOrder = (records: DatabaseRecord[], order: string[] | undefined
     }
     fallback.push(record);
   });
-  prioritized.sort((left, right) =>
-    (orderIndex.get(left.fileId) ?? Number.MAX_SAFE_INTEGER) -
-      (orderIndex.get(right.fileId) ?? Number.MAX_SAFE_INTEGER));
+  prioritized.sort(
+    (left, right) =>
+      (orderIndex.get(left.fileId) ?? Number.MAX_SAFE_INTEGER) -
+      (orderIndex.get(right.fileId) ?? Number.MAX_SAFE_INTEGER),
+  );
   return [...prioritized, ...fallback];
 };
 
@@ -561,8 +554,7 @@ const upsertFrontmatterFieldCaseInsensitive = (
   key: string,
   value: unknown,
 ) => {
-  const existingKey = Object.keys(frontmatter)
-    .find((entry) => toLower(entry) === toLower(key));
+  const existingKey = Object.keys(frontmatter).find((entry) => toLower(entry) === toLower(key));
   if (existingKey) {
     return {
       ...frontmatter,
@@ -575,8 +567,24 @@ const upsertFrontmatterFieldCaseInsensitive = (
   };
 };
 
-const getFlatFilterRules = (group: DatabaseFilterGroup): Array<{ groupId: string; ruleId: string; field: string; op: string; value?: unknown; valueTo?: unknown }> => {
-  const entries: Array<{ groupId: string; ruleId: string; field: string; op: string; value?: unknown; valueTo?: unknown }> = [];
+const getFlatFilterRules = (
+  group: DatabaseFilterGroup,
+): Array<{
+  groupId: string;
+  ruleId: string;
+  field: string;
+  op: string;
+  value?: unknown;
+  valueTo?: unknown;
+}> => {
+  const entries: Array<{
+    groupId: string;
+    ruleId: string;
+    field: string;
+    op: string;
+    value?: unknown;
+    valueTo?: unknown;
+  }> = [];
   group.rules.forEach((entry) => {
     if ("rules" in entry) {
       entries.push(...getFlatFilterRules(entry));
@@ -597,20 +605,17 @@ const getFlatFilterRules = (group: DatabaseFilterGroup): Array<{ groupId: string
 const removeFilterRuleById = (group: DatabaseFilterGroup, ruleId: string): DatabaseFilterGroup => ({
   ...group,
   rules: group.rules
-    .map((entry) =>
-      "rules" in entry
-        ? removeFilterRuleById(entry, ruleId)
-        : entry)
+    .map((entry) => ("rules" in entry ? removeFilterRuleById(entry, ruleId) : entry))
     .filter((entry) => ("rules" in entry ? true : entry.id !== ruleId)),
 });
 
-const removeFilterRulesByField = (group: DatabaseFilterGroup, key: string): DatabaseFilterGroup => ({
+const removeFilterRulesByField = (
+  group: DatabaseFilterGroup,
+  key: string,
+): DatabaseFilterGroup => ({
   ...group,
   rules: group.rules
-    .map((entry) =>
-      "rules" in entry
-        ? removeFilterRulesByField(entry, key)
-        : entry)
+    .map((entry) => ("rules" in entry ? removeFilterRulesByField(entry, key) : entry))
     .filter((entry) => ("rules" in entry ? true : toLower(entry.field) !== toLower(key))),
 });
 
@@ -619,7 +624,8 @@ const pickKanbanGroupAttribute = (
   preferredKey: string | null | undefined,
 ) => {
   if (preferredKey) {
-    const preferred = attributes.find((attribute) => toLower(attribute.key) === toLower(preferredKey)) ?? null;
+    const preferred =
+      attributes.find((attribute) => toLower(attribute.key) === toLower(preferredKey)) ?? null;
     if (preferred && preferred.viewCompatibility.supportsKanbanGrouping) {
       return preferred;
     }
@@ -632,7 +638,8 @@ const pickTimelineAttribute = (
   preferredKey: string | null | undefined,
 ) => {
   if (preferredKey) {
-    const preferred = attributes.find((attribute) => toLower(attribute.key) === toLower(preferredKey)) ?? null;
+    const preferred =
+      attributes.find((attribute) => toLower(attribute.key) === toLower(preferredKey)) ?? null;
     if (preferred && preferred.viewCompatibility.supportsTimeline) {
       return preferred;
     }
@@ -645,7 +652,8 @@ const pickPieGroupAttribute = (
   preferredKey: string | null | undefined,
 ) => {
   if (preferredKey) {
-    const preferred = attributes.find((attribute) => toLower(attribute.key) === toLower(preferredKey)) ?? null;
+    const preferred =
+      attributes.find((attribute) => toLower(attribute.key) === toLower(preferredKey)) ?? null;
     if (preferred && preferred.viewCompatibility.supportsPieGrouping) {
       return preferred;
     }
@@ -733,7 +741,9 @@ const asPositiveInteger = (value: unknown): number | null => {
 
 const normalizeProjectBlockResolution = (value: unknown) => {
   const parsed = asPositiveInteger(value) ?? DEFAULT_PROJECT_BLOCK_RESOLUTION;
-  return PROJECT_BLOCK_RESOLUTION_OPTIONS.includes(parsed as typeof PROJECT_BLOCK_RESOLUTION_OPTIONS[number])
+  return PROJECT_BLOCK_RESOLUTION_OPTIONS.includes(
+    parsed as (typeof PROJECT_BLOCK_RESOLUTION_OPTIONS)[number],
+  )
     ? parsed
     : DEFAULT_PROJECT_BLOCK_RESOLUTION;
 };
@@ -753,7 +763,8 @@ const pickProjectNumericAttribute = (
   if (!preferredKey) {
     return null;
   }
-  const preferred = attributes.find((attribute) => toLower(attribute.key) === toLower(preferredKey)) ?? null;
+  const preferred =
+    attributes.find((attribute) => toLower(attribute.key) === toLower(preferredKey)) ?? null;
   if (preferred && isProjectNumericType(preferred.type)) {
     return preferred;
   }
@@ -796,7 +807,8 @@ export const MarkdownHybridDatabaseBlock = ({
     return cloneSavedViews(defaultConfig.views.items);
   }, [defaultConfig.views.items, parsed.config.views.items]);
   const parsedActiveSavedView = useMemo(
-    () => findSavedViewById(parsedSavedViews, parsed.config.views.activeViewId) ?? parsedSavedViews[0]!,
+    () =>
+      findSavedViewById(parsedSavedViews, parsed.config.views.activeViewId) ?? parsedSavedViews[0]!,
     [parsed.config.views.activeViewId, parsedSavedViews],
   );
 
@@ -808,8 +820,12 @@ export const MarkdownHybridDatabaseBlock = ({
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [viewType, setViewType] = useState<DatabaseViewType>(parsedActiveSavedView.view.type);
-  const [kanbanGroupBy, setKanbanGroupBy] = useState<string | null>(parsedActiveSavedView.view.groupBy ?? null);
-  const [kanbanShowCover, setKanbanShowCover] = useState<boolean>(parsedActiveSavedView.view.kanbanShowCover ?? false);
+  const [kanbanGroupBy, setKanbanGroupBy] = useState<string | null>(
+    parsedActiveSavedView.view.groupBy ?? null,
+  );
+  const [kanbanShowCover, setKanbanShowCover] = useState<boolean>(
+    parsedActiveSavedView.view.kanbanShowCover ?? false,
+  );
   const [kanbanOrderByGroup, setKanbanOrderByGroup] = useState<Record<string, string[]>>(
     cloneKanbanOrderByGroup(parsedActiveSavedView.view.kanbanOrderByGroup),
   );
@@ -851,10 +867,13 @@ export const MarkdownHybridDatabaseBlock = ({
   const [projectDefaultUnits, setProjectDefaultUnits] = useState<number>(
     asPositiveInteger(parsedActiveSavedView.view.defaultUnits) ?? DEFAULT_PROJECT_DEFAULT_UNITS,
   );
-  const [projectMissingPlacement, setProjectMissingPlacement] = useState<DatabaseProjectMissingPlacement>(
-    parsedActiveSavedView.view.projectMissingPlacement ?? DEFAULT_PROJECT_MISSING_PLACEMENT,
-  );
-  const [projectBarFillConfigs, setProjectBarFillConfigs] = useState<DatabaseProjectBarFillConfig[]>(
+  const [projectMissingPlacement, setProjectMissingPlacement] =
+    useState<DatabaseProjectMissingPlacement>(
+      parsedActiveSavedView.view.projectMissingPlacement ?? DEFAULT_PROJECT_MISSING_PLACEMENT,
+    );
+  const [projectBarFillConfigs, setProjectBarFillConfigs] = useState<
+    DatabaseProjectBarFillConfig[]
+  >(
     normalizeProjectBarFillConfigs(
       cloneProjectBarFillConfigs(parsedActiveSavedView.view.projectBarFillConfigs),
     ),
@@ -880,9 +899,13 @@ export const MarkdownHybridDatabaseBlock = ({
   const [activeFilters, setActiveFilters] = useState<DatabaseFilterGroup>(
     cloneFilterGroup(parsedActiveSavedView.filters),
   );
-  const [activeSorts, setActiveSorts] = useState<DatabaseSortRule[]>(cloneSortRules(parsedActiveSavedView.sort));
+  const [activeSorts, setActiveSorts] = useState<DatabaseSortRule[]>(
+    cloneSortRules(parsedActiveSavedView.sort),
+  );
   const [activeCellEdit, setActiveCellEdit] = useState<DatabaseCellEditState | null>(null);
-  const [tableLayoutProfile, setTableLayoutProfile] = useState<DatabaseTableLayoutProfile | null>(null);
+  const [tableLayoutProfile, setTableLayoutProfile] = useState<DatabaseTableLayoutProfile | null>(
+    null,
+  );
   const [pendingCellMutations, setPendingCellMutations] = useState<string[]>([]);
   const runnableExamPathSet = useMemo(
     () =>
@@ -895,13 +918,15 @@ export const MarkdownHybridDatabaseBlock = ({
   );
   const [pendingRecordMutations, setPendingRecordMutations] = useState<string[]>([]);
   const [records, setRecords] = useState<DatabaseRecord[]>([]);
-  const [historyFiles, setHistoryFiles] = useState<Array<{
-    path: string;
-    relativePath: string;
-    created_at?: number | null;
-    last_modified?: number | null;
-    size_bytes?: number | null;
-  }>>([]);
+  const [historyFiles, setHistoryFiles] = useState<
+    Array<{
+      path: string;
+      relativePath: string;
+      created_at?: number | null;
+      last_modified?: number | null;
+      size_bytes?: number | null;
+    }>
+  >([]);
   const [historyRecords, setHistoryRecords] = useState<DatabaseRecord[]>([]);
   const [historyWarning, setHistoryWarning] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -936,7 +961,8 @@ export const MarkdownHybridDatabaseBlock = ({
   const projectUnitFieldRef = useRef<string | null>(projectUnitField);
   const projectBlockResolutionRef = useRef<number>(projectBlockResolution);
   const projectDefaultUnitsRef = useRef<number>(projectDefaultUnits);
-  const projectMissingPlacementRef = useRef<DatabaseProjectMissingPlacement>(projectMissingPlacement);
+  const projectMissingPlacementRef =
+    useRef<DatabaseProjectMissingPlacement>(projectMissingPlacement);
   const projectBarFillConfigsRef = useRef<DatabaseProjectBarFillConfig[]>(projectBarFillConfigs);
   const pieGroupFieldRef = useRef<string | null>(pieGroupField);
   const pieAggregateRef = useRef<"count" | "sum" | "avg">(pieAggregate);
@@ -950,11 +976,12 @@ export const MarkdownHybridDatabaseBlock = ({
   const openPanelKey = getOpenPanelKey(panels);
   const isPropertiesPanelLayerLocal = openPanelKey === "properties";
   const tableLayoutKey = useMemo(
-    () => buildDatabaseTableLayoutKey({
-      sourceRelativePath,
-      blockIndex,
-      viewId: activeViewId,
-    }),
+    () =>
+      buildDatabaseTableLayoutKey({
+        sourceRelativePath,
+        blockIndex,
+        viewId: activeViewId,
+      }),
     [activeViewId, blockIndex, sourceRelativePath],
   );
   const scheduleVaultAttributeRefresh = useCallback(() => {
@@ -1002,7 +1029,9 @@ export const MarkdownHybridDatabaseBlock = ({
     setKanbanGroupBy(parsedActiveSavedView.view.groupBy ?? null);
     setKanbanShowCover(parsedActiveSavedView.view.kanbanShowCover ?? false);
     setKanbanOrderByGroup(cloneKanbanOrderByGroup(parsedActiveSavedView.view.kanbanOrderByGroup));
-    setKanbanExcludedValues(normalizeDatabaseKanbanExcludedValues(parsedActiveSavedView.view.kanbanExcludedValues));
+    setKanbanExcludedValues(
+      normalizeDatabaseKanbanExcludedValues(parsedActiveSavedView.view.kanbanExcludedValues),
+    );
     setTimelineStartField(parsedActiveSavedView.view.timelineStartField ?? null);
     setTimelineEndField(parsedActiveSavedView.view.timelineEndField ?? null);
     const nextTimelineMode = parsedActiveSavedView.view.timelineMode ?? DEFAULT_TIMELINE_MODE;
@@ -1018,7 +1047,9 @@ export const MarkdownHybridDatabaseBlock = ({
         parsedActiveSavedView.view.ganttZoom ?? getTimelineDefaultZoom(nextTimelineMode),
       ),
     );
-    setProjectStartField(parsedActiveSavedView.view.projectStartField ?? DEFAULT_PROJECT_START_FIELD);
+    setProjectStartField(
+      parsedActiveSavedView.view.projectStartField ?? DEFAULT_PROJECT_START_FIELD,
+    );
     setProjectUnitField(parsedActiveSavedView.view.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD);
     setProjectBlockResolution(
       normalizeProjectBlockResolution(parsedActiveSavedView.view.blockResolution),
@@ -1026,7 +1057,9 @@ export const MarkdownHybridDatabaseBlock = ({
     setProjectDefaultUnits(
       asPositiveInteger(parsedActiveSavedView.view.defaultUnits) ?? DEFAULT_PROJECT_DEFAULT_UNITS,
     );
-    setProjectMissingPlacement(parsedActiveSavedView.view.projectMissingPlacement ?? DEFAULT_PROJECT_MISSING_PLACEMENT);
+    setProjectMissingPlacement(
+      parsedActiveSavedView.view.projectMissingPlacement ?? DEFAULT_PROJECT_MISSING_PLACEMENT,
+    );
     setProjectBarFillConfigs(
       normalizeProjectBarFillConfigs(
         cloneProjectBarFillConfigs(parsedActiveSavedView.view.projectBarFillConfigs),
@@ -1035,8 +1068,12 @@ export const MarkdownHybridDatabaseBlock = ({
     setPieGroupField(parsedActiveSavedView.view.pieGroupField ?? null);
     setPieAggregate(parsedActiveSavedView.view.pieAggregate ?? "count");
     setPieAggregateField(parsedActiveSavedView.view.pieAggregateField ?? null);
-    setPieExcludedValues(normalizeDatabasePieExcludedValues(parsedActiveSavedView.view.pieExcludedValues));
-    setPieColorSpectrum(normalizeDatabasePieColorSpectrum(parsedActiveSavedView.view.pieColorSpectrum));
+    setPieExcludedValues(
+      normalizeDatabasePieExcludedValues(parsedActiveSavedView.view.pieExcludedValues),
+    );
+    setPieColorSpectrum(
+      normalizeDatabasePieColorSpectrum(parsedActiveSavedView.view.pieColorSpectrum),
+    );
     setPropertiesByView(buildPropertiesMirror(parsedActiveSavedView.properties));
     setActiveFilters(cloneFilterGroup(parsedActiveSavedView.filters));
     setActiveSorts(cloneSortRules(parsedActiveSavedView.sort));
@@ -1117,14 +1154,13 @@ export const MarkdownHybridDatabaseBlock = ({
         isCancelled = true;
       };
     }
-    void readDatabaseTableLayoutProfile(vaultPath, tableLayoutKey)
-      .then((layout) => {
-        if (isCancelled) {
-          return;
-        }
-        setTableLayoutProfile(layout);
-        tableLayoutProfileRef.current = layout;
-      });
+    void readDatabaseTableLayoutProfile(vaultPath, tableLayoutKey).then((layout) => {
+      if (isCancelled) {
+        return;
+      }
+      setTableLayoutProfile(layout);
+      tableLayoutProfileRef.current = layout;
+    });
     return () => {
       isCancelled = true;
     };
@@ -1149,18 +1185,14 @@ export const MarkdownHybridDatabaseBlock = ({
       if (!(target instanceof Node)) {
         return;
       }
-      const composedPath = typeof event.composedPath === "function"
-        ? event.composedPath()
-        : [];
+      const composedPath = typeof event.composedPath === "function" ? event.composedPath() : [];
       const clickedInsidePanelLayer = Boolean(
         panelLayerRef.current &&
         (panelLayerRef.current.contains(target) || composedPath.includes(panelLayerRef.current)),
       );
-      const clickedPanelTrigger = Object.values(panelTriggerRefs.current)
-        .some((trigger) => Boolean(
-          trigger &&
-          (trigger.contains(target) || composedPath.includes(trigger)),
-        ));
+      const clickedPanelTrigger = Object.values(panelTriggerRefs.current).some((trigger) =>
+        Boolean(trigger && (trigger.contains(target) || composedPath.includes(trigger))),
+      );
 
       if (!clickedInsidePanelLayer && !clickedPanelTrigger) {
         setPanels(defaultPanels);
@@ -1319,9 +1351,7 @@ export const MarkdownHybridDatabaseBlock = ({
         if (cancelled) {
           return;
         }
-        const message = error instanceof Error
-          ? error.message
-          : "Failed to load database records.";
+        const message = error instanceof Error ? error.message : "Failed to load database records.";
         setLoadError(message);
         setRecords([]);
       } finally {
@@ -1342,27 +1372,27 @@ export const MarkdownHybridDatabaseBlock = ({
     let cancelled = false;
 
     const buildVaultAttributeIndex = async () => {
-      const candidateFiles = source.type === "history-folder"
-        ? sourceResolution.files.map((file) => ({
-          path: file.path,
-          relativePath: file.relativePath,
-        }))
-        : (vaultFiles?.length ?? 0) > 0
-          ? (vaultFiles ?? []).map((file) => ({
-            path: file.path,
-            relativePath: file.relative_path,
-          }))
-          : sourceResolution.files.map((file) => ({
-            path: file.path,
-            relativePath: file.relativePath,
-          }));
+      const candidateFiles =
+        source.type === "history-folder"
+          ? sourceResolution.files.map((file) => ({
+              path: file.path,
+              relativePath: file.relativePath,
+            }))
+          : (vaultFiles?.length ?? 0) > 0
+            ? (vaultFiles ?? []).map((file) => ({
+                path: file.path,
+                relativePath: file.relative_path,
+              }))
+            : sourceResolution.files.map((file) => ({
+                path: file.path,
+                relativePath: file.relativePath,
+              }));
 
-      const availableFiles = candidateFiles
-        .filter((file) => {
-          const filePath = file.path ?? "";
-          const relativePath = file.relativePath ?? "";
-          return /\.md$/i.test(filePath) || /\.md$/i.test(relativePath);
-        });
+      const availableFiles = candidateFiles.filter((file) => {
+        const filePath = file.path ?? "";
+        const relativePath = file.relativePath ?? "";
+        return /\.md$/i.test(filePath) || /\.md$/i.test(relativePath);
+      });
 
       if (availableFiles.length === 0) {
         if (!cancelled) {
@@ -1431,51 +1461,54 @@ export const MarkdownHybridDatabaseBlock = ({
       }
 
       const triggerRect = trigger.getBoundingClientRect();
-      const renderedPanel = panelLayerRef.current?.querySelector<HTMLElement>(".database-block-panel");
+      const renderedPanel =
+        panelLayerRef.current?.querySelector<HTMLElement>(".database-block-panel");
       const measuredPanelRect = renderedPanel?.getBoundingClientRect();
       const measuredWidth = measuredPanelRect?.width ?? Number.NaN;
       const measuredHeight = measuredPanelRect?.height ?? Number.NaN;
-      const preferredMaxWidth = openPanelKey === "source"
-        ? Math.round(DATABASE_PANEL_LAYER_MAX_WIDTH / 2)
-        : DATABASE_PANEL_LAYER_MAX_WIDTH;
-      const estimatedPanelWidth = Number.isFinite(measuredWidth) && measuredWidth > 0
-        ? measuredWidth
-        : Math.min(
-          preferredMaxWidth,
-          Math.max(DATABASE_PANEL_LAYER_MIN_WIDTH, window.innerWidth - 96),
-        );
+      const preferredMaxWidth =
+        openPanelKey === "source"
+          ? Math.round(DATABASE_PANEL_LAYER_MAX_WIDTH / 2)
+          : DATABASE_PANEL_LAYER_MAX_WIDTH;
+      const estimatedPanelWidth =
+        Number.isFinite(measuredWidth) && measuredWidth > 0
+          ? measuredWidth
+          : Math.min(
+              preferredMaxWidth,
+              Math.max(DATABASE_PANEL_LAYER_MIN_WIDTH, window.innerWidth - 96),
+            );
       const horizontalAlign = openPanelKey === "source" ? "left" : "right";
       const keepBelowTrigger = openPanelKey === "properties";
       const nextLayout = isPropertiesPanelLayerLocal
         ? (() => {
-          const rootRect = rootRef.current?.getBoundingClientRect();
-          if (!rootRect || rootRect.width <= 0 || rootRect.height <= 0) {
-            return null;
-          }
-          return resolveDatabasePanelLayerStyle({
-            triggerRect: {
-              left: triggerRect.left - rootRect.left,
-              right: triggerRect.right - rootRect.left,
-              top: triggerRect.top - rootRect.top,
-              bottom: triggerRect.bottom - rootRect.top,
-            },
-            viewportWidth: rootRect.width,
-            viewportHeight: rootRect.height,
+            const rootRect = rootRef.current?.getBoundingClientRect();
+            if (!rootRect || rootRect.width <= 0 || rootRect.height <= 0) {
+              return null;
+            }
+            return resolveDatabasePanelLayerStyle({
+              triggerRect: {
+                left: triggerRect.left - rootRect.left,
+                right: triggerRect.right - rootRect.left,
+                top: triggerRect.top - rootRect.top,
+                bottom: triggerRect.bottom - rootRect.top,
+              },
+              viewportWidth: rootRect.width,
+              viewportHeight: rootRect.height,
+              panelWidth: estimatedPanelWidth,
+              panelHeight: measuredHeight,
+              horizontalAlign,
+              keepBelowTrigger,
+            });
+          })()
+        : resolveDatabasePanelLayerStyle({
+            triggerRect,
+            viewportWidth: window.innerWidth,
+            viewportHeight: window.innerHeight,
             panelWidth: estimatedPanelWidth,
             panelHeight: measuredHeight,
             horizontalAlign,
             keepBelowTrigger,
           });
-        })()
-        : resolveDatabasePanelLayerStyle({
-          triggerRect,
-          viewportWidth: window.innerWidth,
-          viewportHeight: window.innerHeight,
-          panelWidth: estimatedPanelWidth,
-          panelHeight: measuredHeight,
-          horizontalAlign,
-          keepBelowTrigger,
-        });
       if (!nextLayout) {
         setPanelLayerStyle(undefined);
         return;
@@ -1500,7 +1533,8 @@ export const MarkdownHybridDatabaseBlock = ({
       if (activeTrigger) {
         observer.observe(activeTrigger);
       }
-      const renderedPanel = panelLayerRef.current?.querySelector<HTMLElement>(".database-block-panel");
+      const renderedPanel =
+        panelLayerRef.current?.querySelector<HTMLElement>(".database-block-panel");
       if (renderedPanel) {
         observer.observe(renderedPanel);
       }
@@ -1533,164 +1567,184 @@ export const MarkdownHybridDatabaseBlock = ({
   );
   const activeViewName = activeSavedView?.name ?? parsed.config.title;
 
-  const persistConfig = useCallback((next: {
-    source?: DatabaseSourceSpec;
-    fields?: DatabaseFieldDefinition[];
-    savedViews?: DatabaseSavedViewConfig[];
-    activeViewId?: string;
-    viewType?: DatabaseViewType;
-    view?: Partial<DatabaseViewSpec>;
-    visibleColumns?: string[];
-    filters?: DatabaseFilterGroup;
-    sorts?: DatabaseSortRule[];
-  }) => {
-    const nextSource = cloneSourceSpec(next.source ?? sourceRef.current);
-    const nextFields = cloneFieldDefinitions(next.fields ?? fieldDefinitionsRef.current);
-    let nextSavedViews = dedupeSavedViewsById(cloneSavedViews(next.savedViews ?? savedViewsRef.current));
-    if (nextSavedViews.length === 0) {
-      nextSavedViews = cloneSavedViews(defaultConfig.views.items);
-    }
-    const nextActiveView = findSavedViewById(nextSavedViews, next.activeViewId ?? activeViewIdRef.current);
-    if (!nextActiveView) {
-      return;
-    }
-    const nextActiveIndex = nextSavedViews.findIndex((savedView) => savedView.id === nextActiveView.id);
-    if (nextActiveIndex < 0) {
-      return;
-    }
+  const persistConfig = useCallback(
+    (next: {
+      source?: DatabaseSourceSpec;
+      fields?: DatabaseFieldDefinition[];
+      savedViews?: DatabaseSavedViewConfig[];
+      activeViewId?: string;
+      viewType?: DatabaseViewType;
+      view?: Partial<DatabaseViewSpec>;
+      visibleColumns?: string[];
+      filters?: DatabaseFilterGroup;
+      sorts?: DatabaseSortRule[];
+    }) => {
+      const nextSource = cloneSourceSpec(next.source ?? sourceRef.current);
+      const nextFields = cloneFieldDefinitions(next.fields ?? fieldDefinitionsRef.current);
+      let nextSavedViews = dedupeSavedViewsById(
+        cloneSavedViews(next.savedViews ?? savedViewsRef.current),
+      );
+      if (nextSavedViews.length === 0) {
+        nextSavedViews = cloneSavedViews(defaultConfig.views.items);
+      }
+      const nextActiveView = findSavedViewById(
+        nextSavedViews,
+        next.activeViewId ?? activeViewIdRef.current,
+      );
+      if (!nextActiveView) {
+        return;
+      }
+      const nextActiveIndex = nextSavedViews.findIndex(
+        (savedView) => savedView.id === nextActiveView.id,
+      );
+      if (nextActiveIndex < 0) {
+        return;
+      }
 
-    const nextViewType = next.viewType ?? viewTypeRef.current;
-    const resolvedTimelineMode = next.view?.timelineMode ?? timelineModeRef.current ?? DEFAULT_TIMELINE_MODE;
-    const nextView: DatabaseViewSpec = {
-      ...nextActiveView.view,
-      type: nextViewType,
-      groupBy: next.view?.groupBy ?? kanbanGroupByRef.current ?? null,
-      kanbanShowCover: next.view?.kanbanShowCover ?? kanbanShowCoverRef.current ?? false,
-      kanbanOrderByGroup: cloneKanbanOrderByGroup(
-        next.view?.kanbanOrderByGroup ?? kanbanOrderByGroupRef.current,
-      ),
-      kanbanExcludedValues: normalizeDatabaseKanbanExcludedValues(
-        next.view?.kanbanExcludedValues ?? kanbanExcludedValuesRef.current,
-      ),
-      timelineStartField: next.view?.timelineStartField ?? timelineStartFieldRef.current ?? null,
-      timelineEndField: next.view?.timelineEndField ?? timelineEndFieldRef.current ?? null,
-      timelineMode: resolvedTimelineMode,
-      timelineBaseDate: next.view?.timelineBaseDate ?? timelineBaseDateRef.current ?? null,
-      ganttZoom: next.view?.ganttZoom ?? ganttZoomRef.current ?? getTimelineDefaultZoom(
-        resolvedTimelineMode,
-      ),
-      projectStartField: next.view?.projectStartField ?? projectStartFieldRef.current ?? DEFAULT_PROJECT_START_FIELD,
-      projectUnitField: next.view?.projectUnitField ?? projectUnitFieldRef.current ?? DEFAULT_PROJECT_UNIT_FIELD,
-      blockResolution: normalizeProjectBlockResolution(
-        next.view?.blockResolution ?? projectBlockResolutionRef.current,
-      ),
-      defaultUnits: next.view?.defaultUnits ??
-        projectDefaultUnitsRef.current ??
-        DEFAULT_PROJECT_DEFAULT_UNITS,
-      projectMissingPlacement: next.view?.projectMissingPlacement ??
-        projectMissingPlacementRef.current ??
-        DEFAULT_PROJECT_MISSING_PLACEMENT,
-      projectBarFillConfigs: normalizeProjectBarFillConfigs(
-        cloneProjectBarFillConfigs(
-          next.view?.projectBarFillConfigs ?? projectBarFillConfigsRef.current,
+      const nextViewType = next.viewType ?? viewTypeRef.current;
+      const resolvedTimelineMode =
+        next.view?.timelineMode ?? timelineModeRef.current ?? DEFAULT_TIMELINE_MODE;
+      const nextView: DatabaseViewSpec = {
+        ...nextActiveView.view,
+        type: nextViewType,
+        groupBy: next.view?.groupBy ?? kanbanGroupByRef.current ?? null,
+        kanbanShowCover: next.view?.kanbanShowCover ?? kanbanShowCoverRef.current ?? false,
+        kanbanOrderByGroup: cloneKanbanOrderByGroup(
+          next.view?.kanbanOrderByGroup ?? kanbanOrderByGroupRef.current,
         ),
-      ),
-      pieGroupField: next.view?.pieGroupField ?? pieGroupFieldRef.current ?? null,
-      pieAggregate: next.view?.pieAggregate ?? pieAggregateRef.current ?? "count",
-      pieAggregateField: next.view?.pieAggregateField ?? pieAggregateFieldRef.current ?? null,
-      pieExcludedValues: normalizeDatabasePieExcludedValues(
-        next.view?.pieExcludedValues ?? pieExcludedValuesRef.current,
-      ),
-      pieColorSpectrum: normalizeDatabasePieColorSpectrum(
-        next.view?.pieColorSpectrum ?? pieColorSpectrumRef.current,
-      ),
-    };
-    const nextVisibleColumns = dedupeCaseInsensitive(
-      next.visibleColumns ?? getPropertiesForView(propertiesByViewRef.current, viewTypeRef.current),
-    );
-    const nextFilters = cloneFilterGroup(next.filters ?? activeFiltersRef.current);
-    const nextSorts = cloneSortRules(next.sorts ?? activeSortsRef.current);
+        kanbanExcludedValues: normalizeDatabaseKanbanExcludedValues(
+          next.view?.kanbanExcludedValues ?? kanbanExcludedValuesRef.current,
+        ),
+        timelineStartField: next.view?.timelineStartField ?? timelineStartFieldRef.current ?? null,
+        timelineEndField: next.view?.timelineEndField ?? timelineEndFieldRef.current ?? null,
+        timelineMode: resolvedTimelineMode,
+        timelineBaseDate: next.view?.timelineBaseDate ?? timelineBaseDateRef.current ?? null,
+        ganttZoom:
+          next.view?.ganttZoom ??
+          ganttZoomRef.current ??
+          getTimelineDefaultZoom(resolvedTimelineMode),
+        projectStartField:
+          next.view?.projectStartField ??
+          projectStartFieldRef.current ??
+          DEFAULT_PROJECT_START_FIELD,
+        projectUnitField:
+          next.view?.projectUnitField ?? projectUnitFieldRef.current ?? DEFAULT_PROJECT_UNIT_FIELD,
+        blockResolution: normalizeProjectBlockResolution(
+          next.view?.blockResolution ?? projectBlockResolutionRef.current,
+        ),
+        defaultUnits:
+          next.view?.defaultUnits ??
+          projectDefaultUnitsRef.current ??
+          DEFAULT_PROJECT_DEFAULT_UNITS,
+        projectMissingPlacement:
+          next.view?.projectMissingPlacement ??
+          projectMissingPlacementRef.current ??
+          DEFAULT_PROJECT_MISSING_PLACEMENT,
+        projectBarFillConfigs: normalizeProjectBarFillConfigs(
+          cloneProjectBarFillConfigs(
+            next.view?.projectBarFillConfigs ?? projectBarFillConfigsRef.current,
+          ),
+        ),
+        pieGroupField: next.view?.pieGroupField ?? pieGroupFieldRef.current ?? null,
+        pieAggregate: next.view?.pieAggregate ?? pieAggregateRef.current ?? "count",
+        pieAggregateField: next.view?.pieAggregateField ?? pieAggregateFieldRef.current ?? null,
+        pieExcludedValues: normalizeDatabasePieExcludedValues(
+          next.view?.pieExcludedValues ?? pieExcludedValuesRef.current,
+        ),
+        pieColorSpectrum: normalizeDatabasePieColorSpectrum(
+          next.view?.pieColorSpectrum ?? pieColorSpectrumRef.current,
+        ),
+      };
+      const nextVisibleColumns = dedupeCaseInsensitive(
+        next.visibleColumns ??
+          getPropertiesForView(propertiesByViewRef.current, viewTypeRef.current),
+      );
+      const nextFilters = cloneFilterGroup(next.filters ?? activeFiltersRef.current);
+      const nextSorts = cloneSortRules(next.sorts ?? activeSortsRef.current);
 
-    nextSavedViews[nextActiveIndex] = {
-      ...nextActiveView,
-      view: nextView,
-      properties: nextVisibleColumns,
-      filters: nextFilters,
-      sort: nextSorts,
-    };
+      nextSavedViews[nextActiveIndex] = {
+        ...nextActiveView,
+        view: nextView,
+        properties: nextVisibleColumns,
+        filters: nextFilters,
+        sort: nextSorts,
+      };
 
-    setSavedViews(nextSavedViews);
-    savedViewsRef.current = nextSavedViews;
-    setActiveViewId(nextActiveView.id);
-    activeViewIdRef.current = nextActiveView.id;
+      setSavedViews(nextSavedViews);
+      savedViewsRef.current = nextSavedViews;
+      setActiveViewId(nextActiveView.id);
+      activeViewIdRef.current = nextActiveView.id;
 
-    const persistedViews = {
-      activeViewId: nextActiveView.id,
-      items: cloneSavedViews(nextSavedViews),
-    };
-    const propertiesMirror = buildPropertiesMirror(nextVisibleColumns);
+      const persistedViews = {
+        activeViewId: nextActiveView.id,
+        items: cloneSavedViews(nextSavedViews),
+      };
+      const propertiesMirror = buildPropertiesMirror(nextVisibleColumns);
 
-    const nextConfig = {
-      ...parsed.config,
-      title: nextActiveView.name,
-      source: nextSource,
-      fields: nextFields,
-      view: nextView,
-      columns: nextVisibleColumns,
-      propertiesByView: propertiesMirror,
-      filters: nextFilters,
-      sort: nextSorts,
-      views: persistedViews,
-    };
-    onCommitRaw(serializeDatabaseBlockConfig(nextConfig));
-  }, [defaultConfig.views.items, onCommitRaw, parsed.config]);
+      const nextConfig = {
+        ...parsed.config,
+        title: nextActiveView.name,
+        source: nextSource,
+        fields: nextFields,
+        view: nextView,
+        columns: nextVisibleColumns,
+        propertiesByView: propertiesMirror,
+        filters: nextFilters,
+        sort: nextSorts,
+        views: persistedViews,
+      };
+      onCommitRaw(serializeDatabaseBlockConfig(nextConfig));
+    },
+    [defaultConfig.views.items, onCommitRaw, parsed.config],
+  );
 
   const store = useMemo(
-    () => buildDatabaseStoreSnapshot({
-      records,
-      historyRecords,
-      config: {
-        ...parsed.config,
-        title: activeViewName,
-        source,
-        fields: fieldDefinitions,
-        view: {
-          ...parsed.config.view,
-          type: viewType,
-          groupBy: kanbanGroupBy,
-          kanbanShowCover,
-          kanbanOrderByGroup,
-          kanbanExcludedValues,
-          timelineStartField,
-          timelineEndField,
-          timelineMode,
-          timelineBaseDate,
-          ganttZoom,
-          projectStartField,
-          projectUnitField,
-          blockResolution: projectBlockResolution,
-          defaultUnits: projectDefaultUnits,
-          projectMissingPlacement,
-          projectBarFillConfigs,
-          pieGroupField,
-          pieAggregate,
-          pieAggregateField,
-          pieExcludedValues,
-          pieColorSpectrum,
+    () =>
+      buildDatabaseStoreSnapshot({
+        records,
+        historyRecords,
+        config: {
+          ...parsed.config,
+          title: activeViewName,
+          source,
+          fields: fieldDefinitions,
+          view: {
+            ...parsed.config.view,
+            type: viewType,
+            groupBy: kanbanGroupBy,
+            kanbanShowCover,
+            kanbanOrderByGroup,
+            kanbanExcludedValues,
+            timelineStartField,
+            timelineEndField,
+            timelineMode,
+            timelineBaseDate,
+            ganttZoom,
+            projectStartField,
+            projectUnitField,
+            blockResolution: projectBlockResolution,
+            defaultUnits: projectDefaultUnits,
+            projectMissingPlacement,
+            projectBarFillConfigs,
+            pieGroupField,
+            pieAggregate,
+            pieAggregateField,
+            pieExcludedValues,
+            pieColorSpectrum,
+          },
+          columns: getPropertiesForView(propertiesByView, "table"),
+          propertiesByView,
+          filters: activeFilters,
+          sort: activeSorts,
         },
-        columns: getPropertiesForView(propertiesByView, "table"),
-        propertiesByView,
-        filters: activeFilters,
-        sort: activeSorts,
-      },
-      searchQuery,
-      activeFilters,
-      activeSorts,
-      visibleColumnKeys,
-      loading,
-      warning: sourceResolution.warning,
-      error: loadError,
-    }),
+        searchQuery,
+        activeFilters,
+        activeSorts,
+        visibleColumnKeys,
+        loading,
+        warning: sourceResolution.warning,
+        error: loadError,
+      }),
     [
       activeFilters,
       activeSorts,
@@ -1731,9 +1785,10 @@ export const MarkdownHybridDatabaseBlock = ({
   );
 
   const visibleColumns = useMemo(
-    () => store.visibleColumnKeys
-      .map((key) => store.attributeRegistry.find((attribute) => attribute.key === key) ?? null)
-      .filter((attribute): attribute is DatabaseAttributeMeta => Boolean(attribute)),
+    () =>
+      store.visibleColumnKeys
+        .map((key) => store.attributeRegistry.find((attribute) => attribute.key === key) ?? null)
+        .filter((attribute): attribute is DatabaseAttributeMeta => Boolean(attribute)),
     [store.attributeRegistry, store.visibleColumnKeys],
   );
   const tableVisibleColumns = useMemo(
@@ -1779,287 +1834,329 @@ export const MarkdownHybridDatabaseBlock = ({
     [onOpenExamFromDatabaseRecord],
   );
 
-  const handleSwitchSavedView = useCallback((nextSavedViewId: string) => {
-    const nextSavedView = findSavedViewById(savedViewsRef.current, nextSavedViewId);
-    if (!nextSavedView) {
-      return;
-    }
-    const nextView = { ...nextSavedView.view };
-    const nextVisibleColumns = dedupeCaseInsensitive(nextSavedView.properties);
-    const nextFilters = cloneFilterGroup(nextSavedView.filters);
-    const nextSorts = cloneSortRules(nextSavedView.sort);
-    const nextPropertiesByView = buildPropertiesMirror(nextVisibleColumns);
-
-    setActiveViewId(nextSavedView.id);
-    activeViewIdRef.current = nextSavedView.id;
-    setViewType(nextView.type);
-    viewTypeRef.current = nextView.type;
-    setKanbanGroupBy(nextView.groupBy ?? null);
-    kanbanGroupByRef.current = nextView.groupBy ?? null;
-    setKanbanShowCover(nextView.kanbanShowCover ?? false);
-    kanbanShowCoverRef.current = nextView.kanbanShowCover ?? false;
-    const nextKanbanOrder = cloneKanbanOrderByGroup(nextView.kanbanOrderByGroup);
-    setKanbanOrderByGroup(nextKanbanOrder);
-    kanbanOrderByGroupRef.current = nextKanbanOrder;
-    const nextKanbanExcludedValues = normalizeDatabaseKanbanExcludedValues(nextView.kanbanExcludedValues);
-    setKanbanExcludedValues(nextKanbanExcludedValues);
-    kanbanExcludedValuesRef.current = nextKanbanExcludedValues;
-    setTimelineStartField(nextView.timelineStartField ?? null);
-    timelineStartFieldRef.current = nextView.timelineStartField ?? null;
-    setTimelineEndField(nextView.timelineEndField ?? null);
-    timelineEndFieldRef.current = nextView.timelineEndField ?? null;
-    const nextMode = nextView.timelineMode ?? DEFAULT_TIMELINE_MODE;
-    const nextBaseDate = resolveTimelineBaseDateForMode(nextMode, nextView.timelineBaseDate ?? null);
-    setTimelineMode(nextMode);
-    timelineModeRef.current = nextMode;
-    setTimelineBaseDate(nextBaseDate);
-    timelineBaseDateRef.current = nextBaseDate;
-    const nextZoom = coerceTimelineZoom(nextMode, nextView.ganttZoom ?? getTimelineDefaultZoom(nextMode));
-    setGanttZoom(nextZoom);
-    ganttZoomRef.current = nextZoom;
-    setProjectStartField(nextView.projectStartField ?? DEFAULT_PROJECT_START_FIELD);
-    projectStartFieldRef.current = nextView.projectStartField ?? DEFAULT_PROJECT_START_FIELD;
-    setProjectUnitField(nextView.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD);
-    projectUnitFieldRef.current = nextView.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD;
-    const nextResolution = normalizeProjectBlockResolution(nextView.blockResolution);
-    setProjectBlockResolution(nextResolution);
-    projectBlockResolutionRef.current = nextResolution;
-    const nextDefaultUnits = asPositiveInteger(nextView.defaultUnits) ?? DEFAULT_PROJECT_DEFAULT_UNITS;
-    setProjectDefaultUnits(nextDefaultUnits);
-    projectDefaultUnitsRef.current = nextDefaultUnits;
-    const nextMissingPlacement = nextView.projectMissingPlacement ?? DEFAULT_PROJECT_MISSING_PLACEMENT;
-    setProjectMissingPlacement(nextMissingPlacement);
-    projectMissingPlacementRef.current = nextMissingPlacement;
-    const nextProjectBarFillConfigs = normalizeProjectBarFillConfigs(
-      cloneProjectBarFillConfigs(nextView.projectBarFillConfigs),
-    );
-    setProjectBarFillConfigs(nextProjectBarFillConfigs);
-    projectBarFillConfigsRef.current = nextProjectBarFillConfigs;
-    setPieGroupField(nextView.pieGroupField ?? null);
-    pieGroupFieldRef.current = nextView.pieGroupField ?? null;
-    setPieAggregate(nextView.pieAggregate ?? "count");
-    pieAggregateRef.current = nextView.pieAggregate ?? "count";
-    setPieAggregateField(nextView.pieAggregateField ?? null);
-    pieAggregateFieldRef.current = nextView.pieAggregateField ?? null;
-    const nextPieExcludedValues = normalizeDatabasePieExcludedValues(nextView.pieExcludedValues);
-    setPieExcludedValues(nextPieExcludedValues);
-    pieExcludedValuesRef.current = nextPieExcludedValues;
-    const nextPieColorSpectrum = normalizeDatabasePieColorSpectrum(nextView.pieColorSpectrum);
-    setPieColorSpectrum(nextPieColorSpectrum);
-    pieColorSpectrumRef.current = nextPieColorSpectrum;
-    setPropertiesByView(nextPropertiesByView);
-    propertiesByViewRef.current = nextPropertiesByView;
-    setActiveFilters(nextFilters);
-    activeFiltersRef.current = nextFilters;
-    setActiveSorts(nextSorts);
-    activeSortsRef.current = nextSorts;
-    setPanels(defaultPanels);
-    setActiveCellEdit(null);
-
-    persistConfig({
-      activeViewId: nextSavedView.id,
-      viewType: nextView.type,
-      view: nextView,
-      visibleColumns: nextVisibleColumns,
-      filters: nextFilters,
-      sorts: nextSorts,
-    });
-  }, [persistConfig]);
-
-  const handleCreateSavedView = useCallback((rawName: string) => {
-    const trimmedName = rawName.trim();
-    if (!trimmedName) {
-      return;
-    }
-    const existingByName = savedViewsRef.current.find((savedView) =>
-      toLower(savedView.name) === toLower(trimmedName));
-    if (existingByName) {
-      handleSwitchSavedView(existingByName.id);
-      return;
-    }
-
-    const existingIds = new Set(savedViewsRef.current.map((savedView) => savedView.id));
-    const nextId = createSavedViewId(trimmedName, existingIds);
-    const nextView: DatabaseViewSpec = {
-      type: viewTypeRef.current,
-      groupBy: kanbanGroupByRef.current ?? null,
-      kanbanShowCover: kanbanShowCoverRef.current ?? false,
-      kanbanOrderByGroup: cloneKanbanOrderByGroup(kanbanOrderByGroupRef.current),
-      kanbanExcludedValues: normalizeDatabaseKanbanExcludedValues(kanbanExcludedValuesRef.current),
-      timelineStartField: timelineStartFieldRef.current ?? null,
-      timelineEndField: timelineEndFieldRef.current ?? null,
-      timelineMode: timelineModeRef.current ?? DEFAULT_TIMELINE_MODE,
-      timelineBaseDate: timelineBaseDateRef.current ?? null,
-      ganttZoom: ganttZoomRef.current ?? getTimelineDefaultZoom(timelineModeRef.current ?? DEFAULT_TIMELINE_MODE),
-      projectStartField: projectStartFieldRef.current ?? DEFAULT_PROJECT_START_FIELD,
-      projectUnitField: projectUnitFieldRef.current ?? DEFAULT_PROJECT_UNIT_FIELD,
-      blockResolution: normalizeProjectBlockResolution(projectBlockResolutionRef.current),
-      defaultUnits: projectDefaultUnitsRef.current ?? DEFAULT_PROJECT_DEFAULT_UNITS,
-      projectMissingPlacement: projectMissingPlacementRef.current ?? DEFAULT_PROJECT_MISSING_PLACEMENT,
-      projectBarFillConfigs: normalizeProjectBarFillConfigs(
-        cloneProjectBarFillConfigs(projectBarFillConfigsRef.current),
-      ),
-      pieGroupField: pieGroupFieldRef.current ?? null,
-      pieAggregate: pieAggregateRef.current ?? "count",
-      pieAggregateField: pieAggregateFieldRef.current ?? null,
-      pieExcludedValues: normalizeDatabasePieExcludedValues(pieExcludedValuesRef.current),
-      pieColorSpectrum: normalizeDatabasePieColorSpectrum(pieColorSpectrumRef.current),
-    };
-    const nextProperties = dedupeCaseInsensitive(
-      getPropertiesForView(propertiesByViewRef.current, viewTypeRef.current),
-    );
-    const nextFilters = cloneFilterGroup(activeFiltersRef.current);
-    const nextSorts = cloneSortRules(activeSortsRef.current);
-    const nextSavedView: DatabaseSavedViewConfig = {
-      id: nextId,
-      name: trimmedName,
-      view: nextView,
-      properties: nextProperties,
-      filters: nextFilters,
-      sort: nextSorts,
-    };
-    const nextSavedViews = dedupeSavedViewsById([
-      ...cloneSavedViews(savedViewsRef.current),
-      nextSavedView,
-    ]);
-
-    setSavedViews(nextSavedViews);
-    savedViewsRef.current = nextSavedViews;
-    setActiveViewId(nextId);
-    activeViewIdRef.current = nextId;
-
-    persistConfig({
-      savedViews: nextSavedViews,
-      activeViewId: nextId,
-      viewType: nextView.type,
-      view: nextView,
-      visibleColumns: nextProperties,
-      filters: nextFilters,
-      sorts: nextSorts,
-    });
-  }, [handleSwitchSavedView, persistConfig]);
-
-  const handleRenameSavedView = useCallback((viewId: string, nextName: string) => {
-    const trimmedName = nextName.trim();
-    if (!trimmedName) {
-      return;
-    }
-    const nextSavedViews = cloneSavedViews(savedViewsRef.current);
-    const targetIndex = nextSavedViews.findIndex((savedView) => savedView.id === viewId);
-    if (targetIndex < 0) {
-      return;
-    }
-    const targetView = nextSavedViews[targetIndex];
-    if (!targetView) {
-      return;
-    }
-    nextSavedViews[targetIndex] = {
-      ...targetView,
-      name: trimmedName,
-    };
-    setSavedViews(nextSavedViews);
-    savedViewsRef.current = nextSavedViews;
-    persistConfig({
-      savedViews: nextSavedViews,
-      activeViewId: activeViewIdRef.current,
-    });
-  }, [persistConfig]);
-
-  const handleDeleteSavedView = useCallback((viewId: string) => {
-    const currentSavedViews = cloneSavedViews(savedViewsRef.current);
-    if (currentSavedViews.length <= 1) {
-      return;
-    }
-    const targetIndex = currentSavedViews.findIndex((savedView) => savedView.id === viewId);
-    if (targetIndex < 0) {
-      return;
-    }
-    const nextSavedViews = currentSavedViews.filter((savedView) => savedView.id !== viewId);
-    if (nextSavedViews.length === 0) {
-      return;
-    }
-
-    setSavedViews(nextSavedViews);
-    savedViewsRef.current = nextSavedViews;
-
-    const nextActiveViewExists = nextSavedViews.some((savedView) => savedView.id === activeViewIdRef.current);
-    if (viewId === activeViewIdRef.current || !nextActiveViewExists) {
-      const fallbackView = nextSavedViews[Math.min(targetIndex, nextSavedViews.length - 1)] ?? nextSavedViews[0];
-      if (!fallbackView) {
+  const handleSwitchSavedView = useCallback(
+    (nextSavedViewId: string) => {
+      const nextSavedView = findSavedViewById(savedViewsRef.current, nextSavedViewId);
+      if (!nextSavedView) {
         return;
       }
-      handleSwitchSavedView(fallbackView.id);
-      return;
-    }
+      const nextView = { ...nextSavedView.view };
+      const nextVisibleColumns = dedupeCaseInsensitive(nextSavedView.properties);
+      const nextFilters = cloneFilterGroup(nextSavedView.filters);
+      const nextSorts = cloneSortRules(nextSavedView.sort);
+      const nextPropertiesByView = buildPropertiesMirror(nextVisibleColumns);
 
-    persistConfig({
-      savedViews: nextSavedViews,
-      activeViewId: activeViewIdRef.current,
-    });
-  }, [handleSwitchSavedView, persistConfig]);
+      setActiveViewId(nextSavedView.id);
+      activeViewIdRef.current = nextSavedView.id;
+      setViewType(nextView.type);
+      viewTypeRef.current = nextView.type;
+      setKanbanGroupBy(nextView.groupBy ?? null);
+      kanbanGroupByRef.current = nextView.groupBy ?? null;
+      setKanbanShowCover(nextView.kanbanShowCover ?? false);
+      kanbanShowCoverRef.current = nextView.kanbanShowCover ?? false;
+      const nextKanbanOrder = cloneKanbanOrderByGroup(nextView.kanbanOrderByGroup);
+      setKanbanOrderByGroup(nextKanbanOrder);
+      kanbanOrderByGroupRef.current = nextKanbanOrder;
+      const nextKanbanExcludedValues = normalizeDatabaseKanbanExcludedValues(
+        nextView.kanbanExcludedValues,
+      );
+      setKanbanExcludedValues(nextKanbanExcludedValues);
+      kanbanExcludedValuesRef.current = nextKanbanExcludedValues;
+      setTimelineStartField(nextView.timelineStartField ?? null);
+      timelineStartFieldRef.current = nextView.timelineStartField ?? null;
+      setTimelineEndField(nextView.timelineEndField ?? null);
+      timelineEndFieldRef.current = nextView.timelineEndField ?? null;
+      const nextMode = nextView.timelineMode ?? DEFAULT_TIMELINE_MODE;
+      const nextBaseDate = resolveTimelineBaseDateForMode(
+        nextMode,
+        nextView.timelineBaseDate ?? null,
+      );
+      setTimelineMode(nextMode);
+      timelineModeRef.current = nextMode;
+      setTimelineBaseDate(nextBaseDate);
+      timelineBaseDateRef.current = nextBaseDate;
+      const nextZoom = coerceTimelineZoom(
+        nextMode,
+        nextView.ganttZoom ?? getTimelineDefaultZoom(nextMode),
+      );
+      setGanttZoom(nextZoom);
+      ganttZoomRef.current = nextZoom;
+      setProjectStartField(nextView.projectStartField ?? DEFAULT_PROJECT_START_FIELD);
+      projectStartFieldRef.current = nextView.projectStartField ?? DEFAULT_PROJECT_START_FIELD;
+      setProjectUnitField(nextView.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD);
+      projectUnitFieldRef.current = nextView.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD;
+      const nextResolution = normalizeProjectBlockResolution(nextView.blockResolution);
+      setProjectBlockResolution(nextResolution);
+      projectBlockResolutionRef.current = nextResolution;
+      const nextDefaultUnits =
+        asPositiveInteger(nextView.defaultUnits) ?? DEFAULT_PROJECT_DEFAULT_UNITS;
+      setProjectDefaultUnits(nextDefaultUnits);
+      projectDefaultUnitsRef.current = nextDefaultUnits;
+      const nextMissingPlacement =
+        nextView.projectMissingPlacement ?? DEFAULT_PROJECT_MISSING_PLACEMENT;
+      setProjectMissingPlacement(nextMissingPlacement);
+      projectMissingPlacementRef.current = nextMissingPlacement;
+      const nextProjectBarFillConfigs = normalizeProjectBarFillConfigs(
+        cloneProjectBarFillConfigs(nextView.projectBarFillConfigs),
+      );
+      setProjectBarFillConfigs(nextProjectBarFillConfigs);
+      projectBarFillConfigsRef.current = nextProjectBarFillConfigs;
+      setPieGroupField(nextView.pieGroupField ?? null);
+      pieGroupFieldRef.current = nextView.pieGroupField ?? null;
+      setPieAggregate(nextView.pieAggregate ?? "count");
+      pieAggregateRef.current = nextView.pieAggregate ?? "count";
+      setPieAggregateField(nextView.pieAggregateField ?? null);
+      pieAggregateFieldRef.current = nextView.pieAggregateField ?? null;
+      const nextPieExcludedValues = normalizeDatabasePieExcludedValues(nextView.pieExcludedValues);
+      setPieExcludedValues(nextPieExcludedValues);
+      pieExcludedValuesRef.current = nextPieExcludedValues;
+      const nextPieColorSpectrum = normalizeDatabasePieColorSpectrum(nextView.pieColorSpectrum);
+      setPieColorSpectrum(nextPieColorSpectrum);
+      pieColorSpectrumRef.current = nextPieColorSpectrum;
+      setPropertiesByView(nextPropertiesByView);
+      propertiesByViewRef.current = nextPropertiesByView;
+      setActiveFilters(nextFilters);
+      activeFiltersRef.current = nextFilters;
+      setActiveSorts(nextSorts);
+      activeSortsRef.current = nextSorts;
+      setPanels(defaultPanels);
+      setActiveCellEdit(null);
 
-  const handleDuplicateSavedView = useCallback((viewId: string) => {
-    const sourceView = savedViewsRef.current.find((savedView) => savedView.id === viewId);
-    if (!sourceView) {
-      return;
-    }
+      persistConfig({
+        activeViewId: nextSavedView.id,
+        viewType: nextView.type,
+        view: nextView,
+        visibleColumns: nextVisibleColumns,
+        filters: nextFilters,
+        sorts: nextSorts,
+      });
+    },
+    [persistConfig],
+  );
 
-    const existingIds = new Set(savedViewsRef.current.map((savedView) => savedView.id));
-    const existingNames = new Set(savedViewsRef.current.map((savedView) => toLower(savedView.name)));
-    const nextName = createDuplicateSavedViewName(sourceView.name, existingNames);
-    const nextId = createSavedViewId(nextName, existingIds);
-    const duplicateView: DatabaseSavedViewConfig = {
-      ...cloneSavedView(sourceView),
-      id: nextId,
-      name: nextName,
-    };
-    const nextSavedViews = cloneSavedViews(savedViewsRef.current);
-    const sourceIndex = nextSavedViews.findIndex((savedView) => savedView.id === viewId);
-    if (sourceIndex < 0) {
-      return;
-    }
-    nextSavedViews.splice(sourceIndex + 1, 0, duplicateView);
-    setSavedViews(nextSavedViews);
-    savedViewsRef.current = nextSavedViews;
-    handleSwitchSavedView(nextId);
-  }, [handleSwitchSavedView]);
+  const handleCreateSavedView = useCallback(
+    (rawName: string) => {
+      const trimmedName = rawName.trim();
+      if (!trimmedName) {
+        return;
+      }
+      const existingByName = savedViewsRef.current.find(
+        (savedView) => toLower(savedView.name) === toLower(trimmedName),
+      );
+      if (existingByName) {
+        handleSwitchSavedView(existingByName.id);
+        return;
+      }
 
-  const handleReorderSavedViews = useCallback((sourceViewId: string, targetViewId: string) => {
-    if (sourceViewId === targetViewId) {
-      return;
-    }
-    const nextSavedViews = cloneSavedViews(savedViewsRef.current);
-    const sourceIndex = nextSavedViews.findIndex((savedView) => savedView.id === sourceViewId);
-    const targetIndex = nextSavedViews.findIndex((savedView) => savedView.id === targetViewId);
-    if (sourceIndex < 0 || targetIndex < 0) {
-      return;
-    }
-    const [movedView] = nextSavedViews.splice(sourceIndex, 1);
-    if (!movedView) {
-      return;
-    }
-    nextSavedViews.splice(targetIndex, 0, movedView);
-    setSavedViews(nextSavedViews);
-    savedViewsRef.current = nextSavedViews;
-    persistConfig({
-      savedViews: nextSavedViews,
-      activeViewId: activeViewIdRef.current,
-    });
-  }, [persistConfig]);
+      const existingIds = new Set(savedViewsRef.current.map((savedView) => savedView.id));
+      const nextId = createSavedViewId(trimmedName, existingIds);
+      const nextView: DatabaseViewSpec = {
+        type: viewTypeRef.current,
+        groupBy: kanbanGroupByRef.current ?? null,
+        kanbanShowCover: kanbanShowCoverRef.current ?? false,
+        kanbanOrderByGroup: cloneKanbanOrderByGroup(kanbanOrderByGroupRef.current),
+        kanbanExcludedValues: normalizeDatabaseKanbanExcludedValues(
+          kanbanExcludedValuesRef.current,
+        ),
+        timelineStartField: timelineStartFieldRef.current ?? null,
+        timelineEndField: timelineEndFieldRef.current ?? null,
+        timelineMode: timelineModeRef.current ?? DEFAULT_TIMELINE_MODE,
+        timelineBaseDate: timelineBaseDateRef.current ?? null,
+        ganttZoom:
+          ganttZoomRef.current ??
+          getTimelineDefaultZoom(timelineModeRef.current ?? DEFAULT_TIMELINE_MODE),
+        projectStartField: projectStartFieldRef.current ?? DEFAULT_PROJECT_START_FIELD,
+        projectUnitField: projectUnitFieldRef.current ?? DEFAULT_PROJECT_UNIT_FIELD,
+        blockResolution: normalizeProjectBlockResolution(projectBlockResolutionRef.current),
+        defaultUnits: projectDefaultUnitsRef.current ?? DEFAULT_PROJECT_DEFAULT_UNITS,
+        projectMissingPlacement:
+          projectMissingPlacementRef.current ?? DEFAULT_PROJECT_MISSING_PLACEMENT,
+        projectBarFillConfigs: normalizeProjectBarFillConfigs(
+          cloneProjectBarFillConfigs(projectBarFillConfigsRef.current),
+        ),
+        pieGroupField: pieGroupFieldRef.current ?? null,
+        pieAggregate: pieAggregateRef.current ?? "count",
+        pieAggregateField: pieAggregateFieldRef.current ?? null,
+        pieExcludedValues: normalizeDatabasePieExcludedValues(pieExcludedValuesRef.current),
+        pieColorSpectrum: normalizeDatabasePieColorSpectrum(pieColorSpectrumRef.current),
+      };
+      const nextProperties = dedupeCaseInsensitive(
+        getPropertiesForView(propertiesByViewRef.current, viewTypeRef.current),
+      );
+      const nextFilters = cloneFilterGroup(activeFiltersRef.current);
+      const nextSorts = cloneSortRules(activeSortsRef.current);
+      const nextSavedView: DatabaseSavedViewConfig = {
+        id: nextId,
+        name: trimmedName,
+        view: nextView,
+        properties: nextProperties,
+        filters: nextFilters,
+        sort: nextSorts,
+      };
+      const nextSavedViews = dedupeSavedViewsById([
+        ...cloneSavedViews(savedViewsRef.current),
+        nextSavedView,
+      ]);
 
-  const handleMoveSavedView = useCallback((viewId: string, direction: "up" | "down") => {
-    const views = savedViewsRef.current;
-    const sourceIndex = views.findIndex((savedView) => savedView.id === viewId);
-    if (sourceIndex < 0) {
-      return;
-    }
-    const targetIndex = direction === "up" ? sourceIndex - 1 : sourceIndex + 1;
-    const targetView = views[targetIndex];
-    if (!targetView) {
-      return;
-    }
-    handleReorderSavedViews(viewId, targetView.id);
-  }, [handleReorderSavedViews]);
+      setSavedViews(nextSavedViews);
+      savedViewsRef.current = nextSavedViews;
+      setActiveViewId(nextId);
+      activeViewIdRef.current = nextId;
+
+      persistConfig({
+        savedViews: nextSavedViews,
+        activeViewId: nextId,
+        viewType: nextView.type,
+        view: nextView,
+        visibleColumns: nextProperties,
+        filters: nextFilters,
+        sorts: nextSorts,
+      });
+    },
+    [handleSwitchSavedView, persistConfig],
+  );
+
+  const handleRenameSavedView = useCallback(
+    (viewId: string, nextName: string) => {
+      const trimmedName = nextName.trim();
+      if (!trimmedName) {
+        return;
+      }
+      const nextSavedViews = cloneSavedViews(savedViewsRef.current);
+      const targetIndex = nextSavedViews.findIndex((savedView) => savedView.id === viewId);
+      if (targetIndex < 0) {
+        return;
+      }
+      const targetView = nextSavedViews[targetIndex];
+      if (!targetView) {
+        return;
+      }
+      nextSavedViews[targetIndex] = {
+        ...targetView,
+        name: trimmedName,
+      };
+      setSavedViews(nextSavedViews);
+      savedViewsRef.current = nextSavedViews;
+      persistConfig({
+        savedViews: nextSavedViews,
+        activeViewId: activeViewIdRef.current,
+      });
+    },
+    [persistConfig],
+  );
+
+  const handleDeleteSavedView = useCallback(
+    (viewId: string) => {
+      const currentSavedViews = cloneSavedViews(savedViewsRef.current);
+      if (currentSavedViews.length <= 1) {
+        return;
+      }
+      const targetIndex = currentSavedViews.findIndex((savedView) => savedView.id === viewId);
+      if (targetIndex < 0) {
+        return;
+      }
+      const nextSavedViews = currentSavedViews.filter((savedView) => savedView.id !== viewId);
+      if (nextSavedViews.length === 0) {
+        return;
+      }
+
+      setSavedViews(nextSavedViews);
+      savedViewsRef.current = nextSavedViews;
+
+      const nextActiveViewExists = nextSavedViews.some(
+        (savedView) => savedView.id === activeViewIdRef.current,
+      );
+      if (viewId === activeViewIdRef.current || !nextActiveViewExists) {
+        const fallbackView =
+          nextSavedViews[Math.min(targetIndex, nextSavedViews.length - 1)] ?? nextSavedViews[0];
+        if (!fallbackView) {
+          return;
+        }
+        handleSwitchSavedView(fallbackView.id);
+        return;
+      }
+
+      persistConfig({
+        savedViews: nextSavedViews,
+        activeViewId: activeViewIdRef.current,
+      });
+    },
+    [handleSwitchSavedView, persistConfig],
+  );
+
+  const handleDuplicateSavedView = useCallback(
+    (viewId: string) => {
+      const sourceView = savedViewsRef.current.find((savedView) => savedView.id === viewId);
+      if (!sourceView) {
+        return;
+      }
+
+      const existingIds = new Set(savedViewsRef.current.map((savedView) => savedView.id));
+      const existingNames = new Set(
+        savedViewsRef.current.map((savedView) => toLower(savedView.name)),
+      );
+      const nextName = createDuplicateSavedViewName(sourceView.name, existingNames);
+      const nextId = createSavedViewId(nextName, existingIds);
+      const duplicateView: DatabaseSavedViewConfig = {
+        ...cloneSavedView(sourceView),
+        id: nextId,
+        name: nextName,
+      };
+      const nextSavedViews = cloneSavedViews(savedViewsRef.current);
+      const sourceIndex = nextSavedViews.findIndex((savedView) => savedView.id === viewId);
+      if (sourceIndex < 0) {
+        return;
+      }
+      nextSavedViews.splice(sourceIndex + 1, 0, duplicateView);
+      setSavedViews(nextSavedViews);
+      savedViewsRef.current = nextSavedViews;
+      handleSwitchSavedView(nextId);
+    },
+    [handleSwitchSavedView],
+  );
+
+  const handleReorderSavedViews = useCallback(
+    (sourceViewId: string, targetViewId: string) => {
+      if (sourceViewId === targetViewId) {
+        return;
+      }
+      const nextSavedViews = cloneSavedViews(savedViewsRef.current);
+      const sourceIndex = nextSavedViews.findIndex((savedView) => savedView.id === sourceViewId);
+      const targetIndex = nextSavedViews.findIndex((savedView) => savedView.id === targetViewId);
+      if (sourceIndex < 0 || targetIndex < 0) {
+        return;
+      }
+      const [movedView] = nextSavedViews.splice(sourceIndex, 1);
+      if (!movedView) {
+        return;
+      }
+      nextSavedViews.splice(targetIndex, 0, movedView);
+      setSavedViews(nextSavedViews);
+      savedViewsRef.current = nextSavedViews;
+      persistConfig({
+        savedViews: nextSavedViews,
+        activeViewId: activeViewIdRef.current,
+      });
+    },
+    [persistConfig],
+  );
+
+  const handleMoveSavedView = useCallback(
+    (viewId: string, direction: "up" | "down") => {
+      const views = savedViewsRef.current;
+      const sourceIndex = views.findIndex((savedView) => savedView.id === viewId);
+      if (sourceIndex < 0) {
+        return;
+      }
+      const targetIndex = direction === "up" ? sourceIndex - 1 : sourceIndex + 1;
+      const targetView = views[targetIndex];
+      if (!targetView) {
+        return;
+      }
+      handleReorderSavedViews(viewId, targetView.id);
+    },
+    [handleReorderSavedViews],
+  );
 
   const handleSourceChange = (nextSource: DatabaseSourceSpec) => {
     const cloned = cloneSourceSpec(nextSource);
@@ -2076,10 +2173,10 @@ export const MarkdownHybridDatabaseBlock = ({
     groupField?: string | null;
     excludedValues?: string[];
   }) => {
-    const nextGroup = typeof next.groupField === "undefined"
-      ? kanbanGroupByRef.current
-      : next.groupField ?? null;
-    const didGroupChange = typeof next.groupField !== "undefined" &&
+    const nextGroup =
+      typeof next.groupField === "undefined" ? kanbanGroupByRef.current : (next.groupField ?? null);
+    const didGroupChange =
+      typeof next.groupField !== "undefined" &&
       toLower(nextGroup ?? "") !== toLower(kanbanGroupByRef.current ?? "");
     let nextExcludedValues = kanbanExcludedValuesRef.current;
     if (didGroupChange) {
@@ -2116,16 +2213,17 @@ export const MarkdownHybridDatabaseBlock = ({
     baseDate?: string | null;
     zoom?: DatabaseGanttZoom;
   }) => {
-    const nextStart = typeof next.startField === "undefined"
-      ? timelineStartFieldRef.current
-      : next.startField ?? null;
-    const nextEnd = typeof next.endField === "undefined"
-      ? timelineEndFieldRef.current
-      : next.endField ?? null;
+    const nextStart =
+      typeof next.startField === "undefined"
+        ? timelineStartFieldRef.current
+        : (next.startField ?? null);
+    const nextEnd =
+      typeof next.endField === "undefined" ? timelineEndFieldRef.current : (next.endField ?? null);
     const nextMode = next.mode ?? timelineModeRef.current ?? DEFAULT_TIMELINE_MODE;
-    let nextBaseDate = typeof next.baseDate === "undefined"
-      ? timelineBaseDateRef.current ?? null
-      : normalizeTimelineBaseDate(next.baseDate ?? null);
+    let nextBaseDate =
+      typeof next.baseDate === "undefined"
+        ? (timelineBaseDateRef.current ?? null)
+        : normalizeTimelineBaseDate(next.baseDate ?? null);
     nextBaseDate = resolveTimelineBaseDateForMode(nextMode, nextBaseDate);
     const nextZoom = coerceTimelineZoom(nextMode, next.zoom ?? ganttZoomRef.current);
 
@@ -2150,15 +2248,18 @@ export const MarkdownHybridDatabaseBlock = ({
     unitField?: string | null;
     blockResolution?: number;
   }) => {
-    const nextStart = typeof next.startField === "undefined"
-      ? projectStartFieldRef.current ?? DEFAULT_PROJECT_START_FIELD
-      : next.startField ?? DEFAULT_PROJECT_START_FIELD;
-    const nextUnit = typeof next.unitField === "undefined"
-      ? projectUnitFieldRef.current ?? DEFAULT_PROJECT_UNIT_FIELD
-      : next.unitField ?? DEFAULT_PROJECT_UNIT_FIELD;
-    const nextResolution = typeof next.blockResolution === "undefined"
-      ? normalizeProjectBlockResolution(projectBlockResolutionRef.current)
-      : normalizeProjectBlockResolution(next.blockResolution);
+    const nextStart =
+      typeof next.startField === "undefined"
+        ? (projectStartFieldRef.current ?? DEFAULT_PROJECT_START_FIELD)
+        : (next.startField ?? DEFAULT_PROJECT_START_FIELD);
+    const nextUnit =
+      typeof next.unitField === "undefined"
+        ? (projectUnitFieldRef.current ?? DEFAULT_PROJECT_UNIT_FIELD)
+        : (next.unitField ?? DEFAULT_PROJECT_UNIT_FIELD);
+    const nextResolution =
+      typeof next.blockResolution === "undefined"
+        ? normalizeProjectBlockResolution(projectBlockResolutionRef.current)
+        : normalizeProjectBlockResolution(next.blockResolution);
     setProjectStartField(nextStart);
     projectStartFieldRef.current = nextStart;
     setProjectUnitField(nextUnit);
@@ -2175,65 +2276,59 @@ export const MarkdownHybridDatabaseBlock = ({
     });
   };
 
-  const persistProjectBarFillConfigs = useCallback((
-    nextConfigsRaw: DatabaseProjectBarFillConfig[],
-    stateMessage?: string,
-  ) => {
-    const nextConfigs = normalizeProjectBarFillConfigs(
-      cloneProjectBarFillConfigs(nextConfigsRaw),
-    );
-    setProjectBarFillConfigs(nextConfigs);
-    projectBarFillConfigsRef.current = nextConfigs;
-    setOperationError(null);
-    if (stateMessage) {
-      setOperationState(stateMessage);
-    }
-
-    persistConfig({
-      view: {
-        projectBarFillConfigs: nextConfigs,
-      },
-    });
-  }, [persistConfig]);
-
-  const handleProjectBarFillConfigChange = useCallback((
-    recordId: string,
-    config: DatabaseProjectBarFillConfig | null,
-  ) => {
-    const normalizedRecordId = recordId.trim();
-    if (!normalizedRecordId) {
-      return;
-    }
-    const current = normalizeProjectBarFillConfigs(
-      cloneProjectBarFillConfigs(projectBarFillConfigsRef.current),
-    );
-    const nextWithoutTarget = current.filter((entry) => entry.recordId !== normalizedRecordId);
-    let nextConfigs = nextWithoutTarget;
-    if (config) {
-      const normalizedCandidate = normalizeProjectBarFillConfigs(
-        cloneProjectBarFillConfigs([
-          {
-            ...config,
-            recordId: normalizedRecordId,
-          },
-        ]),
-      )[0];
-      if (normalizedCandidate) {
-        nextConfigs = [
-          ...nextWithoutTarget,
-          normalizedCandidate,
-        ];
+  const persistProjectBarFillConfigs = useCallback(
+    (nextConfigsRaw: DatabaseProjectBarFillConfig[], stateMessage?: string) => {
+      const nextConfigs = normalizeProjectBarFillConfigs(
+        cloneProjectBarFillConfigs(nextConfigsRaw),
+      );
+      setProjectBarFillConfigs(nextConfigs);
+      projectBarFillConfigsRef.current = nextConfigs;
+      setOperationError(null);
+      if (stateMessage) {
+        setOperationState(stateMessage);
       }
-    }
 
-    persistProjectBarFillConfigs(nextConfigs);
-  }, [persistProjectBarFillConfigs]);
+      persistConfig({
+        view: {
+          projectBarFillConfigs: nextConfigs,
+        },
+      });
+    },
+    [persistConfig],
+  );
+
+  const handleProjectBarFillConfigChange = useCallback(
+    (recordId: string, config: DatabaseProjectBarFillConfig | null) => {
+      const normalizedRecordId = recordId.trim();
+      if (!normalizedRecordId) {
+        return;
+      }
+      const current = normalizeProjectBarFillConfigs(
+        cloneProjectBarFillConfigs(projectBarFillConfigsRef.current),
+      );
+      const nextWithoutTarget = current.filter((entry) => entry.recordId !== normalizedRecordId);
+      let nextConfigs = nextWithoutTarget;
+      if (config) {
+        const normalizedCandidate = normalizeProjectBarFillConfigs(
+          cloneProjectBarFillConfigs([
+            {
+              ...config,
+              recordId: normalizedRecordId,
+            },
+          ]),
+        )[0];
+        if (normalizedCandidate) {
+          nextConfigs = [...nextWithoutTarget, normalizedCandidate];
+        }
+      }
+
+      persistProjectBarFillConfigs(nextConfigs);
+    },
+    [persistProjectBarFillConfigs],
+  );
 
   const handleApplyProjectBarFillConfigToVisible = useCallback(
-    async (
-      config: DatabaseProjectBarFillConfig,
-      visibleProjectRecords: DatabaseRecord[],
-    ) => {
+    async (config: DatabaseProjectBarFillConfig, visibleProjectRecords: DatabaseRecord[]) => {
       const template = normalizeProjectBarFillConfigs(
         cloneProjectBarFillConfigs([
           {
@@ -2249,12 +2344,14 @@ export const MarkdownHybridDatabaseBlock = ({
       }
 
       const uniqueVisibleRecords = Array.from(
-        visibleProjectRecords.reduce((map, record) => {
-          if (!map.has(record.fileId)) {
-            map.set(record.fileId, record);
-          }
-          return map;
-        }, new Map<string, DatabaseRecord>()).values(),
+        visibleProjectRecords
+          .reduce((map, record) => {
+            if (!map.has(record.fileId)) {
+              map.set(record.fileId, record);
+            }
+            return map;
+          }, new Map<string, DatabaseRecord>())
+          .values(),
       );
 
       if (uniqueVisibleRecords.length === 0) {
@@ -2277,9 +2374,7 @@ export const MarkdownHybridDatabaseBlock = ({
         `Project-Regel auf ${targetRecordIds.length} sichtbare${targetRecordIds.length === 1 ? "n" : ""} Eintraege angewendet.`,
       );
     },
-    [
-      persistProjectBarFillConfigs,
-    ],
+    [persistProjectBarFillConfigs],
   );
 
   const handlePieOptionsChange = (next: {
@@ -2289,25 +2384,27 @@ export const MarkdownHybridDatabaseBlock = ({
     excludedValues?: string[];
     colorSpectrum?: DatabasePieColorSpectrum;
   }) => {
-    const nextGroup = typeof next.groupField === "undefined"
-      ? pieGroupFieldRef.current
-      : next.groupField ?? null;
-    const didGroupChange = typeof next.groupField !== "undefined" &&
+    const nextGroup =
+      typeof next.groupField === "undefined" ? pieGroupFieldRef.current : (next.groupField ?? null);
+    const didGroupChange =
+      typeof next.groupField !== "undefined" &&
       toLower(nextGroup ?? "") !== toLower(pieGroupFieldRef.current ?? "");
     const nextAggregate = next.aggregate ?? pieAggregateRef.current ?? "count";
-    const nextAggregateField = nextAggregate === "count"
-      ? null
-      : typeof next.aggregateField === "undefined"
-      ? pieAggregateFieldRef.current
-      : next.aggregateField ?? null;
+    const nextAggregateField =
+      nextAggregate === "count"
+        ? null
+        : typeof next.aggregateField === "undefined"
+          ? pieAggregateFieldRef.current
+          : (next.aggregateField ?? null);
     const nextExcludedValues = didGroupChange
       ? []
       : typeof next.excludedValues === "undefined"
-      ? pieExcludedValuesRef.current
-      : normalizeDatabasePieExcludedValues(next.excludedValues);
-    const nextPieColorSpectrum = typeof next.colorSpectrum === "undefined"
-      ? pieColorSpectrumRef.current
-      : normalizeDatabasePieColorSpectrum(next.colorSpectrum);
+        ? pieExcludedValuesRef.current
+        : normalizeDatabasePieExcludedValues(next.excludedValues);
+    const nextPieColorSpectrum =
+      typeof next.colorSpectrum === "undefined"
+        ? pieColorSpectrumRef.current
+        : normalizeDatabasePieColorSpectrum(next.colorSpectrum);
 
     setPieGroupField(nextGroup);
     setPieAggregate(nextAggregate);
@@ -2332,7 +2429,8 @@ export const MarkdownHybridDatabaseBlock = ({
 
   const addPendingCellMutation = (mutationKey: string) => {
     setPendingCellMutations((previous) =>
-      previous.includes(mutationKey) ? previous : [...previous, mutationKey]);
+      previous.includes(mutationKey) ? previous : [...previous, mutationKey],
+    );
   };
 
   const removePendingCellMutation = (mutationKey: string) => {
@@ -2341,7 +2439,8 @@ export const MarkdownHybridDatabaseBlock = ({
 
   const addPendingRecordMutation = (recordId: string) => {
     setPendingRecordMutations((previous) =>
-      previous.includes(recordId) ? previous : [...previous, recordId]);
+      previous.includes(recordId) ? previous : [...previous, recordId],
+    );
   };
 
   const removePendingRecordMutation = (recordId: string) => {
@@ -2353,7 +2452,11 @@ export const MarkdownHybridDatabaseBlock = ({
     fieldKey: string,
     value: unknown,
   ): DatabaseRecord => {
-    const nextFrontmatter = upsertFrontmatterFieldCaseInsensitive(record.frontmatter, fieldKey, value);
+    const nextFrontmatter = upsertFrontmatterFieldCaseInsensitive(
+      record.frontmatter,
+      fieldKey,
+      value,
+    );
     return buildNormalizedRecord({
       fileId: record.fileId,
       filePath: record.filePath,
@@ -2402,19 +2505,20 @@ export const MarkdownHybridDatabaseBlock = ({
         coercion.typedValue,
       );
       setRecords((previous) =>
-        previous.map((entry) =>
-          entry.fileId === record.fileId
-            ? optimisticRecord
-            : entry));
+        previous.map((entry) => (entry.fileId === record.fileId ? optimisticRecord : entry)),
+      );
 
       addPendingCellMutation(mutationKey);
       addPendingRecordMutation(record.fileId);
       setOperationError(null);
       if (clearEditWhenDone) {
         setActiveCellEdit((previous) =>
-          previous && previous.recordId === record.fileId && toLower(previous.fieldKey) === toLower(attribute.key)
+          previous &&
+          previous.recordId === record.fileId &&
+          toLower(previous.fieldKey) === toLower(attribute.key)
             ? null
-            : previous);
+            : previous,
+        );
       }
 
       try {
@@ -2436,13 +2540,13 @@ export const MarkdownHybridDatabaseBlock = ({
         const rollback = rollbackRecordSnapshotRef.current.get(mutationKey);
         if (rollback) {
           setRecords((previous) =>
-            previous.map((entry) =>
-              entry.fileId === rollback.fileId
-                ? rollback
-                : entry));
+            previous.map((entry) => (entry.fileId === rollback.fileId ? rollback : entry)),
+          );
         }
         setOperationState(null);
-        setOperationError(error instanceof Error ? error.message : "Wert konnte nicht gespeichert werden.");
+        setOperationError(
+          error instanceof Error ? error.message : "Wert konnte nicht gespeichert werden.",
+        );
         return false;
       } finally {
         rollbackRecordSnapshotRef.current.delete(mutationKey);
@@ -2489,7 +2593,8 @@ export const MarkdownHybridDatabaseBlock = ({
       appendVisibleColumnIfMissing(currentColumns, startKey),
       endKey,
     );
-    const columnsChanged = nextColumns.length !== currentColumns.length ||
+    const columnsChanged =
+      nextColumns.length !== currentColumns.length ||
       nextColumns.some((entry, index) => toLower(entry) !== toLower(currentColumns[index] ?? ""));
 
     const viewPatch: Partial<DatabaseViewSpec> = {};
@@ -2553,9 +2658,8 @@ export const MarkdownHybridDatabaseBlock = ({
       if (existing) {
         if (existing.type !== type) {
           nextFields = nextFields.map((field) =>
-            toLower(field.key) === toLower(key)
-              ? { ...field, type }
-              : field);
+            toLower(field.key) === toLower(key) ? { ...field, type } : field,
+          );
           fieldsChanged = true;
         }
         return;
@@ -2582,7 +2686,8 @@ export const MarkdownHybridDatabaseBlock = ({
       appendVisibleColumnIfMissing(currentColumns, startKey),
       unitKey,
     );
-    const columnsChanged = nextColumns.length !== currentColumns.length ||
+    const columnsChanged =
+      nextColumns.length !== currentColumns.length ||
       nextColumns.some((entry, index) => toLower(entry) !== toLower(currentColumns[index] ?? ""));
 
     const viewPatch: Partial<DatabaseViewSpec> = {};
@@ -2632,150 +2737,165 @@ export const MarkdownHybridDatabaseBlock = ({
     };
   }, [persistConfig]);
 
-  const handleCommitTimelineRange = useCallback(async ({
-    record,
-    startTimestamp,
-    endTimestamp,
-  }: {
-    record: DatabaseRecord;
-    startTimestamp: number;
-    endTimestamp: number;
-  }) => {
-    if (!allowCellEditing) {
-      return;
-    }
-
-    const { startKey, endKey } = ensureTimelineFieldSetup();
-    const mode = timelineModeRef.current ?? DEFAULT_TIMELINE_MODE;
-    const startValue = formatTimelineValueFromTimestamp(startTimestamp, mode);
-    const endValue = formatTimelineValueFromTimestamp(Math.max(startTimestamp, endTimestamp), mode);
-
-    const previousRecord = records.find((entry) => entry.fileId === record.fileId);
-    if (!previousRecord) {
-      return;
-    }
-
-    const optimistic = applyOptimisticRecordFieldValue(
-      applyOptimisticRecordFieldValue(previousRecord, startKey, startValue),
-      endKey,
-      endValue,
-    );
-    setRecords((previous) =>
-      previous.map((entry) => (entry.fileId === record.fileId ? optimistic : entry)));
-    addPendingRecordMutation(record.fileId);
-    setOperationError(null);
-
-    try {
-      const startResult = await upsertDatabaseRecordField({
-        path: previousRecord.filePath,
-        relativePath: previousRecord.relativePath,
-        key: startKey,
-        type: "time",
-        value: startValue,
-      });
-      if (startResult.error) {
-        throw new Error(startResult.error);
+  const handleCommitTimelineRange = useCallback(
+    async ({
+      record,
+      startTimestamp,
+      endTimestamp,
+    }: {
+      record: DatabaseRecord;
+      startTimestamp: number;
+      endTimestamp: number;
+    }) => {
+      if (!allowCellEditing) {
+        return;
       }
 
-      const endResult = await upsertDatabaseRecordField({
-        path: previousRecord.filePath,
-        relativePath: previousRecord.relativePath,
-        key: endKey,
-        type: "time",
-        value: endValue,
-      });
-      if (endResult.error) {
-        throw new Error(endResult.error);
-      }
-
-      fileCacheRef.current.set(previousRecord.filePath, endResult.markdown);
-      setOperationState("Timeline aktualisiert.");
-      scheduleVaultAttributeRefresh();
-    } catch (error) {
-      setRecords((previous) =>
-        previous.map((entry) => (entry.fileId === previousRecord.fileId ? previousRecord : entry)));
-      setOperationState(null);
-      setOperationError(
-        error instanceof Error
-          ? error.message
-          : "Timeline konnte nicht gespeichert werden.",
+      const { startKey, endKey } = ensureTimelineFieldSetup();
+      const mode = timelineModeRef.current ?? DEFAULT_TIMELINE_MODE;
+      const startValue = formatTimelineValueFromTimestamp(startTimestamp, mode);
+      const endValue = formatTimelineValueFromTimestamp(
+        Math.max(startTimestamp, endTimestamp),
+        mode,
       );
-    } finally {
-      removePendingRecordMutation(record.fileId);
-    }
-  }, [allowCellEditing, ensureTimelineFieldSetup, records, scheduleVaultAttributeRefresh]);
 
-  const handleCommitProjectPlacement = useCallback(async ({
-    record,
-    startSlot,
-    units,
-  }: {
-    record: DatabaseRecord;
-    startSlot: number;
-    units: number;
-  }) => {
-    if (!allowCellEditing) {
-      return;
-    }
-
-    const { startKey, unitKey } = ensureProjectFieldSetup();
-    const boundedStart = Math.max(0, Math.round(startSlot));
-    const boundedUnits = Math.max(1, Math.round(units));
-
-    const previousRecord = records.find((entry) => entry.fileId === record.fileId);
-    if (!previousRecord) {
-      return;
-    }
-
-    const optimistic = applyOptimisticRecordFieldValue(
-      applyOptimisticRecordFieldValue(previousRecord, startKey, boundedStart),
-      unitKey,
-      boundedUnits,
-    );
-    setRecords((previous) =>
-      previous.map((entry) => (entry.fileId === record.fileId ? optimistic : entry)));
-    addPendingRecordMutation(record.fileId);
-    setOperationError(null);
-
-    try {
-      const startResult = await upsertDatabaseRecordField({
-        path: previousRecord.filePath,
-        relativePath: previousRecord.relativePath,
-        key: startKey,
-        type: "number",
-        value: boundedStart,
-      });
-      if (startResult.error) {
-        throw new Error(startResult.error);
+      const previousRecord = records.find((entry) => entry.fileId === record.fileId);
+      if (!previousRecord) {
+        return;
       }
 
-      const unitResult = await upsertDatabaseRecordField({
-        path: previousRecord.filePath,
-        relativePath: previousRecord.relativePath,
-        key: unitKey,
-        type: "unit",
-        value: boundedUnits,
-      });
-      if (unitResult.error) {
-        throw new Error(unitResult.error);
-      }
-
-      fileCacheRef.current.set(previousRecord.filePath, unitResult.markdown);
-      setOperationState("Project aktualisiert.");
-      scheduleVaultAttributeRefresh();
-    } catch (error) {
-      setRecords((previous) =>
-        previous.map((entry) => (entry.fileId === previousRecord.fileId ? previousRecord : entry)));
-      setOperationState(null);
-      setOperationError(
-        error instanceof Error
-          ? error.message
-          : "Project Placement konnte nicht gespeichert werden.",
+      const optimistic = applyOptimisticRecordFieldValue(
+        applyOptimisticRecordFieldValue(previousRecord, startKey, startValue),
+        endKey,
+        endValue,
       );
-    } finally {
-      removePendingRecordMutation(record.fileId);
-    }
-  }, [allowCellEditing, ensureProjectFieldSetup, records, scheduleVaultAttributeRefresh]);
+      setRecords((previous) =>
+        previous.map((entry) => (entry.fileId === record.fileId ? optimistic : entry)),
+      );
+      addPendingRecordMutation(record.fileId);
+      setOperationError(null);
+
+      try {
+        const startResult = await upsertDatabaseRecordField({
+          path: previousRecord.filePath,
+          relativePath: previousRecord.relativePath,
+          key: startKey,
+          type: "time",
+          value: startValue,
+        });
+        if (startResult.error) {
+          throw new Error(startResult.error);
+        }
+
+        const endResult = await upsertDatabaseRecordField({
+          path: previousRecord.filePath,
+          relativePath: previousRecord.relativePath,
+          key: endKey,
+          type: "time",
+          value: endValue,
+        });
+        if (endResult.error) {
+          throw new Error(endResult.error);
+        }
+
+        fileCacheRef.current.set(previousRecord.filePath, endResult.markdown);
+        setOperationState("Timeline aktualisiert.");
+        scheduleVaultAttributeRefresh();
+      } catch (error) {
+        setRecords((previous) =>
+          previous.map((entry) =>
+            entry.fileId === previousRecord.fileId ? previousRecord : entry,
+          ),
+        );
+        setOperationState(null);
+        setOperationError(
+          error instanceof Error ? error.message : "Timeline konnte nicht gespeichert werden.",
+        );
+      } finally {
+        removePendingRecordMutation(record.fileId);
+      }
+    },
+    [allowCellEditing, ensureTimelineFieldSetup, records, scheduleVaultAttributeRefresh],
+  );
+
+  const handleCommitProjectPlacement = useCallback(
+    async ({
+      record,
+      startSlot,
+      units,
+    }: {
+      record: DatabaseRecord;
+      startSlot: number;
+      units: number;
+    }) => {
+      if (!allowCellEditing) {
+        return;
+      }
+
+      const { startKey, unitKey } = ensureProjectFieldSetup();
+      const boundedStart = Math.max(0, Math.round(startSlot));
+      const boundedUnits = Math.max(1, Math.round(units));
+
+      const previousRecord = records.find((entry) => entry.fileId === record.fileId);
+      if (!previousRecord) {
+        return;
+      }
+
+      const optimistic = applyOptimisticRecordFieldValue(
+        applyOptimisticRecordFieldValue(previousRecord, startKey, boundedStart),
+        unitKey,
+        boundedUnits,
+      );
+      setRecords((previous) =>
+        previous.map((entry) => (entry.fileId === record.fileId ? optimistic : entry)),
+      );
+      addPendingRecordMutation(record.fileId);
+      setOperationError(null);
+
+      try {
+        const startResult = await upsertDatabaseRecordField({
+          path: previousRecord.filePath,
+          relativePath: previousRecord.relativePath,
+          key: startKey,
+          type: "number",
+          value: boundedStart,
+        });
+        if (startResult.error) {
+          throw new Error(startResult.error);
+        }
+
+        const unitResult = await upsertDatabaseRecordField({
+          path: previousRecord.filePath,
+          relativePath: previousRecord.relativePath,
+          key: unitKey,
+          type: "unit",
+          value: boundedUnits,
+        });
+        if (unitResult.error) {
+          throw new Error(unitResult.error);
+        }
+
+        fileCacheRef.current.set(previousRecord.filePath, unitResult.markdown);
+        setOperationState("Project aktualisiert.");
+        scheduleVaultAttributeRefresh();
+      } catch (error) {
+        setRecords((previous) =>
+          previous.map((entry) =>
+            entry.fileId === previousRecord.fileId ? previousRecord : entry,
+          ),
+        );
+        setOperationState(null);
+        setOperationError(
+          error instanceof Error
+            ? error.message
+            : "Project Placement konnte nicht gespeichert werden.",
+        );
+      } finally {
+        removePendingRecordMutation(record.fileId);
+      }
+    },
+    [allowCellEditing, ensureProjectFieldSetup, records, scheduleVaultAttributeRefresh],
+  );
 
   const handleToggleVisibility = (key: string, visible: boolean) => {
     const nextColumns = visible
@@ -2787,22 +2907,30 @@ export const MarkdownHybridDatabaseBlock = ({
     persistConfig({ visibleColumns: nextColumns });
   };
 
-  const persistTableLayoutProfile = useCallback((layout: DatabaseTableLayoutProfile) => {
-    const normalizedLayout = {
-      columnOrder: dedupeCaseInsensitive(layout.columnOrder),
-      columnWidths: layout.columnWidths,
-    };
-    setTableLayoutProfile(normalizedLayout);
-    tableLayoutProfileRef.current = normalizedLayout;
-    void writeDatabaseTableLayoutProfile(vaultPath, tableLayoutKey, normalizedLayout)
-      .catch((error) => {
-        console.warn("Failed to persist database table layout", error);
-      });
-  }, [tableLayoutKey, vaultPath]);
+  const persistTableLayoutProfile = useCallback(
+    (layout: DatabaseTableLayoutProfile) => {
+      const normalizedLayout = {
+        columnOrder: dedupeCaseInsensitive(layout.columnOrder),
+        columnWidths: layout.columnWidths,
+      };
+      setTableLayoutProfile(normalizedLayout);
+      tableLayoutProfileRef.current = normalizedLayout;
+      void writeDatabaseTableLayoutProfile(vaultPath, tableLayoutKey, normalizedLayout).catch(
+        (error) => {
+          console.warn("Failed to persist database table layout", error);
+        },
+      );
+    },
+    [tableLayoutKey, vaultPath],
+  );
 
   const handleReorderVisibleColumns = (fromKey: string, toKey: string) => {
-    const fromIndex = visibleColumnKeys.findIndex((entry) => entry.toLowerCase() === fromKey.toLowerCase());
-    const toIndex = visibleColumnKeys.findIndex((entry) => entry.toLowerCase() === toKey.toLowerCase());
+    const fromIndex = visibleColumnKeys.findIndex(
+      (entry) => entry.toLowerCase() === fromKey.toLowerCase(),
+    );
+    const toIndex = visibleColumnKeys.findIndex(
+      (entry) => entry.toLowerCase() === toKey.toLowerCase(),
+    );
     if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
       return;
     }
@@ -2820,8 +2948,12 @@ export const MarkdownHybridDatabaseBlock = ({
 
   const handleReorderTableColumns = (fromKey: string, toKey: string) => {
     const tableColumnKeys = tableVisibleColumns.map((column) => column.key);
-    const fromIndex = tableColumnKeys.findIndex((entry) => entry.toLowerCase() === fromKey.toLowerCase());
-    const toIndex = tableColumnKeys.findIndex((entry) => entry.toLowerCase() === toKey.toLowerCase());
+    const fromIndex = tableColumnKeys.findIndex(
+      (entry) => entry.toLowerCase() === fromKey.toLowerCase(),
+    );
+    const toIndex = tableColumnKeys.findIndex(
+      (entry) => entry.toLowerCase() === toKey.toLowerCase(),
+    );
     if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
       return;
     }
@@ -2856,7 +2988,10 @@ export const MarkdownHybridDatabaseBlock = ({
   };
 
   const handleRestoreDefaultColumns = () => {
-    const parsedActiveSavedView = findSavedViewById(parsedSavedViews, parsed.config.views.activeViewId);
+    const parsedActiveSavedView = findSavedViewById(
+      parsedSavedViews,
+      parsed.config.views.activeViewId,
+    );
     const parsedDefault = dedupeCaseInsensitive(parsedActiveSavedView?.properties ?? []);
     const fallbackDefault = dedupeCaseInsensitive(defaultConfig.views.items[0]?.properties ?? []);
     const nextColumns = parsedDefault.length > 0 ? parsedDefault : fallbackDefault;
@@ -2900,10 +3035,11 @@ export const MarkdownHybridDatabaseBlock = ({
     setActiveCellEdit((previous) =>
       previous
         ? {
-          ...previous,
-          draftValue: nextDraft,
-        }
-        : previous);
+            ...previous,
+            draftValue: nextDraft,
+          }
+        : previous,
+    );
   };
 
   const handleCancelCellEdit = () => {
@@ -2934,12 +3070,14 @@ export const MarkdownHybridDatabaseBlock = ({
       draftValue: string | boolean,
     ): Promise<DatabaseTableBulkEditResult> => {
       const uniqueRecords = Array.from(
-        recordsToUpdate.reduce((map, record) => {
-          if (!map.has(record.fileId)) {
-            map.set(record.fileId, record);
-          }
-          return map;
-        }, new Map<string, DatabaseRecord>()).values(),
+        recordsToUpdate
+          .reduce((map, record) => {
+            if (!map.has(record.fileId)) {
+              map.set(record.fileId, record);
+            }
+            return map;
+          }, new Map<string, DatabaseRecord>())
+          .values(),
       );
       const failed: Array<{ recordId: string; path: string; error: string }> = [];
       const failAll = (error: string): DatabaseTableBulkEditResult => {
@@ -3017,7 +3155,9 @@ export const MarkdownHybridDatabaseBlock = ({
         previous.map((record) =>
           previousByRecordId.has(record.fileId)
             ? applyOptimisticRecordFieldValue(record, attribute.key, coercion.typedValue)
-            : record));
+            : record,
+        ),
+      );
       previousByRecordId.forEach((previousRecord, recordId) => {
         const mutationKey = mutationKeysByRecordId.get(recordId);
         if (mutationKey) {
@@ -3028,10 +3168,11 @@ export const MarkdownHybridDatabaseBlock = ({
       });
       setActiveCellEdit((previous) =>
         previous &&
-          previousByRecordId.has(previous.recordId) &&
-          toLower(previous.fieldKey) === toLower(attribute.key)
+        previousByRecordId.has(previous.recordId) &&
+        toLower(previous.fieldKey) === toLower(attribute.key)
           ? null
-          : previous);
+          : previous,
+      );
       setOperationError(null);
 
       let updated = 0;
@@ -3059,9 +3200,9 @@ export const MarkdownHybridDatabaseBlock = ({
           });
           setRecords((previous) =>
             previous.map((record) =>
-              record.fileId === previousRecord.fileId
-                ? previousRecord
-                : record));
+              record.fileId === previousRecord.fileId ? previousRecord : record,
+            ),
+          );
         } finally {
           if (mutationKey) {
             rollbackRecordSnapshotRef.current.delete(mutationKey);
@@ -3080,8 +3221,12 @@ export const MarkdownHybridDatabaseBlock = ({
           .map((entry) => `${entry.path}: ${entry.error}`)
           .join(" ");
         const remaining = failed.length > 3 ? ` ${failed.length - 3} weitere Fehler.` : "";
-        setOperationState(updated > 0 ? `${updated} Wert${updated === 1 ? "" : "e"} gespeichert.` : null);
-        setOperationError(`${failed.length} Wert${failed.length === 1 ? "" : "e"} konnten nicht gespeichert werden. ${visibleFailures}${remaining}`);
+        setOperationState(
+          updated > 0 ? `${updated} Wert${updated === 1 ? "" : "e"} gespeichert.` : null,
+        );
+        setOperationError(
+          `${failed.length} Wert${failed.length === 1 ? "" : "e"} konnten nicht gespeichert werden. ${visibleFailures}${remaining}`,
+        );
       } else {
         setOperationError(null);
         setOperationState(`${updated} Wert${updated === 1 ? "" : "e"} gespeichert.`);
@@ -3107,8 +3252,9 @@ export const MarkdownHybridDatabaseBlock = ({
     }
 
     const resolveOrderedGroupRecords = (groupKey: string) => {
-      const grouped = store.visibleRecords.filter((entry) =>
-        toKanbanGroupKey(getRecordValueByField(entry, groupAttribute.key)) === groupKey);
+      const grouped = store.visibleRecords.filter(
+        (entry) => toKanbanGroupKey(getRecordValueByField(entry, groupAttribute.key)) === groupKey,
+      );
       return applyKanbanOrder(grouped, kanbanOrderByGroupRef.current[groupKey]);
     };
 
@@ -3163,14 +3309,21 @@ export const MarkdownHybridDatabaseBlock = ({
     recordId: string,
     direction: "up" | "down",
   ) => {
-    const groupAttribute = pickKanbanGroupAttribute(store.attributeRegistry, kanbanGroupByRef.current);
+    const groupAttribute = pickKanbanGroupAttribute(
+      store.attributeRegistry,
+      kanbanGroupByRef.current,
+    );
     if (!groupAttribute) {
       return;
     }
 
-    const groupedRecords = store.visibleRecords.filter((entry) =>
-      toKanbanGroupKey(getRecordValueByField(entry, groupAttribute.key)) === groupKey);
-    const orderedRecords = applyKanbanOrder(groupedRecords, kanbanOrderByGroupRef.current[groupKey]);
+    const groupedRecords = store.visibleRecords.filter(
+      (entry) => toKanbanGroupKey(getRecordValueByField(entry, groupAttribute.key)) === groupKey,
+    );
+    const orderedRecords = applyKanbanOrder(
+      groupedRecords,
+      kanbanOrderByGroupRef.current[groupKey],
+    );
     const orderedIds = orderedRecords.map((entry) => entry.fileId);
     const sourceIndex = orderedIds.indexOf(recordId);
     if (sourceIndex < 0) {
@@ -3229,85 +3382,101 @@ export const MarkdownHybridDatabaseBlock = ({
 
   const handleRemoveFormulaField = (key: string) => {
     const normalizedKey = toLower(key);
-    const nextFields = cloneFieldDefinitions(fieldDefinitionsRef.current)
-      .filter((field) => {
-        if (toLower(field.key) !== normalizedKey) {
-          return true;
-        }
-        return field.origin !== "formula";
-      });
+    const nextFields = cloneFieldDefinitions(fieldDefinitionsRef.current).filter((field) => {
+      if (toLower(field.key) !== normalizedKey) {
+        return true;
+      }
+      return field.origin !== "formula";
+    });
     if (nextFields.length === fieldDefinitionsRef.current.length) {
       return;
     }
 
-    const nextVisibleColumns = getPropertiesForView(propertiesByViewRef.current, viewTypeRef.current)
-      .filter((entry) => toLower(entry) !== normalizedKey);
+    const nextVisibleColumns = getPropertiesForView(
+      propertiesByViewRef.current,
+      viewTypeRef.current,
+    ).filter((entry) => toLower(entry) !== normalizedKey);
     const nextPropertiesByView = buildPropertiesMirror(nextVisibleColumns);
     const nextFilters = removeFilterRulesByField(activeFiltersRef.current, key);
-    const nextSorts = activeSortsRef.current.filter((rule) => toLower(rule.field) !== normalizedKey);
-    const nextKanbanGroupBy = toLower(kanbanGroupByRef.current ?? "") === normalizedKey
-      ? null
-      : kanbanGroupByRef.current;
-    const nextKanbanExcludedValues = toLower(kanbanGroupByRef.current ?? "") === normalizedKey
-      ? []
-      : normalizeDatabaseKanbanExcludedValues(kanbanExcludedValuesRef.current);
-    const nextTimelineStartField = toLower(timelineStartFieldRef.current ?? "") === normalizedKey
-      ? null
-      : timelineStartFieldRef.current;
-    const nextTimelineEndField = toLower(timelineEndFieldRef.current ?? "") === normalizedKey
-      ? null
-      : timelineEndFieldRef.current;
-    const nextProjectStartField = toLower(projectStartFieldRef.current ?? "") === normalizedKey
-      ? DEFAULT_PROJECT_START_FIELD
-      : (projectStartFieldRef.current ?? DEFAULT_PROJECT_START_FIELD);
-    const nextProjectUnitField = toLower(projectUnitFieldRef.current ?? "") === normalizedKey
-      ? DEFAULT_PROJECT_UNIT_FIELD
-      : (projectUnitFieldRef.current ?? DEFAULT_PROJECT_UNIT_FIELD);
-    const nextProjectBarFillConfigs = normalizeProjectBarFillConfigs(
-      cloneProjectBarFillConfigs(projectBarFillConfigsRef.current).filter((entry) =>
-        toLower(entry.attributeKey) !== normalizedKey),
+    const nextSorts = activeSortsRef.current.filter(
+      (rule) => toLower(rule.field) !== normalizedKey,
     );
-    const nextPieGroupField = toLower(pieGroupFieldRef.current ?? "") === normalizedKey
-      ? null
-      : pieGroupFieldRef.current;
-    const nextPieAggregateField = toLower(pieAggregateFieldRef.current ?? "") === normalizedKey
-      ? null
-      : pieAggregateFieldRef.current;
-    const nextPieExcludedValues = toLower(pieGroupFieldRef.current ?? "") === normalizedKey
-      ? []
-      : normalizeDatabasePieExcludedValues(pieExcludedValuesRef.current);
+    const nextKanbanGroupBy =
+      toLower(kanbanGroupByRef.current ?? "") === normalizedKey ? null : kanbanGroupByRef.current;
+    const nextKanbanExcludedValues =
+      toLower(kanbanGroupByRef.current ?? "") === normalizedKey
+        ? []
+        : normalizeDatabaseKanbanExcludedValues(kanbanExcludedValuesRef.current);
+    const nextTimelineStartField =
+      toLower(timelineStartFieldRef.current ?? "") === normalizedKey
+        ? null
+        : timelineStartFieldRef.current;
+    const nextTimelineEndField =
+      toLower(timelineEndFieldRef.current ?? "") === normalizedKey
+        ? null
+        : timelineEndFieldRef.current;
+    const nextProjectStartField =
+      toLower(projectStartFieldRef.current ?? "") === normalizedKey
+        ? DEFAULT_PROJECT_START_FIELD
+        : (projectStartFieldRef.current ?? DEFAULT_PROJECT_START_FIELD);
+    const nextProjectUnitField =
+      toLower(projectUnitFieldRef.current ?? "") === normalizedKey
+        ? DEFAULT_PROJECT_UNIT_FIELD
+        : (projectUnitFieldRef.current ?? DEFAULT_PROJECT_UNIT_FIELD);
+    const nextProjectBarFillConfigs = normalizeProjectBarFillConfigs(
+      cloneProjectBarFillConfigs(projectBarFillConfigsRef.current).filter(
+        (entry) => toLower(entry.attributeKey) !== normalizedKey,
+      ),
+    );
+    const nextPieGroupField =
+      toLower(pieGroupFieldRef.current ?? "") === normalizedKey ? null : pieGroupFieldRef.current;
+    const nextPieAggregateField =
+      toLower(pieAggregateFieldRef.current ?? "") === normalizedKey
+        ? null
+        : pieAggregateFieldRef.current;
+    const nextPieExcludedValues =
+      toLower(pieGroupFieldRef.current ?? "") === normalizedKey
+        ? []
+        : normalizeDatabasePieExcludedValues(pieExcludedValuesRef.current);
 
     const stripRemovedFieldFromView = (view: DatabaseViewSpec): DatabaseViewSpec => ({
       ...view,
-      groupBy: toLower(view.groupBy ?? "") === normalizedKey ? null : view.groupBy ?? null,
-      kanbanExcludedValues: toLower(view.groupBy ?? "") === normalizedKey
-        ? []
-        : normalizeDatabaseKanbanExcludedValues(view.kanbanExcludedValues),
-      timelineStartField: toLower(view.timelineStartField ?? "") === normalizedKey
-        ? null
-        : view.timelineStartField ?? null,
-      timelineEndField: toLower(view.timelineEndField ?? "") === normalizedKey
-        ? null
-        : view.timelineEndField ?? null,
-      projectStartField: toLower(view.projectStartField ?? "") === normalizedKey
-        ? DEFAULT_PROJECT_START_FIELD
-        : view.projectStartField ?? DEFAULT_PROJECT_START_FIELD,
-      projectUnitField: toLower(view.projectUnitField ?? "") === normalizedKey
-        ? DEFAULT_PROJECT_UNIT_FIELD
-        : view.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD,
+      groupBy: toLower(view.groupBy ?? "") === normalizedKey ? null : (view.groupBy ?? null),
+      kanbanExcludedValues:
+        toLower(view.groupBy ?? "") === normalizedKey
+          ? []
+          : normalizeDatabaseKanbanExcludedValues(view.kanbanExcludedValues),
+      timelineStartField:
+        toLower(view.timelineStartField ?? "") === normalizedKey
+          ? null
+          : (view.timelineStartField ?? null),
+      timelineEndField:
+        toLower(view.timelineEndField ?? "") === normalizedKey
+          ? null
+          : (view.timelineEndField ?? null),
+      projectStartField:
+        toLower(view.projectStartField ?? "") === normalizedKey
+          ? DEFAULT_PROJECT_START_FIELD
+          : (view.projectStartField ?? DEFAULT_PROJECT_START_FIELD),
+      projectUnitField:
+        toLower(view.projectUnitField ?? "") === normalizedKey
+          ? DEFAULT_PROJECT_UNIT_FIELD
+          : (view.projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD),
       projectBarFillConfigs: normalizeProjectBarFillConfigs(
-        cloneProjectBarFillConfigs(view.projectBarFillConfigs).filter((entry) =>
-          toLower(entry.attributeKey) !== normalizedKey),
+        cloneProjectBarFillConfigs(view.projectBarFillConfigs).filter(
+          (entry) => toLower(entry.attributeKey) !== normalizedKey,
+        ),
       ),
-      pieGroupField: toLower(view.pieGroupField ?? "") === normalizedKey
-        ? null
-        : view.pieGroupField ?? null,
-      pieAggregateField: toLower(view.pieAggregateField ?? "") === normalizedKey
-        ? null
-        : view.pieAggregateField ?? null,
-      pieExcludedValues: toLower(view.pieGroupField ?? "") === normalizedKey
-        ? []
-        : normalizeDatabasePieExcludedValues(view.pieExcludedValues),
+      pieGroupField:
+        toLower(view.pieGroupField ?? "") === normalizedKey ? null : (view.pieGroupField ?? null),
+      pieAggregateField:
+        toLower(view.pieAggregateField ?? "") === normalizedKey
+          ? null
+          : (view.pieAggregateField ?? null),
+      pieExcludedValues:
+        toLower(view.pieGroupField ?? "") === normalizedKey
+          ? []
+          : normalizeDatabasePieExcludedValues(view.pieExcludedValues),
     });
 
     const nextSavedViews = dedupeSavedViewsById(
@@ -3403,9 +3572,7 @@ export const MarkdownHybridDatabaseBlock = ({
       } else {
         setOperationError(null);
       }
-      setOperationState(
-        `${result.updated} aktualisiert, ${result.skipped} uebersprungen.`,
-      );
+      setOperationState(`${result.updated} aktualisiert, ${result.skipped} uebersprungen.`);
 
       const nextField: DatabaseFieldDefinition = {
         key,
@@ -3431,7 +3598,9 @@ export const MarkdownHybridDatabaseBlock = ({
       setReloadToken((value) => value + 1);
       scheduleVaultAttributeRefresh();
     } catch (error) {
-      setOperationError(error instanceof Error ? error.message : "Attribute konnten nicht gespeichert werden.");
+      setOperationError(
+        error instanceof Error ? error.message : "Attribute konnten nicht gespeichert werden.",
+      );
     } finally {
       setIsMutatingFrontmatter(false);
     }
@@ -3471,10 +3640,11 @@ export const MarkdownHybridDatabaseBlock = ({
   const hasActiveSorts = activeSorts.length > 0;
   const viewBehavior = VIEW_BEHAVIOR_BY_TYPE[viewType];
   const savedViewEntries = useMemo(
-    () => savedViews.map((savedView) => ({
-      id: savedView.id,
-      name: savedView.name,
-    })),
+    () =>
+      savedViews.map((savedView) => ({
+        id: savedView.id,
+        name: savedView.name,
+      })),
     [savedViews],
   );
 
@@ -3488,10 +3658,7 @@ export const MarkdownHybridDatabaseBlock = ({
     });
     return Array.from(folders).sort((left, right) => compareNaturalPath(left, right));
   }, [vaultFiles]);
-  const historyFolderPath = useMemo(
-    () => resolveFormulaHistoryFolderPath(vaultPath),
-    [vaultPath],
-  );
+  const historyFolderPath = useMemo(() => resolveFormulaHistoryFolderPath(vaultPath), [vaultPath]);
 
   const filterValueSuggestionsByField = useMemo(() => {
     const next: Record<string, DatabaseVaultAttributeIndex["suggestions"]> = {};
@@ -3555,9 +3722,11 @@ export const MarkdownHybridDatabaseBlock = ({
       if (!normalizedKey) {
         return;
       }
-      const valueCount = store.normalizedRecords.reduce((count, record) => (
-        hasSuggestionValue(getRecordValueByField(record, attribute.key)) ? count + 1 : count
-      ), 0);
+      const valueCount = store.normalizedRecords.reduce(
+        (count, record) =>
+          hasSuggestionValue(getRecordValueByField(record, attribute.key)) ? count + 1 : count,
+        0,
+      );
       const existing = byNormalized.get(normalizedKey);
       if (!existing) {
         byNormalized.set(normalizedKey, {
@@ -3574,25 +3743,22 @@ export const MarkdownHybridDatabaseBlock = ({
       });
     });
 
-    return Array.from(byNormalized.values())
-      .sort((left, right) => {
-        if (left.count !== right.count) {
-          return right.count - left.count;
-        }
-        return left.key.localeCompare(right.key, undefined, { sensitivity: "base" });
-      });
+    return Array.from(byNormalized.values()).sort((left, right) => {
+      if (left.count !== right.count) {
+        return right.count - left.count;
+      }
+      return left.key.localeCompare(right.key, undefined, { sensitivity: "base" });
+    });
   }, [store.attributeRegistry, store.normalizedRecords, vaultAttributeIndex.suggestions]);
 
-  const kanbanGroupAttribute = pickKanbanGroupAttribute(
-    store.attributeRegistry,
-    kanbanGroupBy,
-  );
+  const kanbanGroupAttribute = pickKanbanGroupAttribute(store.attributeRegistry, kanbanGroupBy);
   const kanbanValueOptions = useMemo(
-    () => buildDatabaseKanbanValueOptions({
-      records: store.normalizedRecords,
-      groupAttribute: kanbanGroupAttribute,
-      monitoringProfiles,
-    }),
+    () =>
+      buildDatabaseKanbanValueOptions({
+        records: store.normalizedRecords,
+        groupAttribute: kanbanGroupAttribute,
+        monitoringProfiles,
+      }),
     [kanbanGroupAttribute, monitoringProfiles, store.normalizedRecords],
   );
   const kanbanVisibleGroupValues = useMemo(() => {
@@ -3601,14 +3767,8 @@ export const MarkdownHybridDatabaseBlock = ({
       .filter((option) => !excludedValueSet.has(option.value))
       .map((option) => option.value);
   }, [kanbanExcludedValues, kanbanValueOptions]);
-  const timelineStartAttribute = pickTimelineAttribute(
-    store.attributeRegistry,
-    timelineStartField,
-  );
-  const timelineEndAttribute = pickTimelineAttribute(
-    store.attributeRegistry,
-    timelineEndField,
-  );
+  const timelineStartAttribute = pickTimelineAttribute(store.attributeRegistry, timelineStartField);
+  const timelineEndAttribute = pickTimelineAttribute(store.attributeRegistry, timelineEndField);
   const projectStartAttribute = pickProjectNumericAttribute(
     store.attributeRegistry,
     projectStartField,
@@ -3617,29 +3777,28 @@ export const MarkdownHybridDatabaseBlock = ({
     store.attributeRegistry,
     projectUnitField,
   );
-  const pieGroupAttribute = pickPieGroupAttribute(
-    store.attributeRegistry,
-    pieGroupField,
-  );
-  const pieAggregateAttribute = useMemo(
-    () => {
-      if (!pieAggregateField) {
-        return null;
-      }
-      return store.attributeRegistry.find((attribute) =>
-        toLower(attribute.key) === toLower(pieAggregateField)) ?? null;
-    },
-    [pieAggregateField, store.attributeRegistry],
-  );
+  const pieGroupAttribute = pickPieGroupAttribute(store.attributeRegistry, pieGroupField);
+  const pieAggregateAttribute = useMemo(() => {
+    if (!pieAggregateField) {
+      return null;
+    }
+    return (
+      store.attributeRegistry.find(
+        (attribute) => toLower(attribute.key) === toLower(pieAggregateField),
+      ) ?? null
+    );
+  }, [pieAggregateField, store.attributeRegistry]);
   const pieValueOptions = useMemo(
-    () => buildDatabasePieValueOptions({
-      records: store.normalizedRecords,
-      groupAttribute: pieGroupAttribute,
-      monitoringProfiles,
-    }),
+    () =>
+      buildDatabasePieValueOptions({
+        records: store.normalizedRecords,
+        groupAttribute: pieGroupAttribute,
+        monitoringProfiles,
+      }),
     [monitoringProfiles, pieGroupAttribute, store.normalizedRecords],
   );
-  const hasOpenPanel = panels.source ||
+  const hasOpenPanel =
+    panels.source ||
     panels.properties ||
     panels.filter ||
     panels.sort ||
@@ -3816,10 +3975,12 @@ export const MarkdownHybridDatabaseBlock = ({
             {hasActiveFilters ? (
               <div className="database-block-filter-chips">
                 {flatFilterRules.map((entry) => {
-                  const valueText = typeof entry.value !== "undefined" ? ` ${String(entry.value)}` : "";
-                  const rangeText = entry.op === "between" && typeof entry.valueTo !== "undefined"
-                    ? ` .. ${String(entry.valueTo)}`
-                    : "";
+                  const valueText =
+                    typeof entry.value !== "undefined" ? ` ${String(entry.value)}` : "";
+                  const rangeText =
+                    entry.op === "between" && typeof entry.valueTo !== "undefined"
+                      ? ` .. ${String(entry.valueTo)}`
+                      : "";
                   return (
                     <button
                       key={entry.ruleId}
@@ -3869,7 +4030,9 @@ export const MarkdownHybridDatabaseBlock = ({
 
       {isPropertiesPanelLayerLocal
         ? panelLayerNode
-        : (typeof document !== "undefined" ? createPortal(panelLayerNode, document.body) : panelLayerNode)}
+        : typeof document !== "undefined"
+          ? createPortal(panelLayerNode, document.body)
+          : panelLayerNode}
 
       <div className="database-block-content">
         {viewType === "table" ? (
@@ -3929,7 +4092,9 @@ export const MarkdownHybridDatabaseBlock = ({
           <DatabaseProjectView
             records={store.visibleRecords}
             attributes={store.attributeRegistry}
-            startField={projectStartAttribute?.key ?? projectStartField ?? DEFAULT_PROJECT_START_FIELD}
+            startField={
+              projectStartAttribute?.key ?? projectStartField ?? DEFAULT_PROJECT_START_FIELD
+            }
             unitField={projectUnitAttribute?.key ?? projectUnitField ?? DEFAULT_PROJECT_UNIT_FIELD}
             resolution={projectBlockResolution}
             defaultUnits={projectDefaultUnits}
@@ -3960,8 +4125,12 @@ export const MarkdownHybridDatabaseBlock = ({
       </div>
 
       {store.uiState.loading ? <p className="database-block-state">Lade Daten...</p> : null}
-      {store.uiState.warning ? <p className="database-block-state">{store.uiState.warning}</p> : null}
-      {store.uiState.error ? <p className="database-block-state is-error">{store.uiState.error}</p> : null}
+      {store.uiState.warning ? (
+        <p className="database-block-state">{store.uiState.warning}</p>
+      ) : null}
+      {store.uiState.error ? (
+        <p className="database-block-state is-error">{store.uiState.error}</p>
+      ) : null}
       {operationState ? <p className="database-block-state">{operationState}</p> : null}
       {operationError ? <p className="database-block-state is-error">{operationError}</p> : null}
       {parsed.errors.length > 0 ? (

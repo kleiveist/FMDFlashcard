@@ -66,7 +66,9 @@ describe("database-store", () => {
       searchQuery: "",
     });
 
-    const sectionField = snapshot.attributeRegistry.find((attribute) => attribute.key === "Section");
+    const sectionField = snapshot.attributeRegistry.find(
+      (attribute) => attribute.key === "Section",
+    );
     expect(sectionField?.label).toBe("Bereich");
     expect(sectionField?.type).toBe("select");
   });
@@ -131,7 +133,9 @@ describe("database-store", () => {
       { value: "3 🟡", count: 1 },
     ]);
 
-    const formulaField = snapshot.attributeRegistry.find((attribute) => attribute.key === "f-status-count");
+    const formulaField = snapshot.attributeRegistry.find(
+      (attribute) => attribute.key === "f-status-count",
+    );
     expect(formulaField?.origin).toBe("formula");
     expect(formulaField?.formulaDefinition?.operation).toBe("count");
   });
@@ -167,7 +171,9 @@ describe("database-store", () => {
     expect(snapshot.visibleRecords[0]?.normalizedFields.legacyFormula).toBe(
       LEGACY_DATABASE_FORMULA_INCOMPATIBLE_MESSAGE,
     );
-    const legacyField = snapshot.attributeRegistry.find((attribute) => attribute.key === "legacyFormula");
+    const legacyField = snapshot.attributeRegistry.find(
+      (attribute) => attribute.key === "legacyFormula",
+    );
     expect(legacyField?.legacyFormulaIncompatible).toBe(true);
   });
 
@@ -214,12 +220,13 @@ describe("database-store", () => {
       searchQuery: "",
     });
 
-    const computedValues = snapshot.visibleRecords
-      .map((record) => record.normalizedFields["f-%"]);
+    const computedValues = snapshot.visibleRecords.map((record) => record.normalizedFields["f-%"]);
     expect(computedValues).toEqual([20, 20]);
     expect(computedValues).not.toContain("[object Object]");
 
-    const formulaAttribute = snapshot.attributeRegistry.find((attribute) => attribute.key === "f-%");
+    const formulaAttribute = snapshot.attributeRegistry.find(
+      (attribute) => attribute.key === "f-%",
+    );
     expect(formulaAttribute?.type).toBe("formula");
     expect(formulaAttribute?.editable).toBe(false);
   });

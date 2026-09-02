@@ -20,10 +20,7 @@ type UseFlashcardNoteFilesOptions = {
 
 const countFlashcardBlocks = (markdown: string) => parseFlashcards(markdown).length;
 
-export const useFlashcardNoteFiles = ({
-  files,
-  vaultPath,
-}: UseFlashcardNoteFilesOptions) => {
+export const useFlashcardNoteFiles = ({ files, vaultPath }: UseFlashcardNoteFilesOptions) => {
   const [noteFiles, setNoteFiles] = useState<FlashcardFileEntry[]>([]);
   const [noteFilesState, setNoteFilesState] = useState<LoadState>("idle");
   const [noteFilesError, setNoteFilesError] = useState("");
@@ -35,9 +32,7 @@ export const useFlashcardNoteFiles = ({
       setNoteFilesError("");
       return;
     }
-    const markdownFiles = files.filter((file) =>
-      file.relative_path.toLowerCase().endsWith(".md"),
-    );
+    const markdownFiles = files.filter((file) => file.relative_path.toLowerCase().endsWith(".md"));
     if (markdownFiles.length === 0) {
       setNoteFiles([]);
       setNoteFilesState("idle");

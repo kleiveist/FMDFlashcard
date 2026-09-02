@@ -387,34 +387,14 @@
   --ui-sidebar-shell-shadow: 0 4px 12px rgba(19, 26, 28, 0.05);
   --ui-nav-button-bg: transparent;
   --ui-nav-button-border: transparent;
-  --ui-nav-button-hover-bg: color-mix(
-    in srgb,
-    var(--accent-hover-bg) 72%,
-    transparent
-  );
-  --ui-nav-button-active-bg: color-mix(
-    in srgb,
-    var(--accent-active-bg) 72%,
-    transparent
-  );
+  --ui-nav-button-hover-bg: color-mix(in srgb, var(--accent-hover-bg) 72%, transparent);
+  --ui-nav-button-active-bg: color-mix(in srgb, var(--accent-active-bg) 72%, transparent);
   --ui-nav-button-active-border: transparent;
   --ui-tree-row-bg: transparent;
-  --ui-tree-row-hover-bg: color-mix(
-    in srgb,
-    var(--accent-hover-bg) 68%,
-    transparent
-  );
-  --ui-tree-row-active-bg: color-mix(
-    in srgb,
-    var(--accent-active-bg) 72%,
-    transparent
-  );
+  --ui-tree-row-hover-bg: color-mix(in srgb, var(--accent-hover-bg) 68%, transparent);
+  --ui-tree-row-active-bg: color-mix(in srgb, var(--accent-active-bg) 72%, transparent);
   --ui-tree-row-active-border: transparent;
-  --ui-tree-row-selected-border: color-mix(
-    in srgb,
-    var(--accent-border) 74%,
-    transparent
-  );
+  --ui-tree-row-selected-border: color-mix(in srgb, var(--accent-border) 74%, transparent);
   --ui-control-font-size: 0.8rem;
   --ui-control-font-size-compact: 0.76rem;
   --ui-control-padding-x: var(--ui-space-sm);
@@ -441,7 +421,8 @@
   --ui-button-field-open-border: transparent;
   --ui-button-field-shadow-rest: 0 1px 0 rgba(19, 26, 28, 0.03);
   --ui-button-field-shadow-hover: 0 2px 6px rgba(19, 26, 28, 0.08);
-  --ui-button-field-shadow-active: inset 0 0 0 1px color-mix(in srgb, var(--accent-border) 55%, transparent);
+  --ui-button-field-shadow-active: inset 0 0 0 1px
+    color-mix(in srgb, var(--accent-border) 55%, transparent);
 }
 
 :root[data-design-mode="desktop"] {
@@ -598,16 +579,8 @@
   --field-border: var(--line-soft);
   --ui-nav-button-bg: transparent;
   --ui-nav-button-border: transparent;
-  --ui-nav-button-hover-bg: color-mix(
-    in srgb,
-    var(--accent-weak-bg) 76%,
-    transparent
-  );
-  --ui-nav-button-active-bg: color-mix(
-    in srgb,
-    var(--accent-active-bg) 80%,
-    transparent
-  );
+  --ui-nav-button-hover-bg: color-mix(in srgb, var(--accent-weak-bg) 76%, transparent);
+  --ui-nav-button-active-bg: color-mix(in srgb, var(--accent-active-bg) 80%, transparent);
   --ui-nav-button-active-border: color-mix(in srgb, var(--accent-border) 80%, var(--line));
   --ui-tree-row-hover-bg: var(--ui-nav-button-hover-bg);
   --ui-tree-row-active-bg: var(--ui-nav-button-active-bg);
@@ -627,33 +600,17 @@
       var(--page-bg-base) 45%,
       var(--page-bg-edge-base) 100%
     );
-    --left-bg-tint: color-mix(
-      in srgb,
-      var(--accent) 4%,
-      var(--left-bg-base)
-    );
+    --left-bg-tint: color-mix(in srgb, var(--accent) 4%, var(--left-bg-base));
     --field-bg: color-mix(in srgb, var(--field-bg-base) 95%, var(--accent) 5%);
-    --field-border: color-mix(
-      in srgb,
-      var(--field-border-base) 90%,
-      var(--accent) 10%
-    );
+    --field-border: color-mix(in srgb, var(--field-border-base) 90%, var(--accent) 10%);
     --field-glow: color-mix(in srgb, var(--accent) 18%, transparent);
     --block-bg: color-mix(in srgb, var(--block-bg-base) 95%, var(--accent) 5%);
-    --block-border: color-mix(
-      in srgb,
-      var(--block-border-base) 92%,
-      var(--accent) 8%
-    );
+    --block-border: color-mix(in srgb, var(--block-border-base) 92%, var(--accent) 8%);
     --block-glow: color-mix(in srgb, var(--accent) 12%, transparent);
     --accent-weak-bg: color-mix(in srgb, var(--panel) 94%, var(--accent) 6%);
     --accent-hover-bg: color-mix(in srgb, var(--panel) 90%, var(--accent) 10%);
     --accent-active-bg: color-mix(in srgb, var(--panel) 86%, var(--accent) 14%);
-    --accent-weak-border: color-mix(
-      in srgb,
-      var(--line-soft) 70%,
-      var(--accent) 30%
-    );
+    --accent-weak-border: color-mix(in srgb, var(--line-soft) 70%, var(--accent) 30%);
     --accent-focus-ring: color-mix(in srgb, var(--accent) 45%, transparent);
     --accent-glow: color-mix(in srgb, var(--accent) 26%, transparent);
     --ui-control-bg: color-mix(in srgb, var(--field-bg) 90%, var(--accent) 10%);
@@ -671,36 +628,41 @@
     --ui-control-placeholder: color-mix(in srgb, var(--muted) 85%, transparent);
     --ui-control-text-disabled: color-mix(in srgb, var(--muted) 78%, var(--line));
     --ui-control-text-readonly: color-mix(in srgb, var(--ink) 88%, var(--muted));
-    --ui-control-shadow-focus: 0 0 0 2px color-mix(in srgb, var(--accent-focus-ring) 90%, transparent);
+    --ui-control-shadow-focus: 0 0 0 2px
+      color-mix(in srgb, var(--accent-focus-ring) 90%, transparent);
     --ui-button-field-bg: color-mix(in srgb, var(--ui-nav-button-bg) 90%, transparent);
     --ui-button-field-border: color-mix(in srgb, var(--ui-nav-button-border) 88%, transparent);
     --ui-button-field-hover-bg: color-mix(in srgb, var(--ui-nav-button-hover-bg) 86%, transparent);
-    --ui-button-field-hover-border: color-mix(in srgb, var(--accent-border) 80%, var(--ui-border-subtle));
-    --ui-button-field-active-bg: color-mix(in srgb, var(--ui-nav-button-active-bg) 88%, transparent);
-    --ui-button-field-active-border: color-mix(in srgb, var(--accent-border) 86%, var(--ui-border-subtle));
+    --ui-button-field-hover-border: color-mix(
+      in srgb,
+      var(--accent-border) 80%,
+      var(--ui-border-subtle)
+    );
+    --ui-button-field-active-bg: color-mix(
+      in srgb,
+      var(--ui-nav-button-active-bg) 88%,
+      transparent
+    );
+    --ui-button-field-active-border: color-mix(
+      in srgb,
+      var(--accent-border) 86%,
+      var(--ui-border-subtle)
+    );
     --ui-button-field-open-bg: color-mix(in srgb, var(--ui-nav-button-hover-bg) 88%, transparent);
-    --ui-button-field-open-border: color-mix(in srgb, var(--accent-border) 84%, var(--ui-border-subtle));
+    --ui-button-field-open-border: color-mix(
+      in srgb,
+      var(--accent-border) 84%,
+      var(--ui-border-subtle)
+    );
     --ui-button-field-disabled-border: color-mix(in srgb, var(--ui-border-subtle) 88%, transparent);
     --ui-button-field-disabled-text: color-mix(in srgb, var(--muted) 80%, var(--line-soft));
     --md-surface-bg: var(--preview-bg);
     --md-table-bg: var(--preview-bg);
     --md-table-head-bg: var(--panel-warm);
     --md-editor-focus-glow: transparent;
-    --md-grid-line-accent-light: color-mix(
-      in srgb,
-      var(--md-link) 3%,
-      transparent
-    );
-    --md-grid-line-accent-medium: color-mix(
-      in srgb,
-      var(--md-link) 4%,
-      transparent
-    );
-    --md-grid-line-accent-strong: color-mix(
-      in srgb,
-      var(--md-link) 5%,
-      transparent
-    );
+    --md-grid-line-accent-light: color-mix(in srgb, var(--md-link) 3%, transparent);
+    --md-grid-line-accent-medium: color-mix(in srgb, var(--md-link) 4%, transparent);
+    --md-grid-line-accent-strong: color-mix(in srgb, var(--md-link) 5%, transparent);
   }
 
   :root[data-theme="dark"] {
@@ -712,20 +674,12 @@
     );
     --left-bg-tint: var(--left-bg-base);
     --block-bg: color-mix(in srgb, var(--block-bg-base) 94%, var(--accent) 6%);
-    --block-border: color-mix(
-      in srgb,
-      var(--block-border-base) 90%,
-      var(--accent) 10%
-    );
+    --block-border: color-mix(in srgb, var(--block-border-base) 90%, var(--accent) 10%);
     --block-glow: color-mix(in srgb, var(--accent) 14%, transparent);
     --accent-weak-bg: color-mix(in srgb, var(--panel) 96%, var(--accent) 4%);
     --accent-hover-bg: color-mix(in srgb, var(--panel) 93%, var(--accent) 7%);
     --accent-active-bg: color-mix(in srgb, var(--panel) 90%, var(--accent) 10%);
-    --accent-weak-border: color-mix(
-      in srgb,
-      var(--line-soft) 65%,
-      var(--accent) 35%
-    );
+    --accent-weak-border: color-mix(in srgb, var(--line-soft) 65%, var(--accent) 35%);
     --accent-focus-ring: color-mix(in srgb, var(--accent) 50%, transparent);
     --accent-glow: color-mix(in srgb, var(--accent) 30%, transparent);
     --ui-control-bg: color-mix(in srgb, var(--field-bg) 90%, var(--accent) 10%);
@@ -743,32 +697,37 @@
     --ui-control-placeholder: color-mix(in srgb, var(--muted) 86%, transparent);
     --ui-control-text-disabled: color-mix(in srgb, var(--muted) 82%, var(--line));
     --ui-control-text-readonly: color-mix(in srgb, var(--ink) 90%, var(--muted));
-    --ui-control-shadow-focus: 0 0 0 2px color-mix(in srgb, var(--accent-focus-ring) 94%, transparent);
+    --ui-control-shadow-focus: 0 0 0 2px
+      color-mix(in srgb, var(--accent-focus-ring) 94%, transparent);
     --ui-button-field-bg: color-mix(in srgb, var(--ui-nav-button-bg) 88%, transparent);
     --ui-button-field-border: color-mix(in srgb, var(--ui-nav-button-border) 86%, transparent);
     --ui-button-field-hover-bg: color-mix(in srgb, var(--ui-nav-button-hover-bg) 84%, transparent);
-    --ui-button-field-hover-border: color-mix(in srgb, var(--accent-border) 82%, var(--ui-border-subtle));
-    --ui-button-field-active-bg: color-mix(in srgb, var(--ui-nav-button-active-bg) 88%, transparent);
-    --ui-button-field-active-border: color-mix(in srgb, var(--accent-border) 88%, var(--ui-border-subtle));
+    --ui-button-field-hover-border: color-mix(
+      in srgb,
+      var(--accent-border) 82%,
+      var(--ui-border-subtle)
+    );
+    --ui-button-field-active-bg: color-mix(
+      in srgb,
+      var(--ui-nav-button-active-bg) 88%,
+      transparent
+    );
+    --ui-button-field-active-border: color-mix(
+      in srgb,
+      var(--accent-border) 88%,
+      var(--ui-border-subtle)
+    );
     --ui-button-field-open-bg: color-mix(in srgb, var(--ui-nav-button-hover-bg) 86%, transparent);
-    --ui-button-field-open-border: color-mix(in srgb, var(--accent-border) 86%, var(--ui-border-subtle));
+    --ui-button-field-open-border: color-mix(
+      in srgb,
+      var(--accent-border) 86%,
+      var(--ui-border-subtle)
+    );
     --ui-button-field-disabled-border: color-mix(in srgb, var(--ui-border-subtle) 82%, transparent);
     --ui-button-field-disabled-text: color-mix(in srgb, var(--muted) 82%, var(--line-soft));
-    --md-grid-line-accent-light: color-mix(
-      in srgb,
-      var(--md-link) 4%,
-      transparent
-    );
-    --md-grid-line-accent-medium: color-mix(
-      in srgb,
-      var(--md-link) 6%,
-      transparent
-    );
-    --md-grid-line-accent-strong: color-mix(
-      in srgb,
-      var(--md-link) 7%,
-      transparent
-    );
+    --md-grid-line-accent-light: color-mix(in srgb, var(--md-link) 4%, transparent);
+    --md-grid-line-accent-medium: color-mix(in srgb, var(--md-link) 6%, transparent);
+    --md-grid-line-accent-strong: color-mix(in srgb, var(--md-link) 7%, transparent);
   }
 }
 

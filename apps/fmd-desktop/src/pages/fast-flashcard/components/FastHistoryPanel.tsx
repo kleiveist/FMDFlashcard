@@ -64,9 +64,7 @@ export const FastSessionHistory = ({
               </span>
               <span className="fast-session-cell">{session.score}</span>
               <span className="fast-session-cell">{session.accuracy}%</span>
-              <span className="fast-session-cell">
-                {formatSessionPace(session.pace)}
-              </span>
+              <span className="fast-session-cell">{formatSessionPace(session.pace)}</span>
             </div>
           ))}
         </div>
@@ -89,9 +87,7 @@ export const FastSessionHistory = ({
               </span>
               <span className="fast-session-cell">{session.score}</span>
               <span className="fast-session-cell">{session.accuracy}%</span>
-              <span className="fast-session-cell">
-                {formatSessionPace(session.pace)}
-              </span>
+              <span className="fast-session-cell">{formatSessionPace(session.pace)}</span>
             </div>
           ))}
         </div>

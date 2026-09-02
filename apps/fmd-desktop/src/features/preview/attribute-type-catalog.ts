@@ -19,14 +19,7 @@ export type SharedPropertyIcon =
   | "unknown";
 
 export type CoreAttributeTypeId =
-  | "text"
-  | "task"
-  | "time"
-  | "link"
-  | "number"
-  | "cover"
-  | "tags"
-  | "formula";
+  "text" | "task" | "time" | "link" | "number" | "cover" | "tags" | "formula";
 
 export type CoreAttributeTypeOption = {
   id: CoreAttributeTypeId;
@@ -104,9 +97,7 @@ export const resolveAutoAttributeKeyForCoreType = (id: CoreAttributeTypeId) => {
   return null;
 };
 
-export const mapCoreTypeToDatabaseFieldType = (
-  id: CoreAttributeTypeId,
-): DatabaseFieldType => {
+export const mapCoreTypeToDatabaseFieldType = (id: CoreAttributeTypeId): DatabaseFieldType => {
   switch (id) {
     case "time":
       return "time";
@@ -127,9 +118,7 @@ export const mapCoreTypeToDatabaseFieldType = (
   }
 };
 
-export const resolveDatabaseFieldTypeIcon = (
-  type: DatabaseFieldType,
-): SharedPropertyIcon => {
+export const resolveDatabaseFieldTypeIcon = (type: DatabaseFieldType): SharedPropertyIcon => {
   switch (type) {
     case "number":
     case "unit":
@@ -163,9 +152,7 @@ export const resolveDatabaseFieldTypeIcon = (
   }
 };
 
-export const resolveDatabaseFieldTypeLabel = (
-  type: DatabaseFieldType,
-) => {
+export const resolveDatabaseFieldTypeLabel = (type: DatabaseFieldType) => {
   const fromCore = CORE_ATTRIBUTE_TYPE_OPTIONS.find(
     (option) => mapCoreTypeToDatabaseFieldType(option.id) === type,
   );

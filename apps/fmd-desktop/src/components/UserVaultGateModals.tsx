@@ -9,10 +9,7 @@ import { useEffect, useRef } from "react";
 import type { UserVaultState } from "../features/user-vault/useUserVault";
 import { ModalShell } from "./ModalShell";
 import { SyncProviderSection } from "./settings/DataSyncTabContent";
-import {
-  ProfileSetupView,
-  type ProfileSetupVaultSelection,
-} from "./settings/ProfileSetupSections";
+import { ProfileSetupView, type ProfileSetupVaultSelection } from "./settings/ProfileSetupSections";
 import { type UserRegistryControlsProps } from "./UserToolsPanel";
 
 type GateModalProps = {

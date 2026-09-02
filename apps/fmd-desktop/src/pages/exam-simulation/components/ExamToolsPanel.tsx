@@ -119,11 +119,7 @@ export const ExamToolsPanel = ({
               </button>
             ) : null}
             {showBackToResults ? (
-              <button
-                type="button"
-                className="primary"
-                onClick={onBackToResults}
-              >
+              <button type="button" className="primary" onClick={onBackToResults}>
                 Back to Results
               </button>
             ) : null}
@@ -142,8 +138,8 @@ export const ExamToolsPanel = ({
         ) : null}
         {showSettingsHints && hasTaskCountMismatch ? (
           <div className="muted">
-            Only {availableTaskCount} tasks found (expected {expectedTaskCount}). The
-            exam will run {plannedTaskCount}.
+            Only {availableTaskCount} tasks found (expected {expectedTaskCount}). The exam will run{" "}
+            {plannedTaskCount}.
           </div>
         ) : null}
       </div>

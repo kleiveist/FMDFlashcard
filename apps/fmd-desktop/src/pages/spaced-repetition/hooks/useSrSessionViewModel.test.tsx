@@ -81,7 +81,7 @@ const createMockAppState = ({
     ]),
   );
 
-  return ({
+  return {
     flashcards: {
       handleClozeTokenDragStart: vi.fn(),
       handleClozeBlankDragOver: vi.fn(),
@@ -150,7 +150,7 @@ const createMockAppState = ({
     vault: {
       vaultPath: null,
     },
-  }) as unknown as ReturnType<typeof useAppState>;
+  } as unknown as ReturnType<typeof useAppState>;
 };
 
 describe("useSrSessionViewModel auto time", () => {
@@ -191,9 +191,7 @@ describe("useSrSessionViewModel auto time", () => {
 
     expect(onSelfGrade).toHaveBeenCalledWith(0, "incorrect");
     expect(onSubmit).not.toHaveBeenCalled();
-    expect((latest as { autoTimeEnabled: boolean } | null)?.autoTimeEnabled).toBe(
-      true,
-    );
+    expect((latest as { autoTimeEnabled: boolean } | null)?.autoTimeEnabled).toBe(true);
 
     cleanup();
     vi.useRealTimers();

@@ -5,14 +5,7 @@
  * - Rendert eine rechte Overlay-Toolbar fuer kontextbezogene Zusatzaktionen.
  */
 
-import {
-  type AriaAttributes,
-  type ReactNode,
-  type Ref,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { type AriaAttributes, type ReactNode, type Ref, useEffect, useMemo, useState } from "react";
 
 const RAIL_EDGE_THRESHOLD_PX = 64;
 const RAIL_HIDE_DELAY_MS = 180;
@@ -47,9 +40,7 @@ export const RightOverlayRail = ({
   const [isHovered, setIsHovered] = useState(false);
   const [hasFocusWithin, setHasFocusWithin] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
-  const shouldShowRail =
-    enabled &&
-    (pinned || isNearEdge || isHovered || hasFocusWithin);
+  const shouldShowRail = enabled && (pinned || isNearEdge || isHovered || hasFocusWithin);
 
   useEffect(() => {
     if (enabled) {
@@ -66,11 +57,8 @@ export const RightOverlayRail = ({
       return;
     }
     const handleMouseMove = (event: MouseEvent) => {
-      const nextNearEdge =
-        event.clientX >= window.innerWidth - RAIL_EDGE_THRESHOLD_PX;
-      setIsNearEdge((current) =>
-        current === nextNearEdge ? current : nextNearEdge,
-      );
+      const nextNearEdge = event.clientX >= window.innerWidth - RAIL_EDGE_THRESHOLD_PX;
+      setIsNearEdge((current) => (current === nextNearEdge ? current : nextNearEdge));
     };
     const handleMouseLeave = () => {
       setIsNearEdge(false);
@@ -106,11 +94,7 @@ export const RightOverlayRail = ({
 
   const railClassName = useMemo(
     () =>
-      [
-        "right-overlay-rail",
-        className,
-        isVisible ? "is-visible" : "is-hidden",
-      ]
+      ["right-overlay-rail", className, isVisible ? "is-visible" : "is-hidden"]
         .filter(Boolean)
         .join(" "),
     [className, isVisible],
@@ -140,16 +124,12 @@ export const RightOverlayRail = ({
             key={action.id}
             ref={action.buttonRef}
             type="button"
-            className={`ghost small right-overlay-rail-button${
-              action.isActive ? " active" : ""
-            }`}
+            className={`ghost small right-overlay-rail-button${action.isActive ? " active" : ""}`}
             onClick={action.onClick}
             aria-label={action.label}
             aria-haspopup={action.ariaHaspopup}
             aria-expanded={
-              typeof action.ariaExpanded === "boolean"
-                ? action.ariaExpanded
-                : undefined
+              typeof action.ariaExpanded === "boolean" ? action.ariaExpanded : undefined
             }
             title={action.label}
           >

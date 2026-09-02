@@ -94,9 +94,7 @@ export const HelpDetailSection = ({
       <div className="help-breadcrumb">
         <span>{titleText}</span>
         <span className="help-crumb-sep">&gt;</span>
-        <span className="help-breadcrumb-current">
-          {resolveText(activeTopic.title, language)}
-        </span>
+        <span className="help-breadcrumb-current">{resolveText(activeTopic.title, language)}</span>
         {isSyntaxTopic && activeSyntax ? (
           <>
             <span className="help-crumb-sep">&gt;</span>
@@ -109,11 +107,7 @@ export const HelpDetailSection = ({
           <span className="chip">{resolveText(helpLabels.draft, language)}</span>
         ) : null}
       </div>
-      <button
-        type="button"
-        className="ghost small"
-        onClick={onCloseHelp}
-      >
+      <button type="button" className="ghost small" onClick={onCloseHelp}>
         {resolveText(helpLabels.back, language)}
       </button>
     </div>

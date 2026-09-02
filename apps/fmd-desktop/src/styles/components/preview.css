@@ -1,4 +1,3 @@
-
 /*
  * @file apps/fmd-desktop/src/styles/components/preview.css
  *
@@ -622,7 +621,8 @@
 }
 
 .frontmatter-cover-panel.is-empty:not(.is-compact):hover .frontmatter-cover-hero-button.is-empty,
-.frontmatter-cover-panel.is-empty:not(.is-compact):focus-within .frontmatter-cover-hero-button.is-empty {
+.frontmatter-cover-panel.is-empty:not(.is-compact):focus-within
+  .frontmatter-cover-hero-button.is-empty {
   border-color: color-mix(in srgb, var(--line-soft) 72%, transparent);
   background: color-mix(in srgb, var(--panel) 42%, transparent);
 }
@@ -1001,8 +1001,9 @@
 .frontmatter-cover-debug {
   font-size: 0.64rem;
   color: color-mix(in srgb, var(--muted) 80%, var(--ink));
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2115,7 +2116,11 @@ textarea.preview-editor {
   background-color: color-mix(in srgb, var(--panel) 92%, var(--surface-1));
   background-image:
     linear-gradient(color-mix(in srgb, var(--line-soft) 58%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--line-soft) 58%, transparent) 1px, transparent 1px);
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--line-soft) 58%, transparent) 1px,
+      transparent 1px
+    );
   background-position:
     var(--business-canvas-grid-x, 0) var(--business-canvas-grid-y, 0),
     var(--business-canvas-grid-x, 0) var(--business-canvas-grid-y, 0);
@@ -2359,8 +2364,16 @@ textarea.preview-editor {
 
 .business-canvas-node {
   --business-canvas-node-color: var(--accent);
-  --business-canvas-node-fill: color-mix(in srgb, var(--business-canvas-node-color) 11%, var(--panel));
-  --business-canvas-node-border: color-mix(in srgb, var(--business-canvas-node-color) 62%, var(--line-soft));
+  --business-canvas-node-fill: color-mix(
+    in srgb,
+    var(--business-canvas-node-color) 11%,
+    var(--panel)
+  );
+  --business-canvas-node-border: color-mix(
+    in srgb,
+    var(--business-canvas-node-color) 62%,
+    var(--line-soft)
+  );
   border-color: var(--business-canvas-node-border);
   background: var(--business-canvas-node-fill);
   touch-action: none;
@@ -2502,8 +2515,7 @@ textarea.preview-editor {
   border: 1px solid color-mix(in srgb, var(--business-canvas-node-border) 80%, var(--panel));
   border-radius: 4px;
   background:
-    linear-gradient(135deg, transparent 0 45%, currentColor 45% 55%, transparent 55%),
-    var(--panel);
+    linear-gradient(135deg, transparent 0 45%, currentColor 45% 55%, transparent 55%), var(--panel);
   color: var(--muted);
   cursor: nwse-resize;
   touch-action: none;
@@ -2592,7 +2604,12 @@ textarea.preview-editor {
 
 .canvas-custom-color-swatch.is-empty {
   background:
-    linear-gradient(135deg, transparent 0 42%, color-mix(in srgb, var(--muted) 70%, transparent) 42% 58%, transparent 58%),
+    linear-gradient(
+      135deg,
+      transparent 0 42%,
+      color-mix(in srgb, var(--muted) 70%, transparent) 42% 58%,
+      transparent 58%
+    ),
     color-mix(in srgb, var(--surface-1) 76%, var(--panel));
 }
 
@@ -2760,8 +2777,7 @@ textarea.preview-editor {
 .markdown-hybrid-block.is-range-selected {
   border-color: color-mix(in srgb, var(--line) 58%, var(--line-soft));
   background: color-mix(in srgb, var(--line-soft) 10%, transparent);
-  box-shadow: inset 0 0 0 1px
-    color-mix(in srgb, var(--line-soft) 82%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line-soft) 82%, transparent);
 }
 
 .markdown-hybrid-block.is-active.is-range-selected {
@@ -2868,7 +2884,9 @@ textarea.preview-editor {
     color 0.12s ease;
 }
 
-.markdown-hybrid-overlay-row.is-left-controls-visible .markdown-hybrid-overlay-rail-left .markdown-hybrid-overlay-control {
+.markdown-hybrid-overlay-row.is-left-controls-visible
+  .markdown-hybrid-overlay-rail-left
+  .markdown-hybrid-overlay-control {
   opacity: 1;
   transform: translateX(0);
   pointer-events: auto;
@@ -2969,7 +2987,10 @@ textarea.preview-editor {
   justify-content: center;
   padding: 0;
   cursor: pointer;
-  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  transition:
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
 }
 
 .markdown-hybrid-block-control:hover:not(:disabled) {
@@ -3704,7 +3725,10 @@ textarea.preview-editor {
   line-height: 1;
   padding: 0 10px;
   cursor: pointer;
-  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    color 0.16s ease;
 }
 
 .markdown-hybrid-image-embed-replace-trigger:hover:not(:disabled) {
@@ -3770,7 +3794,10 @@ textarea.preview-editor {
   line-height: 1;
   padding: 0 8px;
   cursor: pointer;
-  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    color 0.16s ease;
 }
 
 .markdown-hybrid-table-cell-image-replace-trigger:hover:not(:disabled) {
@@ -3832,7 +3859,10 @@ textarea.preview-editor {
   background: color-mix(in srgb, var(--panel) 82%, transparent);
   color: color-mix(in srgb, var(--muted) 72%, var(--ink));
   cursor: pointer;
-  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease,
+    color 0.16s ease;
 }
 
 .markdown-hybrid-math-toolbox-trigger:hover {
@@ -3928,7 +3958,11 @@ textarea.preview-editor {
   max-height: min(560px, 92vh);
   overflow: hidden;
   background:
-    radial-gradient(circle at top right, color-mix(in srgb, var(--accent-soft) 24%, transparent), transparent 30%),
+    radial-gradient(
+      circle at top right,
+      color-mix(in srgb, var(--accent-soft) 24%, transparent),
+      transparent 30%
+    ),
     color-mix(in srgb, var(--panel) 97%, var(--ink) 3%);
 }
 
@@ -4072,7 +4106,11 @@ textarea.preview-editor {
   background: color-mix(in srgb, var(--panel) 92%, transparent);
   color: inherit;
   cursor: pointer;
-  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease;
 }
 
 .markdown-hybrid-structural-math-tool:hover {
@@ -4114,7 +4152,11 @@ textarea.preview-editor {
   border: 1px solid color-mix(in srgb, var(--field-border) 82%, transparent);
   border-radius: 12px;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--panel) 98%, transparent), color-mix(in srgb, var(--field-bg) 96%, transparent)),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--panel) 98%, transparent),
+      color-mix(in srgb, var(--field-bg) 96%, transparent)
+    ),
     color-mix(in srgb, var(--field-bg) 94%, transparent);
   outline: none;
   font-size: calc(0.96rem * var(--md-math-scale));
@@ -4134,7 +4176,10 @@ textarea.preview-editor {
   background: color-mix(in srgb, var(--field-bg) 94%, var(--panel));
   box-shadow: inset 0 0 0 1px transparent;
   vertical-align: middle;
-  transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease;
 }
 
 .markdown-hybrid-structural-math-row.is-compact {
@@ -4467,7 +4512,10 @@ textarea.preview-editor {
   color: inherit;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.16s ease, transform 0.16s ease, background 0.16s ease;
+  transition:
+    border-color 0.16s ease,
+    transform 0.16s ease,
+    background 0.16s ease;
 }
 
 .markdown-hybrid-math-toolbox-item:hover {
@@ -4608,7 +4656,9 @@ textarea.preview-editor {
   text-decoration: none;
 }
 
-.preview-panel[data-edit-enabled="false"] .preview.markdown.md-preview .md-inline-syntax-quoted-token {
+.preview-panel[data-edit-enabled="false"]
+  .preview.markdown.md-preview
+  .md-inline-syntax-quoted-token {
   --md-inline-view-accent: color-mix(
     in srgb,
     var(--md-accent, var(--accent-strong)) 70%,
@@ -4637,14 +4687,13 @@ textarea.preview-editor {
 }
 
 .markdown-hybrid-block-editor-overlay .md-inline-syntax-markdown-highlight {
-  background:
-    linear-gradient(
-      to bottom,
-      transparent 0%,
-      transparent 58%,
-      color-mix(in srgb, var(--accent-soft) 72%, transparent) 58%,
-      color-mix(in srgb, var(--accent-soft) 72%, transparent) 100%
-    );
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 58%,
+    color-mix(in srgb, var(--accent-soft) 72%, transparent) 58%,
+    color-mix(in srgb, var(--accent-soft) 72%, transparent) 100%
+  );
   color: color-mix(in srgb, var(--accent-strong) 90%, var(--preview-ink));
 }
 
@@ -5090,7 +5139,10 @@ textarea.preview-editor {
 .markdown-hybrid-table-row-insert,
 .markdown-hybrid-table-column-select,
 .markdown-hybrid-table-row-select {
-  transition: background-color 140ms ease, color 140ms ease, opacity 140ms ease;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    opacity 140ms ease;
 }
 
 .markdown-hybrid-table-column-insert,
@@ -5105,7 +5157,10 @@ textarea.preview-editor {
   color: var(--muted);
   cursor: pointer;
   font-size: 0.7rem;
-  transition: background-color 140ms ease, color 140ms ease, opacity 140ms ease;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease,
+    opacity 140ms ease;
 }
 
 .markdown-hybrid-table-column-insert,
@@ -5145,7 +5200,9 @@ textarea.preview-editor {
   min-width: 0;
   padding: 8px 12px;
   cursor: text;
-  transition: background-color 140ms ease, box-shadow 140ms ease;
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms ease;
 }
 
 .markdown-hybrid-table-cell,
@@ -5385,16 +5442,24 @@ textarea.preview-editor {
   opacity: 1;
 }
 
-.preview-markdown-editable .md-math-inline[data-md-inline-math-source="true"] > .md-inline-math-source {
+.preview-markdown-editable
+  .md-math-inline[data-md-inline-math-source="true"]
+  > .md-inline-math-source {
   display: none;
   white-space: pre;
 }
 
-.preview-markdown-editable [data-md-inline-active="true"] .md-math-inline[data-md-inline-math-source="true"] > :not(.md-inline-marker):not(.md-inline-math-source) {
+.preview-markdown-editable
+  [data-md-inline-active="true"]
+  .md-math-inline[data-md-inline-math-source="true"]
+  > :not(.md-inline-marker):not(.md-inline-math-source) {
   display: none;
 }
 
-.preview-markdown-editable [data-md-inline-active="true"] .md-math-inline[data-md-inline-math-source="true"] > .md-inline-math-source {
+.preview-markdown-editable
+  [data-md-inline-active="true"]
+  .md-math-inline[data-md-inline-math-source="true"]
+  > .md-inline-math-source {
   display: inline;
 }
 
@@ -5447,7 +5512,10 @@ textarea.preview-editor {
   display: none;
 }
 
-.preview-markdown-editable pre[data-md-code-block="true"] > .md-code-fence-line > .md-code-fence-marker {
+.preview-markdown-editable
+  pre[data-md-code-block="true"]
+  > .md-code-fence-line
+  > .md-code-fence-marker {
   color: var(--muted);
   font-size: inherit;
   line-height: inherit;
@@ -5456,11 +5524,16 @@ textarea.preview-editor {
   user-select: text;
 }
 
-.preview-markdown-editable pre[data-md-code-block="true"][data-md-code-active="true"] > .md-code-fence-line {
+.preview-markdown-editable
+  pre[data-md-code-block="true"][data-md-code-active="true"]
+  > .md-code-fence-line {
   display: block;
 }
 
-.preview-markdown-editable pre[data-md-code-block="true"][data-md-code-active="true"] > .md-code-fence-line > .md-code-fence-marker {
+.preview-markdown-editable
+  pre[data-md-code-block="true"][data-md-code-active="true"]
+  > .md-code-fence-line
+  > .md-code-fence-marker {
   color: var(--muted);
 }
 
@@ -5575,29 +5648,29 @@ textarea.preview-editor {
       transparent calc(var(--md-grid-dot-size) + 0.5px)
     ),
     radial-gradient(
-      ellipse var(--md-grid-line-size) calc(var(--md-grid-stroke) / 2)
-        at 50% calc(50% - var(--md-grid-cross-offset)),
+      ellipse var(--md-grid-line-size) calc(var(--md-grid-stroke) / 2) at 50%
+        calc(50% - var(--md-grid-cross-offset)),
       var(--md-grid-line) 0,
       var(--md-grid-line) 100%,
       transparent 100%
     ),
     radial-gradient(
-      ellipse var(--md-grid-line-size) calc(var(--md-grid-stroke) / 2)
-        at 50% calc(50% + var(--md-grid-cross-offset)),
+      ellipse var(--md-grid-line-size) calc(var(--md-grid-stroke) / 2) at 50%
+        calc(50% + var(--md-grid-cross-offset)),
       var(--md-grid-line) 0,
       var(--md-grid-line) 100%,
       transparent 100%
     ),
     radial-gradient(
-      ellipse calc(var(--md-grid-stroke) / 2) var(--md-grid-line-size)
-        at calc(50% - var(--md-grid-cross-offset)) 50%,
+      ellipse calc(var(--md-grid-stroke) / 2) var(--md-grid-line-size) at
+        calc(50% - var(--md-grid-cross-offset)) 50%,
       var(--md-grid-line) 0,
       var(--md-grid-line) 100%,
       transparent 100%
     ),
     radial-gradient(
-      ellipse calc(var(--md-grid-stroke) / 2) var(--md-grid-line-size)
-        at calc(50% + var(--md-grid-cross-offset)) 50%,
+      ellipse calc(var(--md-grid-stroke) / 2) var(--md-grid-line-size) at
+        calc(50% + var(--md-grid-cross-offset)) 50%,
       var(--md-grid-line) 0,
       var(--md-grid-line) 100%,
       transparent 100%
@@ -5948,7 +6021,9 @@ textarea.preview-editor {
   counter-increment: md-ordered;
 }
 
-.preview-markdown-editable ol[data-md-ordered-delimiter=")"] > li:not([data-md-list-active="true"])::before {
+.preview-markdown-editable
+  ol[data-md-ordered-delimiter=")"]
+  > li:not([data-md-list-active="true"])::before {
   content: counter(md-ordered, decimal) ") ";
   position: absolute;
   left: 0;
@@ -5983,7 +6058,11 @@ textarea.preview-editor {
   content: counter(md-ordered, lower-alpha) ") ";
 }
 
-.preview.markdown.md-preview:not(.preview-editor) ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.preview.markdown.md-preview:not(.preview-editor)
+  ol
+  ol
+  ol[data-md-ordered-delimiter=")"]
+  > li::before,
 .markdown-hybrid-block-preview ol ol ol[data-md-ordered-delimiter=")"] > li::before,
 .exam-markdown ol ol ol[data-md-ordered-delimiter=")"] > li::before,
 .flashcard-markdown ol ol ol[data-md-ordered-delimiter=")"] > li::before,
@@ -5991,7 +6070,12 @@ textarea.preview-editor {
   content: counter(md-ordered, lower-roman) ") ";
 }
 
-.preview.markdown.md-preview:not(.preview-editor) ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.preview.markdown.md-preview:not(.preview-editor)
+  ol
+  ol
+  ol
+  ol[data-md-ordered-delimiter=")"]
+  > li::before,
 .markdown-hybrid-block-preview ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
 .exam-markdown ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
 .flashcard-markdown ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
@@ -5999,7 +6083,13 @@ textarea.preview-editor {
   content: counter(md-ordered, decimal) ") ";
 }
 
-.preview.markdown.md-preview:not(.preview-editor) ol ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.preview.markdown.md-preview:not(.preview-editor)
+  ol
+  ol
+  ol
+  ol
+  ol[data-md-ordered-delimiter=")"]
+  > li::before,
 .markdown-hybrid-block-preview ol ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
 .exam-markdown ol ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
 .flashcard-markdown ol ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
@@ -6007,7 +6097,14 @@ textarea.preview-editor {
   content: counter(md-ordered, lower-alpha) ") ";
 }
 
-.preview.markdown.md-preview:not(.preview-editor) ol ol ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
+.preview.markdown.md-preview:not(.preview-editor)
+  ol
+  ol
+  ol
+  ol
+  ol
+  ol[data-md-ordered-delimiter=")"]
+  > li::before,
 .markdown-hybrid-block-preview ol ol ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
 .exam-markdown ol ol ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
 .flashcard-markdown ol ol ol ol ol ol[data-md-ordered-delimiter=")"] > li::before,
@@ -6015,59 +6112,105 @@ textarea.preview-editor {
   content: counter(md-ordered, lower-roman) ") ";
 }
 
-.preview-markdown-editable ol ol[data-md-ordered-delimiter=")"] > li:not([data-md-list-active="true"])::before {
+.preview-markdown-editable
+  ol
+  ol[data-md-ordered-delimiter=")"]
+  > li:not([data-md-list-active="true"])::before {
   content: counter(md-ordered, lower-alpha) ") ";
 }
 
-.preview-markdown-editable ol ol ol[data-md-ordered-delimiter=")"] > li:not([data-md-list-active="true"])::before {
+.preview-markdown-editable
+  ol
+  ol
+  ol[data-md-ordered-delimiter=")"]
+  > li:not([data-md-list-active="true"])::before {
   content: counter(md-ordered, lower-roman) ") ";
 }
 
-.preview-markdown-editable ol ol ol ol[data-md-ordered-delimiter=")"] > li:not([data-md-list-active="true"])::before {
+.preview-markdown-editable
+  ol
+  ol
+  ol
+  ol[data-md-ordered-delimiter=")"]
+  > li:not([data-md-list-active="true"])::before {
   content: counter(md-ordered, decimal) ") ";
 }
 
-.preview-markdown-editable ol ol ol ol ol[data-md-ordered-delimiter=")"] > li:not([data-md-list-active="true"])::before {
+.preview-markdown-editable
+  ol
+  ol
+  ol
+  ol
+  ol[data-md-ordered-delimiter=")"]
+  > li:not([data-md-list-active="true"])::before {
   content: counter(md-ordered, lower-alpha) ") ";
 }
 
-.preview-markdown-editable ol ol ol ol ol ol[data-md-ordered-delimiter=")"] > li:not([data-md-list-active="true"])::before {
+.preview-markdown-editable
+  ol
+  ol
+  ol
+  ol
+  ol
+  ol[data-md-ordered-delimiter=")"]
+  > li:not([data-md-list-active="true"])::before {
   content: counter(md-ordered, lower-roman) ") ";
 }
 
-.markdown-hybrid-block[data-md-list-marker-variant="unordered-disc"] .markdown-hybrid-block-preview ul:not(.contains-task-list) {
+.markdown-hybrid-block[data-md-list-marker-variant="unordered-disc"]
+  .markdown-hybrid-block-preview
+  ul:not(.contains-task-list) {
   list-style-type: disc;
 }
 
-.markdown-hybrid-block[data-md-list-marker-variant="unordered-circle"] .markdown-hybrid-block-preview ul:not(.contains-task-list) {
+.markdown-hybrid-block[data-md-list-marker-variant="unordered-circle"]
+  .markdown-hybrid-block-preview
+  ul:not(.contains-task-list) {
   list-style-type: circle;
 }
 
-.markdown-hybrid-block[data-md-list-marker-variant="unordered-square"] .markdown-hybrid-block-preview ul:not(.contains-task-list) {
+.markdown-hybrid-block[data-md-list-marker-variant="unordered-square"]
+  .markdown-hybrid-block-preview
+  ul:not(.contains-task-list) {
   list-style-type: square;
 }
 
-.markdown-hybrid-block[data-md-list-marker-variant="ordered-decimal"] .markdown-hybrid-block-preview ol:not([data-md-ordered-delimiter=")"]) {
+.markdown-hybrid-block[data-md-list-marker-variant="ordered-decimal"]
+  .markdown-hybrid-block-preview
+  ol:not([data-md-ordered-delimiter=")"]) {
   list-style-type: decimal;
 }
 
-.markdown-hybrid-block[data-md-list-marker-variant="ordered-lower-alpha"] .markdown-hybrid-block-preview ol:not([data-md-ordered-delimiter=")"]) {
+.markdown-hybrid-block[data-md-list-marker-variant="ordered-lower-alpha"]
+  .markdown-hybrid-block-preview
+  ol:not([data-md-ordered-delimiter=")"]) {
   list-style-type: lower-alpha;
 }
 
-.markdown-hybrid-block[data-md-list-marker-variant="ordered-lower-roman"] .markdown-hybrid-block-preview ol:not([data-md-ordered-delimiter=")"]) {
+.markdown-hybrid-block[data-md-list-marker-variant="ordered-lower-roman"]
+  .markdown-hybrid-block-preview
+  ol:not([data-md-ordered-delimiter=")"]) {
   list-style-type: lower-roman;
 }
 
-.markdown-hybrid-block[data-md-list-marker-variant="ordered-decimal"] .markdown-hybrid-block-preview ol[data-md-ordered-delimiter=")"] > li::before {
+.markdown-hybrid-block[data-md-list-marker-variant="ordered-decimal"]
+  .markdown-hybrid-block-preview
+  ol[data-md-ordered-delimiter=")"]
+  > li::before {
   content: counter(md-ordered, decimal) ") ";
 }
 
-.markdown-hybrid-block[data-md-list-marker-variant="ordered-lower-alpha"] .markdown-hybrid-block-preview ol[data-md-ordered-delimiter=")"] > li::before {
+.markdown-hybrid-block[data-md-list-marker-variant="ordered-lower-alpha"]
+  .markdown-hybrid-block-preview
+  ol[data-md-ordered-delimiter=")"]
+  > li::before {
   content: counter(md-ordered, lower-alpha) ") ";
 }
 
-.markdown-hybrid-block[data-md-list-marker-variant="ordered-lower-roman"] .markdown-hybrid-block-preview ol[data-md-ordered-delimiter=")"] > li::before {
+.markdown-hybrid-block[data-md-list-marker-variant="ordered-lower-roman"]
+  .markdown-hybrid-block-preview
+  ol[data-md-ordered-delimiter=")"]
+  > li::before {
   content: counter(md-ordered, lower-roman) ") ";
 }
 
@@ -6236,7 +6379,10 @@ textarea.preview-editor {
   color: var(--muted);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  transition:
+    opacity 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease;
   cursor: pointer;
 }
 
@@ -6416,7 +6562,11 @@ textarea.preview-editor {
   --db-frame-bg-hover: color-mix(in srgb, var(--db-accent-soft) 42%, var(--db-frame-bg-raised));
   --db-frame-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 10%, transparent);
   --db-control-border: color-mix(in srgb, var(--db-frame-border) 90%, transparent);
-  --db-control-border-strong: color-mix(in srgb, var(--db-frame-border-strong) 84%, var(--db-accent-border));
+  --db-control-border-strong: color-mix(
+    in srgb,
+    var(--db-frame-border-strong) 84%,
+    var(--db-accent-border)
+  );
   --db-control-bg: color-mix(in srgb, var(--field-bg) 90%, var(--db-frame-bg-raised));
   --db-control-hover-bg: color-mix(in srgb, var(--db-accent-hover) 62%, var(--db-control-bg));
   --db-control-active-border: var(--db-accent-border-strong);
@@ -7355,7 +7505,8 @@ textarea.preview-editor {
   gap: 10px;
 }
 
-:root:not([data-design-mode="desktop"]) :is(
+:root:not([data-design-mode="desktop"])
+  :is(
     .database-block-view-dropdown,
     .database-block-search-dropdown,
     .database-block-properties-panel
@@ -8827,7 +8978,11 @@ textarea.preview-editor {
   --db-accent-border-strong: color-mix(in srgb, var(--accent-border) 96%, var(--line-strong));
   --db-accent-focus: color-mix(in srgb, var(--accent-focus-ring) 96%, transparent);
   --db-control-border: color-mix(in srgb, var(--db-frame-border) 80%, var(--db-accent-border));
-  --db-control-border-strong: color-mix(in srgb, var(--db-frame-border-strong) 70%, var(--db-accent-border));
+  --db-control-border-strong: color-mix(
+    in srgb,
+    var(--db-frame-border-strong) 70%,
+    var(--db-accent-border)
+  );
   --db-control-bg: color-mix(in srgb, var(--field-bg) 86%, var(--panel));
   --db-control-hover-bg: color-mix(in srgb, var(--db-accent-hover) 78%, var(--db-control-bg));
   --db-control-active-bg: color-mix(in srgb, var(--db-accent-active) 80%, var(--db-control-bg));
@@ -8852,7 +9007,11 @@ textarea.preview-editor {
   --db-accent-border-strong: color-mix(in srgb, var(--accent-border) 94%, var(--line-strong));
   --db-accent-focus: color-mix(in srgb, var(--accent-focus-ring) 92%, transparent);
   --db-control-border: color-mix(in srgb, var(--db-frame-border) 86%, var(--db-accent-border));
-  --db-control-border-strong: color-mix(in srgb, var(--db-frame-border-strong) 80%, var(--db-accent-border));
+  --db-control-border-strong: color-mix(
+    in srgb,
+    var(--db-frame-border-strong) 80%,
+    var(--db-accent-border)
+  );
   --db-control-bg: color-mix(in srgb, var(--field-bg) 88%, var(--panel));
   --db-control-hover-bg: color-mix(in srgb, var(--db-accent-hover) 70%, var(--db-control-bg));
   --db-control-active-bg: color-mix(in srgb, var(--db-accent-active) 74%, var(--db-control-bg));

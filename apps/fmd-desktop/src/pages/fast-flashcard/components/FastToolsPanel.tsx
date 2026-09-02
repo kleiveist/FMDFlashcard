@@ -108,9 +108,7 @@ export const FastToolsPanel = ({
               disabled={isTimeModeEnabled}
               title={isTimeModeEnabled ? "Stop timer to change mode" : undefined}
               onClick={() =>
-                settings.setFastFlashcardAutoTimeEnabled(
-                  !settings.fastFlashcardAutoTimeEnabled,
-                )
+                settings.setFastFlashcardAutoTimeEnabled(!settings.fastFlashcardAutoTimeEnabled)
               }
             >
               Auto Time
@@ -120,9 +118,7 @@ export const FastToolsPanel = ({
                   <button
                     key={duration}
                     type="button"
-                    className={`pill pill-button ${
-                      selectedDuration === duration ? "active" : ""
-                    }`}
+                    className={`pill pill-button ${selectedDuration === duration ? "active" : ""}`}
                     aria-pressed={selectedDuration === duration}
                     disabled={isTimeModeEnabled}
                     title={isTimeModeEnabled ? "Stop timer to change duration" : undefined}

@@ -71,15 +71,11 @@ export const FlashcardsSettingsSection = ({
     </div>
     <div className="panel-body">
       <div className="setting-row">
-        <span className="label">
-          {tSettings(language, "settings.flashcardTools.defaultOrder")}
-        </span>
+        <span className="label">{tSettings(language, "settings.flashcardTools.defaultOrder")}</span>
         <div className="pill-grid">
           <button
             type="button"
-            className={`pill pill-button ${
-              flashcardOrder === "in-order" ? "active" : ""
-            }`}
+            className={`pill pill-button ${flashcardOrder === "in-order" ? "active" : ""}`}
             aria-pressed={flashcardOrder === "in-order"}
             onClick={() => setFlashcardOrder("in-order")}
           >
@@ -100,9 +96,7 @@ export const FlashcardsSettingsSection = ({
         <select
           className="text-input"
           value={flashcardMode}
-          onChange={(event) =>
-            setFlashcardMode(event.target.value as FlashcardMode)
-          }
+          onChange={(event) => setFlashcardMode(event.target.value as FlashcardMode)}
           aria-label="Select mode filter"
         >
           <option value="all">{tSettings(language, "settings.flashcardTools.mode.all")}</option>
@@ -123,17 +117,13 @@ export const FlashcardsSettingsSection = ({
         </select>
       </div>
       <div className="setting-row">
-        <span className="label">
-          {tSettings(language, "settings.flashcardTools.pageSize")}
-        </span>
+        <span className="label">{tSettings(language, "settings.flashcardTools.pageSize")}</span>
         <div className="pill-grid">
           {flashcardPageSizes.map((size) => (
             <button
               key={size}
               type="button"
-              className={`pill pill-button ${
-                flashcardPageSize === size ? "active" : ""
-              }`}
+              className={`pill pill-button ${flashcardPageSize === size ? "active" : ""}`}
               aria-pressed={flashcardPageSize === size}
               onClick={() => setFlashcardPageSize(size)}
             >
@@ -143,15 +133,11 @@ export const FlashcardsSettingsSection = ({
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">
-          {tSettings(language, "settings.flashcardTools.defaultScope")}
-        </span>
+        <span className="label">{tSettings(language, "settings.flashcardTools.defaultScope")}</span>
         <div className="pill-grid">
           <button
             type="button"
-            className={`pill pill-button ${
-              flashcardScope === "current" ? "active" : ""
-            }`}
+            className={`pill pill-button ${flashcardScope === "current" ? "active" : ""}`}
             aria-pressed={flashcardScope === "current"}
             onClick={() => setFlashcardScope("current")}
           >
@@ -191,9 +177,7 @@ export const FlashcardsSettingsSection = ({
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">
-          {tSettings(language, "settings.flashcardTools.helpHints")}
-        </span>
+        <span className="label">{tSettings(language, "settings.flashcardTools.helpHints")}</span>
         <div className="setting-inline">
           <label className="switch">
             <input

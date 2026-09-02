@@ -52,15 +52,9 @@ import { getShortcutById } from "./lib/shortcuts/registry";
 import { isSyncProviderEnabled, logWordPressFeatureStatus } from "./lib/featureFlags";
 import { registerGlobalShortcuts } from "./keybindings/registerGlobalShortcuts";
 import { useInputDebugInstrumentation } from "./features/input-debug/useInputDebug";
-import {
-  requestSettingsFocus,
-  subscribeSettingsFocus,
-} from "./features/settings/settingsDeepLink";
+import { requestSettingsFocus, subscribeSettingsFocus } from "./features/settings/settingsDeepLink";
 import type { PreviewFileOpenOptions } from "./features/preview/usePreview";
-import {
-  CardMonitoringPage,
-  type CardMonitoringPageHandle,
-} from "./pages/CardMonitoringPage";
+import { CardMonitoringPage, type CardMonitoringPageHandle } from "./pages/CardMonitoringPage";
 import { DashboardPage, type DashboardPageHandle, type DashboardView } from "./pages/DashboardPage";
 import { ExamSimulationPage } from "./pages/ExamSimulationPage";
 import { FlashcardPage } from "./pages/FlashcardPage";
@@ -116,13 +110,9 @@ const AppContent = () => {
   const [activeMainMode, setActiveMainMode] = useState<StudyMainMode>("study");
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [dashboardView, setDashboardView] = useState<DashboardView>("markdown");
-  const [examLaunchPreset, setExamLaunchPreset] = useState<ExamLaunchPreset | null>(
-    null,
-  );
+  const [examLaunchPreset, setExamLaunchPreset] = useState<ExamLaunchPreset | null>(null);
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
-  const [noteDialogSection, setNoteDialogSection] = useState<StudySectionKey | null>(
-    null,
-  );
+  const [noteDialogSection, setNoteDialogSection] = useState<StudySectionKey | null>(null);
   const dashboardRef = useRef<DashboardPageHandle | null>(null);
   const cardMonitoringRef = useRef<CardMonitoringPageHandle | null>(null);
   const noteButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -148,12 +138,10 @@ const AppContent = () => {
     (dashboardView === "markdown" || dashboardView === "exam") &&
     isNoteViewport;
   const isSectionNoteEligible =
-    activeTab !== "dashboard" &&
-    (activeTab === "exam" ? isExamNoteViewport : isNoteViewport);
+    activeTab !== "dashboard" && (activeTab === "exam" ? isExamNoteViewport : isNoteViewport);
   const isNoteModalEligible = isDashboardNoteEligible || isSectionNoteEligible;
   const isExamRunSummaryNoteTriggerEnabled = activeTab === "exam" && isExamNoteViewport;
-  const showStudySectionNoteAction =
-    isNoteModalEligible && !isExamRunSummaryNoteTriggerEnabled;
+  const showStudySectionNoteAction = isNoteModalEligible && !isExamRunSummaryNoteTriggerEnabled;
   const studySectionSettingsAction = useMemo(() => {
     if (activeTab === "flashcard") {
       return {
@@ -181,9 +169,9 @@ const AppContent = () => {
   const showStudySectionSettingsAction = studySectionSettingsAction !== null;
   const noteFilesDialogOpen = Boolean(
     isNoteModalOpen &&
-      noteDialogSection &&
-      noteDialogSection !== "dashboard" &&
-      noteDialogSection !== "exam",
+    noteDialogSection &&
+    noteDialogSection !== "dashboard" &&
+    noteDialogSection !== "exam",
   );
   const closeCommand = useMemo(() => getShortcutById("uiCloseOrBack"), []);
   const closeBinding = useMemo(
@@ -195,11 +183,8 @@ const AppContent = () => {
   );
   const activeUserName = spacedRepetition.spacedRepetitionActiveUser?.trim() ?? "";
   const isWalletOpen = Boolean(vault.vaultPath);
-  const isActivePathReady =
-    Boolean(userVault.resolvedPath) && userVault.status !== "error";
-  const isProfileReady = Boolean(
-    spacedRepetition.spacedRepetitionActiveUserId && activeUserName,
-  );
+  const isActivePathReady = Boolean(userVault.resolvedPath) && userVault.status !== "error";
+  const isProfileReady = Boolean(spacedRepetition.spacedRepetitionActiveUserId && activeUserName);
   const syncProviderEnabled = isSyncProviderEnabled();
   const syncProviderRequired = false; // TODO: enable when product rule requires sync setup.
   const syncProviderConfigured = false; // TODO: wire to persisted sync provider config.
@@ -243,9 +228,9 @@ const AppContent = () => {
   const profileSetupVaultSelection = useMemo(
     () => ({
       activeVaultPath: vault.vaultPath,
-      recentVaultPaths: (
-        settings.currentSystemRecentVaults ?? settings.recentVaults
-      ).map((entry) => entry.path),
+      recentVaultPaths: (settings.currentSystemRecentVaults ?? settings.recentVaults).map(
+        (entry) => entry.path,
+      ),
       onSelectVault: actions.handleSwitchVault,
       onPickVault: actions.handlePickVault,
       isVaultBusy: vault.listState === "loading",
@@ -280,8 +265,7 @@ const AppContent = () => {
     const previousSelectedPath = previousSelectedMarkdownPathRef.current;
     previousSelectedMarkdownPathRef.current = selectedPath;
     const shouldOpenInNewTab =
-      preview.selectedFileOpenInNewTab ||
-      settings.markdownEditorOpenInNewTabByDefault;
+      preview.selectedFileOpenInNewTab || settings.markdownEditorOpenInNewTabByDefault;
 
     setDashboardMarkdownTabs((previous) => {
       const existingIndex = previous.findIndex((tab) => tab.path === selectedPath);
@@ -328,9 +312,7 @@ const AppContent = () => {
       return;
     }
     const validPathSet = new Set(
-      vault.files
-        .filter((file) => isMarkdownFilePath(file.relative_path))
-        .map((file) => file.path),
+      vault.files.filter((file) => isMarkdownFilePath(file.relative_path)).map((file) => file.path),
     );
     setDashboardMarkdownTabs((previous) => {
       const next = previous.filter((tab) => validPathSet.has(tab.path));
@@ -350,13 +332,8 @@ const AppContent = () => {
   );
   const handleTabChange = useCallback(
     async (tab: StudySectionKey) => {
-      if (
-        activeTab === "dashboard" &&
-        tab !== "dashboard" &&
-        dashboardRef.current
-      ) {
-        const canLeaveDashboard =
-          await dashboardRef.current.requestLeaveDashboard();
+      if (activeTab === "dashboard" && tab !== "dashboard" && dashboardRef.current) {
+        const canLeaveDashboard = await dashboardRef.current.requestLeaveDashboard();
         if (!canLeaveDashboard) {
           return false;
         }
@@ -366,16 +343,13 @@ const AppContent = () => {
         tab !== "card-monitoring" &&
         cardMonitoringRef.current
       ) {
-        const canLeaveCardMonitoring =
-          await cardMonitoringRef.current.requestLeaveCardMonitoring();
+        const canLeaveCardMonitoring = await cardMonitoringRef.current.requestLeaveCardMonitoring();
         if (!canLeaveCardMonitoring) {
           return false;
         }
       }
       if (tab !== activeTab && isTaskAreaTab(activeTab)) {
-        await actions.flushPendingTaskAreaToggles(
-          `tab-change:${activeTab}->${tab}`,
-        );
+        await actions.flushPendingTaskAreaToggles(`tab-change:${activeTab}->${tab}`);
       }
       if (isStudyModeSection(tab)) {
         setActiveMainMode("study");
@@ -400,10 +374,7 @@ const AppContent = () => {
         }
         if (tab === "flashcard" && !flashcards.isFlashcardScanning) {
           void flashcards.handleFlashcardScan();
-        } else if (
-          tab === "fast-flashcard" &&
-          !fastFlashcards.isFlashcardScanning
-        ) {
+        } else if (tab === "fast-flashcard" && !fastFlashcards.isFlashcardScanning) {
           void fastFlashcards.handleFlashcardScan();
         } else if (
           tab === "spaced-repetition" &&
@@ -414,12 +385,7 @@ const AppContent = () => {
         }
       })();
     },
-    [
-      flashcards,
-      fastFlashcards,
-      handleTabChange,
-      spacedRepetition,
-    ],
+    [flashcards, fastFlashcards, handleTabChange, spacedRepetition],
   );
   const handleMainModeSelect = useCallback(
     (mode: StudyMainMode) => {
@@ -472,8 +438,7 @@ const AppContent = () => {
     (file: VaultFile, options?: PreviewFileOpenOptions) => {
       void (async () => {
         if (activeTab === "dashboard" && dashboardRef.current) {
-          const canLeaveDashboard =
-            await dashboardRef.current.requestLeaveDashboard();
+          const canLeaveDashboard = await dashboardRef.current.requestLeaveDashboard();
           if (!canLeaveDashboard) {
             return;
           }
@@ -691,19 +656,13 @@ const AppContent = () => {
       },
     });
     return dispose;
-  }, [
-    actions.handleRescanVault,
-    platform,
-    settings.keyboardShortcuts.bindings,
-  ]);
+  }, [actions.handleRescanVault, platform, settings.keyboardShortcuts.bindings]);
 
   return (
     <div
       className={`app-shell layout-${layoutMode} ${
         showStudySectionNav ? "compact-top-nav" : ""
-      } ${isToolbarCollapsed ? "sidebar-collapsed" : ""} ${
-        isDashboard ? "dashboard-active" : ""
-      } ${
+      } ${isToolbarCollapsed ? "sidebar-collapsed" : ""} ${isDashboard ? "dashboard-active" : ""} ${
         isMobileNavOpen ? "nav-open" : ""
       }`}
       data-active-tab={activeTab}
@@ -797,9 +756,7 @@ const AppContent = () => {
           <ExamSimulationPage
             runSummaryNoteActionEnabled={isExamRunSummaryNoteTriggerEnabled}
             onRunSummaryNoteAction={handleNoteModalOpen}
-            isRunSummaryNoteActionActive={
-              isNoteModalOpen && noteDialogSection === "exam"
-            }
+            isRunSummaryNoteActionActive={isNoteModalOpen && noteDialogSection === "exam"}
             launchPreset={examLaunchPreset}
             onConsumeLaunchPreset={handleConsumeExamLaunchPreset}
             isExamFilesNoteOpen={isNoteModalOpen && noteDialogSection === "exam"}

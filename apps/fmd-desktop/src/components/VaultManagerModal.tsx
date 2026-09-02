@@ -115,9 +115,7 @@ export const VaultManagerModal = ({
     [activeVaultPath],
   );
   const activeVaultEntry = useMemo(
-    () =>
-      vaults.find((entry) => normalizeVaultPath(entry.path) === activeVaultKey) ??
-      null,
+    () => vaults.find((entry) => normalizeVaultPath(entry.path) === activeVaultKey) ?? null,
     [activeVaultKey, vaults],
   );
   const activeVaultMissing = activeVaultEntry?.status === "missing";
@@ -131,12 +129,7 @@ export const VaultManagerModal = ({
   const selectedVaultMissing = selectedEntry?.status === "missing";
 
   const resolvedUserVaultPath = useMemo(
-    () =>
-      resolveActiveProfileRoot(
-        userVault.mode,
-        selectedVaultPath,
-        userVault.customPath,
-      ),
+    () => resolveActiveProfileRoot(userVault.mode, selectedVaultPath, userVault.customPath),
     [selectedVaultPath, userVault.customPath, userVault.mode],
   );
 
@@ -156,9 +149,7 @@ export const VaultManagerModal = ({
         listUserVaultProfiles(resolvedUserVaultPath),
         loadUserVaultMeta(resolvedUserVaultPath),
       ]);
-      const activeProfileId = profiles.some(
-        (profile) => profile.id === meta.activeProfileId,
-      )
+      const activeProfileId = profiles.some((profile) => profile.id === meta.activeProfileId)
         ? meta.activeProfileId
         : null;
       setProfileState({
@@ -229,9 +220,7 @@ export const VaultManagerModal = ({
       if (pendingRemovePath) {
         return;
       }
-      const activeEntry = vaults.find(
-        (entry) => normalizeVaultPath(entry.path) === activeVaultKey,
-      );
+      const activeEntry = vaults.find((entry) => normalizeVaultPath(entry.path) === activeVaultKey);
       if (!activeEntry) {
         return;
       }
@@ -331,10 +320,7 @@ export const VaultManagerModal = ({
   }, []);
 
   const runVaultRecheck = useCallback(
-    async (
-      vaultId: string,
-      options: { loadIfAvailable?: boolean; source?: string } = {},
-    ) => {
+    async (vaultId: string, options: { loadIfAvailable?: boolean; source?: string } = {}) => {
       setActionError("");
       setActionFeedback(null);
       setIsBusy(true);
@@ -353,12 +339,7 @@ export const VaultManagerModal = ({
         setIsBusy(false);
       }
     },
-    [
-      applyRecheckFeedback,
-      onRecheckVault,
-      reloadProfileState,
-      selectedVaultPath,
-    ],
+    [applyRecheckFeedback, onRecheckVault, reloadProfileState, selectedVaultPath],
   );
 
   const handleLocateVault = useCallback(
@@ -375,11 +356,7 @@ export const VaultManagerModal = ({
       setActionFeedback(null);
       setIsBusy(true);
       try {
-        const result = await onRelinkVault(
-          vaultId,
-          selected,
-          "vault-manager:locate",
-        );
+        const result = await onRelinkVault(vaultId, selected, "vault-manager:locate");
         if (result.path) {
           setSelectedVaultPath(result.path);
         }
@@ -440,8 +417,7 @@ export const VaultManagerModal = ({
       if (!(await ensureVaultActive())) {
         return;
       }
-      const targetProfileId =
-        profileState.activeProfileId ?? profileState.profiles[0]?.id ?? null;
+      const targetProfileId = profileState.activeProfileId ?? profileState.profiles[0]?.id ?? null;
       if (!targetProfileId) {
         return;
       }
@@ -487,13 +463,7 @@ export const VaultManagerModal = ({
     } finally {
       setIsBusy(false);
     }
-  }, [
-    ensureVaultActive,
-    reloadProfileState,
-    resolvedUserVaultPath,
-    selectedVaultPath,
-    userVault,
-  ]);
+  }, [ensureVaultActive, reloadProfileState, resolvedUserVaultPath, selectedVaultPath, userVault]);
 
   const handleRefreshActiveVault = useCallback(
     async (source: string) => {
@@ -513,20 +483,13 @@ export const VaultManagerModal = ({
       try {
         const success = await onRescanVault(source);
         if (!success) {
-          setActionError(
-            activeVaultError || "Vault refresh failed. Please try again.",
-          );
+          setActionError(activeVaultError || "Vault refresh failed. Please try again.");
         }
       } finally {
         setIsBusy(false);
       }
     },
-    [
-      activeVaultEntry,
-      activeVaultError,
-      onRescanVault,
-      runVaultRecheck,
-    ],
+    [activeVaultEntry, activeVaultError, onRescanVault, runVaultRecheck],
   );
 
   const openContextMenu = useCallback(
@@ -584,10 +547,7 @@ export const VaultManagerModal = ({
         }
         return;
       }
-      if (
-        selectedVaultPath &&
-        normalizeVaultPath(selectedVaultPath) === normalizedTarget
-      ) {
+      if (selectedVaultPath && normalizeVaultPath(selectedVaultPath) === normalizedTarget) {
         setSelectedVaultPath(fallbackPath);
       }
     } finally {
@@ -618,11 +578,9 @@ export const VaultManagerModal = ({
   const canLoadProfile = canManageProfiles && isProfileReady && profileCount > 0;
   const canCreateProfile = canManageProfiles && isProfileReady && profileCount === 0;
   const hasActiveVault = Boolean(activeVaultPath);
-  const pendingRemoveName = pendingRemovePath
-    ? vaultBaseName(pendingRemovePath)
-    : "";
+  const pendingRemoveName = pendingRemovePath ? vaultBaseName(pendingRemovePath) : "";
   const contextEntry = contextMenu
-    ? vaults.find((entry) => entry.id === contextMenu.vaultId) ?? null
+    ? (vaults.find((entry) => entry.id === contextMenu.vaultId) ?? null)
     : null;
   const contextVaultMissing = contextEntry?.status === "missing";
 
@@ -641,11 +599,7 @@ export const VaultManagerModal = ({
           </button>
         </div>
         <div className="vault-manager-content">
-          <aside
-            className="vault-manager-list"
-            role="listbox"
-            aria-label="Vault list"
-          >
+          <aside className="vault-manager-list" role="listbox" aria-label="Vault list">
             {vaults.length === 0 ? (
               <div className="empty-state">No vaults found.</div>
             ) : (
@@ -657,9 +611,7 @@ export const VaultManagerModal = ({
                 return (
                   <div
                     key={entry.id}
-                    className={`vault-manager-item${
-                      isSelected ? " active" : ""
-                    }`}
+                    className={`vault-manager-item${isSelected ? " active" : ""}`}
                     role="option"
                     aria-selected={isSelected}
                     tabIndex={0}
@@ -670,9 +622,7 @@ export const VaultManagerModal = ({
                     title={entry.path}
                   >
                     <span className="vault-manager-item-main">
-                      <span className="vault-manager-item-name">
-                        {vaultBaseName(entry.path)}
-                      </span>
+                      <span className="vault-manager-item-name">{vaultBaseName(entry.path)}</span>
                       <span className="vault-manager-item-path">{entry.path}</span>
                     </span>
                     <span className="vault-manager-item-meta">
@@ -762,8 +712,8 @@ export const VaultManagerModal = ({
                 </div>
                 {selectedVaultMissing ? (
                   <div className="vault-manager-warning">
-                    Vault folder is marked missing. Recheck or locate the folder to
-                    recover this entry.
+                    Vault folder is marked missing. Recheck or locate the folder to recover this
+                    entry.
                     {selectedEntry.lastError ? (
                       <div className="vault-manager-warning-detail">
                         Last error: {selectedEntry.lastError}
@@ -925,9 +875,7 @@ export const VaultManagerModal = ({
               aria-labelledby="vault-manager-remove-title"
               onMouseDown={(event) => event.stopPropagation()}
             >
-              <h3 id="vault-manager-remove-title">
-                Remove vault "{pendingRemoveName}" from list?
-              </h3>
+              <h3 id="vault-manager-remove-title">Remove vault "{pendingRemoveName}" from list?</h3>
               <p className="muted">This will not delete files from disk.</p>
               <div className="modal-actions">
                 <button

@@ -17,21 +17,12 @@ import {
   wrapExamTask,
 } from "./autoCards";
 
-const baseExamContent = [
-  "#exam",
-  "1) First task",
-  "2) Second task",
-  "#endexam",
-].join("\n");
+const baseExamContent = ["#exam", "1) First task", "2) Second task", "#endexam"].join("\n");
 
 describe("addExamTaskWrapper", () => {
   it("is idempotent when applied twice", () => {
     const tasks = parseExamTasks(baseExamContent).tasks;
-    const firstPass = applyExamCardWrapperActions(
-      baseExamContent,
-      tasks,
-      () => "add",
-    ).content;
+    const firstPass = applyExamCardWrapperActions(baseExamContent, tasks, () => "add").content;
     const secondPass = applyExamCardWrapperActions(
       firstPass,
       parseExamTasks(firstPass).tasks,
@@ -96,14 +87,9 @@ describe("normalizeCardWrapperPlacement", () => {
   });
 
   it("does not auto-complete partial wrappers without a closing marker", () => {
-    const markdown = [
-      "#exam",
-      "1) Partial",
-      "#card",
-      "Question?",
-      "Answer: A",
-      "#endexam",
-    ].join("\n");
+    const markdown = ["#exam", "1) Partial", "#card", "Question?", "Answer: A", "#endexam"].join(
+      "\n",
+    );
 
     const normalized = normalizeCardWrapperPlacement(markdown).content;
     expect(normalized).not.toMatch(/\n#endcard\n#endexam$/);
@@ -151,10 +137,7 @@ describe("normalizeCardWrapperPlacement", () => {
 describe("removeExamTaskWrapper", () => {
   it("does nothing when no wrapper exists", () => {
     const tasks = parseExamTasks(baseExamContent).tasks;
-    const result = removeExamTaskWrapper(
-      baseExamContent.split("\n"),
-      tasks[0].sourceRange,
-    );
+    const result = removeExamTaskWrapper(baseExamContent.split("\n"), tasks[0].sourceRange);
 
     expect(result.changed).toBe(false);
     expect(result.lines.join("\n")).toBe(baseExamContent);
@@ -189,10 +172,8 @@ describe("removeExamTaskWrapper", () => {
 describe("auto cards return-on-correct", () => {
   it("keeps only incorrect tasks wrapped", () => {
     const tasks = parseExamTasks(baseExamContent).tasks;
-    const incorrectOnly = applyExamCardWrapperActions(
-      baseExamContent,
-      tasks,
-      (_task, index) => (index === 0 ? "remove" : "add"),
+    const incorrectOnly = applyExamCardWrapperActions(baseExamContent, tasks, (_task, index) =>
+      index === 0 ? "remove" : "add",
     ).content;
 
     const wrapperCount = (incorrectOnly.match(/^#card$/gm) ?? []).length;

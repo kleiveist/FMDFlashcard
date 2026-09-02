@@ -112,9 +112,9 @@ export const ModalShell = ({
     if (!panel) {
       return;
     }
-    const focusable = Array.from(
-      panel.querySelectorAll<HTMLElement>(focusableSelector),
-    ).filter((element) => !element.hasAttribute("disabled"));
+    const focusable = Array.from(panel.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+      (element) => !element.hasAttribute("disabled"),
+    );
     if (focusable.length === 0) {
       event.preventDefault();
       return;
@@ -143,12 +143,8 @@ export const ModalShell = ({
   }
 
   const portalTarget = typeof document === "undefined" ? null : document.body;
-  const panelClassName = ["modal-panel hub-modal-panel", className]
-    .filter(Boolean)
-    .join(" ");
-  const bodyClassNames = ["hub-modal-body", bodyClassName]
-    .filter(Boolean)
-    .join(" ");
+  const panelClassName = ["modal-panel hub-modal-panel", className].filter(Boolean).join(" ");
+  const bodyClassNames = ["hub-modal-body", bodyClassName].filter(Boolean).join(" ");
   const modal = (
     <div className="modal-backdrop" role="presentation" onClick={handleClose}>
       <div

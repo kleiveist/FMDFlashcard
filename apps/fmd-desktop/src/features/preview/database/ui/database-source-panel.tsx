@@ -5,10 +5,7 @@
  */
 
 import { useMemo, useState } from "react";
-import {
-  type DatabaseSourceSpec,
-  type DatabaseSourceType,
-} from "../database-types";
+import { type DatabaseSourceSpec, type DatabaseSourceType } from "../database-types";
 
 type DatabaseSourcePanelProps = {
   source: DatabaseSourceSpec;
@@ -49,7 +46,10 @@ const buildMultiFolderSource = (paths: string[], includeHistory: boolean): Datab
   ...(includeHistory ? { includeHistory: true } : {}),
 });
 
-const buildNextSourceForType = (type: DatabaseSourceType, availableFolders: string[]): DatabaseSourceSpec => {
+const buildNextSourceForType = (
+  type: DatabaseSourceType,
+  availableFolders: string[],
+): DatabaseSourceSpec => {
   if (type === "explicit-folder") {
     return {
       type,
@@ -90,22 +90,24 @@ export const DatabaseSourcePanel = ({
 
   const folderOptions = useMemo(() => {
     const dedupe = new Set<string>();
-    const ordered = [rootFolderOption, ...availableFolders]
-      .filter((folder) => {
-        const normalized = folder.trim().toLowerCase();
-        if (dedupe.has(normalized)) {
-          return false;
-        }
-        dedupe.add(normalized);
-        return true;
-      });
+    const ordered = [rootFolderOption, ...availableFolders].filter((folder) => {
+      const normalized = folder.trim().toLowerCase();
+      if (dedupe.has(normalized)) {
+        return false;
+      }
+      dedupe.add(normalized);
+      return true;
+    });
 
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) {
       return ordered;
     }
     return ordered.filter((folder) =>
-      folder === rootFolderOption ? "vault root".includes(normalizedQuery) : folder.toLowerCase().includes(normalizedQuery));
+      folder === rootFolderOption
+        ? "vault root".includes(normalizedQuery)
+        : folder.toLowerCase().includes(normalizedQuery),
+    );
   }, [availableFolders, query]);
 
   const selectedMulti = new Set((source.paths ?? []).map((path) => path.toLowerCase()));
@@ -120,7 +122,12 @@ export const DatabaseSourcePanel = ({
     >
       <header className="database-block-panel-header">
         <h5>Quelle</h5>
-        <button type="button" className="database-block-panel-close" onClick={onClose} aria-label="Schliessen">
+        <button
+          type="button"
+          className="database-block-panel-close"
+          onClick={onClose}
+          aria-label="Schliessen"
+        >
           ×
         </button>
       </header>
@@ -136,13 +143,15 @@ export const DatabaseSourcePanel = ({
             }}
           >
             {sourceTypeOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
             ))}
           </select>
         </label>
       </div>
 
-      {(source.type === "explicit-folder" || source.type === "multi-folder") ? (
+      {source.type === "explicit-folder" || source.type === "multi-folder" ? (
         <div className="database-block-panel-controls">
           <input
             type="search"
@@ -183,10 +192,9 @@ export const DatabaseSourcePanel = ({
                     const updated = event.target.checked
                       ? [...nextPaths, folder]
                       : nextPaths.filter((entry) => entry.toLowerCase() !== folder.toLowerCase());
-                    onChange(buildMultiFolderSource(
-                      dedupeFoldersCaseInsensitive(updated),
-                      includeHistory,
-                    ));
+                    onChange(
+                      buildMultiFolderSource(dedupeFoldersCaseInsensitive(updated), includeHistory),
+                    );
                   }}
                 />
                 <span>{folder || "(Vault Root)"}</span>
@@ -198,10 +206,13 @@ export const DatabaseSourcePanel = ({
               type="checkbox"
               checked={includeHistoryInMulti}
               onChange={(event) =>
-                onChange(buildMultiFolderSource(
-                  dedupeFoldersCaseInsensitive(source.paths ?? []),
-                  event.target.checked,
-                ))}
+                onChange(
+                  buildMultiFolderSource(
+                    dedupeFoldersCaseInsensitive(source.paths ?? []),
+                    event.target.checked,
+                  ),
+                )
+              }
             />
             <span>History (Exam-Runs)</span>
           </label>
@@ -210,7 +221,9 @@ export const DatabaseSourcePanel = ({
 
       {source.type === "multi-folder" && source.includeHistory === true ? (
         <>
-          <p className="database-block-state">History verwendet die Exam-Runs des aktuellen Vaults.</p>
+          <p className="database-block-state">
+            History verwendet die Exam-Runs des aktuellen Vaults.
+          </p>
           <p className="database-block-state">Quelle: {historyFolderPath ?? "nicht gesetzt"}</p>
           {!historyFolderPath ? (
             <p className="database-block-state is-error">Kein Vault-Pfad gefunden.</p>
@@ -219,14 +232,20 @@ export const DatabaseSourcePanel = ({
       ) : null}
 
       {source.type === "tag-query" ? (
-        <p className="database-block-state">Tag Query wird in dieser Phase nur als Stub validiert.</p>
+        <p className="database-block-state">
+          Tag Query wird in dieser Phase nur als Stub validiert.
+        </p>
       ) : null}
       {source.type === "manual-query" ? (
-        <p className="database-block-state">Manual Query wird in dieser Phase nur als Stub validiert.</p>
+        <p className="database-block-state">
+          Manual Query wird in dieser Phase nur als Stub validiert.
+        </p>
       ) : null}
       {source.type === "history-folder" ? (
         <>
-          <p className="database-block-state">History verwendet die Exam-Runs des aktuellen Vaults.</p>
+          <p className="database-block-state">
+            History verwendet die Exam-Runs des aktuellen Vaults.
+          </p>
           <p className="database-block-state">Quelle: {historyFolderPath ?? "nicht gesetzt"}</p>
           {!historyFolderPath ? (
             <p className="database-block-state is-error">Kein Vault-Pfad gefunden.</p>

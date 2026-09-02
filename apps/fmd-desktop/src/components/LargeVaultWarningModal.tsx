@@ -27,10 +27,7 @@ type LargeVaultWarningModalProps = {
   onClose: () => void;
 };
 
-export const LargeVaultWarningModal = ({
-  count,
-  onClose,
-}: LargeVaultWarningModalProps) => {
+export const LargeVaultWarningModal = ({ count, onClose }: LargeVaultWarningModalProps) => {
   useEffect(() => {
     if (count === null) {
       return;
@@ -59,8 +56,7 @@ export const LargeVaultWarningModal = ({
         <h3 id="large-vault-warning-title">Large Vault Detected</h3>
         <div className="modal-body" id="large-vault-warning-body">
           <p className="muted">
-            This vault contains {count} Markdown files. Loading and scanning may be
-            slower.
+            This vault contains {count} Markdown files. Loading and scanning may be slower.
           </p>
         </div>
         <div className="modal-actions">

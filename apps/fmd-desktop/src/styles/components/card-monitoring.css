@@ -43,10 +43,10 @@
   --ui-control-shadow-focus: 0 0 0 2px var(--accent-focus-ring);
 }
 
-:root[data-design-mode="desktop"] .card-monitoring-panel .card-monitoring-filters :is(
-    select.text-input,
-    input.text-input
-  ):focus-visible {
+:root[data-design-mode="desktop"]
+  .card-monitoring-panel
+  .card-monitoring-filters
+  :is(select.text-input, input.text-input):focus-visible {
   border-color: var(--ui-control-border-active);
   box-shadow: var(--ui-control-shadow-focus);
 }
@@ -57,7 +57,9 @@
 }
 
 :root[data-design-mode="desktop"] .card-monitoring-panel .card-monitoring-sort-direction:hover,
-:root[data-design-mode="desktop"] .card-monitoring-panel .card-monitoring-sort-direction:focus-visible {
+:root[data-design-mode="desktop"]
+  .card-monitoring-panel
+  .card-monitoring-sort-direction:focus-visible {
   border-color: var(--ui-button-field-active-border);
   background: var(--ui-button-field-active-bg);
 }

@@ -37,7 +37,7 @@ type FormulaAttributeBuilderProps = {
   onChange: (
     next:
       | DatabaseFormulaDefinitionV1
-      | ((current: DatabaseFormulaDefinitionV1) => DatabaseFormulaDefinitionV1)
+      | ((current: DatabaseFormulaDefinitionV1) => DatabaseFormulaDefinitionV1),
   ) => void;
 };
 
@@ -79,7 +79,7 @@ const toggleCaseInsensitiveKey = (keys: string[], candidate: string) => {
   return [...existing, candidate];
 };
 
-const formatFolderLabel = (folder: string) => folder.trim() === "" ? "Root" : folder;
+const formatFolderLabel = (folder: string) => (folder.trim() === "" ? "Root" : folder);
 
 export const FormulaAttributeBuilder = ({
   value,
@@ -93,7 +93,9 @@ export const FormulaAttributeBuilder = ({
   historyWarning = null,
   onChange,
 }: FormulaAttributeBuilderProps) => {
-  const emitChange = (resolveNext: (current: DatabaseFormulaDefinitionV1) => DatabaseFormulaDefinitionV1) => {
+  const emitChange = (
+    resolveNext: (current: DatabaseFormulaDefinitionV1) => DatabaseFormulaDefinitionV1,
+  ) => {
     onChange((current) => resolveNext(current));
   };
 
@@ -106,13 +108,16 @@ export const FormulaAttributeBuilder = ({
   }, [attributes]);
 
   const selectedKeys = value.attributeKeys;
-  const hasMathCapableSelection = selectedKeys.some((key) =>
-    supportsMathByKey.get(key.trim().toLowerCase()) === true);
+  const hasMathCapableSelection = selectedKeys.some(
+    (key) => supportsMathByKey.get(key.trim().toLowerCase()) === true,
+  );
   const normalizedFolderSuggestions = useMemo(
     () =>
-      dedupeKeys((folderSuggestions ?? [])
-        .map((folder) => folder.trim())
-        .filter((folder) => folder.length > 0)),
+      dedupeKeys(
+        (folderSuggestions ?? [])
+          .map((folder) => folder.trim())
+          .filter((folder) => folder.length > 0),
+      ),
     [folderSuggestions],
   );
 
@@ -183,19 +188,17 @@ export const FormulaAttributeBuilder = ({
       source: {
         type: "multi-folder",
         paths: toggleCaseInsensitiveKey(
-          current.source.type === "multi-folder" ? current.source.paths ?? [] : [],
+          current.source.type === "multi-folder" ? (current.source.paths ?? []) : [],
           path,
         ),
       },
     }));
   };
 
-  const explicitSourcePath = value.source.type === "explicit-folder"
-    ? value.source.path?.trim() ?? ""
-    : "";
-  const multiSourcePaths = value.source.type === "multi-folder"
-    ? dedupeKeys(value.source.paths ?? [])
-    : [];
+  const explicitSourcePath =
+    value.source.type === "explicit-folder" ? (value.source.path?.trim() ?? "") : "";
+  const multiSourcePaths =
+    value.source.type === "multi-folder" ? dedupeKeys(value.source.paths ?? []) : [];
   const hasFolderSuggestions = normalizedFolderSuggestions.length > 0;
 
   return (
@@ -241,7 +244,9 @@ export const FormulaAttributeBuilder = ({
           <select
             value={value.operation}
             disabled={disabled}
-            onChange={(event) => handleOperationChange(event.target.value as DatabaseFormulaOperation)}
+            onChange={(event) =>
+              handleOperationChange(event.target.value as DatabaseFormulaOperation)
+            }
           >
             {availableOperations.map((operation) => (
               <option key={operation} value={operation}>
@@ -258,7 +263,9 @@ export const FormulaAttributeBuilder = ({
           <select
             value={value.source.type}
             disabled={disabled}
-            onChange={(event) => handleSourceTypeChange(event.target.value as DatabaseFormulaSourceType)}
+            onChange={(event) =>
+              handleSourceTypeChange(event.target.value as DatabaseFormulaSourceType)
+            }
           >
             {FORMULA_SOURCE_OPTIONS.map((sourceType) => (
               <option key={sourceType} value={sourceType}>
@@ -294,7 +301,9 @@ export const FormulaAttributeBuilder = ({
                       <span className="formula-attribute-builder-option-check" aria-hidden="true">
                         {selected ? "✓" : ""}
                       </span>
-                      <span className="formula-attribute-builder-option-copy">{formatFolderLabel(folder)}</span>
+                      <span className="formula-attribute-builder-option-copy">
+                        {formatFolderLabel(folder)}
+                      </span>
                     </button>
                   </li>
                 );
@@ -336,14 +345,20 @@ export const FormulaAttributeBuilder = ({
                       <span className="formula-attribute-builder-option-check" aria-hidden="true">
                         {selected ? "✓" : ""}
                       </span>
-                      <span className="formula-attribute-builder-option-copy">{formatFolderLabel(folder)}</span>
+                      <span className="formula-attribute-builder-option-copy">
+                        {formatFolderLabel(folder)}
+                      </span>
                     </button>
                   </li>
                 );
               })}
             </ul>
           ) : null}
-          <span>{hasFolderSuggestions ? "Weitere Ordner (kommagetrennt, optional)" : "Ordner (kommagetrennt)"}</span>
+          <span>
+            {hasFolderSuggestions
+              ? "Weitere Ordner (kommagetrennt, optional)"
+              : "Ordner (kommagetrennt)"}
+          </span>
           <input
             type="text"
             value={(value.source.paths ?? []).join(", ")}
@@ -369,8 +384,8 @@ export const FormulaAttributeBuilder = ({
       ) : null}
 
       <p className="formula-attribute-builder-hint">
-        Kurztext-Regel: max {value.shortTextRule.maxChars} Zeichen, max {value.shortTextRule.maxTokens} Tokens,
-        genau ein Zahlenkern.
+        Kurztext-Regel: max {value.shortTextRule.maxChars} Zeichen, max{" "}
+        {value.shortTextRule.maxTokens} Tokens, genau ein Zahlenkern.
       </p>
     </div>
   );

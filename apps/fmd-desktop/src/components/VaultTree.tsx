@@ -108,9 +108,7 @@ const asVaultTreeDragPayload = (value: unknown): VaultTreeDragPayload | null => 
   return null;
 };
 
-export const shouldHandleVaultDeleteShortcut = (
-  event: DeleteShortcutEvent,
-) => {
+export const shouldHandleVaultDeleteShortcut = (event: DeleteShortcutEvent) => {
   if (event.key !== "Delete") {
     return false;
   }
@@ -123,9 +121,7 @@ export const shouldHandleVaultDeleteShortcut = (
   return event.currentTarget.contains(event.target as Node);
 };
 
-export const shouldHandleVaultRenameShortcut = (
-  event: DeleteShortcutEvent,
-) => {
+export const shouldHandleVaultRenameShortcut = (event: DeleteShortcutEvent) => {
   if (event.key !== "F2") {
     return false;
   }
@@ -142,7 +138,7 @@ const getIndentVars = (depth: number): CSSProperties =>
   ({
     "--tree-depth": String(depth),
     "--tree-overflow-depth": String(Math.max(0, depth - OVERFLOW_DEPTH)),
-  } as CSSProperties);
+  }) as CSSProperties;
 
 const getMaxDepth = (nodes: TreeNode[], depth: number): number => {
   let maxDepth = depth;
@@ -165,8 +161,7 @@ const getParentRelativePath = (value: string) => {
   return normalized.slice(0, lastSlash);
 };
 
-const normalizeFolderPath = (value: string) =>
-  normalizeRelativePath(value).replace(/\/+$/, "");
+const normalizeFolderPath = (value: string) => normalizeRelativePath(value).replace(/\/+$/, "");
 
 const getFileName = (value: string) => {
   const normalized = normalizeRelativePath(value).replace(/\/+$/, "");
@@ -194,10 +189,7 @@ const joinVaultPath = (vaultRoot: string, relativePath: string) => {
   return `${trimmedRoot}${separator}${normalizedRelative}`;
 };
 
-const resolveNodePaths = (
-  target: ContextMenuTarget,
-  vaultRoot: string,
-): ResolvedNodePaths => {
+const resolveNodePaths = (target: ContextMenuTarget, vaultRoot: string): ResolvedNodePaths => {
   if (target.kind === "file") {
     const relativeFilePath = normalizeRelativePath(target.file.relative_path);
     const fileAbsPath = joinVaultPath(vaultRoot, relativeFilePath);
@@ -228,9 +220,8 @@ const findDirectoryNode = (nodes: TreeNode[], path: string): TreeNode | null => 
   for (const part of parts) {
     currentPath = currentPath ? `${currentPath}/${part}` : part;
     const next: TreeNode | null =
-      current?.children?.find(
-        (child) => child.type === "dir" && child.path === currentPath,
-      ) ?? null;
+      current?.children?.find((child) => child.type === "dir" && child.path === currentPath) ??
+      null;
     if (!next) {
       return null;
     }
@@ -253,14 +244,9 @@ const getChildNameSet = (nodes: TreeNode[], path: string) => {
 
 const normalizeNewName = (value: string) => value.trim();
 
-const ensureMarkdownExtension = (value: string) =>
-  /\.md$/i.test(value) ? value : `${value}.md`;
+const ensureMarkdownExtension = (value: string) => (/\.md$/i.test(value) ? value : `${value}.md`);
 
-const ensureUniqueName = (
-  value: string,
-  existing: Set<string>,
-  kind: "file" | "folder",
-) => {
+const ensureUniqueName = (value: string, existing: Set<string>, kind: "file" | "folder") => {
   const trimmed = normalizeNewName(value);
   const base = kind === "file" ? trimmed.replace(/\.md$/i, "") : trimmed;
   const extension = kind === "file" ? ".md" : "";
@@ -305,10 +291,7 @@ export const buildVaultDeleteHandlers = (options: VaultDeleteHandlerOptions) => 
     options.setIsDeleting(true);
     options.setError("");
     try {
-      await options.invokeDelete(
-        options.vaultPath,
-        options.deleteTarget.relative_path,
-      );
+      await options.invokeDelete(options.vaultPath, options.deleteTarget.relative_path);
       options.onRescanVault();
       if (options.selectedFile?.path === options.deleteTarget.path) {
         options.onClearSelection?.();
@@ -329,14 +312,9 @@ type ContextMenuTarget =
   | { kind: "dir"; path: string }
   | { kind: "empty"; path: string };
 
-type SelectedNode =
-  | { kind: "file"; file: VaultFile }
-  | { kind: "dir"; path: string }
-  | null;
+type SelectedNode = { kind: "file"; file: VaultFile } | { kind: "dir"; path: string } | null;
 
-type DraggedNode =
-  | { kind: "file"; file: VaultFile }
-  | { kind: "dir"; path: string; name: string };
+type DraggedNode = { kind: "file"; file: VaultFile } | { kind: "dir"; path: string; name: string };
 
 type PathInfo = {
   exists: boolean;
@@ -437,17 +415,12 @@ export const VaultTree = ({
   } | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [renameError, setRenameError] = useState("");
-  const [renameRange, setRenameRange] = useState<{ start: number; end: number } | null>(
-    null,
-  );
+  const [renameRange, setRenameRange] = useState<{ start: number; end: number } | null>(null);
   const [isRenaming, setIsRenaming] = useState(false);
   const [draggedNode, setDraggedNode] = useState<DraggedNode | null>(null);
   const [dragOverPath, setDragOverPath] = useState<string | null>(null);
-  const [dragOverState, setDragOverState] = useState<"valid" | "invalid" | null>(
-    null,
-  );
+  const [dragOverState, setDragOverState] = useState<"valid" | "invalid" | null>(null);
   const portalTarget = typeof document === "undefined" ? null : document.body;
-
 
   const mergedFiles = useMemo(() => {
     if (pendingFiles.length === 0) {
@@ -468,10 +441,7 @@ export const VaultTree = ({
     [pendingFileRemovals],
   );
   const normalizedRemovedDirs = useMemo(
-    () =>
-      pendingDirRemovals
-        .map((path) => normalizeFolderPath(path))
-        .filter(Boolean),
+    () => pendingDirRemovals.map((path) => normalizeFolderPath(path)).filter(Boolean),
     [pendingDirRemovals],
   );
   const isRemovedDirPath = useCallback(
@@ -512,18 +482,13 @@ export const VaultTree = ({
         ? extraDirs
         : extraDirs.filter((dirPath) => !isHiddenPath(dirPath))
       : [];
-    const visibleFolders =
-      showEmptyFolders
-        ? showHiddenFolders
-          ? folders
-          : folders.filter((dirPath) => !isHiddenPath(dirPath))
-        : [];
-    const filteredExtraDirs = visibleExtraDirs.filter(
-      (dirPath) => !isRemovedDirPath(dirPath),
-    );
-    const filteredFolders = visibleFolders.filter(
-      (dirPath) => !isRemovedDirPath(dirPath),
-    );
+    const visibleFolders = showEmptyFolders
+      ? showHiddenFolders
+        ? folders
+        : folders.filter((dirPath) => !isHiddenPath(dirPath))
+      : [];
+    const filteredExtraDirs = visibleExtraDirs.filter((dirPath) => !isRemovedDirPath(dirPath));
+    const filteredFolders = visibleFolders.filter((dirPath) => !isRemovedDirPath(dirPath));
     const combinedDirs = new Set<string>();
     [...filteredExtraDirs, ...filteredFolders].forEach((dirPath) => {
       const normalized = normalizeRelativePath(dirPath);
@@ -542,9 +507,7 @@ export const VaultTree = ({
       let currentPath = "";
       for (const part of parts) {
         currentPath = currentPath ? `${currentPath}/${part}` : part;
-        let existing = currentNodes.find(
-          (node) => node.type === "dir" && node.name === part,
-        );
+        let existing = currentNodes.find((node) => node.type === "dir" && node.name === part);
         if (!existing) {
           existing = {
             name: part,
@@ -562,18 +525,8 @@ export const VaultTree = ({
       }
     });
     return sortNodes(nextNodes);
-  }, [
-    extraDirs,
-    folders,
-    isRemovedDirPath,
-    showEmptyFolders,
-    showHiddenFolders,
-    visibleFiles,
-  ]);
-  const maxDepth = useMemo(
-    () => (treeNodes.length ? getMaxDepth(treeNodes, 1) : 0),
-    [treeNodes],
-  );
+  }, [extraDirs, folders, isRemovedDirPath, showEmptyFolders, showHiddenFolders, visibleFiles]);
+  const maxDepth = useMemo(() => (treeNodes.length ? getMaxDepth(treeNodes, 1) : 0), [treeNodes]);
   const hasDeepIndent = maxDepth > OVERFLOW_DEPTH;
   const normalizedActiveFolderPath = useMemo(
     () => normalizeRelativePath(activeFolderPath ?? "").replace(/\/+$/, ""),
@@ -586,8 +539,7 @@ export const VaultTree = ({
       const isActiveFolder = normalizedPath === normalizedActiveFolderPath;
       const isBreadcrumb =
         normalizedActiveFolderPath !== "" &&
-        (normalizedPath === "" ||
-          normalizedActiveFolderPath.startsWith(`${normalizedPath}/`));
+        (normalizedPath === "" || normalizedActiveFolderPath.startsWith(`${normalizedPath}/`));
       return {
         isActiveFolder,
         isBreadcrumb: isBreadcrumb && !isActiveFolder,
@@ -595,7 +547,6 @@ export const VaultTree = ({
     },
     [normalizedActiveFolderPath],
   );
-
 
   useEffect(() => {
     setExtraDirs([]);
@@ -640,9 +591,7 @@ export const VaultTree = ({
       if (prev.length === 0) {
         return prev;
       }
-      const existing = new Set(
-        files.map((file) => normalizeRelativePath(file.relative_path)),
-      );
+      const existing = new Set(files.map((file) => normalizeRelativePath(file.relative_path)));
       const next = prev.filter((path) => existing.has(normalizeRelativePath(path)));
       return next.length === prev.length ? prev : next;
     });
@@ -691,41 +640,34 @@ export const VaultTree = ({
     });
   }, [contextMenu]);
 
-  const openContextMenu = useCallback(
-    (event: MouseEvent, target: ContextMenuTarget) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (target.kind === "file") {
-        setSelectedNode({ kind: "file", file: target.file });
-      } else if (target.kind === "dir") {
-        setSelectedNode({ kind: "dir", path: target.path });
-      } else {
-        setSelectedNode(null);
-      }
-      setContextMenu({ target, x: event.clientX, y: event.clientY });
-      setMenuStyle({ left: event.clientX, top: event.clientY });
-    },
-    [],
-  );
+  const openContextMenu = useCallback((event: MouseEvent, target: ContextMenuTarget) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (target.kind === "file") {
+      setSelectedNode({ kind: "file", file: target.file });
+    } else if (target.kind === "dir") {
+      setSelectedNode({ kind: "dir", path: target.path });
+    } else {
+      setSelectedNode(null);
+    }
+    setContextMenu({ target, x: event.clientX, y: event.clientY });
+    setMenuStyle({ left: event.clientX, top: event.clientY });
+  }, []);
 
   const reportOpenError = useCallback((message: string, details: Record<string, unknown>) => {
-    const errorText =
-      "error" in details ? asErrorMessage(details.error, "").trim() : "";
+    const errorText = "error" in details ? asErrorMessage(details.error, "").trim() : "";
     const fullMessage = errorText ? `${message} ${errorText}` : message;
     setOpenError(fullMessage);
     console.error(message, details);
   }, []);
 
-  const openCreateModal = useCallback(
-    (kind: "file" | "folder", dirPath: string) => {
-      setCreateKind(kind);
-      setCreateDirPath(dirPath);
-      setCreateName(kind === "file" ? DEFAULT_FILE_NAME : DEFAULT_FOLDER_NAME);
-      setCreateError("");
-      setContextMenu(null);
-    },
-    [],
-  );
+  const openCreateModal = useCallback((kind: "file" | "folder", dirPath: string) => {
+    setCreateKind(kind);
+    setCreateDirPath(dirPath);
+    setCreateName(kind === "file" ? DEFAULT_FILE_NAME : DEFAULT_FOLDER_NAME);
+    setCreateError("");
+    setContextMenu(null);
+  }, []);
 
   const closeDeleteModal = useCallback(() => {
     if (isDeleting) {
@@ -931,9 +873,7 @@ export const VaultTree = ({
     setDeleteFolderError("");
     try {
       await invokeDeleteFolder(vaultPath, normalized);
-      setPendingDirRemovals((prev) =>
-        prev.includes(normalized) ? prev : [...prev, normalized],
-      );
+      setPendingDirRemovals((prev) => (prev.includes(normalized) ? prev : [...prev, normalized]));
       if (
         selectedFile &&
         isPathWithin(normalizeRelativePath(selectedFile.relative_path), normalized)
@@ -1071,10 +1011,7 @@ export const VaultTree = ({
         );
         if (
           selectedFile &&
-          isPathWithin(
-            normalizeRelativePath(selectedFile.relative_path),
-            normalizedSource,
-          )
+          isPathWithin(normalizeRelativePath(selectedFile.relative_path), normalizedSource)
         ) {
           const suffix = normalizeRelativePath(selectedFile.relative_path).slice(
             normalizedSource.length,
@@ -1206,14 +1143,7 @@ export const VaultTree = ({
         setMoveError(asErrorMessage(error, "Failed to move file."));
       }
     },
-    [
-      getFileMoveInfo,
-      invokeMove,
-      onRescanVault,
-      onSelectFile,
-      selectedFile,
-      vaultPath,
-    ],
+    [getFileMoveInfo, invokeMove, onRescanVault, onSelectFile, selectedFile, vaultPath],
   );
 
   const handleMoveDirectory = useCallback(
@@ -1244,23 +1174,16 @@ export const VaultTree = ({
           prev.includes(normalizedSource) ? prev : [...prev, normalizedSource],
         );
         setExtraDirs((prev) =>
-          prev.includes(moveInfo.targetRelative)
-            ? prev
-            : [...prev, moveInfo.targetRelative],
+          prev.includes(moveInfo.targetRelative) ? prev : [...prev, moveInfo.targetRelative],
         );
         if (
           selectedFile &&
-          isPathWithin(
-            normalizeRelativePath(selectedFile.relative_path),
-            normalizedSource,
-          )
+          isPathWithin(normalizeRelativePath(selectedFile.relative_path), normalizedSource)
         ) {
           const suffix = normalizeRelativePath(selectedFile.relative_path).slice(
             normalizedSource.length,
           );
-          const nextRelative = normalizeRelativePath(
-            `${moveInfo.targetRelative}${suffix}`,
-          );
+          const nextRelative = normalizeRelativePath(`${moveInfo.targetRelative}${suffix}`);
           onSelectFile({
             path: joinVaultPath(vaultPath, nextRelative),
             relative_path: nextRelative,
@@ -1271,9 +1194,7 @@ export const VaultTree = ({
           isPathWithin(normalizedActiveFolderPath, normalizedSource)
         ) {
           const suffix = normalizedActiveFolderPath.slice(normalizedSource.length);
-          const nextActive = normalizeFolderPath(
-            `${moveInfo.targetRelative}${suffix}`,
-          );
+          const nextActive = normalizeFolderPath(`${moveInfo.targetRelative}${suffix}`);
           onActiveFolderChange(nextActive);
         }
         setSelectedNode({ kind: "dir", path: moveInfo.targetRelative });
@@ -1354,9 +1275,11 @@ export const VaultTree = ({
   const handleFolderDragOver = useCallback(
     (event: DragEvent<HTMLElement>, path: string) => {
       const fallbackPayload = !draggedNode
-        ? asVaultTreeDragPayload(readInternalDrag<unknown>(event, {
-          channel: DRAG_CHANNELS.VAULT_TREE,
-        }))
+        ? asVaultTreeDragPayload(
+            readInternalDrag<unknown>(event, {
+              channel: DRAG_CHANNELS.VAULT_TREE,
+            }),
+          )
         : null;
       const activeDraggedNode = draggedNode ?? fallbackPayload;
       if (!activeDraggedNode) {
@@ -1392,9 +1315,13 @@ export const VaultTree = ({
   const handleFolderDrop = useCallback(
     async (event: DragEvent<HTMLElement>, path: string) => {
       event.preventDefault();
-      const activeNode = draggedNode ?? asVaultTreeDragPayload(readInternalDrag<unknown>(event, {
-        channel: DRAG_CHANNELS.VAULT_TREE,
-      }));
+      const activeNode =
+        draggedNode ??
+        asVaultTreeDragPayload(
+          readInternalDrag<unknown>(event, {
+            channel: DRAG_CHANNELS.VAULT_TREE,
+          }),
+        );
       if (!activeNode) {
         endInternalDrag(DRAG_CHANNELS.VAULT_TREE);
         return;
@@ -1430,7 +1357,14 @@ export const VaultTree = ({
       }
       endInternalDrag(DRAG_CHANNELS.VAULT_TREE);
     },
-    [clearDragState, draggedNode, getDirMoveInfo, getFileMoveInfo, handleMoveDirectory, handleMoveFile],
+    [
+      clearDragState,
+      draggedNode,
+      getDirMoveInfo,
+      getFileMoveInfo,
+      handleMoveDirectory,
+      handleMoveFile,
+    ],
   );
 
   const handleVaultKeyDown = useCallback(
@@ -1439,8 +1373,7 @@ export const VaultTree = ({
         return;
       }
       if (shouldHandleVaultRenameShortcut(event)) {
-        const selectedDir =
-          selectedNode && selectedNode.kind === "dir" ? selectedNode.path : null;
+        const selectedDir = selectedNode && selectedNode.kind === "dir" ? selectedNode.path : null;
         if (selectedDir !== null) {
           if (!normalizeFolderPath(selectedDir)) {
             return;
@@ -1450,9 +1383,7 @@ export const VaultTree = ({
           return;
         }
         const fileTarget =
-          selectedNode && selectedNode.kind === "file"
-            ? selectedNode.file
-            : selectedFile;
+          selectedNode && selectedNode.kind === "file" ? selectedNode.file : selectedFile;
         if (!fileTarget) {
           return;
         }
@@ -1466,8 +1397,7 @@ export const VaultTree = ({
       if (!shouldHandleVaultDeleteShortcut(event)) {
         return;
       }
-      const selectedDir =
-        selectedNode && selectedNode.kind === "dir" ? selectedNode.path : null;
+      const selectedDir = selectedNode && selectedNode.kind === "dir" ? selectedNode.path : null;
       if (selectedDir !== null) {
         if (!normalizeFolderPath(selectedDir)) {
           return;
@@ -1477,9 +1407,7 @@ export const VaultTree = ({
         return;
       }
       const fileTarget =
-        selectedNode && selectedNode.kind === "file"
-          ? selectedNode.file
-          : selectedFile;
+        selectedNode && selectedNode.kind === "file" ? selectedNode.file : selectedFile;
       if (!fileTarget) {
         return;
       }
@@ -1514,17 +1442,14 @@ export const VaultTree = ({
       return;
     }
     const existingNames = getChildNameSet(treeNodes, createDirPath);
-    const preparedName =
-      createKind === "file" ? ensureMarkdownExtension(trimmed) : trimmed;
+    const preparedName = createKind === "file" ? ensureMarkdownExtension(trimmed) : trimmed;
     const baseName = preparedName.replace(/\.md$/i, "").trim();
     if (createKind === "file" && !baseName) {
       setCreateError("Name is required.");
       return;
     }
     const uniqueName = ensureUniqueName(preparedName, existingNames, createKind);
-    const relativePath = createDirPath
-      ? `${createDirPath}/${uniqueName}`
-      : uniqueName;
+    const relativePath = createDirPath ? `${createDirPath}/${uniqueName}` : uniqueName;
     setIsCreating(true);
     setCreateError("");
     try {
@@ -1534,9 +1459,7 @@ export const VaultTree = ({
           relativePath,
         });
         setPendingFiles((prev) =>
-          prev.some((file) => file.path === created.path)
-            ? prev
-            : [...prev, created],
+          prev.some((file) => file.path === created.path) ? prev : [...prev, created],
         );
         if (createDirPath && !expandedPaths.has(createDirPath)) {
           onTogglePath(createDirPath, true);
@@ -1547,9 +1470,7 @@ export const VaultTree = ({
           vaultPath,
           relativePath,
         });
-        setExtraDirs((prev) =>
-          prev.includes(relativePath) ? prev : [...prev, relativePath],
-        );
+        setExtraDirs((prev) => (prev.includes(relativePath) ? prev : [...prev, relativePath]));
         if (createDirPath && !expandedPaths.has(createDirPath)) {
           onTogglePath(createDirPath, true);
         }
@@ -1605,16 +1526,13 @@ export const VaultTree = ({
   const menuTarget = contextMenu?.target ?? null;
   const fileTarget = menuTarget && menuTarget.kind === "file" ? menuTarget : null;
   const dirTarget = menuTarget && menuTarget.kind === "dir" ? menuTarget : null;
-  const menuDirPath =
-    menuTarget?.kind === "file" ? menuTarget.dirPath : menuTarget?.path ?? "";
-  const canDeleteFile = fileTarget
-    ? isMarkdownFilePath(fileTarget.file.relative_path)
-    : false;
+  const menuDirPath = menuTarget?.kind === "file" ? menuTarget.dirPath : (menuTarget?.path ?? "");
+  const canDeleteFile = fileTarget ? isMarkdownFilePath(fileTarget.file.relative_path) : false;
   const canRenameFile = canDeleteFile;
   const canDeleteDir = dirTarget ? normalizeFolderPath(dirTarget.path) !== "" : false;
   const canRenameDir = canDeleteDir;
   const deleteFileName = deleteTarget
-    ? deleteTarget.relative_path.split("/").pop() ?? deleteTarget.relative_path
+    ? (deleteTarget.relative_path.split("/").pop() ?? deleteTarget.relative_path)
     : "";
   const deleteFolderName = deleteFolderTarget?.name ?? "";
   const rootFolderState = getFolderState("");
@@ -1626,11 +1544,7 @@ export const VaultTree = ({
         ? " drop-target-invalid"
         : "";
   const contextMenuLayer = contextMenu ? (
-    <div
-      className="context-menu-backdrop"
-      role="presentation"
-      onMouseDown={closeContextMenu}
-    >
+    <div className="context-menu-backdrop" role="presentation" onMouseDown={closeContextMenu}>
       <div
         ref={menuRef}
         className="context-menu"
@@ -1747,10 +1661,8 @@ export const VaultTree = ({
       if (node.type === "dir") {
         const isOpen = expandedPaths.has(node.path);
         const { isActiveFolder, isBreadcrumb } = getFolderState(node.path);
-        const isRenamingDir =
-          renameTarget?.kind === "dir" && renameTarget.path === node.path;
-        const isDraggingDir =
-          draggedNode?.kind === "dir" && draggedNode.path === node.path;
+        const isRenamingDir = renameTarget?.kind === "dir" && renameTarget.path === node.path;
+        const isDraggingDir = draggedNode?.kind === "dir" && draggedNode.path === node.path;
         const dropState = dragOverPath === node.path ? dragOverState : null;
         const dropClass =
           dropState === "valid"
@@ -1818,25 +1730,20 @@ export const VaultTree = ({
       }
 
       const fileRef =
-        node.file ??
-        (node.fullPath ? { path: node.fullPath, relative_path: node.path } : null);
+        node.file ?? (node.fullPath ? { path: node.fullPath, relative_path: node.path } : null);
       const isActive = !!fileRef && selectedFile?.path === fileRef.path;
       const isRenamingFile =
         !!fileRef &&
         renameTarget?.kind === "file" &&
         renameTarget.path === normalizeRelativePath(fileRef.relative_path);
       const isDragging =
-        !!fileRef &&
-        draggedNode?.kind === "file" &&
-        draggedNode.file.path === fileRef.path;
+        !!fileRef && draggedNode?.kind === "file" && draggedNode.file.path === fileRef.path;
 
       if (isRenamingFile) {
         return (
           <div
             key={node.path}
-            className={`tree-item tree-file ${isActive ? "active" : ""}${
-              hiddenClass
-            }`}
+            className={`tree-item tree-file ${isActive ? "active" : ""}${hiddenClass}`}
             style={indentStyle}
           >
             <span className="tree-icon">
@@ -1921,9 +1828,7 @@ export const VaultTree = ({
             disabled={!vaultPath || isRescanningVault}
           >
             <span
-              className={`vault-directory-action-icon${
-                isRescanningVault ? " is-spinning" : ""
-              }`}
+              className={`vault-directory-action-icon${isRescanningVault ? " is-spinning" : ""}`}
             >
               <RefreshIcon />
             </span>
@@ -1941,9 +1846,7 @@ export const VaultTree = ({
           tabIndex={0}
         >
           {!vaultPath ? (
-            <div className="empty-state">
-              Select a vault to view the directory.
-            </div>
+            <div className="empty-state">Select a vault to view the directory.</div>
           ) : null}
           {listState === "loading" ? <span className="chip">Scanne...</span> : null}
           {listError ? <div className="error">{listError}</div> : null}
@@ -1960,9 +1863,7 @@ export const VaultTree = ({
                 <summary
                   className={`tree-item${
                     rootFolderState.isActiveFolder ? " active-folder" : ""
-                  }${rootFolderState.isBreadcrumb ? " breadcrumb" : ""}${
-                    rootDropClass
-                  }`}
+                  }${rootFolderState.isBreadcrumb ? " breadcrumb" : ""}${rootDropClass}`}
                   style={getIndentVars(0)}
                   onClick={() => {
                     onActiveFolderChange("");

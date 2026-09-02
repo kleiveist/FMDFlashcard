@@ -4,9 +4,7 @@
  * View configuration panel for block-based project settings.
  */
 
-import {
-  type DatabaseAttributeMeta,
-} from "../database-types";
+import { type DatabaseAttributeMeta } from "../database-types";
 
 type DatabaseProjectPanelProps = {
   attributes: DatabaseAttributeMeta[];
@@ -32,7 +30,9 @@ const isProjectNumericType = (type: DatabaseAttributeMeta["type"]) =>
 const PROJECT_BLOCK_RESOLUTION_OPTIONS = [1, 2, 4] as const;
 
 const normalizeBlockResolutionOption = (value: number) =>
-  PROJECT_BLOCK_RESOLUTION_OPTIONS.includes(value as typeof PROJECT_BLOCK_RESOLUTION_OPTIONS[number])
+  PROJECT_BLOCK_RESOLUTION_OPTIONS.includes(
+    value as (typeof PROJECT_BLOCK_RESOLUTION_OPTIONS)[number],
+  )
     ? value
     : 1;
 
@@ -55,7 +55,12 @@ export const DatabaseProjectPanel = ({
     >
       <header className="database-block-panel-header">
         <h5>Project Optionen</h5>
-        <button type="button" className="database-block-panel-close" onClick={onClose} aria-label="Schliessen">
+        <button
+          type="button"
+          className="database-block-panel-close"
+          onClick={onClose}
+          aria-label="Schliessen"
+        >
           ×
         </button>
       </header>
@@ -69,7 +74,9 @@ export const DatabaseProjectPanel = ({
           >
             <option value="">Auto (unitsstart)</option>
             {numericAttributes.map((attribute) => (
-              <option key={attribute.key} value={attribute.key}>{attribute.label || attribute.key}</option>
+              <option key={attribute.key} value={attribute.key}>
+                {attribute.label || attribute.key}
+              </option>
             ))}
           </select>
         </label>
@@ -82,7 +89,9 @@ export const DatabaseProjectPanel = ({
           >
             <option value="">Auto (units)</option>
             {numericAttributes.map((attribute) => (
-              <option key={attribute.key} value={attribute.key}>{attribute.label || attribute.key}</option>
+              <option key={attribute.key} value={attribute.key}>
+                {attribute.label || attribute.key}
+              </option>
             ))}
           </select>
         </label>
@@ -100,12 +109,12 @@ export const DatabaseProjectPanel = ({
             ))}
           </select>
         </label>
-
       </div>
 
       {numericAttributes.length === 0 ? (
         <p className="database-block-state">
-          Keine numerischen Felder vorhanden. Beim Platzieren werden `unitsstart` und `units` automatisch angelegt.
+          Keine numerischen Felder vorhanden. Beim Platzieren werden `unitsstart` und `units`
+          automatisch angelegt.
         </p>
       ) : null}
       <p className="database-block-state">

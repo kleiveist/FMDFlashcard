@@ -37,11 +37,7 @@ const resolveLineIndentAndContent = (line: string) => {
   };
 };
 
-const isLikelyListScopedFence = (
-  lines: string[],
-  openLineIndex: number,
-  openIndent: string,
-) => {
+const isLikelyListScopedFence = (lines: string[], openLineIndex: number, openIndent: string) => {
   if (openLineIndex <= 0) {
     return false;
   }
@@ -166,9 +162,7 @@ export const normalizeFenceDisplayForRender = (markdown: string) => {
   return lines.join(lineEnding);
 };
 
-export const buildBacktickFenceDisplayHints = (
-  markdown: string,
-): BacktickFenceDisplayHint[] => {
+export const buildBacktickFenceDisplayHints = (markdown: string): BacktickFenceDisplayHint[] => {
   if (!markdown) {
     return [];
   }
@@ -177,9 +171,7 @@ export const buildBacktickFenceDisplayHints = (
   if (sourceFences.length === 0) {
     return [];
   }
-  const displayFences = scanStandaloneBacktickFences(
-    normalizeFenceDisplayForRender(markdown),
-  );
+  const displayFences = scanStandaloneBacktickFences(normalizeFenceDisplayForRender(markdown));
 
   return sourceFences.map((sourceFence, index) => {
     const displayFence = displayFences[index] ?? sourceFence;

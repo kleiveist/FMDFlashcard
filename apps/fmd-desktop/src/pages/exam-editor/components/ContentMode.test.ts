@@ -6,10 +6,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { ExamBlueprint } from "../../../features/exam-editor/types";
-import type {
-  CardValidation,
-  ExamValidation,
-} from "../../../features/exam-editor/validation";
+import type { CardValidation, ExamValidation } from "../../../features/exam-editor/validation";
 import { ContentMode } from "./ContentMode";
 
 const createValidCardValidation = (): CardValidation => ({

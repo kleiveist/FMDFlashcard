@@ -51,7 +51,7 @@ export const resolveDatabasePanelLayerStyle = ({
   const nextViewportHeight = Math.max(1, asFinite(viewportHeight, 1));
   const maxUsablePanelWidth = Math.max(
     DATABASE_PANEL_LAYER_MIN_WIDTH,
-    nextViewportWidth - (DATABASE_PANEL_LAYER_VIEWPORT_PADDING * 2),
+    nextViewportWidth - DATABASE_PANEL_LAYER_VIEWPORT_PADDING * 2,
   );
   const nextPanelWidth = clamp(
     asFinite(panelWidth, DATABASE_PANEL_LAYER_MAX_WIDTH),
@@ -64,15 +64,18 @@ export const resolveDatabasePanelLayerStyle = ({
     minLeft,
     nextViewportWidth - nextPanelWidth - DATABASE_PANEL_LAYER_VIEWPORT_PADDING,
   );
-  const anchoredLeft = horizontalAlign === "left"
-    ? triggerRect.left
-    : triggerRect.right - nextPanelWidth;
+  const anchoredLeft =
+    horizontalAlign === "left" ? triggerRect.left : triggerRect.right - nextPanelWidth;
   const left = clamp(anchoredLeft, minLeft, maxLeft);
 
   const topCandidate = triggerRect.bottom + DATABASE_PANEL_LAYER_VERTICAL_GAP;
-  const desiredVisibleHeight = Number.isFinite(panelHeight) && (panelHeight ?? 0) > 0
-    ? Math.min(asFinite(panelHeight ?? 0, DATABASE_PANEL_LAYER_MIN_VISIBLE_HEIGHT), DATABASE_PANEL_LAYER_MAX_HEIGHT)
-    : DATABASE_PANEL_LAYER_MIN_VISIBLE_HEIGHT;
+  const desiredVisibleHeight =
+    Number.isFinite(panelHeight) && (panelHeight ?? 0) > 0
+      ? Math.min(
+          asFinite(panelHeight ?? 0, DATABASE_PANEL_LAYER_MIN_VISIBLE_HEIGHT),
+          DATABASE_PANEL_LAYER_MAX_HEIGHT,
+        )
+      : DATABASE_PANEL_LAYER_MIN_VISIBLE_HEIGHT;
   const maxTopForVisibleHeight = Math.max(
     DATABASE_PANEL_LAYER_VIEWPORT_PADDING,
     nextViewportHeight - DATABASE_PANEL_LAYER_VIEWPORT_PADDING - desiredVisibleHeight,
@@ -81,7 +84,10 @@ export const resolveDatabasePanelLayerStyle = ({
     ? Math.max(DATABASE_PANEL_LAYER_VIEWPORT_PADDING, topCandidate)
     : clamp(topCandidate, DATABASE_PANEL_LAYER_VIEWPORT_PADDING, maxTopForVisibleHeight);
 
-  const availableHeight = Math.max(0, nextViewportHeight - top - DATABASE_PANEL_LAYER_VIEWPORT_PADDING);
+  const availableHeight = Math.max(
+    0,
+    nextViewportHeight - top - DATABASE_PANEL_LAYER_VIEWPORT_PADDING,
+  );
   const maxHeight = Math.min(availableHeight, DATABASE_PANEL_LAYER_MAX_HEIGHT);
 
   return {

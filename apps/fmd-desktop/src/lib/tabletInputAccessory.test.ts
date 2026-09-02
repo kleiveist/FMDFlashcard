@@ -11,11 +11,7 @@ const mount = <T extends HTMLElement>(element: T) => {
   return element;
 };
 
-const setSelection = (
-  target: Node,
-  start: number,
-  end: number = start,
-): Range => {
+const setSelection = (target: Node, start: number, end: number = start): Range => {
   const selection = window.getSelection();
   if (!selection) {
     throw new Error("Selection API unavailable");

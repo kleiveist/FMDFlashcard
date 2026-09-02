@@ -13,9 +13,9 @@ export const normalizeCursor = (root: FormulaRowNode, cursor: MathCursor): MathC
   const rowLength = located.row.children.length;
   const selection = cursor.selection
     ? {
-      start: Math.max(0, Math.min(cursor.selection.start, rowLength)),
-      end: Math.max(0, Math.min(cursor.selection.end, rowLength)),
-    }
+        start: Math.max(0, Math.min(cursor.selection.start, rowLength)),
+        end: Math.max(0, Math.min(cursor.selection.end, rowLength)),
+      }
     : null;
   return {
     rowPath: cursor.rowPath,
@@ -32,7 +32,7 @@ export const getAdjacentSlotPath = (
   const slotPaths = listAllSlotPaths(root);
   const currentIndex = slotPaths.findIndex((path) => areSlotPathsEqual(path, currentPath));
   if (currentIndex < 0) {
-    return direction === "next" ? slotPaths[0] ?? [] : slotPaths[slotPaths.length - 1] ?? [];
+    return direction === "next" ? (slotPaths[0] ?? []) : (slotPaths[slotPaths.length - 1] ?? []);
   }
   if (direction === "next") {
     return slotPaths[Math.min(slotPaths.length - 1, currentIndex + 1)] ?? currentPath;

@@ -23,8 +23,7 @@ type ExamResultStatsValues = {
   correctedStatus?: string | null;
 };
 
-const normalizeLineEnding = (value: "\n" | "\r\n" | string) =>
-  value === "\r\n" ? "\r\n" : "\n";
+const normalizeLineEnding = (value: "\n" | "\r\n" | string) => (value === "\r\n" ? "\r\n" : "\n");
 
 const serializeYamlString = (value: string) => `'${value.replace(/'/g, "''")}'`;
 
@@ -33,9 +32,7 @@ const normalizePercentForWrite = (value: string | null | undefined): string | nu
   if (!trimmed) {
     return null;
   }
-  const normalized = trimmed.endsWith("%")
-    ? trimmed.slice(0, -1).trim()
-    : trimmed;
+  const normalized = trimmed.endsWith("%") ? trimmed.slice(0, -1).trim() : trimmed;
   if (!normalized) {
     return null;
   }
@@ -69,11 +66,7 @@ const buildFrontmatterBlock = (
     `${EXAM_RESULTS_FRONTMATTER_PERCENT_KEY}: ${serializeYamlString(stats.percent)}`,
     `${EXAM_RESULTS_FRONTMATTER_STATUS_KEY}: ${serializeYamlString(stats.status)}`,
   ];
-  if (
-    stats.correctedScore &&
-    stats.correctedPercent &&
-    stats.correctedStatus
-  ) {
+  if (stats.correctedScore && stats.correctedPercent && stats.correctedStatus) {
     lines.push(
       `${EXAM_RESULTS_FRONTMATTER_CORRECTED_SCORE_KEY}: ${serializeYamlString(stats.correctedScore)}`,
       `${EXAM_RESULTS_FRONTMATTER_CORRECTED_PERCENT_KEY}: ${serializeYamlString(stats.correctedPercent)}`,
@@ -102,15 +95,11 @@ const TARGET_CORRECTED_KEYS = [
   EXAM_RESULTS_FRONTMATTER_CORRECTED_STATUS_KEY,
 ] as const;
 
-const findMatchingKeys = (
-  keys: string[],
-  options?: { includeCorrected?: boolean },
-) => {
+const findMatchingKeys = (keys: string[], options?: { includeCorrected?: boolean }) => {
   const expected = new Set(
-    [
-      ...TARGET_KEYS,
-      ...(options?.includeCorrected ? TARGET_CORRECTED_KEYS : []),
-    ].map((key) => key.toLowerCase()),
+    [...TARGET_KEYS, ...(options?.includeCorrected ? TARGET_CORRECTED_KEYS : [])].map((key) =>
+      key.toLowerCase(),
+    ),
   );
   return keys.filter((key) => expected.has(key.trim().toLowerCase()));
 };
@@ -185,11 +174,7 @@ const addStatsKeys = (markdown: string, stats: ExamResultStatsValues) => {
     `${EXAM_RESULTS_FRONTMATTER_STATUS_KEY}: ${serializeYamlString(stats.status)}`,
   ];
 
-  if (
-    stats.correctedScore &&
-    stats.correctedPercent &&
-    stats.correctedStatus
-  ) {
+  if (stats.correctedScore && stats.correctedPercent && stats.correctedStatus) {
     statsLines.push(
       `${EXAM_RESULTS_FRONTMATTER_CORRECTED_SCORE_KEY}: ${serializeYamlString(stats.correctedScore)}`,
       `${EXAM_RESULTS_FRONTMATTER_CORRECTED_PERCENT_KEY}: ${serializeYamlString(stats.correctedPercent)}`,
@@ -229,9 +214,7 @@ export const upsertExamResultStatsFrontmatter = ({
   const normalizedCorrectedPercent = correctedPercent?.trim() ?? null;
   const normalizedCorrectedStatus = correctedStatus?.trim() ?? null;
   const hasAnyCorrectedValue = Boolean(
-    normalizedCorrectedScore ||
-      normalizedCorrectedPercent ||
-      normalizedCorrectedStatus,
+    normalizedCorrectedScore || normalizedCorrectedPercent || normalizedCorrectedStatus,
   );
   const hasCompleteCorrectedValue =
     Boolean(normalizedCorrectedScore) &&
@@ -250,7 +233,9 @@ export const upsertExamResultStatsFrontmatter = ({
     percent: normalizedPercent ?? "",
     status: normalizedStatus ?? "",
     correctedScore: hasCompleteCorrectedValue ? normalizedCorrectedScore : null,
-    correctedPercent: hasCompleteCorrectedValue ? (normalizedCorrectedPercentForWrite ?? null) : null,
+    correctedPercent: hasCompleteCorrectedValue
+      ? (normalizedCorrectedPercentForWrite ?? null)
+      : null,
     correctedStatus: hasCompleteCorrectedValue ? (normalizedCorrectedStatusForWrite ?? null) : null,
   };
   if (!stats.score || !stats.percent || !stats.status) {
@@ -288,9 +273,12 @@ export const upsertExamResultStatsFrontmatter = ({
     };
   }
 
-  const matchingKeys = findMatchingKeys(parsed.properties.map((property) => property.key), {
-    includeCorrected: hasCompleteCorrectedValue,
-  });
+  const matchingKeys = findMatchingKeys(
+    parsed.properties.map((property) => property.key),
+    {
+      includeCorrected: hasCompleteCorrectedValue,
+    },
+  );
   const removed = removeMatchingKeys(markdown, matchingKeys);
   if (removed.error) {
     return removed;

@@ -6,10 +6,7 @@
  */
 
 import { describe, expect, it, vi } from "vitest";
-import {
-  buildVaultDeleteHandlers,
-  shouldHandleVaultDeleteShortcut,
-} from "./VaultTree";
+import { buildVaultDeleteHandlers, shouldHandleVaultDeleteShortcut } from "./VaultTree";
 import { type VaultFile } from "../lib/tree";
 
 describe("buildVaultDeleteHandlers", () => {

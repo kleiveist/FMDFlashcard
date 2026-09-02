@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  isCanvasFilePath,
-  isMarkdownFilePath,
-  resolveVaultDocumentKind,
-} from "./fileTypes";
+import { isCanvasFilePath, isMarkdownFilePath, resolveVaultDocumentKind } from "./fileTypes";
 
 describe("fileTypes", () => {
   it("recognizes markdown extensions", () => {
@@ -24,4 +20,3 @@ describe("fileTypes", () => {
     expect(resolveVaultDocumentKind("a.txt")).toBe("unknown");
   });
 });
-

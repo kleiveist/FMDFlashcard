@@ -116,11 +116,12 @@ const PROJECT_BLOCK_RESOLUTION_OPTIONS = [1, 2, 4] as const;
 const toLower = (value: string) => value.trim().toLowerCase();
 const isExamFieldKey = (key: string) => toLower(key) === "exam";
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, value));
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const normalizeBlocksPerUnit = (value: number) =>
-  PROJECT_BLOCK_RESOLUTION_OPTIONS.includes(value as typeof PROJECT_BLOCK_RESOLUTION_OPTIONS[number])
+  PROJECT_BLOCK_RESOLUTION_OPTIONS.includes(
+    value as (typeof PROJECT_BLOCK_RESOLUTION_OPTIONS)[number],
+  )
     ? value
     : 1;
 
@@ -134,8 +135,10 @@ const getNearestScrollHost = (element: HTMLElement | null): HTMLElement | null =
   let current: HTMLElement | null = element;
   while (current) {
     const style = window.getComputedStyle(current);
-    const canScrollX = /(auto|scroll)/.test(style.overflowX) && current.scrollWidth > current.clientWidth;
-    const canScrollY = /(auto|scroll)/.test(style.overflowY) && current.scrollHeight > current.clientHeight;
+    const canScrollX =
+      /(auto|scroll)/.test(style.overflowX) && current.scrollWidth > current.clientWidth;
+    const canScrollY =
+      /(auto|scroll)/.test(style.overflowY) && current.scrollHeight > current.clientHeight;
     if (canScrollX || canScrollY) {
       return current;
     }
@@ -153,14 +156,18 @@ const getRowTitle = (record: DatabaseRecord) => {
   return record.relativePath;
 };
 
-const getRecordValueByField = (record: DatabaseRecord, field: string): DatabaseNormalizedFieldValue => {
+const getRecordValueByField = (
+  record: DatabaseRecord,
+  field: string,
+): DatabaseNormalizedFieldValue => {
   if (field in record.normalizedFields) {
     return record.normalizedFields[field] ?? null;
   }
   const normalizedField = toLower(field);
-  const matchedKey = Object.keys(record.normalizedFields)
-    .find((key) => toLower(key) === normalizedField);
-  return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
+  const matchedKey = Object.keys(record.normalizedFields).find(
+    (key) => toLower(key) === normalizedField,
+  );
+  return matchedKey ? (record.normalizedFields[matchedKey] ?? null) : null;
 };
 
 const asFiniteNumber = (value: unknown): number | null => {
@@ -300,9 +307,7 @@ const createProjectBarConfigDraft = (
       mode: "text-code",
       min: "0",
       max: "100",
-      mappings: mappings.length > 0
-        ? mappings
-        : fallback.mappings,
+      mappings: mappings.length > 0 ? mappings : fallback.mappings,
     };
   }
   return {
@@ -367,8 +372,9 @@ const resolveProjectBarFillRatio = (
     if (!textValue) {
       return null;
     }
-    const matched = (config.mappings ?? []).find((entry) =>
-      toLower(entry.from) === toLower(textValue));
+    const matched = (config.mappings ?? []).find(
+      (entry) => toLower(entry.from) === toLower(textValue),
+    );
     if (!matched) {
       return null;
     }
@@ -508,7 +514,9 @@ export const DatabaseProjectView = ({
   onCommitPlacement,
 }: DatabaseProjectViewProps) => {
   const [interaction, setInteraction] = useState<InteractionState | null>(null);
-  const [draftByRecordId, setDraftByRecordId] = useState<Record<string, { startSlot: number; units: number }>>({});
+  const [draftByRecordId, setDraftByRecordId] = useState<
+    Record<string, { startSlot: number; units: number }>
+  >({});
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     typeof window !== "undefined" ? window.innerWidth < 1200 : false,
   );
@@ -539,7 +547,8 @@ export const DatabaseProjectView = ({
   const sortedAttributes = useMemo(
     () =>
       [...attributes].sort((left, right) =>
-        (left.label || left.key).localeCompare(right.label || right.key)),
+        (left.label || left.key).localeCompare(right.label || right.key),
+      ),
     [attributes],
   );
 
@@ -559,7 +568,10 @@ export const DatabaseProjectView = ({
   }, [records, startField, unitField]);
 
   const pendingIds = useMemo(() => new Set(pendingRecordIds), [pendingRecordIds]);
-  const recordById = useMemo(() => new Map(records.map((record) => [record.fileId, record])), [records]);
+  const recordById = useMemo(
+    () => new Map(records.map((record) => [record.fileId, record])),
+    [records],
+  );
   const maxDomainUnits = useMemo(() => {
     let maxEnd = BASE_PROJECT_DOMAIN_UNITS;
     entryByRecordId.forEach((entry) => {
@@ -571,22 +583,24 @@ export const DatabaseProjectView = ({
     return Math.max(1, maxEnd);
   }, [draftByRecordId, entryByRecordId]);
   const trackBlockCount = maxDomainUnits * blocksPerUnit;
-  const slotBoundaries = useMemo(() =>
-    Array.from({ length: trackBlockCount }, (_, index) => index),
-  [trackBlockCount]);
+  const slotBoundaries = useMemo(
+    () => Array.from({ length: trackBlockCount }, (_, index) => index),
+    [trackBlockCount],
+  );
   const rowMetaClampMax = Math.max(
     ROW_META_EDGE_PADDING,
     trackBlockCount * SLOT_WIDTH - (ROW_META_MAX_WIDTH + ROW_META_EDGE_PADDING),
   );
 
   const visibleRecords = useMemo(
-    () => missingPlacement === "hide-unplaced"
-      ? records.filter((record) => entryByRecordId.has(record.fileId))
-      : records,
+    () =>
+      missingPlacement === "hide-unplaced"
+        ? records.filter((record) => entryByRecordId.has(record.fileId))
+        : records,
     [entryByRecordId, missingPlacement, records],
   );
   const activeConfig = activeConfigRecordId
-    ? barFillConfigByRecordId.get(activeConfigRecordId) ?? null
+    ? (barFillConfigByRecordId.get(activeConfigRecordId) ?? null)
     : null;
 
   useEffect(() => {
@@ -717,7 +731,8 @@ export const DatabaseProjectView = ({
         return;
       }
 
-      const changed = nextPlacement.startSlot !== interaction.originStartSlot ||
+      const changed =
+        nextPlacement.startSlot !== interaction.originStartSlot ||
         nextPlacement.units !== interaction.originUnits;
       if (!changed) {
         return;
@@ -739,11 +754,7 @@ export const DatabaseProjectView = ({
   }, [blocksPerUnit, draftByRecordId, interaction, maxDomainUnits, onCommitPlacement, recordById]);
 
   if (blocksPerUnit < 1) {
-    return (
-      <div className="database-view-empty">
-        Blockaufloesung muss mindestens 1 sein.
-      </div>
-    );
+    return <div className="database-view-empty">Blockaufloesung muss mindestens 1 sein.</div>;
   }
 
   const totalWidth = Math.max(SLOT_WIDTH, trackBlockCount * SLOT_WIDTH);
@@ -783,7 +794,7 @@ export const DatabaseProjectView = ({
     host.scrollBy({ left, top, behavior: "auto" });
   };
   const activeConfigRecord = activeConfigRecordId
-    ? recordById.get(activeConfigRecordId) ?? null
+    ? (recordById.get(activeConfigRecordId) ?? null)
     : null;
   const configRecordTitle = activeConfigRecord ? getRowTitle(activeConfigRecord) : "Datensatz";
   const isBarConfigOpen = Boolean(activeConfigRecordId && configAnchorRef.current);
@@ -841,16 +852,15 @@ export const DatabaseProjectView = ({
             const displayStartBlock = hasPlacement ? displayStart * blocksPerUnit : null;
             const displayUnitBlocks = hasPlacement ? displayUnits * blocksPerUnit : null;
             const startX = displayStartBlock !== null ? displayStartBlock * SLOT_WIDTH : null;
-            const width = displayUnitBlocks !== null ? Math.max(8, displayUnitBlocks * SLOT_WIDTH) : 0;
+            const width =
+              displayUnitBlocks !== null ? Math.max(8, displayUnitBlocks * SLOT_WIDTH) : 0;
             const rowTitle = getRowTitle(record);
             const isPending = pendingIds.has(record.fileId);
             const barFillConfig = barFillConfigByRecordId.get(record.fileId) ?? null;
             const barFillRatio = resolveProjectBarFillRatio(record, barFillConfig);
-            const barFillPercent = barFillRatio === null ? 0 : Math.max(0, Math.min(100, barFillRatio * 100));
-            const excludedPropertyKeys = new Set<string>([
-              toLower(startField),
-              toLower(unitField),
-            ]);
+            const barFillPercent =
+              barFillRatio === null ? 0 : Math.max(0, Math.min(100, barFillRatio * 100));
+            const excludedPropertyKeys = new Set<string>([toLower(startField), toLower(unitField)]);
             const propertyRows = visibleProperties
               .filter((attribute) => !excludedPropertyKeys.has(toLower(attribute.key)))
               .map((attribute) => {
@@ -880,13 +890,17 @@ export const DatabaseProjectView = ({
                   value,
                 };
               })
-              .filter((entry): entry is (
-                | { key: string; kind: "text"; label: string; value: string }
-                | { key: string; kind: "action" }
-              ) => Boolean(entry));
-            const rowMetaLeft = hasPlacement && startX !== null
-              ? clamp(startX + width + 10, ROW_META_EDGE_PADDING, rowMetaClampMax)
-              : 10;
+              .filter(
+                (
+                  entry,
+                ): entry is
+                  | { key: string; kind: "text"; label: string; value: string }
+                  | { key: string; kind: "action" } => Boolean(entry),
+              );
+            const rowMetaLeft =
+              hasPlacement && startX !== null
+                ? clamp(startX + width + 10, ROW_META_EDGE_PADDING, rowMetaClampMax)
+                : 10;
             const isSidebarPeeking = isSidebarCollapsed && peekRecordId === record.fileId;
             const revealSidebarRow = () => {
               if (isSidebarCollapsed) {
@@ -895,7 +909,7 @@ export const DatabaseProjectView = ({
             };
             const clearSidebarPeek = () => {
               if (isSidebarCollapsed) {
-                setPeekRecordId((current) => current === record.fileId ? null : current);
+                setPeekRecordId((current) => (current === record.fileId ? null : current));
               }
             };
 
@@ -976,11 +990,7 @@ export const DatabaseProjectView = ({
                       return;
                     }
                     const existing = entryByRecordId.get(droppedRecordId);
-                    const nextUnits = clamp(
-                      existing?.units ?? defaultUnits,
-                      1,
-                      maxDomainUnits,
-                    );
+                    const nextUnits = clamp(existing?.units ?? defaultUnits, 1, maxDomainUnits);
                     const rect = event.currentTarget.getBoundingClientRect();
                     const xInTrack = event.clientX - rect.left;
                     const startSlot = clamp(
@@ -1024,7 +1034,12 @@ export const DatabaseProjectView = ({
                         if (isNonPrimaryPointerButton(event.button)) {
                           return;
                         }
-                        if (!editable || isPending || displayStart === null || displayUnits === null) {
+                        if (
+                          !editable ||
+                          isPending ||
+                          displayStart === null ||
+                          displayUnits === null
+                        ) {
                           return;
                         }
                         event.preventDefault();
@@ -1063,7 +1078,12 @@ export const DatabaseProjectView = ({
                           if (isNonPrimaryPointerButton(event.button)) {
                             return;
                           }
-                          if (!editable || isPending || displayStart === null || displayUnits === null) {
+                          if (
+                            !editable ||
+                            isPending ||
+                            displayStart === null ||
+                            displayUnits === null
+                          ) {
                             return;
                           }
                           event.preventDefault();
@@ -1097,7 +1117,12 @@ export const DatabaseProjectView = ({
                           if (isNonPrimaryPointerButton(event.button)) {
                             return;
                           }
-                          if (!editable || isPending || displayStart === null || displayUnits === null) {
+                          if (
+                            !editable ||
+                            isPending ||
+                            displayStart === null ||
+                            displayUnits === null
+                          ) {
                             return;
                           }
                           event.preventDefault();
@@ -1114,10 +1139,7 @@ export const DatabaseProjectView = ({
                     </span>
                   ) : null}
                   {propertyRows.length > 0 ? (
-                    <div
-                      className="database-project-row-meta"
-                      style={{ left: `${rowMetaLeft}px` }}
-                    >
+                    <div className="database-project-row-meta" style={{ left: `${rowMetaLeft}px` }}>
                       {propertyRows.map((entry) => (
                         <p key={entry.key} className="database-row-meta-item">
                           {entry.kind === "action" ? (
@@ -1169,7 +1191,8 @@ export const DatabaseProjectView = ({
                   setConfigDraft((current) => ({
                     ...current,
                     attributeKey: event.target.value,
-                  }))}
+                  }))
+                }
               >
                 <option value="">Bitte waehlen</option>
                 {sortedAttributes.map((attribute) => (
@@ -1187,7 +1210,8 @@ export const DatabaseProjectView = ({
                   setConfigDraft((current) => ({
                     ...current,
                     mode: event.target.value === "text-code" ? "text-code" : "numeric",
-                  }))}
+                  }))
+                }
               >
                 <option value="numeric">Numerisch</option>
                 <option value="text-code">Text/Code</option>
@@ -1206,7 +1230,8 @@ export const DatabaseProjectView = ({
                     setConfigDraft((current) => ({
                       ...current,
                       min: event.target.value,
-                    }))}
+                    }))
+                  }
                   placeholder="0"
                 />
               </label>
@@ -1219,7 +1244,8 @@ export const DatabaseProjectView = ({
                     setConfigDraft((current) => ({
                       ...current,
                       max: event.target.value,
-                    }))}
+                    }))
+                  }
                   placeholder="100"
                 />
               </label>
@@ -1239,10 +1265,10 @@ export const DatabaseProjectView = ({
                       setConfigDraft((current) => ({
                         ...current,
                         mappings: current.mappings.map((entry, entryIndex) =>
-                          entryIndex === index
-                            ? { ...entry, from: event.target.value }
-                            : entry),
-                      }))}
+                          entryIndex === index ? { ...entry, from: event.target.value } : entry,
+                        ),
+                      }))
+                    }
                     placeholder="text1"
                   />
                   <input
@@ -1252,10 +1278,10 @@ export const DatabaseProjectView = ({
                       setConfigDraft((current) => ({
                         ...current,
                         mappings: current.mappings.map((entry, entryIndex) =>
-                          entryIndex === index
-                            ? { ...entry, to: event.target.value }
-                            : entry),
-                      }))}
+                          entryIndex === index ? { ...entry, to: event.target.value } : entry,
+                        ),
+                      }))
+                    }
                     placeholder="10"
                   />
                   <button
@@ -1264,10 +1290,12 @@ export const DatabaseProjectView = ({
                     onClick={() =>
                       setConfigDraft((current) => ({
                         ...current,
-                        mappings: current.mappings.length <= 1
-                          ? current.mappings
-                          : current.mappings.filter((_, entryIndex) => entryIndex !== index),
-                      }))}
+                        mappings:
+                          current.mappings.length <= 1
+                            ? current.mappings
+                            : current.mappings.filter((_, entryIndex) => entryIndex !== index),
+                      }))
+                    }
                     aria-label="Zuordnung entfernen"
                   >
                     Entfernen
@@ -1287,7 +1315,8 @@ export const DatabaseProjectView = ({
                         to: "",
                       },
                     ],
-                  }))}
+                  }))
+                }
               >
                 Zuordnung hinzufuegen
               </button>
@@ -1300,7 +1329,11 @@ export const DatabaseProjectView = ({
                 type="button"
                 className="database-block-toolbar-button"
                 onClick={() => void handleApplyBarConfigToVisible()}
-                disabled={!configDraft.attributeKey.trim() || visibleRecords.length === 0 || isApplyingBarRule}
+                disabled={
+                  !configDraft.attributeKey.trim() ||
+                  visibleRecords.length === 0 ||
+                  isApplyingBarRule
+                }
               >
                 Regel auf sichtbare anwenden
               </button>

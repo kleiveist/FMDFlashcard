@@ -19,9 +19,7 @@ export const MathRawFallbackPane = ({
       <div className="markdown-hybrid-structural-math-raw-layout">
         <div className="markdown-hybrid-structural-math-raw-editor-pane">
           {reason ? (
-            <div className="markdown-hybrid-structural-math-raw-reason">
-              {reason}
-            </div>
+            <div className="markdown-hybrid-structural-math-raw-reason">{reason}</div>
           ) : null}
           <textarea
             className="markdown-hybrid-structural-math-raw-textarea"

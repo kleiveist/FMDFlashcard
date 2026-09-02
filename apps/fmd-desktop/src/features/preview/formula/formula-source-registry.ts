@@ -55,9 +55,10 @@ export const buildFormulaSourceForType = (
   if (nextType === "multi-folder") {
     return {
       type: nextType,
-      paths: currentSource.type === "multi-folder"
-        ? dedupeCaseInsensitive(currentSource.paths ?? [])
-        : [],
+      paths:
+        currentSource.type === "multi-folder"
+          ? dedupeCaseInsensitive(currentSource.paths ?? [])
+          : [],
     };
   }
   return {

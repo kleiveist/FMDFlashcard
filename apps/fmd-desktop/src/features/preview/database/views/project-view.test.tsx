@@ -84,19 +84,13 @@ const createPointerLikeEvent = (
   });
 };
 
-const setFormControlValue = (
-  element: HTMLInputElement | HTMLSelectElement,
-  value: string,
-) => {
+const setFormControlValue = (element: HTMLInputElement | HTMLSelectElement, value: string) => {
   const prototype = Object.getPrototypeOf(element) as HTMLInputElement | HTMLSelectElement;
   const descriptor = Object.getOwnPropertyDescriptor(prototype, "value");
   descriptor?.set?.call(element, value);
 };
 
-const createRecord = (
-  id: string,
-  fields: DatabaseRecord["normalizedFields"],
-): DatabaseRecord => ({
+const createRecord = (id: string, fields: DatabaseRecord["normalizedFields"]): DatabaseRecord => ({
   fileId: id,
   filePath: `/vault/${id}.md`,
   relativePath: `${id}.md`,
@@ -429,8 +423,9 @@ describe("DatabaseProjectView", () => {
 
     const grid = container.querySelector<HTMLElement>(".database-project-grid");
     const bar = container.querySelector<HTMLElement>(".database-project-bar");
-    const toggleButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => (button.textContent ?? "").includes("Datensatz"));
+    const toggleButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      (button.textContent ?? "").includes("Datensatz"),
+    );
     expect(toggleButton).toBeTruthy();
     expect(container.querySelector(".database-project-sidebar-header")).toBeTruthy();
     expect(grid?.style.gridTemplateColumns).toBe("280px 1800px");
@@ -441,9 +436,13 @@ describe("DatabaseProjectView", () => {
       toggleButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(container.querySelector(".database-project-view")?.classList.contains("is-sidebar-collapsed")).toBe(true);
+    expect(
+      container.querySelector(".database-project-view")?.classList.contains("is-sidebar-collapsed"),
+    ).toBe(true);
     expect(container.querySelector(".database-project-sidebar-header")).toBeTruthy();
-    expect(container.querySelector(".database-project-sidebar-row")?.classList.contains("is-collapsed")).toBe(true);
+    expect(
+      container.querySelector(".database-project-sidebar-row")?.classList.contains("is-collapsed"),
+    ).toBe(true);
     expect(grid?.style.gridTemplateColumns).toBe("18px 1800px");
     expect(bar?.style.left).toBe("54px");
     expect(bar?.style.width).toBe("72px");
@@ -452,7 +451,9 @@ describe("DatabaseProjectView", () => {
       toggleButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    expect(container.querySelector(".database-project-view")?.classList.contains("is-sidebar-collapsed")).toBe(false);
+    expect(
+      container.querySelector(".database-project-view")?.classList.contains("is-sidebar-collapsed"),
+    ).toBe(false);
     expect(grid?.style.gridTemplateColumns).toBe("280px 1800px");
     expect(bar?.style.left).toBe("54px");
     expect(bar?.style.width).toBe("72px");
@@ -475,12 +476,17 @@ describe("DatabaseProjectView", () => {
     );
 
     const grid = container.querySelector<HTMLElement>(".database-project-grid");
-    const toggleButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => (button.textContent ?? "").includes("Datensatz anzeigen"));
+    const toggleButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      (button.textContent ?? "").includes("Datensatz anzeigen"),
+    );
     expect(toggleButton).toBeTruthy();
-    expect(container.querySelector(".database-project-view")?.classList.contains("is-sidebar-collapsed")).toBe(true);
+    expect(
+      container.querySelector(".database-project-view")?.classList.contains("is-sidebar-collapsed"),
+    ).toBe(true);
     expect(container.querySelector(".database-project-sidebar-header")).toBeTruthy();
-    expect(container.querySelector(".database-project-sidebar-row")?.classList.contains("is-collapsed")).toBe(true);
+    expect(
+      container.querySelector(".database-project-sidebar-row")?.classList.contains("is-collapsed"),
+    ).toBe(true);
     expect(grid?.style.gridTemplateColumns).toBe("18px 1800px");
 
     cleanup();
@@ -502,8 +508,9 @@ describe("DatabaseProjectView", () => {
       }),
     );
 
-    const toggleButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => (button.textContent ?? "").includes("Datensatz"));
+    const toggleButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      (button.textContent ?? "").includes("Datensatz"),
+    );
     act(() => {
       toggleButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -514,24 +521,30 @@ describe("DatabaseProjectView", () => {
     expect(hiddenUnplacedRow?.classList.contains("is-peeking")).toBe(false);
 
     act(() => {
-      hiddenUnplacedRow?.dispatchEvent(new PointerEvent("pointermove", {
-        bubbles: true,
-        cancelable: true,
-        clientX: 8,
-      }));
+      hiddenUnplacedRow?.dispatchEvent(
+        new PointerEvent("pointermove", {
+          bubbles: true,
+          cancelable: true,
+          clientX: 8,
+        }),
+      );
     });
     expect(hiddenUnplacedRow?.classList.contains("is-peeking")).toBe(true);
 
     act(() => {
-      hiddenUnplacedRow?.dispatchEvent(new MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        button: 2,
-      }));
+      hiddenUnplacedRow?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          button: 2,
+        }),
+      );
     });
     expect(hiddenUnplacedRow?.classList.contains("is-peeking")).toBe(true);
 
-    const titleButton = hiddenUnplacedRow?.querySelector<HTMLButtonElement>(".database-project-sidebar-row-title");
+    const titleButton = hiddenUnplacedRow?.querySelector<HTMLButtonElement>(
+      ".database-project-sidebar-row-title",
+    );
     expect(titleButton?.draggable).toBe(true);
     expect(titleButton?.tabIndex).not.toBe(-1);
 
@@ -587,11 +600,13 @@ describe("DatabaseProjectView", () => {
     const root = container.querySelector<HTMLElement>(".database-project-view");
     root?.focus();
     act(() => {
-      root?.dispatchEvent(new KeyboardEvent("keydown", {
-        key: "ArrowRight",
-        bubbles: true,
-        cancelable: true,
-      }));
+      root?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "ArrowRight",
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
     });
     expect(scrollBy).toHaveBeenCalled();
 
@@ -826,7 +841,10 @@ describe("DatabaseProjectView", () => {
     });
 
     const updatedPopup = document.querySelector<HTMLElement>(".database-project-bar-config");
-    const mappingInputs = updatedPopup?.querySelectorAll<HTMLInputElement>(".database-project-bar-config-mapping-row input") ?? [];
+    const mappingInputs =
+      updatedPopup?.querySelectorAll<HTMLInputElement>(
+        ".database-project-bar-config-mapping-row input",
+      ) ?? [];
     act(() => {
       const source = mappingInputs[0];
       const target = mappingInputs[1];
@@ -842,8 +860,9 @@ describe("DatabaseProjectView", () => {
       }
     });
 
-    const saveButton = Array.from(updatedPopup?.querySelectorAll("button") ?? [])
-      .find((button) => (button.textContent ?? "").includes("Speichern"));
+    const saveButton = Array.from(updatedPopup?.querySelectorAll("button") ?? []).find((button) =>
+      (button.textContent ?? "").includes("Speichern"),
+    );
     act(() => {
       saveButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -883,11 +902,13 @@ describe("DatabaseProjectView", () => {
 
     const bar = container.querySelector<HTMLElement>(".database-project-bar");
     act(() => {
-      bar?.dispatchEvent(new MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        button: 2,
-      }));
+      bar?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          button: 2,
+        }),
+      );
     });
 
     expect(document.querySelector(".database-project-bar-config")).toBeTruthy();
@@ -897,10 +918,9 @@ describe("DatabaseProjectView", () => {
 
   it("applies the active bar rule only to currently visible project records", async () => {
     const onChangeBarFillConfig = vi.fn();
-    const onApplyBarFillConfigToVisible = vi.fn(async (
-      _config: DatabaseProjectBarFillConfig,
-      _records: DatabaseRecord[],
-    ) => undefined);
+    const onApplyBarFillConfigToVisible = vi.fn(
+      async (_config: DatabaseProjectBarFillConfig, _records: DatabaseRecord[]) => undefined,
+    );
     const { container, cleanup } = render(
       createElement(DatabaseProjectView, {
         records: [fillRecord, unplacedRecord],
@@ -926,19 +946,22 @@ describe("DatabaseProjectView", () => {
 
     const bar = container.querySelector<HTMLElement>(".database-project-bar");
     act(() => {
-      bar?.dispatchEvent(new MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        button: 2,
-      }));
+      bar?.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          button: 2,
+        }),
+      );
     });
     await flushReactWork();
     await flushReactWork();
 
     const popup = document.querySelector<HTMLElement>(".database-project-bar-config");
     expect(popup).toBeTruthy();
-    const applyButton = Array.from(popup?.querySelectorAll("button") ?? [])
-      .find((button) => (button.textContent ?? "").includes("Regel auf sichtbare anwenden"));
+    const applyButton = Array.from(popup?.querySelectorAll("button") ?? []).find((button) =>
+      (button.textContent ?? "").includes("Regel auf sichtbare anwenden"),
+    );
     expect(applyButton).toBeTruthy();
     await act(async () => {
       applyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));

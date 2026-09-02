@@ -28,9 +28,9 @@ describe("applyTaskAreaToggle", () => {
         endLine: 2,
       },
     };
-    const readSource = vi.fn().mockResolvedValue(
-      ["Intro", "Task line 1", "Task line 2", "Outro"].join("\n"),
-    );
+    const readSource = vi
+      .fn()
+      .mockResolvedValue(["Intro", "Task line 1", "Task line 2", "Outro"].join("\n"));
     const writeSource = vi.fn().mockResolvedValue(undefined);
     const onSourceUpdated = vi.fn();
     const onRescanVault = vi.fn().mockResolvedValue(true);
@@ -68,9 +68,7 @@ describe("applyTaskAreaToggle", () => {
     );
     expect(onSourceUpdated).toHaveBeenCalledWith({
       scope,
-      contents: ["Intro", "#card", "Task line 1", "Task line 2", "#endcard", "Outro"].join(
-        "\n",
-      ),
+      contents: ["Intro", "#card", "Task line 1", "Task line 2", "#endcard", "Outro"].join("\n"),
       wroteFile: true,
     });
     expect(onRescanVault).toHaveBeenCalledTimes(1);

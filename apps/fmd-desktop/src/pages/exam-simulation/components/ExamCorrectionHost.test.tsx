@@ -68,9 +68,7 @@ const buildProps = (showSourceBadge = true): ExamCorrectionHostProps => ({
 
 describe("ExamCorrectionHost", () => {
   it("toggles source badge visibility via showSourceBadge", () => {
-    const withSource = renderToStaticMarkup(
-      createElement(ExamCorrectionHost, buildProps(true)),
-    );
+    const withSource = renderToStaticMarkup(createElement(ExamCorrectionHost, buildProps(true)));
     expect(withSource).toContain("Quelle: exam.md");
 
     const withoutSource = renderToStaticMarkup(

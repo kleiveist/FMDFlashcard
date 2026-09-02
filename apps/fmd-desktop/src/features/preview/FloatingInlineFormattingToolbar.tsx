@@ -1,11 +1,4 @@
-import {
-  type MouseEvent,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { type MouseEvent, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type {
   InlineFormattingMathMenuAction,
@@ -102,10 +95,7 @@ export const FloatingInlineFormattingToolbar = ({
         top = Math.max(padding, window.innerHeight - height - padding);
       }
       const maxLeft = Math.max(padding, window.innerWidth - width - padding);
-      const left = Math.max(
-        padding,
-        Math.min(anchor.centerX - width / 2, maxLeft),
-      );
+      const left = Math.max(padding, Math.min(anchor.centerX - width / 2, maxLeft));
       setPosition({ left: Math.round(left), top: Math.round(top) });
     });
     return () => window.cancelAnimationFrame(handle);
@@ -134,7 +124,8 @@ export const FloatingInlineFormattingToolbar = ({
     return null;
   }
 
-  const hasAnyInlineFormattingActive = activeState.highlight ||
+  const hasAnyInlineFormattingActive =
+    activeState.highlight ||
     activeState.bold ||
     activeState.italic ||
     activeState.underline ||
@@ -180,7 +171,11 @@ export const FloatingInlineFormattingToolbar = ({
         onClose();
       }}
     >
-      <div className="markdown-hybrid-inline-toolbar-row" role="toolbar" aria-label="Inline formatting">
+      <div
+        className="markdown-hybrid-inline-toolbar-row"
+        role="toolbar"
+        aria-label="Inline formatting"
+      >
         <button
           type="button"
           className={`markdown-hybrid-inline-toolbar-button${hasAnyInlineFormattingActive ? " is-active" : ""}`}
@@ -337,7 +332,11 @@ export const FloatingInlineFormattingToolbar = ({
         </div>
       ) : null}
       {menu === "math" ? (
-        <div className="markdown-hybrid-inline-toolbar-menu" role="menu" aria-label="Inline math actions">
+        <div
+          className="markdown-hybrid-inline-toolbar-menu"
+          role="menu"
+          aria-label="Inline math actions"
+        >
           <button
             type="button"
             className="markdown-hybrid-inline-toolbar-menu-item"
@@ -368,11 +367,7 @@ export const FloatingInlineFormattingToolbar = ({
         </div>
       ) : null}
       {linkState ? (
-        <div
-          className="markdown-hybrid-inline-toolbar-link"
-          role="group"
-          aria-label="Link editor"
-        >
+        <div className="markdown-hybrid-inline-toolbar-link" role="group" aria-label="Link editor">
           <input
             ref={linkInputRef}
             type="url"

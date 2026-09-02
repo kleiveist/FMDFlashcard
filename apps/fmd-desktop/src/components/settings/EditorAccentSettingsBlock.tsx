@@ -21,16 +21,10 @@ type EditorAccentSettingsBlockProps = {
   onMarkdownEditorAccentEnabledToggle: (value: boolean) => void;
   onMarkdownEditorAccentHexChange: (mode: AccentMode, value: string) => void;
   onEditorBlueprintGridToggle: (value: boolean) => void;
-  onEditorBlueprintGridIntensityChange: (
-    value: "light" | "medium" | "strong",
-  ) => void;
+  onEditorBlueprintGridIntensityChange: (value: "light" | "medium" | "strong") => void;
 };
 
-const GRID_INTENSITY_OPTIONS: Array<"light" | "medium" | "strong"> = [
-  "light",
-  "medium",
-  "strong",
-];
+const GRID_INTENSITY_OPTIONS: Array<"light" | "medium" | "strong"> = ["light", "medium", "strong"];
 
 const ACCENT_MODE_OPTIONS: AccentMode[] = ["light", "dark"];
 
@@ -64,9 +58,7 @@ export const EditorAccentSettingsBlock = ({
   });
   const copyTimeoutRef = useRef<number | null>(null);
   const activeAccentHex =
-    accentMode === "dark"
-      ? markdownEditorAccentDarkHex
-      : markdownEditorAccentLightHex;
+    accentMode === "dark" ? markdownEditorAccentDarkHex : markdownEditorAccentLightHex;
   const activeDraft = accentDrafts[accentMode] ?? activeAccentHex;
   const activeError = accentErrors[accentMode];
 
@@ -167,9 +159,7 @@ export const EditorAccentSettingsBlock = ({
               <input
                 type="checkbox"
                 checked={markdownEditorAccentEnabled}
-                onChange={(event) =>
-                  onMarkdownEditorAccentEnabledToggle(event.target.checked)
-                }
+                onChange={(event) => onMarkdownEditorAccentEnabledToggle(event.target.checked)}
                 aria-label="Enable custom markdown editor accent colors"
               />
               <span className="slider" />
@@ -178,11 +168,7 @@ export const EditorAccentSettingsBlock = ({
           </div>
           {markdownEditorAccentEnabled ? (
             <>
-              <div
-                className="pill-grid"
-                role="tablist"
-                aria-label="Markdown editor accent mode"
-              >
+              <div className="pill-grid" role="tablist" aria-label="Markdown editor accent mode">
                 {ACCENT_MODE_OPTIONS.map((mode) => (
                   <button
                     key={mode}
@@ -231,9 +217,7 @@ export const EditorAccentSettingsBlock = ({
         </div>
       </div>
       <div className="setting-row">
-        <span className="label">
-          {tSettings(language, "settings.editorAccent.blueprintGrid")}
-        </span>
+        <span className="label">{tSettings(language, "settings.editorAccent.blueprintGrid")}</span>
         <div className="appearance-editor-inline">
           <div className="theme-toggle">
             <span className="toggle-label">{tSettings(language, "settings.common.off")}</span>

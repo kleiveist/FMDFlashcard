@@ -219,14 +219,18 @@ export const DatabaseToolbar = ({
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const [pendingSearchOpen, setPendingSearchOpen] = useState(false);
   const [viewDropdownStyle, setViewDropdownStyle] = useState<CSSProperties | undefined>(undefined);
-  const [searchDropdownStyle, setSearchDropdownStyle] = useState<CSSProperties | undefined>(undefined);
+  const [searchDropdownStyle, setSearchDropdownStyle] = useState<CSSProperties | undefined>(
+    undefined,
+  );
   const [newViewName, setNewViewName] = useState("");
   const [renameDraft, setRenameDraft] = useState("");
   const [editingViewId, setEditingViewId] = useState<string | null>(null);
   const [draggingViewId, setDraggingViewId] = useState<string | null>(null);
   const [dragOverViewId, setDragOverViewId] = useState<string | null>(null);
   const [viewContextMenuViewId, setViewContextMenuViewId] = useState<string | null>(null);
-  const [viewContextMenuStyle, setViewContextMenuStyle] = useState<CSSProperties | undefined>(undefined);
+  const [viewContextMenuStyle, setViewContextMenuStyle] = useState<CSSProperties | undefined>(
+    undefined,
+  );
   const normalizedActiveViewName = activeViewName.trim() || "View";
 
   const normalizedSavedViews = useMemo(
@@ -286,32 +290,38 @@ export const DatabaseToolbar = ({
     setDragOverViewId(null);
   }, []);
 
-  const openRenameForView = useCallback((viewId: string) => {
-    const target = normalizedSavedViews.find((savedView) => savedView.id === viewId);
-    if (!target) {
-      return;
-    }
-    setViewContextMenuViewId(null);
-    setEditingViewId(viewId);
-    setRenameDraft(target.name);
-  }, [normalizedSavedViews]);
+  const openRenameForView = useCallback(
+    (viewId: string) => {
+      const target = normalizedSavedViews.find((savedView) => savedView.id === viewId);
+      if (!target) {
+        return;
+      }
+      setViewContextMenuViewId(null);
+      setEditingViewId(viewId);
+      setRenameDraft(target.name);
+    },
+    [normalizedSavedViews],
+  );
 
-  const submitRenameForView = useCallback((viewId: string | null, rawName?: string) => {
-    if (!viewId) {
+  const submitRenameForView = useCallback(
+    (viewId: string | null, rawName?: string) => {
+      if (!viewId) {
+        setEditingViewId(null);
+        setRenameDraft("");
+        return;
+      }
+      const trimmedName = (rawName ?? renameDraft).trim();
+      if (!trimmedName) {
+        const source = normalizedSavedViews.find((savedView) => savedView.id === viewId);
+        setRenameDraft(source?.name ?? "");
+        return;
+      }
+      onRenameSavedView(viewId, trimmedName);
       setEditingViewId(null);
       setRenameDraft("");
-      return;
-    }
-    const trimmedName = (rawName ?? renameDraft).trim();
-    if (!trimmedName) {
-      const source = normalizedSavedViews.find((savedView) => savedView.id === viewId);
-      setRenameDraft(source?.name ?? "");
-      return;
-    }
-    onRenameSavedView(viewId, trimmedName);
-    setEditingViewId(null);
-    setRenameDraft("");
-  }, [normalizedSavedViews, onRenameSavedView, renameDraft]);
+    },
+    [normalizedSavedViews, onRenameSavedView, renameDraft],
+  );
 
   const handleViewItemDragStart = (event: DragEvent<HTMLButtonElement>, viewId: string) => {
     setViewContextMenuViewId(null);
@@ -328,7 +338,9 @@ export const DatabaseToolbar = ({
 
   const handleViewItemDrop = (event: DragEvent<HTMLButtonElement>, targetViewId: string) => {
     event.preventDefault();
-    const sourceViewId = readInternalDragText(event, { channel: DRAG_CHANNELS.DATABASE_SAVED_VIEW });
+    const sourceViewId = readInternalDragText(event, {
+      channel: DRAG_CHANNELS.DATABASE_SAVED_VIEW,
+    });
     if (sourceViewId && sourceViewId !== targetViewId) {
       onReorderSavedViews(sourceViewId, targetViewId);
     }
@@ -366,10 +378,7 @@ export const DatabaseToolbar = ({
         setViewDropdownStyle((previous) => {
           const nextInset = `${offset}px`;
           const nextWidth = `${Math.round(width)}px`;
-          if (
-            previous?.insetInlineStart === nextInset &&
-            previous?.inlineSize === nextWidth
-          ) {
+          if (previous?.insetInlineStart === nextInset && previous?.inlineSize === nextWidth) {
             return previous;
           }
           return {
@@ -388,10 +397,7 @@ export const DatabaseToolbar = ({
         const width = Math.max(0, Math.min(320, available));
         setSearchDropdownStyle((previous) => {
           const nextWidth = `${Math.round(width)}px`;
-          if (
-            previous?.insetInlineEnd === "0px" &&
-            previous?.inlineSize === nextWidth
-          ) {
+          if (previous?.insetInlineEnd === "0px" && previous?.inlineSize === nextWidth) {
             return previous;
           }
           return {
@@ -517,11 +523,17 @@ export const DatabaseToolbar = ({
   }, [editingViewId, isViewDropdownOpen]);
 
   useEffect(() => {
-    if (editingViewId && !normalizedSavedViews.some((savedView) => savedView.id === editingViewId)) {
+    if (
+      editingViewId &&
+      !normalizedSavedViews.some((savedView) => savedView.id === editingViewId)
+    ) {
       setEditingViewId(null);
       setRenameDraft("");
     }
-    if (viewContextMenuViewId && !normalizedSavedViews.some((savedView) => savedView.id === viewContextMenuViewId)) {
+    if (
+      viewContextMenuViewId &&
+      !normalizedSavedViews.some((savedView) => savedView.id === viewContextMenuViewId)
+    ) {
       setViewContextMenuViewId(null);
       setViewContextMenuStyle(undefined);
     }
@@ -532,15 +544,16 @@ export const DatabaseToolbar = ({
     [normalizedSavedViews, viewContextMenuViewId],
   );
   const contextMenuViewIndex = useMemo(
-    () => contextMenuView
-      ? normalizedSavedViews.findIndex((savedView) => savedView.id === contextMenuView.id)
-      : -1,
+    () =>
+      contextMenuView
+        ? normalizedSavedViews.findIndex((savedView) => savedView.id === contextMenuView.id)
+        : -1,
     [contextMenuView, normalizedSavedViews],
   );
   const contextMenuCanDelete = normalizedSavedViews.length > 1;
   const contextMenuCanMoveUp = contextMenuViewIndex > 0;
-  const contextMenuCanMoveDown = contextMenuViewIndex >= 0 &&
-    contextMenuViewIndex < normalizedSavedViews.length - 1;
+  const contextMenuCanMoveDown =
+    contextMenuViewIndex >= 0 && contextMenuViewIndex < normalizedSavedViews.length - 1;
 
   const submitCreateView = () => {
     const trimmedName = newViewName.trim();
@@ -669,7 +682,9 @@ export const DatabaseToolbar = ({
                               ) {
                                 return;
                               }
-                              setDragOverViewId((previous) => (previous === savedView.id ? null : previous));
+                              setDragOverViewId((previous) =>
+                                previous === savedView.id ? null : previous,
+                              );
                             }}
                             onDrop={(event) => handleViewItemDrop(event, savedView.id)}
                             onDragEnd={() => {
@@ -678,7 +693,9 @@ export const DatabaseToolbar = ({
                               endInternalDrag(DRAG_CHANNELS.DATABASE_SAVED_VIEW);
                             }}
                           >
-                            <span className="database-block-view-dropdown-item-name">{savedView.name}</span>
+                            <span className="database-block-view-dropdown-item-name">
+                              {savedView.name}
+                            </span>
                           </button>
                         )}
                         {isEditing ? null : (
@@ -691,9 +708,9 @@ export const DatabaseToolbar = ({
                               event.stopPropagation();
                               setEditingViewId(null);
                               setRenameDraft("");
-                              setViewContextMenuViewId((previous) => (
-                                previous === savedView.id ? null : savedView.id
-                              ));
+                              setViewContextMenuViewId((previous) =>
+                                previous === savedView.id ? null : savedView.id,
+                              );
                               updateViewContextMenuPosition();
                             }}
                           >
@@ -759,9 +776,7 @@ export const DatabaseToolbar = ({
                         if (!contextMenuCanDelete) {
                           return;
                         }
-                        const confirmed = window.confirm(
-                          `Delete view "${contextMenuView.name}"?`,
-                        );
+                        const confirmed = window.confirm(`Delete view "${contextMenuView.name}"?`);
                         if (!confirmed) {
                           return;
                         }
@@ -822,7 +837,9 @@ export const DatabaseToolbar = ({
             onChange={handleViewChange}
           >
             {viewOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
             ))}
           </select>
         </label>

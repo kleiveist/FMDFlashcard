@@ -42,9 +42,7 @@ export const SvgPreviewBlock = ({
           <button
             type="button"
             className="ghost small"
-            onClick={() =>
-              setMode((current) => (current === "preview" ? "code" : "preview"))
-            }
+            onClick={() => setMode((current) => (current === "preview" ? "code" : "preview"))}
           >
             {showPreview ? "Code" : "Preview"}
           </button>

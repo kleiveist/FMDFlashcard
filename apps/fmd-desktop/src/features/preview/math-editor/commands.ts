@@ -12,7 +12,11 @@ import {
   replaceRowAtPath,
 } from "./ast";
 import { moveCursorHorizontally, moveCursorVertically } from "./cursor";
-import { buildSelectedRowFromNodes, getMathTemplateById, resolveTemplateFromTrigger } from "./palette";
+import {
+  buildSelectedRowFromNodes,
+  getMathTemplateById,
+  resolveTemplateFromTrigger,
+} from "./palette";
 import { importMathLatex } from "./importer";
 import { isSerializableMathTree, serializeRow } from "./serializer";
 import { normalizeCursor } from "./slotTraversal";
@@ -54,7 +58,9 @@ const applyStructuredPayload = (
 ): MathStructureSessionState => {
   const normalizedAst = cloneRow(ast);
   const normalizedCursor = normalizeCursor(normalizedAst, cursor);
-  const previewLatex = isSerializableMathTree(normalizedAst) ? serializeRow(normalizedAst).trim() : state.previewLatex;
+  const previewLatex = isSerializableMathTree(normalizedAst)
+    ? serializeRow(normalizedAst).trim()
+    : state.previewLatex;
   const validation = importMathLatex(previewLatex);
   const validLatex = validation.mode === "structured" ? previewLatex : state.lastValidLatex;
   return {
@@ -113,15 +119,11 @@ const applyInsertText = (state: MathStructureSessionState, text: string) => {
   const selectionStart = state.cursor.selection
     ? Math.min(state.cursor.selection.start, state.cursor.selection.end)
     : state.cursor.offset;
-  return applyStructuredPayload(
-    pushSnapshot(state),
-    nextAst,
-    {
-      rowPath: state.cursor.rowPath,
-      offset: selectionStart + text.length,
-      selection: null,
-    },
-  );
+  return applyStructuredPayload(pushSnapshot(state), nextAst, {
+    rowPath: state.cursor.rowPath,
+    offset: selectionStart + text.length,
+    selection: null,
+  });
 };
 
 const applyTemplateCommand = (state: MathStructureSessionState, templateId: string) => {
@@ -135,74 +137,68 @@ const applyTemplateCommand = (state: MathStructureSessionState, templateId: stri
   }
   const selection = state.cursor.selection
     ? {
-      start: Math.min(state.cursor.selection.start, state.cursor.selection.end),
-      end: Math.max(state.cursor.selection.start, state.cursor.selection.end),
-    }
+        start: Math.min(state.cursor.selection.start, state.cursor.selection.end),
+        end: Math.max(state.cursor.selection.start, state.cursor.selection.end),
+      }
     : null;
-  const selectedNodes = selection
-    ? located.row.children.slice(selection.start, selection.end)
-    : [];
-  const selectedRow = selection && selectedNodes.length > 0 ? buildSelectedRowFromNodes(selectedNodes) : null;
+  const selectedNodes = selection ? located.row.children.slice(selection.start, selection.end) : [];
+  const selectedRow =
+    selection && selectedNodes.length > 0 ? buildSelectedRowFromNodes(selectedNodes) : null;
   const insertion = template.nodeFactory(selectedRow);
   const insertionStart = selection ? selection.start : state.cursor.offset;
   const nextRow = insertNodesIntoRow(located.row, state.cursor.offset, insertion.nodes, selection);
   const nextAst = replaceRowAtPath(state.ast, state.cursor.rowPath, () => nextRow);
   if (insertion.focusSlot) {
     const nextPath = [...state.cursor.rowPath, insertion.focusSlot];
-    return applyStructuredPayload(
-      pushSnapshot(state),
-      nextAst,
-      buildCursorForSlot(nextPath, 0),
-    );
+    return applyStructuredPayload(pushSnapshot(state), nextAst, buildCursorForSlot(nextPath, 0));
   }
-  return applyStructuredPayload(
-    pushSnapshot(state),
-    nextAst,
-    {
-      rowPath: state.cursor.rowPath,
-      offset: insertionStart + insertion.nodes.length,
-      selection: null,
-    },
-  );
+  return applyStructuredPayload(pushSnapshot(state), nextAst, {
+    rowPath: state.cursor.rowPath,
+    offset: insertionStart + insertion.nodes.length,
+    selection: null,
+  });
 };
 
-const applyDeleteCommand = (state: MathStructureSessionState, direction: "backward" | "forward") => {
+const applyDeleteCommand = (
+  state: MathStructureSessionState,
+  direction: "backward" | "forward",
+) => {
   const located = locateRowByPath(state.ast, state.cursor.rowPath);
   if (!located) {
     return state;
   }
   const selection = state.cursor.selection
     ? {
-      start: Math.min(state.cursor.selection.start, state.cursor.selection.end),
-      end: Math.max(state.cursor.selection.start, state.cursor.selection.end),
-    }
+        start: Math.min(state.cursor.selection.start, state.cursor.selection.end),
+        end: Math.max(state.cursor.selection.start, state.cursor.selection.end),
+      }
     : null;
   if (selection && selection.start !== selection.end) {
     const nextRow = removeRowSlice(located.row, selection.start, selection.end);
     const nextAst = replaceRowAtPath(state.ast, state.cursor.rowPath, () => nextRow);
-    return applyStructuredPayload(
-      pushSnapshot(state),
-      nextAst,
-      { rowPath: state.cursor.rowPath, offset: selection.start, selection: null },
-    );
+    return applyStructuredPayload(pushSnapshot(state), nextAst, {
+      rowPath: state.cursor.rowPath,
+      offset: selection.start,
+      selection: null,
+    });
   }
   if (direction === "backward" && state.cursor.offset > 0) {
     const nextRow = removeRowSlice(located.row, state.cursor.offset - 1, state.cursor.offset);
     const nextAst = replaceRowAtPath(state.ast, state.cursor.rowPath, () => nextRow);
-    return applyStructuredPayload(
-      pushSnapshot(state),
-      nextAst,
-      { rowPath: state.cursor.rowPath, offset: state.cursor.offset - 1, selection: null },
-    );
+    return applyStructuredPayload(pushSnapshot(state), nextAst, {
+      rowPath: state.cursor.rowPath,
+      offset: state.cursor.offset - 1,
+      selection: null,
+    });
   }
   if (direction === "forward" && state.cursor.offset < located.row.children.length) {
     const nextRow = removeRowSlice(located.row, state.cursor.offset, state.cursor.offset + 1);
     const nextAst = replaceRowAtPath(state.ast, state.cursor.rowPath, () => nextRow);
-    return applyStructuredPayload(
-      pushSnapshot(state),
-      nextAst,
-      { rowPath: state.cursor.rowPath, offset: state.cursor.offset, selection: null },
-    );
+    return applyStructuredPayload(pushSnapshot(state), nextAst, {
+      rowPath: state.cursor.rowPath,
+      offset: state.cursor.offset,
+      selection: null,
+    });
   }
   if (isRowEmpty(located.row)) {
     const deleted = deleteNodeBeforeEmptySlot(state);
@@ -295,7 +291,12 @@ export const applyMathEditorCommand = (
       if (command.direction === "left" || command.direction === "right") {
         return {
           ...state,
-          cursor: moveCursorHorizontally(state.ast, state.cursor, command.direction, command.extend),
+          cursor: moveCursorHorizontally(
+            state.ast,
+            state.cursor,
+            command.direction,
+            command.extend,
+          ),
         };
       }
       return {
@@ -306,16 +307,19 @@ export const applyMathEditorCommand = (
       return state.mode !== "structured"
         ? state
         : {
-          ...state,
-          cursor: normalizeCursor(state.ast, command.cursor),
-        };
+            ...state,
+            cursor: normalizeCursor(state.ast, command.cursor),
+          };
     case "insertMatrixRow":
       return applyNodeMutation(state, command.nodeId, (ast) =>
         replaceNodeById(ast, command.nodeId, (node) => {
           if (node.kind !== "matrix") {
             return node;
           }
-          const index = Math.max(0, Math.min(command.index ?? node.cells.length, node.cells.length));
+          const index = Math.max(
+            0,
+            Math.min(command.index ?? node.cells.length, node.cells.length),
+          );
           return updateMatrixNode(node, (current) => ({
             ...current,
             cells: [
@@ -332,7 +336,10 @@ export const applyMathEditorCommand = (
           if (node.kind !== "matrix") {
             return node;
           }
-          const columnIndex = Math.max(0, Math.min(command.index ?? (node.cells[0]?.length ?? 0), node.cells[0]?.length ?? 0));
+          const columnIndex = Math.max(
+            0,
+            Math.min(command.index ?? node.cells[0]?.length ?? 0, node.cells[0]?.length ?? 0),
+          );
           return updateMatrixNode(node, (current) => ({
             ...current,
             cells: current.cells.map((row) => [
@@ -363,7 +370,9 @@ export const applyMathEditorCommand = (
           }
           return updateMatrixNode(node, (current) => ({
             ...current,
-            cells: current.cells.map((row) => row.filter((_cell, index) => index !== command.index)),
+            cells: current.cells.map((row) =>
+              row.filter((_cell, index) => index !== command.index),
+            ),
           }));
         }),
       );

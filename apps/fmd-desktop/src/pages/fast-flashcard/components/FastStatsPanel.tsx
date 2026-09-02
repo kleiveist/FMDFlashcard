@@ -114,18 +114,14 @@ export const FastStatsPanel = ({
             </div>
             <h2 className="fast-panel-title">{activeTitle}</h2>
           </div>
-          {headerActions ? (
-            <div className="fast-panel-header-actions">{headerActions}</div>
-          ) : null}
+          {headerActions ? <div className="fast-panel-header-actions">{headerActions}</div> : null}
         </div>
         {showCollapseToggle ? (
           <button
             type="button"
             className="fast-panel-collapse"
             onClick={onToggleCollapse}
-            aria-label={
-              isCollapsed ? "Expand statistics panel" : "Collapse statistics panel"
-            }
+            aria-label={isCollapsed ? "Expand statistics panel" : "Collapse statistics panel"}
             aria-expanded={!isCollapsed}
             aria-controls={controlsId}
           >
@@ -178,26 +174,14 @@ export const FastStatsPanel = ({
               </div>
             ) : null}
             <div className="fast-stats-blocks">
-              <div
-                className={`fast-time-block ${
-                  isCollapsible ? "fast-time-block--hidden" : ""
-                }`}
-              >
+              <div className={`fast-time-block ${isCollapsible ? "fast-time-block--hidden" : ""}`}>
                 <div className="fast-block-header">
                   <span className="label">Time</span>
-                  <span
-                    className={`fast-time-status ${
-                      timeModeActive ? "active" : "inactive"
-                    }`}
-                  >
+                  <span className={`fast-time-status ${timeModeActive ? "active" : "inactive"}`}>
                     {timeStatusLabel}
                   </span>
                 </div>
-                <div
-                  className="fast-time-meter"
-                  style={timeProgressStyle}
-                  aria-hidden="true"
-                />
+                <div className="fast-time-meter" style={timeProgressStyle} aria-hidden="true" />
                 <div className="fast-time-scale">
                   <span>0s</span>
                   <span>{selectedDuration}s</span>

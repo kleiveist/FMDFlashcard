@@ -10,30 +10,32 @@ import {
 
 describe("database-project-fill-profile", () => {
   it("normalizes project fill configs without requiring editable attributes", () => {
-    expect(normalizeProjectBarFillConfigs([
-      {
-        recordId: "record-a",
-        attributeKey: "Progress",
-        mode: "numeric",
-        min: "0",
-        max: "100",
-      },
-      {
-        recordId: "record-b",
-        attributeKey: "StatusCode",
-        mode: "text-code",
-        mappings: [
-          { from: "text1", to: "10" },
-          { from: "", to: 20 },
-          { from: "text2", to: "bad" },
-        ],
-      },
-      {
-        recordId: "record-c",
-        attributeKey: "",
-        mode: "numeric",
-      },
-    ])).toEqual([
+    expect(
+      normalizeProjectBarFillConfigs([
+        {
+          recordId: "record-a",
+          attributeKey: "Progress",
+          mode: "numeric",
+          min: "0",
+          max: "100",
+        },
+        {
+          recordId: "record-b",
+          attributeKey: "StatusCode",
+          mode: "text-code",
+          mappings: [
+            { from: "text1", to: "10" },
+            { from: "", to: 20 },
+            { from: "text2", to: "bad" },
+          ],
+        },
+        {
+          recordId: "record-c",
+          attributeKey: "",
+          mode: "numeric",
+        },
+      ]),
+    ).toEqual([
       {
         recordId: "record-a",
         attributeKey: "Progress",
@@ -105,17 +107,22 @@ describe("database-project-fill-profile", () => {
       },
     };
 
-    await writeDatabaseProjectFillProfile("/vault", "project-a", {
-      barFillConfigs: [
-        {
-          recordId: "record-a",
-          attributeKey: "Progress",
-          mode: "numeric",
-          min: 0,
-          max: 100,
-        },
-      ],
-    }, io);
+    await writeDatabaseProjectFillProfile(
+      "/vault",
+      "project-a",
+      {
+        barFillConfigs: [
+          {
+            recordId: "record-a",
+            attributeKey: "Progress",
+            mode: "numeric",
+            min: 0,
+            max: 100,
+          },
+        ],
+      },
+      io,
+    );
 
     expect(writes[0]?.path).toBe(resolveDatabaseProjectFillProfilePath("/vault"));
     await expect(readDatabaseProjectFillProfile("/vault", "project-a", io)).resolves.toEqual({

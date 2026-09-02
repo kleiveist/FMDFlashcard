@@ -12,7 +12,10 @@ describe("mathBlocks", () => {
       status: "success",
       html: "<span class='katex'>ok</span>",
     });
-    expect(runtime.renderToString).toHaveBeenCalledWith(String.raw`\frac{a}{b}`, expect.any(Object));
+    expect(runtime.renderToString).toHaveBeenCalledWith(
+      String.raw`\frac{a}{b}`,
+      expect.any(Object),
+    );
   });
 
   it("renders stacked display formulas when the whole block fails but each line is valid", () => {
@@ -25,10 +28,10 @@ describe("mathBlocks", () => {
       }),
     };
 
-    const result = renderMathBlockMarkup([
-      String.raw`\sum_{i=1}^{n}`,
-      String.raw`\int_{0}^{1} x^2 dx`,
-    ].join("\n"), runtime);
+    const result = renderMathBlockMarkup(
+      [String.raw`\sum_{i=1}^{n}`, String.raw`\int_{0}^{1} x^2 dx`].join("\n"),
+      runtime,
+    );
 
     expect(result.status).toBe("success");
     if (result.status === "success") {

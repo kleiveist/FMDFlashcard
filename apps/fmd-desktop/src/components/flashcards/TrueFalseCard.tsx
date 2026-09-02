@@ -144,11 +144,7 @@ export const TrueFalseCard = ({
                 </button>
               </div>
               {submitted && showResult ? (
-                <span
-                  className={`truefalse-result ${
-                    isItemCorrect ? "correct" : "incorrect"
-                  }`}
-                >
+                <span className={`truefalse-result ${isItemCorrect ? "correct" : "incorrect"}`}>
                   {isItemCorrect ? "Correct" : "Incorrect"}
                 </span>
               ) : null}

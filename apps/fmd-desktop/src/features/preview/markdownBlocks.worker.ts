@@ -6,10 +6,7 @@
  * - Applies incremental parse updates when possible.
  */
 
-import {
-  parseMarkdownDocument,
-  type MarkdownDocumentSnapshot,
-} from "./markdownDocumentModel";
+import { parseMarkdownDocument, type MarkdownDocumentSnapshot } from "./markdownDocumentModel";
 import { type MarkdownBlock } from "./markdownBlocks";
 import type {
   MarkdownBlockWorkerRequest,
@@ -21,9 +18,7 @@ type WorkerContextLike = {
   onmessage: ((event: MessageEvent<MarkdownBlockWorkerRequest>) => void) | null;
 };
 
-const sanitizeSnapshot = (
-  snapshot: MarkdownDocumentSnapshot,
-): MarkdownDocumentSnapshot => ({
+const sanitizeSnapshot = (snapshot: MarkdownDocumentSnapshot): MarkdownDocumentSnapshot => ({
   markdown: snapshot.markdown,
   version: snapshot.version,
   profile: snapshot.profile,

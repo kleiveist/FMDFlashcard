@@ -44,13 +44,9 @@ export const ExamEditorSection = ({
 }: ExamEditorSectionProps) => (
   <div className="editor-settings-block">
     <h3>{tSettings(language, "settings.examEditor.moveButtons")}</h3>
-    <p className="muted">
-      {tSettings(language, "settings.examEditor.moveButtons.description")}
-    </p>
+    <p className="muted">{tSettings(language, "settings.examEditor.moveButtons.description")}</p>
     <div className="setting-row">
-      <span className="label">
-        {tSettings(language, "settings.examEditor.showUpDownButtons")}
-      </span>
+      <span className="label">{tSettings(language, "settings.examEditor.showUpDownButtons")}</span>
       <div className="theme-toggle">
         <span className="toggle-label">{tSettings(language, "settings.common.off")}</span>
         <label className="switch">
@@ -120,9 +116,7 @@ export const MarkdownEditorSection = ({
         </button>
         <button
           type="button"
-          className={`pill pill-button ${
-            markdownPreviewDefaultMode === "raw" ? "active" : ""
-          }`}
+          className={`pill pill-button ${markdownPreviewDefaultMode === "raw" ? "active" : ""}`}
           aria-pressed={markdownPreviewDefaultMode === "raw"}
           onClick={() => onMarkdownPreviewDefaultModeChange("raw")}
         >
@@ -130,9 +124,7 @@ export const MarkdownEditorSection = ({
         </button>
         <button
           type="button"
-          className={`pill pill-button ${
-            markdownPreviewDefaultMode === "hybrid" ? "active" : ""
-          }`}
+          className={`pill pill-button ${markdownPreviewDefaultMode === "hybrid" ? "active" : ""}`}
           aria-pressed={markdownPreviewDefaultMode === "hybrid"}
           onClick={() => onMarkdownPreviewDefaultModeChange("hybrid")}
         >
@@ -141,9 +133,7 @@ export const MarkdownEditorSection = ({
       </div>
     </div>
     <div className="setting-row">
-      <span className="label">
-        {tSettings(language, "settings.markdownEditor.openInNewTab")}
-      </span>
+      <span className="label">{tSettings(language, "settings.markdownEditor.openInNewTab")}</span>
       <div className="setting-subrow">
         <div className="theme-toggle">
           <span className="toggle-label">{tSettings(language, "settings.common.off")}</span>

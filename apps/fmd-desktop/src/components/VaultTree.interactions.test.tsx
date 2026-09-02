@@ -82,4 +82,3 @@ describe("VaultTree interactions", () => {
     container.remove();
   });
 });
-

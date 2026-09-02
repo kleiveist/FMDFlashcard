@@ -36,13 +36,7 @@ describe("frontmatter-update", () => {
   });
 
   it("updates existing key case-insensitively", () => {
-    const source = [
-      "---",
-      "section: old",
-      "other: stay",
-      "---",
-      "Body",
-    ].join("\n");
+    const source = ["---", "section: old", "other: stay", "---", "Body"].join("\n");
 
     const result = upsertFrontmatterAttributeInMarkdown({
       markdown: source,
@@ -59,12 +53,7 @@ describe("frontmatter-update", () => {
   });
 
   it("rejects invalid unit values during bulk attribute upsert", () => {
-    const source = [
-      "---",
-      "units: 2",
-      "---",
-      "Body",
-    ].join("\n");
+    const source = ["---", "units: 2", "---", "Body"].join("\n");
 
     const result = upsertFrontmatterAttributeInMarkdown({
       markdown: source,
@@ -80,12 +69,7 @@ describe("frontmatter-update", () => {
   });
 
   it("skips existing key when overwrite is disabled", () => {
-    const source = [
-      "---",
-      "Section: old",
-      "---",
-      "Body",
-    ].join("\n");
+    const source = ["---", "Section: old", "---", "Body"].join("\n");
 
     const result = upsertFrontmatterAttributeInMarkdown({
       markdown: source,
@@ -191,21 +175,25 @@ describe("frontmatter-update", () => {
       kind: "text",
       error: null,
     });
-    expect(coerceDatabaseRecordFieldValue("number", "not-a-number").error).toBe("Number value must be numeric.");
-    expect(coerceDatabaseRecordFieldValue("unit", "0").error).toBe("Unit value must be an integer >= 1.");
-    expect(coerceDatabaseRecordFieldValue("unit", "1.2").error).toBe("Unit value must be an integer >= 1.");
-    expect(coerceDatabaseRecordFieldValue("boolean", "nope").error).toBe("Boolean value must be true or false.");
-    expect(coerceDatabaseRecordFieldValue("status", "🟢").error).toBe("Status value must start with a code token.");
+    expect(coerceDatabaseRecordFieldValue("number", "not-a-number").error).toBe(
+      "Number value must be numeric.",
+    );
+    expect(coerceDatabaseRecordFieldValue("unit", "0").error).toBe(
+      "Unit value must be an integer >= 1.",
+    );
+    expect(coerceDatabaseRecordFieldValue("unit", "1.2").error).toBe(
+      "Unit value must be an integer >= 1.",
+    );
+    expect(coerceDatabaseRecordFieldValue("boolean", "nope").error).toBe(
+      "Boolean value must be true or false.",
+    );
+    expect(coerceDatabaseRecordFieldValue("status", "🟢").error).toBe(
+      "Status value must start with a code token.",
+    );
   });
 
   it("upserts record field values case-insensitively without duplicating yaml header", () => {
-    const source = [
-      "---",
-      "section: old",
-      "other: keep",
-      "---",
-      "Body",
-    ].join("\n");
+    const source = ["---", "section: old", "other: keep", "---", "Body"].join("\n");
 
     const result = upsertDatabaseRecordFieldInMarkdown({
       markdown: source,

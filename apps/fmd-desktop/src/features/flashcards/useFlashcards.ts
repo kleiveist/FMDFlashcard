@@ -47,14 +47,7 @@ import { type VaultFile } from "../../lib/tree";
 
 export type FlashcardOrder = "in-order" | "random";
 export type FlashcardMode =
-  | "all"
-  | "qa"
-  | "multiple-choice"
-  | "mix"
-  | "fill-blank"
-  | "assignment"
-  | "true-false"
-  | "yes-no";
+  "all" | "qa" | "multiple-choice" | "mix" | "fill-blank" | "assignment" | "true-false" | "yes-no";
 export type FlashcardScope = "current" | "vault";
 export type FlashcardPageSize = 1 | 2 | 3 | 5;
 export type StatsResetMode = "scan" | "session";
@@ -69,9 +62,8 @@ export type FlashcardScanEntry = {
   sourceMeta: FlashcardSourceMeta;
 };
 
-export const filterFlashcardFiles = <T extends { flashcardCount?: number | null }>(
-  files: T[],
-) => files.filter((file) => (file.flashcardCount ?? 0) > 0);
+export const filterFlashcardFiles = <T extends { flashcardCount?: number | null }>(files: T[]) =>
+  files.filter((file) => (file.flashcardCount ?? 0) > 0);
 
 export const FLASHCARD_PAGE_SIZES: FlashcardPageSize[] = [1, 2, 3, 5];
 export const DEFAULT_FLASHCARD_PAGE_SIZE: FlashcardPageSize = 2;
@@ -85,9 +77,7 @@ const normalizeFlashcardPageSize = (value: number) => {
     : DEFAULT_FLASHCARD_PAGE_SIZE;
 };
 
-const normalizeFlashcardMode = (
-  mode: FlashcardMode,
-): Exclude<FlashcardMode, "yes-no"> =>
+const normalizeFlashcardMode = (mode: FlashcardMode): Exclude<FlashcardMode, "yes-no"> =>
   mode === "yes-no" ? "true-false" : mode;
 
 const getDetectedTypesForPart = (card: FlashcardPart): FlashcardDetectedType[] => {
@@ -268,23 +258,16 @@ export const useFlashcards = ({
       setFlashcardFilesError("");
     }
   }, [files.length, vaultPath]);
-  const [flashcardSelections, setFlashcardSelections] = useState<
-    Record<number, string[]>
-  >({});
-  const [flashcardTextResponses, setFlashcardTextResponses] = useState<
-    Record<number, string>
-  >({});
-  const [flashcardTextRevealed, setFlashcardTextRevealed] = useState<
-    Record<number, boolean>
-  >({});
+  const [flashcardSelections, setFlashcardSelections] = useState<Record<number, string[]>>({});
+  const [flashcardTextResponses, setFlashcardTextResponses] = useState<Record<number, string>>({});
+  const [flashcardTextRevealed, setFlashcardTextRevealed] = useState<Record<number, boolean>>({});
   const [flashcardSelfGrades, setFlashcardSelfGrades] = useState<
     Record<number, FlashcardSelfGrade>
   >({});
-  const [flashcardSubmissions, setFlashcardSubmissions] = useState<
-    Record<number, boolean>
+  const [flashcardSubmissions, setFlashcardSubmissions] = useState<Record<number, boolean>>({});
+  const [flashcardTrueFalseSelections, setFlashcardTrueFalseSelections] = useState<
+    Record<number, Record<string, TrueFalseSelection>>
   >({});
-  const [flashcardTrueFalseSelections, setFlashcardTrueFalseSelections] =
-    useState<Record<number, Record<string, TrueFalseSelection>>>({});
   const [flashcardClozeResponses, setFlashcardClozeResponses] = useState<
     Record<number, Record<string, string>>
   >({});
@@ -508,9 +491,7 @@ export const useFlashcards = ({
           return [];
         }
 
-        const markdownFiles = files.filter((file) =>
-          isMarkdownFilePath(file.relative_path),
-        );
+        const markdownFiles = files.filter((file) => isMarkdownFilePath(file.relative_path));
         const results = await Promise.allSettled(
           markdownFiles.map(async (file) => {
             const contents = await invoke<string>("read_text_file", {
@@ -543,20 +524,14 @@ export const useFlashcards = ({
             }
           } else {
             failures += 1;
-            console.warn(
-              "Failed to read markdown file",
-              markdownFiles[index]?.path,
-              result.reason,
-            );
+            console.warn("Failed to read markdown file", markdownFiles[index]?.path, result.reason);
           }
         });
 
         if (shouldUpdateIndex) {
           setFlashcardFiles(nextFiles);
           if (failures > 0 && nextFiles.length === 0) {
-            setFlashcardFilesError(
-              "Flashcard-Dateien konnten nicht gescannt werden.",
-            );
+            setFlashcardFilesError("Flashcard-Dateien konnten nicht gescannt werden.");
           } else {
             setFlashcardFilesError("");
           }

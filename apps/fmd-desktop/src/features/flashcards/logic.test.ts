@@ -53,15 +53,7 @@ describe("evaluateFlashcardResult", () => {
       0: [{ selections: ["b"] }],
     };
 
-    const result = evaluateFlashcardResult(
-      card,
-      0,
-      {},
-      {},
-      {},
-      {},
-      compositeStates,
-    );
+    const result = evaluateFlashcardResult(card, 0, {}, {}, {}, {}, compositeStates);
 
     expect(result).toBe("incorrect");
   });
@@ -111,15 +103,7 @@ describe("calculateFlashcardStats", () => {
       0: [{ selections: ["b"] }],
     };
 
-    const stats = calculateFlashcardStats(
-      [card],
-      { 0: true },
-      {},
-      {},
-      {},
-      {},
-      compositeStates,
-    );
+    const stats = calculateFlashcardStats([card], { 0: true }, {}, {}, {}, {}, compositeStates);
 
     expect(stats).toEqual({
       correctCount: 0,
@@ -155,15 +139,7 @@ describe("evaluateFlashcardResult pending QA handling", () => {
       0: [{ selections: ["a"] }, {}],
     };
 
-    const result = evaluateFlashcardResult(
-      mixCard,
-      0,
-      {},
-      {},
-      {},
-      {},
-      compositeStates,
-    );
+    const result = evaluateFlashcardResult(mixCard, 0, {}, {}, {}, {}, compositeStates);
 
     expect(result).toBe("pending");
   });
@@ -173,15 +149,7 @@ describe("evaluateFlashcardResult pending QA handling", () => {
       0: [{ selections: ["a"] }, { selfGrade: "correct" }],
     };
 
-    const result = evaluateFlashcardResult(
-      mixCard,
-      0,
-      {},
-      {},
-      {},
-      {},
-      compositeStates,
-    );
+    const result = evaluateFlashcardResult(mixCard, 0, {}, {}, {}, {}, compositeStates);
 
     expect(result).toBe("correct");
   });
@@ -191,15 +159,7 @@ describe("evaluateFlashcardResult pending QA handling", () => {
       0: [{ selections: ["b"] }, { selfGrade: "correct" }],
     };
 
-    const result = evaluateFlashcardResult(
-      mixCard,
-      0,
-      {},
-      {},
-      {},
-      {},
-      compositeStates,
-    );
+    const result = evaluateFlashcardResult(mixCard, 0, {}, {}, {}, {}, compositeStates);
 
     expect(result).toBe("incorrect");
   });

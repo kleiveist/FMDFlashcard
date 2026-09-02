@@ -2,7 +2,12 @@ import type { CSSProperties, ReactNode } from "react";
 import { getSlotLabel } from "./ast";
 import type { FormulaNode, FormulaRowNode, MathEditorCommand, SlotPath } from "./types";
 
-type RenderRow = (row: FormulaRowNode, path: SlotPath, label: string, compact?: boolean) => ReactNode;
+type RenderRow = (
+  row: FormulaRowNode,
+  path: SlotPath,
+  label: string,
+  compact?: boolean,
+) => ReactNode;
 
 const DISPLAY_VALUE_MAP: Record<string, string> = {
   "\\times": "×",
@@ -80,7 +85,12 @@ export const MathStructureNode = ({
           </span>
           <span className="markdown-hybrid-structural-math-fraction-line" />
           <span className="markdown-hybrid-structural-math-fraction-slot is-denominator">
-            {renderRow(node.denominator, [...path, denominatorSlot], getSlotLabel(denominatorSlot), true)}
+            {renderRow(
+              node.denominator,
+              [...path, denominatorSlot],
+              getSlotLabel(denominatorSlot),
+              true,
+            )}
           </span>
         </span>
       );
@@ -120,7 +130,9 @@ export const MathStructureNode = ({
             {renderRow(node.base, [...path, baseSlot], getSlotLabel(baseSlot), true)}
           </span>
           <span className="markdown-hybrid-structural-math-script-stack">
-            <sup>{renderRow(node.exponent, [...path, exponentSlot], getSlotLabel(exponentSlot), true)}</sup>
+            <sup>
+              {renderRow(node.exponent, [...path, exponentSlot], getSlotLabel(exponentSlot), true)}
+            </sup>
           </span>
         </span>
       );
@@ -134,7 +146,14 @@ export const MathStructureNode = ({
             {renderRow(node.base, [...path, baseSlot], getSlotLabel(baseSlot), true)}
           </span>
           <span className="markdown-hybrid-structural-math-script-stack">
-            <sub>{renderRow(node.subscript, [...path, subscriptSlot], getSlotLabel(subscriptSlot), true)}</sub>
+            <sub>
+              {renderRow(
+                node.subscript,
+                [...path, subscriptSlot],
+                getSlotLabel(subscriptSlot),
+                true,
+              )}
+            </sub>
           </span>
         </span>
       );
@@ -149,8 +168,17 @@ export const MathStructureNode = ({
             {renderRow(node.base, [...path, baseSlot], getSlotLabel(baseSlot), true)}
           </span>
           <span className="markdown-hybrid-structural-math-script-stack">
-            <sup>{renderRow(node.exponent, [...path, exponentSlot], getSlotLabel(exponentSlot), true)}</sup>
-            <sub>{renderRow(node.subscript, [...path, subscriptSlot], getSlotLabel(subscriptSlot), true)}</sub>
+            <sup>
+              {renderRow(node.exponent, [...path, exponentSlot], getSlotLabel(exponentSlot), true)}
+            </sup>
+            <sub>
+              {renderRow(
+                node.subscript,
+                [...path, subscriptSlot],
+                getSlotLabel(subscriptSlot),
+                true,
+              )}
+            </sub>
           </span>
         </span>
       );
@@ -159,9 +187,13 @@ export const MathStructureNode = ({
       const slot = { nodeId: node.id, slotName: "body" } as const;
       return (
         <span className="markdown-hybrid-structural-math-node is-delimited">
-          <span className="markdown-hybrid-structural-math-delimiter">{getDisplayValue(node.leftDelimiter)}</span>
+          <span className="markdown-hybrid-structural-math-delimiter">
+            {getDisplayValue(node.leftDelimiter)}
+          </span>
           {renderRow(node.body, [...path, slot], getSlotLabel(slot), true)}
-          <span className="markdown-hybrid-structural-math-delimiter">{getDisplayValue(node.rightDelimiter)}</span>
+          <span className="markdown-hybrid-structural-math-delimiter">
+            {getDisplayValue(node.rightDelimiter)}
+          </span>
         </span>
       );
     }
@@ -194,14 +226,23 @@ export const MathStructureNode = ({
           <span className="markdown-hybrid-structural-math-operator-frame">
             <span className="markdown-hybrid-structural-math-operator-symbol">∫</span>
             <span className="markdown-hybrid-structural-math-operator-bounds">
-              <sup>{renderRow(node.upper, [...path, upperSlot], getSlotLabel(upperSlot), true)}</sup>
-              <sub>{renderRow(node.lower, [...path, lowerSlot], getSlotLabel(lowerSlot), true)}</sub>
+              <sup>
+                {renderRow(node.upper, [...path, upperSlot], getSlotLabel(upperSlot), true)}
+              </sup>
+              <sub>
+                {renderRow(node.lower, [...path, lowerSlot], getSlotLabel(lowerSlot), true)}
+              </sub>
             </span>
           </span>
           <span className="markdown-hybrid-structural-math-operator-body">
             {renderRow(node.integrand, [...path, integrandSlot], getSlotLabel(integrandSlot), true)}
             <span className="markdown-hybrid-structural-math-operator-differential">
-              {renderRow(node.differential, [...path, differentialSlot], getSlotLabel(differentialSlot), true)}
+              {renderRow(
+                node.differential,
+                [...path, differentialSlot],
+                getSlotLabel(differentialSlot),
+                true,
+              )}
             </span>
           </span>
         </span>
@@ -219,8 +260,12 @@ export const MathStructureNode = ({
               {node.kind === "sum" ? "∑" : "∏"}
             </span>
             <span className="markdown-hybrid-structural-math-operator-bounds">
-              <sup>{renderRow(node.upper, [...path, upperSlot], getSlotLabel(upperSlot), true)}</sup>
-              <sub>{renderRow(node.lower, [...path, lowerSlot], getSlotLabel(lowerSlot), true)}</sub>
+              <sup>
+                {renderRow(node.upper, [...path, upperSlot], getSlotLabel(upperSlot), true)}
+              </sup>
+              <sub>
+                {renderRow(node.lower, [...path, lowerSlot], getSlotLabel(lowerSlot), true)}
+              </sub>
             </span>
           </span>
           <span className="markdown-hybrid-structural-math-operator-body">
@@ -236,7 +281,9 @@ export const MathStructureNode = ({
         <span className="markdown-hybrid-structural-math-node is-limit">
           <span className="markdown-hybrid-structural-math-limit-head">
             <span className="markdown-hybrid-structural-math-node-label">lim</span>
-            <sub>{renderRow(node.approach, [...path, approachSlot], getSlotLabel(approachSlot), true)}</sub>
+            <sub>
+              {renderRow(node.approach, [...path, approachSlot], getSlotLabel(approachSlot), true)}
+            </sub>
           </span>
           {renderRow(node.body, [...path, bodySlot], getSlotLabel(bodySlot), true)}
         </span>
@@ -292,7 +339,10 @@ export const MathStructureNode = ({
           {node.cells.map((cell, rowIndex) => {
             const slot = { nodeId: node.id, slotName: "cell", rowIndex } as const;
             return (
-              <span key={`${node.id}-${rowIndex}`} className="markdown-hybrid-structural-math-matrix-cell">
+              <span
+                key={`${node.id}-${rowIndex}`}
+                className="markdown-hybrid-structural-math-matrix-cell"
+              >
                 {renderRow(cell, [...path, slot], getSlotLabel(slot), true)}
               </span>
             );
@@ -319,7 +369,12 @@ export const MathStructureNode = ({
               <span key={row.id} className="markdown-hybrid-structural-math-dual-row">
                 {renderRow(row.value, [...path, valueSlot], getSlotLabel(valueSlot), true)}
                 <span className="markdown-hybrid-structural-math-dual-separator">if</span>
-                {renderRow(row.condition, [...path, conditionSlot], getSlotLabel(conditionSlot), true)}
+                {renderRow(
+                  row.condition,
+                  [...path, conditionSlot],
+                  getSlotLabel(conditionSlot),
+                  true,
+                )}
               </span>
             );
           })}

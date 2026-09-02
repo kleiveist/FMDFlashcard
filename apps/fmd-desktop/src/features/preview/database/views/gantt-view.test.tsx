@@ -3,10 +3,7 @@ import { act, createElement, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { DatabaseGanttView } from "./gantt-view";
-import {
-  type DatabaseAttributeMeta,
-  type DatabaseRecord,
-} from "../database-types";
+import { type DatabaseAttributeMeta, type DatabaseRecord } from "../database-types";
 
 const render = (element: ReactElement, viewportWidth = 1400) => {
   Object.defineProperty(window, "innerWidth", {
@@ -204,7 +201,9 @@ describe("DatabaseGanttView", () => {
     expect(container.querySelectorAll(".database-gantt-bar").length).toBe(1);
     expect(container.querySelectorAll(".database-gantt-milestone").length).toBe(1);
 
-    const firstTitle = container.querySelector<HTMLButtonElement>(".database-gantt-sidebar-row-title");
+    const firstTitle = container.querySelector<HTMLButtonElement>(
+      ".database-gantt-sidebar-row-title",
+    );
     act(() => {
       firstTitle?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
@@ -312,8 +311,9 @@ describe("DatabaseGanttView", () => {
       }),
     );
 
-    const toggleButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => (button.textContent ?? "").includes("Datensatz"));
+    const toggleButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      (button.textContent ?? "").includes("Datensatz"),
+    );
     expect(toggleButton).toBeTruthy();
     expect(container.querySelector(".database-gantt-sidebar-header")).toBeTruthy();
 
@@ -341,8 +341,9 @@ describe("DatabaseGanttView", () => {
       1000,
     );
 
-    const toggleButton = Array.from(container.querySelectorAll("button"))
-      .find((button) => (button.textContent ?? "").includes("Datensatz anzeigen"));
+    const toggleButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      (button.textContent ?? "").includes("Datensatz anzeigen"),
+    );
     expect(toggleButton).toBeTruthy();
     expect(container.querySelector(".database-gantt-sidebar-header")).toBeNull();
 
@@ -371,11 +372,13 @@ describe("DatabaseGanttView", () => {
     const root = container.querySelector<HTMLElement>(".database-gantt-view");
     root?.focus();
     act(() => {
-      root?.dispatchEvent(new KeyboardEvent("keydown", {
-        key: "ArrowRight",
-        bubbles: true,
-        cancelable: true,
-      }));
+      root?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "ArrowRight",
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
     });
     expect(scrollBy).toHaveBeenCalled();
 
@@ -423,7 +426,9 @@ describe("DatabaseGanttView", () => {
       }),
     );
 
-    const button = container.querySelector<HTMLButtonElement>(".database-gantt-row-meta .database-exam-action");
+    const button = container.querySelector<HTMLButtonElement>(
+      ".database-gantt-row-meta .database-exam-action",
+    );
     expect(button).toBeTruthy();
     act(() => {
       button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));

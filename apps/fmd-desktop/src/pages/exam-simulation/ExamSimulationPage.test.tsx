@@ -334,9 +334,7 @@ describe("ExamSimulationPage popup sync", () => {
       minDurationMinutes: 24,
     });
     expect(sidebarProps?.onProfileChange).toBe(popupProps?.onProfileChange);
-    expect(sidebarProps?.onCombinationModeChange).toBe(
-      popupProps?.onCombinationModeChange,
-    );
+    expect(sidebarProps?.onCombinationModeChange).toBe(popupProps?.onCombinationModeChange);
     expect(sidebarProps?.onOpenFile).toBe(popupProps?.onOpenFile);
     const openFileHandler = sidebarProps?.onOpenFile as
       | ((
@@ -346,10 +344,13 @@ describe("ExamSimulationPage popup sync", () => {
       | undefined;
     expect(openFileHandler).toBeTruthy();
     act(() => {
-      openFileHandler?.({
-        path: "/vault/from-exam.md",
-        relative_path: "from-exam.md",
-      }, { openInNewTab: true });
+      openFileHandler?.(
+        {
+          path: "/vault/from-exam.md",
+          relative_path: "from-exam.md",
+        },
+        { openInNewTab: true },
+      );
     });
     expect(openMarkdownSpy).toHaveBeenCalledWith(
       {
@@ -358,9 +359,7 @@ describe("ExamSimulationPage popup sync", () => {
       },
       { openInNewTab: true },
     );
-    const examNoteModalProps = capturedNoteModalProps.find(
-      (entry) => entry.title === "Exam Files",
-    );
+    const examNoteModalProps = capturedNoteModalProps.find((entry) => entry.title === "Exam Files");
     expect(examNoteModalProps?.panelClassName).toBe("note-modal-panel-exam");
     expect(examNoteModalProps?.bodyClassName).toBe("note-modal-body-exam");
     expect(examNoteModalProps?.headerActions).toBeUndefined();
@@ -399,9 +398,7 @@ describe("ExamSimulationPage popup sync", () => {
 
     act(() => {
       runSummary?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-      runSummary?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-      );
+      runSummary?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     });
 
     expect(noteActionSpy).toHaveBeenCalledTimes(2);
@@ -432,9 +429,7 @@ describe("ExamSimulationPage popup sync", () => {
 
     act(() => {
       runSummary?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-      runSummary?.dispatchEvent(
-        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
-      );
+      runSummary?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     });
 
     expect(noteActionSpy).toHaveBeenCalledTimes(0);
@@ -524,14 +519,10 @@ describe("ExamSimulationPage popup sync", () => {
 
     const { cleanup } = render(createElement(ExamSimulationPage));
     const scoringProps =
-      capturedExamManualScoringPanelProps[
-        capturedExamManualScoringPanelProps.length - 1
-      ];
+      capturedExamManualScoringPanelProps[capturedExamManualScoringPanelProps.length - 1];
     expect(scoringProps?.showAiCopyButton).toBe(true);
 
-    const copyHandler = scoringProps?.onCopyAiEvaluation as
-      | (() => Promise<void>)
-      | undefined;
+    const copyHandler = scoringProps?.onCopyAiEvaluation as (() => Promise<void>) | undefined;
     await act(async () => {
       await copyHandler?.();
     });
@@ -544,12 +535,8 @@ describe("ExamSimulationPage popup sync", () => {
     expect(copiedMarkdown).toContain("__ / 10");
 
     const latestScoringProps =
-      capturedExamManualScoringPanelProps[
-        capturedExamManualScoringPanelProps.length - 1
-      ];
-    expect(latestScoringProps?.aiCopyStatus).toBe(
-      "Copied QA answers for AI evaluation",
-    );
+      capturedExamManualScoringPanelProps[capturedExamManualScoringPanelProps.length - 1];
+    expect(latestScoringProps?.aiCopyStatus).toBe("Copied QA answers for AI evaluation");
     cleanup();
   });
 
@@ -603,9 +590,7 @@ describe("ExamSimulationPage popup sync", () => {
     const { container, cleanup } = render(createElement(ExamSimulationPage));
 
     expect(capturedExamTaskRunnerProps).toHaveLength(1);
-    const activeRunner = capturedExamTaskRunnerProps.find(
-      (entry) => entry.taskIndex === 0,
-    );
+    const activeRunner = capturedExamTaskRunnerProps.find((entry) => entry.taskIndex === 0);
     expect(activeRunner).toBeTruthy();
     expect(activeRunner?.helpEnabled).toBe(true);
     expect(activeRunner?.showNavigation).toBe(false);
@@ -660,9 +645,7 @@ describe("ExamSimulationPage popup sync", () => {
     const getTaskPartStates = vi.fn((taskIndex: number) =>
       taskIndex === 0 ? firstStates : secondStates,
     );
-    const getTaskAwardedPoints = vi.fn((taskIndex: number) =>
-      taskIndex === 0 ? null : 3,
-    );
+    const getTaskAwardedPoints = vi.fn((taskIndex: number) => (taskIndex === 0 ? null : 3));
     const getTaskAutoGradeDecision = vi.fn((taskIndex: number) =>
       taskIndex === 0 ? undefined : true,
     );
@@ -699,12 +682,8 @@ describe("ExamSimulationPage popup sync", () => {
 
       const visibleRunnerProps = capturedExamTaskRunnerProps.slice(-2);
       expect(visibleRunnerProps).toHaveLength(2);
-      const firstRunner = visibleRunnerProps.find(
-        (entry) => entry.taskIndex === 0,
-      );
-      const secondRunner = visibleRunnerProps.find(
-        (entry) => entry.taskIndex === 1,
-      );
+      const firstRunner = visibleRunnerProps.find((entry) => entry.taskIndex === 0);
+      const secondRunner = visibleRunnerProps.find((entry) => entry.taskIndex === 1);
       expect(firstRunner).toBeTruthy();
       expect(secondRunner).toBeTruthy();
       expect(firstRunner?.phase).toBe("exam");
@@ -785,9 +764,9 @@ describe("ExamSimulationPage popup sync", () => {
 
       const { container, cleanup } = render(createElement(ExamSimulationPage));
 
-      const runnerTaskIndices = capturedExamTaskRunnerProps.slice(-2).map(
-        (entry) => entry.taskIndex,
-      );
+      const runnerTaskIndices = capturedExamTaskRunnerProps
+        .slice(-2)
+        .map((entry) => entry.taskIndex);
       expect(runnerTaskIndices).toEqual([2, 3]);
       const navButtons = container.querySelectorAll(".exam-panel-nav button.ghost.small");
       expect(navButtons).toHaveLength(2);

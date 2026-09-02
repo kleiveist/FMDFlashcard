@@ -38,11 +38,7 @@ import {
   normalizeKeyboardShortcuts,
   type KeyboardShortcutSettings,
 } from "../../lib/shortcuts/bindings";
-import {
-  AUTO_CARD_TYPES,
-  type AutoCardType,
-  type AutoCardTypeMap,
-} from "../../lib/exam/autoCards";
+import { AUTO_CARD_TYPES, type AutoCardType, type AutoCardTypeMap } from "../../lib/exam/autoCards";
 import {
   DEFAULT_FLASHCARD_PAGE_SIZE,
   FLASHCARD_PAGE_SIZES,
@@ -52,10 +48,7 @@ import {
   type FlashcardScope,
   type StatsResetMode,
 } from "../flashcards/useFlashcards";
-import {
-  FAST_FLASHCARD_DURATIONS,
-  type FastFlashcardDuration,
-} from "../fast-flashcard/constants";
+import { FAST_FLASHCARD_DURATIONS, type FastFlashcardDuration } from "../fast-flashcard/constants";
 import {
   DEFAULT_SPACED_REPETITION_PAGE_SIZE,
   SPACED_REPETITION_BOXES,
@@ -204,16 +197,13 @@ export type AppSettings = {
   exam_auto_cards_types?: Partial<AutoCardTypeMap> | null;
   exam_task_type_default_points?: Partial<Record<AutoCardType, number>> | null;
   exam_task_type_default_time_seconds?: Partial<Record<AutoCardType, number>> | null;
-  exam_task_type_defaults_by_user_id?:
-    | Record<
-        string,
-        | {
-            points?: Partial<Record<AutoCardType, number>> | null;
-            timeSeconds?: Partial<Record<AutoCardType, number>> | null;
-          }
-        | null
-      >
-    | null;
+  exam_task_type_defaults_by_user_id?: Record<
+    string,
+    {
+      points?: Partial<Record<AutoCardType, number>> | null;
+      timeSeconds?: Partial<Record<AutoCardType, number>> | null;
+    } | null
+  > | null;
   exam_auto_cards_return_on_correct?: boolean | null;
   exam_grade_scale?: string | null;
   exam_ai_evaluation?: ExamAiEvaluation | null;
@@ -385,8 +375,7 @@ const resolveDefaultCursorAccessoryEnabled = () => {
 };
 const DEFAULT_CURSOR_ACCESSORY_ENABLED = resolveDefaultCursorAccessoryEnabled();
 const DEFAULT_MARKDOWN_VIEW_EDIT_ENABLED = false;
-const DEFAULT_MARKDOWN_PREVIEW_DEFAULT_MODE: MarkdownPreviewDefaultMode =
-  "markdown";
+const DEFAULT_MARKDOWN_PREVIEW_DEFAULT_MODE: MarkdownPreviewDefaultMode = "markdown";
 const DEFAULT_MARKDOWN_EDITOR_OPEN_IN_NEW_TAB_BY_DEFAULT = false;
 const DEFAULT_MAX_FILES_PER_SCAN = "50";
 const DEFAULT_SCAN_PARALLELISM: "low" | "medium" | "high" = "medium";
@@ -409,8 +398,7 @@ const DEFAULT_EXAM_HELP_ENABLED = true;
 const DEFAULT_EXAM_SHOW_TASK_SOURCES = true;
 const DEFAULT_SPACED_REPETITION_BOXES: SpacedRepetitionBoxes = 5;
 const DEFAULT_SPACED_REPETITION_ORDER: SpacedRepetitionOrder = "in-order";
-const DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH: SpacedRepetitionRepetitionStrength =
-  "medium";
+const DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH: SpacedRepetitionRepetitionStrength = "medium";
 const DEFAULT_SPACED_REPETITION_STATS_VIEW: SpacedRepetitionStatsView = "boxes";
 const DEFAULT_SPACED_REPETITION_AUTO_TIME_ENABLED = false;
 const DEFAULT_SPACED_REPETITION_HELP_ENABLED = true;
@@ -431,10 +419,7 @@ export const DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS: Record<AutoCardType, number>
   cd: 5,
   cld: 8,
 };
-export const DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS: Record<
-  AutoCardType,
-  number
-> = {
+export const DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS: Record<AutoCardType, number> = {
   qa: 6,
   tf: 2,
   m1: 3,
@@ -452,10 +437,7 @@ export const EXAM_TASK_TYPE_LEGACY_PRESET_POINTS: Record<AutoCardType, number> =
   cd: 5,
   cld: 8,
 };
-export const EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS: Record<
-  AutoCardType,
-  number
-> = {
+export const EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS: Record<AutoCardType, number> = {
   qa: 480,
   tf: 45,
   m1: 90,
@@ -468,17 +450,13 @@ export const EXAM_TASK_TYPE_LEGACY_PRESET_TIME_SECONDS: Record<
 const hasExactExamTaskTypeDefaults = (
   candidate: Record<AutoCardType, number>,
   legacy: Record<AutoCardType, number>,
-) =>
-  AUTO_CARD_TYPES.every((type) => candidate[type] === legacy[type]);
+) => AUTO_CARD_TYPES.every((type) => candidate[type] === legacy[type]);
 
 const buildDefaultAutoCardTypes = (value: boolean): AutoCardTypeMap =>
-  AUTO_CARD_TYPES.reduce(
-    (acc, type) => {
-      acc[type] = value;
-      return acc;
-    },
-    {} as AutoCardTypeMap,
-  );
+  AUTO_CARD_TYPES.reduce((acc, type) => {
+    acc[type] = value;
+    return acc;
+  }, {} as AutoCardTypeMap);
 const DEFAULT_EXAM_AUTO_CARDS_TYPES = buildDefaultAutoCardTypes(false);
 const DEFAULT_EXAM_AUTO_CARDS_RETURN_ON_CORRECT = false;
 const DEFAULT_EXAM_AI_EVALUATION: ExamAiEvaluation = {
@@ -685,9 +663,7 @@ const mergeExamAutoCardsTypes = (
   return next;
 };
 
-const normalizeExamTaskTypeDefaultPoints = (
-  value: unknown,
-): Record<AutoCardType, number> => {
+const normalizeExamTaskTypeDefaultPoints = (value: unknown): Record<AutoCardType, number> => {
   const next = { ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS };
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return next;
@@ -718,9 +694,7 @@ const mergeExamTaskTypeDefaultPoints = (
   return next;
 };
 
-const normalizeExamTaskTypeDefaultTimeSeconds = (
-  value: unknown,
-): Record<AutoCardType, number> => {
+const normalizeExamTaskTypeDefaultTimeSeconds = (value: unknown): Record<AutoCardType, number> => {
   const next = { ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS };
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return next;
@@ -751,9 +725,7 @@ const mergeExamTaskTypeDefaultTimeSeconds = (
   return next;
 };
 
-const normalizeExamTaskTypeDefaultsByUserId = (
-  value: unknown,
-): ExamTaskTypeDefaultsByUserId => {
+const normalizeExamTaskTypeDefaultsByUserId = (value: unknown): ExamTaskTypeDefaultsByUserId => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
   }
@@ -771,14 +743,12 @@ const normalizeExamTaskTypeDefaultsByUserId = (
       timeSeconds?: unknown;
     };
     const hasPoints = Boolean(
-      candidate.points &&
-        typeof candidate.points === "object" &&
-        !Array.isArray(candidate.points),
+      candidate.points && typeof candidate.points === "object" && !Array.isArray(candidate.points),
     );
     const hasTimeSeconds = Boolean(
       candidate.timeSeconds &&
-        typeof candidate.timeSeconds === "object" &&
-        !Array.isArray(candidate.timeSeconds),
+      typeof candidate.timeSeconds === "object" &&
+      !Array.isArray(candidate.timeSeconds),
     );
     if (!hasPoints && !hasTimeSeconds) {
       return;
@@ -797,16 +767,10 @@ const buildDefaultExamTaskPoints = (taskCount: number, maxTotalPoints: number) =
   }
   const even = Math.floor(maxTotalPoints / taskCount);
   const remainder = maxTotalPoints % taskCount;
-  return Array.from({ length: taskCount }, (_, index) =>
-    even + (index < remainder ? 1 : 0),
-  );
+  return Array.from({ length: taskCount }, (_, index) => even + (index < remainder ? 1 : 0));
 };
 
-const normalizeExamTaskPointsAll = (
-  value: unknown,
-  taskCount: number,
-  maxTotalPoints: number,
-) => {
+const normalizeExamTaskPointsAll = (value: unknown, taskCount: number, maxTotalPoints: number) => {
   const defaults = buildDefaultExamTaskPoints(taskCount, maxTotalPoints);
   const raw = Array.isArray(value) ? value : [];
   const normalized: number[] = [];
@@ -827,11 +791,7 @@ const mergeExamTaskPointsAll = (
   taskCount: number,
   maxTotalPoints: number,
 ) => {
-  const normalized = normalizeExamTaskPointsAll(
-    current,
-    taskCount,
-    maxTotalPoints,
-  );
+  const normalized = normalizeExamTaskPointsAll(current, taskCount, maxTotalPoints);
   if (!Array.isArray(updates)) {
     return normalized;
   }
@@ -886,9 +846,7 @@ const normalizeRecentVaults = (value: unknown): RecentVaultEntry[] => {
     if (!trimmedPath) {
       return;
     }
-    const systemId = normalizeRecentVaultSystemId(
-      candidate.systemId ?? candidate.system_id,
-    );
+    const systemId = normalizeRecentVaultSystemId(candidate.systemId ?? candidate.system_id);
     const pathSystemKey = buildRecentVaultPathSystemKey(trimmedPath, systemId);
     if (!pathSystemKey || seenPathSystemKeys.has(pathSystemKey)) {
       return;
@@ -897,9 +855,9 @@ const normalizeRecentVaults = (value: unknown): RecentVaultEntry[] => {
     const rawId =
       typeof candidate.id === "string" && candidate.id.trim()
         ? candidate.id
-      : typeof candidate.vaultId === "string" && candidate.vaultId.trim()
+        : typeof candidate.vaultId === "string" && candidate.vaultId.trim()
           ? candidate.vaultId
-        : typeof candidate.vault_id === "string" && candidate.vault_id.trim()
+          : typeof candidate.vault_id === "string" && candidate.vault_id.trim()
             ? candidate.vault_id
             : buildRecentVaultId(trimmedPath, systemId);
     const lastOpenedAt =
@@ -1055,7 +1013,8 @@ const normalizeFormulaAttributeRegistry = (value: unknown): FormulaRegistryEntry
     });
   });
   return Array.from(nextByKey.values()).sort((left, right) =>
-    left.key.localeCompare(right.key, undefined, { sensitivity: "base" }));
+    left.key.localeCompare(right.key, undefined, { sensitivity: "base" }),
+  );
 };
 
 const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings => ({
@@ -1079,8 +1038,7 @@ const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings =>
   ui_cursor_accessory_enabled: settings.cursorAccessoryEnabled,
   editor_markdown_view_edit_enabled: settings.markdownViewEditEnabled,
   editor_markdown_preview_default_mode: settings.markdownPreviewDefaultMode,
-  editor_markdown_open_in_new_tab_by_default:
-    settings.markdownEditorOpenInNewTabByDefault,
+  editor_markdown_open_in_new_tab_by_default: settings.markdownEditorOpenInNewTabByDefault,
   exam_editor_show_move_buttons: settings.examEditorShowMoveButtons,
   language: settings.language,
   max_files_per_scan: settings.maxFilesPerScan,
@@ -1106,8 +1064,7 @@ const buildProfileSettingsPayload = (settings: SettingsSnapshot): AppSettings =>
   spaced_repetition_boxes: settings.spacedRepetitionBoxes,
   spaced_repetition_order: settings.spacedRepetitionOrder,
   spaced_repetition_page_size: settings.spacedRepetitionPageSize,
-  spaced_repetition_repetition_strength:
-    settings.spacedRepetitionRepetitionStrength,
+  spaced_repetition_repetition_strength: settings.spacedRepetitionRepetitionStrength,
   spaced_repetition_stats_view: settings.spacedRepetitionStatsView,
   spaced_repetition_auto_time_enabled: settings.spacedRepetitionAutoTimeEnabled,
   spaced_repetition_help_enabled: settings.spacedRepetitionHelpEnabled,
@@ -1146,12 +1103,8 @@ export const normalizeSettings = (
   const storedAccent = normalizeHex(storedAccentRaw);
   const resolvedAccent = isValidHex(storedAccent) ? storedAccent : DEFAULT_ACCENT;
   const storedMarkdownAccent = stored.markdownEditor?.accentColor ?? null;
-  const storedMarkdownAccentLight = normalizeMarkdownAccentHex(
-    storedMarkdownAccent?.lightHex,
-  );
-  const storedMarkdownAccentDark = normalizeMarkdownAccentHex(
-    storedMarkdownAccent?.darkHex,
-  );
+  const storedMarkdownAccentLight = normalizeMarkdownAccentHex(storedMarkdownAccent?.lightHex);
+  const storedMarkdownAccentDark = normalizeMarkdownAccentHex(storedMarkdownAccent?.darkHex);
   const storedMarkdownAccentCustomSwatches = normalizeMarkdownAccentSwatches(
     storedMarkdownAccent?.customSwatches ?? [],
   );
@@ -1164,10 +1117,8 @@ export const normalizeSettings = (
     typeof stored.editor_markdown_exact_colors_enabled === "boolean"
       ? stored.editor_markdown_exact_colors_enabled
       : DEFAULT_MARKDOWN_EDITOR_ACCENT_ENABLED;
-  const storedMarkdownAccentLightHex =
-    storedMarkdownAccentLight ?? fallbackMarkdownAccent;
-  const storedMarkdownAccentDarkHex =
-    storedMarkdownAccentDark ?? fallbackMarkdownAccent;
+  const storedMarkdownAccentLightHex = storedMarkdownAccentLight ?? fallbackMarkdownAccent;
+  const storedMarkdownAccentDarkHex = storedMarkdownAccentDark ?? fallbackMarkdownAccent;
   const storedEditorBlueprintGrid =
     typeof stored.editor_blueprint_grid === "boolean"
       ? stored.editor_blueprint_grid
@@ -1183,7 +1134,7 @@ export const normalizeSettings = (
       ? stored.ui_cursor_accessory_enabled
       : typeof stored.editor_markdown_backslash_enabled === "boolean"
         ? stored.editor_markdown_backslash_enabled
-      : DEFAULT_CURSOR_ACCESSORY_ENABLED;
+        : DEFAULT_CURSOR_ACCESSORY_ENABLED;
   const storedMarkdownViewEditEnabled =
     typeof stored.editor_markdown_view_edit_enabled === "boolean"
       ? stored.editor_markdown_view_edit_enabled
@@ -1224,8 +1175,7 @@ export const normalizeSettings = (
       : DEFAULT_SCAN_PARALLELISM;
   const legacyHiddenFoldersLevel = resolveLegacyHiddenFoldersLevel(stored);
   const needsShowHiddenFoldersMigration =
-    typeof stored.show_hidden_folders !== "boolean" &&
-    legacyHiddenFoldersLevel !== null;
+    typeof stored.show_hidden_folders !== "boolean" && legacyHiddenFoldersLevel !== null;
   const storedShowHiddenFolders =
     typeof stored.show_hidden_folders === "boolean"
       ? stored.show_hidden_folders
@@ -1273,9 +1223,7 @@ export const normalizeSettings = (
   const storedFlashcardScope =
     stored.flashcard_scope === "vault" ? "vault" : DEFAULT_FLASHCARD_SCOPE;
   const storedFastFlashcardOrder =
-    stored.fast_flashcard_order === "random"
-      ? "random"
-      : DEFAULT_FAST_FLASHCARD_ORDER;
+    stored.fast_flashcard_order === "random" ? "random" : DEFAULT_FAST_FLASHCARD_ORDER;
   const storedFastFlashcardMode =
     stored.fast_flashcard_mode === "all" ||
     stored.fast_flashcard_mode === "qa" ||
@@ -1289,9 +1237,7 @@ export const normalizeSettings = (
         ? "true-false"
         : DEFAULT_FAST_FLASHCARD_MODE;
   const storedFastFlashcardScope =
-    stored.fast_flashcard_scope === "vault"
-      ? "vault"
-      : DEFAULT_FAST_FLASHCARD_SCOPE;
+    stored.fast_flashcard_scope === "vault" ? "vault" : DEFAULT_FAST_FLASHCARD_SCOPE;
   const storedFastFlashcardDurationRaw = stored.fast_flashcard_duration;
   const storedFastFlashcardDurationValue =
     typeof storedFastFlashcardDurationRaw === "number"
@@ -1299,12 +1245,11 @@ export const normalizeSettings = (
       : typeof storedFastFlashcardDurationRaw === "string"
         ? Number.parseInt(storedFastFlashcardDurationRaw, 10)
         : DEFAULT_FAST_FLASHCARD_DURATION;
-  const storedFastFlashcardDuration =
-    FAST_FLASHCARD_DURATIONS.includes(
-      storedFastFlashcardDurationValue as FastFlashcardDuration,
-    )
-      ? (storedFastFlashcardDurationValue as FastFlashcardDuration)
-      : DEFAULT_FAST_FLASHCARD_DURATION;
+  const storedFastFlashcardDuration = FAST_FLASHCARD_DURATIONS.includes(
+    storedFastFlashcardDurationValue as FastFlashcardDuration,
+  )
+    ? (storedFastFlashcardDurationValue as FastFlashcardDuration)
+    : DEFAULT_FAST_FLASHCARD_DURATION;
   const storedFastFlashcardAutoTimeEnabled =
     typeof stored.fast_flashcard_auto_time_enabled === "boolean"
       ? stored.fast_flashcard_auto_time_enabled
@@ -1338,30 +1283,23 @@ export const normalizeSettings = (
       ? stored.flashcard_solution_reveal_enabled
       : true;
   const storedStatsResetMode =
-    stored.flashcard_stats_reset_mode === "session"
-      ? "session"
-      : DEFAULT_STATS_RESET_MODE;
+    stored.flashcard_stats_reset_mode === "session" ? "session" : DEFAULT_STATS_RESET_MODE;
   const storedFlashcardHelpEnabled =
     typeof stored.flashcard_help_enabled === "boolean"
       ? stored.flashcard_help_enabled
       : DEFAULT_FLASHCARD_HELP_ENABLED;
   const storedSpacedRepetitionBoxes =
     typeof stored.spaced_repetition_boxes === "number" &&
-    SPACED_REPETITION_BOXES.includes(
-      stored.spaced_repetition_boxes as SpacedRepetitionBoxes,
-    )
+    SPACED_REPETITION_BOXES.includes(stored.spaced_repetition_boxes as SpacedRepetitionBoxes)
       ? (stored.spaced_repetition_boxes as SpacedRepetitionBoxes)
       : DEFAULT_SPACED_REPETITION_BOXES;
   const storedSpacedRepetitionOrder =
-    stored.spaced_repetition_order === "random" ||
-    stored.spaced_repetition_order === "repetition"
+    stored.spaced_repetition_order === "random" || stored.spaced_repetition_order === "repetition"
       ? stored.spaced_repetition_order
       : DEFAULT_SPACED_REPETITION_ORDER;
   const storedSpacedRepetitionPageSizeRaw = stored.spaced_repetition_page_size;
   const migratedSpacedRepetitionPageSize =
-    storedSpacedRepetitionPageSizeRaw === 10
-      ? 5
-      : storedSpacedRepetitionPageSizeRaw;
+    storedSpacedRepetitionPageSizeRaw === 10 ? 5 : storedSpacedRepetitionPageSizeRaw;
   const storedSpacedRepetitionPageSize =
     typeof migratedSpacedRepetitionPageSize === "number" &&
     SPACED_REPETITION_PAGE_SIZES.includes(
@@ -1398,9 +1336,7 @@ export const normalizeSettings = (
   const storedExamMaxTotalPoints = clampExamTotalPoints(
     stored.exam_max_total_points ?? DEFAULT_EXAM_MAX_TOTAL_POINTS,
   );
-  const storedExamTaskCount = clampExamTaskCount(
-    stored.exam_task_count ?? DEFAULT_EXAM_TASK_COUNT,
-  );
+  const storedExamTaskCount = clampExamTaskCount(stored.exam_task_count ?? DEFAULT_EXAM_TASK_COUNT);
   const storedExamTaskPoints = normalizeExamTaskPointsAll(
     stored.exam_task_points,
     storedExamTaskCount,
@@ -1414,9 +1350,7 @@ export const normalizeSettings = (
       ? stored.exam_time_limit_enabled
       : DEFAULT_EXAM_TIME_LIMIT_ENABLED;
   const legacyExamAutoCardsEnabled =
-    typeof stored.exam_auto_cards_enabled === "boolean"
-      ? stored.exam_auto_cards_enabled
-      : null;
+    typeof stored.exam_auto_cards_enabled === "boolean" ? stored.exam_auto_cards_enabled : null;
   const storedExamAutoCardsTypes = normalizeExamAutoCardsTypes(
     stored.exam_auto_cards_types,
     legacyExamAutoCardsEnabled,
@@ -1424,14 +1358,12 @@ export const normalizeSettings = (
   const storedExamTaskTypeDefaultPoints = normalizeExamTaskTypeDefaultPoints(
     stored.exam_task_type_default_points,
   );
-  const storedExamTaskTypeDefaultTimeSeconds =
-    normalizeExamTaskTypeDefaultTimeSeconds(
-      stored.exam_task_type_default_time_seconds,
-    );
-  const storedExamTaskTypeDefaultsByUserId =
-    normalizeExamTaskTypeDefaultsByUserId(
-      stored.exam_task_type_defaults_by_user_id,
-    );
+  const storedExamTaskTypeDefaultTimeSeconds = normalizeExamTaskTypeDefaultTimeSeconds(
+    stored.exam_task_type_default_time_seconds,
+  );
+  const storedExamTaskTypeDefaultsByUserId = normalizeExamTaskTypeDefaultsByUserId(
+    stored.exam_task_type_defaults_by_user_id,
+  );
   const needsExamTaskTypeDefaultsMigration =
     hasExactExamTaskTypeDefaults(
       storedExamTaskTypeDefaultPoints,
@@ -1444,21 +1376,16 @@ export const normalizeSettings = (
   const normalizedExamTaskTypeDefaultPoints = needsExamTaskTypeDefaultsMigration
     ? { ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS }
     : storedExamTaskTypeDefaultPoints;
-  const normalizedExamTaskTypeDefaultTimeSeconds =
-    needsExamTaskTypeDefaultsMigration
-      ? { ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS }
-      : storedExamTaskTypeDefaultTimeSeconds;
+  const normalizedExamTaskTypeDefaultTimeSeconds = needsExamTaskTypeDefaultsMigration
+    ? { ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS }
+    : storedExamTaskTypeDefaultTimeSeconds;
   const storedExamAutoCardsReturnOnCorrect =
     typeof stored.exam_auto_cards_return_on_correct === "boolean"
       ? stored.exam_auto_cards_return_on_correct
       : DEFAULT_EXAM_AUTO_CARDS_RETURN_ON_CORRECT;
   const storedExamGradeScale =
-    stored.exam_grade_scale === "standard-1-6"
-      ? stored.exam_grade_scale
-      : DEFAULT_EXAM_GRADE_SCALE;
-  const storedExamAiEvaluation = normalizeExamAiEvaluation(
-    stored.exam_ai_evaluation,
-  );
+    stored.exam_grade_scale === "standard-1-6" ? stored.exam_grade_scale : DEFAULT_EXAM_GRADE_SCALE;
+  const storedExamAiEvaluation = normalizeExamAiEvaluation(stored.exam_ai_evaluation);
   const storedInputDebugEnabled =
     typeof stored.input_debug_enabled === "boolean"
       ? stored.input_debug_enabled
@@ -1467,10 +1394,8 @@ export const normalizeSettings = (
     typeof stored.input_debug_redact_content === "boolean"
       ? stored.input_debug_redact_content
       : DEFAULT_INPUT_DEBUG_REDACT_CONTENT;
-  const {
-    settings: storedKeyboardShortcuts,
-    needsMigration: needsKeyboardShortcutsMigration,
-  } = normalizeKeyboardShortcuts(stored.keyboard_shortcuts);
+  const { settings: storedKeyboardShortcuts, needsMigration: needsKeyboardShortcutsMigration } =
+    normalizeKeyboardShortcuts(stored.keyboard_shortcuts);
   const storedMonitoringRenderProfiles = normalizeMonitoringRenderProfiles(
     stored.monitoring_render_profiles,
   );
@@ -1562,22 +1487,20 @@ export const useAppSettings = () => {
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
   const [accentDraft, setAccentDraft] = useState(DEFAULT_ACCENT);
   const [accentError, setAccentError] = useState("");
-  const [markdownEditorAccentEnabled, setMarkdownEditorAccentEnabledState] =
-    useState(DEFAULT_MARKDOWN_EDITOR_ACCENT_ENABLED);
+  const [markdownEditorAccentEnabled, setMarkdownEditorAccentEnabledState] = useState(
+    DEFAULT_MARKDOWN_EDITOR_ACCENT_ENABLED,
+  );
   const [markdownEditorAccentLightHex, setMarkdownEditorAccentLightHexState] =
     useState(DEFAULT_ACCENT);
   const [markdownEditorAccentDarkHex, setMarkdownEditorAccentDarkHexState] =
     useState(DEFAULT_ACCENT);
-  const [
-    markdownEditorAccentCustomSwatches,
-    setMarkdownEditorAccentCustomSwatchesState,
-  ] = useState<string[]>([]);
+  const [markdownEditorAccentCustomSwatches, setMarkdownEditorAccentCustomSwatchesState] = useState<
+    string[]
+  >([]);
   const [canvasSettings, setCanvasSettingsState] = useState<CanvasSettings>(() =>
     normalizeCanvasSettings(null),
   );
-  const [editorBlueprintGrid, setEditorBlueprintGrid] = useState(
-    DEFAULT_EDITOR_BLUEPRINT_GRID,
-  );
+  const [editorBlueprintGrid, setEditorBlueprintGrid] = useState(DEFAULT_EDITOR_BLUEPRINT_GRID);
   const [editorBlueprintGridIntensity, setEditorBlueprintGridIntensity] =
     useState<EditorGridIntensity>(DEFAULT_EDITOR_BLUEPRINT_GRID_INTENSITY);
   const [cursorAccessoryEnabled, setCursorAccessoryEnabledState] = useState(
@@ -1588,23 +1511,18 @@ export const useAppSettings = () => {
   );
   const [markdownPreviewDefaultMode, setMarkdownPreviewDefaultModeState] =
     useState<MarkdownPreviewDefaultMode>(DEFAULT_MARKDOWN_PREVIEW_DEFAULT_MODE);
-  const [
-    markdownEditorOpenInNewTabByDefault,
-    setMarkdownEditorOpenInNewTabByDefaultState,
-  ] = useState(DEFAULT_MARKDOWN_EDITOR_OPEN_IN_NEW_TAB_BY_DEFAULT);
-  const [examEditorShowMoveButtons, setExamEditorShowMoveButtonsState] =
-    useState(DEFAULT_EXAM_EDITOR_SHOW_MOVE_BUTTONS);
-  const [settingsLoaded, setSettingsLoaded] = useState(false);
-  const [currentSystemId, setCurrentSystemId] = useState<string>(
-    buildFallbackSystemIdentity,
+  const [markdownEditorOpenInNewTabByDefault, setMarkdownEditorOpenInNewTabByDefaultState] =
+    useState(DEFAULT_MARKDOWN_EDITOR_OPEN_IN_NEW_TAB_BY_DEFAULT);
+  const [examEditorShowMoveButtons, setExamEditorShowMoveButtonsState] = useState(
+    DEFAULT_EXAM_EDITOR_SHOW_MOVE_BUTTONS,
   );
-  const [userVaultProfilePath, setUserVaultProfilePath] = useState<string | null>(
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [currentSystemId, setCurrentSystemId] = useState<string>(buildFallbackSystemIdentity);
+  const [userVaultProfilePath, setUserVaultProfilePath] = useState<string | null>(null);
+  const [userVaultProfileRevision, setUserVaultProfileRevision] = useState(0);
+  const [userVaultProfileActiveUserId, setUserVaultProfileActiveUserId] = useState<string | null>(
     null,
   );
-  const [userVaultProfileRevision, setUserVaultProfileRevision] = useState(0);
-  const [userVaultProfileActiveUserId, setUserVaultProfileActiveUserId] = useState<
-    string | null
-  >(null);
   const [activeNotePath, setActiveNotePath] = useState<string | null>(null);
   const [vaultPath, setVaultPath] = useState<string | null>(null);
   const [recentVaults, setRecentVaults] = useState<RecentVaultEntry[]>([]);
@@ -1612,102 +1530,81 @@ export const useAppSettings = () => {
     () => filterRecentVaultsForSystem(recentVaults, currentSystemId),
     [currentSystemId, recentVaults],
   );
-  const [userVaultMode, setUserVaultModeState] = useState<UserVaultMode>(
-    DEFAULT_USER_VAULT_MODE,
-  );
-  const [userVaultCustomPath, setUserVaultCustomPathState] = useState<
-    string | null
-  >(null);
-  const [userVaultLastPath, setUserVaultLastPathState] = useState<string | null>(
+  const [userVaultMode, setUserVaultModeState] = useState<UserVaultMode>(DEFAULT_USER_VAULT_MODE);
+  const [userVaultCustomPath, setUserVaultCustomPathState] = useState<string | null>(null);
+  const [userVaultLastPath, setUserVaultLastPathState] = useState<string | null>(null);
+  const [userVaultSelectedAutoPath, setUserVaultSelectedAutoPathState] = useState<string | null>(
     null,
   );
-  const [userVaultSelectedAutoPath, setUserVaultSelectedAutoPathState] =
-    useState<string | null>(null);
-  const [userVaultSelectedCustomPath, setUserVaultSelectedCustomPathState] =
-    useState<string | null>(null);
+  const [userVaultSelectedCustomPath, setUserVaultSelectedCustomPathState] = useState<
+    string | null
+  >(null);
   const [language, setLanguage] = useState<AppLanguage>(DEFAULT_LANGUAGE);
-  const [maxFilesPerScan, setMaxFilesPerScan] = useState(
-    DEFAULT_MAX_FILES_PER_SCAN,
+  const [maxFilesPerScan, setMaxFilesPerScan] = useState(DEFAULT_MAX_FILES_PER_SCAN);
+  const [scanParallelism, setScanParallelism] = useState<"low" | "medium" | "high">(
+    DEFAULT_SCAN_PARALLELISM,
   );
-  const [scanParallelism, setScanParallelism] = useState<
-    "low" | "medium" | "high"
-  >(DEFAULT_SCAN_PARALLELISM);
-  const [showHiddenFolders, setShowHiddenFoldersState] = useState(
-    DEFAULT_SHOW_HIDDEN_FOLDERS,
+  const [showHiddenFolders, setShowHiddenFoldersState] = useState(DEFAULT_SHOW_HIDDEN_FOLDERS);
+  const [showEmptyFolders, setShowEmptyFoldersState] = useState(DEFAULT_SHOW_EMPTY_FOLDERS);
+  const [flashcardOrder, setFlashcardOrder] = useState<FlashcardOrder>(DEFAULT_FLASHCARD_ORDER);
+  const [flashcardMode, setFlashcardMode] = useState<FlashcardMode>(DEFAULT_FLASHCARD_MODE);
+  const [flashcardScope, setFlashcardScope] = useState<FlashcardScope>(DEFAULT_FLASHCARD_SCOPE);
+  const [flashcardPageSize, setFlashcardPageSize] = useState<FlashcardPageSize>(
+    DEFAULT_FLASHCARD_PAGE_SIZE,
   );
-  const [showEmptyFolders, setShowEmptyFoldersState] = useState(
-    DEFAULT_SHOW_EMPTY_FOLDERS,
-  );
-  const [flashcardOrder, setFlashcardOrder] =
-    useState<FlashcardOrder>(DEFAULT_FLASHCARD_ORDER);
-  const [flashcardMode, setFlashcardMode] =
-    useState<FlashcardMode>(DEFAULT_FLASHCARD_MODE);
-  const [flashcardScope, setFlashcardScope] =
-    useState<FlashcardScope>(DEFAULT_FLASHCARD_SCOPE);
-  const [flashcardPageSize, setFlashcardPageSize] =
-    useState<FlashcardPageSize>(DEFAULT_FLASHCARD_PAGE_SIZE);
   const [solutionRevealEnabled, setSolutionRevealEnabled] = useState(true);
-  const [statsResetMode, setStatsResetMode] =
-    useState<StatsResetMode>(DEFAULT_STATS_RESET_MODE);
+  const [statsResetMode, setStatsResetMode] = useState<StatsResetMode>(DEFAULT_STATS_RESET_MODE);
   const [flashcardHelpEnabled, setFlashcardHelpEnabledState] = useState(
     DEFAULT_FLASHCARD_HELP_ENABLED,
   );
-  const [fastFlashcardOrder, setFastFlashcardOrder] =
-    useState<FlashcardOrder>(DEFAULT_FAST_FLASHCARD_ORDER);
-  const [fastFlashcardMode, setFastFlashcardMode] =
-    useState<FlashcardMode>(DEFAULT_FAST_FLASHCARD_MODE);
-  const [fastFlashcardScope, setFastFlashcardScope] =
-    useState<FlashcardScope>(DEFAULT_FAST_FLASHCARD_SCOPE);
+  const [fastFlashcardOrder, setFastFlashcardOrder] = useState<FlashcardOrder>(
+    DEFAULT_FAST_FLASHCARD_ORDER,
+  );
+  const [fastFlashcardMode, setFastFlashcardMode] = useState<FlashcardMode>(
+    DEFAULT_FAST_FLASHCARD_MODE,
+  );
+  const [fastFlashcardScope, setFastFlashcardScope] = useState<FlashcardScope>(
+    DEFAULT_FAST_FLASHCARD_SCOPE,
+  );
   const [fastFlashcardDuration, setFastFlashcardDuration] = useState(
     DEFAULT_FAST_FLASHCARD_DURATION,
   );
-  const [fastFlashcardAutoTimeEnabled, setFastFlashcardAutoTimeEnabledState] =
-    useState(DEFAULT_FAST_FLASHCARD_AUTO_TIME_ENABLED);
+  const [fastFlashcardAutoTimeEnabled, setFastFlashcardAutoTimeEnabledState] = useState(
+    DEFAULT_FAST_FLASHCARD_AUTO_TIME_ENABLED,
+  );
   const [fastFlashcardHelpEnabled, setFastFlashcardHelpEnabledState] = useState(
     DEFAULT_FAST_FLASHCARD_HELP_ENABLED,
   );
-  const [examShowTimeline, setExamShowTimelineState] = useState(
-    DEFAULT_EXAM_SHOW_TIMELINE,
-  );
-  const [examHelpEnabled, setExamHelpEnabledState] = useState(
-    DEFAULT_EXAM_HELP_ENABLED,
-  );
+  const [examShowTimeline, setExamShowTimelineState] = useState(DEFAULT_EXAM_SHOW_TIMELINE);
+  const [examHelpEnabled, setExamHelpEnabledState] = useState(DEFAULT_EXAM_HELP_ENABLED);
   const [examShowTaskSources, setExamShowTaskSourcesState] = useState(
     DEFAULT_EXAM_SHOW_TASK_SOURCES,
   );
-  const [spacedRepetitionBoxes, setSpacedRepetitionBoxes] =
-    useState<SpacedRepetitionBoxes>(DEFAULT_SPACED_REPETITION_BOXES);
-  const [spacedRepetitionOrder, setSpacedRepetitionOrder] =
-    useState<SpacedRepetitionOrder>(DEFAULT_SPACED_REPETITION_ORDER);
+  const [spacedRepetitionBoxes, setSpacedRepetitionBoxes] = useState<SpacedRepetitionBoxes>(
+    DEFAULT_SPACED_REPETITION_BOXES,
+  );
+  const [spacedRepetitionOrder, setSpacedRepetitionOrder] = useState<SpacedRepetitionOrder>(
+    DEFAULT_SPACED_REPETITION_ORDER,
+  );
   const [spacedRepetitionPageSize, setSpacedRepetitionPageSize] =
     useState<SpacedRepetitionPageSize>(DEFAULT_SPACED_REPETITION_PAGE_SIZE);
-  const [
-    spacedRepetitionRepetitionStrength,
-    setSpacedRepetitionRepetitionStrength,
-  ] = useState<SpacedRepetitionRepetitionStrength>(
-    DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH,
-  );
+  const [spacedRepetitionRepetitionStrength, setSpacedRepetitionRepetitionStrength] =
+    useState<SpacedRepetitionRepetitionStrength>(DEFAULT_SPACED_REPETITION_REPETITION_STRENGTH);
   const [spacedRepetitionStatsView, setSpacedRepetitionStatsView] =
     useState<SpacedRepetitionStatsView>(DEFAULT_SPACED_REPETITION_STATS_VIEW);
-  const [
-    spacedRepetitionAutoTimeEnabled,
-    setSpacedRepetitionAutoTimeEnabledState,
-  ] = useState(DEFAULT_SPACED_REPETITION_AUTO_TIME_ENABLED);
-  const [spacedRepetitionHelpEnabled, setSpacedRepetitionHelpEnabledState] =
-    useState(DEFAULT_SPACED_REPETITION_HELP_ENABLED);
+  const [spacedRepetitionAutoTimeEnabled, setSpacedRepetitionAutoTimeEnabledState] = useState(
+    DEFAULT_SPACED_REPETITION_AUTO_TIME_ENABLED,
+  );
+  const [spacedRepetitionHelpEnabled, setSpacedRepetitionHelpEnabledState] = useState(
+    DEFAULT_SPACED_REPETITION_HELP_ENABLED,
+  );
   const [rightToolbarCollapsed, setRightToolbarCollapsed] = useState(
     DEFAULT_RIGHT_TOOLBAR_COLLAPSED,
   );
-  const [examMaxTotalPoints, setExamMaxTotalPointsState] = useState(
-    DEFAULT_EXAM_MAX_TOTAL_POINTS,
-  );
+  const [examMaxTotalPoints, setExamMaxTotalPointsState] = useState(DEFAULT_EXAM_MAX_TOTAL_POINTS);
   const [examTaskCount, setExamTaskCountState] = useState(DEFAULT_EXAM_TASK_COUNT);
   const [examTaskPoints, setExamTaskPointsState] = useState(() =>
-    normalizeExamTaskPointsAll(
-      [],
-      DEFAULT_EXAM_TASK_COUNT,
-      DEFAULT_EXAM_MAX_TOTAL_POINTS,
-    ),
+    normalizeExamTaskPointsAll([], DEFAULT_EXAM_TASK_COUNT, DEFAULT_EXAM_MAX_TOTAL_POINTS),
   );
   const [examDurationMinutes, setExamDurationMinutesState] = useState(
     DEFAULT_EXAM_DURATION_MINUTES,
@@ -1715,22 +1612,18 @@ export const useAppSettings = () => {
   const [examTimeLimitEnabled, setExamTimeLimitEnabledState] = useState(
     DEFAULT_EXAM_TIME_LIMIT_ENABLED,
   );
-  const [examAutoCardsTypes, setExamAutoCardsTypesState] = useState<
-    AutoCardTypeMap
-  >(() => ({ ...DEFAULT_EXAM_AUTO_CARDS_TYPES }));
-  const [examTaskTypeDefaultPointsFallback, setExamTaskTypeDefaultPointsFallbackState] =
-    useState<
-      Record<AutoCardType, number>
-    >(() => ({ ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS }));
-  const [
-    examTaskTypeDefaultTimeSecondsFallback,
-    setExamTaskTypeDefaultTimeSecondsFallbackState,
-  ] = useState<Record<AutoCardType, number>>(() => ({
-    ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS,
+  const [examAutoCardsTypes, setExamAutoCardsTypesState] = useState<AutoCardTypeMap>(() => ({
+    ...DEFAULT_EXAM_AUTO_CARDS_TYPES,
   }));
-  const [examTaskTypeDefaultsByUserId, setExamTaskTypeDefaultsByUserIdState] = useState<
-    ExamTaskTypeDefaultsByUserId
-  >({});
+  const [examTaskTypeDefaultPointsFallback, setExamTaskTypeDefaultPointsFallbackState] = useState<
+    Record<AutoCardType, number>
+  >(() => ({ ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_POINTS }));
+  const [examTaskTypeDefaultTimeSecondsFallback, setExamTaskTypeDefaultTimeSecondsFallbackState] =
+    useState<Record<AutoCardType, number>>(() => ({
+      ...DEFAULT_EXAM_TASK_TYPE_DEFAULT_TIME_SECONDS,
+    }));
+  const [examTaskTypeDefaultsByUserId, setExamTaskTypeDefaultsByUserIdState] =
+    useState<ExamTaskTypeDefaultsByUserId>({});
   const activeUserTaskTypeDefaults = userVaultProfileActiveUserId
     ? (examTaskTypeDefaultsByUserId[userVaultProfileActiveUserId] ?? null)
     : null;
@@ -1738,26 +1631,24 @@ export const useAppSettings = () => {
     activeUserTaskTypeDefaults?.points ?? examTaskTypeDefaultPointsFallback;
   const examTaskTypeDefaultTimeSeconds: Record<AutoCardType, number> =
     activeUserTaskTypeDefaults?.timeSeconds ?? examTaskTypeDefaultTimeSecondsFallback;
-  const [examAutoCardsReturnOnCorrect, setExamAutoCardsReturnOnCorrectState] =
-    useState(DEFAULT_EXAM_AUTO_CARDS_RETURN_ON_CORRECT);
-  const [examGradeScale, setExamGradeScaleState] = useState<ExamGradeScale>(
-    DEFAULT_EXAM_GRADE_SCALE,
+  const [examAutoCardsReturnOnCorrect, setExamAutoCardsReturnOnCorrectState] = useState(
+    DEFAULT_EXAM_AUTO_CARDS_RETURN_ON_CORRECT,
   );
+  const [examGradeScale, setExamGradeScaleState] =
+    useState<ExamGradeScale>(DEFAULT_EXAM_GRADE_SCALE);
   const [examAiEvaluation, setExamAiEvaluationState] = useState<ExamAiEvaluation>(
     DEFAULT_EXAM_AI_EVALUATION,
   );
-  const [inputDebugEnabled, setInputDebugEnabledState] = useState(
-    DEFAULT_INPUT_DEBUG_ENABLED,
-  );
+  const [inputDebugEnabled, setInputDebugEnabledState] = useState(DEFAULT_INPUT_DEBUG_ENABLED);
   const [inputDebugRedactContent, setInputDebugRedactContentState] = useState(
     DEFAULT_INPUT_DEBUG_REDACT_CONTENT,
   );
-  const [keyboardShortcuts, setKeyboardShortcutsState] =
-    useState<KeyboardShortcutSettings>(DEFAULT_KEYBOARD_SHORTCUTS);
-  const [monitoringRenderProfiles, setMonitoringRenderProfilesState] =
-    useState<MonitoringRenderProfile[]>(() =>
-      normalizeMonitoringRenderProfiles(null),
-    );
+  const [keyboardShortcuts, setKeyboardShortcutsState] = useState<KeyboardShortcutSettings>(
+    DEFAULT_KEYBOARD_SHORTCUTS,
+  );
+  const [monitoringRenderProfiles, setMonitoringRenderProfilesState] = useState<
+    MonitoringRenderProfile[]
+  >(() => normalizeMonitoringRenderProfiles(null));
   const [formulaAttributeRegistry, setFormulaAttributeRegistryState] = useState<
     FormulaRegistryEntry[]
   >(() => normalizeFormulaAttributeRegistry(null));
@@ -1766,31 +1657,27 @@ export const useAppSettings = () => {
   const needsShowHiddenFoldersMigration = useRef(false);
   const needsKeyboardShortcutsMigration = useRef(false);
   const needsExamTaskTypeDefaultsMigration = useRef(false);
-  const lastProfileSyncRef = useRef<{ path: string; revision: number } | null>(
-    null,
-  );
+  const lastProfileSyncRef = useRef<{ path: string; revision: number } | null>(null);
 
   const setExamMaxTotalPoints = useCallback((value: number) => {
     setExamMaxTotalPointsState(clampExamTotalPoints(value));
   }, []);
 
-  const setExamTaskCount = useCallback((value: number) => {
-    const nextCount = clampExamTaskCount(value);
-    setExamTaskCountState(nextCount);
-    setExamTaskPointsState((prev) => {
-      return normalizeExamTaskPointsAll(prev, nextCount, examMaxTotalPoints);
-    });
-  }, [examMaxTotalPoints]);
+  const setExamTaskCount = useCallback(
+    (value: number) => {
+      const nextCount = clampExamTaskCount(value);
+      setExamTaskCountState(nextCount);
+      setExamTaskPointsState((prev) => {
+        return normalizeExamTaskPointsAll(prev, nextCount, examMaxTotalPoints);
+      });
+    },
+    [examMaxTotalPoints],
+  );
 
   const setExamTaskPoints = useCallback(
     (value: number[]) => {
       setExamTaskPointsState((prev) => {
-        return mergeExamTaskPointsAll(
-          prev,
-          value,
-          examTaskCount,
-          examMaxTotalPoints,
-        );
+        return mergeExamTaskPointsAll(prev, value, examTaskCount, examMaxTotalPoints);
       });
     },
     [examMaxTotalPoints, examTaskCount],
@@ -1808,15 +1695,12 @@ export const useAppSettings = () => {
     setExamTimeLimitEnabledState(Boolean(value));
   }, []);
 
-  const setExamAutoCardsTypeEnabled = useCallback(
-    (type: AutoCardType, value: boolean) => {
-      setExamAutoCardsTypesState((prev) => ({
-        ...prev,
-        [type]: Boolean(value),
-      }));
-    },
-    [],
-  );
+  const setExamAutoCardsTypeEnabled = useCallback((type: AutoCardType, value: boolean) => {
+    setExamAutoCardsTypesState((prev) => ({
+      ...prev,
+      [type]: Boolean(value),
+    }));
+  }, []);
 
   const setExamTaskTypeDefaultPoint = useCallback(
     (type: AutoCardType, value: number) => {
@@ -1962,33 +1846,20 @@ export const useAppSettings = () => {
     setKeyboardShortcutsState(settings);
   }, []);
 
-  const setMonitoringRenderProfiles = useCallback(
-    (value: MonitoringRenderProfile[]) => {
-      setMonitoringRenderProfilesState(
-        normalizeMonitoringRenderProfiles(value),
-      );
-    },
-    [],
-  );
+  const setMonitoringRenderProfiles = useCallback((value: MonitoringRenderProfile[]) => {
+    setMonitoringRenderProfilesState(normalizeMonitoringRenderProfiles(value));
+  }, []);
 
-  const setFormulaAttributeRegistry = useCallback(
-    (value: FormulaRegistryEntry[]) => {
-      setFormulaAttributeRegistryState(
-        normalizeFormulaAttributeRegistry(value),
-      );
-    },
-    [],
-  );
+  const setFormulaAttributeRegistry = useCallback((value: FormulaRegistryEntry[]) => {
+    setFormulaAttributeRegistryState(normalizeFormulaAttributeRegistry(value));
+  }, []);
 
-  const setKeyboardShortcutBinding = useCallback(
-    (commandId: string, binding: string | null) => {
-      setKeyboardShortcutsState((prev) => ({
-        ...prev,
-        bindings: { ...prev.bindings, [commandId]: binding },
-      }));
-    },
-    [],
-  );
+  const setKeyboardShortcutBinding = useCallback((commandId: string, binding: string | null) => {
+    setKeyboardShortcutsState((prev) => ({
+      ...prev,
+      bindings: { ...prev.bindings, [commandId]: binding },
+    }));
+  }, []);
 
   const resetKeyboardShortcuts = useCallback(() => {
     setKeyboardShortcutsState(DEFAULT_KEYBOARD_SHORTCUTS);
@@ -2027,11 +1898,7 @@ export const useAppSettings = () => {
   }, []);
 
   const setUserVaultProfileContext = useCallback(
-    (
-      path: string | null,
-      revision: number,
-      activeUserId: string | null = null,
-    ) => {
+    (path: string | null, revision: number, activeUserId: string | null = null) => {
       setUserVaultProfilePath(path);
       setUserVaultProfileRevision(revision);
       setUserVaultProfileActiveUserId(activeUserId?.trim() || null);
@@ -2067,56 +1934,42 @@ export const useAppSettings = () => {
     setMarkdownEditorAccentEnabledState(Boolean(value));
   }, []);
 
-  const setMarkdownEditorAccentHex = useCallback(
-    (mode: "light" | "dark", value: string) => {
-      const normalized = normalizeHex(value);
-      if (!isValidHex(normalized)) {
-        return;
-      }
-      if (mode === "dark") {
-        setMarkdownEditorAccentDarkHexState(normalized);
-      } else {
-        setMarkdownEditorAccentLightHexState(normalized);
-      }
-    },
-    [],
-  );
+  const setMarkdownEditorAccentHex = useCallback((mode: "light" | "dark", value: string) => {
+    const normalized = normalizeHex(value);
+    if (!isValidHex(normalized)) {
+      return;
+    }
+    if (mode === "dark") {
+      setMarkdownEditorAccentDarkHexState(normalized);
+    } else {
+      setMarkdownEditorAccentLightHexState(normalized);
+    }
+  }, []);
 
-  const setMarkdownEditorAccentCustomSwatches = useCallback(
-    (value: string[]) => {
-      setMarkdownEditorAccentCustomSwatchesState(
-        normalizeMarkdownAccentSwatches(value),
-      );
-    },
-    [],
-  );
+  const setMarkdownEditorAccentCustomSwatches = useCallback((value: string[]) => {
+    setMarkdownEditorAccentCustomSwatchesState(normalizeMarkdownAccentSwatches(value));
+  }, []);
 
-  const addMarkdownEditorAccentCustomSwatch = useCallback(
-    (value: string) => {
-      const normalized = normalizeHex(value);
-      if (!isValidHex(normalized)) {
-        return;
+  const addMarkdownEditorAccentCustomSwatch = useCallback((value: string) => {
+    const normalized = normalizeHex(value);
+    if (!isValidHex(normalized)) {
+      return;
+    }
+    setMarkdownEditorAccentCustomSwatchesState((prev) => {
+      if (prev.includes(normalized)) {
+        return prev;
       }
-      setMarkdownEditorAccentCustomSwatchesState((prev) => {
-        if (prev.includes(normalized)) {
-          return prev;
-        }
-        const next = [normalized, ...prev];
-        return normalizeMarkdownAccentSwatches(next);
-      });
-    },
-    [],
-  );
+      const next = [normalized, ...prev];
+      return normalizeMarkdownAccentSwatches(next);
+    });
+  }, []);
 
-  const setCanvasCustomColors = useCallback(
-    (value: CanvasCustomColorSlot[]) => {
-      setCanvasSettingsState((current) => ({
-        ...current,
-        customColors: normalizeCanvasSettings({ customColors: value }).customColors,
-      }));
-    },
-    [],
-  );
+  const setCanvasCustomColors = useCallback((value: CanvasCustomColorSlot[]) => {
+    setCanvasSettingsState((current) => ({
+      ...current,
+      customColors: normalizeCanvasSettings({ customColors: value }).customColors,
+    }));
+  }, []);
 
   const setMarkdownViewEditEnabled = useCallback((value: boolean) => {
     setMarkdownViewEditEnabledState(Boolean(value));
@@ -2126,14 +1979,9 @@ export const useAppSettings = () => {
     setCursorAccessoryEnabledState(Boolean(value));
   }, []);
 
-  const setMarkdownPreviewDefaultMode = useCallback(
-    (value: MarkdownPreviewDefaultMode) => {
-      setMarkdownPreviewDefaultModeState(
-        value === "raw" || value === "hybrid" ? value : "markdown",
-      );
-    },
-    [],
-  );
+  const setMarkdownPreviewDefaultMode = useCallback((value: MarkdownPreviewDefaultMode) => {
+    setMarkdownPreviewDefaultModeState(value === "raw" || value === "hybrid" ? value : "markdown");
+  }, []);
 
   const setMarkdownEditorOpenInNewTabByDefault = useCallback((value: boolean) => {
     setMarkdownEditorOpenInNewTabByDefaultState(Boolean(value));
@@ -2325,8 +2173,7 @@ export const useAppSettings = () => {
           uiCursorAccessoryEnabled: settings.cursorAccessoryEnabled,
           editorMarkdownViewEditEnabled: settings.markdownViewEditEnabled,
           editorMarkdownPreviewDefaultMode: settings.markdownPreviewDefaultMode,
-          editorMarkdownOpenInNewTabByDefault:
-            settings.markdownEditorOpenInNewTabByDefault,
+          editorMarkdownOpenInNewTabByDefault: settings.markdownEditorOpenInNewTabByDefault,
           examEditorShowMoveButtons: settings.examEditorShowMoveButtons,
           language: settings.language,
           maxFilesPerScan: settings.maxFilesPerScan,
@@ -2352,8 +2199,7 @@ export const useAppSettings = () => {
           spacedRepetitionBoxes: settings.spacedRepetitionBoxes,
           spacedRepetitionOrder: settings.spacedRepetitionOrder,
           spacedRepetitionPageSize: settings.spacedRepetitionPageSize,
-          spacedRepetitionRepetitionStrength:
-            settings.spacedRepetitionRepetitionStrength,
+          spacedRepetitionRepetitionStrength: settings.spacedRepetitionRepetitionStrength,
           spacedRepetitionStatsView: settings.spacedRepetitionStatsView,
           spacedRepetitionAutoTimeEnabled: settings.spacedRepetitionAutoTimeEnabled,
           spacedRepetitionHelpEnabled: settings.spacedRepetitionHelpEnabled,
@@ -2389,13 +2235,10 @@ export const useAppSettings = () => {
       if (!settingsLoaded) {
         return false;
       }
-      const nextRecentVaults = "recentVaults" in updates
-        ? mergeRecentVaultsForSystem(
-          recentVaults,
-          updates.recentVaults ?? [],
-          currentSystemId,
-        )
-        : recentVaults;
+      const nextRecentVaults =
+        "recentVaults" in updates
+          ? mergeRecentVaultsForSystem(recentVaults, updates.recentVaults ?? [], currentSystemId)
+          : recentVaults;
       const nextSettings = {
         activeNotePath: updates.activeNotePath ?? activeNotePath,
         vaultPath: updates.vaultPath ?? vaultPath,
@@ -2403,8 +2246,7 @@ export const useAppSettings = () => {
         userVaultMode: updates.userVaultMode ?? userVaultMode,
         userVaultCustomPath: updates.userVaultCustomPath ?? userVaultCustomPath,
         userVaultLastPath: updates.userVaultLastPath ?? userVaultLastPath,
-        userVaultSelectedAutoPath:
-          updates.userVaultSelectedAutoPath ?? userVaultSelectedAutoPath,
+        userVaultSelectedAutoPath: updates.userVaultSelectedAutoPath ?? userVaultSelectedAutoPath,
         userVaultSelectedCustomPath:
           updates.userVaultSelectedCustomPath ?? userVaultSelectedCustomPath,
         theme: updates.theme ?? theme,
@@ -2417,30 +2259,24 @@ export const useAppSettings = () => {
         markdownEditorAccentDarkHex:
           updates.markdownEditorAccentDarkHex ?? markdownEditorAccentDarkHex,
         markdownEditorAccentCustomSwatches:
-          updates.markdownEditorAccentCustomSwatches ??
-          markdownEditorAccentCustomSwatches,
+          updates.markdownEditorAccentCustomSwatches ?? markdownEditorAccentCustomSwatches,
         canvas: {
-          customColors:
-            updates.canvasCustomColors ?? canvasSettings.customColors,
+          customColors: updates.canvasCustomColors ?? canvasSettings.customColors,
           lastPalette:
             "canvasLastPalette" in updates
-              ? updates.canvasLastPalette ?? null
-              : canvasSettings.lastPalette ?? null,
+              ? (updates.canvasLastPalette ?? null)
+              : (canvasSettings.lastPalette ?? null),
         },
         editorBlueprintGrid: updates.editorBlueprintGrid ?? editorBlueprintGrid,
         editorBlueprintGridIntensity:
           updates.editorBlueprintGridIntensity ?? editorBlueprintGridIntensity,
-        cursorAccessoryEnabled:
-          updates.cursorAccessoryEnabled ?? cursorAccessoryEnabled,
-        markdownViewEditEnabled:
-          updates.markdownViewEditEnabled ?? markdownViewEditEnabled,
+        cursorAccessoryEnabled: updates.cursorAccessoryEnabled ?? cursorAccessoryEnabled,
+        markdownViewEditEnabled: updates.markdownViewEditEnabled ?? markdownViewEditEnabled,
         markdownPreviewDefaultMode:
           updates.markdownPreviewDefaultMode ?? markdownPreviewDefaultMode,
         markdownEditorOpenInNewTabByDefault:
-          updates.markdownEditorOpenInNewTabByDefault ??
-          markdownEditorOpenInNewTabByDefault,
-        examEditorShowMoveButtons:
-          updates.examEditorShowMoveButtons ?? examEditorShowMoveButtons,
+          updates.markdownEditorOpenInNewTabByDefault ?? markdownEditorOpenInNewTabByDefault,
+        examEditorShowMoveButtons: updates.examEditorShowMoveButtons ?? examEditorShowMoveButtons,
         language: updates.language ?? language,
         maxFilesPerScan: updates.maxFilesPerScan ?? maxFilesPerScan,
         scanParallelism: updates.scanParallelism ?? scanParallelism,
@@ -2452,40 +2288,27 @@ export const useAppSettings = () => {
         fastFlashcardOrder: updates.fastFlashcardOrder ?? fastFlashcardOrder,
         fastFlashcardMode: updates.fastFlashcardMode ?? fastFlashcardMode,
         fastFlashcardScope: updates.fastFlashcardScope ?? fastFlashcardScope,
-        fastFlashcardDuration:
-          updates.fastFlashcardDuration ?? fastFlashcardDuration,
+        fastFlashcardDuration: updates.fastFlashcardDuration ?? fastFlashcardDuration,
         fastFlashcardAutoTimeEnabled:
           updates.fastFlashcardAutoTimeEnabled ?? fastFlashcardAutoTimeEnabled,
-        fastFlashcardHelpEnabled:
-          updates.fastFlashcardHelpEnabled ?? fastFlashcardHelpEnabled,
-        examShowTimeline:
-          updates.examShowTimeline ?? examShowTimeline,
-        examShowTaskSources:
-          updates.examShowTaskSources ?? examShowTaskSources,
+        fastFlashcardHelpEnabled: updates.fastFlashcardHelpEnabled ?? fastFlashcardHelpEnabled,
+        examShowTimeline: updates.examShowTimeline ?? examShowTimeline,
+        examShowTaskSources: updates.examShowTaskSources ?? examShowTaskSources,
         flashcardPageSize: updates.flashcardPageSize ?? flashcardPageSize,
-        solutionRevealEnabled:
-          updates.solutionRevealEnabled ?? solutionRevealEnabled,
+        solutionRevealEnabled: updates.solutionRevealEnabled ?? solutionRevealEnabled,
         statsResetMode: updates.statsResetMode ?? statsResetMode,
-        flashcardHelpEnabled:
-          updates.flashcardHelpEnabled ?? flashcardHelpEnabled,
-        spacedRepetitionBoxes:
-          updates.spacedRepetitionBoxes ?? spacedRepetitionBoxes,
-        spacedRepetitionOrder:
-          updates.spacedRepetitionOrder ?? spacedRepetitionOrder,
-        spacedRepetitionPageSize:
-          updates.spacedRepetitionPageSize ?? spacedRepetitionPageSize,
+        flashcardHelpEnabled: updates.flashcardHelpEnabled ?? flashcardHelpEnabled,
+        spacedRepetitionBoxes: updates.spacedRepetitionBoxes ?? spacedRepetitionBoxes,
+        spacedRepetitionOrder: updates.spacedRepetitionOrder ?? spacedRepetitionOrder,
+        spacedRepetitionPageSize: updates.spacedRepetitionPageSize ?? spacedRepetitionPageSize,
         spacedRepetitionRepetitionStrength:
-          updates.spacedRepetitionRepetitionStrength ??
-          spacedRepetitionRepetitionStrength,
-        spacedRepetitionStatsView:
-          updates.spacedRepetitionStatsView ?? spacedRepetitionStatsView,
+          updates.spacedRepetitionRepetitionStrength ?? spacedRepetitionRepetitionStrength,
+        spacedRepetitionStatsView: updates.spacedRepetitionStatsView ?? spacedRepetitionStatsView,
         spacedRepetitionAutoTimeEnabled:
-          updates.spacedRepetitionAutoTimeEnabled ??
-          spacedRepetitionAutoTimeEnabled,
+          updates.spacedRepetitionAutoTimeEnabled ?? spacedRepetitionAutoTimeEnabled,
         spacedRepetitionHelpEnabled:
           updates.spacedRepetitionHelpEnabled ?? spacedRepetitionHelpEnabled,
-        rightToolbarCollapsed:
-          updates.rightToolbarCollapsed ?? rightToolbarCollapsed,
+        rightToolbarCollapsed: updates.rightToolbarCollapsed ?? rightToolbarCollapsed,
         examMaxTotalPoints: updates.examMaxTotalPoints ?? examMaxTotalPoints,
         examTaskCount: updates.examTaskCount ?? examTaskCount,
         examTaskPoints: mergeExamTaskPointsAll(
@@ -2494,15 +2317,10 @@ export const useAppSettings = () => {
           updates.examTaskCount ?? examTaskCount,
           updates.examMaxTotalPoints ?? examMaxTotalPoints,
         ),
-        examDurationMinutes:
-          updates.examDurationMinutes ?? examDurationMinutes,
-        examTimeLimitEnabled:
-          updates.examTimeLimitEnabled ?? examTimeLimitEnabled,
+        examDurationMinutes: updates.examDurationMinutes ?? examDurationMinutes,
+        examTimeLimitEnabled: updates.examTimeLimitEnabled ?? examTimeLimitEnabled,
         examHelpEnabled: updates.examHelpEnabled ?? examHelpEnabled,
-        examAutoCardsTypes: mergeExamAutoCardsTypes(
-          examAutoCardsTypes,
-          updates.examAutoCardsTypes,
-        ),
+        examAutoCardsTypes: mergeExamAutoCardsTypes(examAutoCardsTypes, updates.examAutoCardsTypes),
         examTaskTypeDefaultPoints: mergeExamTaskTypeDefaultPoints(
           examTaskTypeDefaultPointsFallback,
           updates.examTaskTypeDefaultPoints,
@@ -2515,17 +2333,13 @@ export const useAppSettings = () => {
           updates.examTaskTypeDefaultsByUserId ?? examTaskTypeDefaultsByUserId,
         examAutoCardsReturnOnCorrect:
           updates.examAutoCardsReturnOnCorrect ?? examAutoCardsReturnOnCorrect,
-        examGradeScale:
-          updates.examGradeScale ?? examGradeScale,
+        examGradeScale: updates.examGradeScale ?? examGradeScale,
         examAiEvaluation: updates.examAiEvaluation ?? examAiEvaluation,
         inputDebugEnabled: updates.inputDebugEnabled ?? inputDebugEnabled,
-        inputDebugRedactContent:
-          updates.inputDebugRedactContent ?? inputDebugRedactContent,
+        inputDebugRedactContent: updates.inputDebugRedactContent ?? inputDebugRedactContent,
         keyboardShortcuts: updates.keyboardShortcuts ?? keyboardShortcuts,
-        monitoringRenderProfiles:
-          updates.monitoringRenderProfiles ?? monitoringRenderProfiles,
-        formulaAttributeRegistry:
-          updates.formulaAttributeRegistry ?? formulaAttributeRegistry,
+        monitoringRenderProfiles: updates.monitoringRenderProfiles ?? monitoringRenderProfiles,
+        formulaAttributeRegistry: updates.formulaAttributeRegistry ?? formulaAttributeRegistry,
       };
       const saved = await saveSettings(nextSettings);
       if (saved && "activeNotePath" in updates) {
@@ -2644,18 +2458,14 @@ export const useAppSettings = () => {
     setMarkdownEditorAccentEnabledState(normalized.markdownEditorAccentEnabled);
     setMarkdownEditorAccentLightHexState(normalized.markdownEditorAccentLightHex);
     setMarkdownEditorAccentDarkHexState(normalized.markdownEditorAccentDarkHex);
-    setMarkdownEditorAccentCustomSwatchesState(
-      normalized.markdownEditorAccentCustomSwatches,
-    );
+    setMarkdownEditorAccentCustomSwatchesState(normalized.markdownEditorAccentCustomSwatches);
     setCanvasSettingsState(normalized.canvas);
     setEditorBlueprintGrid(normalized.editorBlueprintGrid);
     setEditorBlueprintGridIntensity(normalized.editorBlueprintGridIntensity);
     setCursorAccessoryEnabledState(normalized.cursorAccessoryEnabled);
     setMarkdownViewEditEnabledState(normalized.markdownViewEditEnabled);
     setMarkdownPreviewDefaultModeState(normalized.markdownPreviewDefaultMode);
-    setMarkdownEditorOpenInNewTabByDefaultState(
-      normalized.markdownEditorOpenInNewTabByDefault,
-    );
+    setMarkdownEditorOpenInNewTabByDefaultState(normalized.markdownEditorOpenInNewTabByDefault);
     setExamEditorShowMoveButtonsState(normalized.examEditorShowMoveButtons);
     setActiveNotePath(normalized.activeNotePath);
     setVaultPath(normalized.vaultPath);
@@ -2689,13 +2499,9 @@ export const useAppSettings = () => {
     setSpacedRepetitionBoxes(normalized.spacedRepetitionBoxes);
     setSpacedRepetitionOrder(normalized.spacedRepetitionOrder);
     setSpacedRepetitionPageSize(normalized.spacedRepetitionPageSize);
-    setSpacedRepetitionRepetitionStrength(
-      normalized.spacedRepetitionRepetitionStrength,
-    );
+    setSpacedRepetitionRepetitionStrength(normalized.spacedRepetitionRepetitionStrength);
     setSpacedRepetitionStatsView(normalized.spacedRepetitionStatsView);
-    setSpacedRepetitionAutoTimeEnabledState(
-      normalized.spacedRepetitionAutoTimeEnabled,
-    );
+    setSpacedRepetitionAutoTimeEnabledState(normalized.spacedRepetitionAutoTimeEnabled);
     setSpacedRepetitionHelpEnabledState(normalized.spacedRepetitionHelpEnabled);
     setRightToolbarCollapsed(normalized.rightToolbarCollapsed);
     setExamMaxTotalPointsState(normalized.examMaxTotalPoints);
@@ -2705,9 +2511,7 @@ export const useAppSettings = () => {
     setExamTimeLimitEnabledState(normalized.examTimeLimitEnabled);
     setExamAutoCardsTypesState(normalized.examAutoCardsTypes);
     setExamTaskTypeDefaultPointsFallbackState(normalized.examTaskTypeDefaultPoints);
-    setExamTaskTypeDefaultTimeSecondsFallbackState(
-      normalized.examTaskTypeDefaultTimeSeconds,
-    );
+    setExamTaskTypeDefaultTimeSecondsFallbackState(normalized.examTaskTypeDefaultTimeSeconds);
     setExamTaskTypeDefaultsByUserIdState(normalized.examTaskTypeDefaultsByUserId);
     setExamAutoCardsReturnOnCorrectState(normalized.examAutoCardsReturnOnCorrect);
     setExamGradeScaleState(normalized.examGradeScale);

@@ -1,9 +1,6 @@
 import { type LoadState } from "../lib/types";
 import { type VaultFile } from "../lib/tree";
-import {
-  CanvasEditor,
-  type PersistCanvasResult,
-} from "../features/canvas/CanvasEditor";
+import { CanvasEditor, type PersistCanvasResult } from "../features/canvas/CanvasEditor";
 import type { CanvasCustomColorSlot } from "../features/canvas/canvasSettings";
 
 type CanvasPanelProps = {

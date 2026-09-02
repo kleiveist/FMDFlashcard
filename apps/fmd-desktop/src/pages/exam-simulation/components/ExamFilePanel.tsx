@@ -79,10 +79,7 @@ type ExamFilePanelProps = {
   onSetSelectedPathRows?: (rows: ExamSelectionRows) => void;
   onSetSelectedPaths?: (paths: string[]) => void;
   onClearSelection: () => void;
-  onPlaceSelectedFile?: (
-    sourcePath: string,
-    target: ExamSelectionPlacementTarget,
-  ) => void;
+  onPlaceSelectedFile?: (sourcePath: string, target: ExamSelectionPlacementTarget) => void;
   onMoveSelectedFile?: (sourcePath: string, targetPath: string) => void;
   showClearSelectionButton?: boolean;
   listScrollMode?: "internal" | "external";
@@ -130,10 +127,8 @@ const EXAM_MODE_TOOLTIP_COPY: Record<AppLanguage, Record<ExamCombinationMode, st
       "Runs your selected rows as groups. Inside each group, tasks are matched by task number and one task per number is picked in order.",
     "sequential-shuffled":
       "Keeps the selected file order. Tasks inside each file are shuffled before being appended.",
-    sequential:
-      "Keeps the selected file order and each file's original task order.",
-    "fully-mixed":
-      "Puts all tasks from all selected files into one pool and shuffles everything.",
+    sequential: "Keeps the selected file order and each file's original task order.",
+    "fully-mixed": "Puts all tasks from all selected files into one pool and shuffles everything.",
   },
   de: {
     nested:
@@ -185,19 +180,11 @@ export const ExamFilePanel = ({
   const [toolbarHeight, setToolbarHeight] = useState(FILE_VIEWPORT_TOOLBAR_HEIGHT);
   const toolbarRef = useRef<HTMLDivElement | null>(null);
   const selectedOrderRef = useRef<HTMLDivElement | null>(null);
-  const validFiles = useMemo(
-    () => files.filter((entry) => entry.status === "valid"),
-    [files],
-  );
-  const validPathSet = useMemo(
-    () => new Set(validFiles.map((entry) => entry.path)),
-    [validFiles],
-  );
+  const validFiles = useMemo(() => files.filter((entry) => entry.status === "valid"), [files]);
+  const validPathSet = useMemo(() => new Set(validFiles.map((entry) => entry.path)), [validFiles]);
   const selectedRows = useMemo(
     () =>
-      selectedPathRows
-        ? selectedPathRows
-        : buildExamSelectionRowsFromPaths(selectedPaths ?? []),
+      selectedPathRows ? selectedPathRows : buildExamSelectionRowsFromPaths(selectedPaths ?? []),
     [selectedPathRows, selectedPaths],
   );
   const normalizedSelectedRows = useMemo(
@@ -253,12 +240,7 @@ export const ExamFilePanel = ({
       });
       applySelectedRows(nextRows);
     },
-    [
-      applySelectedRows,
-      normalizedSelectedRows,
-      onPlaceSelectedFile,
-      validPathSet,
-    ],
+    [applySelectedRows, normalizedSelectedRows, onPlaceSelectedFile, validPathSet],
   );
 
   useEffect(() => {
@@ -415,10 +397,7 @@ export const ExamFilePanel = ({
     0,
     Math.floor(effectiveScrollTop / FILE_ROW_HEIGHT) - FILE_LIST_OVERSCAN,
   );
-  const visibleEnd = Math.min(
-    rows.length,
-    visibleStart + visibleCount + FILE_LIST_OVERSCAN * 2,
-  );
+  const visibleEnd = Math.min(rows.length, visibleStart + visibleCount + FILE_LIST_OVERSCAN * 2);
   const visibleRows = rows.slice(visibleStart, visibleEnd);
 
   const handleSelectedReorderTap = (path: string) => {
@@ -460,10 +439,7 @@ export const ExamFilePanel = ({
       setSlotDropHint(null);
       return;
     }
-    if (
-      event.key === "Escape" &&
-      (moveSourcePath || dragSourcePath || dropHint || slotDropHint)
-    ) {
+    if (event.key === "Escape" && (moveSourcePath || dragSourcePath || dropHint || slotDropHint)) {
       event.preventDefault();
       setMoveSourcePath(null);
       setDragSourcePath(null);
@@ -491,9 +467,7 @@ export const ExamFilePanel = ({
       return null;
     }
     const desiredIndex =
-      targetIndex +
-      (position === "after" ? 1 : 0) -
-      (sourceIndex < targetIndex ? 1 : 0);
+      targetIndex + (position === "after" ? 1 : 0) - (sourceIndex < targetIndex ? 1 : 0);
     if (desiredIndex === sourceIndex) {
       return null;
     }
@@ -503,10 +477,7 @@ export const ExamFilePanel = ({
     return selectedPathsFlat[desiredIndex] ?? null;
   };
 
-  const handleSelectedChipDragStart = (
-    event: ReactDragEvent<HTMLButtonElement>,
-    path: string,
-  ) => {
+  const handleSelectedChipDragStart = (event: ReactDragEvent<HTMLButtonElement>, path: string) => {
     setDragSourcePath(path);
     setMoveSourcePath(path);
     setDropHint(null);
@@ -519,11 +490,9 @@ export const ExamFilePanel = ({
     });
   };
 
-  const handleSelectedChipDragOver = (
-    event: ReactDragEvent<HTMLButtonElement>,
-    path: string,
-  ) => {
-    const sourcePath = dragSourcePath ??
+  const handleSelectedChipDragOver = (event: ReactDragEvent<HTMLButtonElement>, path: string) => {
+    const sourcePath =
+      dragSourcePath ??
       moveSourcePath ??
       readInternalDragText(event, { channel: DRAG_CHANNELS.EXAM_SELECTED_FILE });
     if (!sourcePath) {
@@ -556,10 +525,7 @@ export const ExamFilePanel = ({
     });
   };
 
-  const handleSelectedChipDragLeave = (
-    event: ReactDragEvent<HTMLButtonElement>,
-    path: string,
-  ) => {
+  const handleSelectedChipDragLeave = (event: ReactDragEvent<HTMLButtonElement>, path: string) => {
     const nextTarget = event.relatedTarget;
     if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
       return;
@@ -567,11 +533,9 @@ export const ExamFilePanel = ({
     setDropHint((current) => (current?.path === path ? null : current));
   };
 
-  const handleSelectedChipDrop = (
-    event: ReactDragEvent<HTMLButtonElement>,
-    path: string,
-  ) => {
-    const sourcePath = dragSourcePath ??
+  const handleSelectedChipDrop = (event: ReactDragEvent<HTMLButtonElement>, path: string) => {
+    const sourcePath =
+      dragSourcePath ??
       moveSourcePath ??
       readInternalDragText(event, { channel: DRAG_CHANNELS.EXAM_SELECTED_FILE });
     if (!sourcePath) {
@@ -619,7 +583,8 @@ export const ExamFilePanel = ({
     event: ReactDragEvent<HTMLButtonElement>,
     target: ExamSelectionPlacementTarget,
   ) => {
-    const sourcePath = dragSourcePath ??
+    const sourcePath =
+      dragSourcePath ??
       moveSourcePath ??
       readInternalDragText(event, { channel: DRAG_CHANNELS.EXAM_SELECTED_FILE });
     if (!sourcePath) {
@@ -638,7 +603,8 @@ export const ExamFilePanel = ({
     event: ReactDragEvent<HTMLButtonElement>,
     target: ExamSelectionPlacementTarget,
   ) => {
-    const sourcePath = dragSourcePath ??
+    const sourcePath =
+      dragSourcePath ??
       moveSourcePath ??
       readInternalDragText(event, { channel: DRAG_CHANNELS.EXAM_SELECTED_FILE });
     if (!sourcePath) {
@@ -669,12 +635,10 @@ export const ExamFilePanel = ({
       ) => {
         const target = event.currentTarget;
         const rect = target.getBoundingClientRect();
-        const anchorX = Number.isFinite(event.clientX) && event.clientX > 0
-          ? event.clientX
-          : rect.left;
-        const anchorY = Number.isFinite(event.clientY) && event.clientY > 0
-          ? event.clientY
-          : rect.bottom;
+        const anchorX =
+          Number.isFinite(event.clientX) && event.clientX > 0 ? event.clientX : rect.left;
+        const anchorY =
+          Number.isFinite(event.clientY) && event.clientY > 0 ? event.clientY : rect.bottom;
         setFileOpenPopup({
           entry,
           x: Math.max(8, Math.round(anchorX)),
@@ -720,9 +684,7 @@ export const ExamFilePanel = ({
         onToggleFile(entry.path);
       };
 
-      const handleFileRowContextMenu = (
-        event: ReactMouseEvent<HTMLButtonElement>,
-      ) => {
+      const handleFileRowContextMenu = (event: ReactMouseEvent<HTMLButtonElement>) => {
         if (!onOpenFile) {
           return;
         }
@@ -773,33 +735,34 @@ export const ExamFilePanel = ({
       );
     });
 
-  const fileOpenPopupLayer = fileOpenPopup && onOpenFile
-    ? createPortal(
-        <div
-          className="context-menu-backdrop"
-          role="presentation"
-          onMouseDown={() => setFileOpenPopup(null)}
-        >
+  const fileOpenPopupLayer =
+    fileOpenPopup && onOpenFile
+      ? createPortal(
           <div
-            className="context-menu exam-file-open-menu"
-            style={{ left: `${fileOpenPopup.x}px`, top: `${fileOpenPopup.y}px` }}
-            onMouseDown={(event) => event.stopPropagation()}
+            className="context-menu-backdrop"
+            role="presentation"
+            onMouseDown={() => setFileOpenPopup(null)}
           >
-            <button
-              type="button"
-              className="context-menu-item"
-              onClick={() => {
-                onOpenFile(fileOpenPopup.entry);
-                setFileOpenPopup(null);
-              }}
+            <div
+              className="context-menu exam-file-open-menu"
+              style={{ left: `${fileOpenPopup.x}px`, top: `${fileOpenPopup.y}px` }}
+              onMouseDown={(event) => event.stopPropagation()}
             >
-              Open file
-            </button>
-          </div>
-        </div>,
-        document.body,
-      )
-    : null;
+              <button
+                type="button"
+                className="context-menu-item"
+                onClick={() => {
+                  onOpenFile(fileOpenPopup.entry);
+                  setFileOpenPopup(null);
+                }}
+              >
+                Open file
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
 
   const renderPlacementSlot = (
     target: ExamSelectionPlacementTarget,
@@ -808,8 +771,7 @@ export const ExamFilePanel = ({
     variant: "inline" | "row-break" = "inline",
   ) => {
     const isActive =
-      slotDropHint?.rowIndex === target.rowIndex &&
-      slotDropHint.slotIndex === target.slotIndex;
+      slotDropHint?.rowIndex === target.rowIndex && slotDropHint.slotIndex === target.slotIndex;
     return (
       <button
         key={key}
@@ -822,8 +784,7 @@ export const ExamFilePanel = ({
         onDrop={(event) => handleSlotDrop(event, target)}
         onDragLeave={() =>
           setSlotDropHint((current) =>
-            current?.rowIndex === target.rowIndex &&
-            current.slotIndex === target.slotIndex
+            current?.rowIndex === target.rowIndex && current.slotIndex === target.slotIndex
               ? null
               : current,
           )
@@ -912,9 +873,7 @@ export const ExamFilePanel = ({
               </span>
               {compactSummary ? (
                 <>
-                  <span className="chip exam-file-panel-kpi">
-                    {compactSummary.taskCount} tasks
-                  </span>
+                  <span className="chip exam-file-panel-kpi">{compactSummary.taskCount} tasks</span>
                   <span className="chip exam-file-panel-kpi">
                     {compactSummary.maxPoints} max points
                   </span>
@@ -929,9 +888,7 @@ export const ExamFilePanel = ({
         ) : null}
       </div>
       <div className="panel-body exam-file-panel-body">
-        {!vaultPath ? (
-          <div className="empty-state">Select a vault to load exam files.</div>
-        ) : null}
+        {!vaultPath ? <div className="empty-state">Select a vault to load exam files.</div> : null}
         {listError ? <div className="error">{listError}</div> : null}
         {vaultPath ? (
           <>
@@ -956,8 +913,8 @@ export const ExamFilePanel = ({
                 <strong>Selection</strong>
               </div>
               <p className="muted exam-selected-order-hint">
-                Reorder with drag (mouse) or two taps (touch): pick source first, then
-                target. Click outside this row or press Escape to cancel.
+                Reorder with drag (mouse) or two taps (touch): pick source first, then target. Click
+                outside this row or press Escape to cancel.
               </p>
               <div
                 ref={selectedOrderRef}
@@ -994,11 +951,19 @@ export const ExamFilePanel = ({
                                       dropPosition ? `drop-${dropPosition}` : ""
                                     }`.trim()}
                                     onClick={() => handleSelectedReorderTap(entry.path)}
-                                    onKeyDown={(event) => handleSelectedChipKeyDown(event, entry.path)}
+                                    onKeyDown={(event) =>
+                                      handleSelectedChipKeyDown(event, entry.path)
+                                    }
                                     draggable
-                                    onDragStart={(event) => handleSelectedChipDragStart(event, entry.path)}
-                                    onDragOver={(event) => handleSelectedChipDragOver(event, entry.path)}
-                                    onDragLeave={(event) => handleSelectedChipDragLeave(event, entry.path)}
+                                    onDragStart={(event) =>
+                                      handleSelectedChipDragStart(event, entry.path)
+                                    }
+                                    onDragOver={(event) =>
+                                      handleSelectedChipDragOver(event, entry.path)
+                                    }
+                                    onDragLeave={(event) =>
+                                      handleSelectedChipDragLeave(event, entry.path)
+                                    }
                                     onDrop={(event) => handleSelectedChipDrop(event, entry.path)}
                                     onDragEnd={handleSelectedChipDragEnd}
                                     role="listitem"
@@ -1006,7 +971,9 @@ export const ExamFilePanel = ({
                                     aria-pressed={isMoveSource}
                                   >
                                     <span className="exam-selected-chip-name">{fileName}</span>
-                                    <span className="exam-selected-chip-meta">{entry.taskCount} Tasks</span>
+                                    <span className="exam-selected-chip-meta">
+                                      {entry.taskCount} Tasks
+                                    </span>
                                   </button>
                                   {renderPlacementSlot(
                                     { rowIndex, slotIndex: columnIndex + 1 },
@@ -1109,10 +1076,7 @@ export const ExamFilePanel = ({
                   })}
                 </div>
               ) : (
-                <div
-                  className="exam-file-list-virtual"
-                  style={{ height: `${totalHeight}px` }}
-                >
+                <div className="exam-file-list-virtual" style={{ height: `${totalHeight}px` }}>
                   {visibleRows.map((row, offset) => {
                     const rowIndex = visibleStart + offset;
                     const top = rowIndex * FILE_ROW_HEIGHT;

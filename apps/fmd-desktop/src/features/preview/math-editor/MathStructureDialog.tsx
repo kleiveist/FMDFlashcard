@@ -84,7 +84,8 @@ export const MathStructureDialog = ({
                 dispatch({
                   type: "setCanvasZoom",
                   zoom: Number(event.currentTarget.value) as MathCanvasZoom,
-                })}
+                })
+              }
             >
               {CANVAS_ZOOMS.map((zoom) => (
                 <option key={zoom} value={zoom}>
@@ -142,7 +143,8 @@ export const MathStructureDialog = ({
                 dispatch({
                   type: "switchToRaw",
                   reason: "Opened in raw LaTeX mode.",
-                })}
+                })
+              }
             >
               Raw mode
             </button>

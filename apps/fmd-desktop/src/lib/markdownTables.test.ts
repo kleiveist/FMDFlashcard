@@ -19,11 +19,7 @@ import {
 
 describe("markdownTables", () => {
   it("parses and serializes markdown pipe tables with escaped pipes", () => {
-    const raw = [
-      "| Name | Value |",
-      "| :--- | ---: |",
-      "| Left \\| Right | 1 |",
-    ].join("\n");
+    const raw = ["| Name | Value |", "| :--- | ---: |", "| Left \\| Right | 1 |"].join("\n");
 
     const parsed = parseMarkdownPipeTable(raw);
     expect(parsed).toBeTruthy();
@@ -55,24 +51,18 @@ describe("markdownTables", () => {
   });
 
   it("repairs missing boundary pipes and uneven rows", () => {
-    const repaired = repairMarkdownPipeTable([
-      "Name | Value",
-      "--- | ---",
-      "One",
-      "Two | 2 | extra",
-    ].join("\n"));
+    const repaired = repairMarkdownPipeTable(
+      ["Name | Value", "--- | ---", "One", "Two | 2 | extra"].join("\n"),
+    );
 
     expect(repaired.ok).toBe(true);
     if (!repaired.ok) {
       return;
     }
     expect(repaired.markdown).toBe(
-      [
-        "| Name | Value |  |",
-        "| --- | --- | --- |",
-        "| One |  |  |",
-        "| Two | 2 | extra |",
-      ].join("\n"),
+      ["| Name | Value |  |", "| --- | --- | --- |", "| One |  |  |", "| Two | 2 | extra |"].join(
+        "\n",
+      ),
     );
   });
 
@@ -108,14 +98,7 @@ describe("markdownTables", () => {
   });
 
   it("finds and splits table blocks with relaxed boundary parsing", () => {
-    const markdown = [
-      "Before",
-      "A | B",
-      "--- | ---",
-      "1 | 2",
-      "",
-      "After",
-    ].join("\n");
+    const markdown = ["Before", "A | B", "--- | ---", "1 | 2", "", "After"].join("\n");
 
     expect([...findTableLineIndices(markdown.split("\n"))]).toEqual([1, 2, 3]);
     expect(splitMarkdownBlocks(markdown)).toEqual([
@@ -133,12 +116,9 @@ describe("markdownTables", () => {
   });
 
   it("supports row and column structure mutations", () => {
-    const parsed = parseMarkdownPipeTable([
-      "| A | B |",
-      "| --- | --- |",
-      "| 1 | 2 |",
-      "| 3 | 4 |",
-    ].join("\n"));
+    const parsed = parseMarkdownPipeTable(
+      ["| A | B |", "| --- | --- |", "| 1 | 2 |", "| 3 | 4 |"].join("\n"),
+    );
     expect(parsed).toBeTruthy();
     if (!parsed) {
       return;

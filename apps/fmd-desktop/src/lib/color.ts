@@ -43,8 +43,7 @@ export const hexToRgb = (value: string) => {
 };
 
 export const rgbToHex = (r: number, g: number, b: number) => {
-  const toHex = (channel: number) =>
-    channel.toString(16).toUpperCase().padStart(2, "0");
+  const toHex = (channel: number) => channel.toString(16).toUpperCase().padStart(2, "0");
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 };
 

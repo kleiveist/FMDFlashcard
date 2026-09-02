@@ -26,10 +26,7 @@ export const CollapsiblePanelHeader = ({
       <h2>{title}</h2>
       {description ? <p className="muted">{description}</p> : null}
     </span>
-    <span
-      className={`panel-header-chevron ${isCollapsed ? "" : "is-open"}`}
-      aria-hidden="true"
-    >
+    <span className={`panel-header-chevron ${isCollapsed ? "" : "is-open"}`} aria-hidden="true">
       <ChevronDownIcon />
     </span>
   </button>

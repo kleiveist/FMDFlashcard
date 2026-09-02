@@ -70,10 +70,7 @@ const buildTaskWithParts = (
   },
 });
 
-const buildTaskFromMarkdown = (
-  markdown: string,
-  gradingMode: ExamTask["gradingMode"] = "auto",
-) => {
+const buildTaskFromMarkdown = (markdown: string, gradingMode: ExamTask["gradingMode"] = "auto") => {
   const cards = parseFlashcards(markdown);
   expect(cards).toHaveLength(1);
   const card = cards[0];
@@ -90,45 +87,31 @@ const noopOptionSelect: ExamTaskRunnerProps["onOptionSelect"] = (...args) => {
 const noopTrueFalseSelect: ExamTaskRunnerProps["onTrueFalseSelect"] = (...args) => {
   void args;
 };
-const noopClozeInputChange: ExamTaskRunnerProps["onClozeInputChange"] = (
-  ...args
-) => {
+const noopClozeInputChange: ExamTaskRunnerProps["onClozeInputChange"] = (...args) => {
   void args;
 };
 const noopClozeTokenDrop: ExamTaskRunnerProps["onClozeTokenDrop"] = (...args) => {
   void args;
 };
-const noopClozeTokenRemove: ExamTaskRunnerProps["onClozeTokenRemove"] = (
-  ...args
-) => {
+const noopClozeTokenRemove: ExamTaskRunnerProps["onClozeTokenRemove"] = (...args) => {
   void args;
 };
-const noopClozeTokenDragStart: ExamTaskRunnerProps["onClozeTokenDragStart"] = (
-  ...args
-) => {
+const noopClozeTokenDragStart: ExamTaskRunnerProps["onClozeTokenDragStart"] = (...args) => {
   void args;
 };
 const noopBlankDragOver: ExamTaskRunnerProps["onBlankDragOver"] = (...args) => {
   void args;
 };
-const noopTextInputChange: ExamTaskRunnerProps["onTextInputChange"] = (
-  ...args
-) => {
+const noopTextInputChange: ExamTaskRunnerProps["onTextInputChange"] = (...args) => {
   void args;
 };
-const noopAwardedPointsChange: ExamTaskRunnerProps["onAwardedPointsChange"] = (
-  ...args
-) => {
+const noopAwardedPointsChange: ExamTaskRunnerProps["onAwardedPointsChange"] = (...args) => {
   void args;
 };
-const noopAutoGradeDecision: ExamTaskRunnerProps["onAutoGradeDecision"] = (
-  ...args
-) => {
+const noopAutoGradeDecision: ExamTaskRunnerProps["onAutoGradeDecision"] = (...args) => {
   void args;
 };
-const buildProps = (
-  overrides: Partial<ExamTaskRunnerProps> = {},
-): ExamTaskRunnerProps => ({
+const buildProps = (overrides: Partial<ExamTaskRunnerProps> = {}): ExamTaskRunnerProps => ({
   task: buildTask(),
   taskIndex: 0,
   taskCount: 1,
@@ -159,9 +142,8 @@ const readTokenOrderFromMarkup = (markup: string) => {
     (match) => match[1] ?? "",
   );
   return tokenPoolBlocks.flatMap((poolMarkup) =>
-    Array.from(
-      poolMarkup.matchAll(/class="token-chip[^"]*"[^>]*>([^<]*)<\/button>/g),
-      (match) => (match[1] ?? "").trim(),
+    Array.from(poolMarkup.matchAll(/class="token-chip[^"]*"[^>]*>([^<]*)<\/button>/g), (match) =>
+      (match[1] ?? "").trim(),
     ).filter((value) => value.length > 0),
   );
 };
@@ -191,9 +173,7 @@ const buildDragTask = (tokenPrefix: string): ExamTask =>
     "auto",
   );
 
-const autoScoringCases: Array<
-  [string, ExamTask, ExamTaskRunnerProps["partStates"]]
-> = [
+const autoScoringCases: Array<[string, ExamTask, ExamTaskRunnerProps["partStates"]]> = [
   [
     "multiple-choice",
     buildTaskWithParts(
@@ -354,12 +334,15 @@ describe("ExamTaskRunner", () => {
   });
 
   it("renders tables for free-text parts with scroll fallback", () => {
-    const task = buildTaskFromMarkdown(`#card
+    const task = buildTaskFromMarkdown(
+      `#card
 | Term | Answer |
 | --- | --- |
 | Alpha | Beta |
 Answer: Done
-#endcard`, "manual");
+#endcard`,
+      "manual",
+    );
 
     const markup = renderToStaticMarkup(
       createElement(ExamTaskRunner, buildProps({ phase: "review", task })),
@@ -370,12 +353,15 @@ Answer: Done
   });
 
   it("renders png embeds inside table cells as images in exam task cards", () => {
-    const task = buildTaskFromMarkdown(`#card
+    const task = buildTaskFromMarkdown(
+      `#card
 | Visual | Description |
 | --- | --- |
 | ![[images/example.png]] | Diagram |
 Answer: Done
-#endcard`, "manual");
+#endcard`,
+      "manual",
+    );
 
     const markup = renderToStaticMarkup(
       createElement(
@@ -553,10 +539,7 @@ Statement: The Sun is a star.
     (_label, task, partStates) => {
       void _label;
       const scoringMarkup = renderToStaticMarkup(
-        createElement(
-          ExamTaskRunner,
-          buildProps({ phase: "scoring", task, partStates }),
-        ),
+        createElement(ExamTaskRunner, buildProps({ phase: "scoring", task, partStates })),
       );
 
       expect(scoringMarkup).toContain("RESULT");
@@ -581,10 +564,7 @@ Statement: The Sun is a star.
     );
 
     const scoringMarkup = renderToStaticMarkup(
-      createElement(
-        ExamTaskRunner,
-        buildProps({ phase: "scoring", task, partStates: [{}] }),
-      ),
+      createElement(ExamTaskRunner, buildProps({ phase: "scoring", task, partStates: [{}] })),
     );
 
     expect(scoringMarkup).toContain("AWARDED");
@@ -657,10 +637,7 @@ Statement: The Sun is a star.
     );
 
     const correctionMarkup = renderToStaticMarkup(
-      createElement(
-        ExamTaskRunner,
-        buildProps({ phase: "correction", task, partStates: [{}] }),
-      ),
+      createElement(ExamTaskRunner, buildProps({ phase: "correction", task, partStates: [{}] })),
     );
 
     expect(correctionMarkup).toContain("AWARDED");

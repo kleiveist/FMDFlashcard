@@ -142,15 +142,9 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
     if (!viewToggleCommand) {
       return null;
     }
-    return getEffectiveBinding(
-      viewToggleCommand,
-      settings.keyboardShortcuts.bindings,
-      platform,
-    );
+    return getEffectiveBinding(viewToggleCommand, settings.keyboardShortcuts.bindings, platform);
   }, [platform, settings.keyboardShortcuts.bindings]);
-  const viewShortcutLabel = viewBinding
-    ? formatBinding(viewBinding, platform)
-    : null;
+  const viewShortcutLabel = viewBinding ? formatBinding(viewBinding, platform) : null;
   const viewLabel = viewShortcutLabel ? `View (${viewShortcutLabel})` : "View";
   const maxTimeMs = activeDuration * 1000;
   const elapsedMs =
@@ -160,12 +154,8 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
   const studyBindings = useMemo(() => {
     const bindings = settings.keyboardShortcuts.bindings;
     return {
-      prev: studyPrevCommand
-        ? getEffectiveBinding(studyPrevCommand, bindings, platform)
-        : null,
-      next: studyNextCommand
-        ? getEffectiveBinding(studyNextCommand, bindings, platform)
-        : null,
+      prev: studyPrevCommand ? getEffectiveBinding(studyPrevCommand, bindings, platform) : null,
+      next: studyNextCommand ? getEffectiveBinding(studyNextCommand, bindings, platform) : null,
       submit: studySubmitCommand
         ? getEffectiveBinding(studySubmitCommand, bindings, platform)
         : null,
@@ -252,10 +242,7 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
       }
       const isEditable = isEditableTarget(event.target);
       const canTrigger = (
-        command:
-          | typeof studyPrevCommand
-          | typeof studyNextCommand
-          | typeof studySubmitCommand,
+        command: typeof studyPrevCommand | typeof studyNextCommand | typeof studySubmitCommand,
         binding: string | null,
       ) => {
         if (!command || !binding) {
@@ -449,11 +436,7 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
   const flashcardPanel = (
     <section className="panel fast-flashcard-panel">
       {isViewMode ? (
-        <StudyTimeBar
-          elapsedMs={elapsedMs}
-          maxMs={maxTimeMs}
-          isRunning={timeModeActive}
-        />
+        <StudyTimeBar elapsedMs={elapsedMs} maxMs={maxTimeMs} isRunning={timeModeActive} />
       ) : null}
       <FastHeader
         hasScannedCards={hasScannedCards}
@@ -510,17 +493,13 @@ export const FastFlashcardPage = ({ onSectionSelect }: FastFlashcardPageProps) =
     <div
       className={`fast-flashcard-layout ${
         isDesktopView ? "desktop-rail-layout" : ""
-      } ${isViewMode ? "focus-mode" : ""} ${
-        isTableView ? "table-view" : ""
-      }`}
+      } ${isViewMode ? "focus-mode" : ""} ${isTableView ? "table-view" : ""}`}
     >
       <div className="fast-flashcard-main">
         {statsPanel}
         {flashcardPanel}
       </div>
-      {isDesktopView ? (
-        null
-      ) : (
+      {isDesktopView ? null : (
         <aside className="fast-flashcard-sidebar">
           {noteFilesPanel}
           {toolsPanel}

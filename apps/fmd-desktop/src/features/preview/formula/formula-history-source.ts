@@ -54,7 +54,9 @@ export const normalizeFormulaHistoryFiles = (
         const relativeWithinHistory = normalizedPath.startsWith(historyPrefix)
           ? normalizedPath.slice(historyPrefix.length)
           : (normalizedPath.split("/").pop() ?? normalizedPath);
-        const normalizedRelativeWithinHistory = normalizeRelativePath(relativeWithinHistory).replace(/^\/+/, "");
+        const normalizedRelativeWithinHistory = normalizeRelativePath(
+          relativeWithinHistory,
+        ).replace(/^\/+/, "");
         return {
           path: entryPath,
           relativePath: normalizeRelativePath(

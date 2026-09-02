@@ -68,7 +68,9 @@ describe("FormulaAttributeBuilder", () => {
     );
 
     const optionButtons = Array.from(
-      container.querySelectorAll<HTMLButtonElement>("[data-formula-builder-scope='attributes'] [role='checkbox']"),
+      container.querySelectorAll<HTMLButtonElement>(
+        "[data-formula-builder-scope='attributes'] [role='checkbox']",
+      ),
     );
     expect(optionButtons).toHaveLength(2);
     expect(optionButtons[0]?.getAttribute("aria-checked")).toBe("true");
@@ -102,7 +104,9 @@ describe("FormulaAttributeBuilder", () => {
     );
 
     const radioButtons = Array.from(
-      container.querySelectorAll<HTMLButtonElement>("[data-formula-builder-scope='explicit-folder'] [role='radio']"),
+      container.querySelectorAll<HTMLButtonElement>(
+        "[data-formula-builder-scope='explicit-folder'] [role='radio']",
+      ),
     );
     expect(radioButtons).toHaveLength(2);
 
@@ -137,7 +141,9 @@ describe("FormulaAttributeBuilder", () => {
     );
 
     const checkboxButtons = Array.from(
-      container.querySelectorAll<HTMLButtonElement>("[data-formula-builder-scope='multi-folder'] [role='checkbox']"),
+      container.querySelectorAll<HTMLButtonElement>(
+        "[data-formula-builder-scope='multi-folder'] [role='checkbox']",
+      ),
     );
     expect(checkboxButtons).toHaveLength(2);
     expect(checkboxButtons[0]?.getAttribute("aria-checked")).toBe("true");
@@ -199,9 +205,7 @@ describe("FormulaAttributeBuilder", () => {
 
     const sourceSelect = Array.from(
       container.querySelectorAll<HTMLSelectElement>(".formula-attribute-builder-field > select"),
-    ).find((select) =>
-      Array.from(select.options).some((option) => option.value === "history"),
-    );
+    ).find((select) => Array.from(select.options).some((option) => option.value === "history"));
     expect(sourceSelect).toBeTruthy();
     expect(Array.from(sourceSelect?.options ?? []).map((option) => option.value)).toEqual([
       "current-folder",
@@ -209,7 +213,9 @@ describe("FormulaAttributeBuilder", () => {
       "multi-folder",
       "history",
     ]);
-    expect(container.textContent).toContain("History verwendet die Exam-Runs des aktuellen Vaults.");
+    expect(container.textContent).toContain(
+      "History verwendet die Exam-Runs des aktuellen Vaults.",
+    );
     expect(container.textContent).toContain("Quelle: /vault/.profile/exam-runs");
 
     cleanup();

@@ -62,7 +62,9 @@ describe("DatabasePiePanel", () => {
       }),
     );
 
-    const checkboxes = Array.from(container.querySelectorAll<HTMLInputElement>("input[type='checkbox']"));
+    const checkboxes = Array.from(
+      container.querySelectorAll<HTMLInputElement>("input[type='checkbox']"),
+    );
     expect(checkboxes).toHaveLength(2);
     expect(checkboxes.every((checkbox) => checkbox.checked)).toBe(true);
 
@@ -93,7 +95,9 @@ describe("DatabasePiePanel", () => {
       }),
     );
 
-    const checkboxes = Array.from(container.querySelectorAll<HTMLInputElement>("input[type='checkbox']"));
+    const checkboxes = Array.from(
+      container.querySelectorAll<HTMLInputElement>("input[type='checkbox']"),
+    );
     expect(checkboxes[0]?.checked).toBe(true);
     expect(checkboxes[1]?.checked).toBe(false);
 
@@ -121,8 +125,9 @@ describe("DatabasePiePanel", () => {
       }),
     );
 
-    const spectrumButton = Array.from(container.querySelectorAll<HTMLButtonElement>("button[role='radio']"))
-      .find((button) => button.textContent?.includes("Ozean"));
+    const spectrumButton = Array.from(
+      container.querySelectorAll<HTMLButtonElement>("button[role='radio']"),
+    ).find((button) => button.textContent?.includes("Ozean"));
     expect(spectrumButton).toBeTruthy();
 
     act(() => {

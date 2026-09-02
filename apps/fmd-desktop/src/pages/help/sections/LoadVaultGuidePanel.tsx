@@ -20,13 +20,9 @@ type LoadVaultGuidePanelProps = {
 
 export const LoadVaultGuidePanel = ({ language }: LoadVaultGuidePanelProps) => {
   const defaultTabId = LOAD_VAULT_ORDER[0] as LoadVaultTabId;
-  const [selectedTabId, setSelectedTabId] = useState<LoadVaultTabId>(
-    defaultTabId,
-  );
-  const selectedTab =
-    LOAD_VAULT_TABS[selectedTabId] ?? LOAD_VAULT_TABS[defaultTabId];
-  const selectionError =
-    !selectedTab || !defaultTabId || !LOAD_VAULT_TABS[defaultTabId];
+  const [selectedTabId, setSelectedTabId] = useState<LoadVaultTabId>(defaultTabId);
+  const selectedTab = LOAD_VAULT_TABS[selectedTabId] ?? LOAD_VAULT_TABS[defaultTabId];
+  const selectionError = !selectedTab || !defaultTabId || !LOAD_VAULT_TABS[defaultTabId];
 
   return (
     <div className="help-detail-sections">
@@ -44,12 +40,8 @@ export const LoadVaultGuidePanel = ({ language }: LoadVaultGuidePanelProps) => {
                 role="tab"
                 aria-selected={isActive}
               >
-                <div className="help-syntax-card-title">
-                  {resolveText(tab.title, language)}
-                </div>
-                <div className="help-syntax-card-rule">
-                  {resolveText(tab.summary, language)}
-                </div>
+                <div className="help-syntax-card-title">{resolveText(tab.title, language)}</div>
+                <div className="help-syntax-card-rule">{resolveText(tab.summary, language)}</div>
               </button>
             );
           })}
@@ -61,8 +53,7 @@ export const LoadVaultGuidePanel = ({ language }: LoadVaultGuidePanelProps) => {
                 <span className="label">Missing section</span>
               </div>
               <p className="help-syntax-text">
-                The Load a vault guide is misconfigured. Check LOAD_VAULT_ORDER
-                and LOAD_VAULT_TABS.
+                The Load a vault guide is misconfigured. Check LOAD_VAULT_ORDER and LOAD_VAULT_TABS.
               </p>
             </div>
           ) : (
@@ -75,21 +66,15 @@ export const LoadVaultGuidePanel = ({ language }: LoadVaultGuidePanelProps) => {
               {selectedTab.blocks.map((block) => (
                 <div key={block.id} className="help-syntax-section">
                   <div className="help-syntax-section-header">
-                    <span className="label">
-                      {resolveText(block.title, language)}
-                    </span>
+                    <span className="label">{resolveText(block.title, language)}</span>
                   </div>
                   {block.text ? (
-                    <p className="help-syntax-text">
-                      {resolveText(block.text, language)}
-                    </p>
+                    <p className="help-syntax-text">{resolveText(block.text, language)}</p>
                   ) : null}
                   {block.bullets && block.bullets.length > 0 ? (
                     <ul className="help-syntax-list">
                       {block.bullets.map((item, index) => (
-                        <li key={`${block.id}-${index}`}>
-                          {resolveText(item, language)}
-                        </li>
+                        <li key={`${block.id}-${index}`}>{resolveText(item, language)}</li>
                       ))}
                     </ul>
                   ) : null}

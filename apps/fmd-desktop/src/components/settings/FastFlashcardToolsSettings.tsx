@@ -20,7 +20,11 @@
  * - Styling erfolgt ueber globale CSS-Klassen und Variablen.
  */
 
-import { type FlashcardMode, type FlashcardOrder, type FlashcardScope } from "../../features/flashcards/useFlashcards";
+import {
+  type FlashcardMode,
+  type FlashcardOrder,
+  type FlashcardScope,
+} from "../../features/flashcards/useFlashcards";
 
 type FastFlashcardToolsSettingsProps = {
   fastFlashcardOrder: FlashcardOrder;
@@ -56,9 +60,7 @@ export const FastFlashcardToolsSettings = ({
           <div className="pill-grid">
             <button
               type="button"
-              className={`pill pill-button ${
-                fastFlashcardOrder === "in-order" ? "active" : ""
-              }`}
+              className={`pill pill-button ${fastFlashcardOrder === "in-order" ? "active" : ""}`}
               aria-pressed={fastFlashcardOrder === "in-order"}
               onClick={() => setFastFlashcardOrder("in-order")}
             >
@@ -66,9 +68,7 @@ export const FastFlashcardToolsSettings = ({
             </button>
             <button
               type="button"
-              className={`pill pill-button ${
-                fastFlashcardOrder === "random" ? "active" : ""
-              }`}
+              className={`pill pill-button ${fastFlashcardOrder === "random" ? "active" : ""}`}
               aria-pressed={fastFlashcardOrder === "random"}
               onClick={() => setFastFlashcardOrder("random")}
             >
@@ -83,9 +83,7 @@ export const FastFlashcardToolsSettings = ({
           <select
             className="text-input"
             value={fastFlashcardMode}
-            onChange={(event) =>
-              setFastFlashcardMode(event.target.value as FlashcardMode)
-            }
+            onChange={(event) => setFastFlashcardMode(event.target.value as FlashcardMode)}
             aria-label="Select mode filter"
           >
             <option value="all">All</option>
@@ -104,9 +102,7 @@ export const FastFlashcardToolsSettings = ({
           <div className="pill-grid">
             <button
               type="button"
-              className={`pill pill-button ${
-                fastFlashcardScope === "current" ? "active" : ""
-              }`}
+              className={`pill pill-button ${fastFlashcardScope === "current" ? "active" : ""}`}
               aria-pressed={fastFlashcardScope === "current"}
               onClick={() => setFastFlashcardScope("current")}
             >
@@ -114,9 +110,7 @@ export const FastFlashcardToolsSettings = ({
             </button>
             <button
               type="button"
-              className={`pill pill-button ${
-                fastFlashcardScope === "vault" ? "active" : ""
-              }`}
+              className={`pill pill-button ${fastFlashcardScope === "vault" ? "active" : ""}`}
               aria-pressed={fastFlashcardScope === "vault"}
               onClick={() => setFastFlashcardScope("vault")}
             >

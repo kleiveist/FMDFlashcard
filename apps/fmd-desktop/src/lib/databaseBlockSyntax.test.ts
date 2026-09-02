@@ -13,15 +13,7 @@ describe("databaseBlockSyntax", () => {
   });
 
   it("extracts closed and trailing unclosed ranges", () => {
-    const lines = [
-      "text",
-      "::::",
-      "a",
-      "::::",
-      "tail",
-      "::::",
-      "b",
-    ];
+    const lines = ["text", "::::", "a", "::::", "tail", "::::", "b"];
     const ranges = extractDatabaseBlockLineRanges(lines);
     expect(ranges).toEqual([
       { startLine: 1, endLine: 3 },
@@ -30,14 +22,7 @@ describe("databaseBlockSyntax", () => {
   });
 
   it("masks full database ranges for parser isolation", () => {
-    const lines = [
-      "before",
-      "::::",
-      "#card",
-      "#endcard",
-      "::::",
-      "after",
-    ];
+    const lines = ["before", "::::", "#card", "#endcard", "::::", "after"];
     const masked = maskDatabaseBlockLines(lines);
     expect(masked).toEqual(["before", "", "", "", "", "after"]);
   });

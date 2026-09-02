@@ -103,9 +103,7 @@ export const SidebarNav = ({
   const [toolbarMode, setToolbarMode] = useState<ToolbarMode>(() =>
     activeTab === "dashboard" ? "vault" : activeMainMode,
   );
-  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(
-    () => new Set(),
-  );
+  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => new Set());
   const [isVaultMenuOpen, setIsVaultMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [vaultMenuMaxHeight, setVaultMenuMaxHeight] = useState<number | null>(null);
@@ -116,17 +114,11 @@ export const SidebarNav = ({
   const vaultButtonRef = useRef<HTMLButtonElement | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const userButtonRef = useRef<HTMLButtonElement | null>(null);
-  const vaultRootName = useMemo(
-    () => vaultBaseName(vault.vaultPath),
-    [vault.vaultPath],
-  );
+  const vaultRootName = useMemo(() => vaultBaseName(vault.vaultPath), [vault.vaultPath]);
   const activeUserName = spacedRepetition.spacedRepetitionActiveUser?.trim() ?? "";
   const activeUserId = spacedRepetition.spacedRepetitionActiveUserId;
   const activeUserLabel = activeUserName || "No active user";
-  const activeUserInitials = useMemo(
-    () => buildUserInitials(activeUserLabel),
-    [activeUserLabel],
-  );
+  const activeUserInitials = useMemo(() => buildUserInitials(activeUserLabel), [activeUserLabel]);
   const userProfiles = spacedRepetition.spacedRepetitionUsers;
   const refreshLabel = useMemo(() => {
     if (!vault.vaultPath || !vault.lastRefreshAt) {
@@ -139,12 +131,8 @@ export const SidebarNav = ({
     () => normalizeVaultPath(vault.vaultPath ?? ""),
     [vault.vaultPath],
   );
-  const recentVaults =
-    settings.currentSystemRecentVaults ?? settings.recentVaults ?? [];
-  const recentVaultPaths = useMemo(
-    () => recentVaults.map((entry) => entry.path),
-    [recentVaults],
-  );
+  const recentVaults = settings.currentSystemRecentVaults ?? settings.recentVaults ?? [];
+  const recentVaultPaths = useMemo(() => recentVaults.map((entry) => entry.path), [recentVaults]);
   const recentVaultInfo = useVaultPathInfo(recentVaultPaths, isVaultMenuOpen);
   const fileCountLabel = useMemo(() => {
     if (!vault.vaultPath) {
@@ -153,9 +141,7 @@ export const SidebarNav = ({
     if (vault.files.length === 0) {
       return "Keine Markdown-Dateien";
     }
-    return `${vault.files.length} Markdown-Datei${
-      vault.files.length === 1 ? "" : "en"
-      }`;
+    return `${vault.files.length} Markdown-Datei${vault.files.length === 1 ? "" : "en"}`;
   }, [vault.files.length, vault.vaultPath]);
   const isStudyTab = isStudyModeSection(activeTab);
   const isMonitoringTab = isMonitoringModeSection(activeTab);
@@ -239,8 +225,7 @@ export const SidebarNav = ({
     const footerHeight = footerElement?.getBoundingClientRect().height ?? 48;
     const rowCount = menuElement.querySelectorAll(".vault-status-menu-row").length;
     const minVisibleRows = Math.max(1, Math.min(3, rowCount || 1));
-    const minScrollHeight =
-      rowHeight * minVisibleRows + menuGap * Math.max(0, minVisibleRows - 1);
+    const minScrollHeight = rowHeight * minVisibleRows + menuGap * Math.max(0, minVisibleRows - 1);
     const minimumMenuHeight = Math.ceil(
       menuPaddingTop + menuPaddingBottom + minScrollHeight + menuGap + footerHeight,
     );
@@ -398,9 +383,7 @@ export const SidebarNav = ({
         nextIndex = currentIndex >= 0 ? (currentIndex + 1) % items.length : 0;
       } else {
         nextIndex =
-          currentIndex >= 0
-            ? (currentIndex - 1 + items.length) % items.length
-            : items.length - 1;
+          currentIndex >= 0 ? (currentIndex - 1 + items.length) % items.length : items.length - 1;
       }
       event.preventDefault();
       items[nextIndex]?.focus();
@@ -429,18 +412,15 @@ export const SidebarNav = ({
     [activeUserId, spacedRepetition],
   );
 
-  const activeModeSections = toolbarMode === "study"
-    ? STUDY_MODE_SECTIONS
-    : toolbarMode === "monitoring"
-      ? MONITORING_MODE_SECTIONS
-      : null;
+  const activeModeSections =
+    toolbarMode === "study"
+      ? STUDY_MODE_SECTIONS
+      : toolbarMode === "monitoring"
+        ? MONITORING_MODE_SECTIONS
+        : null;
 
   return (
-    <aside
-      id="app-sidebar"
-      className="sidebar"
-      aria-label="Primary navigation"
-    >
+    <aside id="app-sidebar" className="sidebar" aria-label="Primary navigation">
       <div className="sidebar-head">
         <button
           type="button"
@@ -486,9 +466,7 @@ export const SidebarNav = ({
             >
               <div className="sidebar-active-user-menu-scroll" role="presentation">
                 {userProfiles.length === 0 ? (
-                  <div className="sidebar-active-user-menu-empty muted">
-                    No users created yet.
-                  </div>
+                  <div className="sidebar-active-user-menu-empty muted">No users created yet.</div>
                 ) : (
                   userProfiles.map((user) => {
                     const isActive = user.id === activeUserId;
@@ -535,9 +513,7 @@ export const SidebarNav = ({
         <div className="sidebar-icon-row">
           <button
             type="button"
-            className={`nav-icon sidebar-icon-button ${
-              toolbarMode === "study" ? "active" : ""
-            }`}
+            className={`nav-icon sidebar-icon-button ${toolbarMode === "study" ? "active" : ""}`}
             onClick={() => {
               setToolbarMode("study");
               onMainModeSelect("study");
@@ -563,9 +539,7 @@ export const SidebarNav = ({
           </button>
           <button
             type="button"
-            className={`nav-icon sidebar-icon-button ${
-              isMarkdownView ? "active" : ""
-            }`}
+            className={`nav-icon sidebar-icon-button ${isMarkdownView ? "active" : ""}`}
             onClick={handleOpenEditor}
             aria-label="Editor"
             aria-controls="sidebar-vault-panel"
@@ -576,9 +550,7 @@ export const SidebarNav = ({
           </button>
           <button
             type="button"
-            className={`nav-icon sidebar-icon-button ${
-              isExamView ? "active" : ""
-            }`}
+            className={`nav-icon sidebar-icon-button ${isExamView ? "active" : ""}`}
             onClick={handleOpenExamEditor}
             aria-label="Exam editor"
             title="Exam editor"
@@ -586,10 +558,7 @@ export const SidebarNav = ({
             <ExamEditorIcon />
           </button>
         </div>
-        <div
-          className="sidebar-divider sidebar-divider-muted"
-          aria-hidden="true"
-        />
+        <div className="sidebar-divider sidebar-divider-muted" aria-hidden="true" />
       </div>
       <div className="sidebar-main" ref={vaultLayoutRef}>
         <div className="sidebar-main-content">
@@ -644,23 +613,20 @@ export const SidebarNav = ({
             style={
               vaultMenuMaxHeight !== null
                 ? ({
-                  "--vault-menu-max-height": `${vaultMenuMaxHeight}px`,
-                  "--vault-menu-min-height": `${vaultMenuMinHeight ?? 0}px`,
-                } as CSSProperties)
+                    "--vault-menu-max-height": `${vaultMenuMaxHeight}px`,
+                    "--vault-menu-min-height": `${vaultMenuMinHeight ?? 0}px`,
+                  } as CSSProperties)
                 : undefined
             }
           >
             <div className="vault-status-menu-scroll" role="presentation">
               {recentVaults.length === 0 ? (
-                <div className="vault-status-menu-empty muted">
-                  No recent vaults.
-                </div>
+                <div className="vault-status-menu-empty muted">No recent vaults.</div>
               ) : (
                 recentVaults.map((entry) => {
                   const info = recentVaultInfo[entry.path];
                   const isMissing = info ? !info.exists || !info.isDir : false;
-                  const isActive =
-                    normalizeVaultPath(entry.path) === activeVaultKey;
+                  const isActive = normalizeVaultPath(entry.path) === activeVaultKey;
                   return (
                     <div className="vault-status-menu-row" key={entry.id}>
                       <button
@@ -677,17 +643,12 @@ export const SidebarNav = ({
                         }}
                         title={entry.path}
                       >
-                        <span className="vault-status-menu-name">
-                          {vaultBaseName(entry.path)}
-                        </span>
+                        <span className="vault-status-menu-name">{vaultBaseName(entry.path)}</span>
                         {isMissing ? <span className="chip">Missing</span> : null}
                       </button>
                       <div className="vault-status-menu-actions">
                         {isActive ? (
-                          <span
-                            className="vault-status-menu-check"
-                            aria-hidden="true"
-                          >
+                          <span className="vault-status-menu-check" aria-hidden="true">
                             <CheckIcon />
                           </span>
                         ) : null}
@@ -775,9 +736,7 @@ export const SidebarNav = ({
                 Vault: {vault.vaultPath ? vaultRootName : "Not set"}
               </span>
               <span
-                className={`vault-status-caret${
-                  isVaultMenuOpen ? " is-open" : ""
-                }`}
+                className={`vault-status-caret${isVaultMenuOpen ? " is-open" : ""}`}
                 aria-hidden="true"
               >
                 <ChevronDownIcon />

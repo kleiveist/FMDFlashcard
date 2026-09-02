@@ -4,9 +4,7 @@
  * Derives database registry and visible rows from records + config/UI state.
  */
 
-import {
-  applyDatabaseFilters,
-} from "./database-filters";
+import { applyDatabaseFilters } from "./database-filters";
 import {
   evaluateDatabaseAggregationFormula,
   LEGACY_DATABASE_FORMULA_INCOMPATIBLE_MESSAGE,
@@ -68,10 +66,7 @@ const buildAttributeMeta = (
   records: DatabaseRecord[],
 ): DatabaseAttributeMeta => {
   const rawValue = records
-    .map((record) =>
-      origin === "system"
-        ? record.systemFields[key]
-        : record.frontmatter[key])
+    .map((record) => (origin === "system" ? record.systemFields[key] : record.frontmatter[key]))
     .find((value) => value !== null && typeof value !== "undefined");
 
   const type = inferFieldType(key, rawValue);
@@ -104,8 +99,9 @@ const getFrontmatterKeys = (records: DatabaseRecord[]) => {
 
 const buildInferredAttributeRegistry = (records: DatabaseRecord[]): DatabaseAttributeMeta[] => {
   const systemKeys = getSystemKeys(records);
-  const frontmatterKeys = getFrontmatterKeys(records)
-    .filter((key) => !systemKeys.some((systemKey) => toLowerKey(systemKey) === toLowerKey(key)));
+  const frontmatterKeys = getFrontmatterKeys(records).filter(
+    (key) => !systemKeys.some((systemKey) => toLowerKey(systemKey) === toLowerKey(key)),
+  );
 
   return [
     ...systemKeys.map((key) => buildAttributeMeta(key, "system", records)),
@@ -125,7 +121,9 @@ const mergeConfiguredFieldDefinitions = (
       return;
     }
 
-    const existingIndex = merged.findIndex((attribute) => toLowerKey(attribute.key) === normalizedKey);
+    const existingIndex = merged.findIndex(
+      (attribute) => toLowerKey(attribute.key) === normalizedKey,
+    );
     const compatibility = resolveFieldCompatibility(definition.type);
 
     const nextMeta: DatabaseAttributeMeta = {
@@ -136,11 +134,10 @@ const mergeConfiguredFieldDefinitions = (
       formulaDefinition: definition.formulaDefinition ?? null,
       formula: definition.formula ?? null,
       legacyFormulaIncompatible: Boolean(
-        definition.type === "formula" &&
-          definition.formula &&
-          !definition.formulaDefinition,
+        definition.type === "formula" && definition.formula && !definition.formulaDefinition,
       ),
-      editable: definition.origin === "frontmatter" &&
+      editable:
+        definition.origin === "frontmatter" &&
         !isInertFormulaAttribute(definition.key, definition.type),
       sortable: true,
       filterable: true,
@@ -210,7 +207,9 @@ const resolveVisibleColumns = (
   configColumns: string[],
   visibleColumnKeys?: string[],
 ) => {
-  const available = new Map(attributes.map((attribute) => [toLowerKey(attribute.key), attribute.key]));
+  const available = new Map(
+    attributes.map((attribute) => [toLowerKey(attribute.key), attribute.key]),
+  );
   if (visibleColumnKeys) {
     return dedupeByCaseInsensitiveKey(
       visibleColumnKeys
@@ -227,18 +226,13 @@ const resolveVisibleColumns = (
     return dedupeByCaseInsensitiveKey(requestedFromConfig);
   }
 
-  const defaultColumns = attributes
-    .slice(0, 6)
-    .map((attribute) => attribute.key);
+  const defaultColumns = attributes.slice(0, 6).map((attribute) => attribute.key);
   return dedupeByCaseInsensitiveKey(defaultColumns);
 };
 
 const cloneFilterGroup = (group: DatabaseFilterGroup): DatabaseFilterGroup => ({
   ...group,
-  rules: group.rules.map((entry) =>
-    "rules" in entry
-      ? cloneFilterGroup(entry)
-      : { ...entry }),
+  rules: group.rules.map((entry) => ("rules" in entry ? cloneFilterGroup(entry) : { ...entry })),
 });
 
 const getCaseInsensitiveFieldValue = (
@@ -249,8 +243,9 @@ const getCaseInsensitiveFieldValue = (
     return normalizedFields[field];
   }
   const normalizedField = toLowerKey(field);
-  const matchedKey = Object.keys(normalizedFields)
-    .find((key) => toLowerKey(key) === normalizedField);
+  const matchedKey = Object.keys(normalizedFields).find(
+    (key) => toLowerKey(key) === normalizedField,
+  );
   return matchedKey ? normalizedFields[matchedKey] : null;
 };
 
@@ -339,7 +334,10 @@ const evaluateFormulaFields = (
           getFieldValue: (targetRecord, key) =>
             getCaseInsensitiveFieldValue(targetRecord.normalizedFields, key),
         });
-        nextNormalizedFields[definition.key] = normalizeFieldValueByType(definition.type, evaluated);
+        nextNormalizedFields[definition.key] = normalizeFieldValueByType(
+          definition.type,
+          evaluated,
+        );
         return;
       }
 
@@ -396,11 +394,7 @@ export const buildDatabaseStoreSnapshot = (
     visibleColumnKeys,
   );
 
-  const visibleRecords = applyDatabaseSorts(
-    filteredRecords,
-    activeSorts,
-    attributeRegistry,
-  );
+  const visibleRecords = applyDatabaseSorts(filteredRecords, activeSorts, attributeRegistry);
 
   return {
     rawRecords,

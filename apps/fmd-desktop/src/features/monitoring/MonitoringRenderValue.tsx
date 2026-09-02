@@ -7,8 +7,7 @@ type MonitoringRenderValueProps = {
   showText?: boolean;
 };
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, value));
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const asPercent = (value: number | null) => {
   if (value === null || !Number.isFinite(value)) {
@@ -76,10 +75,7 @@ export const MonitoringRenderValue = ({
     if (result.progressVisual.style === "pie") {
       const piePath = describePieSlicePath(percent);
       return (
-        <span
-          className={`monitoring-render-pie${compact ? " is-compact" : ""}`}
-          aria-hidden="true"
-        >
+        <span className={`monitoring-render-pie${compact ? " is-compact" : ""}`} aria-hidden="true">
           <svg className="monitoring-render-pie-svg" viewBox="0 0 36 36" focusable="false">
             <circle cx="18" cy="18" r="15" className="monitoring-render-pie-track" />
             {percent >= 100 ? (
@@ -95,17 +91,9 @@ export const MonitoringRenderValue = ({
     const ringCircumference = 2 * Math.PI * ringRadius;
     const ringStrokeLength = (percent / 100) * ringCircumference;
     return (
-      <span
-        className={`monitoring-render-ring${compact ? " is-compact" : ""}`}
-        aria-hidden="true"
-      >
+      <span className={`monitoring-render-ring${compact ? " is-compact" : ""}`} aria-hidden="true">
         <svg className="monitoring-render-ring-svg" viewBox="0 0 36 36" focusable="false">
-          <circle
-            cx="18"
-            cy="18"
-            r={ringRadius}
-            className="monitoring-render-ring-track"
-          />
+          <circle cx="18" cy="18" r={ringRadius} className="monitoring-render-ring-track" />
           <circle
             cx="18"
             cy="18"

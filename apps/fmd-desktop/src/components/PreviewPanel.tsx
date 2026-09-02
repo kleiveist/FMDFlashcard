@@ -62,16 +62,12 @@ import {
   normalizeQuotePrefixedHashLines,
   type MarkdownBlock,
 } from "../features/preview/markdownBlocks";
-import {
-  applyMarkdownFormattingInsertion,
-} from "../features/preview/markdownFormattingActions";
+import { applyMarkdownFormattingInsertion } from "../features/preview/markdownFormattingActions";
 import {
   buildBacktickFenceDisplayHints,
   normalizeFenceDisplayForRender,
 } from "../features/preview/codeFenceDisplay";
-import {
-  normalizeLegacyUnorderedListIndentation,
-} from "../features/preview/unorderedListNormalization";
+import { normalizeLegacyUnorderedListIndentation } from "../features/preview/unorderedListNormalization";
 import { MarkdownHybridDatabaseBlock } from "../features/preview/database/database-block";
 import { CanvasEmbeddedBlock } from "../features/canvas/CanvasEmbeddedBlock";
 import type { CanvasCustomColorSlot } from "../features/canvas/canvasSettings";
@@ -250,9 +246,7 @@ const readMarkdownElementProperty = (node: unknown, key: string) => {
   if (key in properties) {
     return properties[key];
   }
-  const camelKey = key.replace(/-([a-z])/g, (_match, character: string) =>
-    character.toUpperCase()
-  );
+  const camelKey = key.replace(/-([a-z])/g, (_match, character: string) => character.toUpperCase());
   return properties[camelKey];
 };
 
@@ -373,12 +367,14 @@ const readMarkdownNodeSource = (node: unknown, source: string): string => {
       start?: { offset?: number; line?: number; column?: number };
       end?: { offset?: number; line?: number; column?: number };
     };
-    const startOffset = typeof position.start?.offset === "number"
-      ? position.start.offset
-      : resolveOffsetFromLineColumn(position.start?.line, position.start?.column);
-    const endOffset = typeof position.end?.offset === "number"
-      ? position.end.offset
-      : resolveOffsetFromLineColumn(position.end?.line, position.end?.column);
+    const startOffset =
+      typeof position.start?.offset === "number"
+        ? position.start.offset
+        : resolveOffsetFromLineColumn(position.start?.line, position.start?.column);
+    const endOffset =
+      typeof position.end?.offset === "number"
+        ? position.end.offset
+        : resolveOffsetFromLineColumn(position.end?.line, position.end?.column);
     if (
       typeof startOffset === "number" &&
       typeof endOffset === "number" &&
@@ -418,16 +414,15 @@ const renderMarkdownMediaGroup = ({
     return null;
   }
   const mediaIndexRaw = readMarkdownElementProperty(node, "data-media-index");
-  let mediaIndex = Number.parseInt(
-    String(mediaIndexRaw ?? ""),
-    10,
-  );
+  let mediaIndex = Number.parseInt(String(mediaIndexRaw ?? ""), 10);
   if (!Number.isFinite(mediaIndex) && hasPlaceholderIndex) {
     mediaIndex = placeholderIndex;
   }
   const mediaGroup = Number.isFinite(mediaIndex)
     ? (groups[mediaIndex] ?? null)
-    : (groups.length === 1 ? groups[0] ?? null : null);
+    : groups.length === 1
+      ? (groups[0] ?? null)
+      : null;
   if (!mediaGroup) {
     return null;
   }
@@ -510,10 +505,10 @@ const tryReadCanvasPixels = (
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  const context = (canvas.getContext(
-    "2d",
-    { willReadFrequently: true } as CanvasRenderingContext2DSettings,
-  ) ?? canvas.getContext("2d")) as CanvasRenderingContext2D | null;
+  const context = (canvas.getContext("2d", {
+    willReadFrequently: true,
+  } as CanvasRenderingContext2DSettings) ??
+    canvas.getContext("2d")) as CanvasRenderingContext2D | null;
   if (!context) {
     return null;
   }
@@ -522,7 +517,9 @@ const tryReadCanvasPixels = (
   return context.getImageData(0, 0, width, height).data;
 };
 
-const scanCoverThumbnailCrop = async (source: CoverThumbnailSource): Promise<CoverThumbnailCropScanResult> => {
+const scanCoverThumbnailCrop = async (
+  source: CoverThumbnailSource,
+): Promise<CoverThumbnailCropScanResult> => {
   const src = source.src ?? source.path;
   if (!src) {
     return { kind: "none" };
@@ -717,12 +714,13 @@ const useCoverThumbnailCrop = (source: CoverThumbnailSource | null) => {
       });
     };
 
-    const idleWindow = typeof window !== "undefined"
-      ? (window as Window & {
-          requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
-          cancelIdleCallback?: (handle: number) => void;
-        })
-      : null;
+    const idleWindow =
+      typeof window !== "undefined"
+        ? (window as Window & {
+            requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+            cancelIdleCallback?: (handle: number) => void;
+          })
+        : null;
 
     if (idleWindow?.requestIdleCallback) {
       idleHandle = idleWindow.requestIdleCallback(run, { timeout: 120 });
@@ -891,7 +889,7 @@ const CoverThumbnailImage = ({
   const viewportRef = useRef<HTMLSpanElement | null>(null);
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
   const [viewportSize, setViewportSize] = useState(() =>
-    resolveCoverThumbnailFallbackSize(variant)
+    resolveCoverThumbnailFallbackSize(variant),
   );
   const crop = useCoverThumbnailCrop(image);
 
@@ -913,7 +911,7 @@ const CoverThumbnailImage = ({
       setViewportSize((current) =>
         current.width === nextWidth && current.height === nextHeight
           ? current
-          : { width: nextWidth, height: nextHeight }
+          : { width: nextWidth, height: nextHeight },
       );
     };
     const scheduleMeasure = () => {
@@ -1009,11 +1007,12 @@ const CoverThumbnailImage = ({
   }, [foregroundTransform, viewportSize.height, viewportSize.width]);
 
   const src = image.src ?? image.path;
-  const hasEdgeGap = freeSpace.x > COVER_THUMBNAIL_BAR_EPSILON_PX ||
-    freeSpace.y > COVER_THUMBNAIL_BAR_EPSILON_PX;
-  const showBackdrop = variant === "main"
-    ? Boolean(src) && (hasEdgeGap || !foregroundTransform)
-    : Boolean(backdropTransform && hasEdgeGap);
+  const hasEdgeGap =
+    freeSpace.x > COVER_THUMBNAIL_BAR_EPSILON_PX || freeSpace.y > COVER_THUMBNAIL_BAR_EPSILON_PX;
+  const showBackdrop =
+    variant === "main"
+      ? Boolean(src) && (hasEdgeGap || !foregroundTransform)
+      : Boolean(backdropTransform && hasEdgeGap);
   const isTransformed = Boolean(foregroundTransform);
   const frameClassName = resolveCoverThumbnailFrameClassName(variant);
   const foregroundClassName = resolveCoverThumbnailForegroundClassName(variant, isTransformed);
@@ -1044,7 +1043,7 @@ const CoverThumbnailImage = ({
             setNaturalSize((current) =>
               current && current.width === nextWidth && current.height === nextHeight
                 ? current
-                : { width: nextWidth, height: nextHeight }
+                : { width: nextWidth, height: nextHeight },
             );
           }
           onLoad?.(event);
@@ -1081,11 +1080,7 @@ const markdownSchema = {
   attributes: {
     ...defaultSchema.attributes,
     details: [...(defaultSchema.attributes?.details ?? []), "open"],
-    div: [
-      ...(defaultSchema.attributes?.div ?? []),
-      "data-fmd-media-block",
-      "data-media-index",
-    ],
+    div: [...(defaultSchema.attributes?.div ?? []), "data-fmd-media-block", "data-media-index"],
     mark: [...(defaultSchema.attributes?.mark ?? []), "className"],
     ol: [...(defaultSchema.attributes?.ol ?? []), "data-md-ordered-delimiter"],
     table: [...(defaultSchema.attributes?.table ?? []), "className"],
@@ -1154,9 +1149,11 @@ const copyTextToClipboard = async (value: string) => {
   textarea.focus();
   textarea.select();
   try {
-    const exec = (document as Document & {
-      execCommand?: (command: string) => boolean;
-    }).execCommand;
+    const exec = (
+      document as Document & {
+        execCommand?: (command: string) => boolean;
+      }
+    ).execCommand;
     if (typeof exec === "function") {
       exec.call(document, "copy");
     }
@@ -1182,7 +1179,8 @@ type HybridMarkdownPreviewRenderOptions = {
 // Highlight inline FMD-style hash directives/tags like "#card", "#text", "#test".
 // Headings are unaffected because Markdown headings require "# " (hash + space),
 // while this pattern only matches hash tokens without a following space.
-const markdownInlineSyntaxPattern = /%%[^%\n]+%%|#[A-Za-z0-9_-]+\b|%[^%\n]+%(?:%[^%\n]+%)*|"[^"\n]+"/g;
+const markdownInlineSyntaxPattern =
+  /%%[^%\n]+%%|#[A-Za-z0-9_-]+\b|%[^%\n]+%(?:%[^%\n]+%)*|"[^"\n]+"/g;
 
 const resolveInlineSyntaxKind = (token: string): MarkdownInlineSyntaxKind | null => {
   if (/^%%[^%\n]+%%$/.test(token)) {
@@ -1228,11 +1226,11 @@ const resolveInlineSyntaxDisplayToken = (
   }
   if (kind === "cloze") {
     const clozeMatch = displayToken.match(/^%([^%\n]+)%$/);
-    return clozeMatch ? clozeMatch[1] ?? displayToken : displayToken;
+    return clozeMatch ? (clozeMatch[1] ?? displayToken) : displayToken;
   }
   if (kind === "quoted-token") {
     const quotedMatch = displayToken.match(/^"([^"\n]+)"$/);
-    return quotedMatch ? quotedMatch[1] ?? displayToken : displayToken;
+    return quotedMatch ? (quotedMatch[1] ?? displayToken) : displayToken;
   }
   return displayToken;
 };
@@ -1294,7 +1292,8 @@ const highlightInlineSyntaxInNode = (
   if (typeof node === "string") {
     const rendered = renderMarkdownMathNode(node, {
       keyPrefix: `${keyPrefix}-math`,
-      renderText: (text, textKeyPrefix) => highlightInlineSyntaxInText(text, textKeyPrefix, options),
+      renderText: (text, textKeyPrefix) =>
+        highlightInlineSyntaxInText(text, textKeyPrefix, options),
     });
     if (rendered.length === 1) {
       return rendered[0] ?? null;
@@ -1333,9 +1332,7 @@ const renderHighlightedInlineSyntaxChildren = (
   );
 
 const mergeClassNames = (base: unknown, ...tokens: string[]) => {
-  const existingTokens = typeof base === "string"
-    ? base.split(/\s+/).filter(Boolean)
-    : [];
+  const existingTokens = typeof base === "string" ? base.split(/\s+/).filter(Boolean) : [];
   const merged = new Set(existingTokens);
   tokens.forEach((token) => {
     const trimmed = token.trim();
@@ -1360,9 +1357,10 @@ const ensureTableCellImageClassesInNode = (node: ReactNode): ReactNode => {
   }
 
   const rawChildren = node.props.children;
-  const nextChildren = rawChildren == null
-    ? rawChildren
-    : Children.map(rawChildren, (child) => ensureTableCellImageClassesInNode(child));
+  const nextChildren =
+    rawChildren == null
+      ? rawChildren
+      : Children.map(rawChildren, (child) => ensureTableCellImageClassesInNode(child));
   const tagName = typeof node.type === "string" ? node.type.toLowerCase() : null;
 
   if (tagName === "img") {
@@ -1383,9 +1381,7 @@ const ensureTableCellImageClassesInNode = (node: ReactNode): ReactNode => {
 };
 
 const isMarkdownTableCellBreakNode = (node: ReactNode) =>
-  isValidElement(node) &&
-  typeof node.type === "string" &&
-  node.type.toLowerCase() === "br";
+  isValidElement(node) && typeof node.type === "string" && node.type.toLowerCase() === "br";
 
 const renderMarkdownTableCellChildren = (
   children: ReactNode,
@@ -1466,10 +1462,7 @@ const renderMarkdownTableCellChildren = (
   return (
     <div className={`markdown-table-cell-preview ${SHARED_TABLE_CELL_CONTENT_CLASS}`}>
       {paragraphs.map((paragraph, index) => (
-        <div
-          key={`${keyPrefix}-paragraph-${index}`}
-          className="markdown-table-cell-paragraph"
-        >
+        <div key={`${keyPrefix}-paragraph-${index}`} className="markdown-table-cell-paragraph">
           {paragraph}
         </div>
       ))}
@@ -1505,15 +1498,10 @@ const renderMarkdownTableCellWithMedia = ({
   });
   const hasMediaSegments = segments.some((segment) => segment.kind !== "text");
   if (!hasMediaSegments) {
-    const normalizedChildren = Children.map(
-      children,
-      (child) => ensureTableCellImageClassesInNode(child),
+    const normalizedChildren = Children.map(children, (child) =>
+      ensureTableCellImageClassesInNode(child),
     );
-    return renderMarkdownTableCellChildren(
-      normalizedChildren,
-      keyPrefix,
-      inlineHighlightOptions,
-    );
+    return renderMarkdownTableCellChildren(normalizedChildren, keyPrefix, inlineHighlightOptions);
   }
 
   const renderedSegments = segments.map((segment, index) => {
@@ -1597,10 +1585,7 @@ type PreviewPanelProps = {
   onHybridDirtyChange?: (dirty: boolean) => void;
   onEditCaretApplied: () => void;
   onEditExit: () => void;
-  onEditStart: (options?: {
-    caretIndex?: number | null;
-    origin?: "raw" | "markdown";
-  }) => void;
+  onEditStart: (options?: { caretIndex?: number | null; origin?: "raw" | "markdown" }) => void;
   onSelectEditorMode: (editorMode: PreviewPanelEditorMode) => void | Promise<void>;
   onToggleEditEnabled: () => void | Promise<void>;
   onWriteSave?: () => void;
@@ -1709,7 +1694,9 @@ const getParentRelativePath = (value: string) => {
 const joinVaultPath = (vaultRoot: string, relativePath: string) => {
   const separator = vaultRoot.includes("\\") ? "\\" : "/";
   const trimmedRoot = vaultRoot.replace(/[\\/]+$/, "");
-  const normalizedRelative = normalizeRelativePath(relativePath).replace(/^\/+/, "").replace(/\//g, separator);
+  const normalizedRelative = normalizeRelativePath(relativePath)
+    .replace(/^\/+/, "")
+    .replace(/\//g, separator);
   if (!normalizedRelative) {
     return trimmedRoot;
   }
@@ -1761,9 +1748,7 @@ const resolveMarkdownTabDisplayInfo = (tab: { path: string; relativePath: string
   const fallbackFileLabel = fullLabel.trim() || tab.path;
   const fileLabel = segments[segments.length - 1] ?? fallbackFileLabel;
   const folderLabel =
-    segments.length > 1
-      ? segments.slice(0, -1).join("/")
-      : PREVIEW_TAB_ROOT_LABEL;
+    segments.length > 1 ? segments.slice(0, -1).join("/") : PREVIEW_TAB_ROOT_LABEL;
 
   return {
     path: tab.path,
@@ -1806,10 +1791,7 @@ const getSelectionRange = (container: HTMLElement) => {
 const getRangeFromPoint = (x: number, y: number) => {
   const doc = document as Document & {
     caretRangeFromPoint?: (x: number, y: number) => Range | null;
-    caretPositionFromPoint?: (
-      x: number,
-      y: number,
-    ) => { offsetNode: Node; offset: number } | null;
+    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
   };
   if (doc.caretRangeFromPoint) {
     return doc.caretRangeFromPoint(x, y) ?? null;
@@ -1826,10 +1808,7 @@ const getRangeFromPoint = (x: number, y: number) => {
   return null;
 };
 
-const getRangeFromEvent = (
-  event: MouseEvent<HTMLDivElement>,
-  container: HTMLElement,
-) => {
+const getRangeFromEvent = (event: MouseEvent<HTMLDivElement>, container: HTMLElement) => {
   const rangeFromPoint = getRangeFromPoint(event.clientX, event.clientY);
   if (rangeFromPoint && container.contains(rangeFromPoint.startContainer)) {
     return rangeFromPoint;
@@ -1888,9 +1867,9 @@ const FORMATTING_WRAPPER_BY_TOKEN = new Map<string, string>([
   ["$", "$"],
   ["%%", "%%"],
   ["%", "%"],
-  ["\"\"", "\""],
-  ["\"", "\""],
-  ["''", "\""],
+  ['""', '"'],
+  ['"', '"'],
+  ["''", '"'],
 ]);
 
 const canOpenLegacyMarkdownLinkPickerAtRange = (
@@ -1903,13 +1882,10 @@ const canOpenLegacyMarkdownLinkPickerAtRange = (
   if (findMathTokenCoveringRange(markdown, range)) {
     return false;
   }
-  const probeOffset = Math.max(
-    0,
-    Math.min(range.start, Math.max(0, markdown.length - 1)),
-  );
+  const probeOffset = Math.max(0, Math.min(range.start, Math.max(0, markdown.length - 1)));
   const blocks = parseMarkdownBlocks(markdown);
-  const owningBlock = blocks.find((block) =>
-    probeOffset >= block.startOffset && probeOffset < block.endOffset
+  const owningBlock = blocks.find(
+    (block) => probeOffset >= block.startOffset && probeOffset < block.endOffset,
   );
   if (!owningBlock) {
     return true;
@@ -2717,11 +2693,7 @@ const resolveInlinePreviewTokenCoveringRawIndex = (
 };
 
 const findTextNodeAtOffset = (container: HTMLElement, offset: number) => {
-  const walker = document.createTreeWalker(
-    container,
-    NodeFilter.SHOW_TEXT,
-    null,
-  );
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
   const range = document.createRange();
   range.setStart(container, 0);
 
@@ -2851,10 +2823,7 @@ const rangeIntersectsNodeSafely = (range: Range, node: Node) => {
   }
 };
 
-const replaceSelectionWithTextInContentEditable = (
-  editor: HTMLElement,
-  text: string,
-) => {
+const replaceSelectionWithTextInContentEditable = (editor: HTMLElement, text: string) => {
   const range = resolveSelectionRangeWithinEditor(editor);
   const selection = window.getSelection();
   if (!range || !selection) {
@@ -2896,8 +2865,8 @@ const resolveSelectionLineElements = (editor: HTMLElement, range: Range) => {
       const minIndex = Math.min(startIndex, endIndex);
       const maxIndex = Math.max(startIndex, endIndex);
       const betweenLines = lineElements.slice(minIndex, maxIndex + 1);
-      return betweenLines.filter((line) =>
-        !betweenLines.some((other) => other !== line && line.contains(other))
+      return betweenLines.filter(
+        (line) => !betweenLines.some((other) => other !== line && line.contains(other)),
       );
     }
   }
@@ -2906,7 +2875,9 @@ const resolveSelectionLineElements = (editor: HTMLElement, range: Range) => {
     const line = resolveLineFromNode(range.startContainer);
     return line ? [line] : [];
   }
-  return intersected.filter((line) => !intersected.some((other) => other !== line && line.contains(other)));
+  return intersected.filter(
+    (line) => !intersected.some((other) => other !== line && line.contains(other)),
+  );
 };
 
 const resolveLinePrefixInsertionPoint = (line: HTMLElement) => {
@@ -2926,10 +2897,7 @@ const resolveLinePrefixInsertionPoint = (line: HTMLElement) => {
   return node;
 };
 
-const applyFormattingWrapperInContentEditable = (
-  editor: HTMLElement,
-  marker: string,
-) => {
+const applyFormattingWrapperInContentEditable = (editor: HTMLElement, marker: string) => {
   const range = resolveSelectionRangeWithinEditor(editor);
   const selection = window.getSelection();
   if (!range || !selection) {
@@ -2964,10 +2932,7 @@ const applyFormattingWrapperInContentEditable = (
   return true;
 };
 
-const applyFormattingPrefixInContentEditable = (
-  editor: HTMLElement,
-  prefix: string,
-) => {
+const applyFormattingPrefixInContentEditable = (editor: HTMLElement, prefix: string) => {
   const range = resolveSelectionRangeWithinEditor(editor);
   const selection = window.getSelection();
   if (!range || !selection) {
@@ -3007,10 +2972,7 @@ const applyFormattingPrefixInContentEditable = (
   return true;
 };
 
-const applyMarkdownFormattingToContentEditable = (
-  editor: HTMLElement,
-  rawToken: string,
-) => {
+const applyMarkdownFormattingToContentEditable = (editor: HTMLElement, rawToken: string) => {
   const wrapper = resolveFormattingWrapperToken(rawToken);
   if (wrapper) {
     return applyFormattingWrapperInContentEditable(editor, wrapper);
@@ -3069,12 +3031,11 @@ const replaceHeadingElementLevel = (heading: HTMLElement, level: number) => {
 
 const isInteractionMarkerLine = (line: string) => {
   const trimmed = line.trim().toLowerCase();
-  return trimmed === "-true" ||
+  return (
+    trimmed === "-true" ||
     trimmed === "-false" ||
-    (trimmed.length === 2 &&
-      trimmed[0] === "-" &&
-      trimmed[1] >= "a" &&
-      trimmed[1] <= "d");
+    (trimmed.length === 2 && trimmed[0] === "-" && trimmed[1] >= "a" && trimmed[1] <= "d")
+  );
 };
 
 const isFmdDirectiveLine = (line: string) => {
@@ -3261,9 +3222,7 @@ const escapeMarkdownLineStart = (line: string) => {
 const escapeMarkdownLineStarts = (value: string) =>
   value
     .split(/(\r?\n)/)
-    .map((part, index) =>
-      index % 2 === 1 ? part : escapeMarkdownLineStart(part),
-    )
+    .map((part, index) => (index % 2 === 1 ? part : escapeMarkdownLineStart(part)))
     .join("");
 
 const escapeMarkdownText = (text: string, escapePipes = true) => {
@@ -3280,21 +3239,16 @@ const escapeMarkdownText = (text: string, escapePipes = true) => {
   return escapeMarkdownLineStarts(next);
 };
 
-const escapeMarkdownLinkText = (text: string) =>
-  text.replace(/\[/g, "\\[").replace(/]/g, "\\]");
+const escapeMarkdownLinkText = (text: string) => text.replace(/\[/g, "\\[").replace(/]/g, "\\]");
 
-const escapeMarkdownTableCell = (text: string) =>
-  text.replace(/\|/g, "\\|");
+const escapeMarkdownTableCell = (text: string) => text.replace(/\|/g, "\\|");
 
 const wrapInlineCode = (text: string) => {
   const normalized = text.replace(/\u00a0/g, " ").replace(/\n+/g, " ");
   const matches = normalized.match(/`+/g);
-  const fenceLength = matches
-    ? Math.max(...matches.map((match) => match.length)) + 1
-    : 1;
+  const fenceLength = matches ? Math.max(...matches.map((match) => match.length)) + 1 : 1;
   const fence = "`".repeat(fenceLength);
-  const needsPadding =
-    normalized.startsWith(" ") || normalized.endsWith(" ");
+  const needsPadding = normalized.startsWith(" ") || normalized.endsWith(" ");
   const content = needsPadding ? ` ${normalized} ` : normalized;
   return `${fence}${content}${fence}`;
 };
@@ -3302,9 +3256,7 @@ const wrapInlineCode = (text: string) => {
 const wrapCodeBlock = (text: string) => {
   const normalized = text.replace(/\r\n?/g, "\n");
   const matches = normalized.match(/`+/g);
-  const fenceLength = matches
-    ? Math.max(...matches.map((match) => match.length)) + 1
-    : 3;
+  const fenceLength = matches ? Math.max(...matches.map((match) => match.length)) + 1 : 3;
   const fence = "`".repeat(Math.max(3, fenceLength));
   const trimmed = normalized.replace(/\n$/, "");
   if (trimmed.trim().length === 0) {
@@ -3363,10 +3315,7 @@ const resolveDatabaseBlockIndex = (value: string | null | undefined) => {
   return parsed;
 };
 
-const normalizeCloseCodeFenceMarker = (
-  value: string | null,
-  openMarker: string,
-) => {
+const normalizeCloseCodeFenceMarker = (value: string | null, openMarker: string) => {
   const normalized = (value ?? "").replace(/\r?\n/g, "");
   if (normalized && codeFenceCloseLinePattern.test(normalized)) {
     return normalized;
@@ -3400,11 +3349,7 @@ const decodeCodeFenceLineHint = (value: string | null | undefined) => {
 const sanitizeCodeFenceHintLine = (value: string | null | undefined) =>
   (value ?? "").replace(/\r?\n/g, "");
 
-const wrapCodeBlockWithMarkers = (
-  text: string,
-  openMarker: string,
-  closeMarker: string,
-) => {
+const wrapCodeBlockWithMarkers = (text: string, openMarker: string, closeMarker: string) => {
   const normalized = text.replace(/\r\n?/g, "\n");
   const trimmed = normalized.replace(/\n$/, "");
   if (trimmed.trim().length === 0) {
@@ -3423,7 +3368,9 @@ const resolveEditableBlockquoteMarkerDepth = (rawMarker: string | null | undefin
 };
 
 const resolveEditableBlockquoteMarkerText = (blockquote: HTMLElement) => {
-  const directMarker = blockquote.querySelector<HTMLElement>(":scope > .md-blockquote-marker")?.textContent;
+  const directMarker = blockquote.querySelector<HTMLElement>(
+    ":scope > .md-blockquote-marker",
+  )?.textContent;
   if (directMarker) {
     return directMarker;
   }
@@ -3431,7 +3378,9 @@ const resolveEditableBlockquoteMarkerText = (blockquote: HTMLElement) => {
     if (!(child instanceof HTMLElement) || !blockquoteMarkerAnchorTagNames.has(child.tagName)) {
       continue;
     }
-    const childMarker = child.querySelector<HTMLElement>(":scope > .md-blockquote-marker")?.textContent;
+    const childMarker = child.querySelector<HTMLElement>(
+      ":scope > .md-blockquote-marker",
+    )?.textContent;
     if (childMarker) {
       return childMarker;
     }
@@ -3446,18 +3395,12 @@ type MarkdownSerializeContext = {
   blockquoteDepth: number;
 };
 
-const serializeMarkdownChildren = (
-  node: ParentNode,
-  context: MarkdownSerializeContext,
-) =>
+const serializeMarkdownChildren = (node: ParentNode, context: MarkdownSerializeContext) =>
   Array.from(node.childNodes)
     .map((child) => serializeMarkdownNode(child, context))
     .join("");
 
-const serializeMarkdownNode = (
-  node: Node,
-  context: MarkdownSerializeContext,
-): string => {
+const serializeMarkdownNode = (node: Node, context: MarkdownSerializeContext): string => {
   if (node.nodeType === Node.TEXT_NODE) {
     let value = node.nodeValue ?? "";
     if (context.inContentEditable) {
@@ -3469,12 +3412,10 @@ const serializeMarkdownNode = (
 
       const isInlineSyntaxMarkerElement = (candidate: Node | null): candidate is HTMLElement =>
         candidate instanceof HTMLElement &&
-        (
-          candidate.classList.contains("md-inline-marker") ||
+        (candidate.classList.contains("md-inline-marker") ||
           candidate.classList.contains("md-heading-marker") ||
           candidate.classList.contains("md-blockquote-marker") ||
-          candidate.classList.contains("md-table-pipe-marker")
-        );
+          candidate.classList.contains("md-table-pipe-marker"));
       const resolveElementSiblingTag = (
         start: Node | null,
         direction: "previousSibling" | "nextSibling",
@@ -3513,17 +3454,11 @@ const serializeMarkdownNode = (
     element.getAttribute("data-md-database-block-raw"),
   );
   if (databaseBlockRaw) {
-    return context.inContentEditable
-      ? `${databaseBlockRaw}\n`
-      : `${databaseBlockRaw}\n\n`;
+    return context.inContentEditable ? `${databaseBlockRaw}\n` : `${databaseBlockRaw}\n\n`;
   }
-  const canvasBlockRaw = decodeDatabaseBlockRaw(
-    element.getAttribute("data-md-canvas-block-raw"),
-  );
+  const canvasBlockRaw = decodeDatabaseBlockRaw(element.getAttribute("data-md-canvas-block-raw"));
   if (canvasBlockRaw) {
-    return context.inContentEditable
-      ? `${canvasBlockRaw}\n`
-      : `${canvasBlockRaw}\n\n`;
+    return context.inContentEditable ? `${canvasBlockRaw}\n` : `${canvasBlockRaw}\n\n`;
   }
   const hasClassName = (name: string) => element.classList.contains(name);
   const isInlineMarkerElement = hasClassName("md-inline-marker");
@@ -3535,7 +3470,12 @@ const serializeMarkdownNode = (
     return "";
   }
 
-  if (isInlineMarkerElement || isHeadingMarkerElement || isBlockquoteMarkerElement || isTablePipeMarkerElement) {
+  if (
+    isInlineMarkerElement ||
+    isHeadingMarkerElement ||
+    isBlockquoteMarkerElement ||
+    isTablePipeMarkerElement
+  ) {
     return "";
   }
 
@@ -3588,12 +3528,12 @@ const serializeMarkdownNode = (
   };
 
   const resolveInlineWrapper = (defaultOpen: string, defaultClose: string) => {
-    const open = element.querySelector<HTMLElement>(
-      ':scope > .md-inline-marker.md-inline-marker-open',
-    )?.textContent ?? defaultOpen;
-    const close = element.querySelector<HTMLElement>(
-      ':scope > .md-inline-marker.md-inline-marker-close',
-    )?.textContent ?? defaultClose;
+    const open =
+      element.querySelector<HTMLElement>(":scope > .md-inline-marker.md-inline-marker-open")
+        ?.textContent ?? defaultOpen;
+    const close =
+      element.querySelector<HTMLElement>(":scope > .md-inline-marker.md-inline-marker-close")
+        ?.textContent ?? defaultClose;
     return { open, close };
   };
 
@@ -3629,12 +3569,10 @@ const serializeMarkdownNode = (
     contentClone.querySelectorAll(".md-code-fence-line").forEach((line) => line.remove());
     const code = contentClone.querySelector("code")?.textContent ?? contentClone.textContent ?? "";
     if (context.inContentEditable) {
-      const openMarkerText = element.querySelector(
-        ".md-code-fence-open > .md-code-fence-marker",
-      )?.textContent ?? null;
-      const closeMarkerText = element.querySelector(
-        ".md-code-fence-close > .md-code-fence-marker",
-      )?.textContent ?? null;
+      const openMarkerText =
+        element.querySelector(".md-code-fence-open > .md-code-fence-marker")?.textContent ?? null;
+      const closeMarkerText =
+        element.querySelector(".md-code-fence-close > .md-code-fence-marker")?.textContent ?? null;
       const openSourceHint = decodeCodeFenceLineHint(
         element.getAttribute("data-md-code-fence-open-source"),
       );
@@ -3666,18 +3604,13 @@ const serializeMarkdownNode = (
           closeMarkerText.trimStart() === closeSourceHint.trimStart();
         const shouldReuseSourceFenceLines = Boolean(
           openSourceHint &&
-            closeSourceHint &&
-            (
-              (openDisplayHint && openMarkerMatchesDisplay) ||
-              openMarkerMatchesSource
-            ) &&
-            (
-              (closeDisplayHint && closeMarkerMatchesDisplay) ||
-              closeMarkerMatchesSource ||
-              (openMarkerMatchesSourceTrimmed && closeMarkerMatchesSource) ||
-              (openMarkerMatchesSource && closeMarkerMatchesSourceTrimmed) ||
-              (openMarkerMatchesSourceTrimmed && closeMarkerMatchesSourceTrimmed)
-            ),
+          closeSourceHint &&
+          ((openDisplayHint && openMarkerMatchesDisplay) || openMarkerMatchesSource) &&
+          ((closeDisplayHint && closeMarkerMatchesDisplay) ||
+            closeMarkerMatchesSource ||
+            (openMarkerMatchesSourceTrimmed && closeMarkerMatchesSource) ||
+            (openMarkerMatchesSource && closeMarkerMatchesSourceTrimmed) ||
+            (openMarkerMatchesSourceTrimmed && closeMarkerMatchesSourceTrimmed)),
         );
         if (shouldReuseSourceFenceLines) {
           let sourceOpenMarker = openSourceHint ?? "```";
@@ -3685,10 +3618,7 @@ const serializeMarkdownNode = (
           // Defensive fallback: if an environment strips leading whitespace from
           // the opening fence hint while preserving the closing fence hint,
           // recover the shared indent so source round-trips byte-exact.
-          if (
-            /^[ \t]+`{3,}/.test(sourceCloseMarker) &&
-            /^`{3,}/.test(sourceOpenMarker)
-          ) {
+          if (/^[ \t]+`{3,}/.test(sourceCloseMarker) && /^`{3,}/.test(sourceOpenMarker)) {
             const openIndent = sourceOpenMarker.match(/^[ \t]*/)?.[0] ?? "";
             if (openIndent.length === 0) {
               const closeIndent = sourceCloseMarker.match(/^[ \t]+/)?.[0] ?? "";
@@ -3718,14 +3648,23 @@ const serializeMarkdownNode = (
       const serializedLines: string[] = [];
       const blockMarkerText = resolveEditableBlockquoteMarkerText(element);
       const blockMarkerDepthAbsolute = resolveEditableBlockquoteMarkerDepth(blockMarkerText);
-      const blockMarkerDepthRelative = Math.max(1, blockMarkerDepthAbsolute - context.blockquoteDepth);
+      const blockMarkerDepthRelative = Math.max(
+        1,
+        blockMarkerDepthAbsolute - context.blockquoteDepth,
+      );
       const blockLinePrefix = "> ".repeat(blockMarkerDepthRelative);
       const childNodes = Array.from(element.childNodes);
       for (const childNode of childNodes) {
-        if (childNode instanceof HTMLElement && childNode.classList.contains("md-blockquote-marker")) {
+        if (
+          childNode instanceof HTMLElement &&
+          childNode.classList.contains("md-blockquote-marker")
+        ) {
           continue;
         }
-        if (childNode instanceof HTMLElement && blockquoteMarkerAnchorTagNames.has(childNode.tagName)) {
+        if (
+          childNode instanceof HTMLElement &&
+          blockquoteMarkerAnchorTagNames.has(childNode.tagName)
+        ) {
           const markerTexts = Array.from(
             childNode.querySelectorAll<HTMLElement>(":scope > .md-blockquote-marker"),
           ).map((marker) => marker.textContent);
@@ -3740,7 +3679,11 @@ const serializeMarkdownNode = (
           const normalizedLines = [...lines];
           if (markerTexts.length > 0 && normalizedLines.length > markerTexts.length) {
             let removableCount = normalizedLines.length - markerTexts.length;
-            for (let index = normalizedLines.length - 2; index > 0 && removableCount > 0; index -= 1) {
+            for (
+              let index = normalizedLines.length - 2;
+              index > 0 && removableCount > 0;
+              index -= 1
+            ) {
               if (normalizedLines[index]?.trim().length === 0) {
                 normalizedLines.splice(index, 1);
                 removableCount -= 1;
@@ -3766,11 +3709,15 @@ const serializeMarkdownNode = (
           serializedLines.push(
             normalizedLines
               .map((line, index) => {
-                const markerText = markerTexts[Math.min(index, Math.max(0, markerTexts.length - 1))] ?? null;
+                const markerText =
+                  markerTexts[Math.min(index, Math.max(0, markerTexts.length - 1))] ?? null;
                 const markerDepthAbsolute = markerText
                   ? resolveEditableBlockquoteMarkerDepth(markerText)
                   : fallbackMarkerDepthAbsolute;
-                const markerDepthRelative = Math.max(1, markerDepthAbsolute - context.blockquoteDepth);
+                const markerDepthRelative = Math.max(
+                  1,
+                  markerDepthAbsolute - context.blockquoteDepth,
+                );
                 const linePrefix = "> ".repeat(markerDepthRelative);
                 return line ? `${linePrefix}${line}` : linePrefix.trimEnd();
               })
@@ -3786,7 +3733,7 @@ const serializeMarkdownNode = (
           const serializedChildLines = serializedChild.split("\n");
           serializedLines.push(
             serializedChildLines
-              .map((line) => line ? `${blockLinePrefix}${line}` : blockLinePrefix.trimEnd())
+              .map((line) => (line ? `${blockLinePrefix}${line}` : blockLinePrefix.trimEnd()))
               .join("\n"),
           );
         }
@@ -3806,9 +3753,7 @@ const serializeMarkdownNode = (
     const markerDepthRelative = context.inContentEditable
       ? Math.max(0, markerDepthAbsolute - context.blockquoteDepth)
       : 1;
-    const linePrefix = markerDepthRelative > 0
-      ? "> ".repeat(markerDepthRelative)
-      : "";
+    const linePrefix = markerDepthRelative > 0 ? "> ".repeat(markerDepthRelative) : "";
     const content = serializeMarkdownChildren(element, {
       ...context,
       blockquoteDepth: markerDepthAbsolute,
@@ -3827,10 +3772,7 @@ const serializeMarkdownNode = (
 
   if (tag === "ul" || tag === "ol") {
     const serialized = serializeMarkdownList(element, context);
-    if (
-      context.inContentEditable &&
-      element.parentElement?.tagName.toLowerCase() === "li"
-    ) {
+    if (context.inContentEditable && element.parentElement?.tagName.toLowerCase() === "li") {
       let sibling = element.previousSibling;
       let hasInlineContentBefore = false;
       while (sibling) {
@@ -3862,7 +3804,7 @@ const serializeMarkdownNode = (
   }
 
   if (tag === "span" && element.classList.contains("md-inline-syntax-quoted-token")) {
-    const { open, close } = resolveInlineWrapper("\"", "\"");
+    const { open, close } = resolveInlineWrapper('"', '"');
     return `${open}${serializeMarkdownChildren(cloneWithoutInlineMarkers(), context)}${close}`;
   }
 
@@ -3891,10 +3833,7 @@ const serializeMarkdownNode = (
   return serializeMarkdownChildren(element, context);
 };
 
-const serializeMarkdownList = (
-  element: HTMLElement,
-  context: MarkdownSerializeContext,
-) => {
+const serializeMarkdownList = (element: HTMLElement, context: MarkdownSerializeContext) => {
   const isOrdered = element.tagName.toLowerCase() === "ol";
   let index = Number(element.getAttribute("start") ?? "1");
   if (Number.isNaN(index)) {
@@ -3940,10 +3879,11 @@ const serializeMarkdownList = (
 
   items.forEach((item, itemIndex) => {
     const defaultMarker = resolveDefaultMarker(itemIndex);
-    const markerElement = item.firstElementChild instanceof HTMLElement &&
-        item.firstElementChild.classList.contains("md-list-marker")
-      ? item.firstElementChild
-      : null;
+    const markerElement =
+      item.firstElementChild instanceof HTMLElement &&
+      item.firstElementChild.classList.contains("md-list-marker")
+        ? item.firstElementChild
+        : null;
     const rawMarker = markerElement?.textContent ?? "";
     const marker = resolveManualMarker(rawMarker, defaultMarker);
     const contentSource = markerElement
@@ -3961,8 +3901,7 @@ const serializeMarkdownList = (
     const content = serializeMarkdownChildren(contentSource, {
       ...context,
       listDepth: context.listDepth + 1,
-    })
-      .trim();
+    }).trim();
     const itemLines = content ? content.split("\n") : [""];
     lines.push(`${indent}${marker}${itemLines[0]}`);
     itemLines.slice(1).forEach((line) => {
@@ -3974,16 +3913,12 @@ const serializeMarkdownList = (
   return context.inContentEditable ? block : `${block}\n`;
 };
 
-const serializeMarkdownTable = (
-  element: HTMLElement,
-  context: MarkdownSerializeContext,
-) => {
+const serializeMarkdownTable = (element: HTMLElement, context: MarkdownSerializeContext) => {
   const rows = Array.from(element.querySelectorAll("tr"));
   if (rows.length === 0) {
     return "";
   }
-  const headerRow =
-    element.querySelector("thead tr") ?? rows[0];
+  const headerRow = element.querySelector("thead tr") ?? rows[0];
   const headerCells = Array.from(headerRow.children).map((cell) =>
     serializeTableCell(cell as HTMLElement, context),
   );
@@ -4002,10 +3937,7 @@ const serializeMarkdownTable = (
   return context.inContentEditable ? block : `${block}\n`;
 };
 
-const serializeTableCell = (
-  element: HTMLElement,
-  context: MarkdownSerializeContext,
-) => {
+const serializeTableCell = (element: HTMLElement, context: MarkdownSerializeContext) => {
   const text = serializeMarkdownChildren(element, {
     ...context,
     escapePipes: false,
@@ -4030,31 +3962,26 @@ export const serializeMarkdownFromHtml = (container: HTMLElement) => {
   });
   const ruleNormalized = normalizeMarkdownViewEditBodyForPersist(tableNormalized);
   const blocks = parseMarkdownBlocks(ruleNormalized);
-  if (!blocks.some((block) =>
-    block.kind === "help-block" ||
-    block.kind === "card-start" ||
-    block.kind === "card-end"
-  )) {
+  if (
+    !blocks.some(
+      (block) =>
+        block.kind === "help-block" || block.kind === "card-start" || block.kind === "card-end",
+    )
+  ) {
     return ruleNormalized;
   }
   return blocks
-    .map((block) => (
+    .map((block) =>
       block.kind === "help-block"
         ? normalizeHelpBlockSource(block.raw)
-        : (
-          block.kind === "card-start" ||
-            block.kind === "card-end"
-        )
+        : block.kind === "card-start" || block.kind === "card-end"
           ? normalizeCardBlockSource(block.raw)
-        : block.raw
-    ))
+          : block.raw,
+    )
     .join("\n");
 };
 
-export const buildEditableMarkdownHtml = (
-  container: HTMLElement,
-  rawMarkdown?: string,
-) => {
+export const buildEditableMarkdownHtml = (container: HTMLElement, rawMarkdown?: string) => {
   const clone = container.cloneNode(true) as HTMLElement;
   type InlineMarkerHintBucket = {
     strong: string[];
@@ -4122,10 +4049,7 @@ export const buildEditableMarkdownHtml = (
       const openSource = sanitizeCodeFenceHintLine(hint.openSourceLine);
       const closeSource = sanitizeCodeFenceHintLine(hint.closeSourceLine);
       const openDisplay = normalizeOpenCodeFenceMarker(hint.openDisplayLine);
-      const closeDisplay = normalizeCloseCodeFenceMarker(
-        hint.closeDisplayLine,
-        openDisplay,
-      );
+      const closeDisplay = normalizeCloseCodeFenceMarker(hint.closeDisplayLine, openDisplay);
       return {
         openDisplay,
         closeDisplay,
@@ -4184,7 +4108,11 @@ export const buildEditableMarkdownHtml = (
           collapseChainedClozeVariants: false,
           supportDoublePercentTokens: true,
         });
-        if (!token || token.rawStart !== lineOffset + cursor || token.rawEnd > lineOffset + line.length) {
+        if (
+          !token ||
+          token.rawStart !== lineOffset + cursor ||
+          token.rawEnd > lineOffset + line.length
+        ) {
           cursor += 1;
           continue;
         }
@@ -4209,14 +4137,10 @@ export const buildEditableMarkdownHtml = (
             hints.cloze.push("%%");
             break;
           case "cloze":
-            hints.cloze.push(
-              tokenRaw.startsWith("%%") && tokenRaw.endsWith("%%")
-                ? "%%"
-                : "%",
-            );
+            hints.cloze.push(tokenRaw.startsWith("%%") && tokenRaw.endsWith("%%") ? "%%" : "%");
             break;
           case "quoted-token":
-            hints.quoted.push("\"");
+            hints.quoted.push('"');
             break;
           case "markdown-inline-code":
             hints.inlineCode.push(tokenRaw.match(/^`+/)?.[0] ?? "`");
@@ -4224,9 +4148,7 @@ export const buildEditableMarkdownHtml = (
           case "markdown-math":
             hints.inlineMath.push("$");
             hints.inlineMathSource.push(
-              tokenRaw.startsWith("$") && tokenRaw.endsWith("$")
-                ? tokenRaw.slice(1, -1)
-                : tokenRaw,
+              tokenRaw.startsWith("$") && tokenRaw.endsWith("$") ? tokenRaw.slice(1, -1) : tokenRaw,
             );
             break;
           default:
@@ -4263,8 +4185,7 @@ export const buildEditableMarkdownHtml = (
   const resolveTaskMarker = (listItem: HTMLElement) => {
     const checkbox = Array.from(listItem.children).find(
       (child): child is HTMLInputElement =>
-        child instanceof HTMLInputElement &&
-        child.type.toLowerCase() === "checkbox",
+        child instanceof HTMLInputElement && child.type.toLowerCase() === "checkbox",
     );
     if (!checkbox && !listItem.classList.contains("task-list-item")) {
       return null;
@@ -4276,8 +4197,7 @@ export const buildEditableMarkdownHtml = (
   const removeTaskCheckboxes = (listItem: HTMLElement) => {
     const checkboxes = Array.from(listItem.children).filter(
       (child): child is HTMLInputElement =>
-        child instanceof HTMLInputElement &&
-        child.type.toLowerCase() === "checkbox",
+        child instanceof HTMLInputElement && child.type.toLowerCase() === "checkbox",
     );
     checkboxes.forEach((checkbox) => {
       const nextSibling = checkbox.nextSibling;
@@ -4323,10 +4243,7 @@ export const buildEditableMarkdownHtml = (
     inlineMathSource: 0,
   };
 
-  const consumeInlineMarkerHint = (
-    kind: keyof InlineMarkerHintBucket,
-    fallback: string,
-  ) => {
+  const consumeInlineMarkerHint = (kind: keyof InlineMarkerHintBucket, fallback: string) => {
     const list = inlineMarkerHints[kind];
     const nextIndex = inlineMarkerHintIndices[kind] ?? 0;
     const nextValue = list[nextIndex] ?? fallback;
@@ -4343,8 +4260,10 @@ export const buildEditableMarkdownHtml = (
   };
 
   const ensureInlineMarkers = (element: HTMLElement, open: string, close: string) => {
-    if (element.querySelector(':scope > .md-inline-marker.md-inline-marker-open') &&
-      element.querySelector(':scope > .md-inline-marker.md-inline-marker-close')) {
+    if (
+      element.querySelector(":scope > .md-inline-marker.md-inline-marker-open") &&
+      element.querySelector(":scope > .md-inline-marker.md-inline-marker-close")
+    ) {
       return;
     }
     const openMarker = createInlineMarker(element.ownerDocument, "open", open);
@@ -4405,35 +4324,39 @@ export const buildEditableMarkdownHtml = (
   clone.querySelectorAll(".frontmatter-panel").forEach((panel) => panel.remove());
   clone.querySelectorAll(".frontmatter-cover-panel").forEach((panel) => panel.remove());
   let databaseBlockIndex = 0;
-  clone.querySelectorAll<HTMLElement>(".preview-markdown-view-block-database-block").forEach((block) => {
-    const encodedRaw = block.getAttribute("data-md-database-block-raw");
-    if (!encodedRaw) {
-      return;
-    }
-    const parsedIndex = resolveDatabaseBlockIndex(
-      block.getAttribute("data-md-database-block-index"),
-    );
-    const nextIndex = parsedIndex ?? databaseBlockIndex;
-    databaseBlockIndex = Math.max(databaseBlockIndex, nextIndex + 1);
-    block.setAttribute("data-md-database-block-index", String(nextIndex));
-    block.setAttribute("data-md-inline-line", "true");
-    block.setAttribute("contenteditable", "false");
-  });
+  clone
+    .querySelectorAll<HTMLElement>(".preview-markdown-view-block-database-block")
+    .forEach((block) => {
+      const encodedRaw = block.getAttribute("data-md-database-block-raw");
+      if (!encodedRaw) {
+        return;
+      }
+      const parsedIndex = resolveDatabaseBlockIndex(
+        block.getAttribute("data-md-database-block-index"),
+      );
+      const nextIndex = parsedIndex ?? databaseBlockIndex;
+      databaseBlockIndex = Math.max(databaseBlockIndex, nextIndex + 1);
+      block.setAttribute("data-md-database-block-index", String(nextIndex));
+      block.setAttribute("data-md-inline-line", "true");
+      block.setAttribute("contenteditable", "false");
+    });
   let canvasBlockIndex = 0;
-  clone.querySelectorAll<HTMLElement>(".preview-markdown-view-block-canvas-block").forEach((block) => {
-    const encodedRaw = block.getAttribute("data-md-canvas-block-raw");
-    if (!encodedRaw) {
-      return;
-    }
-    const parsedIndex = resolveDatabaseBlockIndex(
-      block.getAttribute("data-md-canvas-block-index"),
-    );
-    const nextIndex = parsedIndex ?? canvasBlockIndex;
-    canvasBlockIndex = Math.max(canvasBlockIndex, nextIndex + 1);
-    block.setAttribute("data-md-canvas-block-index", String(nextIndex));
-    block.setAttribute("data-md-inline-line", "true");
-    block.setAttribute("contenteditable", "false");
-  });
+  clone
+    .querySelectorAll<HTMLElement>(".preview-markdown-view-block-canvas-block")
+    .forEach((block) => {
+      const encodedRaw = block.getAttribute("data-md-canvas-block-raw");
+      if (!encodedRaw) {
+        return;
+      }
+      const parsedIndex = resolveDatabaseBlockIndex(
+        block.getAttribute("data-md-canvas-block-index"),
+      );
+      const nextIndex = parsedIndex ?? canvasBlockIndex;
+      canvasBlockIndex = Math.max(canvasBlockIndex, nextIndex + 1);
+      block.setAttribute("data-md-canvas-block-index", String(nextIndex));
+      block.setAttribute("data-md-inline-line", "true");
+      block.setAttribute("contenteditable", "false");
+    });
   clone.querySelectorAll(".md-code-copy-button").forEach((button) => button.remove());
   clone.querySelectorAll<HTMLElement>("pre").forEach((codeBlock) => {
     let wrapper = codeBlock.parentElement;
@@ -4473,8 +4396,8 @@ export const buildEditableMarkdownHtml = (
     const markerHint = codeFenceHints[codeFenceHintIndex] ?? null;
     codeFenceHintIndex += 1;
     const openMarkerText = markerHint?.openDisplay ?? "```";
-    const closeMarkerText = markerHint?.closeDisplay ??
-      normalizeCloseCodeFenceMarker(null, openMarkerText);
+    const closeMarkerText =
+      markerHint?.closeDisplay ?? normalizeCloseCodeFenceMarker(null, openMarkerText);
 
     if (markerHint) {
       codeBlock.setAttribute(
@@ -4576,7 +4499,7 @@ export const buildEditableMarkdownHtml = (
   });
 
   clone.querySelectorAll<HTMLElement>("span.md-inline-syntax-quoted-token").forEach((element) => {
-    const wrapper = consumeInlineMarkerHint("quoted", "\"");
+    const wrapper = consumeInlineMarkerHint("quoted", '"');
     ensureInlineMarkers(element, wrapper, wrapper);
   });
 
@@ -4611,8 +4534,9 @@ export const buildEditableMarkdownHtml = (
   };
 
   const resolveEditableBlockquoteMarkerAnchors = (blockquote: HTMLElement) => {
-    return Array.from(blockquote.children).filter((child): child is HTMLElement =>
-      child instanceof HTMLElement && blockquoteMarkerAnchorTagNames.has(child.tagName)
+    return Array.from(blockquote.children).filter(
+      (child): child is HTMLElement =>
+        child instanceof HTMLElement && blockquoteMarkerAnchorTagNames.has(child.tagName),
     );
   };
 
@@ -4646,21 +4570,21 @@ export const buildEditableMarkdownHtml = (
         return marker;
       };
       markerAnchor.insertBefore(createMarker(), markerAnchor.firstChild);
-      const lineBreaks = Array.from(
-        markerAnchor.querySelectorAll<HTMLElement>(":scope > br"),
-      );
+      const lineBreaks = Array.from(markerAnchor.querySelectorAll<HTMLElement>(":scope > br"));
       lineBreaks.forEach((lineBreak) => {
         lineBreak.insertAdjacentElement("afterend", createMarker());
       });
     });
   });
 
-  clone.querySelectorAll<HTMLElement>("p,li,h1,h2,h3,h4,h5,h6,td,th,div.preview-markdown-view-block-blank").forEach(
-    (line) => {
+  clone
+    .querySelectorAll<HTMLElement>(
+      "p,li,h1,h2,h3,h4,h5,h6,td,th,div.preview-markdown-view-block-blank",
+    )
+    .forEach((line) => {
       line.setAttribute("data-md-inline-line", "true");
       line.removeAttribute("data-md-inline-active");
-    },
-  );
+    });
 
   return clone.innerHTML;
 };
@@ -4690,10 +4614,7 @@ const resolveMarkdownCaretIndex = (
   return mapPlainOffsetToRawIndex(rawMarkdown, plainOffset, options);
 };
 
-const resolveContentEditableCaretAnchor = (
-  editor: HTMLElement,
-  scrollContainer: HTMLElement,
-) => {
+const resolveContentEditableCaretAnchor = (editor: HTMLElement, scrollContainer: HTMLElement) => {
   const selection = window.getSelection();
   if (!selection || selection.rangeCount === 0 || !selection.anchorNode) {
     return null;
@@ -4754,8 +4675,7 @@ const isExamTaskStartLine = (line: string) => {
   return remainder.length === 0 || /^\s/.test(remainder);
 };
 
-const isExamOptionLine = (line: string) =>
-  /^[a-d]\)\s+\S/i.test(line.trim());
+const isExamOptionLine = (line: string) => /^[a-d]\)\s+\S/i.test(line.trim());
 
 // Keep exam task numbering like "1)" editable by avoiding ordered-list parsing.
 const escapeExamTaskListMarker = (line: string) => {
@@ -4771,9 +4691,11 @@ const escapeExamTaskListMarker = (line: string) => {
 
 const shouldExpandInlineExamLine = (line: string) => {
   const lowered = line.toLowerCase();
-  return /\s-[a-d]\b/.test(lowered) ||
+  return (
+    /\s-[a-d]\b/.test(lowered) ||
     /\s-(true|false)\b/.test(lowered) ||
-    /\b[a-d]\)\s+\S/.test(lowered);
+    /\b[a-d]\)\s+\S/.test(lowered)
+  );
 };
 
 const ensureHardBreakSpacing = (value: string) => {
@@ -4936,8 +4858,7 @@ type FrontmatterEditorMode = "idle" | "active" | "editing" | "committing";
 
 const numericSuggestionPattern = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$/;
 
-const isNumericSuggestionValue = (value: string) =>
-  numericSuggestionPattern.test(value.trim());
+const isNumericSuggestionValue = (value: string) => numericSuggestionPattern.test(value.trim());
 
 const sortSuggestionValues = (values: string[]) => {
   const allNumeric = values.length > 0 && values.every(isNumericSuggestionValue);
@@ -5019,12 +4940,14 @@ type FrontmatterAddTypeOption = {
 
 const FRONTMATTER_DEFAULT_ADD_TYPE: FrontmatterAddPropertyType = FRONTMATTER_DEFAULT_CORE_TYPE;
 
-const FRONTMATTER_ADD_TYPE_OPTIONS: FrontmatterAddTypeOption[] = CORE_ATTRIBUTE_TYPE_OPTIONS.map((option) => ({
-  kind: option.id,
-  icon: option.icon as FrontmatterPropertyIcon,
-  label: option.label,
-  description: option.description,
-}));
+const FRONTMATTER_ADD_TYPE_OPTIONS: FrontmatterAddTypeOption[] = CORE_ATTRIBUTE_TYPE_OPTIONS.map(
+  (option) => ({
+    kind: option.id,
+    icon: option.icon as FrontmatterPropertyIcon,
+    label: option.label,
+    description: option.description,
+  }),
+);
 
 const addTypeSuggestionScope = "__frontmatter_add_type__";
 const addKeySuggestionScope = "__frontmatter_add_key__";
@@ -5058,12 +4981,12 @@ const resolveFolderPathFromRelativePath = (value: string) => {
 const historyFormulaRelativePrefix = ".profile/exam-runs/";
 
 const isHistoryFormulaRelativePath = (value: string) =>
-  normalizeRelativePath(value).replace(/^\/+/, "").toLowerCase().startsWith(historyFormulaRelativePrefix);
+  normalizeRelativePath(value)
+    .replace(/^\/+/, "")
+    .toLowerCase()
+    .startsWith(historyFormulaRelativePrefix);
 
-const resolveRelativePathCandidates = (
-  target: string,
-  sourceRelativePath?: string | null,
-) => {
+const resolveRelativePathCandidates = (target: string, sourceRelativePath?: string | null) => {
   const normalizedTarget = normalizeRelativePath(target).replace(/^\/+/, "");
   if (!normalizedTarget) {
     return [] as string[];
@@ -5124,12 +5047,9 @@ const isScalarEditableKind = (kind: FrontmatterPropertyKind) =>
 
 const isPrintableCharacterKey = (
   event: Pick<KeyboardEvent<HTMLInputElement>, "key" | "metaKey" | "ctrlKey" | "altKey">,
-) =>
-  event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey;
+) => event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey;
 
-const resolveSuggestionValuesFromCommitted = (
-  value: FrontmatterProperty["value"],
-) => {
+const resolveSuggestionValuesFromCommitted = (value: FrontmatterProperty["value"]) => {
   if (typeof value === "string") {
     const trimmed = value.trim();
     return trimmed ? [trimmed] : [];
@@ -5221,13 +5141,9 @@ const formatComputedFormulaValue = (value: DatabaseNormalizedFieldValue) => {
     }
     const groupedEntries = value.filter((entry) => isFormulaGroupedCountEntry(entry));
     if (groupedEntries.length === value.length) {
-      return groupedEntries
-        .map((entry) => `${entry.count} × ${entry.value}`)
-        .join(", ");
+      return groupedEntries.map((entry) => `${entry.count} × ${entry.value}`).join(", ");
     }
-    const entries = value
-      .map((entry) => String(entry).trim())
-      .filter((entry) => entry.length > 0);
+    const entries = value.map((entry) => String(entry).trim()).filter((entry) => entry.length > 0);
     return entries.length > 0 ? entries.join(", ") : "—";
   }
   if (typeof value === "object" && value !== null && "raw" in value) {
@@ -5315,10 +5231,7 @@ const FrontmatterPropertiesPanel = ({
   formulaHistoryWarning = null,
   monitoringProfiles = [],
 }: FrontmatterPropertiesPanelProps) => {
-  const linksDocument = useMemo(
-    () => parseFrontmatterLinks(sourceMarkdown),
-    [sourceMarkdown],
-  );
+  const linksDocument = useMemo(() => parseFrontmatterLinks(sourceMarkdown), [sourceMarkdown]);
   const visibleProperties = useMemo(
     () => properties.filter((property) => !isLinkPropertyKey(property.key)),
     [properties],
@@ -5357,12 +5270,9 @@ const FrontmatterPropertiesPanel = ({
     [keySuggestions],
   );
   const [drafts, setDrafts] = useState<Record<string, string>>(initialDrafts);
-  const [suggestionValuesByKey, setSuggestionValuesByKey] = useState<Record<string, string[]>>(
-    initialSuggestionValues,
-  );
-  const [suggestionKeys, setSuggestionKeys] = useState<string[]>(
-    initialKeySuggestions,
-  );
+  const [suggestionValuesByKey, setSuggestionValuesByKey] =
+    useState<Record<string, string[]>>(initialSuggestionValues);
+  const [suggestionKeys, setSuggestionKeys] = useState<string[]>(initialKeySuggestions);
   const [tagInputs, setTagInputs] = useState<Record<string, string>>({});
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [panelError, setPanelError] = useState("");
@@ -5421,7 +5331,8 @@ const FrontmatterPropertiesPanel = ({
     [properties],
   );
   const hasExistingTaskAttribute = useMemo(
-    () => gridProperties.some((property) => property.kind === "task" || isTaskKeyName(property.key)),
+    () =>
+      gridProperties.some((property) => property.kind === "task" || isTaskKeyName(property.key)),
     [gridProperties],
   );
   const hasExistingCoverAttribute = coverProperty !== null;
@@ -5490,10 +5401,7 @@ const FrontmatterPropertiesPanel = ({
         return;
       }
       const existing = next.get(normalizedKey) ?? [];
-      next.set(
-        normalizedKey,
-        normalizeStableSuggestions([...existing, ...(values ?? [])]),
-      );
+      next.set(normalizedKey, normalizeStableSuggestions([...existing, ...(values ?? [])]));
     });
     return next;
   }, [suggestionValuesByKey]);
@@ -5514,75 +5422,75 @@ const FrontmatterPropertiesPanel = ({
     }
     return [resolveFolderPathFromRelativePath(sourceRelativePath ?? "")];
   }, [addFormulaDefinition.source, sourceRelativePath]);
-  const formulaBuilderAttributeOptions = useMemo<FormulaBuilderAttributeOption[]>(
-    () => {
-      const nextByNormalizedKey = new Map<string, FormulaBuilderAttributeOption>();
-      const excludedKey = toLower(addKeyDraft);
-      const addOption = (rawKey: string) => {
-        const key = rawKey.trim();
-        const normalizedKey = toLower(key);
-        if (
-          !normalizedKey ||
-          normalizedKey === excludedKey ||
-          nextByNormalizedKey.has(normalizedKey) ||
-          isLinkPropertyKey(key) ||
-          isCoverKeyName(key)
-        ) {
-          return;
-        }
-        const matchingProperty = gridPropertiesByNormalizedKey.get(normalizedKey);
-        const supportsMath = matchingProperty
-          ? supportsMathForFrontmatterProperty(matchingProperty, suggestionValuesByKey)
-          : normalizedKey.startsWith("f-") ||
-            hasShortTextNumericExample(suggestionValuesByNormalizedKey.get(normalizedKey) ?? []);
-        nextByNormalizedKey.set(normalizedKey, {
-          key,
-          label: key,
-          supportsMath,
-        });
-      };
+  const formulaBuilderAttributeOptions = useMemo<FormulaBuilderAttributeOption[]>(() => {
+    const nextByNormalizedKey = new Map<string, FormulaBuilderAttributeOption>();
+    const excludedKey = toLower(addKeyDraft);
+    const addOption = (rawKey: string) => {
+      const key = rawKey.trim();
+      const normalizedKey = toLower(key);
+      if (
+        !normalizedKey ||
+        normalizedKey === excludedKey ||
+        nextByNormalizedKey.has(normalizedKey) ||
+        isLinkPropertyKey(key) ||
+        isCoverKeyName(key)
+      ) {
+        return;
+      }
+      const matchingProperty = gridPropertiesByNormalizedKey.get(normalizedKey);
+      const supportsMath = matchingProperty
+        ? supportsMathForFrontmatterProperty(matchingProperty, suggestionValuesByKey)
+        : normalizedKey.startsWith("f-") ||
+          hasShortTextNumericExample(suggestionValuesByNormalizedKey.get(normalizedKey) ?? []);
+      nextByNormalizedKey.set(normalizedKey, {
+        key,
+        label: key,
+        supportsMath,
+      });
+    };
 
-      if (formulaAttributeKeysByFile) {
-        if (addFormulaDefinition.source.type === "history") {
+    if (formulaAttributeKeysByFile) {
+      if (addFormulaDefinition.source.type === "history") {
+        formulaAttributeKeysByNormalizedFile.forEach((keys, normalizedRelativePath) => {
+          if (!isHistoryFormulaRelativePath(normalizedRelativePath)) {
+            return;
+          }
+          keys.forEach((key) => addOption(key));
+        });
+      } else {
+        const selectedFolderSet = new Set(
+          selectedFormulaSourceFolders.map((folder) => toLower(folder)),
+        );
+        if (selectedFolderSet.size > 0) {
           formulaAttributeKeysByNormalizedFile.forEach((keys, normalizedRelativePath) => {
-            if (!isHistoryFormulaRelativePath(normalizedRelativePath)) {
+            const folderPath = resolveFolderPathFromRelativePath(normalizedRelativePath);
+            if (!selectedFolderSet.has(toLower(folderPath))) {
               return;
             }
             keys.forEach((key) => addOption(key));
           });
-        } else {
-          const selectedFolderSet = new Set(selectedFormulaSourceFolders.map((folder) => toLower(folder)));
-          if (selectedFolderSet.size > 0) {
-            formulaAttributeKeysByNormalizedFile.forEach((keys, normalizedRelativePath) => {
-              const folderPath = resolveFolderPathFromRelativePath(normalizedRelativePath);
-              if (!selectedFolderSet.has(toLower(folderPath))) {
-                return;
-              }
-              keys.forEach((key) => addOption(key));
-            });
-          }
         }
-      } else {
-        gridProperties.forEach((property) => {
-          addOption(property.key);
-        });
       }
+    } else {
+      gridProperties.forEach((property) => {
+        addOption(property.key);
+      });
+    }
 
-      return Array.from(nextByNormalizedKey.values()).sort((left, right) =>
-        left.label.localeCompare(right.label, undefined, { sensitivity: "base" }));
-    },
-    [
-      addKeyDraft,
-      formulaAttributeKeysByFile,
-      formulaAttributeKeysByNormalizedFile,
-      gridProperties,
-      gridPropertiesByNormalizedKey,
-      addFormulaDefinition.source.type,
-      selectedFormulaSourceFolders,
-      suggestionValuesByKey,
-      suggestionValuesByNormalizedKey,
-    ],
-  );
+    return Array.from(nextByNormalizedKey.values()).sort((left, right) =>
+      left.label.localeCompare(right.label, undefined, { sensitivity: "base" }),
+    );
+  }, [
+    addKeyDraft,
+    formulaAttributeKeysByFile,
+    formulaAttributeKeysByNormalizedFile,
+    gridProperties,
+    gridPropertiesByNormalizedKey,
+    addFormulaDefinition.source.type,
+    selectedFormulaSourceFolders,
+    suggestionValuesByKey,
+    suggestionValuesByNormalizedKey,
+  ]);
   const formulaFolderSuggestions = useMemo(() => {
     const folders = new Set<string>();
     (vaultFiles ?? []).forEach((file) => {
@@ -5631,11 +5539,7 @@ const FrontmatterPropertiesPanel = ({
       });
     }
     return next;
-  }, [
-    currentFrontmatterValuesByKey,
-    frontmatterValuesByFile,
-    normalizedSourceRelativePath,
-  ]);
+  }, [currentFrontmatterValuesByKey, frontmatterValuesByFile, normalizedSourceRelativePath]);
   const vaultFilesByNormalizedRelativePath = useMemo(() => {
     const next = new Map<string, VaultFile>();
     (vaultFiles ?? []).forEach((file) => {
@@ -5649,29 +5553,31 @@ const FrontmatterPropertiesPanel = ({
   }, [vaultFiles]);
   const formulaEvaluationRecords = useMemo<DatabaseRecord[]>(() => {
     const next: DatabaseRecord[] = [];
-    frontmatterValuesByNormalizedFile.forEach(({ relativePath, values }, normalizedRelativePath) => {
-      const matchingFile = vaultFilesByNormalizedRelativePath.get(normalizedRelativePath);
-      const resolvedRelativePath = matchingFile
-        ? normalizeRelativePath(matchingFile.relative_path).replace(/^\/+/, "")
-        : relativePath;
-      if (!resolvedRelativePath || !/\.md$/i.test(resolvedRelativePath)) {
-        return;
-      }
-      const filePath = matchingFile?.path ?? resolvedRelativePath;
-      next.push(
-        buildNormalizedRecord({
-          fileId: filePath,
-          filePath,
-          relativePath: resolvedRelativePath,
-          frontmatter: values,
-          systemFields: createSystemFieldsForRecord(resolvedRelativePath, filePath, {
-            createdAt: matchingFile?.created_at ?? null,
-            lastModified: matchingFile?.last_modified ?? null,
-            sizeBytes: matchingFile?.size_bytes ?? null,
+    frontmatterValuesByNormalizedFile.forEach(
+      ({ relativePath, values }, normalizedRelativePath) => {
+        const matchingFile = vaultFilesByNormalizedRelativePath.get(normalizedRelativePath);
+        const resolvedRelativePath = matchingFile
+          ? normalizeRelativePath(matchingFile.relative_path).replace(/^\/+/, "")
+          : relativePath;
+        if (!resolvedRelativePath || !/\.md$/i.test(resolvedRelativePath)) {
+          return;
+        }
+        const filePath = matchingFile?.path ?? resolvedRelativePath;
+        next.push(
+          buildNormalizedRecord({
+            fileId: filePath,
+            filePath,
+            relativePath: resolvedRelativePath,
+            frontmatter: values,
+            systemFields: createSystemFieldsForRecord(resolvedRelativePath, filePath, {
+              createdAt: matchingFile?.created_at ?? null,
+              lastModified: matchingFile?.last_modified ?? null,
+              sizeBytes: matchingFile?.size_bytes ?? null,
+            }),
           }),
-        }),
-      );
-    });
+        );
+      },
+    );
     if (next.length === 0 && normalizedSourceRelativePath) {
       const matchingFile = vaultFilesByNormalizedRelativePath.get(
         normalizedSourceRelativePath.toLowerCase(),
@@ -5683,15 +5589,11 @@ const FrontmatterPropertiesPanel = ({
           filePath,
           relativePath: normalizedSourceRelativePath,
           frontmatter: currentFrontmatterValuesByKey,
-          systemFields: createSystemFieldsForRecord(
-            normalizedSourceRelativePath,
-            filePath,
-            {
-              createdAt: matchingFile?.created_at ?? null,
-              lastModified: matchingFile?.last_modified ?? null,
-              sizeBytes: matchingFile?.size_bytes ?? null,
-            },
-          ),
+          systemFields: createSystemFieldsForRecord(normalizedSourceRelativePath, filePath, {
+            createdAt: matchingFile?.created_at ?? null,
+            lastModified: matchingFile?.last_modified ?? null,
+            sizeBytes: matchingFile?.size_bytes ?? null,
+          }),
         }),
       );
     }
@@ -5703,7 +5605,10 @@ const FrontmatterPropertiesPanel = ({
     vaultFilesByNormalizedRelativePath,
   ]);
   const historyFormulaEvaluationRecords = useMemo(
-    () => formulaEvaluationRecords.filter((record) => isHistoryFormulaRelativePath(record.relativePath)),
+    () =>
+      formulaEvaluationRecords.filter((record) =>
+        isHistoryFormulaRelativePath(record.relativePath),
+      ),
     [formulaEvaluationRecords],
   );
   const currentFormulaRecord = useMemo(() => {
@@ -5712,8 +5617,9 @@ const FrontmatterPropertiesPanel = ({
     }
     const normalizedCurrentRelativePath = normalizedSourceRelativePath.toLowerCase();
     if (normalizedCurrentRelativePath) {
-      const match = formulaEvaluationRecords.find((record) =>
-        toLower(record.relativePath) === normalizedCurrentRelativePath);
+      const match = formulaEvaluationRecords.find(
+        (record) => toLower(record.relativePath) === normalizedCurrentRelativePath,
+      );
       if (match) {
         return match;
       }
@@ -5744,7 +5650,12 @@ const FrontmatterPropertiesPanel = ({
       next[property.key] = formatComputedFormulaValue(evaluated);
     });
     return next;
-  }, [currentFormulaRecord, formulaEvaluationRecords, gridProperties, historyFormulaEvaluationRecords]);
+  }, [
+    currentFormulaRecord,
+    formulaEvaluationRecords,
+    gridProperties,
+    historyFormulaEvaluationRecords,
+  ]);
 
   useEffect(() => {
     setDrafts(initialDrafts);
@@ -5837,10 +5748,12 @@ const FrontmatterPropertiesPanel = ({
             .map((file) => ({
               path: file.path,
               relative_path: file.relative_path,
-              file_name: normalizeRelativePath(file.relative_path).split("/").pop() ?? file.relative_path,
+              file_name:
+                normalizeRelativePath(file.relative_path).split("/").pop() ?? file.relative_path,
               last_modified: null,
               size_bytes: null,
-            })))
+            }))
+      )
         .map((asset) => {
           const relativePath = normalizeRelativePath(asset.relative_path);
           const fileName = asset.file_name?.trim() || relativePath.split("/").pop() || relativePath;
@@ -5866,9 +5779,7 @@ const FrontmatterPropertiesPanel = ({
     if (values.length === 0) {
       return;
     }
-    setSuggestionValuesByKey((current) =>
-      mergeSuggestionRecords(current, { [key]: values }),
-    );
+    setSuggestionValuesByKey((current) => mergeSuggestionRecords(current, { [key]: values }));
   }, []);
 
   const updateKeySuggestionCache = useCallback((keys: string[]) => {
@@ -5886,7 +5797,7 @@ const FrontmatterPropertiesPanel = ({
       const candidatePaths = resolveRelativePathCandidates(target, sourceRelativePath);
       if (candidatePaths.length > 0) {
         const exact = coverImageEntries.find((entry) =>
-          candidatePaths.some((candidate) => candidate === entry.relativePath)
+          candidatePaths.some((candidate) => candidate === entry.relativePath),
         );
         if (exact) {
           return exact;
@@ -5897,8 +5808,9 @@ const FrontmatterPropertiesPanel = ({
       if (!targetFileName) {
         return null;
       }
-      return coverImageEntries.find((entry) => entry.fileName.toLowerCase() === targetFileName) ??
-        null;
+      return (
+        coverImageEntries.find((entry) => entry.fileName.toLowerCase() === targetFileName) ?? null
+      );
     },
     [coverImageEntries, sourceRelativePath],
   );
@@ -6037,11 +5949,12 @@ const FrontmatterPropertiesPanel = ({
         source = sortSuggestionValues(
           normalizeStableSuggestions(
             source
-              .map((value) =>
-                normalizeDateTimeValue(value.trim()) ??
-                normalizeDateValue(value.trim()) ??
-                normalizeTimeValue(value.trim()) ??
-                "",
+              .map(
+                (value) =>
+                  normalizeDateTimeValue(value.trim()) ??
+                  normalizeDateValue(value.trim()) ??
+                  normalizeTimeValue(value.trim()) ??
+                  "",
               )
               .filter((value) => value !== ""),
           ),
@@ -6091,9 +6004,7 @@ const FrontmatterPropertiesPanel = ({
     setAddEditorModes((current) => ({
       ...current,
       [field]:
-        current[field] === "editing" || current[field] === "committing"
-          ? current[field]
-          : "active",
+        current[field] === "editing" || current[field] === "committing" ? current[field] : "active",
     }));
   }, []);
 
@@ -6188,25 +6099,28 @@ const FrontmatterPropertiesPanel = ({
     [controlsDisabled, onFrontmatterSave, sourceMarkdown],
   );
 
-  const handleAddLink = useCallback(async (rawInput?: string) => {
-    if (controlsDisabled) {
-      return;
-    }
-    const normalized = normalizeWikilinkValue(
-      rawInput ?? linksInputRef.current?.value ?? linksInputDraft,
-    );
-    if (!normalized) {
-      return;
-    }
-    if (linksDocument.links.includes(normalized)) {
-      setLinksInputDraft("");
-      return;
-    }
-    const saved = await commitLinksChange([...linksDocument.links, normalized]);
-    if (saved) {
-      setLinksInputDraft("");
-    }
-  }, [commitLinksChange, controlsDisabled, linksDocument.links, linksInputDraft]);
+  const handleAddLink = useCallback(
+    async (rawInput?: string) => {
+      if (controlsDisabled) {
+        return;
+      }
+      const normalized = normalizeWikilinkValue(
+        rawInput ?? linksInputRef.current?.value ?? linksInputDraft,
+      );
+      if (!normalized) {
+        return;
+      }
+      if (linksDocument.links.includes(normalized)) {
+        setLinksInputDraft("");
+        return;
+      }
+      const saved = await commitLinksChange([...linksDocument.links, normalized]);
+      if (saved) {
+        setLinksInputDraft("");
+      }
+    },
+    [commitLinksChange, controlsDisabled, linksDocument.links, linksInputDraft],
+  );
 
   const handleRemoveLink = useCallback(
     (link: string) => {
@@ -6219,13 +6133,7 @@ const FrontmatterPropertiesPanel = ({
   );
 
   const resolveSuggestionValuesFromAddedDraft = useCallback(
-    ({
-      kind,
-      value,
-    }: {
-      kind: FrontmatterAddPropertyType;
-      value: string;
-    }) => {
+    ({ kind, value }: { kind: FrontmatterAddPropertyType; value: string }) => {
       const trimmed = value.trim();
       if (!trimmed) {
         return [];
@@ -6238,7 +6146,8 @@ const FrontmatterPropertiesPanel = ({
         return Number.isFinite(parsed) ? [String(parsed)] : [];
       }
       if (kind === "time") {
-        const normalized = normalizeDateTimeValue(trimmed) ??
+        const normalized =
+          normalizeDateTimeValue(trimmed) ??
           normalizeDateValue(trimmed) ??
           normalizeTimeValue(trimmed);
         return normalized ? [normalized] : [];
@@ -6293,11 +6202,9 @@ const FrontmatterPropertiesPanel = ({
     }
     const autoKey = resolveAutoAddKeyForType(addTypeDraft);
     const keyFromState = (autoKey ?? addKeyDraft).trim();
-    const keyFromDom = (autoKey ?? (addKeyInputRef.current?.value ?? "")).trim();
+    const keyFromDom = (autoKey ?? addKeyInputRef.current?.value ?? "").trim();
     const nextKey = keyFromState || keyFromDom;
-    const nextValue = addValueInputRef.current
-      ? addValueInputRef.current.value
-      : addValueDraft;
+    const nextValue = addValueInputRef.current ? addValueInputRef.current.value : addValueDraft;
     if (!autoKey && keyFromDom && keyFromDom !== addKeyDraft) {
       setAddKeyDraft(keyFromDom);
     }
@@ -6351,14 +6258,12 @@ const FrontmatterPropertiesPanel = ({
       return;
     }
 
-    const normalizedFormulaSource = addTypeDraft === "formula"
-      ? normalizeFormulaSourceForPersist(addFormulaDefinition.source)
-      : null;
+    const normalizedFormulaSource =
+      addTypeDraft === "formula"
+        ? normalizeFormulaSourceForPersist(addFormulaDefinition.source)
+        : null;
 
-    if (
-      normalizedFormulaSource?.type === "explicit-folder" &&
-      !normalizedFormulaSource.path
-    ) {
+    if (normalizedFormulaSource?.type === "explicit-folder" && !normalizedFormulaSource.path) {
       setAddError("Bitte einen Ordner fuer die Formelquelle angeben.");
       return;
     }
@@ -6371,13 +6276,14 @@ const FrontmatterPropertiesPanel = ({
       return;
     }
 
-    const nextAddValue = addTypeDraft === "formula"
-      ? {
-          ...addFormulaDefinition,
-          attributeKeys: formulaAttributeKeys,
-          source: normalizedFormulaSource ?? addFormulaDefinition.source,
-        }
-      : nextValue;
+    const nextAddValue =
+      addTypeDraft === "formula"
+        ? {
+            ...addFormulaDefinition,
+            attributeKeys: formulaAttributeKeys,
+            source: normalizedFormulaSource ?? addFormulaDefinition.source,
+          }
+        : nextValue;
 
     const updated = addFrontmatterProperty({
       markdown: sourceMarkdown,
@@ -6532,7 +6438,7 @@ const FrontmatterPropertiesPanel = ({
   const coverPanelKey = coverProperty?.key ?? "Cover";
   const coverCurrentValue =
     coverProperty && typeof coverProperty.value === "string" ? coverProperty.value : "";
-  const coverDraftValue = coverProperty ? drafts[coverProperty.key] ?? "" : "";
+  const coverDraftValue = coverProperty ? (drafts[coverProperty.key] ?? "") : "";
   const coverPreferredValue = coverDraftValue || coverCurrentValue;
   const coverActiveWikilink = normalizeWikilinkValue(coverPreferredValue);
   const coverTarget =
@@ -6548,17 +6454,14 @@ const FrontmatterPropertiesPanel = ({
   const coverImageError = resolvedCoverImage
     ? coverImageErrors[resolvedCoverImage.relativePath]
     : undefined;
-  const hasCoverImageLoadError = Boolean(
-    coverImageError && coverImageError.src === coverImageSrc,
-  );
+  const hasCoverImageLoadError = Boolean(coverImageError && coverImageError.src === coverImageSrc);
   const hasRenderableCoverImage = Boolean(resolvedCoverImage && !hasCoverImageLoadError);
-  const coverDisplayWikilink = coverActiveWikilink ||
-    (coverTarget ? normalizeWikilinkValue(coverTarget) : "");
+  const coverDisplayWikilink =
+    coverActiveWikilink || (coverTarget ? normalizeWikilinkValue(coverTarget) : "");
   const coverDisplayName = coverDisplayWikilink || "Kein Cover";
   const coverDisplaySubline = coverDisplayWikilink;
-  const isCoverBroken = Boolean(coverTarget) &&
-    (!resolvedCoverImage || hasCoverImageLoadError);
-  const coverRowError = coverProperty ? rowErrors[coverProperty.key] ?? "" : "";
+  const isCoverBroken = Boolean(coverTarget) && (!resolvedCoverImage || hasCoverImageLoadError);
+  const coverRowError = coverProperty ? (rowErrors[coverProperty.key] ?? "") : "";
   const isCoverPanelActive = activeCoverKey === coverPanelKey;
   const isCoverVisible = Boolean(coverProperty);
   const isCoverPanelEmpty = !isCoverVisible;
@@ -6569,10 +6472,7 @@ const FrontmatterPropertiesPanel = ({
     .toLowerCase()
     .replace(/[^a-z0-9_-]+/g, "-")}`;
   const isCoverPickerListOpen =
-    canInteractWithCover &&
-    isCoverPanelActive &&
-    isCoverPickerOpen &&
-    !controlsDisabled;
+    canInteractWithCover && isCoverPanelActive && isCoverPickerOpen && !controlsDisabled;
 
   useEffect(() => {
     if (canInteractWithCover) {
@@ -6665,22 +6565,21 @@ const FrontmatterPropertiesPanel = ({
     })();
   }, [commitRemoveProperty, coverProperty]);
 
-  const addTypeOption = FRONTMATTER_ADD_TYPE_OPTIONS.find(
-    (option) => option.kind === addTypeDraft,
-  ) ?? addTypeOptions[0]!;
+  const addTypeOption =
+    FRONTMATTER_ADD_TYPE_OPTIONS.find((option) => option.kind === addTypeDraft) ??
+    addTypeOptions[0]!;
   const autoManagedAddKey = resolveAutoAddKeyForType(addTypeDraft);
   const isAddKeyAutoManaged = autoManagedAddKey !== null;
   const isAddKeyEditing = addEditorModes.key === "editing";
   const isAddValueEditing = addEditorModes.value === "editing";
   const isAddTypeDropdownOpen =
-    openSuggestionsKey === addTypeSuggestionScope &&
-    addTypeOptions.length > 0 &&
-    !controlsDisabled;
+    openSuggestionsKey === addTypeSuggestionScope && addTypeOptions.length > 0 && !controlsDisabled;
   const addKeySuggestions = isAddKeyAutoManaged
     ? []
     : resolveAddKeySuggestions(isAddKeyEditing ? addKeyDraft : "");
-  const selectedAddKey = ((autoManagedAddKey ?? addKeyDraft).trim()) ||
-    ((autoManagedAddKey ?? (addKeyInputRef.current?.value ?? "")).trim());
+  const selectedAddKey =
+    (autoManagedAddKey ?? addKeyDraft).trim() ||
+    (autoManagedAddKey ?? addKeyInputRef.current?.value ?? "").trim();
   const addValueSuggestions = resolveAddValueSuggestions({
     key: selectedAddKey,
     kind: addTypeDraft,
@@ -6703,9 +6602,8 @@ const FrontmatterPropertiesPanel = ({
   const safeAddTypeSuggestionIndex = Math.max(
     0,
     Math.min(
-      suggestionCursor[addTypeSuggestionScope] ?? addTypeOptions.findIndex(
-        (option) => option.kind === addTypeDraft,
-      ),
+      suggestionCursor[addTypeSuggestionScope] ??
+        addTypeOptions.findIndex((option) => option.kind === addTypeDraft),
       Math.max(0, addTypeOptions.length - 1),
     ),
   );
@@ -6724,8 +6622,7 @@ const FrontmatterPropertiesPanel = ({
     ),
   );
   const activeAddKeySuggestion = addKeySuggestions[safeAddKeySuggestionIndex] ?? null;
-  const activeAddValueSuggestion =
-    addValueSuggestions[safeAddValueSuggestionIndex] ?? null;
+  const activeAddValueSuggestion = addValueSuggestions[safeAddValueSuggestionIndex] ?? null;
   const activeAddTypeSuggestion = addTypeOptions[safeAddTypeSuggestionIndex] ?? null;
 
   return (
@@ -6733,22 +6630,16 @@ const FrontmatterPropertiesPanel = ({
       {shouldRenderCoverPanel ? (
         <section
           ref={frontmatterCoverPanelRef}
-          className={`frontmatter-cover-panel ${
-            isCoverVisible ? "has-cover" : "is-empty"
-          } ${
+          className={`frontmatter-cover-panel ${isCoverVisible ? "has-cover" : "is-empty"} ${
             isCoverCompact ? "is-compact" : ""
-          } ${
-            canInteractWithCover ? "" : "is-readonly"
-          }`.trim()}
+          } ${canInteractWithCover ? "" : "is-readonly"}`.trim()}
           aria-label="Cover"
         >
           <div className="frontmatter-cover-panel-stage">
             {canInteractWithCover ? (
               <button
                 type="button"
-                className={`frontmatter-cover-hero-button ${
-                  isCoverPanelEmpty ? "is-empty" : ""
-                } ${
+                className={`frontmatter-cover-hero-button ${isCoverPanelEmpty ? "is-empty" : ""} ${
                   isCoverCompact ? "is-compact" : ""
                 }`.trim()}
                 disabled={controlsDisabled}
@@ -6821,7 +6712,10 @@ const FrontmatterPropertiesPanel = ({
                     }}
                   />
                 ) : !isCoverCompact ? (
-                  <span className="frontmatter-cover-placeholder frontmatter-cover-hero-placeholder" aria-hidden="true">
+                  <span
+                    className="frontmatter-cover-placeholder frontmatter-cover-hero-placeholder"
+                    aria-hidden="true"
+                  >
                     <FrontmatterImageIcon />
                   </span>
                 ) : null}
@@ -6830,9 +6724,7 @@ const FrontmatterPropertiesPanel = ({
               <div
                 className={`frontmatter-cover-hero-button is-readonly ${
                   isCoverPanelEmpty ? "is-empty" : ""
-                } ${
-                  isCoverCompact ? "is-compact" : ""
-                }`.trim()}
+                } ${isCoverCompact ? "is-compact" : ""}`.trim()}
                 role="img"
                 aria-label={coverDisplayName}
               >
@@ -6868,7 +6760,10 @@ const FrontmatterPropertiesPanel = ({
                     }}
                   />
                 ) : !isCoverCompact ? (
-                  <span className="frontmatter-cover-placeholder frontmatter-cover-hero-placeholder" aria-hidden="true">
+                  <span
+                    className="frontmatter-cover-placeholder frontmatter-cover-hero-placeholder"
+                    aria-hidden="true"
+                  >
                     <FrontmatterImageIcon />
                   </span>
                 ) : null}
@@ -6930,9 +6825,7 @@ const FrontmatterPropertiesPanel = ({
                               <button
                                 type="button"
                                 className={`frontmatter-cover-picker-option ${
-                                  coverTargetCandidates.includes(entry.relativePath)
-                                    ? "active"
-                                    : ""
+                                  coverTargetCandidates.includes(entry.relativePath) ? "active" : ""
                                 }`}
                                 role="option"
                                 aria-selected={coverTargetCandidates.includes(entry.relativePath)}
@@ -6945,7 +6838,10 @@ const FrontmatterPropertiesPanel = ({
                                 }}
                               >
                                 {hasPickerImageError ? (
-                                  <span className="frontmatter-cover-picker-thumb-placeholder" aria-hidden="true">
+                                  <span
+                                    className="frontmatter-cover-picker-thumb-placeholder"
+                                    aria-hidden="true"
+                                  >
                                     <FrontmatterImageIcon />
                                   </span>
                                 ) : (
@@ -6971,12 +6867,8 @@ const FrontmatterPropertiesPanel = ({
                                   />
                                 )}
                                 <span className="frontmatter-cover-picker-copy">
-                                  <span title={entry.fileName}>
-                                    {entry.fileName}
-                                  </span>
-                                  <span title={entry.relativePath}>
-                                    {entry.relativePath}
-                                  </span>
+                                  <span title={entry.fileName}>{entry.fileName}</span>
+                                  <span title={entry.relativePath}>{entry.relativePath}</span>
                                 </span>
                               </button>
                             </li>
@@ -7026,7 +6918,9 @@ const FrontmatterPropertiesPanel = ({
               className="frontmatter-row-error"
               title={hasCoverImageLoadError ? "Bild konnte nicht geladen werden." : undefined}
             >
-              {hasCoverImageLoadError ? "Bild konnte nicht geladen werden." : "Datei nicht gefunden."}
+              {hasCoverImageLoadError
+                ? "Bild konnte nicht geladen werden."
+                : "Datei nicht gefunden."}
             </span>
           ) : null}
           {import.meta.env.DEV && hasCoverImageLoadError && coverImageError ? (
@@ -7047,405 +6941,317 @@ const FrontmatterPropertiesPanel = ({
       ) : null}
       {showPropertiesPanel ? (
         <section className="frontmatter-panel" aria-label="Eigenschaften">
-        <div className="frontmatter-header">
-        <button
-          type="button"
-          className="frontmatter-title-button"
-          aria-expanded={!isCollapsed}
-          onClick={onToggleCollapsed}
-        >
-          <h3>Eigenschaften</h3>
-        </button>
-        <div className="frontmatter-header-actions">
-          {saveBusy ? <span className="chip">Speichere...</span> : null}
-          <button
-            type="button"
-            className={`ghost small frontmatter-collapse-button ${isCollapsed ? "collapsed" : ""}`}
-            aria-label={isCollapsed ? "Eigenschaften aufklappen" : "Eigenschaften einklappen"}
-            aria-expanded={!isCollapsed}
-            onClick={onToggleCollapsed}
-          >
-            <span className="frontmatter-collapse-icon" aria-hidden="true">
-              <ChevronDownIcon />
-            </span>
-          </button>
-        </div>
-      </div>
-      {!isCollapsed ? (
-        <>
-          <div
-            ref={frontmatterGridRef}
-            className="frontmatter-grid"
-            role="table"
-            aria-label="Frontmatter properties"
-          >
-            {gridProperties.map((property) => {
-              const isRowSaving = savingKey === property.key;
-              const rowDisabled = controlsDisabled || isRowSaving;
-              const tags = Array.isArray(property.value) ? property.value : [];
-              const rowError = rowErrors[property.key] ?? "";
-              const editorMode = editorModes[property.key] ?? "idle";
-              const isEditorEditing = editorMode === "editing";
-              const isTaskRow = property.kind === "task" || isTaskKeyName(property.key);
-              const suggestions = resolveSuggestionsForKey(
-                property.key,
-                isTaskRow ? "" : (drafts[property.key] ?? ""),
-              );
-              const suggestionListId = `frontmatter-suggestions-${property.key
-                .toLowerCase()
-                .replace(/[^a-z0-9_-]+/g, "-")}`;
-              const safeSuggestionIndex = Math.max(
-                0,
-                Math.min(suggestionCursor[property.key] ?? 0, Math.max(0, suggestions.length - 1)),
-              );
-              const activeSuggestion = suggestions[safeSuggestionIndex] ?? null;
-              const isDropdownOpen = openSuggestionsKey === property.key &&
-                suggestions.length > 0 &&
-                !rowDisabled &&
-                isScalarEditableKind(property.kind);
-              const isCoverRow = property.kind === "cover";
-              const isCoverRowActive = isCoverRow && activeCoverKey === property.key;
-              const taskCommittedValue =
-                typeof property.value === "string" ? (property.value.trim() || null) : null;
-              const taskDraftValue = (drafts[property.key] ?? "").trim() || null;
-              const taskPropertyValue = taskDraftValue ?? taskCommittedValue;
-              const taskProfileSummary = isTaskRow && taskPropertyValue
-                ? (taskProfileSummariesByName?.[taskPropertyValue.toLowerCase()] ?? null)
-                : null;
-              const coverCurrentValue = typeof property.value === "string" ? property.value : "";
-              const coverDraftValue = drafts[property.key] ?? "";
-              const coverPreferredValue = coverDraftValue || coverCurrentValue;
-              const coverActiveWikilink = normalizeWikilinkValue(coverPreferredValue);
-              const coverTarget =
-                extractWikilinkTarget(coverActiveWikilink) ??
-                extractVaultAssetRelativePath(coverPreferredValue);
-              const coverTargetCandidates = coverTarget
-                ? resolveRelativePathCandidates(coverTarget, sourceRelativePath)
-                : [];
-              const resolvedCoverImage = resolveCoverImageFromTarget(coverTarget);
-              const coverImageSrc = resolvedCoverImage
-                ? (resolvedCoverImage.src ?? resolvedCoverImage.path)
-                : "";
-              const coverImageError = resolvedCoverImage
-                ? coverImageErrors[resolvedCoverImage.relativePath]
-                : undefined;
-              const hasCoverImageLoadError = Boolean(
-                coverImageError && coverImageError.src === coverImageSrc,
-              );
-              const coverDisplayWikilink = coverActiveWikilink ||
-                (coverTarget ? normalizeWikilinkValue(coverTarget) : "");
-              const coverDisplayName = coverDisplayWikilink || "Kein Wert";
-              const coverDisplaySubline = coverDisplayWikilink;
-              const isCoverBroken = Boolean(coverTarget) &&
-                (!resolvedCoverImage || hasCoverImageLoadError);
-              const coverPickerListId = `frontmatter-cover-picker-${property.key
-                .toLowerCase()
-                .replace(/[^a-z0-9_-]+/g, "-")}`;
-              const isCoverPickerListOpen = isCoverRowActive && isCoverPickerOpen && !rowDisabled;
-              const monitoringSourceValue = property.kind === "formula"
-                ? (computedFormulaValueByKey[property.key] ?? null)
-                : property.value;
-              const monitoringResult = renderMonitoringValue({
-                attributeKey: property.key,
-                value: monitoringSourceValue,
-                profiles: monitoringProfiles,
-              });
-              const monitoringFallback = property.kind === "formula"
-                ? String(computedFormulaValueByKey[property.key] ?? "").trim()
-                : stringifyPropertyValue(property).trim();
-
-              const commitScalarDraft = async (rawInput: string) => {
-                if (property.kind === "number") {
-                  const value = rawInput.trim();
-                  if (!value) {
-                    setRowErrors((current) => ({ ...current, [property.key]: "" }));
-                    return commitPropertyChange({
-                      property,
-                      kind: "number",
-                      value: null,
-                    });
-                  }
-                  const parsed = Number(value);
-                  if (!Number.isFinite(parsed)) {
-                    setRowErrors((current) => ({
-                      ...current,
-                      [property.key]: "Bitte eine gueltige Zahl eingeben.",
-                    }));
-                    return false;
-                  }
-                  setRowErrors((current) => ({ ...current, [property.key]: "" }));
-                  return commitPropertyChange({
-                    property,
-                    kind: "number",
-                    value: parsed,
+          <div className="frontmatter-header">
+            <button
+              type="button"
+              className="frontmatter-title-button"
+              aria-expanded={!isCollapsed}
+              onClick={onToggleCollapsed}
+            >
+              <h3>Eigenschaften</h3>
+            </button>
+            <div className="frontmatter-header-actions">
+              {saveBusy ? <span className="chip">Speichere...</span> : null}
+              <button
+                type="button"
+                className={`ghost small frontmatter-collapse-button ${isCollapsed ? "collapsed" : ""}`}
+                aria-label={isCollapsed ? "Eigenschaften aufklappen" : "Eigenschaften einklappen"}
+                aria-expanded={!isCollapsed}
+                onClick={onToggleCollapsed}
+              >
+                <span className="frontmatter-collapse-icon" aria-hidden="true">
+                  <ChevronDownIcon />
+                </span>
+              </button>
+            </div>
+          </div>
+          {!isCollapsed ? (
+            <>
+              <div
+                ref={frontmatterGridRef}
+                className="frontmatter-grid"
+                role="table"
+                aria-label="Frontmatter properties"
+              >
+                {gridProperties.map((property) => {
+                  const isRowSaving = savingKey === property.key;
+                  const rowDisabled = controlsDisabled || isRowSaving;
+                  const tags = Array.isArray(property.value) ? property.value : [];
+                  const rowError = rowErrors[property.key] ?? "";
+                  const editorMode = editorModes[property.key] ?? "idle";
+                  const isEditorEditing = editorMode === "editing";
+                  const isTaskRow = property.kind === "task" || isTaskKeyName(property.key);
+                  const suggestions = resolveSuggestionsForKey(
+                    property.key,
+                    isTaskRow ? "" : (drafts[property.key] ?? ""),
+                  );
+                  const suggestionListId = `frontmatter-suggestions-${property.key
+                    .toLowerCase()
+                    .replace(/[^a-z0-9_-]+/g, "-")}`;
+                  const safeSuggestionIndex = Math.max(
+                    0,
+                    Math.min(
+                      suggestionCursor[property.key] ?? 0,
+                      Math.max(0, suggestions.length - 1),
+                    ),
+                  );
+                  const activeSuggestion = suggestions[safeSuggestionIndex] ?? null;
+                  const isDropdownOpen =
+                    openSuggestionsKey === property.key &&
+                    suggestions.length > 0 &&
+                    !rowDisabled &&
+                    isScalarEditableKind(property.kind);
+                  const isCoverRow = property.kind === "cover";
+                  const isCoverRowActive = isCoverRow && activeCoverKey === property.key;
+                  const taskCommittedValue =
+                    typeof property.value === "string" ? property.value.trim() || null : null;
+                  const taskDraftValue = (drafts[property.key] ?? "").trim() || null;
+                  const taskPropertyValue = taskDraftValue ?? taskCommittedValue;
+                  const taskProfileSummary =
+                    isTaskRow && taskPropertyValue
+                      ? (taskProfileSummariesByName?.[taskPropertyValue.toLowerCase()] ?? null)
+                      : null;
+                  const coverCurrentValue =
+                    typeof property.value === "string" ? property.value : "";
+                  const coverDraftValue = drafts[property.key] ?? "";
+                  const coverPreferredValue = coverDraftValue || coverCurrentValue;
+                  const coverActiveWikilink = normalizeWikilinkValue(coverPreferredValue);
+                  const coverTarget =
+                    extractWikilinkTarget(coverActiveWikilink) ??
+                    extractVaultAssetRelativePath(coverPreferredValue);
+                  const coverTargetCandidates = coverTarget
+                    ? resolveRelativePathCandidates(coverTarget, sourceRelativePath)
+                    : [];
+                  const resolvedCoverImage = resolveCoverImageFromTarget(coverTarget);
+                  const coverImageSrc = resolvedCoverImage
+                    ? (resolvedCoverImage.src ?? resolvedCoverImage.path)
+                    : "";
+                  const coverImageError = resolvedCoverImage
+                    ? coverImageErrors[resolvedCoverImage.relativePath]
+                    : undefined;
+                  const hasCoverImageLoadError = Boolean(
+                    coverImageError && coverImageError.src === coverImageSrc,
+                  );
+                  const coverDisplayWikilink =
+                    coverActiveWikilink || (coverTarget ? normalizeWikilinkValue(coverTarget) : "");
+                  const coverDisplayName = coverDisplayWikilink || "Kein Wert";
+                  const coverDisplaySubline = coverDisplayWikilink;
+                  const isCoverBroken =
+                    Boolean(coverTarget) && (!resolvedCoverImage || hasCoverImageLoadError);
+                  const coverPickerListId = `frontmatter-cover-picker-${property.key
+                    .toLowerCase()
+                    .replace(/[^a-z0-9_-]+/g, "-")}`;
+                  const isCoverPickerListOpen =
+                    isCoverRowActive && isCoverPickerOpen && !rowDisabled;
+                  const monitoringSourceValue =
+                    property.kind === "formula"
+                      ? (computedFormulaValueByKey[property.key] ?? null)
+                      : property.value;
+                  const monitoringResult = renderMonitoringValue({
+                    attributeKey: property.key,
+                    value: monitoringSourceValue,
+                    profiles: monitoringProfiles,
                   });
-                }
-                if (property.kind === "time") {
-                  const value = rawInput.trim();
-                  if (!value) {
-                    setRowErrors((current) => ({ ...current, [property.key]: "" }));
-                    return commitPropertyChange({
-                      property,
-                      kind: "time",
-                      value: null,
-                    });
-                  }
-                  const normalized = normalizeDateTimeValue(value) ??
-                    normalizeDateValue(value) ??
-                    normalizeTimeValue(value);
-                  if (!normalized) {
-                    setRowErrors((current) => ({
-                      ...current,
-                      [property.key]: "Format: YYYY-MM-DD, HH:mm oder YYYY-MM-DDTHH:mm.",
-                    }));
-                    return false;
-                  }
-                  setRowErrors((current) => ({ ...current, [property.key]: "" }));
-                  setDrafts((current) => ({
-                    ...current,
-                    [property.key]: normalized,
-                  }));
-                  return commitPropertyChange({
-                    property,
-                    kind: "time",
-                    value: normalized,
-                  });
-                }
-                const nextValue = property.kind === "link" || property.kind === "cover"
-                  ? normalizeWikilinkValue(rawInput)
-                  : rawInput;
-                setDrafts((current) => ({
-                  ...current,
-                  [property.key]: nextValue,
-                }));
-                return commitPropertyChange({
-                  property,
-                  kind: property.kind,
-                  value: nextValue.trim() === "" ? null : nextValue,
-                });
-              };
+                  const monitoringFallback =
+                    property.kind === "formula"
+                      ? String(computedFormulaValueByKey[property.key] ?? "").trim()
+                      : stringifyPropertyValue(property).trim();
 
-              const renderScalarInput = () => (
-                <div className="frontmatter-input-wrap">
-                  <input
-                    type="text"
-                    inputMode={property.kind === "number" ? "decimal" : undefined}
-                    className="text-input frontmatter-input"
-                    placeholder="Kein Wert"
-                    aria-label={`${property.key} value`}
-                    role="combobox"
-                    aria-autocomplete="list"
-                    aria-expanded={isDropdownOpen}
-                    aria-controls={isDropdownOpen ? suggestionListId : undefined}
-                    value={
-                      monitoringResult && editorMode === "idle"
-                        ? (monitoringResult.displayText || monitoringFallback || monitoringResult.rawText || "")
-                        : (drafts[property.key] ?? "")
-                    }
-                    readOnly={!isEditorEditing}
-                    disabled={rowDisabled}
-                    onChange={(event) => {
-                      if (!isEditorEditing) {
-                        return;
-                      }
-                      const next = event.target.value;
-                      setDrafts((current) => ({ ...current, [property.key]: next }));
-                      if (rowErrors[property.key]) {
+                  const commitScalarDraft = async (rawInput: string) => {
+                    if (property.kind === "number") {
+                      const value = rawInput.trim();
+                      if (!value) {
                         setRowErrors((current) => ({ ...current, [property.key]: "" }));
-                      }
-                      setOpenSuggestionsKey(property.key);
-                      setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
-                    }}
-                    onFocus={() => {
-                      if (rowDisabled) {
-                        return;
-                      }
-                      activateEditor(property.key);
-                      setOpenSuggestionsKey(property.key);
-                      setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
-                    }}
-                    onClick={() => {
-                      if (rowDisabled) {
-                        return;
-                      }
-                      activateEditor(property.key);
-                      setOpenSuggestionsKey(property.key);
-                    }}
-                    onDoubleClick={() => {
-                      if (rowDisabled) {
-                        return;
-                      }
-                      beginEditing(property.key);
-                      setOpenSuggestionsKey(property.key);
-                    }}
-                    onBlur={(event) => {
-                      setOpenSuggestionsKey((current) =>
-                        current === property.key ? null : current
-                      );
-                      const mode = editorModes[property.key] ?? "idle";
-                      if (mode !== "editing") {
-                        setEditorModes((current) => ({ ...current, [property.key]: "idle" }));
-                        setDrafts((current) => ({
-                          ...current,
-                          [property.key]: stringifyPropertyValue(property),
-                        }));
-                        return;
-                      }
-                      const raw = event.currentTarget.value;
-                      setEditorModes((current) => ({
-                        ...current,
-                        [property.key]: "committing",
-                      }));
-                      void (async () => {
-                        const saved = await commitScalarDraft(raw);
-                        setEditorModes((current) => ({
-                          ...current,
-                          [property.key]: saved ? "idle" : "editing",
-                        }));
-                      })();
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "F2") {
-                        event.preventDefault();
-                        beginEditing(property.key);
-                        setOpenSuggestionsKey(property.key);
-                        return;
-                      }
-                      if (event.key === "Escape") {
-                        event.preventDefault();
-                        setOpenSuggestionsKey((current) =>
-                          current === property.key ? null : current
-                        );
-                        setEditorModes((current) => ({ ...current, [property.key]: "idle" }));
-                        setDrafts((current) => ({
-                          ...current,
-                          [property.key]: stringifyPropertyValue(property),
-                        }));
-                        event.currentTarget.blur();
-                        return;
-                      }
-                      if (isDropdownOpen && (event.key === "ArrowDown" || event.key === "ArrowUp")) {
-                        event.preventDefault();
-                        const offset = event.key === "ArrowDown" ? 1 : -1;
-                        setSuggestionCursor((current) => {
-                          const existing = current[property.key] ?? 0;
-                          const next = (existing + offset + suggestions.length) %
-                            suggestions.length;
-                          return { ...current, [property.key]: next };
+                        return commitPropertyChange({
+                          property,
+                          kind: "number",
+                          value: null,
                         });
-                        return;
                       }
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        if (isDropdownOpen && activeSuggestion) {
-                          setDrafts((current) => ({
-                            ...current,
-                            [property.key]: activeSuggestion,
-                          }));
-                          setOpenSuggestionsKey(null);
-                          setEditorModes((current) => ({
-                            ...current,
-                            [property.key]: "committing",
-                          }));
-                          void (async () => {
-                            const saved = await commitScalarDraft(activeSuggestion);
-                            setEditorModes((current) => ({
-                              ...current,
-                              [property.key]: saved ? "idle" : "editing",
-                            }));
-                          })();
-                          return;
+                      const parsed = Number(value);
+                      if (!Number.isFinite(parsed)) {
+                        setRowErrors((current) => ({
+                          ...current,
+                          [property.key]: "Bitte eine gueltige Zahl eingeben.",
+                        }));
+                        return false;
+                      }
+                      setRowErrors((current) => ({ ...current, [property.key]: "" }));
+                      return commitPropertyChange({
+                        property,
+                        kind: "number",
+                        value: parsed,
+                      });
+                    }
+                    if (property.kind === "time") {
+                      const value = rawInput.trim();
+                      if (!value) {
+                        setRowErrors((current) => ({ ...current, [property.key]: "" }));
+                        return commitPropertyChange({
+                          property,
+                          kind: "time",
+                          value: null,
+                        });
+                      }
+                      const normalized =
+                        normalizeDateTimeValue(value) ??
+                        normalizeDateValue(value) ??
+                        normalizeTimeValue(value);
+                      if (!normalized) {
+                        setRowErrors((current) => ({
+                          ...current,
+                          [property.key]: "Format: YYYY-MM-DD, HH:mm oder YYYY-MM-DDTHH:mm.",
+                        }));
+                        return false;
+                      }
+                      setRowErrors((current) => ({ ...current, [property.key]: "" }));
+                      setDrafts((current) => ({
+                        ...current,
+                        [property.key]: normalized,
+                      }));
+                      return commitPropertyChange({
+                        property,
+                        kind: "time",
+                        value: normalized,
+                      });
+                    }
+                    const nextValue =
+                      property.kind === "link" || property.kind === "cover"
+                        ? normalizeWikilinkValue(rawInput)
+                        : rawInput;
+                    setDrafts((current) => ({
+                      ...current,
+                      [property.key]: nextValue,
+                    }));
+                    return commitPropertyChange({
+                      property,
+                      kind: property.kind,
+                      value: nextValue.trim() === "" ? null : nextValue,
+                    });
+                  };
+
+                  const renderScalarInput = () => (
+                    <div className="frontmatter-input-wrap">
+                      <input
+                        type="text"
+                        inputMode={property.kind === "number" ? "decimal" : undefined}
+                        className="text-input frontmatter-input"
+                        placeholder="Kein Wert"
+                        aria-label={`${property.key} value`}
+                        role="combobox"
+                        aria-autocomplete="list"
+                        aria-expanded={isDropdownOpen}
+                        aria-controls={isDropdownOpen ? suggestionListId : undefined}
+                        value={
+                          monitoringResult && editorMode === "idle"
+                            ? monitoringResult.displayText ||
+                              monitoringFallback ||
+                              monitoringResult.rawText ||
+                              ""
+                            : (drafts[property.key] ?? "")
                         }
-                        if (!isEditorEditing && suggestions.length > 0) {
-                          const firstSuggestion = suggestions[0] ?? "";
-                          if (!firstSuggestion) {
+                        readOnly={!isEditorEditing}
+                        disabled={rowDisabled}
+                        onChange={(event) => {
+                          if (!isEditorEditing) {
                             return;
                           }
-                          setDrafts((current) => ({
-                            ...current,
-                            [property.key]: firstSuggestion,
-                          }));
-                          setOpenSuggestionsKey(null);
+                          const next = event.target.value;
+                          setDrafts((current) => ({ ...current, [property.key]: next }));
+                          if (rowErrors[property.key]) {
+                            setRowErrors((current) => ({ ...current, [property.key]: "" }));
+                          }
+                          setOpenSuggestionsKey(property.key);
+                          setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
+                        }}
+                        onFocus={() => {
+                          if (rowDisabled) {
+                            return;
+                          }
+                          activateEditor(property.key);
+                          setOpenSuggestionsKey(property.key);
+                          setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
+                        }}
+                        onClick={() => {
+                          if (rowDisabled) {
+                            return;
+                          }
+                          activateEditor(property.key);
+                          setOpenSuggestionsKey(property.key);
+                        }}
+                        onDoubleClick={() => {
+                          if (rowDisabled) {
+                            return;
+                          }
+                          beginEditing(property.key);
+                          setOpenSuggestionsKey(property.key);
+                        }}
+                        onBlur={(event) => {
+                          setOpenSuggestionsKey((current) =>
+                            current === property.key ? null : current,
+                          );
+                          const mode = editorModes[property.key] ?? "idle";
+                          if (mode !== "editing") {
+                            setEditorModes((current) => ({ ...current, [property.key]: "idle" }));
+                            setDrafts((current) => ({
+                              ...current,
+                              [property.key]: stringifyPropertyValue(property),
+                            }));
+                            return;
+                          }
+                          const raw = event.currentTarget.value;
                           setEditorModes((current) => ({
                             ...current,
                             [property.key]: "committing",
                           }));
                           void (async () => {
-                            const saved = await commitScalarDraft(firstSuggestion);
+                            const saved = await commitScalarDraft(raw);
                             setEditorModes((current) => ({
                               ...current,
                               [property.key]: saved ? "idle" : "editing",
                             }));
                           })();
-                          return;
-                        }
-                        event.currentTarget.blur();
-                        return;
-                      }
-                      if (event.key === "Tab") {
-                        setOpenSuggestionsKey((current) =>
-                          current === property.key ? null : current
-                        );
-                        return;
-                      }
-                      if (!isEditorEditing) {
-                        if (isPrintableCharacterKey(event)) {
-                          event.preventDefault();
-                          const nextValue = `${drafts[property.key] ?? ""}${event.key}`;
-                          setDrafts((current) => ({ ...current, [property.key]: nextValue }));
-                          beginEditing(property.key);
-                          setOpenSuggestionsKey(property.key);
-                          setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
-                          scheduleAnimationFrame(() => {
-                            const input = valueInputRefs.current[property.key];
-                            if (!input) {
-                              return;
-                            }
-                            input.focus();
-                            input.setSelectionRange(nextValue.length, nextValue.length);
-                          });
-                          return;
-                        }
-                        if (event.key === "Backspace" || event.key === "Delete") {
-                          event.preventDefault();
-                          const currentValue = drafts[property.key] ?? "";
-                          const nextValue = event.key === "Backspace"
-                            ? currentValue.slice(0, -1)
-                            : "";
-                          setDrafts((current) => ({ ...current, [property.key]: nextValue }));
-                          beginEditing(property.key);
-                          setOpenSuggestionsKey(property.key);
-                          setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
-                        }
-                      }
-                    }}
-                    ref={(element) => {
-                      valueInputRefs.current[property.key] = element;
-                    }}
-                  />
-                  {isDropdownOpen ? (
-                    <ul
-                      id={suggestionListId}
-                      className="frontmatter-suggestions"
-                      role="listbox"
-                      aria-label={`${property.key} Vorschlaege`}
-                    >
-                      {suggestions.map((suggestion, suggestionIndex) => (
-                        <li key={`${property.key}-${suggestion}`}>
-                          <button
-                            type="button"
-                            className={`frontmatter-suggestion-option ${
-                              suggestionIndex === safeSuggestionIndex ? "active" : ""
-                            }`}
-                            role="option"
-                            aria-selected={suggestionIndex === safeSuggestionIndex}
-                            onMouseDown={(event) => {
-                              event.preventDefault();
-                            }}
-                            onClick={() => {
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "F2") {
+                            event.preventDefault();
+                            beginEditing(property.key);
+                            setOpenSuggestionsKey(property.key);
+                            return;
+                          }
+                          if (event.key === "Escape") {
+                            event.preventDefault();
+                            setOpenSuggestionsKey((current) =>
+                              current === property.key ? null : current,
+                            );
+                            setEditorModes((current) => ({ ...current, [property.key]: "idle" }));
+                            setDrafts((current) => ({
+                              ...current,
+                              [property.key]: stringifyPropertyValue(property),
+                            }));
+                            event.currentTarget.blur();
+                            return;
+                          }
+                          if (
+                            isDropdownOpen &&
+                            (event.key === "ArrowDown" || event.key === "ArrowUp")
+                          ) {
+                            event.preventDefault();
+                            const offset = event.key === "ArrowDown" ? 1 : -1;
+                            setSuggestionCursor((current) => {
+                              const existing = current[property.key] ?? 0;
+                              const next =
+                                (existing + offset + suggestions.length) % suggestions.length;
+                              return { ...current, [property.key]: next };
+                            });
+                            return;
+                          }
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            if (isDropdownOpen && activeSuggestion) {
                               setDrafts((current) => ({
                                 ...current,
-                                [property.key]: suggestion,
+                                [property.key]: activeSuggestion,
                               }));
                               setOpenSuggestionsKey(null);
                               setEditorModes((current) => ({
@@ -7453,151 +7259,596 @@ const FrontmatterPropertiesPanel = ({
                                 [property.key]: "committing",
                               }));
                               void (async () => {
-                                const saved = await commitScalarDraft(suggestion);
+                                const saved = await commitScalarDraft(activeSuggestion);
                                 setEditorModes((current) => ({
                                   ...current,
                                   [property.key]: saved ? "idle" : "editing",
                                 }));
                               })();
-                            }}
-                          >
-                            {suggestion}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                  {rowError ? <span className="frontmatter-row-error">{rowError}</span> : null}
-                </div>
-              );
-
-              const renderValueEditor = () => {
-                switch (property.kind) {
-                  case "formula": {
-                    const formulaSummary = formatFormulaPropertySummary(property.value);
-                    const formulaComputedValue = computedFormulaValueByKey[property.key] ?? "—";
-                    const formulaTitle = formulaComputedValue === formulaSummary
-                      ? formulaSummary
-                      : `${formulaSummary} = ${formulaComputedValue}`;
-                    if (monitoringResult) {
-                      return (
-                        <div
-                          className="frontmatter-formula-value"
-                          title={formulaTitle}
+                              return;
+                            }
+                            if (!isEditorEditing && suggestions.length > 0) {
+                              const firstSuggestion = suggestions[0] ?? "";
+                              if (!firstSuggestion) {
+                                return;
+                              }
+                              setDrafts((current) => ({
+                                ...current,
+                                [property.key]: firstSuggestion,
+                              }));
+                              setOpenSuggestionsKey(null);
+                              setEditorModes((current) => ({
+                                ...current,
+                                [property.key]: "committing",
+                              }));
+                              void (async () => {
+                                const saved = await commitScalarDraft(firstSuggestion);
+                                setEditorModes((current) => ({
+                                  ...current,
+                                  [property.key]: saved ? "idle" : "editing",
+                                }));
+                              })();
+                              return;
+                            }
+                            event.currentTarget.blur();
+                            return;
+                          }
+                          if (event.key === "Tab") {
+                            setOpenSuggestionsKey((current) =>
+                              current === property.key ? null : current,
+                            );
+                            return;
+                          }
+                          if (!isEditorEditing) {
+                            if (isPrintableCharacterKey(event)) {
+                              event.preventDefault();
+                              const nextValue = `${drafts[property.key] ?? ""}${event.key}`;
+                              setDrafts((current) => ({ ...current, [property.key]: nextValue }));
+                              beginEditing(property.key);
+                              setOpenSuggestionsKey(property.key);
+                              setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
+                              scheduleAnimationFrame(() => {
+                                const input = valueInputRefs.current[property.key];
+                                if (!input) {
+                                  return;
+                                }
+                                input.focus();
+                                input.setSelectionRange(nextValue.length, nextValue.length);
+                              });
+                              return;
+                            }
+                            if (event.key === "Backspace" || event.key === "Delete") {
+                              event.preventDefault();
+                              const currentValue = drafts[property.key] ?? "";
+                              const nextValue =
+                                event.key === "Backspace" ? currentValue.slice(0, -1) : "";
+                              setDrafts((current) => ({ ...current, [property.key]: nextValue }));
+                              beginEditing(property.key);
+                              setOpenSuggestionsKey(property.key);
+                              setSuggestionCursor((current) => ({ ...current, [property.key]: 0 }));
+                            }
+                          }
+                        }}
+                        ref={(element) => {
+                          valueInputRefs.current[property.key] = element;
+                        }}
+                      />
+                      {isDropdownOpen ? (
+                        <ul
+                          id={suggestionListId}
+                          className="frontmatter-suggestions"
+                          role="listbox"
+                          aria-label={`${property.key} Vorschlaege`}
                         >
-                          <MonitoringRenderValue
-                            result={monitoringResult}
-                            fallback={monitoringFallback}
-                          />
-                        </div>
-                      );
-                    }
-                    return (
-                      <div
-                        className="frontmatter-formula-value"
-                        title={formulaTitle}
-                      >
-                        {formulaComputedValue}
-                      </div>
-                    );
-                  }
-                  case "boolean":
-                    return (
-                      <label className="switch">
-                        <input
-                          type="checkbox"
-                          checked={property.value === true}
-                          disabled={rowDisabled}
-                          aria-label={`${property.key} value`}
-                          onChange={(event) => {
-                            void commitPropertyChange({
-                              property,
-                              kind: "boolean",
-                              value: event.target.checked,
-                            });
-                          }}
-                        />
-                        <span className="slider" />
-                      </label>
-                    );
-                  case "tags":
-                    return (
-                      <div className="frontmatter-tags-editor">
-                        {tags.length > 0 ? (
-                          <div className="frontmatter-tag-list">
-                            {tags.map((tag, tagIndex) => (
-                              <span
-                                key={`${property.key}-${tag}-${tagIndex}`}
-                                className="frontmatter-tag-chip"
+                          {suggestions.map((suggestion, suggestionIndex) => (
+                            <li key={`${property.key}-${suggestion}`}>
+                              <button
+                                type="button"
+                                className={`frontmatter-suggestion-option ${
+                                  suggestionIndex === safeSuggestionIndex ? "active" : ""
+                                }`}
+                                role="option"
+                                aria-selected={suggestionIndex === safeSuggestionIndex}
+                                onMouseDown={(event) => {
+                                  event.preventDefault();
+                                }}
+                                onClick={() => {
+                                  setDrafts((current) => ({
+                                    ...current,
+                                    [property.key]: suggestion,
+                                  }));
+                                  setOpenSuggestionsKey(null);
+                                  setEditorModes((current) => ({
+                                    ...current,
+                                    [property.key]: "committing",
+                                  }));
+                                  void (async () => {
+                                    const saved = await commitScalarDraft(suggestion);
+                                    setEditorModes((current) => ({
+                                      ...current,
+                                      [property.key]: saved ? "idle" : "editing",
+                                    }));
+                                  })();
+                                }}
                               >
-                                <span>{tag}</span>
-                                <button
-                                  type="button"
-                                  className="frontmatter-tag-remove"
-                                  onClick={() => {
-                                    const nextTags = tags.filter((item) => item !== tag);
-                                    void commitPropertyChange({
-                                      property,
-                                      kind: "tags",
-                                      value: nextTags,
-                                    });
-                                  }}
-                                  disabled={rowDisabled}
-                                  aria-label={`${tag} entfernen`}
-                                >
-                                  x
-                                </button>
-                              </span>
-                            ))}
+                                {suggestion}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                      {rowError ? <span className="frontmatter-row-error">{rowError}</span> : null}
+                    </div>
+                  );
+
+                  const renderValueEditor = () => {
+                    switch (property.kind) {
+                      case "formula": {
+                        const formulaSummary = formatFormulaPropertySummary(property.value);
+                        const formulaComputedValue = computedFormulaValueByKey[property.key] ?? "—";
+                        const formulaTitle =
+                          formulaComputedValue === formulaSummary
+                            ? formulaSummary
+                            : `${formulaSummary} = ${formulaComputedValue}`;
+                        if (monitoringResult) {
+                          return (
+                            <div className="frontmatter-formula-value" title={formulaTitle}>
+                              <MonitoringRenderValue
+                                result={monitoringResult}
+                                fallback={monitoringFallback}
+                              />
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="frontmatter-formula-value" title={formulaTitle}>
+                            {formulaComputedValue}
                           </div>
-                        ) : (
-                          <span className="frontmatter-empty-value">Kein Wert</span>
-                        )}
-                        <input
-                          type="text"
-                          className="text-input frontmatter-input"
-                          placeholder="Tag hinzufuegen"
-                          aria-label={`${property.key} add tag`}
-                          value={tagInputs[property.key] ?? ""}
-                          disabled={rowDisabled}
-                          onChange={(event) => {
-                            const next = event.target.value;
-                            setTagInputs((current) => ({ ...current, [property.key]: next }));
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key !== "Enter") {
-                              return;
-                            }
-                            event.preventDefault();
-                            const value = (tagInputs[property.key] ?? "").trim();
-                            if (!value) {
-                              return;
-                            }
-                            const nextTags = normalizeTags([...tags, value]);
-                            setTagInputs((current) => ({ ...current, [property.key]: "" }));
-                            void commitPropertyChange({
-                              property,
-                              kind: "tags",
-                              value: nextTags,
-                            });
-                          }}
-                        />
-                      </div>
-                    );
-                  case "cover":
-                    return (
-                      <div className="frontmatter-cover-editor">
-                        <div className="frontmatter-cover-display">
+                        );
+                      }
+                      case "boolean":
+                        return (
+                          <label className="switch">
+                            <input
+                              type="checkbox"
+                              checked={property.value === true}
+                              disabled={rowDisabled}
+                              aria-label={`${property.key} value`}
+                              onChange={(event) => {
+                                void commitPropertyChange({
+                                  property,
+                                  kind: "boolean",
+                                  value: event.target.checked,
+                                });
+                              }}
+                            />
+                            <span className="slider" />
+                          </label>
+                        );
+                      case "tags":
+                        return (
+                          <div className="frontmatter-tags-editor">
+                            {tags.length > 0 ? (
+                              <div className="frontmatter-tag-list">
+                                {tags.map((tag, tagIndex) => (
+                                  <span
+                                    key={`${property.key}-${tag}-${tagIndex}`}
+                                    className="frontmatter-tag-chip"
+                                  >
+                                    <span>{tag}</span>
+                                    <button
+                                      type="button"
+                                      className="frontmatter-tag-remove"
+                                      onClick={() => {
+                                        const nextTags = tags.filter((item) => item !== tag);
+                                        void commitPropertyChange({
+                                          property,
+                                          kind: "tags",
+                                          value: nextTags,
+                                        });
+                                      }}
+                                      disabled={rowDisabled}
+                                      aria-label={`${tag} entfernen`}
+                                    >
+                                      x
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="frontmatter-empty-value">Kein Wert</span>
+                            )}
+                            <input
+                              type="text"
+                              className="text-input frontmatter-input"
+                              placeholder="Tag hinzufuegen"
+                              aria-label={`${property.key} add tag`}
+                              value={tagInputs[property.key] ?? ""}
+                              disabled={rowDisabled}
+                              onChange={(event) => {
+                                const next = event.target.value;
+                                setTagInputs((current) => ({ ...current, [property.key]: next }));
+                              }}
+                              onKeyDown={(event) => {
+                                if (event.key !== "Enter") {
+                                  return;
+                                }
+                                event.preventDefault();
+                                const value = (tagInputs[property.key] ?? "").trim();
+                                if (!value) {
+                                  return;
+                                }
+                                const nextTags = normalizeTags([...tags, value]);
+                                setTagInputs((current) => ({ ...current, [property.key]: "" }));
+                                void commitPropertyChange({
+                                  property,
+                                  kind: "tags",
+                                  value: nextTags,
+                                });
+                              }}
+                            />
+                          </div>
+                        );
+                      case "cover":
+                        return (
+                          <div className="frontmatter-cover-editor">
+                            <div className="frontmatter-cover-display">
+                              <button
+                                type="button"
+                                className="frontmatter-cover-thumbnail-button"
+                                disabled={rowDisabled}
+                                aria-label={coverTarget ? "Cover oeffnen" : "Cover auswaehlen"}
+                                title={
+                                  hasCoverImageLoadError
+                                    ? "Bild konnte nicht geladen werden. Klicken zum erneuten Laden."
+                                    : undefined
+                                }
+                                onMouseDown={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                }}
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  if (rowDisabled) {
+                                    return;
+                                  }
+                                  if ((event.metaKey || event.ctrlKey) && coverActiveWikilink) {
+                                    onNavigateWikilink?.(coverActiveWikilink);
+                                    return;
+                                  }
+                                  if (resolvedCoverImage && hasCoverImageLoadError) {
+                                    setCoverImageErrors((current) => {
+                                      if (!current[resolvedCoverImage.relativePath]) {
+                                        return current;
+                                      }
+                                      const next = { ...current };
+                                      delete next[resolvedCoverImage.relativePath];
+                                      return next;
+                                    });
+                                  }
+                                  if (!isCoverRowActive) {
+                                    activateCoverRow(property.key, { openImagePicker: true });
+                                    return;
+                                  }
+                                  setIsCoverPickerOpen((current) => !current);
+                                }}
+                              >
+                                {resolvedCoverImage && !hasCoverImageLoadError ? (
+                                  <CoverThumbnailImage
+                                    variant="main"
+                                    image={resolvedCoverImage}
+                                    alt={coverDisplayName}
+                                    onLoad={() => {
+                                      setCoverImageErrors((current) => {
+                                        if (!current[resolvedCoverImage.relativePath]) {
+                                          return current;
+                                        }
+                                        const next = { ...current };
+                                        delete next[resolvedCoverImage.relativePath];
+                                        return next;
+                                      });
+                                    }}
+                                    onError={(event) => {
+                                      const failedSrc =
+                                        event.currentTarget.currentSrc ||
+                                        event.currentTarget.src ||
+                                        resolvedCoverImage.src ||
+                                        resolvedCoverImage.path;
+                                      setCoverImageErrors((current) => ({
+                                        ...current,
+                                        [resolvedCoverImage.relativePath]: {
+                                          src: failedSrc,
+                                          relativePath: resolvedCoverImage.relativePath,
+                                          absolutePath: resolvedCoverImage.path,
+                                        },
+                                      }));
+                                    }}
+                                  />
+                                ) : (
+                                  <span
+                                    className="frontmatter-cover-placeholder"
+                                    aria-hidden="true"
+                                  >
+                                    <FrontmatterImageIcon />
+                                  </span>
+                                )}
+                              </button>
+                              <div className="frontmatter-cover-copy">
+                                <span className="frontmatter-cover-name" title={coverDisplayName}>
+                                  {coverDisplayName}
+                                </span>
+                                {coverDisplaySubline ? (
+                                  <span
+                                    className="frontmatter-cover-target"
+                                    title={coverDisplaySubline}
+                                  >
+                                    {coverDisplaySubline}
+                                  </span>
+                                ) : (
+                                  <span className="frontmatter-empty-value">Kein Wert</span>
+                                )}
+                                {isCoverBroken ? (
+                                  <span
+                                    className="frontmatter-row-error"
+                                    title={
+                                      hasCoverImageLoadError
+                                        ? "Bild konnte nicht geladen werden."
+                                        : undefined
+                                    }
+                                  >
+                                    {hasCoverImageLoadError
+                                      ? "Bild konnte nicht geladen werden."
+                                      : "Datei nicht gefunden."}
+                                  </span>
+                                ) : null}
+                                {import.meta.env.DEV &&
+                                hasCoverImageLoadError &&
+                                coverImageError ? (
+                                  <span
+                                    className="frontmatter-cover-debug"
+                                    title={coverImageError.src}
+                                  >
+                                    src: {coverImageError.src}
+                                  </span>
+                                ) : null}
+                                {import.meta.env.DEV &&
+                                hasCoverImageLoadError &&
+                                coverImageError ? (
+                                  <span
+                                    className="frontmatter-cover-debug"
+                                    title={coverImageError.absolutePath}
+                                  >
+                                    path: {coverImageError.absolutePath}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                            {isCoverRowActive ? (
+                              <div className="frontmatter-cover-controls">
+                                <div className="frontmatter-cover-control frontmatter-cover-picker-control">
+                                  {isCoverPickerListOpen ? (
+                                    <ul
+                                      id={coverPickerListId}
+                                      className="frontmatter-cover-picker"
+                                      role="listbox"
+                                      aria-label="Cover Bildauswahl"
+                                    >
+                                      {filteredCoverImageEntries.length === 0 ? (
+                                        <li className="frontmatter-cover-picker-empty">
+                                          Keine PNG im aktiven Vault.
+                                        </li>
+                                      ) : (
+                                        filteredCoverImageEntries.map((entry) => {
+                                          const pickerSrc = entry.src ?? entry.path;
+                                          const pickerImageError =
+                                            coverImageErrors[entry.relativePath];
+                                          const hasPickerImageError = Boolean(
+                                            pickerImageError && pickerImageError.src === pickerSrc,
+                                          );
+                                          return (
+                                            <li key={`cover-image-${entry.relativePath}`}>
+                                              <button
+                                                type="button"
+                                                className={`frontmatter-cover-picker-option ${
+                                                  coverTargetCandidates.includes(entry.relativePath)
+                                                    ? "active"
+                                                    : ""
+                                                }`}
+                                                role="option"
+                                                aria-selected={coverTargetCandidates.includes(
+                                                  entry.relativePath,
+                                                )}
+                                                onMouseDown={(event) => {
+                                                  event.preventDefault();
+                                                  event.stopPropagation();
+                                                }}
+                                                onClick={() => {
+                                                  const nextValue = normalizeWikilinkValue(
+                                                    entry.relativePath,
+                                                  );
+                                                  setDrafts((current) => ({
+                                                    ...current,
+                                                    [property.key]: nextValue,
+                                                  }));
+                                                  setRowErrors((current) => ({
+                                                    ...current,
+                                                    [property.key]: "",
+                                                  }));
+                                                  void (async () => {
+                                                    const saved = await commitPropertyChange({
+                                                      property,
+                                                      kind: "cover",
+                                                      value: nextValue,
+                                                    });
+                                                    if (saved) {
+                                                      setIsCoverPickerOpen(false);
+                                                    }
+                                                  })();
+                                                }}
+                                              >
+                                                {hasPickerImageError ? (
+                                                  <span
+                                                    className="frontmatter-cover-picker-thumb-placeholder"
+                                                    aria-hidden="true"
+                                                  >
+                                                    <FrontmatterImageIcon />
+                                                  </span>
+                                                ) : (
+                                                  <CoverThumbnailImage
+                                                    variant="picker"
+                                                    image={entry}
+                                                    alt={entry.fileName}
+                                                    onError={(event) => {
+                                                      const failedSrc =
+                                                        event.currentTarget.currentSrc ||
+                                                        event.currentTarget.src ||
+                                                        entry.src ||
+                                                        entry.path;
+                                                      setCoverImageErrors((current) => ({
+                                                        ...current,
+                                                        [entry.relativePath]: {
+                                                          src: failedSrc,
+                                                          relativePath: entry.relativePath,
+                                                          absolutePath: entry.path,
+                                                        },
+                                                      }));
+                                                    }}
+                                                  />
+                                                )}
+                                                <span className="frontmatter-cover-picker-copy">
+                                                  <span title={entry.fileName}>
+                                                    {entry.fileName}
+                                                  </span>
+                                                  <span title={entry.relativePath}>
+                                                    {entry.relativePath}
+                                                  </span>
+                                                </span>
+                                              </button>
+                                            </li>
+                                          );
+                                        })
+                                      )}
+                                    </ul>
+                                  ) : null}
+                                </div>
+                              </div>
+                            ) : null}
+                            {rowError ? (
+                              <span className="frontmatter-row-error">{rowError}</span>
+                            ) : null}
+                          </div>
+                        );
+                      case "number":
+                      case "link":
+                      case "task":
+                      case "unknown":
+                      case "text":
+                      default:
+                        return renderScalarInput();
+                    }
+                  };
+
+                  return (
+                    <div
+                      key={property.key}
+                      className={`frontmatter-row ${
+                        dragPropertyKey === property.key ? "is-dragging" : ""
+                      } ${isTaskRow ? "is-task-row" : ""} ${
+                        isCoverRowActive ? "frontmatter-row-cover-active" : ""
+                      } ${
+                        dropHint?.key === property.key
+                          ? dropHint.position === "before"
+                            ? "drop-before"
+                            : "drop-after"
+                          : ""
+                      }`.trim()}
+                      role="row"
+                      data-frontmatter-key={property.key}
+                      onClick={() => {
+                        if (rowDisabled) {
+                          return;
+                        }
+                        setActiveCoverKey(null);
+                        setIsCoverPickerOpen(false);
+                      }}
+                      onDragOver={(event) => {
+                        const sourceKey =
+                          dragPropertyKey ||
+                          readInternalDragText(event, {
+                            channel: DRAG_CHANNELS.PREVIEW_FRONTMATTER_PROPERTY,
+                          });
+                        if (controlsDisabled || !sourceKey) {
+                          return;
+                        }
+                        if (sourceKey === property.key) {
+                          setDropHint(null);
+                          return;
+                        }
+                        event.preventDefault();
+                        const position = resolveDropPosition(event);
+                        setDropHint({
+                          key: property.key,
+                          position,
+                        });
+                      }}
+                      onDrop={(event) => {
+                        const fromKey =
+                          dragPropertyKey ||
+                          readInternalDragText(event, {
+                            channel: DRAG_CHANNELS.PREVIEW_FRONTMATTER_PROPERTY,
+                          });
+                        if (controlsDisabled || !fromKey) {
+                          endInternalDrag(DRAG_CHANNELS.PREVIEW_FRONTMATTER_PROPERTY);
+                          return;
+                        }
+                        event.preventDefault();
+                        const position = resolveDropPosition(event);
+                        setDragPropertyKey(null);
+                        setDropHint(null);
+                        endInternalDrag(DRAG_CHANNELS.PREVIEW_FRONTMATTER_PROPERTY);
+                        void commitReorder({
+                          fromKey,
+                          toKey: property.key,
+                          position,
+                        });
+                      }}
+                    >
+                      <div
+                        className={`frontmatter-key ${controlsDisabled ? "" : "is-drag-handle"}`.trim()}
+                        role="cell"
+                        draggable={!controlsDisabled}
+                        onDragStart={(event) => {
+                          if (controlsDisabled) {
+                            return;
+                          }
+                          setDragPropertyKey(property.key);
+                          startInternalDrag(event, {
+                            channel: DRAG_CHANNELS.PREVIEW_FRONTMATTER_PROPERTY,
+                            payload: property.key,
+                            plainTextFallback: property.key,
+                            effectAllowed: "move",
+                          });
+                        }}
+                        onDragEnd={() => {
+                          setDragPropertyKey(null);
+                          setDropHint(null);
+                          endInternalDrag(DRAG_CHANNELS.PREVIEW_FRONTMATTER_PROPERTY);
+                        }}
+                      >
+                        <span className="frontmatter-grip" aria-hidden="true">
+                          <FrontmatterGripIcon />
+                        </span>
+                        <span className="frontmatter-icon" aria-hidden="true">
+                          <FrontmatterPropertyIconView icon={property.icon} />
+                        </span>
+                        {isTaskRow ? (
                           <button
                             type="button"
-                            className="frontmatter-cover-thumbnail-button"
+                            className="frontmatter-label frontmatter-label-button"
                             disabled={rowDisabled}
-                            aria-label={coverTarget ? "Cover oeffnen" : "Cover auswaehlen"}
-                            title={
-                              hasCoverImageLoadError
-                                ? "Bild konnte nicht geladen werden. Klicken zum erneuten Laden."
-                                : undefined
-                            }
+                            draggable={false}
+                            title="Points Profiles Profile Editor oeffnen"
                             onMouseDown={(event) => {
                               event.preventDefault();
                               event.stopPropagation();
@@ -7605,318 +7856,80 @@ const FrontmatterPropertiesPanel = ({
                             onClick={(event) => {
                               event.preventDefault();
                               event.stopPropagation();
-                              if (rowDisabled) {
-                                return;
-                              }
-                              if ((event.metaKey || event.ctrlKey) && coverActiveWikilink) {
-                                onNavigateWikilink?.(coverActiveWikilink);
-                                return;
-                              }
-                              if (resolvedCoverImage && hasCoverImageLoadError) {
-                                setCoverImageErrors((current) => {
-                                  if (!current[resolvedCoverImage.relativePath]) {
-                                    return current;
-                                  }
-                                  const next = { ...current };
-                                  delete next[resolvedCoverImage.relativePath];
-                                  return next;
-                                });
-                              }
-                              if (!isCoverRowActive) {
-                                activateCoverRow(property.key, { openImagePicker: true });
-                                return;
-                              }
-                              setIsCoverPickerOpen((current) => !current);
+                              void onOpenTaskProfileEditor?.({
+                                taskValue: taskPropertyValue,
+                                propertyKey: property.key,
+                              });
                             }}
                           >
-                            {resolvedCoverImage && !hasCoverImageLoadError ? (
-                              <CoverThumbnailImage
-                                variant="main"
-                                image={resolvedCoverImage}
-                                alt={coverDisplayName}
-                                onLoad={() => {
-                                  setCoverImageErrors((current) => {
-                                    if (!current[resolvedCoverImage.relativePath]) {
-                                      return current;
-                                    }
-                                    const next = { ...current };
-                                    delete next[resolvedCoverImage.relativePath];
-                                    return next;
-                                  });
-                                }}
-                                onError={(event) => {
-                                  const failedSrc =
-                                    event.currentTarget.currentSrc ||
-                                    event.currentTarget.src ||
-                                    resolvedCoverImage.src ||
-                                    resolvedCoverImage.path;
-                                  setCoverImageErrors((current) => ({
-                                    ...current,
-                                    [resolvedCoverImage.relativePath]: {
-                                      src: failedSrc,
-                                      relativePath: resolvedCoverImage.relativePath,
-                                      absolutePath: resolvedCoverImage.path,
-                                    },
-                                  }));
-                                }}
-                              />
-                            ) : (
-                              <span className="frontmatter-cover-placeholder" aria-hidden="true">
-                                <FrontmatterImageIcon />
-                              </span>
-                            )}
+                            {property.key}
                           </button>
-                          <div className="frontmatter-cover-copy">
-                            <span className="frontmatter-cover-name" title={coverDisplayName}>
-                              {coverDisplayName}
+                        ) : (
+                          <span className="frontmatter-label">{property.key}</span>
+                        )}
+                        <button
+                          type="button"
+                          className="frontmatter-property-remove"
+                          disabled={rowDisabled}
+                          draggable={false}
+                          aria-label={`${property.key} entfernen`}
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                          }}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            void commitRemoveProperty(property.key);
+                          }}
+                        >
+                          x
+                        </button>
+                      </div>
+                      <div className="frontmatter-value" role="cell">
+                        {isTaskRow ? (
+                          <div
+                            className={`frontmatter-task-meta ${
+                              taskProfileSummary ? "" : "is-missing"
+                            }`.trim()}
+                            aria-label="Task Profil Info"
+                          >
+                            <span className="frontmatter-task-meta-item">
+                              <span className="frontmatter-task-meta-label">TASK COUNT</span>
+                              <span className="frontmatter-task-meta-value">
+                                {taskProfileSummary ? taskProfileSummary.taskCount : "-"}
+                              </span>
                             </span>
-                            {coverDisplaySubline ? (
-                              <span
-                                className="frontmatter-cover-target"
-                                title={coverDisplaySubline}
-                              >
-                                {coverDisplaySubline}
+                            <span className="frontmatter-task-meta-item">
+                              <span className="frontmatter-task-meta-label">MAX TOTAL POINTS</span>
+                              <span className="frontmatter-task-meta-value">
+                                {taskProfileSummary ? taskProfileSummary.maxTotalPoints : "-"}
                               </span>
-                            ) : (
-                              <span className="frontmatter-empty-value">Kein Wert</span>
-                            )}
-                            {isCoverBroken ? (
-                              <span
-                                className="frontmatter-row-error"
-                                title={hasCoverImageLoadError ? "Bild konnte nicht geladen werden." : undefined}
-                              >
-                                {hasCoverImageLoadError ? "Bild konnte nicht geladen werden." : "Datei nicht gefunden."}
-                              </span>
-                            ) : null}
-                            {import.meta.env.DEV && hasCoverImageLoadError && coverImageError ? (
-                              <span className="frontmatter-cover-debug" title={coverImageError.src}>
-                                src: {coverImageError.src}
-                              </span>
-                            ) : null}
-                            {import.meta.env.DEV && hasCoverImageLoadError && coverImageError ? (
-                              <span className="frontmatter-cover-debug" title={coverImageError.absolutePath}>
-                                path: {coverImageError.absolutePath}
-                              </span>
-                            ) : null}
-                          </div>
-                        </div>
-                        {isCoverRowActive ? (
-                          <div className="frontmatter-cover-controls">
-                            <div className="frontmatter-cover-control frontmatter-cover-picker-control">
-                              {isCoverPickerListOpen ? (
-                                <ul
-                                  id={coverPickerListId}
-                                  className="frontmatter-cover-picker"
-                                  role="listbox"
-                                  aria-label="Cover Bildauswahl"
-                                >
-                                  {filteredCoverImageEntries.length === 0 ? (
-                                    <li className="frontmatter-cover-picker-empty">
-                                      Keine PNG im aktiven Vault.
-                                    </li>
-                                  ) : (
-                                    filteredCoverImageEntries.map((entry) => {
-                                      const pickerSrc = entry.src ?? entry.path;
-                                      const pickerImageError = coverImageErrors[entry.relativePath];
-                                      const hasPickerImageError = Boolean(
-                                        pickerImageError && pickerImageError.src === pickerSrc,
-                                      );
-                                      return (
-                                        <li key={`cover-image-${entry.relativePath}`}>
-                                          <button
-                                            type="button"
-                                            className={`frontmatter-cover-picker-option ${
-                                              coverTargetCandidates.includes(entry.relativePath)
-                                                ? "active"
-                                                : ""
-                                            }`}
-                                            role="option"
-                                            aria-selected={coverTargetCandidates.includes(
-                                              entry.relativePath,
-                                            )}
-                                            onMouseDown={(event) => {
-                                              event.preventDefault();
-                                              event.stopPropagation();
-                                            }}
-                                            onClick={() => {
-                                              const nextValue = normalizeWikilinkValue(
-                                                entry.relativePath,
-                                              );
-                                              setDrafts((current) => ({
-                                                ...current,
-                                                [property.key]: nextValue,
-                                              }));
-                                              setRowErrors((current) => ({
-                                                ...current,
-                                                [property.key]: "",
-                                              }));
-                                              void (async () => {
-                                                const saved = await commitPropertyChange({
-                                                  property,
-                                                  kind: "cover",
-                                                  value: nextValue,
-                                                });
-                                                if (saved) {
-                                                  setIsCoverPickerOpen(false);
-                                                }
-                                              })();
-                                            }}
-                                          >
-                                            {hasPickerImageError ? (
-                                              <span className="frontmatter-cover-picker-thumb-placeholder" aria-hidden="true">
-                                                <FrontmatterImageIcon />
-                                              </span>
-                                            ) : (
-                                              <CoverThumbnailImage
-                                                variant="picker"
-                                                image={entry}
-                                                alt={entry.fileName}
-                                                onError={(event) => {
-                                                  const failedSrc =
-                                                    event.currentTarget.currentSrc ||
-                                                    event.currentTarget.src ||
-                                                    entry.src ||
-                                                    entry.path;
-                                                  setCoverImageErrors((current) => ({
-                                                    ...current,
-                                                    [entry.relativePath]: {
-                                                      src: failedSrc,
-                                                      relativePath: entry.relativePath,
-                                                      absolutePath: entry.path,
-                                                    },
-                                                  }));
-                                                }}
-                                              />
-                                            )}
-                                            <span className="frontmatter-cover-picker-copy">
-                                              <span title={entry.fileName}>
-                                                {entry.fileName}
-                                              </span>
-                                              <span title={entry.relativePath}>
-                                                {entry.relativePath}
-                                              </span>
-                                            </span>
-                                          </button>
-                                        </li>
-                                      );
-                                    })
-                                  )}
-                                </ul>
-                              ) : null}
-                            </div>
+                            </span>
                           </div>
                         ) : null}
-                        {rowError ? <span className="frontmatter-row-error">{rowError}</span> : null}
+                        {renderValueEditor()}
                       </div>
-                    );
-                  case "number":
-                  case "link":
-                  case "task":
-                  case "unknown":
-                  case "text":
-                  default:
-                    return renderScalarInput();
-                }
-              };
-
-              return (
-                <div
-                  key={property.key}
-                  className={`frontmatter-row ${
-                    dragPropertyKey === property.key ? "is-dragging" : ""
-                  } ${
-                    isTaskRow ? "is-task-row" : ""
-                  } ${
-                    isCoverRowActive ? "frontmatter-row-cover-active" : ""
-                  } ${
-                    dropHint?.key === property.key
-                      ? dropHint.position === "before"
-                        ? "drop-before"
-                        : "drop-after"
-                      : ""
-                  }`.trim()}
-                  role="row"
-                  data-frontmatter-key={property.key}
-                  onClick={() => {
-                    if (rowDisabled) {
-                      return;
-                    }
-                    setActiveCoverKey(null);
-                    setIsCoverPickerOpen(false);
-                  }}
-                  onDragOver={(event) => {
-                    const sourceKey = dragPropertyKey || readInternalDragText(event, {
-                      channel: DRAG_CHANNELS.PREVIEW_FRONTMATTER_PROPERTY,
-                    });
-                    if (controlsDisabled || !sourceKey) {
-                      return;
-                    }
-                    if (sourceKey === property.key) {
-                      setDropHint(null);
-                      return;
-                    }
-                    event.preventDefault();
-                    const position = resolveDropPosition(event);
-                    setDropHint({
-                      key: property.key,
-                      position,
-                    });
-                  }}
-                  onDrop={(event) => {
-                    const fromKey = dragPropertyKey || readInternalDragText(event, {
-                      channel: DRAG_CHANNELS.PREVIEW_FRONTMATTER_PROPERTY,
-                    });
-                    if (controlsDisabled || !fromKey) {
-                      endInternalDrag(DRAG_CHANNELS.PREVIEW_FRONTMATTER_PROPERTY);
-                      return;
-                    }
-                    event.preventDefault();
-                    const position = resolveDropPosition(event);
-                    setDragPropertyKey(null);
-                    setDropHint(null);
-                    endInternalDrag(DRAG_CHANNELS.PREVIEW_FRONTMATTER_PROPERTY);
-                    void commitReorder({
-                      fromKey,
-                      toKey: property.key,
-                      position,
-                    });
-                  }}
-                >
+                    </div>
+                  );
+                })}
+                {hasLinksRow ? (
                   <div
-                    className={`frontmatter-key ${controlsDisabled ? "" : "is-drag-handle"}`.trim()}
-                    role="cell"
-                    draggable={!controlsDisabled}
-                    onDragStart={(event) => {
-                      if (controlsDisabled) {
-                        return;
-                      }
-                      setDragPropertyKey(property.key);
-                      startInternalDrag(event, {
-                        channel: DRAG_CHANNELS.PREVIEW_FRONTMATTER_PROPERTY,
-                        payload: property.key,
-                        plainTextFallback: property.key,
-                        effectAllowed: "move",
-                      });
-                    }}
-                    onDragEnd={() => {
-                      setDragPropertyKey(null);
-                      setDropHint(null);
-                      endInternalDrag(DRAG_CHANNELS.PREVIEW_FRONTMATTER_PROPERTY);
-                    }}
+                    className="frontmatter-row frontmatter-links-row"
+                    role="row"
+                    data-frontmatter-key="__links__"
                   >
-                    <span className="frontmatter-grip" aria-hidden="true">
-                      <FrontmatterGripIcon />
-                    </span>
-                    <span className="frontmatter-icon" aria-hidden="true">
-                      <FrontmatterPropertyIconView icon={property.icon} />
-                    </span>
-                    {isTaskRow ? (
+                    <div className="frontmatter-key" role="cell">
+                      <span className="frontmatter-icon" aria-hidden="true">
+                        <FrontmatterPropertyIconView icon="link" />
+                      </span>
+                      <span className="frontmatter-label">Links</span>
                       <button
                         type="button"
-                        className="frontmatter-label frontmatter-label-button"
-                        disabled={rowDisabled}
+                        className="frontmatter-property-remove"
+                        disabled={controlsDisabled}
                         draggable={false}
-                        title="Points Profiles Profile Editor oeffnen"
+                        aria-label="Links entfernen"
                         onMouseDown={(event) => {
                           event.preventDefault();
                           event.stopPropagation();
@@ -7924,217 +7937,80 @@ const FrontmatterPropertiesPanel = ({
                         onClick={(event) => {
                           event.preventDefault();
                           event.stopPropagation();
-                          void onOpenTaskProfileEditor?.({
-                            taskValue: taskPropertyValue,
-                            propertyKey: property.key,
-                          });
+                          void commitLinksChange([]);
                         }}
                       >
-                        {property.key}
+                        x
                       </button>
-                    ) : (
-                      <span className="frontmatter-label">{property.key}</span>
-                    )}
-                    <button
-                      type="button"
-                      className="frontmatter-property-remove"
-                      disabled={rowDisabled}
-                      draggable={false}
-                      aria-label={`${property.key} entfernen`}
-                      onMouseDown={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                      }}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        void commitRemoveProperty(property.key);
-                      }}
-                    >
-                      x
-                    </button>
-                  </div>
-                  <div className="frontmatter-value" role="cell">
-                    {isTaskRow ? (
-                      <div
-                        className={`frontmatter-task-meta ${
-                          taskProfileSummary ? "" : "is-missing"
-                        }`.trim()}
-                        aria-label="Task Profil Info"
-                      >
-                        <span className="frontmatter-task-meta-item">
-                          <span className="frontmatter-task-meta-label">TASK COUNT</span>
-                          <span className="frontmatter-task-meta-value">
-                            {taskProfileSummary ? taskProfileSummary.taskCount : "-"}
-                          </span>
-                        </span>
-                        <span className="frontmatter-task-meta-item">
-                          <span className="frontmatter-task-meta-label">MAX TOTAL POINTS</span>
-                          <span className="frontmatter-task-meta-value">
-                            {taskProfileSummary ? taskProfileSummary.maxTotalPoints : "-"}
-                          </span>
-                        </span>
+                    </div>
+                    <div className="frontmatter-value" role="cell">
+                      <div className="frontmatter-links-editor">
+                        <input
+                          ref={linksInputRef}
+                          type="text"
+                          className="text-input frontmatter-input"
+                          placeholder="Link hinzufuegen ..."
+                          aria-label="Link hinzufuegen"
+                          value={linksInputDraft}
+                          disabled={controlsDisabled}
+                          onChange={(event) => {
+                            setLinksInputDraft(event.target.value);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              void handleAddLink(event.currentTarget.value);
+                            }
+                          }}
+                        />
+                        <ul className="frontmatter-links-list">
+                          {linksDocument.links.map((link) => (
+                            <li key={link} className="frontmatter-links-item">
+                              <button
+                                type="button"
+                                className="frontmatter-inline-link"
+                                onClick={() => {
+                                  onNavigateWikilink?.(link);
+                                }}
+                                title={extractWikilinkTarget(link) ?? link}
+                              >
+                                {resolveWikilinkLabel(link)}
+                              </button>
+                              <button
+                                type="button"
+                                className="frontmatter-link-remove"
+                                disabled={controlsDisabled}
+                                onClick={() => {
+                                  handleRemoveLink(link);
+                                }}
+                                aria-label={`${link} entfernen`}
+                              >
+                                x
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                    ) : null}
-                    {renderValueEditor()}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-            {hasLinksRow ? (
-              <div className="frontmatter-row frontmatter-links-row" role="row" data-frontmatter-key="__links__">
-                <div className="frontmatter-key" role="cell">
-                  <span className="frontmatter-icon" aria-hidden="true">
-                    <FrontmatterPropertyIconView icon="link" />
-                  </span>
-                  <span className="frontmatter-label">Links</span>
-                  <button
-                    type="button"
-                    className="frontmatter-property-remove"
-                    disabled={controlsDisabled}
-                    draggable={false}
-                    aria-label="Links entfernen"
-                    onMouseDown={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                    }}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      void commitLinksChange([]);
-                    }}
-                  >
-                    x
-                  </button>
-                </div>
-                <div className="frontmatter-value" role="cell">
-                  <div className="frontmatter-links-editor">
-                    <input
-                      ref={linksInputRef}
-                      type="text"
-                      className="text-input frontmatter-input"
-                      placeholder="Link hinzufuegen ..."
-                      aria-label="Link hinzufuegen"
-                      value={linksInputDraft}
-                      disabled={controlsDisabled}
-                      onChange={(event) => {
-                        setLinksInputDraft(event.target.value);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          void handleAddLink(event.currentTarget.value);
-                        }
-                      }}
-                    />
-                    <ul className="frontmatter-links-list">
-                      {linksDocument.links.map((link) => (
-                        <li key={link} className="frontmatter-links-item">
-                          <button
-                            type="button"
-                            className="frontmatter-inline-link"
-                            onClick={() => {
-                              onNavigateWikilink?.(link);
-                            }}
-                            title={extractWikilinkTarget(link) ?? link}
-                          >
-                            {resolveWikilinkLabel(link)}
-                          </button>
-                          <button
-                            type="button"
-                            className="frontmatter-link-remove"
-                            disabled={controlsDisabled}
-                            onClick={() => {
-                              handleRemoveLink(link);
-                            }}
-                            aria-label={`${link} entfernen`}
-                          >
-                            x
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
+                ) : null}
               </div>
-            ) : null}
-          </div>
-          <div className="frontmatter-add-row">
-            <div className="frontmatter-add-input-wrap frontmatter-add-type-wrap">
-              <button
-                ref={addTypeButtonRef}
-                type="button"
-                className="frontmatter-type-select"
-                aria-label="Attribut-Typ"
-                aria-haspopup="listbox"
-                aria-expanded={isAddTypeDropdownOpen}
-                aria-controls={isAddTypeDropdownOpen ? addTypeSuggestionListId : undefined}
-                disabled={controlsDisabled}
-                onFocus={() => {
-                  if (controlsDisabled) {
-                    return;
-                  }
-                  activateAddInput("type");
-                  setOpenSuggestionsKey(addTypeSuggestionScope);
-                  setSuggestionCursor((current) => ({
-                    ...current,
-                    [addTypeSuggestionScope]: Math.max(
-                      0,
-                      addTypeOptions.findIndex((option) => option.kind === addTypeDraft),
-                    ),
-                  }));
-                }}
-                onClick={() => {
-                  if (controlsDisabled) {
-                    return;
-                  }
-                  activateAddInput("type");
-                  setOpenSuggestionsKey(addTypeSuggestionScope);
-                  setSuggestionCursor((current) => ({
-                    ...current,
-                    [addTypeSuggestionScope]: Math.max(
-                      0,
-                      addTypeOptions.findIndex((option) => option.kind === addTypeDraft),
-                    ),
-                  }));
-                }}
-                onDoubleClick={() => {
-                  if (controlsDisabled) {
-                    return;
-                  }
-                  beginAddEditing("type");
-                  setOpenSuggestionsKey(addTypeSuggestionScope);
-                }}
-                onBlur={() => {
-                  setOpenSuggestionsKey((current) =>
-                    current === addTypeSuggestionScope ? null : current
-                  );
-                  setAddEditorModes((current) => ({
-                    ...current,
-                    type: "idle",
-                  }));
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "F2") {
-                    event.preventDefault();
-                    beginAddEditing("type");
-                    setOpenSuggestionsKey(addTypeSuggestionScope);
-                    return;
-                  }
-                  if (event.key === "Escape") {
-                    event.preventDefault();
-                    setOpenSuggestionsKey((current) =>
-                      current === addTypeSuggestionScope ? null : current
-                    );
-                    setAddEditorModes((current) => ({
-                      ...current,
-                      type: "idle",
-                    }));
-                    return;
-                  }
-                  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-                    event.preventDefault();
-                    if (!isAddTypeDropdownOpen) {
+              <div className="frontmatter-add-row">
+                <div className="frontmatter-add-input-wrap frontmatter-add-type-wrap">
+                  <button
+                    ref={addTypeButtonRef}
+                    type="button"
+                    className="frontmatter-type-select"
+                    aria-label="Attribut-Typ"
+                    aria-haspopup="listbox"
+                    aria-expanded={isAddTypeDropdownOpen}
+                    aria-controls={isAddTypeDropdownOpen ? addTypeSuggestionListId : undefined}
+                    disabled={controlsDisabled}
+                    onFocus={() => {
+                      if (controlsDisabled) {
+                        return;
+                      }
+                      activateAddInput("type");
                       setOpenSuggestionsKey(addTypeSuggestionScope);
                       setSuggestionCursor((current) => ({
                         ...current,
@@ -8143,342 +8019,312 @@ const FrontmatterPropertiesPanel = ({
                           addTypeOptions.findIndex((option) => option.kind === addTypeDraft),
                         ),
                       }));
-                      return;
-                    }
-                    const offset = event.key === "ArrowDown" ? 1 : -1;
-                    setSuggestionCursor((current) => {
-                      const existing = current[addTypeSuggestionScope] ?? 0;
-                      const next =
-                        (existing + offset + addTypeOptions.length) %
-                        addTypeOptions.length;
-                      return { ...current, [addTypeSuggestionScope]: next };
-                    });
-                    return;
-                  }
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    if (isAddTypeDropdownOpen && activeAddTypeSuggestion) {
-                      setAddTypeSelection(activeAddTypeSuggestion.kind);
-                      return;
-                    }
-                    setOpenSuggestionsKey(addTypeSuggestionScope);
-                    return;
-                  }
-                  if (event.key === "Tab") {
-                    setOpenSuggestionsKey((current) =>
-                      current === addTypeSuggestionScope ? null : current
-                    );
-                  }
-                }}
-              >
-                <span className="frontmatter-type-select-icon" aria-hidden="true">
-                  <FrontmatterPropertyIconView icon={addTypeOption.icon} />
-                </span>
-                <span className="frontmatter-type-select-label">{addTypeOption.label}</span>
-                <span className="frontmatter-type-select-chevron" aria-hidden="true">
-                  <ChevronDownIcon />
-                </span>
-              </button>
-              {isAddTypeDropdownOpen ? (
-                <ul
-                  id={addTypeSuggestionListId}
-                  className="frontmatter-suggestions frontmatter-type-suggestions"
-                  role="listbox"
-                  aria-label="Attribut-Typ Vorschlaege"
-                >
-                  {addTypeOptions.map((option, optionIndex) => (
-                    <li key={`add-type-${option.kind}`}>
-                      <button
-                        type="button"
-                        className={`frontmatter-suggestion-option frontmatter-type-option ${
-                          optionIndex === safeAddTypeSuggestionIndex ? "active" : ""
-                        }`}
-                        role="option"
-                        aria-selected={optionIndex === safeAddTypeSuggestionIndex}
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                        }}
-                        onClick={() => {
-                          setAddTypeSelection(option.kind);
-                        }}
-                      >
-                        <span className="frontmatter-type-option-icon" aria-hidden="true">
-                          <FrontmatterPropertyIconView icon={option.icon} />
-                        </span>
-                        <span className="frontmatter-type-option-copy">
-                          <span className="frontmatter-type-option-label">{option.label}</span>
-                          <span className="frontmatter-type-option-description">
-                            {option.description}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-            {isAddFormulaType ? (
-              <div className="frontmatter-add-formula-builder-wrap">
-                <FormulaAttributeBuilder
-                  idPrefix="frontmatter-add-formula"
-                  value={addFormulaDefinition}
-                  attributes={formulaBuilderAttributeOptions}
-                  folderSuggestions={formulaFolderSuggestions}
-                  historyFolderPath={formulaHistoryFolderPath}
-                  historyWarning={formulaHistoryWarning}
-                  disabled={controlsDisabled}
-                  onChange={setAddFormulaDefinition}
-                />
-              </div>
-            ) : null}
-            <div className="frontmatter-add-input-wrap">
-              <input
-                ref={addKeyInputRef}
-                type="text"
-                className="text-input frontmatter-add-key"
-                placeholder={isAddKeyAutoManaged ? "Automatischer Name" : "Neues Attribut"}
-                aria-label="Neues Attribut"
-                role="combobox"
-                aria-autocomplete="list"
-                aria-expanded={isAddKeyDropdownOpen}
-                aria-controls={isAddKeyDropdownOpen ? addKeySuggestionListId : undefined}
-                value={autoManagedAddKey ?? addKeyDraft}
-                readOnly={isAddKeyAutoManaged || !isAddKeyEditing}
-                disabled={controlsDisabled}
-                onInput={(event) => {
-                  if (isAddKeyAutoManaged) {
-                    return;
-                  }
-                  setAddKeyDraft(event.currentTarget.value);
-                  if (addError) {
-                    setAddError("");
-                  }
-                  setOpenSuggestionsKey(addKeySuggestionScope);
-                  setSuggestionCursor((current) => ({
-                    ...current,
-                    [addKeySuggestionScope]: 0,
-                  }));
-                }}
-                onFocus={() => {
-                  if (controlsDisabled) {
-                    return;
-                  }
-                  if (isAddKeyAutoManaged) {
-                    setOpenSuggestionsKey((current) =>
-                      current === addKeySuggestionScope ? null : current
-                    );
-                    setAddEditorModes((current) => ({
-                      ...current,
-                      key: "idle",
-                    }));
-                    return;
-                  }
-                  activateAddInput("key");
-                  setOpenSuggestionsKey(addKeySuggestionScope);
-                  setSuggestionCursor((current) => ({
-                    ...current,
-                    [addKeySuggestionScope]: 0,
-                  }));
-                }}
-                onClick={() => {
-                  if (controlsDisabled) {
-                    return;
-                  }
-                  if (isAddKeyAutoManaged) {
-                    setOpenSuggestionsKey((current) =>
-                      current === addKeySuggestionScope ? null : current
-                    );
-                    scheduleAnimationFrame(() => {
-                      if (openSuggestionsKeyRef.current !== null) {
+                    }}
+                    onClick={() => {
+                      if (controlsDisabled) {
                         return;
                       }
-                      addValueInputRef.current?.focus();
-                    });
-                    return;
-                  }
-                  activateAddInput("key");
-                  setOpenSuggestionsKey(addKeySuggestionScope);
-                }}
-                onDoubleClick={() => {
-                  if (controlsDisabled || isAddKeyAutoManaged) {
-                    return;
-                  }
-                  beginAddEditing("key");
-                  setOpenSuggestionsKey(addKeySuggestionScope);
-                }}
-                onBlur={(event) => {
-                  if (!isAddKeyAutoManaged && isAddKeyEditing) {
-                    setAddKeyDraft(event.currentTarget.value);
-                  }
-                  setOpenSuggestionsKey((current) =>
-                    current === addKeySuggestionScope ? null : current
-                  );
-                  setAddEditorModes((current) => ({
-                    ...current,
-                    key: "idle",
-                  }));
-                }}
-                onKeyDown={(event) => {
-                  if (isAddKeyAutoManaged) {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      scheduleAnimationFrame(() => {
-                        if (openSuggestionsKeyRef.current !== null) {
-                          return;
-                        }
-                        addValueInputRef.current?.focus();
-                      });
-                      return;
-                    }
-                    if (event.key === "Tab") {
+                      activateAddInput("type");
+                      setOpenSuggestionsKey(addTypeSuggestionScope);
+                      setSuggestionCursor((current) => ({
+                        ...current,
+                        [addTypeSuggestionScope]: Math.max(
+                          0,
+                          addTypeOptions.findIndex((option) => option.kind === addTypeDraft),
+                        ),
+                      }));
+                    }}
+                    onDoubleClick={() => {
+                      if (controlsDisabled) {
+                        return;
+                      }
+                      beginAddEditing("type");
+                      setOpenSuggestionsKey(addTypeSuggestionScope);
+                    }}
+                    onBlur={() => {
                       setOpenSuggestionsKey((current) =>
-                        current === addKeySuggestionScope ? null : current
+                        current === addTypeSuggestionScope ? null : current,
                       );
-                      return;
-                    }
-                    if (event.key === "Escape") {
-                      event.preventDefault();
-                      setOpenSuggestionsKey((current) =>
-                        current === addKeySuggestionScope ? null : current
-                      );
-                      event.currentTarget.blur();
-                      return;
-                    }
-                    if (isPrintableCharacterKey(event) || event.key === "Backspace" || event.key === "Delete") {
-                      event.preventDefault();
-                    }
-                    return;
-                  }
-                  if (event.key === "F2") {
-                    event.preventDefault();
-                    beginAddEditing("key");
-                    setOpenSuggestionsKey(addKeySuggestionScope);
-                    return;
-                  }
-                  if (event.key === "Escape") {
-                    event.preventDefault();
-                    setOpenSuggestionsKey((current) =>
-                      current === addKeySuggestionScope ? null : current
-                    );
-                    setAddEditorModes((current) => ({
-                      ...current,
-                      key: "idle",
-                    }));
-                    event.currentTarget.blur();
-                    return;
-                  }
-                  if (
-                    isAddKeyDropdownOpen &&
-                    (event.key === "ArrowDown" || event.key === "ArrowUp")
-                  ) {
-                    event.preventDefault();
-                    const offset = event.key === "ArrowDown" ? 1 : -1;
-                    setSuggestionCursor((current) => {
-                      const existing = current[addKeySuggestionScope] ?? 0;
-                      const next =
-                        (existing + offset + addKeySuggestions.length) %
-                        addKeySuggestions.length;
-                      return { ...current, [addKeySuggestionScope]: next };
-                    });
-                    return;
-                  }
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    if (isAddKeyDropdownOpen && activeAddKeySuggestion) {
-                      setAddKeyDraft(activeAddKeySuggestion);
-                      setOpenSuggestionsKey(null);
                       setAddEditorModes((current) => ({
                         ...current,
-                        key: "active",
+                        type: "idle",
                       }));
-                      if (addError) {
-                        setAddError("");
-                      }
-                      scheduleAnimationFrame(() => {
-                        if (openSuggestionsKeyRef.current !== null) {
-                          return;
-                        }
-                        addValueInputRef.current?.focus();
-                      });
-                      return;
-                    }
-                    scheduleAnimationFrame(() => {
-                      if (openSuggestionsKeyRef.current !== null) {
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "F2") {
+                        event.preventDefault();
+                        beginAddEditing("type");
+                        setOpenSuggestionsKey(addTypeSuggestionScope);
                         return;
                       }
-                      addValueInputRef.current?.focus();
-                    });
-                    return;
-                  }
-                  if (event.key === "Tab") {
-                    setOpenSuggestionsKey((current) =>
-                      current === addKeySuggestionScope ? null : current
-                    );
-                    return;
-                  }
-                  if (!isAddKeyEditing) {
-                    if (isPrintableCharacterKey(event)) {
-                      event.preventDefault();
-                      const nextValue = `${addKeyDraft}${event.key}`;
-                      setAddKeyDraft(nextValue);
-                      beginAddEditing("key");
-                      setOpenSuggestionsKey(addKeySuggestionScope);
-                      setSuggestionCursor((current) => ({
-                        ...current,
-                        [addKeySuggestionScope]: 0,
-                      }));
-                      if (addError) {
-                        setAddError("");
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        setOpenSuggestionsKey((current) =>
+                          current === addTypeSuggestionScope ? null : current,
+                        );
+                        setAddEditorModes((current) => ({
+                          ...current,
+                          type: "idle",
+                        }));
+                        return;
                       }
-                      scheduleAnimationFrame(() => {
-                        const input = addKeyInputRef.current;
-                        if (!input) {
+                      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                        event.preventDefault();
+                        if (!isAddTypeDropdownOpen) {
+                          setOpenSuggestionsKey(addTypeSuggestionScope);
+                          setSuggestionCursor((current) => ({
+                            ...current,
+                            [addTypeSuggestionScope]: Math.max(
+                              0,
+                              addTypeOptions.findIndex((option) => option.kind === addTypeDraft),
+                            ),
+                          }));
                           return;
                         }
-                        input.focus();
-                        input.setSelectionRange(nextValue.length, nextValue.length);
-                      });
-                      return;
-                    }
-                    if (event.key === "Backspace" || event.key === "Delete") {
-                      event.preventDefault();
-                      const nextValue =
-                        event.key === "Backspace" ? addKeyDraft.slice(0, -1) : "";
-                      setAddKeyDraft(nextValue);
-                      beginAddEditing("key");
+                        const offset = event.key === "ArrowDown" ? 1 : -1;
+                        setSuggestionCursor((current) => {
+                          const existing = current[addTypeSuggestionScope] ?? 0;
+                          const next =
+                            (existing + offset + addTypeOptions.length) % addTypeOptions.length;
+                          return { ...current, [addTypeSuggestionScope]: next };
+                        });
+                        return;
+                      }
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        if (isAddTypeDropdownOpen && activeAddTypeSuggestion) {
+                          setAddTypeSelection(activeAddTypeSuggestion.kind);
+                          return;
+                        }
+                        setOpenSuggestionsKey(addTypeSuggestionScope);
+                        return;
+                      }
+                      if (event.key === "Tab") {
+                        setOpenSuggestionsKey((current) =>
+                          current === addTypeSuggestionScope ? null : current,
+                        );
+                      }
+                    }}
+                  >
+                    <span className="frontmatter-type-select-icon" aria-hidden="true">
+                      <FrontmatterPropertyIconView icon={addTypeOption.icon} />
+                    </span>
+                    <span className="frontmatter-type-select-label">{addTypeOption.label}</span>
+                    <span className="frontmatter-type-select-chevron" aria-hidden="true">
+                      <ChevronDownIcon />
+                    </span>
+                  </button>
+                  {isAddTypeDropdownOpen ? (
+                    <ul
+                      id={addTypeSuggestionListId}
+                      className="frontmatter-suggestions frontmatter-type-suggestions"
+                      role="listbox"
+                      aria-label="Attribut-Typ Vorschlaege"
+                    >
+                      {addTypeOptions.map((option, optionIndex) => (
+                        <li key={`add-type-${option.kind}`}>
+                          <button
+                            type="button"
+                            className={`frontmatter-suggestion-option frontmatter-type-option ${
+                              optionIndex === safeAddTypeSuggestionIndex ? "active" : ""
+                            }`}
+                            role="option"
+                            aria-selected={optionIndex === safeAddTypeSuggestionIndex}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                            }}
+                            onClick={() => {
+                              setAddTypeSelection(option.kind);
+                            }}
+                          >
+                            <span className="frontmatter-type-option-icon" aria-hidden="true">
+                              <FrontmatterPropertyIconView icon={option.icon} />
+                            </span>
+                            <span className="frontmatter-type-option-copy">
+                              <span className="frontmatter-type-option-label">{option.label}</span>
+                              <span className="frontmatter-type-option-description">
+                                {option.description}
+                              </span>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+                {isAddFormulaType ? (
+                  <div className="frontmatter-add-formula-builder-wrap">
+                    <FormulaAttributeBuilder
+                      idPrefix="frontmatter-add-formula"
+                      value={addFormulaDefinition}
+                      attributes={formulaBuilderAttributeOptions}
+                      folderSuggestions={formulaFolderSuggestions}
+                      historyFolderPath={formulaHistoryFolderPath}
+                      historyWarning={formulaHistoryWarning}
+                      disabled={controlsDisabled}
+                      onChange={setAddFormulaDefinition}
+                    />
+                  </div>
+                ) : null}
+                <div className="frontmatter-add-input-wrap">
+                  <input
+                    ref={addKeyInputRef}
+                    type="text"
+                    className="text-input frontmatter-add-key"
+                    placeholder={isAddKeyAutoManaged ? "Automatischer Name" : "Neues Attribut"}
+                    aria-label="Neues Attribut"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={isAddKeyDropdownOpen}
+                    aria-controls={isAddKeyDropdownOpen ? addKeySuggestionListId : undefined}
+                    value={autoManagedAddKey ?? addKeyDraft}
+                    readOnly={isAddKeyAutoManaged || !isAddKeyEditing}
+                    disabled={controlsDisabled}
+                    onInput={(event) => {
+                      if (isAddKeyAutoManaged) {
+                        return;
+                      }
+                      setAddKeyDraft(event.currentTarget.value);
+                      if (addError) {
+                        setAddError("");
+                      }
                       setOpenSuggestionsKey(addKeySuggestionScope);
                       setSuggestionCursor((current) => ({
                         ...current,
                         [addKeySuggestionScope]: 0,
                       }));
-                      if (addError) {
-                        setAddError("");
+                    }}
+                    onFocus={() => {
+                      if (controlsDisabled) {
+                        return;
                       }
-                    }
-                  }
-                }}
-              />
-              {isAddKeyDropdownOpen ? (
-                <ul
-                  id={addKeySuggestionListId}
-                  className="frontmatter-suggestions"
-                  role="listbox"
-                  aria-label="Attribut Vorschlaege"
-                >
-                  {addKeySuggestions.map((suggestion, suggestionIndex) => (
-                    <li key={`add-key-${suggestion}`}>
-                      <button
-                        type="button"
-                        className={`frontmatter-suggestion-option ${
-                          suggestionIndex === safeAddKeySuggestionIndex ? "active" : ""
-                        }`}
-                        role="option"
-                        aria-selected={suggestionIndex === safeAddKeySuggestionIndex}
-                        onMouseDown={(event) => {
+                      if (isAddKeyAutoManaged) {
+                        setOpenSuggestionsKey((current) =>
+                          current === addKeySuggestionScope ? null : current,
+                        );
+                        setAddEditorModes((current) => ({
+                          ...current,
+                          key: "idle",
+                        }));
+                        return;
+                      }
+                      activateAddInput("key");
+                      setOpenSuggestionsKey(addKeySuggestionScope);
+                      setSuggestionCursor((current) => ({
+                        ...current,
+                        [addKeySuggestionScope]: 0,
+                      }));
+                    }}
+                    onClick={() => {
+                      if (controlsDisabled) {
+                        return;
+                      }
+                      if (isAddKeyAutoManaged) {
+                        setOpenSuggestionsKey((current) =>
+                          current === addKeySuggestionScope ? null : current,
+                        );
+                        scheduleAnimationFrame(() => {
+                          if (openSuggestionsKeyRef.current !== null) {
+                            return;
+                          }
+                          addValueInputRef.current?.focus();
+                        });
+                        return;
+                      }
+                      activateAddInput("key");
+                      setOpenSuggestionsKey(addKeySuggestionScope);
+                    }}
+                    onDoubleClick={() => {
+                      if (controlsDisabled || isAddKeyAutoManaged) {
+                        return;
+                      }
+                      beginAddEditing("key");
+                      setOpenSuggestionsKey(addKeySuggestionScope);
+                    }}
+                    onBlur={(event) => {
+                      if (!isAddKeyAutoManaged && isAddKeyEditing) {
+                        setAddKeyDraft(event.currentTarget.value);
+                      }
+                      setOpenSuggestionsKey((current) =>
+                        current === addKeySuggestionScope ? null : current,
+                      );
+                      setAddEditorModes((current) => ({
+                        ...current,
+                        key: "idle",
+                      }));
+                    }}
+                    onKeyDown={(event) => {
+                      if (isAddKeyAutoManaged) {
+                        if (event.key === "Enter") {
                           event.preventDefault();
-                        }}
-                        onClick={() => {
-                          setAddKeyDraft(suggestion);
+                          scheduleAnimationFrame(() => {
+                            if (openSuggestionsKeyRef.current !== null) {
+                              return;
+                            }
+                            addValueInputRef.current?.focus();
+                          });
+                          return;
+                        }
+                        if (event.key === "Tab") {
+                          setOpenSuggestionsKey((current) =>
+                            current === addKeySuggestionScope ? null : current,
+                          );
+                          return;
+                        }
+                        if (event.key === "Escape") {
+                          event.preventDefault();
+                          setOpenSuggestionsKey((current) =>
+                            current === addKeySuggestionScope ? null : current,
+                          );
+                          event.currentTarget.blur();
+                          return;
+                        }
+                        if (
+                          isPrintableCharacterKey(event) ||
+                          event.key === "Backspace" ||
+                          event.key === "Delete"
+                        ) {
+                          event.preventDefault();
+                        }
+                        return;
+                      }
+                      if (event.key === "F2") {
+                        event.preventDefault();
+                        beginAddEditing("key");
+                        setOpenSuggestionsKey(addKeySuggestionScope);
+                        return;
+                      }
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        setOpenSuggestionsKey((current) =>
+                          current === addKeySuggestionScope ? null : current,
+                        );
+                        setAddEditorModes((current) => ({
+                          ...current,
+                          key: "idle",
+                        }));
+                        event.currentTarget.blur();
+                        return;
+                      }
+                      if (
+                        isAddKeyDropdownOpen &&
+                        (event.key === "ArrowDown" || event.key === "ArrowUp")
+                      ) {
+                        event.preventDefault();
+                        const offset = event.key === "ArrowDown" ? 1 : -1;
+                        setSuggestionCursor((current) => {
+                          const existing = current[addKeySuggestionScope] ?? 0;
+                          const next =
+                            (existing + offset + addKeySuggestions.length) %
+                            addKeySuggestions.length;
+                          return { ...current, [addKeySuggestionScope]: next };
+                        });
+                        return;
+                      }
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        if (isAddKeyDropdownOpen && activeAddKeySuggestion) {
+                          setAddKeyDraft(activeAddKeySuggestion);
                           setOpenSuggestionsKey(null);
                           setAddEditorModes((current) => ({
                             ...current,
@@ -8491,199 +8337,361 @@ const FrontmatterPropertiesPanel = ({
                             if (openSuggestionsKeyRef.current !== null) {
                               return;
                             }
-                            if (isAddFormulaType) {
-                              addKeyInputRef.current?.focus();
-                              return;
-                            }
                             addValueInputRef.current?.focus();
                           });
-                        }}
-                      >
-                        {suggestion}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-            <div className="frontmatter-add-input-wrap" hidden={isAddFormulaType}>
-              <input
-                ref={addValueInputRef}
-                type="text"
-                className="text-input frontmatter-add-value"
-                placeholder={addTypeDraft === "cover" ? "Bild aus Vault waehlen ..." : "Wert (optional)"}
-                aria-label="Neuer Wert"
-                role="combobox"
-                aria-autocomplete="list"
-                aria-expanded={isAddValueDropdownOpen}
-                aria-controls={isAddValueDropdownOpen ? addValueSuggestionListId : undefined}
-                value={addValueDraft}
-                readOnly={!isAddValueEditing}
-                disabled={controlsDisabled}
-                onInput={(event) => {
-                  setAddValueDraft(event.currentTarget.value);
-                  setOpenSuggestionsKey(addValueSuggestionScope);
-                  setSuggestionCursor((current) => ({
-                    ...current,
-                    [addValueSuggestionScope]: 0,
-                  }));
-                }}
-                onFocus={() => {
-                  if (controlsDisabled || !isAddValueEnabled) {
-                    return;
-                  }
-                  activateAddInput("value");
-                  setOpenSuggestionsKey(addValueSuggestionScope);
-                  setSuggestionCursor((current) => ({
-                    ...current,
-                    [addValueSuggestionScope]: 0,
-                  }));
-                }}
-                onClick={() => {
-                  if (controlsDisabled || !isAddValueEnabled) {
-                    return;
-                  }
-                  activateAddInput("value");
-                  setOpenSuggestionsKey(addValueSuggestionScope);
-                }}
-                onDoubleClick={() => {
-                  if (controlsDisabled || !isAddValueEnabled) {
-                    return;
-                  }
-                  beginAddEditing("value");
-                  setOpenSuggestionsKey(addValueSuggestionScope);
-                }}
-                onBlur={(event) => {
-                  setAddValueDraft(event.currentTarget.value);
-                  setOpenSuggestionsKey((current) =>
-                    current === addValueSuggestionScope ? null : current
-                  );
-                  setAddEditorModes((current) => ({
-                    ...current,
-                    value: "idle",
-                  }));
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "F2" && isAddValueEnabled) {
-                    event.preventDefault();
-                    beginAddEditing("value");
-                    setOpenSuggestionsKey(addValueSuggestionScope);
-                    return;
-                  }
-                  if (event.key === "Escape") {
-                    event.preventDefault();
-                    setOpenSuggestionsKey((current) =>
-                      current === addValueSuggestionScope ? null : current
-                    );
-                    setAddEditorModes((current) => ({
-                      ...current,
-                      value: "idle",
-                    }));
-                    event.currentTarget.blur();
-                    return;
-                  }
-                  if (
-                    isAddValueDropdownOpen &&
-                    (event.key === "ArrowDown" || event.key === "ArrowUp")
-                  ) {
-                    event.preventDefault();
-                    const offset = event.key === "ArrowDown" ? 1 : -1;
-                    setSuggestionCursor((current) => {
-                      const existing = current[addValueSuggestionScope] ?? 0;
-                      const next =
-                        (existing + offset + addValueSuggestions.length) %
-                        addValueSuggestions.length;
-                      return { ...current, [addValueSuggestionScope]: next };
-                    });
-                    return;
-                  }
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    if (isAddValueDropdownOpen && activeAddValueSuggestion) {
-                      setAddValueDraft(activeAddValueSuggestion);
-                      setOpenSuggestionsKey(null);
-                      setAddEditorModes((current) => ({
-                        ...current,
-                        value: "active",
-                      }));
-                      return;
-                    }
-                    void handleAddProperty();
-                    return;
-                  }
-                  if (event.key === "Tab") {
-                    setOpenSuggestionsKey((current) =>
-                      current === addValueSuggestionScope ? null : current
-                    );
-                    return;
-                  }
-                  if (!isAddValueEnabled) {
-                    return;
-                  }
-                  if (!isAddValueEditing) {
-                    if (isPrintableCharacterKey(event)) {
-                      event.preventDefault();
-                      const nextValue = `${addValueDraft}${event.key}`;
-                      setAddValueDraft(nextValue);
-                      beginAddEditing("value");
-                      setOpenSuggestionsKey(addValueSuggestionScope);
-                      setSuggestionCursor((current) => ({
-                        ...current,
-                        [addValueSuggestionScope]: 0,
-                      }));
-                      scheduleAnimationFrame(() => {
-                        const input = addValueInputRef.current;
-                        if (!input) {
                           return;
                         }
-                        input.focus();
-                        input.setSelectionRange(nextValue.length, nextValue.length);
-                      });
-                      return;
+                        scheduleAnimationFrame(() => {
+                          if (openSuggestionsKeyRef.current !== null) {
+                            return;
+                          }
+                          addValueInputRef.current?.focus();
+                        });
+                        return;
+                      }
+                      if (event.key === "Tab") {
+                        setOpenSuggestionsKey((current) =>
+                          current === addKeySuggestionScope ? null : current,
+                        );
+                        return;
+                      }
+                      if (!isAddKeyEditing) {
+                        if (isPrintableCharacterKey(event)) {
+                          event.preventDefault();
+                          const nextValue = `${addKeyDraft}${event.key}`;
+                          setAddKeyDraft(nextValue);
+                          beginAddEditing("key");
+                          setOpenSuggestionsKey(addKeySuggestionScope);
+                          setSuggestionCursor((current) => ({
+                            ...current,
+                            [addKeySuggestionScope]: 0,
+                          }));
+                          if (addError) {
+                            setAddError("");
+                          }
+                          scheduleAnimationFrame(() => {
+                            const input = addKeyInputRef.current;
+                            if (!input) {
+                              return;
+                            }
+                            input.focus();
+                            input.setSelectionRange(nextValue.length, nextValue.length);
+                          });
+                          return;
+                        }
+                        if (event.key === "Backspace" || event.key === "Delete") {
+                          event.preventDefault();
+                          const nextValue =
+                            event.key === "Backspace" ? addKeyDraft.slice(0, -1) : "";
+                          setAddKeyDraft(nextValue);
+                          beginAddEditing("key");
+                          setOpenSuggestionsKey(addKeySuggestionScope);
+                          setSuggestionCursor((current) => ({
+                            ...current,
+                            [addKeySuggestionScope]: 0,
+                          }));
+                          if (addError) {
+                            setAddError("");
+                          }
+                        }
+                      }
+                    }}
+                  />
+                  {isAddKeyDropdownOpen ? (
+                    <ul
+                      id={addKeySuggestionListId}
+                      className="frontmatter-suggestions"
+                      role="listbox"
+                      aria-label="Attribut Vorschlaege"
+                    >
+                      {addKeySuggestions.map((suggestion, suggestionIndex) => (
+                        <li key={`add-key-${suggestion}`}>
+                          <button
+                            type="button"
+                            className={`frontmatter-suggestion-option ${
+                              suggestionIndex === safeAddKeySuggestionIndex ? "active" : ""
+                            }`}
+                            role="option"
+                            aria-selected={suggestionIndex === safeAddKeySuggestionIndex}
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                            }}
+                            onClick={() => {
+                              setAddKeyDraft(suggestion);
+                              setOpenSuggestionsKey(null);
+                              setAddEditorModes((current) => ({
+                                ...current,
+                                key: "active",
+                              }));
+                              if (addError) {
+                                setAddError("");
+                              }
+                              scheduleAnimationFrame(() => {
+                                if (openSuggestionsKeyRef.current !== null) {
+                                  return;
+                                }
+                                if (isAddFormulaType) {
+                                  addKeyInputRef.current?.focus();
+                                  return;
+                                }
+                                addValueInputRef.current?.focus();
+                              });
+                            }}
+                          >
+                            {suggestion}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+                <div className="frontmatter-add-input-wrap" hidden={isAddFormulaType}>
+                  <input
+                    ref={addValueInputRef}
+                    type="text"
+                    className="text-input frontmatter-add-value"
+                    placeholder={
+                      addTypeDraft === "cover" ? "Bild aus Vault waehlen ..." : "Wert (optional)"
                     }
-                    if (event.key === "Backspace" || event.key === "Delete") {
-                      event.preventDefault();
-                      const nextValue =
-                        event.key === "Backspace" ? addValueDraft.slice(0, -1) : "";
-                      setAddValueDraft(nextValue);
-                      beginAddEditing("value");
+                    aria-label="Neuer Wert"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={isAddValueDropdownOpen}
+                    aria-controls={isAddValueDropdownOpen ? addValueSuggestionListId : undefined}
+                    value={addValueDraft}
+                    readOnly={!isAddValueEditing}
+                    disabled={controlsDisabled}
+                    onInput={(event) => {
+                      setAddValueDraft(event.currentTarget.value);
                       setOpenSuggestionsKey(addValueSuggestionScope);
                       setSuggestionCursor((current) => ({
                         ...current,
                         [addValueSuggestionScope]: 0,
                       }));
-                    }
-                  }
-                }}
-              />
-              {isAddValueDropdownOpen ? (
-                <ul
-                  id={addValueSuggestionListId}
-                  className={`frontmatter-suggestions ${
-                    addTypeDraft === "cover" ? "frontmatter-add-cover-suggestions" : ""
-                  }`.trim()}
-                  role="listbox"
-                  aria-label="Wert Vorschlaege"
-                >
-                  {addValueSuggestions.map((suggestion, suggestionIndex) => (
-                    <li key={`add-value-${selectedAddKey}-${suggestion}`}>
-                      {addTypeDraft === "cover" ? (
-                        (() => {
-                          const suggestionTarget = extractWikilinkTarget(suggestion);
-                          const suggestionImage = resolveCoverImageFromTarget(suggestionTarget);
-                          const suggestionImageSrc = suggestionImage
-                            ? (suggestionImage.src ?? suggestionImage.path)
-                            : "";
-                          const suggestionImageError = suggestionImage
-                            ? coverImageErrors[suggestionImage.relativePath]
-                            : undefined;
-                          const hasSuggestionImageError = Boolean(
-                            suggestionImageError && suggestionImageError.src === suggestionImageSrc,
-                          );
-                          return (
+                    }}
+                    onFocus={() => {
+                      if (controlsDisabled || !isAddValueEnabled) {
+                        return;
+                      }
+                      activateAddInput("value");
+                      setOpenSuggestionsKey(addValueSuggestionScope);
+                      setSuggestionCursor((current) => ({
+                        ...current,
+                        [addValueSuggestionScope]: 0,
+                      }));
+                    }}
+                    onClick={() => {
+                      if (controlsDisabled || !isAddValueEnabled) {
+                        return;
+                      }
+                      activateAddInput("value");
+                      setOpenSuggestionsKey(addValueSuggestionScope);
+                    }}
+                    onDoubleClick={() => {
+                      if (controlsDisabled || !isAddValueEnabled) {
+                        return;
+                      }
+                      beginAddEditing("value");
+                      setOpenSuggestionsKey(addValueSuggestionScope);
+                    }}
+                    onBlur={(event) => {
+                      setAddValueDraft(event.currentTarget.value);
+                      setOpenSuggestionsKey((current) =>
+                        current === addValueSuggestionScope ? null : current,
+                      );
+                      setAddEditorModes((current) => ({
+                        ...current,
+                        value: "idle",
+                      }));
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "F2" && isAddValueEnabled) {
+                        event.preventDefault();
+                        beginAddEditing("value");
+                        setOpenSuggestionsKey(addValueSuggestionScope);
+                        return;
+                      }
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        setOpenSuggestionsKey((current) =>
+                          current === addValueSuggestionScope ? null : current,
+                        );
+                        setAddEditorModes((current) => ({
+                          ...current,
+                          value: "idle",
+                        }));
+                        event.currentTarget.blur();
+                        return;
+                      }
+                      if (
+                        isAddValueDropdownOpen &&
+                        (event.key === "ArrowDown" || event.key === "ArrowUp")
+                      ) {
+                        event.preventDefault();
+                        const offset = event.key === "ArrowDown" ? 1 : -1;
+                        setSuggestionCursor((current) => {
+                          const existing = current[addValueSuggestionScope] ?? 0;
+                          const next =
+                            (existing + offset + addValueSuggestions.length) %
+                            addValueSuggestions.length;
+                          return { ...current, [addValueSuggestionScope]: next };
+                        });
+                        return;
+                      }
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        if (isAddValueDropdownOpen && activeAddValueSuggestion) {
+                          setAddValueDraft(activeAddValueSuggestion);
+                          setOpenSuggestionsKey(null);
+                          setAddEditorModes((current) => ({
+                            ...current,
+                            value: "active",
+                          }));
+                          return;
+                        }
+                        void handleAddProperty();
+                        return;
+                      }
+                      if (event.key === "Tab") {
+                        setOpenSuggestionsKey((current) =>
+                          current === addValueSuggestionScope ? null : current,
+                        );
+                        return;
+                      }
+                      if (!isAddValueEnabled) {
+                        return;
+                      }
+                      if (!isAddValueEditing) {
+                        if (isPrintableCharacterKey(event)) {
+                          event.preventDefault();
+                          const nextValue = `${addValueDraft}${event.key}`;
+                          setAddValueDraft(nextValue);
+                          beginAddEditing("value");
+                          setOpenSuggestionsKey(addValueSuggestionScope);
+                          setSuggestionCursor((current) => ({
+                            ...current,
+                            [addValueSuggestionScope]: 0,
+                          }));
+                          scheduleAnimationFrame(() => {
+                            const input = addValueInputRef.current;
+                            if (!input) {
+                              return;
+                            }
+                            input.focus();
+                            input.setSelectionRange(nextValue.length, nextValue.length);
+                          });
+                          return;
+                        }
+                        if (event.key === "Backspace" || event.key === "Delete") {
+                          event.preventDefault();
+                          const nextValue =
+                            event.key === "Backspace" ? addValueDraft.slice(0, -1) : "";
+                          setAddValueDraft(nextValue);
+                          beginAddEditing("value");
+                          setOpenSuggestionsKey(addValueSuggestionScope);
+                          setSuggestionCursor((current) => ({
+                            ...current,
+                            [addValueSuggestionScope]: 0,
+                          }));
+                        }
+                      }
+                    }}
+                  />
+                  {isAddValueDropdownOpen ? (
+                    <ul
+                      id={addValueSuggestionListId}
+                      className={`frontmatter-suggestions ${
+                        addTypeDraft === "cover" ? "frontmatter-add-cover-suggestions" : ""
+                      }`.trim()}
+                      role="listbox"
+                      aria-label="Wert Vorschlaege"
+                    >
+                      {addValueSuggestions.map((suggestion, suggestionIndex) => (
+                        <li key={`add-value-${selectedAddKey}-${suggestion}`}>
+                          {addTypeDraft === "cover" ? (
+                            (() => {
+                              const suggestionTarget = extractWikilinkTarget(suggestion);
+                              const suggestionImage = resolveCoverImageFromTarget(suggestionTarget);
+                              const suggestionImageSrc = suggestionImage
+                                ? (suggestionImage.src ?? suggestionImage.path)
+                                : "";
+                              const suggestionImageError = suggestionImage
+                                ? coverImageErrors[suggestionImage.relativePath]
+                                : undefined;
+                              const hasSuggestionImageError = Boolean(
+                                suggestionImageError &&
+                                suggestionImageError.src === suggestionImageSrc,
+                              );
+                              return (
+                                <button
+                                  type="button"
+                                  className={`frontmatter-suggestion-option frontmatter-add-cover-option ${
+                                    suggestionIndex === safeAddValueSuggestionIndex ? "active" : ""
+                                  }`}
+                                  role="option"
+                                  aria-selected={suggestionIndex === safeAddValueSuggestionIndex}
+                                  onMouseDown={(event) => {
+                                    event.preventDefault();
+                                  }}
+                                  onClick={() => {
+                                    setAddValueDraft(suggestion);
+                                    setOpenSuggestionsKey(null);
+                                    setAddEditorModes((current) => ({
+                                      ...current,
+                                      value: "active",
+                                    }));
+                                  }}
+                                >
+                                  {suggestionImage && !hasSuggestionImageError ? (
+                                    <CoverThumbnailImage
+                                      variant="add"
+                                      image={suggestionImage}
+                                      alt={suggestionImage.fileName}
+                                      onError={(event) => {
+                                        const failedSrc =
+                                          event.currentTarget.currentSrc ||
+                                          event.currentTarget.src ||
+                                          suggestionImage.src ||
+                                          suggestionImage.path;
+                                        setCoverImageErrors((current) => ({
+                                          ...current,
+                                          [suggestionImage.relativePath]: {
+                                            src: failedSrc,
+                                            relativePath: suggestionImage.relativePath,
+                                            absolutePath: suggestionImage.path,
+                                          },
+                                        }));
+                                      }}
+                                    />
+                                  ) : (
+                                    <span
+                                      className="frontmatter-add-cover-thumb-placeholder"
+                                      aria-hidden="true"
+                                    >
+                                      <FrontmatterImageIcon />
+                                    </span>
+                                  )}
+                                  <span className="frontmatter-add-cover-copy">
+                                    <span
+                                      title={
+                                        suggestionImage?.fileName ??
+                                        resolveWikilinkLabel(suggestion)
+                                      }
+                                    >
+                                      {suggestionImage?.fileName ??
+                                        resolveWikilinkLabel(suggestion)}
+                                    </span>
+                                    <span title={suggestionTarget ?? suggestion}>
+                                      {suggestionTarget ?? suggestion}
+                                    </span>
+                                  </span>
+                                </button>
+                              );
+                            })()
+                          ) : (
                             <button
                               type="button"
-                              className={`frontmatter-suggestion-option frontmatter-add-cover-option ${
+                              className={`frontmatter-suggestion-option ${
                                 suggestionIndex === safeAddValueSuggestionIndex ? "active" : ""
                               }`}
                               role="option"
@@ -8700,90 +8708,31 @@ const FrontmatterPropertiesPanel = ({
                                 }));
                               }}
                             >
-                              {suggestionImage && !hasSuggestionImageError ? (
-                                <CoverThumbnailImage
-                                  variant="add"
-                                  image={suggestionImage}
-                                  alt={suggestionImage.fileName}
-                                  onError={(event) => {
-                                    const failedSrc =
-                                      event.currentTarget.currentSrc ||
-                                      event.currentTarget.src ||
-                                      suggestionImage.src ||
-                                      suggestionImage.path;
-                                    setCoverImageErrors((current) => ({
-                                      ...current,
-                                      [suggestionImage.relativePath]: {
-                                        src: failedSrc,
-                                        relativePath: suggestionImage.relativePath,
-                                        absolutePath: suggestionImage.path,
-                                      },
-                                    }));
-                                  }}
-                                />
-                              ) : (
-                                <span className="frontmatter-add-cover-thumb-placeholder" aria-hidden="true">
-                                  <FrontmatterImageIcon />
-                                </span>
-                              )}
-                              <span className="frontmatter-add-cover-copy">
-                                <span title={suggestionImage?.fileName ?? resolveWikilinkLabel(suggestion)}>
-                                  {suggestionImage?.fileName ?? resolveWikilinkLabel(suggestion)}
-                                </span>
-                                <span title={suggestionTarget ?? suggestion}>
-                                  {suggestionTarget ?? suggestion}
-                                </span>
-                              </span>
+                              {suggestion}
                             </button>
-                          );
-                        })()
-                      ) : (
-                        <button
-                          type="button"
-                          className={`frontmatter-suggestion-option ${
-                            suggestionIndex === safeAddValueSuggestionIndex ? "active" : ""
-                          }`}
-                          role="option"
-                          aria-selected={suggestionIndex === safeAddValueSuggestionIndex}
-                          onMouseDown={(event) => {
-                            event.preventDefault();
-                          }}
-                          onClick={() => {
-                            setAddValueDraft(suggestion);
-                            setOpenSuggestionsKey(null);
-                            setAddEditorModes((current) => ({
-                              ...current,
-                              value: "active",
-                            }));
-                          }}
-                        >
-                          {suggestion}
-                        </button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-            <button
-              type="button"
-              className="ghost small frontmatter-add-button"
-              onClick={() => {
-                void handleAddProperty();
-              }}
-              disabled={controlsDisabled}
-            >
-              Attribut +
-            </button>
-          </div>
-          {addError ? <div className="frontmatter-row-error">{addError}</div> : null}
-        </>
-      ) : (
-        <p className="frontmatter-collapsed-hint">
-          {collapsedAttributeCount} Attribute
-        </p>
-      )}
-      {panelError ? <div className="error frontmatter-error">{panelError}</div> : null}
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  className="ghost small frontmatter-add-button"
+                  onClick={() => {
+                    void handleAddProperty();
+                  }}
+                  disabled={controlsDisabled}
+                >
+                  Attribut +
+                </button>
+              </div>
+              {addError ? <div className="frontmatter-row-error">{addError}</div> : null}
+            </>
+          ) : (
+            <p className="frontmatter-collapsed-hint">{collapsedAttributeCount} Attribute</p>
+          )}
+          {panelError ? <div className="error frontmatter-error">{panelError}</div> : null}
         </section>
       ) : null}
     </>
@@ -8870,9 +8819,7 @@ export const PreviewPanel = ({
   const [showFrontmatterTextFallback, setShowFrontmatterTextFallback] = useState(false);
   const [legacyMarkdownLinkPickerState, setLegacyMarkdownLinkPickerState] =
     useState<LegacyMarkdownLinkPickerState | null>(null);
-  const [userFrontmatterCollapsed, setUserFrontmatterCollapsed] = useState<boolean | null>(
-    null,
-  );
+  const [userFrontmatterCollapsed, setUserFrontmatterCollapsed] = useState<boolean | null>(null);
   const [markdownTabStripWidth, setMarkdownTabStripWidth] = useState(0);
   const [activeMarkdownTabFolderLabel, setActiveMarkdownTabFolderLabel] = useState<string | null>(
     null,
@@ -8892,22 +8839,15 @@ export const PreviewPanel = ({
     userFrontmatterCollapsed ?? isNarrowFrontmatterViewport;
   onWriteSaveRef.current = onWriteSave;
 
-  const previewFrontmatter = useMemo(
-    () => parseFrontmatterDocument(preview),
-    [preview],
-  );
+  const previewFrontmatter = useMemo(() => parseFrontmatterDocument(preview), [preview]);
   const editFrontmatter = useMemo(() => parseFrontmatterDocument(editDraft), [editDraft]);
-  const markdownPreviewBody = previewFrontmatter.hasFrontmatter
-    ? previewFrontmatter.body
-    : preview;
-  const markdownEditBody = editFrontmatter.hasFrontmatter
-    ? editFrontmatter.body
-    : editDraft;
+  const markdownPreviewBody = previewFrontmatter.hasFrontmatter ? previewFrontmatter.body : preview;
+  const markdownEditBody = editFrontmatter.hasFrontmatter ? editFrontmatter.body : editDraft;
   const markdownEditBodyStartOffset = editFrontmatter.hasFrontmatter
     ? editFrontmatter.bodyStartOffset
     : 0;
-  const hasFrontmatterError = previewFrontmatter.hasFrontmatter &&
-    Boolean(previewFrontmatter.error);
+  const hasFrontmatterError =
+    previewFrontmatter.hasFrontmatter && Boolean(previewFrontmatter.error);
   const pageLinkCandidates = useMemo(
     () => buildPageLinkCandidates(vaultFiles ?? undefined),
     [vaultFiles],
@@ -8920,9 +8860,7 @@ export const PreviewPanel = ({
     () =>
       filterPageLinkCandidates(
         pageLinkCandidates,
-        legacyMarkdownLinkPickerState?.mode === "page"
-          ? legacyMarkdownLinkPickerState.query
-          : "",
+        legacyMarkdownLinkPickerState?.mode === "page" ? legacyMarkdownLinkPickerState.query : "",
       ),
     [legacyMarkdownLinkPickerState?.mode, legacyMarkdownLinkPickerState?.query, pageLinkCandidates],
   );
@@ -8930,21 +8868,22 @@ export const PreviewPanel = ({
     () =>
       filterVaultImageCandidates(
         imageLinkCandidates,
-        legacyMarkdownLinkPickerState?.mode === "image"
-          ? legacyMarkdownLinkPickerState.query
-          : "",
+        legacyMarkdownLinkPickerState?.mode === "image" ? legacyMarkdownLinkPickerState.query : "",
       ),
-    [imageLinkCandidates, legacyMarkdownLinkPickerState?.mode, legacyMarkdownLinkPickerState?.query],
+    [
+      imageLinkCandidates,
+      legacyMarkdownLinkPickerState?.mode,
+      legacyMarkdownLinkPickerState?.query,
+    ],
   );
-  const filteredLegacyLinkCandidatesLength = legacyMarkdownLinkPickerState?.mode === "image"
-    ? filteredLegacyImageLinkCandidates.length
-    : filteredLegacyPageLinkCandidates.length;
+  const filteredLegacyLinkCandidatesLength =
+    legacyMarkdownLinkPickerState?.mode === "image"
+      ? filteredLegacyImageLinkCandidates.length
+      : filteredLegacyPageLinkCandidates.length;
   const isCodeMode = editorMode === "code";
   const isMarkdownMode = editorMode === "markdown";
   const isHybridMode = editorMode === "hybrid";
-  const resolvedEditEnabled = documentMode === "write"
-    ? true
-    : (isHybridMode ? true : editEnabled);
+  const resolvedEditEnabled = documentMode === "write" ? true : isHybridMode ? true : editEnabled;
   const closeMarkdownTabContextMenu = useCallback(() => {
     setMarkdownTabContextMenu(null);
   }, []);
@@ -9003,8 +8942,7 @@ export const PreviewPanel = ({
     }
     const padding = 8;
     const rect = markdownTabContextMenuRef.current.getBoundingClientRect();
-    const resolvedMenuWidth =
-      rect.width > 0 ? rect.width : PREVIEW_TAB_CONTEXT_MENU_MIN_WIDTH_PX;
+    const resolvedMenuWidth = rect.width > 0 ? rect.width : PREVIEW_TAB_CONTEXT_MENU_MIN_WIDTH_PX;
     const resolvedMenuHeight = rect.height > 0 ? rect.height : 0;
     let left = markdownTabContextMenu.anchorRect
       ? markdownTabContextMenu.anchorRect.left
@@ -9046,9 +8984,7 @@ export const PreviewPanel = ({
     if (!markdownTabContextMenu) {
       return;
     }
-    const tabStillExists = markdownTabs.some(
-      (tab) => tab.path === markdownTabContextMenu.tabPath,
-    );
+    const tabStillExists = markdownTabs.some((tab) => tab.path === markdownTabContextMenu.tabPath);
     if (!tabStillExists) {
       setMarkdownTabContextMenu(null);
     }
@@ -9086,41 +9022,37 @@ export const PreviewPanel = ({
     editableHighlightCancelIdleRef.current = null;
   }, []);
 
-  const resolveEditableCodeElementNearSelection = useCallback(
-    (target: EventTarget | null) => {
-      const editor = markdownEditorRef.current;
-      if (!editor) {
-        return null;
-      }
+  const resolveEditableCodeElementNearSelection = useCallback((target: EventTarget | null) => {
+    const editor = markdownEditorRef.current;
+    if (!editor) {
+      return null;
+    }
 
-      const sourceElement = resolveEventElement(target);
-      const fromTarget = sourceElement
-        ?.closest('pre[data-md-code-block="true"]')
-        ?.querySelector<HTMLElement>("code");
-      if (fromTarget && editor.contains(fromTarget)) {
-        return fromTarget;
-      }
+    const sourceElement = resolveEventElement(target);
+    const fromTarget = sourceElement
+      ?.closest('pre[data-md-code-block="true"]')
+      ?.querySelector<HTMLElement>("code");
+    if (fromTarget && editor.contains(fromTarget)) {
+      return fromTarget;
+    }
 
-      const selection = window.getSelection();
-      if (!selection || selection.rangeCount === 0 || !selection.anchorNode) {
-        return null;
-      }
-      if (!editor.contains(selection.anchorNode)) {
-        return null;
-      }
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || !selection.anchorNode) {
+      return null;
+    }
+    if (!editor.contains(selection.anchorNode)) {
+      return null;
+    }
 
-      const anchorElement = selection.anchorNode instanceof Element
+    const anchorElement =
+      selection.anchorNode instanceof Element
         ? selection.anchorNode
         : selection.anchorNode.parentElement;
-      const fromSelection = anchorElement
-        ?.closest('pre[data-md-code-block="true"]')
-        ?.querySelector<HTMLElement>("code");
-      return fromSelection && editor.contains(fromSelection)
-        ? fromSelection
-        : null;
-    },
-    [],
-  );
+    const fromSelection = anchorElement
+      ?.closest('pre[data-md-code-block="true"]')
+      ?.querySelector<HTMLElement>("code");
+    return fromSelection && editor.contains(fromSelection) ? fromSelection : null;
+  }, []);
 
   const flushEditableCodeHighlights = useCallback(async () => {
     if (!MARKDOWN_CODE_HIGHLIGHT_CONFIG.highlightInContentEditable) {
@@ -9147,9 +9079,7 @@ export const PreviewPanel = ({
       editableHighlightQueuedCodesRef.current.clear();
 
       const codeElements = queuedAll
-        ? Array.from(
-            editor.querySelectorAll<HTMLElement>('pre[data-md-code-block="true"] > code'),
-          )
+        ? Array.from(editor.querySelectorAll<HTMLElement>('pre[data-md-code-block="true"] > code'))
         : queuedCodes;
 
       for (const codeElement of codeElements) {
@@ -9188,13 +9118,10 @@ export const PreviewPanel = ({
         editableHighlightQueuedCodesRef.current.size > 0
       ) {
         cancelEditableHighlightIdle();
-        editableHighlightCancelIdleRef.current = scheduleIdleTask(
-          () => {
-            editableHighlightCancelIdleRef.current = null;
-            void flushEditableCodeHighlights();
-          },
-          MARKDOWN_EDITABLE_REHIGHLIGHT_IDLE_TIMEOUT_MS,
-        );
+        editableHighlightCancelIdleRef.current = scheduleIdleTask(() => {
+          editableHighlightCancelIdleRef.current = null;
+          void flushEditableCodeHighlights();
+        }, MARKDOWN_EDITABLE_REHIGHLIGHT_IDLE_TIMEOUT_MS);
       }
     }
   }, [cancelEditableHighlightIdle]);
@@ -9227,13 +9154,10 @@ export const PreviewPanel = ({
 
       const scheduleRun = () => {
         editableHighlightDebounceHandleRef.current = 0;
-        editableHighlightCancelIdleRef.current = scheduleIdleTask(
-          () => {
-            editableHighlightCancelIdleRef.current = null;
-            void flushEditableCodeHighlights();
-          },
-          MARKDOWN_EDITABLE_REHIGHLIGHT_IDLE_TIMEOUT_MS,
-        );
+        editableHighlightCancelIdleRef.current = scheduleIdleTask(() => {
+          editableHighlightCancelIdleRef.current = null;
+          void flushEditableCodeHighlights();
+        }, MARKDOWN_EDITABLE_REHIGHLIGHT_IDLE_TIMEOUT_MS);
       };
 
       if (options?.immediate) {
@@ -9294,9 +9218,7 @@ export const PreviewPanel = ({
     if (!editor) {
       return;
     }
-    const currentBody = normalizeMarkdownViewEditBodyForPersist(
-      serializeMarkdownFromHtml(editor),
-    );
+    const currentBody = normalizeMarkdownViewEditBodyForPersist(serializeMarkdownFromHtml(editor));
     const normalizedBody = normalizeMarkdownViewEditBodyForPersist(
       normalizeLooseNestedUnorderedListMarkersForMarkdownView(currentBody),
     );
@@ -9319,15 +9241,9 @@ export const PreviewPanel = ({
     const inlineLines = Array.from(
       editor.querySelectorAll<HTMLElement>('[data-md-inline-line="true"]'),
     );
-    let headings = Array.from(
-      editor.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6"),
-    );
-    const hrLines = Array.from(
-      editor.querySelectorAll<HTMLElement>('[data-md-hr-line="true"]'),
-    );
-    const listItems = Array.from(
-      editor.querySelectorAll<HTMLElement>("li"),
-    ).filter(
+    let headings = Array.from(editor.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6"));
+    const hrLines = Array.from(editor.querySelectorAll<HTMLElement>('[data-md-hr-line="true"]'));
+    const listItems = Array.from(editor.querySelectorAll<HTMLElement>("li")).filter(
       (item) =>
         item.firstElementChild instanceof HTMLElement &&
         item.firstElementChild.classList.contains("md-list-marker"),
@@ -9336,26 +9252,19 @@ export const PreviewPanel = ({
       editor.querySelectorAll<HTMLElement>('pre[data-md-code-block="true"]'),
     );
     const selection = window.getSelection();
-    const range = selection && selection.rangeCount > 0
-      ? selection.getRangeAt(0)
-      : null;
+    const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
     const inEditor = Boolean(
-      range &&
-      editor.contains(range.startContainer) &&
-      editor.contains(range.endContainer),
+      range && editor.contains(range.startContainer) && editor.contains(range.endContainer),
     );
     const activeRange = inEditor ? range : null;
-    const activeLines = activeRange
-      ? resolveSelectionLineElements(editor, activeRange)
-      : [];
+    const activeLines = activeRange ? resolveSelectionLineElements(editor, activeRange) : [];
     const activeLineSet = new Set(activeLines);
     const anchorLine = activeLines[0] ?? null;
     const previousAnchorLine = activeMarkdownInlineLineRef.current;
-    const lineSwitched = previousAnchorLine !== anchorLine &&
-      (
-        previousAnchorLine !== null ||
-        (pendingLegacyUnorderedListAutocorrectRef.current && anchorLine !== null)
-      );
+    const lineSwitched =
+      previousAnchorLine !== anchorLine &&
+      (previousAnchorLine !== null ||
+        (pendingLegacyUnorderedListAutocorrectRef.current && anchorLine !== null));
     activeMarkdownInlineLineRef.current = anchorLine;
     if (lineSwitched && pendingLegacyUnorderedListAutocorrectRef.current) {
       applyLegacyUnorderedListAutocorrectionFromEditor();
@@ -9365,9 +9274,7 @@ export const PreviewPanel = ({
       syncMarkdownDraftFromEditor();
     }
 
-    const blockquoteElements = Array.from(
-      editor.querySelectorAll<HTMLElement>("blockquote"),
-    );
+    const blockquoteElements = Array.from(editor.querySelectorAll<HTMLElement>("blockquote"));
     const activeBlockquoteLines = new Set<HTMLElement>();
     const activeTableCells = new Set<HTMLElement>();
     const resolveOutermostBlockquote = (line: HTMLElement | null) => {
@@ -9417,9 +9324,8 @@ export const PreviewPanel = ({
 
     let lineKindRetagged = false;
     inlineLines.forEach((line) => {
-      const isLineActive = activeLineSet.has(line) ||
-        activeBlockquoteLines.has(line) ||
-        activeTableCells.has(line);
+      const isLineActive =
+        activeLineSet.has(line) || activeBlockquoteLines.has(line) || activeTableCells.has(line);
       if (isLineActive) {
         line.setAttribute("data-md-inline-active", "true");
       } else {
@@ -9457,7 +9363,10 @@ export const PreviewPanel = ({
             paragraphLine.querySelector<HTMLElement>(":scope > .md-heading-marker")?.remove();
             lineKindRetagged = true;
           } else {
-            const normalizedHeading = replaceElementTagName(lineElement, `h${resolvedHeading.level}`);
+            const normalizedHeading = replaceElementTagName(
+              lineElement,
+              `h${resolvedHeading.level}`,
+            );
             while (normalizedHeading.firstChild) {
               normalizedHeading.removeChild(normalizedHeading.firstChild);
             }
@@ -9474,9 +9383,7 @@ export const PreviewPanel = ({
     });
 
     if (lineKindRetagged) {
-      headings = Array.from(
-        editor.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6"),
-      );
+      headings = Array.from(editor.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6"));
       syncMarkdownDraftFromEditor();
     }
 
@@ -9486,14 +9393,10 @@ export const PreviewPanel = ({
         : [],
     );
     const activeHrLineSet = new Set(
-      activeRange
-        ? hrLines.filter((line) => rangeIntersectsNodeSafely(activeRange, line))
-        : [],
+      activeRange ? hrLines.filter((line) => rangeIntersectsNodeSafely(activeRange, line)) : [],
     );
     const activeListItemSet = new Set(
-      activeRange
-        ? listItems.filter((item) => rangeIntersectsNodeSafely(activeRange, item))
-        : [],
+      activeRange ? listItems.filter((item) => rangeIntersectsNodeSafely(activeRange, item)) : [],
     );
     const activeCodeBlockSet = new Set(
       activeRange
@@ -9600,7 +9503,7 @@ export const PreviewPanel = ({
         query: initialQuery,
         highlightedIndex: 0,
         anchorLeft: anchor?.left ?? 12,
-        anchorTop: anchor?.top ?? (scrollContainer.scrollTop + 30),
+        anchorTop: anchor?.top ?? scrollContainer.scrollTop + 30,
       });
     },
     [],
@@ -9707,9 +9610,10 @@ export const PreviewPanel = ({
         return;
       }
 
-      const candidates = legacyMarkdownLinkPickerState.mode === "image"
-        ? filteredLegacyImageLinkCandidates
-        : filteredLegacyPageLinkCandidates;
+      const candidates =
+        legacyMarkdownLinkPickerState.mode === "image"
+          ? filteredLegacyImageLinkCandidates
+          : filteredLegacyPageLinkCandidates;
 
       if (candidates.length === 0) {
         if (event.key === "Enter") {
@@ -9727,7 +9631,8 @@ export const PreviewPanel = ({
           if (!current) {
             return current;
           }
-          const nextIndex = (current.highlightedIndex + delta + candidates.length) % candidates.length;
+          const nextIndex =
+            (current.highlightedIndex + delta + candidates.length) % candidates.length;
           return {
             ...current,
             highlightedIndex: nextIndex,
@@ -9740,7 +9645,8 @@ export const PreviewPanel = ({
         event.preventDefault();
         event.stopPropagation();
         if (legacyMarkdownLinkPickerState.mode === "image") {
-          const candidate = filteredLegacyImageLinkCandidates[legacyMarkdownLinkPickerState.highlightedIndex] ??
+          const candidate =
+            filteredLegacyImageLinkCandidates[legacyMarkdownLinkPickerState.highlightedIndex] ??
             filteredLegacyImageLinkCandidates[0];
           if (!candidate) {
             return;
@@ -9748,7 +9654,8 @@ export const PreviewPanel = ({
           handleLegacyMarkdownImageLinkSelectCandidate(candidate);
           return;
         }
-        const candidate = filteredLegacyPageLinkCandidates[legacyMarkdownLinkPickerState.highlightedIndex] ??
+        const candidate =
+          filteredLegacyPageLinkCandidates[legacyMarkdownLinkPickerState.highlightedIndex] ??
           filteredLegacyPageLinkCandidates[0];
         if (!candidate) {
           return;
@@ -9837,7 +9744,8 @@ export const PreviewPanel = ({
       return;
     }
     const handle = window.requestAnimationFrame(() => {
-      const input = legacyMarkdownLinkPickerSearchInputRef.current ??
+      const input =
+        legacyMarkdownLinkPickerSearchInputRef.current ??
         legacyMarkdownLinkPickerRef.current?.querySelector<HTMLInputElement>(
           ".vault-png-picker-search input",
         ) ??
@@ -9958,9 +9866,10 @@ export const PreviewPanel = ({
       return;
     }
     const editor = editorRef.current;
-    const nextIndex = typeof lastCaretIndexRef.current === "number"
-      ? Math.max(0, Math.min(lastCaretIndexRef.current, editor.value.length))
-      : editor.value.length;
+    const nextIndex =
+      typeof lastCaretIndexRef.current === "number"
+        ? Math.max(0, Math.min(lastCaretIndexRef.current, editor.value.length))
+        : editor.value.length;
     const handle = window.requestAnimationFrame(() => {
       if (shouldKeepExternalEditableFocus()) {
         return;
@@ -9993,15 +9902,15 @@ export const PreviewPanel = ({
     const pendingSelection = pendingMarkdownTokenSelectionRef.current;
     const normalizedPendingSelection = pendingSelection
       ? {
-        start: Math.max(
-          0,
-          Math.min(pendingSelection.start - markdownEditBodyStartOffset, markdownEditBody.length),
-        ),
-        end: Math.max(
-          0,
-          Math.min(pendingSelection.end - markdownEditBodyStartOffset, markdownEditBody.length),
-        ),
-      }
+          start: Math.max(
+            0,
+            Math.min(pendingSelection.start - markdownEditBodyStartOffset, markdownEditBody.length),
+          ),
+          end: Math.max(
+            0,
+            Math.min(pendingSelection.end - markdownEditBodyStartOffset, markdownEditBody.length),
+          ),
+        }
       : null;
     const pendingStart = normalizedPendingSelection
       ? Math.min(normalizedPendingSelection.start, normalizedPendingSelection.end)
@@ -10009,37 +9918,39 @@ export const PreviewPanel = ({
     const pendingEnd = normalizedPendingSelection
       ? Math.max(normalizedPendingSelection.start, normalizedPendingSelection.end)
       : null;
-    const bodyCaretIndex = Math.max(
-      0,
-      editCaretIndex - markdownEditBodyStartOffset,
+    const bodyCaretIndex = Math.max(0, editCaretIndex - markdownEditBodyStartOffset);
+    const plainOffset = mapRawIndexToPlainOffset(
+      markdownEditBody,
+      bodyCaretIndex,
+      inlinePreviewMapOptions,
     );
-    const plainOffset = mapRawIndexToPlainOffset(markdownEditBody, bodyCaretIndex, inlinePreviewMapOptions);
     const pendingSelectionToken =
       typeof pendingStart === "number" && typeof pendingEnd === "number"
         ? resolveInlinePreviewTokenAt(markdownEditBody, pendingStart, inlinePreviewMapOptions)
         : null;
-    const canUsePendingTokenVisibleSelection =
-      Boolean(
-        pendingSelectionToken &&
-          pendingSelectionToken.rawStart === pendingStart &&
-          pendingSelectionToken.rawEnd === pendingEnd,
-      );
+    const canUsePendingTokenVisibleSelection = Boolean(
+      pendingSelectionToken &&
+      pendingSelectionToken.rawStart === pendingStart &&
+      pendingSelectionToken.rawEnd === pendingEnd,
+    );
     const pendingTokenVisibleStart = canUsePendingTokenVisibleSelection
-      ? pendingSelectionToken?.visibleStart ?? null
+      ? (pendingSelectionToken?.visibleStart ?? null)
       : null;
     const pendingTokenVisibleEnd = canUsePendingTokenVisibleSelection
-      ? pendingSelectionToken?.visibleEnd ?? null
+      ? (pendingSelectionToken?.visibleEnd ?? null)
       : null;
-    const plainSelectionStart = typeof pendingStart === "number"
-      ? typeof pendingTokenVisibleStart === "number"
-        ? pendingTokenVisibleStart
-        : mapRawIndexToPlainOffset(markdownEditBody, pendingStart, inlinePreviewMapOptions)
-      : null;
-    const plainSelectionEnd = typeof pendingEnd === "number"
-      ? typeof pendingTokenVisibleEnd === "number"
-        ? pendingTokenVisibleEnd
-        : mapRawIndexToPlainOffset(markdownEditBody, pendingEnd, inlinePreviewMapOptions)
-      : null;
+    const plainSelectionStart =
+      typeof pendingStart === "number"
+        ? typeof pendingTokenVisibleStart === "number"
+          ? pendingTokenVisibleStart
+          : mapRawIndexToPlainOffset(markdownEditBody, pendingStart, inlinePreviewMapOptions)
+        : null;
+    const plainSelectionEnd =
+      typeof pendingEnd === "number"
+        ? typeof pendingTokenVisibleEnd === "number"
+          ? pendingTokenVisibleEnd
+          : mapRawIndexToPlainOffset(markdownEditBody, pendingEnd, inlinePreviewMapOptions)
+        : null;
     const desiredScrollTop = scrollStateRef.current.top;
     const desiredScrollLeft = scrollStateRef.current.left;
     const enforceScroll = () => {
@@ -10089,25 +10000,19 @@ export const PreviewPanel = ({
     isCodeMode,
   ]);
 
-  const handleCodeCopyClick = useCallback(
-    (event: MouseEvent<HTMLButtonElement>) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const codeBlock = event.currentTarget.closest(".md-code-block");
-      const code = codeBlock?.querySelector("pre > code")?.textContent ?? "";
-      if (!code) {
-        return;
-      }
-      void copyTextToClipboard(code);
-    },
-    [],
-  );
+  const handleCodeCopyClick = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const codeBlock = event.currentTarget.closest(".md-code-block");
+    const code = codeBlock?.querySelector("pre > code")?.textContent ?? "";
+    if (!code) {
+      return;
+    }
+    void copyTextToClipboard(code);
+  }, []);
 
   const renderMarkdownCodePre = useCallback(
-    ({
-      children,
-      ...preProps
-    }: ComponentPropsWithoutRef<"pre"> & { children?: ReactNode }) => {
+    ({ children, ...preProps }: ComponentPropsWithoutRef<"pre"> & { children?: ReactNode }) => {
       const svgSource = extractSvgCodeBlockSource(children);
       if (svgSource !== null) {
         return <SvgPreviewBlock source={svgSource} className="md-svg-preview-block" />;
@@ -10164,61 +10069,52 @@ export const PreviewPanel = ({
     [handleCodeCopyClick],
   );
 
-  const handleMarkdownEditorMouseDown = useCallback(
-    (event: MouseEvent<HTMLDivElement>) => {
-      const target = resolveEventElement(event.target);
-      if (!target?.closest(".md-code-copy-button")) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-    },
-    [],
-  );
+  const handleMarkdownEditorMouseDown = useCallback((event: MouseEvent<HTMLDivElement>) => {
+    const target = resolveEventElement(event.target);
+    if (!target?.closest(".md-code-copy-button")) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+  }, []);
 
-  const handleMarkdownEditorClick = useCallback(
-    (event: MouseEvent<HTMLDivElement>) => {
-      const target = resolveEventElement(event.target);
-      const copyButton = target?.closest(".md-code-copy-button");
-      if (!copyButton) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-      const codeBlock = copyButton.closest(".md-code-block");
-      const code = codeBlock?.querySelector("pre > code")?.textContent ?? "";
-      if (!code) {
-        return;
-      }
-      void copyTextToClipboard(code);
-    },
-    [],
-  );
+  const handleMarkdownEditorClick = useCallback((event: MouseEvent<HTMLDivElement>) => {
+    const target = resolveEventElement(event.target);
+    const copyButton = target?.closest(".md-code-copy-button");
+    if (!copyButton) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const codeBlock = copyButton.closest(".md-code-block");
+    const code = codeBlock?.querySelector("pre > code")?.textContent ?? "";
+    if (!code) {
+      return;
+    }
+    void copyTextToClipboard(code);
+  }, []);
 
-  const handlePreviewLinkClick = useCallback(
-    (event: MouseEvent<HTMLDivElement>) => {
-      const link = resolveAnchorTarget(event.target);
-      if (!link) {
-        return;
-      }
-      const href = link.getAttribute("href")?.trim() ?? "";
-      if (event.button !== 0) {
+  const handlePreviewLinkClick = useCallback((event: MouseEvent<HTMLDivElement>) => {
+    const link = resolveAnchorTarget(event.target);
+    if (!link) {
+      return;
+    }
+    const href = link.getAttribute("href")?.trim() ?? "";
+    if (event.button !== 0) {
+      event.preventDefault();
+      return;
+    }
+    if (isModifierClick(event)) {
+      const safeHref = resolveSafeHref(href);
+      if (safeHref) {
         event.preventDefault();
+        event.stopPropagation();
+        void openUrl(safeHref);
         return;
       }
-      if (isModifierClick(event)) {
-        const safeHref = resolveSafeHref(href);
-        if (safeHref) {
-          event.preventDefault();
-          event.stopPropagation();
-          void openUrl(safeHref);
-          return;
-        }
-      }
-      event.preventDefault();
-    },
-    [],
-  );
+    }
+    event.preventDefault();
+  }, []);
 
   const handlePreviewClick = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
@@ -10240,9 +10136,7 @@ export const PreviewPanel = ({
       }
       if (isModifierClick(event)) {
         const link = resolveAnchorTarget(event.target);
-        const safeHref = link
-          ? resolveSafeHref(link.getAttribute("href")?.trim() ?? "")
-          : null;
+        const safeHref = link ? resolveSafeHref(link.getAttribute("href")?.trim() ?? "") : null;
         if (safeHref) {
           return;
         }
@@ -10251,14 +10145,12 @@ export const PreviewPanel = ({
       const bodyStartOffset = previewFrontmatter.hasFrontmatter
         ? previewFrontmatter.bodyStartOffset
         : 0;
-      const markdownSource = previewFrontmatter.hasFrontmatter
-        ? previewFrontmatter.body
-        : preview;
+      const markdownSource = previewFrontmatter.hasFrontmatter ? previewFrontmatter.body : preview;
       let pendingMarkdownTokenSelection: { start: number; end: number } | null = null;
       let caretIndex = isCodeMode
         ? preview.length === 0
           ? 0
-        : null
+          : null
         : markdownSource.length === 0
           ? bodyStartOffset
           : null;
@@ -10275,19 +10167,23 @@ export const PreviewPanel = ({
         const resolvedIndex = isCodeMode
           ? resolveRawCaretIndex(selectionContainer, range)
           : resolveMarkdownCaretIndex(selectionContainer, markdownSource, range, {
-            hideInlineSyntaxDelimiters: true,
-            collapseChainedClozeVariants: true,
-            supportDoublePercentTokens: true,
-          });
-        if (typeof resolvedIndex === "number") {
-          if (isCodeMode) {
-            caretIndex = resolvedIndex;
-          } else {
-            const tokenMatch = resolveInlinePreviewTokenCoveringRawIndex(markdownSource, resolvedIndex, {
               hideInlineSyntaxDelimiters: true,
               collapseChainedClozeVariants: true,
               supportDoublePercentTokens: true,
             });
+        if (typeof resolvedIndex === "number") {
+          if (isCodeMode) {
+            caretIndex = resolvedIndex;
+          } else {
+            const tokenMatch = resolveInlinePreviewTokenCoveringRawIndex(
+              markdownSource,
+              resolvedIndex,
+              {
+                hideInlineSyntaxDelimiters: true,
+                collapseChainedClozeVariants: true,
+                supportDoublePercentTokens: true,
+              },
+            );
             if (tokenMatch) {
               pendingMarkdownTokenSelection = {
                 start: bodyStartOffset + tokenMatch.rawStart,
@@ -10400,9 +10296,7 @@ export const PreviewPanel = ({
       if ((nativeEvent.inputType ?? "") !== "insertText") {
         return;
       }
-      const rawToken = typeof nativeEvent.data === "string"
-        ? nativeEvent.data
-        : "";
+      const rawToken = typeof nativeEvent.data === "string" ? nativeEvent.data : "";
       if (!applyRawFormattingToken(editor, rawToken)) {
         return;
       }
@@ -10542,10 +10436,7 @@ export const PreviewPanel = ({
       syncActiveMarkdownHeading();
       return true;
     },
-    [
-      syncActiveMarkdownHeading,
-      syncMarkdownDraftFromEditor,
-    ],
+    [syncActiveMarkdownHeading, syncMarkdownDraftFromEditor],
   );
 
   const handleMarkdownEditorBeforeInput = useCallback(
@@ -10564,9 +10455,7 @@ export const PreviewPanel = ({
       }
       const inputType = nativeEvent.inputType ?? "";
       if (inputType === "insertText") {
-        const rawToken = typeof nativeEvent.data === "string"
-          ? nativeEvent.data
-          : "";
+        const rawToken = typeof nativeEvent.data === "string" ? nativeEvent.data : "";
         if (!applyMarkdownFormattingToken(editor, rawToken)) {
           return;
         }
@@ -10578,18 +10467,13 @@ export const PreviewPanel = ({
       }
 
       const result = applyMarkdownEditorCommand(
-        inputType === "insertLineBreak"
-          ? handleListSoftBreak
-          : handleListEnterExitToRootParagraph,
+        inputType === "insertLineBreak" ? handleListSoftBreak : handleListEnterExitToRootParagraph,
       );
       if (result.handled) {
         event.preventDefault();
       }
     },
-    [
-      applyMarkdownFormattingToken,
-      applyMarkdownEditorCommand,
-    ],
+    [applyMarkdownFormattingToken, applyMarkdownEditorCommand],
   );
 
   const handleMarkdownEditorKeyDown = useCallback(
@@ -10642,52 +10526,55 @@ export const PreviewPanel = ({
     ],
   );
 
-  const handleMarkdownInput = useCallback((event: FormEvent<HTMLDivElement>) => {
-    const sourceCodeElement = resolveEditableCodeElementNearSelection(event.target);
-    if (sourceCodeElement) {
-      queueEditableCodeRehighlight({ codeElement: sourceCodeElement });
-    }
-    syncActiveMarkdownHeading();
-    const currentBody = syncMarkdownDraftFromEditor();
-    // Browsers can finalize caret relocation for Enter/newline one frame later.
-    // Re-sync active-line state to avoid stale raw-marker activation on the previous line.
-    window.requestAnimationFrame(() => {
+  const handleMarkdownInput = useCallback(
+    (event: FormEvent<HTMLDivElement>) => {
+      const sourceCodeElement = resolveEditableCodeElementNearSelection(event.target);
+      if (sourceCodeElement) {
+        queueEditableCodeRehighlight({ codeElement: sourceCodeElement });
+      }
       syncActiveMarkdownHeading();
-      syncMarkdownDraftFromEditor();
-    });
-    if (legacyMarkdownLinkPickerState) {
-      return;
-    }
-    const editor = markdownEditorRef.current;
-    if (!editor) {
-      return;
-    }
-    const caretIndex = resolveMarkdownCaretIndex(
-      editor,
-      currentBody,
-      null,
-      MARKDOWN_EDITOR_OFFSET_MAP_OPTIONS,
-    );
-    if (typeof caretIndex !== "number") {
-      return;
-    }
-    const pickerTrigger = resolveTypedLinkPickerTriggerAtCaret(currentBody, caretIndex);
-    if (pickerTrigger) {
-      openLegacyMarkdownLinkPicker(
-        pickerTrigger.mode,
-        pickerTrigger.replaceRange,
+      const currentBody = syncMarkdownDraftFromEditor();
+      // Browsers can finalize caret relocation for Enter/newline one frame later.
+      // Re-sync active-line state to avoid stale raw-marker activation on the previous line.
+      window.requestAnimationFrame(() => {
+        syncActiveMarkdownHeading();
+        syncMarkdownDraftFromEditor();
+      });
+      if (legacyMarkdownLinkPickerState) {
+        return;
+      }
+      const editor = markdownEditorRef.current;
+      if (!editor) {
+        return;
+      }
+      const caretIndex = resolveMarkdownCaretIndex(
+        editor,
         currentBody,
-        pickerTrigger.initialQuery,
+        null,
+        MARKDOWN_EDITOR_OFFSET_MAP_OPTIONS,
       );
-    }
-  }, [
-    legacyMarkdownLinkPickerState,
-    openLegacyMarkdownLinkPicker,
-    queueEditableCodeRehighlight,
-    resolveEditableCodeElementNearSelection,
-    syncActiveMarkdownHeading,
-    syncMarkdownDraftFromEditor,
-  ]);
+      if (typeof caretIndex !== "number") {
+        return;
+      }
+      const pickerTrigger = resolveTypedLinkPickerTriggerAtCaret(currentBody, caretIndex);
+      if (pickerTrigger) {
+        openLegacyMarkdownLinkPicker(
+          pickerTrigger.mode,
+          pickerTrigger.replaceRange,
+          currentBody,
+          pickerTrigger.initialQuery,
+        );
+      }
+    },
+    [
+      legacyMarkdownLinkPickerState,
+      openLegacyMarkdownLinkPicker,
+      queueEditableCodeRehighlight,
+      resolveEditableCodeElementNearSelection,
+      syncActiveMarkdownHeading,
+      syncMarkdownDraftFromEditor,
+    ],
+  );
 
   const handleHybridBodyChange = useCallback(
     (nextBody: string) => {
@@ -10703,32 +10590,22 @@ export const PreviewPanel = ({
   );
 
   const renderHybridMarkdownPreview = useCallback(
-    (
-      sourceMarkdown: string,
-      options?: HybridMarkdownPreviewRenderOptions,
-    ) => {
+    (sourceMarkdown: string, options?: HybridMarkdownPreviewRenderOptions) => {
       const inlineHighlightOptions: InlineSyntaxHighlightOptions | undefined =
         options?.collapseClozeVariantsInView || options?.hideInlineSyntaxDelimiters
           ? {
-            collapseChainedClozeVariants: options?.collapseClozeVariantsInView === true,
-            hideInlineSyntaxDelimiters: options?.hideInlineSyntaxDelimiters === true,
-          }
+              collapseChainedClozeVariants: options?.collapseClozeVariantsInView === true,
+              hideInlineSyntaxDelimiters: options?.hideInlineSyntaxDelimiters === true,
+            }
           : undefined;
       const listNormalizedMarkdown = options?.normalizeLooseNestedListMarkers
         ? normalizeLooseNestedUnorderedListMarkersForRender(sourceMarkdown)
         : sourceMarkdown;
       const previewMarkdown = normalizeInlineFormattingForPreview(listNormalizedMarkdown);
-      const mediaPreview = buildMarkdownMediaPreviewSource(
-        previewMarkdown,
-        "preview-panel-hybrid",
-      );
+      const mediaPreview = buildMarkdownMediaPreviewSource(previewMarkdown, "preview-panel-hybrid");
       return (
         <ReactMarkdown
-          remarkPlugins={[
-            remarkGfm,
-            remarkPreserveSoftBreaks,
-            remarkPreserveOrderedListDelimiters,
-          ]}
+          remarkPlugins={[remarkGfm, remarkPreserveSoftBreaks, remarkPreserveOrderedListDelimiters]}
           rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
           components={{
             h1: ({ node: _node, children, ...props }) => (
@@ -10793,9 +10670,10 @@ export const PreviewPanel = ({
                 return <ol {...props} />;
               }
               const startRaw = props.start;
-              const startValue = typeof startRaw === "number"
-                ? startRaw
-                : Number.parseInt(String(startRaw ?? "1"), 10);
+              const startValue =
+                typeof startRaw === "number"
+                  ? startRaw
+                  : Number.parseInt(String(startRaw ?? "1"), 10);
               const previous = Number.isNaN(startValue) ? 0 : Math.max(0, startValue - 1);
               const style = {
                 ...(props.style ?? {}),
@@ -10829,7 +10707,11 @@ export const PreviewPanel = ({
             },
             blockquote: ({ node: _node, children, ...props }) => (
               <blockquote {...props}>
-                {renderHighlightedInlineSyntaxChildren(children, "blockquote", inlineHighlightOptions)}
+                {renderHighlightedInlineSyntaxChildren(
+                  children,
+                  "blockquote",
+                  inlineHighlightOptions,
+                )}
               </blockquote>
             ),
             pre: ({ node: _node, children, ...props }) =>
@@ -10875,16 +10757,20 @@ export const PreviewPanel = ({
                 })}
               </td>
             ),
-            img: ({ node: _node, ...props }) => (
-              <img {...props} draggable={false} />
-            ),
+            img: ({ node: _node, ...props }) => <img {...props} draggable={false} />,
           }}
         >
           {mediaPreview.markdown}
         </ReactMarkdown>
       );
     },
-    [renderMarkdownCodePre, selectedFile?.relative_path, sourceRelativePath, vaultPath, vaultPngAssets],
+    [
+      renderMarkdownCodePre,
+      selectedFile?.relative_path,
+      sourceRelativePath,
+      vaultPath,
+      vaultPngAssets,
+    ],
   );
 
   const markdownSource = isCodeMode
@@ -10895,26 +10781,26 @@ export const PreviewPanel = ({
   const normalizedMarkdownSource = isCodeMode
     ? preview
     : normalizeTableSpacingForRender(markdownSource);
-  const fenceNormalizedMarkdownSource = isCodeMode || !isMarkdownMode
-    ? normalizedMarkdownSource
-    : normalizeFenceDisplayForRender(normalizedMarkdownSource);
-  const listNormalizedMarkdownSource = isCodeMode || !isMarkdownMode
-    ? fenceNormalizedMarkdownSource
-    : normalizeLooseNestedUnorderedListMarkersForMarkdownView(fenceNormalizedMarkdownSource);
-  const quoteHashNormalizedMarkdownSource = isCodeMode || !isMarkdownMode
-    ? listNormalizedMarkdownSource
-    : normalizeQuotePrefixedHashLines(listNormalizedMarkdownSource);
+  const fenceNormalizedMarkdownSource =
+    isCodeMode || !isMarkdownMode
+      ? normalizedMarkdownSource
+      : normalizeFenceDisplayForRender(normalizedMarkdownSource);
+  const listNormalizedMarkdownSource =
+    isCodeMode || !isMarkdownMode
+      ? fenceNormalizedMarkdownSource
+      : normalizeLooseNestedUnorderedListMarkersForMarkdownView(fenceNormalizedMarkdownSource);
+  const quoteHashNormalizedMarkdownSource =
+    isCodeMode || !isMarkdownMode
+      ? listNormalizedMarkdownSource
+      : normalizeQuotePrefixedHashLines(listNormalizedMarkdownSource);
   const renderedPreview = isCodeMode
     ? preview
     : isMarkdownMode && resolvedEditEnabled
       ? quoteHashNormalizedMarkdownSource
       : applyInteractionSpacing(quoteHashNormalizedMarkdownSource);
   const markdownViewBlocks = useMemo(
-    () => (
-      isCodeMode
-        ? []
-        : parseMarkdownBlocks(enforceStandaloneMediaBlockBoundaries(renderedPreview))
-    ),
+    () =>
+      isCodeMode ? [] : parseMarkdownBlocks(enforceStandaloneMediaBlockBoundaries(renderedPreview)),
     [isCodeMode, renderedPreview],
   );
   const markdownViewItems = useMemo(() => {
@@ -10989,9 +10875,7 @@ export const PreviewPanel = ({
     return indexById;
   }, [markdownViewBlocks]);
   const canEditMarkdownViewDatabaseBlock = Boolean(
-    canEdit &&
-      previewState === "idle" &&
-      onFrontmatterSave,
+    canEdit && previewState === "idle" && onFrontmatterSave,
   );
   const commitMarkdownViewDatabaseBlock = useCallback(
     async (databaseBlockIndex: number, nextRaw: string) => {
@@ -10999,9 +10883,7 @@ export const PreviewPanel = ({
         return;
       }
       const sourceBlocks = parseMarkdownBlocks(preview);
-      const sourceDatabaseBlocks = sourceBlocks.filter(
-        (block) => block.kind === "database-block",
-      );
+      const sourceDatabaseBlocks = sourceBlocks.filter((block) => block.kind === "database-block");
       const sourceBlock = sourceDatabaseBlocks[databaseBlockIndex];
       if (!sourceBlock) {
         return;
@@ -11026,13 +10908,9 @@ export const PreviewPanel = ({
       if (!editor) {
         return;
       }
-      const sourceBody = normalizeMarkdownViewEditBodyForPersist(
-        serializeMarkdownFromHtml(editor),
-      );
+      const sourceBody = normalizeMarkdownViewEditBodyForPersist(serializeMarkdownFromHtml(editor));
       const sourceBlocks = parseMarkdownBlocks(sourceBody);
-      const sourceDatabaseBlocks = sourceBlocks.filter(
-        (block) => block.kind === "database-block",
-      );
+      const sourceDatabaseBlocks = sourceBlocks.filter((block) => block.kind === "database-block");
       const sourceBlock = sourceDatabaseBlocks[databaseBlockIndex];
       if (!sourceBlock) {
         return;
@@ -11070,9 +10948,7 @@ export const PreviewPanel = ({
         return;
       }
       const sourceBlocks = parseMarkdownBlocks(preview);
-      const sourceCanvasBlocks = sourceBlocks.filter(
-        (block) => block.kind === "canvas-block",
-      );
+      const sourceCanvasBlocks = sourceBlocks.filter((block) => block.kind === "canvas-block");
       const sourceBlock = sourceCanvasBlocks[canvasBlockIndex];
       if (!sourceBlock) {
         return;
@@ -11094,13 +10970,9 @@ export const PreviewPanel = ({
       if (!editor) {
         return;
       }
-      const sourceBody = normalizeMarkdownViewEditBodyForPersist(
-        serializeMarkdownFromHtml(editor),
-      );
+      const sourceBody = normalizeMarkdownViewEditBodyForPersist(serializeMarkdownFromHtml(editor));
       const sourceBlocks = parseMarkdownBlocks(sourceBody);
-      const sourceCanvasBlocks = sourceBlocks.filter(
-        (block) => block.kind === "canvas-block",
-      );
+      const sourceCanvasBlocks = sourceBlocks.filter((block) => block.kind === "canvas-block");
       const sourceBlock = sourceCanvasBlocks[canvasBlockIndex];
       if (!sourceBlock) {
         return;
@@ -11132,9 +11004,7 @@ export const PreviewPanel = ({
     },
     [canEditMarkdownViewDatabaseBlock, editDraft, onEditChange, onFrontmatterSave],
   );
-  const hasVisiblePreviewContent = isCodeMode
-    ? preview.length > 0
-    : markdownSource.length > 0;
+  const hasVisiblePreviewContent = isCodeMode ? preview.length > 0 : markdownSource.length > 0;
   const isEditModeActive = resolvedEditEnabled;
   const frontmatterPanelSource = useMemo(() => {
     if (previewFrontmatter.hasFrontmatter && !previewFrontmatter.error) {
@@ -11175,33 +11045,23 @@ export const PreviewPanel = ({
     editFrontmatter.properties,
     editDraft,
   ]);
-  const showFrontmatterPanel = !isCodeMode &&
-    previewState === "idle" &&
-    frontmatterPanelSource !== null;
+  const showFrontmatterPanel =
+    !isCodeMode && previewState === "idle" && frontmatterPanelSource !== null;
   const canUseHybridMarkdownEditor = Boolean(
-    isHybridMode &&
-      canEdit &&
-      previewState === "idle" &&
-      !hasFrontmatterError,
+    isHybridMode && canEdit && previewState === "idle" && !hasFrontmatterError,
   );
   const showMarkdownEditor = isMarkdownMode && resolvedEditEnabled;
-  const showHybridMarkdownEditor = Boolean(
-    canUseHybridMarkdownEditor &&
-      resolvedEditEnabled,
-  );
+  const showHybridMarkdownEditor = Boolean(canUseHybridMarkdownEditor && resolvedEditEnabled);
   useEffect(() => {
     const previousEditorMode = previousEditorModeRef.current;
-    if (
-      isEditing &&
-      previousEditorMode === "markdown" &&
-      editorMode === "code"
-    ) {
-      const normalizedBody = normalizeLooseNestedUnorderedListMarkersForMarkdownView(markdownEditBody);
+    if (isEditing && previousEditorMode === "markdown" && editorMode === "code") {
+      const normalizedBody =
+        normalizeLooseNestedUnorderedListMarkersForMarkdownView(markdownEditBody);
       const nextValue = composeMarkdownWithBody(
         editDraft,
         normalizeMarkdownViewEditBodyForPersist(normalizedBody),
         {
-        bodyMayContainFrontmatter: false,
+          bodyMayContainFrontmatter: false,
         },
       );
       if (nextValue !== editDraft) {
@@ -11241,9 +11101,9 @@ export const PreviewPanel = ({
       if (!encodedRaw) {
         return;
       }
-      const resolvedIndex = resolveDatabaseBlockIndex(
-        host.getAttribute("data-md-database-block-index"),
-      ) ?? fallbackIndex;
+      const resolvedIndex =
+        resolveDatabaseBlockIndex(host.getAttribute("data-md-database-block-index")) ??
+        fallbackIndex;
       fallbackIndex = Math.max(fallbackIndex, resolvedIndex + 1);
       host.setAttribute("data-md-database-block-index", String(resolvedIndex));
       host.setAttribute("data-md-inline-line", "true");
@@ -11295,9 +11155,9 @@ export const PreviewPanel = ({
       if (!encodedRaw) {
         return;
       }
-      const resolvedIndex = resolveDatabaseBlockIndex(
-        host.getAttribute("data-md-canvas-block-index"),
-      ) ?? canvasFallbackIndex;
+      const resolvedIndex =
+        resolveDatabaseBlockIndex(host.getAttribute("data-md-canvas-block-index")) ??
+        canvasFallbackIndex;
       canvasFallbackIndex = Math.max(canvasFallbackIndex, resolvedIndex + 1);
       host.setAttribute("data-md-canvas-block-index", String(resolvedIndex));
       host.setAttribute("data-md-inline-line", "true");
@@ -11342,32 +11202,23 @@ export const PreviewPanel = ({
     vaultPath,
   ]);
   const shouldAutoManageRawCodeEditSession = Boolean(
-    isCodeMode &&
-      canEdit &&
-      selectedFile &&
-      previewState === "idle",
+    isCodeMode && canEdit && selectedFile && previewState === "idle",
   );
   const disableLegacyPreviewClick = isHybridMode;
   const canToggleEditMode = Boolean(
-    !isHybridMode &&
-      canEdit &&
-      selectedFile &&
-      previewState === "idle" &&
-      documentMode !== "write",
+    !isHybridMode && canEdit && selectedFile && previewState === "idle" && documentMode !== "write",
   );
   const renderMarkdownViewBlock = useCallback(
     (block: MarkdownBlock, keyPrefix: string) => {
       const cardGroupId = block.meta?.cardGroupId;
       const cardGroupRole = block.meta?.cardGroupRole;
       const wrapperClassName = `preview-markdown-view-block preview-markdown-view-block-${block.kind}`;
-      const blockPreviewSource = block.kind === "help-block"
-        ? normalizeHelpBlockPreviewSource(block.raw)
-        : (
-          block.kind === "card-start" ||
-            block.kind === "card-end"
-        )
-          ? normalizeCardBlockSource(block.raw)
-        : block.raw;
+      const blockPreviewSource =
+        block.kind === "help-block"
+          ? normalizeHelpBlockPreviewSource(block.raw)
+          : block.kind === "card-start" || block.kind === "card-end"
+            ? normalizeCardBlockSource(block.raw)
+            : block.raw;
       if (block.kind === "database-block") {
         const databaseBlockIndex = markdownViewDatabaseBlockIndexById.get(block.id) ?? -1;
         return (
@@ -11498,18 +11349,13 @@ export const PreviewPanel = ({
       if (editorMode === nextEditorMode) {
         return;
       }
-      if (
-        !isHybridMode &&
-        isEditing &&
-        showMarkdownEditor &&
-        nextEditorMode === "code"
-      ) {
+      if (!isHybridMode && isEditing && showMarkdownEditor && nextEditorMode === "code") {
         syncMarkdownDraftFromEditor();
         applyLegacyUnorderedListAutocorrectionFromEditor();
         pendingLegacyUnorderedListAutocorrectRef.current = false;
       }
       if (isHybridMode) {
-        if (!await commitHybridEditIfNeeded()) {
+        if (!(await commitHybridEditIfNeeded())) {
           return;
         }
       }
@@ -11535,14 +11381,14 @@ export const PreviewPanel = ({
   }, [canToggleEditMode, onToggleEditEnabled]);
 
   const handleWriteCancelClick = useCallback(async () => {
-    if (isHybridMode && !await discardHybridEditIfNeeded()) {
+    if (isHybridMode && !(await discardHybridEditIfNeeded())) {
       return;
     }
     onWriteCancel?.();
   }, [discardHybridEditIfNeeded, isHybridMode, onWriteCancel]);
 
   const handleWriteSaveClick = useCallback(async () => {
-    if (isHybridMode && !await commitHybridEditIfNeeded()) {
+    if (isHybridMode && !(await commitHybridEditIfNeeded())) {
       return;
     }
     if (isHybridMode) {
@@ -11559,9 +11405,7 @@ export const PreviewPanel = ({
   }, [commitHybridEditIfNeeded, isHybridMode]);
 
   const handleToggleFrontmatterPanelCollapsed = useCallback(() => {
-    setUserFrontmatterCollapsed(
-      (current) => !(current ?? isNarrowFrontmatterViewport),
-    );
+    setUserFrontmatterCollapsed((current) => !(current ?? isNarrowFrontmatterViewport));
   }, [isNarrowFrontmatterViewport]);
 
   const handleMarkdownTabSelect = useCallback(
@@ -11647,9 +11491,11 @@ export const PreviewPanel = ({
 
   const handleMarkdownTabDragOver = useCallback(
     (event: DragEvent<HTMLDivElement>, targetPath: string) => {
-      const sourcePath = dragMarkdownTabPath || readInternalDragText(event, {
-        channel: DRAG_CHANNELS.PREVIEW_MARKDOWN_TAB,
-      });
+      const sourcePath =
+        dragMarkdownTabPath ||
+        readInternalDragText(event, {
+          channel: DRAG_CHANNELS.PREVIEW_MARKDOWN_TAB,
+        });
       if (!isMarkdownTabReorderEnabled || !sourcePath) {
         return;
       }
@@ -11670,11 +11516,7 @@ export const PreviewPanel = ({
         };
       });
     },
-    [
-      dragMarkdownTabPath,
-      isMarkdownTabReorderEnabled,
-      resolveMarkdownTabDropPosition,
-    ],
+    [dragMarkdownTabPath, isMarkdownTabReorderEnabled, resolveMarkdownTabDropPosition],
   );
 
   const handleMarkdownTabDragLeave = useCallback(
@@ -11693,9 +11535,11 @@ export const PreviewPanel = ({
 
   const handleMarkdownTabDrop = useCallback(
     (event: DragEvent<HTMLDivElement>, targetPath: string) => {
-      const sourcePath = dragMarkdownTabPath || readInternalDragText(event, {
-        channel: DRAG_CHANNELS.PREVIEW_MARKDOWN_TAB,
-      });
+      const sourcePath =
+        dragMarkdownTabPath ||
+        readInternalDragText(event, {
+          channel: DRAG_CHANNELS.PREVIEW_MARKDOWN_TAB,
+        });
       if (!isMarkdownTabReorderEnabled || !sourcePath) {
         endInternalDrag(DRAG_CHANNELS.PREVIEW_MARKDOWN_TAB);
         return;
@@ -11775,7 +11619,9 @@ export const PreviewPanel = ({
     if (!useFolderRowMode || !activeMarkdownTabFolderLabel) {
       return markdownTabDisplayInfos;
     }
-    return markdownTabDisplayInfos.filter((tab) => tab.folderLabel === activeMarkdownTabFolderLabel);
+    return markdownTabDisplayInfos.filter(
+      (tab) => tab.folderLabel === activeMarkdownTabFolderLabel,
+    );
   }, [activeMarkdownTabFolderLabel, markdownTabDisplayInfos, useFolderRowMode]);
   const resolvedFolderButtonWidth = useMemo(() => {
     if (markdownTabFolderEntries.length === 0) {
@@ -11822,7 +11668,9 @@ export const PreviewPanel = ({
         return;
       }
 
-      const nextFolderTabs = markdownTabDisplayInfos.filter((tab) => tab.folderLabel === folderLabel);
+      const nextFolderTabs = markdownTabDisplayInfos.filter(
+        (tab) => tab.folderLabel === folderLabel,
+      );
       if (nextFolderTabs.length === 0) {
         return;
       }
@@ -11841,10 +11689,7 @@ export const PreviewPanel = ({
   );
 
   const activeMarkdownTab = useMemo(
-    () =>
-      markdownTabs.find((tab) => tab.path === activeMarkdownTabPath) ??
-      markdownTabs[0] ??
-      null,
+    () => markdownTabs.find((tab) => tab.path === activeMarkdownTabPath) ?? markdownTabs[0] ?? null,
     [activeMarkdownTabPath, markdownTabs],
   );
 
@@ -11909,11 +11754,12 @@ export const PreviewPanel = ({
     (event: MouseEvent<HTMLDivElement>) => {
       const stripElement = markdownTabStripRef.current;
       const activeTabElement = stripElement
-        ? Array.from(stripElement.querySelectorAll<HTMLElement>(".preview-tab")).find(
+        ? (Array.from(stripElement.querySelectorAll<HTMLElement>(".preview-tab")).find(
             (element) => element.dataset.previewTabPath === activeMarkdownTab?.path,
-          ) ?? null
+          ) ?? null)
         : null;
-      const activeTabButton = activeTabElement?.querySelector<HTMLElement>(".preview-tab-button") ?? null;
+      const activeTabButton =
+        activeTabElement?.querySelector<HTMLElement>(".preview-tab-button") ?? null;
       openMarkdownTabContextMenu(event, activeMarkdownTab, activeTabButton);
     },
     [activeMarkdownTab, openMarkdownTabContextMenu],
@@ -11922,26 +11768,16 @@ export const PreviewPanel = ({
   const handleMarkdownTabFolderContextMenu = useCallback(
     (event: MouseEvent<HTMLElement>, folderLabel: string) => {
       const tabInFolder =
-        markdownTabDisplayInfos
-          .find(
-            (tab) =>
-              tab.folderLabel === folderLabel &&
-              tab.path === activeMarkdownTabPath,
-          ) ??
-        markdownTabDisplayInfos.find((tab) => tab.folderLabel === folderLabel);
+        markdownTabDisplayInfos.find(
+          (tab) => tab.folderLabel === folderLabel && tab.path === activeMarkdownTabPath,
+        ) ?? markdownTabDisplayInfos.find((tab) => tab.folderLabel === folderLabel);
       if (!tabInFolder) {
         return;
       }
-      const resolvedTab =
-        markdownTabs.find((tab) => tab.path === tabInFolder.path) ?? null;
+      const resolvedTab = markdownTabs.find((tab) => tab.path === tabInFolder.path) ?? null;
       openMarkdownTabContextMenu(event, resolvedTab, event.currentTarget);
     },
-    [
-      activeMarkdownTabPath,
-      markdownTabDisplayInfos,
-      markdownTabs,
-      openMarkdownTabContextMenu,
-    ],
+    [activeMarkdownTabPath, markdownTabDisplayInfos, markdownTabs, openMarkdownTabContextMenu],
   );
 
   const handleOpenMarkdownTabFolder = useCallback(async () => {
@@ -12025,10 +11861,12 @@ export const PreviewPanel = ({
       <div
         ref={markdownTabContextMenuRef}
         className="context-menu"
-        style={markdownTabContextMenuStyle ?? {
-          left: markdownTabContextMenu.x,
-          top: markdownTabContextMenu.y,
-        }}
+        style={
+          markdownTabContextMenuStyle ?? {
+            left: markdownTabContextMenu.x,
+            top: markdownTabContextMenu.y,
+          }
+        }
         onMouseDown={(event) => event.stopPropagation()}
       >
         <button
@@ -12052,8 +11890,7 @@ export const PreviewPanel = ({
       </div>
     </div>
   ) : null;
-  const markdownTabContextMenuPortalTarget =
-    typeof document === "undefined" ? null : document.body;
+  const markdownTabContextMenuPortalTarget = typeof document === "undefined" ? null : document.body;
 
   useEffect(() => {
     if (!isEditing) {
@@ -12075,9 +11912,10 @@ export const PreviewPanel = ({
       if (shouldKeepExternalEditableFocus()) {
         return;
       }
-      const fallbackCaretIndex = typeof lastCaretIndexRef.current === "number"
-        ? Math.max(0, Math.min(lastCaretIndexRef.current, preview.length))
-        : preview.length;
+      const fallbackCaretIndex =
+        typeof lastCaretIndexRef.current === "number"
+          ? Math.max(0, Math.min(lastCaretIndexRef.current, preview.length))
+          : preview.length;
       onEditStart({ caretIndex: fallbackCaretIndex, origin: "raw" });
       return;
     }
@@ -12108,9 +11946,7 @@ export const PreviewPanel = ({
       <div className="panel-header">
         <div>
           <h2>Preview</h2>
-          <p className="muted">
-            {selectedFile?.relative_path ?? "Keine Datei ausgewaehlt"}
-          </p>
+          <p className="muted">{selectedFile?.relative_path ?? "Keine Datei ausgewaehlt"}</p>
         </div>
         <div className="preview-actions">
           <div className="preview-mode-toggle" role="group" aria-label="Editor mode">
@@ -12216,10 +12052,7 @@ export const PreviewPanel = ({
               onContextMenu={handleMarkdownTabRowContextMenu}
             >
               {markdownTabFolderEntries.map((entry) => (
-                <div
-                  key={entry.key}
-                  className="preview-tab-folder-group"
-                >
+                <div key={entry.key} className="preview-tab-folder-group">
                   <button
                     type="button"
                     className={`preview-tab-folder-button ${
@@ -12305,10 +12138,10 @@ export const PreviewPanel = ({
           : markdownTabContextMenuLayer
         : null}
       <div className="panel-body preview-body">
-        {previewState === "error" ? (
-          <div className="error">{previewError}</div>
-        ) : null}
-        {previewState === "idle" && !isCodeMode && previewFrontmatter.hasFrontmatter &&
+        {previewState === "error" ? <div className="error">{previewError}</div> : null}
+        {previewState === "idle" &&
+        !isCodeMode &&
+        previewFrontmatter.hasFrontmatter &&
         previewFrontmatter.error ? (
           <section className="frontmatter-panel frontmatter-panel-error" aria-label="Eigenschaften">
             <div className="frontmatter-header">
@@ -12353,16 +12186,14 @@ export const PreviewPanel = ({
                     sourceMarkdown={frontmatterPanelSource?.sourceMarkdown ?? preview}
                     properties={frontmatterPanelSource?.properties ?? previewFrontmatter.properties}
                     showPropertiesPanel={frontmatterPanelSource?.showPropertiesPanel ?? true}
-                    coverInteractive={canEdit && previewState === "idle" && documentMode !== "write"}
+                    coverInteractive={
+                      canEdit && previewState === "idle" && documentMode !== "write"
+                    }
                     sourceRelativePath={sourceRelativePath ?? selectedFile?.relative_path}
                     vaultFiles={vaultFiles}
                     vaultPngAssets={vaultPngAssets}
                     vaultPath={vaultPath}
-                    canEdit={
-                      canEdit &&
-                      previewState === "idle" &&
-                      documentMode !== "write"
-                    }
+                    canEdit={canEdit && previewState === "idle" && documentMode !== "write"}
                     isCollapsed={effectiveFrontmatterPanelCollapsed}
                     onToggleCollapsed={handleToggleFrontmatterPanelCollapsed}
                     onFrontmatterSave={onFrontmatterSave}
@@ -12397,7 +12228,8 @@ export const PreviewPanel = ({
                   onChange={handleHybridBodyChange}
                   onDirtyChange={onHybridDirtyChange}
                   renderPreview={(source) =>
-                    renderHybridMarkdownPreview(normalizeTableSpacingForRender(source))}
+                    renderHybridMarkdownPreview(normalizeTableSpacingForRender(source))
+                  }
                 />
               </div>
             ) : isEditing && (isCodeMode || showMarkdownEditor) ? (
@@ -12427,7 +12259,9 @@ export const PreviewPanel = ({
                   {showFrontmatterPanel ? (
                     <FrontmatterPropertiesPanel
                       sourceMarkdown={frontmatterPanelSource?.sourceMarkdown ?? preview}
-                      properties={frontmatterPanelSource?.properties ?? previewFrontmatter.properties}
+                      properties={
+                        frontmatterPanelSource?.properties ?? previewFrontmatter.properties
+                      }
                       showPropertiesPanel={frontmatterPanelSource?.showPropertiesPanel ?? true}
                       coverInteractive={canEdit && previewState === "idle" && !isEditing}
                       sourceRelativePath={sourceRelativePath ?? selectedFile?.relative_path}
@@ -12532,7 +12366,10 @@ export const PreviewPanel = ({
                         }}
                       >
                         <div className="markdown-hybrid-page-link-picker-search-shell">
-                          <span className="markdown-hybrid-page-link-picker-search-icon" aria-hidden="true">
+                          <span
+                            className="markdown-hybrid-page-link-picker-search-icon"
+                            aria-hidden="true"
+                          >
                             <FrontmatterPropertyIconView icon="link" />
                           </span>
                           <input
@@ -12541,7 +12378,8 @@ export const PreviewPanel = ({
                             className="markdown-hybrid-page-link-picker-search"
                             value={legacyMarkdownLinkPickerState.query}
                             onChange={(event) =>
-                              handleLegacyMarkdownLinkPickerQueryChange(event.currentTarget.value)}
+                              handleLegacyMarkdownLinkPickerQueryChange(event.currentTarget.value)
+                            }
                             onKeyDown={handleLegacyMarkdownLinkPickerSearchKeyDown}
                             placeholder="Search pages..."
                             aria-label="Search pages"
@@ -12549,7 +12387,9 @@ export const PreviewPanel = ({
                             aria-controls="preview-markdown-page-link-picker-listbox"
                             aria-expanded="true"
                             aria-activedescendant={
-                              filteredLegacyPageLinkCandidates[legacyMarkdownLinkPickerState.highlightedIndex]
+                              filteredLegacyPageLinkCandidates[
+                                legacyMarkdownLinkPickerState.highlightedIndex
+                              ]
                                 ? `preview-markdown-page-link-picker-option-${legacyMarkdownLinkPickerState.highlightedIndex}`
                                 : undefined
                             }
@@ -12561,14 +12401,17 @@ export const PreviewPanel = ({
                           role="listbox"
                           aria-label="Vault pages"
                         >
-                          {filteredLegacyPageLinkCandidates.length === 0
-                            ? (
-                              <div className="markdown-hybrid-page-link-picker-empty" aria-live="polite">
-                                No pages found
-                              </div>
-                            )
-                            : filteredLegacyPageLinkCandidates.map((candidate, index) => {
-                              const isActive = index === legacyMarkdownLinkPickerState.highlightedIndex;
+                          {filteredLegacyPageLinkCandidates.length === 0 ? (
+                            <div
+                              className="markdown-hybrid-page-link-picker-empty"
+                              aria-live="polite"
+                            >
+                              No pages found
+                            </div>
+                          ) : (
+                            filteredLegacyPageLinkCandidates.map((candidate, index) => {
+                              const isActive =
+                                index === legacyMarkdownLinkPickerState.highlightedIndex;
                               return (
                                 <button
                                   key={candidate.id}
@@ -12594,10 +12437,15 @@ export const PreviewPanel = ({
                                       };
                                     });
                                   }}
-                                  onClick={() => handleLegacyMarkdownPageLinkSelectCandidate(candidate)}
+                                  onClick={() =>
+                                    handleLegacyMarkdownPageLinkSelectCandidate(candidate)
+                                  }
                                   title={candidate.target}
                                 >
-                                  <span className="markdown-hybrid-page-link-picker-option-icon" aria-hidden="true">
+                                  <span
+                                    className="markdown-hybrid-page-link-picker-option-icon"
+                                    aria-hidden="true"
+                                  >
                                     <FrontmatterPropertyIconView icon="link" />
                                   </span>
                                   <span className="markdown-hybrid-page-link-picker-option-text">
@@ -12612,7 +12460,8 @@ export const PreviewPanel = ({
                                   </span>
                                 </button>
                               );
-                            })}
+                            })
+                          )}
                         </div>
                       </div>
                     )
@@ -12635,7 +12484,9 @@ export const PreviewPanel = ({
                     {showFrontmatterPanel ? (
                       <FrontmatterPropertiesPanel
                         sourceMarkdown={frontmatterPanelSource?.sourceMarkdown ?? preview}
-                        properties={frontmatterPanelSource?.properties ?? previewFrontmatter.properties}
+                        properties={
+                          frontmatterPanelSource?.properties ?? previewFrontmatter.properties
+                        }
                         showPropertiesPanel={frontmatterPanelSource?.showPropertiesPanel ?? true}
                         coverInteractive={false}
                         sourceRelativePath={sourceRelativePath ?? selectedFile?.relative_path}
@@ -12677,10 +12528,10 @@ export const PreviewPanel = ({
                                   block.kind === "database-block"
                                     ? `${block.kind}:${block.startLine}`
                                     : block.kind === "canvas-block"
-                                    ? `${block.kind}:${block.startLine}`
-                                    : block.id
+                                      ? `${block.kind}:${block.startLine}`
+                                      : block.id
                                 }`,
-                              )
+                              ),
                             )}
                           </div>
                         ) : (
@@ -12690,11 +12541,11 @@ export const PreviewPanel = ({
                               item.block.kind === "database-block"
                                 ? `${item.block.kind}:${item.block.startLine}`
                                 : item.block.kind === "canvas-block"
-                                ? `${item.block.kind}:${item.block.startLine}`
-                                : item.block.id
+                                  ? `${item.block.kind}:${item.block.startLine}`
+                                  : item.block.id
                             }`,
                           )
-                        )
+                        ),
                       )}
                     </div>
                   </>

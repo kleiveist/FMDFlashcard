@@ -22,8 +22,7 @@
  */
 
 const isDesktopDesignMode = () =>
-  typeof document !== "undefined" &&
-  document.documentElement.dataset.designMode === "desktop";
+  typeof document !== "undefined" && document.documentElement.dataset.designMode === "desktop";
 
 const DESKTOP_ICON_RADIUS = 1;
 
@@ -178,20 +177,8 @@ export const CardsIcon = () => {
       strokeLinecap={stroke.strokeLinecap}
       strokeLinejoin={stroke.strokeLinejoin}
     >
-      <rect
-        x="5"
-        y="6"
-        width="12"
-        height="7"
-        rx={desktop ? DESKTOP_ICON_RADIUS : 2}
-      />
-      <rect
-        x="7"
-        y="11"
-        width="12"
-        height="7"
-        rx={desktop ? DESKTOP_ICON_RADIUS : 2}
-      />
+      <rect x="5" y="6" width="12" height="7" rx={desktop ? DESKTOP_ICON_RADIUS : 2} />
+      <rect x="7" y="11" width="12" height="7" rx={desktop ? DESKTOP_ICON_RADIUS : 2} />
     </svg>
   );
 };
@@ -209,13 +196,7 @@ export const GridEventIcon = () => {
       strokeLinecap={stroke.strokeLinecap}
       strokeLinejoin={stroke.strokeLinejoin}
     >
-      <rect
-        x="4"
-        y="4"
-        width="16"
-        height="16"
-        rx={desktop ? DESKTOP_ICON_RADIUS : 2}
-      />
+      <rect x="4" y="4" width="16" height="16" rx={desktop ? DESKTOP_ICON_RADIUS : 2} />
       <line x1="4" y1="9" x2="20" y2="9" />
       <line x1="9" y1="9" x2="9" y2="20" />
       <line x1="15" y1="9" x2="15" y2="20" />
@@ -314,13 +295,7 @@ export const KeyboardIcon = () => {
       strokeLinecap={stroke.strokeLinecap}
       strokeLinejoin={stroke.strokeLinejoin}
     >
-      <rect
-        x="3"
-        y="6"
-        width="18"
-        height="12"
-        rx={desktop ? DESKTOP_ICON_RADIUS : 2}
-      />
+      <rect x="3" y="6" width="18" height="12" rx={desktop ? DESKTOP_ICON_RADIUS : 2} />
       <line x1="7" y1="10" x2="17" y2="10" />
       <line x1="7" y1="14" x2="11" y2="14" />
       <line x1="13" y1="14" x2="17" y2="14" />
@@ -341,11 +316,7 @@ export const GlobeIcon = () => {
       strokeLinecap={stroke.strokeLinecap}
       strokeLinejoin={stroke.strokeLinejoin}
     >
-      {desktop ? (
-        <path d="M7 3h10l4 4v10l-4 4H7l-4-4V7z" />
-      ) : (
-        <circle cx="12" cy="12" r="9" />
-      )}
+      {desktop ? <path d="M7 3h10l4 4v10l-4 4H7l-4-4V7z" /> : <circle cx="12" cy="12" r="9" />}
       <line x1="3" y1="12" x2="21" y2="12" />
       <line x1="12" y1="3" x2="12" y2="21" />
       <path d="M5.5 7c4.5 2.5 8.5 2.5 13 0" />

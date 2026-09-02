@@ -3,11 +3,7 @@ import { applyMarkdownFormattingInsertion } from "./markdownFormattingActions";
 
 describe("applyMarkdownFormattingInsertion", () => {
   it("wraps selected text for inline actions", () => {
-    const result = applyMarkdownFormattingInsertion(
-      "Alpha Beta",
-      { start: 6, end: 10 },
-      "****",
-    );
+    const result = applyMarkdownFormattingInsertion("Alpha Beta", { start: 6, end: 10 }, "****");
 
     expect(result.handled).toBe(true);
     expect(result.value).toBe("Alpha **Beta**");
@@ -15,11 +11,7 @@ describe("applyMarkdownFormattingInsertion", () => {
   });
 
   it("inserts a marker pair and places the caret inside for collapsed selections", () => {
-    const result = applyMarkdownFormattingInsertion(
-      "Alpha",
-      { start: 5, end: 5 },
-      "****",
-    );
+    const result = applyMarkdownFormattingInsertion("Alpha", { start: 5, end: 5 }, "****");
 
     expect(result.handled).toBe(true);
     expect(result.value).toBe("Alpha****");
@@ -27,11 +19,7 @@ describe("applyMarkdownFormattingInsertion", () => {
   });
 
   it("applies heading prefixes line-based without losing selected text", () => {
-    const result = applyMarkdownFormattingInsertion(
-      "Alpha Beta",
-      { start: 6, end: 10 },
-      "##",
-    );
+    const result = applyMarkdownFormattingInsertion("Alpha Beta", { start: 6, end: 10 }, "##");
 
     expect(result.handled).toBe(true);
     expect(result.value).toBe("## Alpha Beta");
@@ -61,17 +49,13 @@ describe("applyMarkdownFormattingInsertion", () => {
       { token: "$$", expected: "$Text$" },
       { token: "%", expected: "%Text%" },
       { token: "%%", expected: "%%Text%%" },
-      { token: "\"", expected: "\"Text\"" },
-      { token: "\"\"", expected: "\"Text\"" },
-      { token: "''", expected: "\"Text\"" },
+      { token: '"', expected: '"Text"' },
+      { token: '""', expected: '"Text"' },
+      { token: "''", expected: '"Text"' },
     ];
 
     cases.forEach(({ token, expected }) => {
-      const result = applyMarkdownFormattingInsertion(
-        "Text",
-        { start: 0, end: 4 },
-        token,
-      );
+      const result = applyMarkdownFormattingInsertion("Text", { start: 0, end: 4 }, token);
       expect(result.handled).toBe(true);
       expect(result.value).toBe(expected);
     });

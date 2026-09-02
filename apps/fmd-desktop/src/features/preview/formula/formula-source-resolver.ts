@@ -16,7 +16,9 @@ const fileBelongsToFolder = (relativePath: string, folder: string) => {
   if (!normalizedFolder) {
     return true;
   }
-  return normalizedFilePath === normalizedFolder || normalizedFilePath.startsWith(`${normalizedFolder}/`);
+  return (
+    normalizedFilePath === normalizedFolder || normalizedFilePath.startsWith(`${normalizedFolder}/`)
+  );
 };
 
 export const resolveFormulaSourceRecords = ({
@@ -31,7 +33,9 @@ export const resolveFormulaSourceRecords = ({
   historyRecords?: DatabaseRecord[];
 }) => {
   if (source.type === "current-folder") {
-    return records.filter((record) => fileBelongsToFolder(record.relativePath, currentRecord.folder));
+    return records.filter((record) =>
+      fileBelongsToFolder(record.relativePath, currentRecord.folder),
+    );
   }
 
   if (source.type === "explicit-folder") {
@@ -50,7 +54,8 @@ export const resolveFormulaSourceRecords = ({
       return records;
     }
     return records.filter((record) =>
-      folders.some((path) => fileBelongsToFolder(record.relativePath, path)));
+      folders.some((path) => fileBelongsToFolder(record.relativePath, path)),
+    );
   }
 
   if (source.type === "history") {

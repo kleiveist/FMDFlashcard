@@ -186,10 +186,7 @@ const getFlashcardLegacyPartIdentityPayload = (card: FlashcardPart) => {
   };
 };
 
-const getFlashcardIdentityPayload = (
-  card: Flashcard,
-  context?: FlashcardIdContext,
-) => {
+const getFlashcardIdentityPayload = (card: Flashcard, context?: FlashcardIdContext) => {
   if (card.kind === "composite") {
     return includeVaultIdPayload(
       {
@@ -199,10 +196,7 @@ const getFlashcardIdentityPayload = (
       context,
     );
   }
-  return includeVaultIdPayload(
-    getFlashcardPartIdentityPayload(card),
-    context,
-  );
+  return includeVaultIdPayload(getFlashcardPartIdentityPayload(card), context);
 };
 
 const getFlashcardLegacyIdentityPayload = (card: Flashcard) => {
@@ -215,13 +209,8 @@ const getFlashcardLegacyIdentityPayload = (card: Flashcard) => {
   return getFlashcardLegacyPartIdentityPayload(card);
 };
 
-export const getFlashcardId = (
-  card: Flashcard,
-  context?: FlashcardIdContext,
-) =>
-  `card-${hashString(
-    JSON.stringify(getFlashcardIdentityPayload(card, context)),
-  )}`;
+export const getFlashcardId = (card: Flashcard, context?: FlashcardIdContext) =>
+  `card-${hashString(JSON.stringify(getFlashcardIdentityPayload(card, context)))}`;
 
 const getFlashcardLegacyId = (card: Flashcard) =>
   `card-${hashString(JSON.stringify(getFlashcardLegacyIdentityPayload(card)))}`;
@@ -258,10 +247,7 @@ export const normalizeSpacedRepetitionCardProgress = (
       : typeof progress?.box === "number" && Number.isFinite(progress.box)
         ? progress.box
         : 1;
-  const clampedBoxCanonical = Math.min(
-    MAX_SPACED_REPETITION_BOX,
-    Math.max(1, rawBoxCanonical),
-  );
+  const clampedBoxCanonical = Math.min(MAX_SPACED_REPETITION_BOX, Math.max(1, rawBoxCanonical));
 
   return {
     boxCanonical: clampedBoxCanonical,
@@ -273,10 +259,7 @@ export const normalizeSpacedRepetitionCardProgress = (
       progress?.lastResult === "correct" || progress?.lastResult === "incorrect"
         ? progress.lastResult
         : "neutral",
-    lastReviewedAt:
-      typeof progress?.lastReviewedAt === "string"
-        ? progress.lastReviewedAt
-        : null,
+    lastReviewedAt: typeof progress?.lastReviewedAt === "string" ? progress.lastReviewedAt : null,
   };
 };
 
@@ -316,10 +299,7 @@ export const reconcileSpacedRepetitionUserState = (
   state: SpacedRepetitionUserState,
   activeCardIds: Set<string>,
 ) => {
-  const filtered = filterSpacedRepetitionCardStates(
-    state.cardStates,
-    activeCardIds,
-  );
+  const filtered = filterSpacedRepetitionCardStates(state.cardStates, activeCardIds);
   if (filtered === state.cardStates) {
     return state;
   }
@@ -347,8 +327,7 @@ export const reconcileSpacedRepetitionUserStateById = (
 export const buildActiveSpacedRepetitionCardIdSet = (
   flashcards: Flashcard[],
   context?: FlashcardIdContext,
-) =>
-  new Set(flashcards.map((card) => getFlashcardId(card, context)));
+) => new Set(flashcards.map((card) => getFlashcardId(card, context)));
 
 const shuffleEntries = <T>(entries: T[]) => {
   const copy = [...entries];
@@ -436,11 +415,7 @@ export const buildSpacedRepetitionSession = (
     order === "random"
       ? shuffleEntries(entries)
       : order === "repetition"
-        ? buildWeightedOrder(
-            entries,
-            boxCount,
-            options?.repetitionStrength ?? "medium",
-          )
+        ? buildWeightedOrder(entries, boxCount, options?.repetitionStrength ?? "medium")
         : entries;
 
   return {

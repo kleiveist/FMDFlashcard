@@ -49,16 +49,13 @@ describe("ExamManualScoringPanel", () => {
 
     const headerMain = container.querySelector(".scoring-panel-header-main");
     expect(headerMain).not.toBeNull();
-    const headerMainActions = container.querySelector(
-      ".scoring-panel-header-main-actions",
-    );
+    const headerMainActions = container.querySelector(".scoring-panel-header-main-actions");
     expect(headerMainActions).not.toBeNull();
     const headerActions = container.querySelector(".scoring-panel-header-actions");
 
     const finishButton =
       headerMainActions?.querySelector<HTMLButtonElement>("button.primary.small");
-    const resetButton =
-      headerMainActions?.querySelector<HTMLButtonElement>("button.ghost.small");
+    const resetButton = headerMainActions?.querySelector<HTMLButtonElement>("button.ghost.small");
     expect(finishButton?.textContent).toBe("Go to Correction");
     expect(finishButton?.classList.contains("primary")).toBe(true);
     expect(finishButton?.classList.contains("small")).toBe(true);
@@ -68,9 +65,7 @@ describe("ExamManualScoringPanel", () => {
     expect(headerActions?.querySelector("button.primary.small")).toBeNull();
     expect(headerActions?.querySelector("button.ghost.small")).toBeNull();
     expect(
-      headerActions?.querySelector(
-        'button[aria-label="Copy QA answers for AI evaluation"]',
-      ),
+      headerActions?.querySelector('button[aria-label="Copy QA answers for AI evaluation"]'),
     ).toBeNull();
     expect(container.textContent).not.toContain("SCORING");
     expect(container.querySelector(".exam-task-header-actions")).toBeNull();
@@ -138,14 +133,9 @@ describe("ExamManualScoringPanel", () => {
     );
 
     const leftActions = Array.from(
-      container.querySelectorAll<HTMLButtonElement>(
-        ".scoring-panel-header-main-actions button",
-      ),
+      container.querySelectorAll<HTMLButtonElement>(".scoring-panel-header-main-actions button"),
     );
-    expect(leftActions.map((button) => button.textContent)).toEqual([
-      "Go to Correction",
-      "Reset",
-    ]);
+    expect(leftActions.map((button) => button.textContent)).toEqual(["Go to Correction", "Reset"]);
 
     const headerActions = container.querySelector(".scoring-panel-header-actions");
     const rightButtons = Array.from(
@@ -154,12 +144,8 @@ describe("ExamManualScoringPanel", () => {
     expect(rightButtons.map((button) => button.textContent)).toEqual(["AI"]);
 
     const aiButton = rightButtons[0];
-    expect(aiButton?.getAttribute("aria-label")).toBe(
-      "Copy QA answers for AI evaluation",
-    );
-    expect(aiButton?.getAttribute("title")).toBe(
-      "Copy QA answers for AI evaluation",
-    );
+    expect(aiButton?.getAttribute("aria-label")).toBe("Copy QA answers for AI evaluation");
+    expect(aiButton?.getAttribute("title")).toBe("Copy QA answers for AI evaluation");
 
     act(() => {
       aiButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));

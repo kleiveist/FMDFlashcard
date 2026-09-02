@@ -1,13 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { ExamManualTaskEntry } from "./examSimulationTypes";
-import {
-  buildAiEvaluationMarkdown,
-  hasAiEvaluationQaTasks,
-} from "./aiEvaluationExport";
+import { buildAiEvaluationMarkdown, hasAiEvaluationQaTasks } from "./aiEvaluationExport";
 
-const buildManualEntry = (
-  overrides: Partial<ExamManualTaskEntry> = {},
-): ExamManualTaskEntry =>
+const buildManualEntry = (overrides: Partial<ExamManualTaskEntry> = {}): ExamManualTaskEntry =>
   ({
     taskIndex: 0,
     manualIndex: 0,

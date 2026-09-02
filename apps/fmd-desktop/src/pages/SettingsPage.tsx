@@ -74,10 +74,7 @@ import {
   type SettingsPageId,
   type SettingsSubPageId,
 } from "../features/settings/settingsNavigation";
-import {
-  resolveSettingsNavModel,
-  tSettings,
-} from "../features/settings/settingsI18n";
+import { resolveSettingsNavModel, tSettings } from "../features/settings/settingsI18n";
 import {
   SPACED_REPETITION_BOXES,
   SPACED_REPETITION_PAGE_SIZES,
@@ -176,8 +173,7 @@ const SettingsPanel = ({
   const Icon = SETTINGS_NAV_ICONS[activeItem.icon];
   const title = activeItem.title ?? activeItem.label;
   const hasSubPages = Boolean(activeItem.subPages && activeItem.subPages.length > 1);
-  const resolvedSubPageId =
-    activeSubPageId ?? activeItem.subPages?.[0]?.id ?? null;
+  const resolvedSubPageId = activeSubPageId ?? activeItem.subPages?.[0]?.id ?? null;
   const headingId = `settings-panel-title-${activeItem.id}`;
   const panelId = resolvedSubPageId
     ? `settings-subpage-${activeItem.id}-${resolvedSubPageId}`
@@ -257,15 +253,9 @@ export const SettingsPage = () => {
     vault,
   } = useAppState();
   const { language, setLanguage } = settings;
-  const localizedNavModel = useMemo(
-    () => resolveSettingsNavModel(language),
-    [language],
-  );
+  const localizedNavModel = useMemo(() => resolveSettingsNavModel(language), [language]);
   const localizedNavItems = useMemo(
-    () =>
-      localizedNavModel.filter(
-        (entry): entry is SettingsNavItem => entry.type === "item",
-      ),
+    () => localizedNavModel.filter((entry): entry is SettingsNavItem => entry.type === "item"),
     [localizedNavModel],
   );
   const lastOpenedFile = preview.selectedFile?.relative_path ?? null;
@@ -286,15 +276,9 @@ export const SettingsPage = () => {
   const [activeSubPages, setActiveSubPages] = useState<
     Partial<Record<SettingsPageId, SettingsSubPageId>>
   >(() => buildDefaultSubPages());
-  const isCompactSettings = useMediaQuery(
-    `(max-width: ${SETTINGS_COMPACT_BP - 0.02}px)`,
-    false,
-  );
-  const [compactActiveSectionId, setCompactActiveSectionId] = useState<
-    SettingsPageId | null
-  >(null);
-  const [pendingFocusRequest, setPendingFocusRequest] =
-    useState<SettingsFocusRequest | null>(null);
+  const isCompactSettings = useMediaQuery(`(max-width: ${SETTINGS_COMPACT_BP - 0.02}px)`, false);
+  const [compactActiveSectionId, setCompactActiveSectionId] = useState<SettingsPageId | null>(null);
+  const [pendingFocusRequest, setPendingFocusRequest] = useState<SettingsFocusRequest | null>(null);
 
   useEffect(() => {
     return subscribeSettingsFocus((request) => {
@@ -360,12 +344,7 @@ export const SettingsPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [
-    activeSettingsPage,
-    isCompactSettings,
-    pendingFocusRequest,
-    setActiveSettingsPage,
-  ]);
+  }, [activeSettingsPage, isCompactSettings, pendingFocusRequest, setActiveSettingsPage]);
 
   const handleResetHistoryConfirm = useCallback(async () => {
     setIsResetHistoryPending(true);
@@ -415,11 +394,10 @@ export const SettingsPage = () => {
   );
 
   const activeItem =
-    localizedNavItems.find((item) => item.id === activeSettingsPage) ??
-    localizedNavItems[0];
+    localizedNavItems.find((item) => item.id === activeSettingsPage) ?? localizedNavItems[0];
   const activeSubPageId =
     activeItem?.subPages && activeItem.subPages.length > 0
-      ? activeSubPages[activeItem.id] ?? activeItem.subPages[0].id
+      ? (activeSubPages[activeItem.id] ?? activeItem.subPages[0].id)
       : null;
 
   const handleSubPageChange = useCallback(
@@ -451,8 +429,7 @@ export const SettingsPage = () => {
 
   useEffect(() => {
     const compactModeChanged = previousCompactModeRef.current !== isCompactSettings;
-    const activePageChanged =
-      previousActiveSettingsPageRef.current !== activeSettingsPage;
+    const activePageChanged = previousActiveSettingsPageRef.current !== activeSettingsPage;
 
     if (compactModeChanged && isCompactSettings) {
       setCompactActiveSectionId(activeSettingsPage);
@@ -465,20 +442,16 @@ export const SettingsPage = () => {
   }, [activeSettingsPage, isCompactSettings]);
 
   const headerActions = (
-    <button
-      type="button"
-      className="primary"
-      onClick={actions.handleOpenVaultManager}
-    >
+    <button type="button" className="primary" onClick={actions.handleOpenVaultManager}>
       {tSettings(language, "settings.page.manageVaults")}
     </button>
   );
   const profileSetupVaultSelection = useMemo(
     () => ({
       activeVaultPath: vault.vaultPath,
-      recentVaultPaths: (
-        settings.currentSystemRecentVaults ?? settings.recentVaults
-      ).map((entry) => entry.path),
+      recentVaultPaths: (settings.currentSystemRecentVaults ?? settings.recentVaults).map(
+        (entry) => entry.path,
+      ),
       onSelectVault: actions.handleSwitchVault,
       onPickVault: actions.handlePickVault,
       isVaultBusy: vault.listState === "loading",
@@ -511,14 +484,10 @@ export const SettingsPage = () => {
               markdownEditorAccentDarkHex={settings.markdownEditorAccentDarkHex}
               editorBlueprintGrid={settings.editorBlueprintGrid}
               editorBlueprintGridIntensity={settings.editorBlueprintGridIntensity}
-              onMarkdownEditorAccentEnabledToggle={
-                settings.setMarkdownEditorAccentEnabled
-              }
+              onMarkdownEditorAccentEnabledToggle={settings.setMarkdownEditorAccentEnabled}
               onMarkdownEditorAccentHexChange={settings.setMarkdownEditorAccentHex}
               onEditorBlueprintGridToggle={settings.setEditorBlueprintGrid}
-              onEditorBlueprintGridIntensityChange={
-                settings.setEditorBlueprintGridIntensity
-              }
+              onEditorBlueprintGridIntensityChange={settings.setEditorBlueprintGridIntensity}
               onDesignModeChange={actions.handleDesignModeChange}
               onThemeToggle={actions.handleThemeChange}
               designMode={settings.designMode}
@@ -533,13 +502,9 @@ export const SettingsPage = () => {
               language={language}
               cursorAccessoryEnabled={settings.cursorAccessoryEnabled}
               markdownPreviewDefaultMode={settings.markdownPreviewDefaultMode}
-              markdownEditorOpenInNewTabByDefault={
-                settings.markdownEditorOpenInNewTabByDefault
-              }
+              markdownEditorOpenInNewTabByDefault={settings.markdownEditorOpenInNewTabByDefault}
               onCursorAccessoryEnabledToggle={settings.setCursorAccessoryEnabled}
-              onMarkdownPreviewDefaultModeChange={
-                settings.setMarkdownPreviewDefaultMode
-              }
+              onMarkdownPreviewDefaultModeChange={settings.setMarkdownPreviewDefaultMode}
               onMarkdownEditorOpenInNewTabByDefaultToggle={
                 settings.setMarkdownEditorOpenInNewTabByDefault
               }
@@ -659,10 +624,7 @@ export const SettingsPage = () => {
                         {tSettings(language, "settings.flashcardTools.mode.qa")}
                       </option>
                       <option value="multiple-choice">
-                        {tSettings(
-                          language,
-                          "settings.flashcardTools.mode.multipleChoice",
-                        )}
+                        {tSettings(language, "settings.flashcardTools.mode.multipleChoice")}
                       </option>
                       <option value="fill-blank">
                         {tSettings(language, "settings.flashcardTools.mode.fillBlank")}
@@ -688,9 +650,7 @@ export const SettingsPage = () => {
                           type="checkbox"
                           checked={settings.fastFlashcardAutoTimeEnabled}
                           onChange={(event) =>
-                            settings.setFastFlashcardAutoTimeEnabled(
-                              event.target.checked,
-                            )
+                            settings.setFastFlashcardAutoTimeEnabled(event.target.checked)
                           }
                         />
                         <span className="slider" />
@@ -713,9 +673,7 @@ export const SettingsPage = () => {
                             key={duration}
                             type="button"
                             className={`pill pill-button ${
-                              settings.fastFlashcardDuration === duration
-                                ? "active"
-                                : ""
+                              settings.fastFlashcardDuration === duration ? "active" : ""
                             }`}
                             aria-pressed={settings.fastFlashcardDuration === duration}
                             onClick={() => settings.setFastFlashcardDuration(duration)}
@@ -858,10 +816,7 @@ export const SettingsPage = () => {
                 </div>
               </div>
               <div className="panel-body">
-                <LanguageTabContent
-                  language={language}
-                  onLanguageChange={handleLanguageChange}
-                />
+                <LanguageTabContent language={language} onLanguageChange={handleLanguageChange} />
               </div>
             </section>
           </div>

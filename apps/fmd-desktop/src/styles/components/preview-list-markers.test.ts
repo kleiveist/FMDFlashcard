@@ -14,7 +14,9 @@ const previewCss = readFileSync(new URL("./preview.css", import.meta.url), "utf8
 describe("preview.css list marker variants", () => {
   it("keeps the base preview surface background neutral", () => {
     expect(previewCss).toContain("background-color: var(--md-surface-bg);");
-    expect(previewCss).not.toContain("background-color: var(--md-question-bg, var(--md-surface-bg));");
+    expect(previewCss).not.toContain(
+      "background-color: var(--md-question-bg, var(--md-surface-bg));",
+    );
   });
 
   it("defines nested unordered and ordered marker cycles for global markdown surfaces", () => {
@@ -32,19 +34,21 @@ describe("preview.css list marker variants", () => {
   });
 
   it("defines depth-aware counter styles for ordered delimiter ')' lists", () => {
-    expect(previewCss).toContain("ol ol[data-md-ordered-delimiter=\")\"] > li::before");
-    expect(previewCss).toContain("counter(md-ordered, lower-alpha) \") \"");
-    expect(previewCss).toContain("ol ol ol[data-md-ordered-delimiter=\")\"] > li::before");
-    expect(previewCss).toContain("counter(md-ordered, lower-roman) \") \"");
-    expect(previewCss).toContain(".markdown-hybrid-block-preview ol ol[data-md-ordered-delimiter=\")\"] > li::before");
+    expect(previewCss).toContain('ol ol[data-md-ordered-delimiter=")"] > li::before');
+    expect(previewCss).toContain('counter(md-ordered, lower-alpha) ") "');
+    expect(previewCss).toContain('ol ol ol[data-md-ordered-delimiter=")"] > li::before');
+    expect(previewCss).toContain('counter(md-ordered, lower-roman) ") "');
+    expect(previewCss).toContain(
+      '.markdown-hybrid-block-preview ol ol[data-md-ordered-delimiter=")"] > li::before',
+    );
   });
 
   it("defines hybrid split-item marker variant selectors", () => {
-    expect(previewCss).toContain("[data-md-list-marker-variant=\"unordered-disc\"]");
-    expect(previewCss).toContain("[data-md-list-marker-variant=\"unordered-circle\"]");
-    expect(previewCss).toContain("[data-md-list-marker-variant=\"unordered-square\"]");
-    expect(previewCss).toContain("[data-md-list-marker-variant=\"ordered-decimal\"]");
-    expect(previewCss).toContain("[data-md-list-marker-variant=\"ordered-lower-alpha\"]");
-    expect(previewCss).toContain("[data-md-list-marker-variant=\"ordered-lower-roman\"]");
+    expect(previewCss).toContain('[data-md-list-marker-variant="unordered-disc"]');
+    expect(previewCss).toContain('[data-md-list-marker-variant="unordered-circle"]');
+    expect(previewCss).toContain('[data-md-list-marker-variant="unordered-square"]');
+    expect(previewCss).toContain('[data-md-list-marker-variant="ordered-decimal"]');
+    expect(previewCss).toContain('[data-md-list-marker-variant="ordered-lower-alpha"]');
+    expect(previewCss).toContain('[data-md-list-marker-variant="ordered-lower-roman"]');
   });
 });

@@ -66,9 +66,7 @@ export const VaultDeleteModal = ({
         aria-modal="true"
         aria-labelledby="vault-delete-title"
       >
-        <h3 id="vault-delete-title">
-          {kind === "folder" ? "Delete folder?" : "Delete file?"}
-        </h3>
+        <h3 id="vault-delete-title">{kind === "folder" ? "Delete folder?" : "Delete file?"}</h3>
         <p className="muted">
           {kind === "folder" ? (
             <>

@@ -67,16 +67,13 @@ describe("ExamMarkdown", () => {
     expect(markup).toContain("<strong>Bold</strong>");
     expect(markup).toContain("<em>Italic</em>");
     expect(markup).toContain("<del>Strike</del>");
-    expect(markup).toContain("<mark class=\"md-inline-highlight\">Mark</mark>");
+    expect(markup).toContain('<mark class="md-inline-highlight">Mark</mark>');
   });
 
   it("preserves soft line breaks inside list items", () => {
     const markup = renderToStaticMarkup(
       createElement(ExamMarkdown, {
-        content: [
-          "1. First line",
-          "   second line",
-        ].join("\n"),
+        content: ["1. First line", "   second line"].join("\n"),
       }),
     );
 
@@ -87,24 +84,17 @@ describe("ExamMarkdown", () => {
   it("preserves ordered-list ) delimiter metadata", () => {
     const markup = renderToStaticMarkup(
       createElement(ExamMarkdown, {
-        content: [
-          "1) Item A",
-          "2) Item B",
-        ].join("\n"),
+        content: ["1) Item A", "2) Item B"].join("\n"),
       }),
     );
 
-    expect(markup).toContain("data-md-ordered-delimiter=\")\"");
+    expect(markup).toContain('data-md-ordered-delimiter=")"');
   });
 
   it("hides #exam wrapper directives from rendered output", () => {
     const markup = renderToStaticMarkup(
       createElement(ExamMarkdown, {
-        content: [
-          "#exam",
-          "1) Prompt text",
-          "#endexam",
-        ].join("\n"),
+        content: ["#exam", "1) Prompt text", "#endexam"].join("\n"),
       }),
     );
 
@@ -117,7 +107,7 @@ describe("ExamMarkdown", () => {
     const markup = renderToStaticMarkup(
       createElement(ExamMarkdown, {
         content: [
-          "<aside id=\"app-sidebar\" class=\"sidebar\" aria-label=\"Primary navigation\">",
+          '<aside id="app-sidebar" class="sidebar" aria-label="Primary navigation">',
           "<nav>Hidden global nav</nav>",
           "</aside>",
           "",

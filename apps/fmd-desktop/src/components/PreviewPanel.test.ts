@@ -43,9 +43,7 @@ describe("applyInteractionSpacing", () => {
     const optionLine = lines.find((line) => line.startsWith("a) Option A"));
     expect(optionLine).toBe("a) Option A  ");
 
-    const inlineIndex = lines.findIndex((line) =>
-      line.startsWith("2\\) Inline markers"),
-    );
+    const inlineIndex = lines.findIndex((line) => line.startsWith("2\\) Inline markers"));
     expect(inlineIndex).toBeGreaterThan(-1);
     expect(lines[inlineIndex].endsWith("  ")).toBe(true);
     expect(lines[inlineIndex + 1].trim()).toBe("-a #card final #");
@@ -65,25 +63,22 @@ describe("normalizeTableSpacingForRender", () => {
 
     const result = normalizeTableSpacingForRender(source);
 
-    expect(result).toBe([
-      "sinnvoll sind. Nutzen Sie eine saubere Gliederung.",
-      "",
-      "| Modell | Kerngedanke | Typischer Fokus |",
-      "| --- | --- | --- |",
-      "| ACID | Strikte Transaktionssicherheit | starke Konsistenz |",
-      "| BASE | Eventual Consistency akzeptiert | hohe Verfuegbarkeit |",
-      "",
-      "#help",
-    ].join("\n"));
+    expect(result).toBe(
+      [
+        "sinnvoll sind. Nutzen Sie eine saubere Gliederung.",
+        "",
+        "| Modell | Kerngedanke | Typischer Fokus |",
+        "| --- | --- | --- |",
+        "| ACID | Strikte Transaktionssicherheit | starke Konsistenz |",
+        "| BASE | Eventual Consistency akzeptiert | hohe Verfuegbarkeit |",
+        "",
+        "#help",
+      ].join("\n"),
+    );
   });
 
   it("does not change non-table pipe lines", () => {
-    const source = [
-      "A | B | C",
-      "---",
-      "| just text",
-      "tail",
-    ].join("\n");
+    const source = ["A | B | C", "---", "| just text", "tail"].join("\n");
 
     const result = normalizeTableSpacingForRender(source);
 
@@ -91,27 +86,13 @@ describe("normalizeTableSpacingForRender", () => {
   });
 
   it("adds blank lines around fenced code blocks", () => {
-    const source = [
-      "Vorher",
-      "```http",
-      "GET /book/1",
-      "200 OK",
-      "```",
-      "Nachher",
-    ].join("\n");
+    const source = ["Vorher", "```http", "GET /book/1", "200 OK", "```", "Nachher"].join("\n");
 
     const result = normalizeTableSpacingForRender(source);
 
-    expect(result).toBe([
-      "Vorher",
-      "",
-      "```http",
-      "GET /book/1",
-      "200 OK",
-      "```",
-      "",
-      "Nachher",
-    ].join("\n"));
+    expect(result).toBe(
+      ["Vorher", "", "```http", "GET /book/1", "200 OK", "```", "", "Nachher"].join("\n"),
+    );
   });
 });
 
@@ -127,7 +108,7 @@ describe("normalizeInlineFormattingForPreview", () => {
 
     const result = normalizeInlineFormattingForPreview(source);
 
-    expect(result).toContain("a) <mark class=\"md-inline-highlight\">OPTION</mark> A");
+    expect(result).toContain('a) <mark class="md-inline-highlight">OPTION</mark> A');
     expect(result).toContain("b) <em>OPTION</em> B");
     expect(result).toContain("c) <u>OPTION</u> C");
     expect(result).toContain("d) $OPTION$ D");
@@ -563,7 +544,7 @@ describe("serializeMarkdownFromHtml", () => {
   it("reuses source fence lines byte-exact when normalized display markers are unchanged", () => {
     const container = document.createElement("div");
     container.innerHTML = [
-      "<div class=\"md-code-block\">",
+      '<div class="md-code-block">',
       "<pre><code>GET /book/1</code></pre>",
       "</div>",
     ].join("");
@@ -582,7 +563,7 @@ describe("serializeMarkdownFromHtml", () => {
   it("reuses source fence lines with mixed display/source marker visibility", () => {
     const container = document.createElement("div");
     container.innerHTML = [
-      "<div class=\"md-code-block\">",
+      '<div class="md-code-block">',
       "<pre><code>GET /book/1</code></pre>",
       "</div>",
     ].join("");
@@ -609,7 +590,7 @@ describe("serializeMarkdownFromHtml", () => {
   it("writes edited fence markers instead of source hints when marker text changed", () => {
     const container = document.createElement("div");
     container.innerHTML = [
-      "<div class=\"md-code-block\">",
+      '<div class="md-code-block">',
       "<pre><code>GET /book/1</code></pre>",
       "</div>",
     ].join("");
@@ -729,16 +710,18 @@ describe("serializeMarkdownFromHtml", () => {
 
     const result = serializeMarkdownFromHtml(container);
 
-    expect(result).toBe([
-      "Einleitung",
-      "",
-      "| Modell | Fokus |",
-      "| --- | --- |",
-      "| ACID | Konsistenz |",
-      "",
-      "Nachsatz",
-      "",
-    ].join("\n"));
+    expect(result).toBe(
+      [
+        "Einleitung",
+        "",
+        "| Modell | Fokus |",
+        "| --- | --- |",
+        "| ACID | Konsistenz |",
+        "",
+        "Nachsatz",
+        "",
+      ].join("\n"),
+    );
   });
 
   it("detaches table lines from numbered items and removes table indentation", () => {
@@ -757,14 +740,16 @@ describe("serializeMarkdownFromHtml", () => {
 
     const result = serializeMarkdownFromHtml(container);
 
-    expect(result).toBe([
-      "1. Bestimmen Sie die Aussage",
-      "",
-      "| Modell | Fokus |",
-      "| --- | --- |",
-      "| ACID | Konsistenz |",
-      "",
-    ].join("\n"));
+    expect(result).toBe(
+      [
+        "1. Bestimmen Sie die Aussage",
+        "",
+        "| Modell | Fokus |",
+        "| --- | --- |",
+        "| ACID | Konsistenz |",
+        "",
+      ].join("\n"),
+    );
     expect(result).not.toContain("  |");
     expect(result).not.toContain("\\|");
   });
@@ -850,16 +835,16 @@ describe("buildEditableMarkdownHtml", () => {
     const container = document.createElement("div");
     container.innerHTML = [
       "<ul><li>Bullet</li></ul>",
-      "<ol start=\"3\"><li>Numbered</li></ol>",
-      "<ul><li class=\"task-list-item\"><input type=\"checkbox\" checked>Done</li></ul>",
+      '<ol start="3"><li>Numbered</li></ol>',
+      '<ul><li class="task-list-item"><input type="checkbox" checked>Done</li></ul>',
     ].join("");
 
     const html = buildEditableMarkdownHtml(container);
     const wrapper = document.createElement("div");
     wrapper.innerHTML = html;
-    const markers = Array.from(
-      wrapper.querySelectorAll<HTMLElement>("li > .md-list-marker"),
-    ).map((marker) => marker.textContent);
+    const markers = Array.from(wrapper.querySelectorAll<HTMLElement>("li > .md-list-marker")).map(
+      (marker) => marker.textContent,
+    );
 
     expect(markers).toContain("- ");
     expect(markers).toContain("3. ");
@@ -903,7 +888,9 @@ describe("buildEditableMarkdownHtml", () => {
     const html = buildEditableMarkdownHtml(container);
     const wrapper = document.createElement("div");
     wrapper.innerHTML = html;
-    const lineMarkers = wrapper.querySelectorAll<HTMLElement>("blockquote > p > .md-blockquote-marker");
+    const lineMarkers = wrapper.querySelectorAll<HTMLElement>(
+      "blockquote > p > .md-blockquote-marker",
+    );
 
     expect(lineMarkers).toHaveLength(3);
     expect(Array.from(lineMarkers).map((marker) => marker.textContent)).toEqual(["> ", "> ", "> "]);
@@ -923,7 +910,7 @@ describe("buildEditableMarkdownHtml", () => {
 
   it("keeps ordered delimiter attributes in markdown edit html", () => {
     const container = document.createElement("div");
-    container.innerHTML = "<ol data-md-ordered-delimiter=\")\"><li>First</li></ol>";
+    container.innerHTML = '<ol data-md-ordered-delimiter=")"><li>First</li></ol>';
 
     const html = buildEditableMarkdownHtml(container, "1) First");
     const wrapper = document.createElement("div");
@@ -938,8 +925,8 @@ describe("buildEditableMarkdownHtml", () => {
   it("injects editable code fence markers and keeps a copy control", () => {
     const container = document.createElement("div");
     container.innerHTML = [
-      "<div class=\"md-code-block\">",
-      "<button class=\"md-code-copy-button\" type=\"button\">copy</button>",
+      '<div class="md-code-block">',
+      '<button class="md-code-copy-button" type="button">copy</button>',
       "<pre><code>GET /book/1</code></pre>",
       "</div>",
     ].join("");
@@ -949,7 +936,7 @@ describe("buildEditableMarkdownHtml", () => {
     wrapper.innerHTML = html;
 
     const copyButton = wrapper.querySelector(".md-code-copy-button");
-    const pre = wrapper.querySelector("pre[data-md-code-block=\"true\"]");
+    const pre = wrapper.querySelector('pre[data-md-code-block="true"]');
     const openMarker = wrapper.querySelector(
       "pre > .md-code-fence-open > .md-code-fence-marker",
     ) as HTMLElement | null;
@@ -966,7 +953,7 @@ describe("buildEditableMarkdownHtml", () => {
   it("keeps source fence hints while showing normalized markers for indented fences", () => {
     const container = document.createElement("div");
     container.innerHTML = [
-      "<div class=\"md-code-block\">",
+      '<div class="md-code-block">',
       "<pre><code>GET /book/1</code></pre>",
       "</div>",
     ].join("");
@@ -978,7 +965,7 @@ describe("buildEditableMarkdownHtml", () => {
     const wrapper = document.createElement("div");
     wrapper.innerHTML = html;
 
-    const pre = wrapper.querySelector("pre[data-md-code-block=\"true\"]");
+    const pre = wrapper.querySelector('pre[data-md-code-block="true"]');
     const openMarker = wrapper.querySelector<HTMLElement>(
       "pre > .md-code-fence-open > .md-code-fence-marker",
     );
@@ -1016,10 +1003,10 @@ describe("buildEditableMarkdownHtml", () => {
   it("normalizes highlighted code spans back to plain editable code", () => {
     const container = document.createElement("div");
     container.innerHTML = [
-      "<div class=\"md-code-block\">",
-      "<pre class=\"md-code-highlighted-pre\" data-md-code-highlighted=\"true\" data-md-code-language-label=\"JavaScript\">",
-      "<code class=\"hljs language-javascript\" data-md-code-highlighted=\"true\">",
-      "<span class=\"hljs-keyword\">const</span> value = 1;",
+      '<div class="md-code-block">',
+      '<pre class="md-code-highlighted-pre" data-md-code-highlighted="true" data-md-code-language-label="JavaScript">',
+      '<code class="hljs language-javascript" data-md-code-highlighted="true">',
+      '<span class="hljs-keyword">const</span> value = 1;',
       "</code>",
       "</pre>",
       "</div>",
@@ -1028,7 +1015,7 @@ describe("buildEditableMarkdownHtml", () => {
     const html = buildEditableMarkdownHtml(container, "```js\nconst value = 1;\n```");
     const wrapper = document.createElement("div");
     wrapper.innerHTML = html;
-    const pre = wrapper.querySelector("pre[data-md-code-block=\"true\"]");
+    const pre = wrapper.querySelector('pre[data-md-code-block="true"]');
     const code = wrapper.querySelector("pre > code");
 
     expect(pre?.classList.contains("md-code-highlighted-pre")).toBe(false);

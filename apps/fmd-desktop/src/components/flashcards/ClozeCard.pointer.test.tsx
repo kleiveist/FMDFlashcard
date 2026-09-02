@@ -83,9 +83,7 @@ describe("ClozeCard pointer drag", () => {
     const tokenButton = container.querySelector(
       ".token-pool .token-chip",
     ) as HTMLButtonElement | null;
-    const blank = container.querySelector(
-      ".cloze-blank.drag",
-    ) as HTMLElement | null;
+    const blank = container.querySelector(".cloze-blank.drag") as HTMLElement | null;
 
     expect(tokenButton).toBeTruthy();
     expect(blank).toBeTruthy();

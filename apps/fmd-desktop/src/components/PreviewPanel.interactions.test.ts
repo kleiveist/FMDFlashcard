@@ -7,13 +7,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  act,
-  createElement,
-  useCallback,
-  useState,
-  type ReactElement,
-} from "react";
+import { act, createElement, useCallback, useState, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { openPath, openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { invoke } from "@tauri-apps/api/core";
@@ -39,10 +33,7 @@ const invokeMock = vi.mocked(invoke);
 const originalMatchMedia = window.matchMedia;
 const originalResizeObserver = window.ResizeObserver;
 
-type ResizeObserverCallback = (
-  entries: ResizeObserverEntry[],
-  observer: ResizeObserver,
-) => void;
+type ResizeObserverCallback = (entries: ResizeObserverEntry[], observer: ResizeObserver) => void;
 
 const resizeObserverInstances: ResizeObserverMock[] = [];
 
@@ -71,10 +62,7 @@ class ResizeObserverMock {
     if (!this.observed.has(target)) {
       return;
     }
-    this.callback(
-      [{ target } as ResizeObserverEntry],
-      this as unknown as ResizeObserver,
-    );
+    this.callback([{ target } as ResizeObserverEntry], this as unknown as ResizeObserver);
   };
 }
 
@@ -101,7 +89,7 @@ const render = (element: ReactElement) => {
   };
 };
 
-const withImmediateRaf = <T,>(run: () => T) => {
+const withImmediateRaf = <T>(run: () => T) => {
   const originalRaf = window.requestAnimationFrame;
   const originalCancelRaf = window.cancelAnimationFrame;
   window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
@@ -244,9 +232,7 @@ const activateMarkdownEditorFromPreviewSelection = (
   setCollapsedSelection(node, offset);
   const previewContent = container.querySelector(".preview-content");
   act(() => {
-    previewContent?.dispatchEvent(
-      new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-    );
+    previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
   });
   return container.querySelector<HTMLDivElement>(".preview-markdown-editable");
 };
@@ -377,12 +363,8 @@ const buildHarness = (
     onCloseMarkdownTab,
     onReorderMarkdownTabs,
   } = options;
-  const resolvedEditorMode = editorMode ??
-    (rawPreview
-      ? "code"
-      : markdownHybridEnabled
-        ? "hybrid"
-        : "markdown");
+  const resolvedEditorMode =
+    editorMode ?? (rawPreview ? "code" : markdownHybridEnabled ? "hybrid" : "markdown");
   const resolvedEditEnabled =
     typeof editEnabled === "boolean"
       ? editEnabled
@@ -396,34 +378,27 @@ const buildHarness = (
     const [isEditing, setIsEditing] = useState(false);
     const [editDraft, setEditDraft] = useState(markdown);
     const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
-    const [currentEditorMode, setCurrentEditorMode] = useState<
-      "code" | "markdown" | "hybrid"
-    >(resolvedEditorMode);
+    const [currentEditorMode, setCurrentEditorMode] = useState<"code" | "markdown" | "hybrid">(
+      resolvedEditorMode,
+    );
     const [currentEditEnabled, setCurrentEditEnabled] = useState(resolvedEditEnabled);
 
     const handleEditStart = useCallback(
       (options?: { caretIndex?: number | null }) => {
         setEditDraft(markdown);
-        setEditCaretIndex(
-          typeof options?.caretIndex === "number" ? options.caretIndex : null,
-        );
+        setEditCaretIndex(typeof options?.caretIndex === "number" ? options.caretIndex : null);
         setIsEditing(true);
       },
       [markdown],
     );
 
-    const handleSelectEditorMode = useCallback(
-      (nextMode: "code" | "markdown" | "hybrid") => {
-        setCurrentEditorMode(nextMode);
-        setCurrentEditEnabled(nextMode === "markdown" ? false : true);
-      },
-      [],
-    );
+    const handleSelectEditorMode = useCallback((nextMode: "code" | "markdown" | "hybrid") => {
+      setCurrentEditorMode(nextMode);
+      setCurrentEditEnabled(nextMode === "markdown" ? false : true);
+    }, []);
 
     const handleToggleEditEnabled = useCallback(() => {
-      setCurrentEditEnabled((current) => (
-        currentEditorMode === "hybrid" ? true : !current
-      ));
+      setCurrentEditEnabled((current) => (currentEditorMode === "hybrid" ? true : !current));
     }, [currentEditorMode]);
 
     return createElement(PreviewPanel, {
@@ -531,14 +506,7 @@ describe("PreviewPanel edit-safe interactions", () => {
   });
 
   it("serializes embedded Canvas islands back to their raw Markdown block", () => {
-    const raw = [
-      "#canvas",
-      "{",
-      "  \"nodes\": [],",
-      "  \"edges\": []",
-      "}",
-      "#canvasend",
-    ].join("\n");
+    const raw = ["#canvas", "{", '  "nodes": [],', '  "edges": []', "}", "#canvasend"].join("\n");
     const host = document.createElement("div");
     host.innerHTML = [
       "<p>Before</p>",
@@ -620,7 +588,9 @@ describe("PreviewPanel edit-safe interactions", () => {
       );
     });
 
-    const menuItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".context-menu-item"));
+    const menuItems = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(".context-menu-item"),
+    );
     const rightFolderItem = menuItems.find(
       (button) => button.textContent?.trim() === "View Folder",
     );
@@ -668,10 +638,10 @@ describe("PreviewPanel edit-safe interactions", () => {
       );
     });
 
-    const menuItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".context-menu-item"));
-    const rightFileItem = menuItems.find(
-      (button) => button.textContent?.trim() === "View File",
+    const menuItems = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(".context-menu-item"),
     );
+    const rightFileItem = menuItems.find((button) => button.textContent?.trim() === "View File");
     expect(rightFileItem).toBeTruthy();
 
     act(() => {
@@ -718,7 +688,9 @@ describe("PreviewPanel edit-safe interactions", () => {
       );
     });
 
-    const menuItems = Array.from(document.querySelectorAll<HTMLButtonElement>(".context-menu-item"));
+    const menuItems = Array.from(
+      document.querySelectorAll<HTMLButtonElement>(".context-menu-item"),
+    );
     const rightFolderItem = menuItems.find(
       (button) => button.textContent?.trim() === "View Folder",
     );
@@ -1009,11 +981,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     });
     await flushAsyncInteraction();
 
-    expect(onReorderMarkdownTabs).toHaveBeenCalledWith(
-      "/vault/One.md",
-      "/vault/Two.md",
-      "after",
-    );
+    expect(onReorderMarkdownTabs).toHaveBeenCalledWith("/vault/One.md", "/vault/Two.md", "after");
   });
 
   it("keeps single-row path labels when tab width is wide enough", async () => {
@@ -1029,9 +997,9 @@ describe("PreviewPanel edit-safe interactions", () => {
       cleanup = localCleanup;
 
       const strip = await resizeMarkdownTabStrip(container, 960);
-      const labels = Array.from(
-        container.querySelectorAll<HTMLElement>(".preview-tab-label"),
-      ).map((element) => element.textContent?.trim() ?? "");
+      const labels = Array.from(container.querySelectorAll<HTMLElement>(".preview-tab-label")).map(
+        (element) => element.textContent?.trim() ?? "",
+      );
 
       expect(strip.style.getPropertyValue("--preview-tab-width")).toBe("360px");
       expect(container.querySelector(".preview-tab-folder-row")).toBeNull();
@@ -1163,7 +1131,11 @@ describe("PreviewPanel edit-safe interactions", () => {
       expect(strip.style.getPropertyValue("--preview-folder-button-width")).toBe("210px");
       expect(folderGroups).toHaveLength(2);
       expect(folderButtons).toHaveLength(2);
-      expect(folderGroups.every((group) => group.style.getPropertyValue("--preview-tab-group-span") === "")).toBe(true);
+      expect(
+        folderGroups.every(
+          (group) => group.style.getPropertyValue("--preview-tab-group-span") === "",
+        ),
+      ).toBe(true);
     });
   });
 
@@ -1254,17 +1226,17 @@ describe("PreviewPanel edit-safe interactions", () => {
   });
 
   it("prevents normal link clicks from navigating while editing", () => {
-    const { container, cleanup: localCleanup, onEditExit } = buildHarness(
-      "Link: [Example](https://example.com)",
-    );
+    const {
+      container,
+      cleanup: localCleanup,
+      onEditExit,
+    } = buildHarness("Link: [Example](https://example.com)");
     cleanup = localCleanup;
 
     const previewContent = container.querySelector(".preview-content");
     expect(previewContent).toBeTruthy();
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
     const editor = container.querySelector(".preview.preview-editor.markdown");
@@ -1301,16 +1273,16 @@ describe("PreviewPanel edit-safe interactions", () => {
   });
 
   it("keeps image interactions from ending the edit session", () => {
-    const { container, cleanup: localCleanup, onEditExit } = buildHarness(
-      "![Alt](https://example.com/image.png)",
-    );
+    const {
+      container,
+      cleanup: localCleanup,
+      onEditExit,
+    } = buildHarness("![Alt](https://example.com/image.png)");
     cleanup = localCleanup;
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
     const editor = container.querySelector(".preview.preview-editor.markdown");
@@ -1335,9 +1307,7 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
     const editor = container.querySelector(".preview.preview-editor.markdown");
@@ -1439,9 +1409,11 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(root?.getAttribute("data-editor-mode")).toBe("hybrid");
     expect(root?.getAttribute("data-edit-enabled")).toBe("true");
     expect(
-      (container.querySelector(
-        'button[aria-label="Edit mode (always enabled)"]',
-      ) as HTMLButtonElement | null)?.getAttribute("aria-pressed"),
+      (
+        container.querySelector(
+          'button[aria-label="Edit mode (always enabled)"]',
+        ) as HTMLButtonElement | null
+      )?.getAttribute("aria-pressed"),
     ).toBe("true");
   });
 
@@ -1470,7 +1442,11 @@ describe("PreviewPanel edit-safe interactions", () => {
   });
 
   it("keeps external modal-like inputs editable in code mode without focus snapback", async () => {
-    const { container, cleanup: localCleanup, onEditExit } = buildHarness("Code focus", {
+    const {
+      container,
+      cleanup: localCleanup,
+      onEditExit,
+    } = buildHarness("Code focus", {
       editorMode: "code",
       editEnabled: true,
     });
@@ -1493,10 +1469,12 @@ describe("PreviewPanel edit-safe interactions", () => {
       });
 
       await act(async () => {
-        rawEditor.dispatchEvent(new FocusEvent("blur", {
-          bubbles: true,
-          relatedTarget: externalInput,
-        }));
+        rawEditor.dispatchEvent(
+          new FocusEvent("blur", {
+            bubbles: true,
+            relatedTarget: externalInput,
+          }),
+        );
         externalInput.focus();
       });
       await flushAsyncInteraction();
@@ -1577,8 +1555,9 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(hybridButton).toBeTruthy();
     expect(markdownButton?.getAttribute("aria-pressed")).toBe("true");
     expect(
-      (container.querySelector('button[aria-label="Toggle edit mode"]') as HTMLButtonElement | null)
-        ?.getAttribute("aria-pressed"),
+      (
+        container.querySelector('button[aria-label="Toggle edit mode"]') as HTMLButtonElement | null
+      )?.getAttribute("aria-pressed"),
     ).toBe("true");
 
     await act(async () => {
@@ -1811,7 +1790,7 @@ describe("PreviewPanel edit-safe interactions", () => {
 
   it("renders inline HTML tags after sanitization", () => {
     const { container, cleanup: localCleanup } = buildHarness(
-      "Inline <span class=\"tag\">Span</span><br>Line <sup>sup</sup> <sub>sub</sub> <kbd>Ctrl</kbd>",
+      'Inline <span class="tag">Span</span><br>Line <sup>sup</sup> <sub>sub</sub> <kbd>Ctrl</kbd>',
     );
     cleanup = localCleanup;
 
@@ -1849,7 +1828,9 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const fallback = container.querySelector(".preview.markdown .md-math-fallback");
     expect(fallback).toBeTruthy();
-    expect(fallback?.querySelector(".md-math-fallback-source")?.textContent).toContain("$\\frac{1$");
+    expect(fallback?.querySelector(".md-math-fallback-source")?.textContent).toContain(
+      "$\\frac{1$",
+    );
     expect(fallback?.querySelector(".md-math-fallback-badge")).toBeTruthy();
   });
 
@@ -1863,7 +1844,9 @@ describe("PreviewPanel edit-safe interactions", () => {
     };
 
     const markdownMath = markdownView.container.querySelector(".preview.markdown .md-math-inline");
-    const hybridMath = hybridView.container.querySelector(".markdown-hybrid-block-preview .md-math-inline");
+    const hybridMath = hybridView.container.querySelector(
+      ".markdown-hybrid-block-preview .md-math-inline",
+    );
     expect(markdownMath).toBeTruthy();
     expect(hybridMath).toBeTruthy();
     expect(markdownMath?.querySelector(".katex")).toBeTruthy();
@@ -1905,14 +1888,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       if (path !== "/vault/Note.md") {
         throw new Error(`Unexpected path: ${path ?? "missing"}`);
       }
-      return [
-        "---",
-        "Score: 5/10",
-        "status: 3 🟡",
-        "percent: 50%",
-        "---",
-        "Body",
-      ].join("\n");
+      return ["---", "Score: 5/10", "status: 3 🟡", "percent: 50%", "---", "Body"].join("\n");
     });
 
     const { container, cleanup: localCleanup } = buildHarness(markdown, {
@@ -1961,12 +1937,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       "  showToolbar: true",
       "::::",
     ].join("\n");
-    invokeMock.mockResolvedValue([
-      "---",
-      "title: Demo",
-      "---",
-      "Body",
-    ].join("\n"));
+    invokeMock.mockResolvedValue(["---", "title: Demo", "---", "Body"].join("\n"));
 
     const { container, cleanup: localCleanup } = buildHarness(markdown, {
       onFrontmatterSave,
@@ -1992,7 +1963,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(onFrontmatterSave).toHaveBeenCalled();
     const lastCallIndex = onFrontmatterSave.mock.calls.length - 1;
     const nextMarkdown = String(
-      lastCallIndex >= 0 ? onFrontmatterSave.mock.calls[lastCallIndex]?.[0] ?? "" : "",
+      lastCallIndex >= 0 ? (onFrontmatterSave.mock.calls[lastCallIndex]?.[0] ?? "") : "",
     );
     expect(nextMarkdown).toContain("type: gantt");
     expect((nextMarkdown.match(/::::/g) ?? []).length).toBe(2);
@@ -2028,11 +1999,14 @@ describe("PreviewPanel edit-safe interactions", () => {
       const [editDraft, setEditDraft] = useState(markdown);
       const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
 
-      const handleEditStart = useCallback((options?: { caretIndex?: number | null }) => {
-        setEditDraft(markdown);
-        setEditCaretIndex(typeof options?.caretIndex === "number" ? options.caretIndex : null);
-        setIsEditing(true);
-      }, [markdown]);
+      const handleEditStart = useCallback(
+        (options?: { caretIndex?: number | null }) => {
+          setEditDraft(markdown);
+          setEditCaretIndex(typeof options?.caretIndex === "number" ? options.caretIndex : null);
+          setIsEditing(true);
+        },
+        [markdown],
+      );
 
       const handleEditExit = useCallback(() => {
         setIsEditing(false);
@@ -2093,10 +2067,12 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     act(() => {
       editable?.focus();
-      editable?.dispatchEvent(new FocusEvent("focusout", {
-        bubbles: true,
-        relatedTarget: document.body,
-      }));
+      editable?.dispatchEvent(
+        new FocusEvent("focusout", {
+          bubbles: true,
+          relatedTarget: document.body,
+        }),
+      );
     });
     await flushAsyncInteraction();
 
@@ -2136,12 +2112,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       "",
       "Outro",
     ].join("\n");
-    invokeMock.mockResolvedValue([
-      "---",
-      "title: Demo",
-      "---",
-      "Body",
-    ].join("\n"));
+    invokeMock.mockResolvedValue(["---", "title: Demo", "---", "Body"].join("\n"));
 
     const {
       container,
@@ -2207,23 +2178,21 @@ describe("PreviewPanel edit-safe interactions", () => {
       "",
       "Outro",
     ].join("\n");
-    invokeMock.mockResolvedValue([
-      "---",
-      "title: Demo",
-      "---",
-      "Body",
-    ].join("\n"));
+    invokeMock.mockResolvedValue(["---", "title: Demo", "---", "Body"].join("\n"));
 
     const Harness = () => {
       const [isEditing, setIsEditing] = useState(false);
       const [editDraft, setEditDraft] = useState(markdown);
       const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
 
-      const handleEditStart = useCallback((options?: { caretIndex?: number | null }) => {
-        setEditDraft(markdown);
-        setEditCaretIndex(typeof options?.caretIndex === "number" ? options.caretIndex : null);
-        setIsEditing(true);
-      }, [markdown]);
+      const handleEditStart = useCallback(
+        (options?: { caretIndex?: number | null }) => {
+          setEditDraft(markdown);
+          setEditCaretIndex(typeof options?.caretIndex === "number" ? options.caretIndex : null);
+          setIsEditing(true);
+        },
+        [markdown],
+      );
 
       const handleEditExit = useCallback(() => {
         setIsEditing(false);
@@ -2323,11 +2292,14 @@ describe("PreviewPanel edit-safe interactions", () => {
       const [editDraft, setEditDraft] = useState(markdown);
       const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
 
-      const handleEditStart = useCallback((options?: { caretIndex?: number | null }) => {
-        setEditDraft(markdown);
-        setEditCaretIndex(typeof options?.caretIndex === "number" ? options.caretIndex : null);
-        setIsEditing(true);
-      }, [markdown]);
+      const handleEditStart = useCallback(
+        (options?: { caretIndex?: number | null }) => {
+          setEditDraft(markdown);
+          setEditCaretIndex(typeof options?.caretIndex === "number" ? options.caretIndex : null);
+          setIsEditing(true);
+        },
+        [markdown],
+      );
 
       const handleEditExit = useCallback(() => {
         setIsEditing(false);
@@ -2418,23 +2390,21 @@ describe("PreviewPanel edit-safe interactions", () => {
       "",
       "Outro",
     ].join("\n");
-    invokeMock.mockResolvedValue([
-      "---",
-      "title: Demo",
-      "---",
-      "Body",
-    ].join("\n"));
+    invokeMock.mockResolvedValue(["---", "title: Demo", "---", "Body"].join("\n"));
 
     const Harness = () => {
       const [isEditing, setIsEditing] = useState(false);
       const [editDraft, setEditDraft] = useState(markdown);
       const [editCaretIndex, setEditCaretIndex] = useState<number | null>(null);
 
-      const handleEditStart = useCallback((options?: { caretIndex?: number | null }) => {
-        setEditDraft(markdown);
-        setEditCaretIndex(typeof options?.caretIndex === "number" ? options.caretIndex : null);
-        setIsEditing(true);
-      }, [markdown]);
+      const handleEditStart = useCallback(
+        (options?: { caretIndex?: number | null }) => {
+          setEditDraft(markdown);
+          setEditCaretIndex(typeof options?.caretIndex === "number" ? options.caretIndex : null);
+          setIsEditing(true);
+        },
+        [markdown],
+      );
 
       const handleEditExit = useCallback(() => {
         setIsEditing(false);
@@ -2561,7 +2531,9 @@ describe("PreviewPanel edit-safe interactions", () => {
       ".preview.markdown.md-preview .md-inline-syntax-quoted-token",
     );
     expect(quotedTokens).toHaveLength(1);
-    expect(quotedTokens[0]?.textContent ?? "").toBe("Einhaltung vorgegebener Formate fuer Attribute.");
+    expect(quotedTokens[0]?.textContent ?? "").toBe(
+      "Einhaltung vorgegebener Formate fuer Attribute.",
+    );
 
     const previewText = container.querySelector(".preview.markdown.md-preview")?.textContent ?? "";
     expect(previewText).toContain("Einhaltung vorgegebener Formate fuer Attribute.");
@@ -2588,7 +2560,8 @@ describe("PreviewPanel edit-safe interactions", () => {
       expect(viewQuote).toBeTruthy();
       expect((viewQuote?.textContent ?? "").toLowerCase()).not.toContain("helpend");
 
-      const viewHelpEndText = findTextNodeContaining(helpBlock ?? container, "#helpend") ??
+      const viewHelpEndText =
+        findTextNodeContaining(helpBlock ?? container, "#helpend") ??
         findTextNodeContaining(helpBlock ?? container, "helpend");
       expect(viewHelpEndText).toBeTruthy();
       if (viewQuote && viewHelpEndText?.parentElement) {
@@ -2602,7 +2575,8 @@ describe("PreviewPanel edit-safe interactions", () => {
       const editQuote = editable?.querySelector("blockquote");
       expect((editQuote?.textContent ?? "").toLowerCase()).not.toContain("helpend");
 
-      const editHelpEndText = findTextNodeContaining(editable ?? container, "#helpend") ??
+      const editHelpEndText =
+        findTextNodeContaining(editable ?? container, "#helpend") ??
         findTextNodeContaining(editable ?? container, "helpend");
       expect(editHelpEndText).toBeTruthy();
       if (editQuote && editHelpEndText?.parentElement) {
@@ -2732,11 +2706,7 @@ describe("PreviewPanel edit-safe interactions", () => {
 
   it("renders svg fences as media previews", () => {
     const { container, cleanup: localCleanup } = buildHarness(
-      [
-        "```svg",
-        "<svg viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\" /></svg>",
-        "```",
-      ].join("\n"),
+      ["```svg", '<svg viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" /></svg>', "```"].join("\n"),
     );
     cleanup = localCleanup;
 
@@ -2847,9 +2817,7 @@ describe("PreviewPanel edit-safe interactions", () => {
   });
 
   it("keeps inline PNG embeds as literal text (no inline media transform)", () => {
-    const { container, cleanup: localCleanup } = buildHarness(
-      "Text ![[images/example.png]] text",
-    );
+    const { container, cleanup: localCleanup } = buildHarness("Text ![[images/example.png]] text");
     cleanup = localCleanup;
 
     expect(container.querySelector(".flashcard-media-image")).toBeNull();
@@ -2887,18 +2855,16 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(preview?.querySelector(".flashcard-media-group")).toBeNull();
     expect(codeBlock?.textContent ?? "").toContain("![[images/example.png]]");
     expect(codeBlock?.textContent ?? "").toContain("![Alt](https://example.com/image.png)");
-    expect(Array.from(preview?.querySelectorAll("p") ?? []).some((paragraph) =>
-      paragraph.textContent?.trim() === "After"
-    )).toBe(true);
+    expect(
+      Array.from(preview?.querySelectorAll("p") ?? []).some(
+        (paragraph) => paragraph.textContent?.trim() === "After",
+      ),
+    ).toBe(true);
   });
 
   it("renders preview-mode table cells with the shared table cell wrapper", () => {
     const { container, cleanup: localCleanup } = buildHarness(
-      [
-        "| A | B |",
-        "| --- | --- |",
-        "| Erste Zeile<br>Zweite Zeile | Wert |",
-      ].join("\n"),
+      ["| A | B |", "| --- | --- |", "| Erste Zeile<br>Zweite Zeile | Wert |"].join("\n"),
     );
     cleanup = localCleanup;
 
@@ -2913,11 +2879,7 @@ describe("PreviewPanel edit-safe interactions", () => {
 
   it("renders double table cell breaks as separate paragraphs in preview mode", () => {
     const { container, cleanup: localCleanup } = buildHarness(
-      [
-        "| A | B |",
-        "| --- | --- |",
-        "| Erste Zeile<br><br>Zweite Zeile | Wert |",
-      ].join("\n"),
+      ["| A | B |", "| --- | --- |", "| Erste Zeile<br><br>Zweite Zeile | Wert |"].join("\n"),
     );
     cleanup = localCleanup;
 
@@ -2990,18 +2952,24 @@ describe("PreviewPanel edit-safe interactions", () => {
     cleanup = localCleanup;
 
     const preview = container.querySelector(".preview.markdown");
-    const mediaImage = preview?.querySelector<HTMLImageElement>(".markdown-table .flashcard-media-image");
+    const mediaImage = preview?.querySelector<HTMLImageElement>(
+      ".markdown-table .flashcard-media-image",
+    );
     const sharedMediaWrapper = preview?.querySelector(".markdown-table .md-table-cell-media");
 
     expect(mediaImage).toBeTruthy();
     expect(sharedMediaWrapper).toBeTruthy();
     expect(preview?.textContent ?? "").not.toContain("![[images/example.png]]");
-    expect(Array.from(preview?.querySelectorAll("p") ?? []).some((paragraph) =>
-      paragraph.textContent?.trim() === "Before text"
-    )).toBe(true);
-    expect(Array.from(preview?.querySelectorAll("p") ?? []).some((paragraph) =>
-      paragraph.textContent?.trim() === "After text"
-    )).toBe(true);
+    expect(
+      Array.from(preview?.querySelectorAll("p") ?? []).some(
+        (paragraph) => paragraph.textContent?.trim() === "Before text",
+      ),
+    ).toBe(true);
+    expect(
+      Array.from(preview?.querySelectorAll("p") ?? []).some(
+        (paragraph) => paragraph.textContent?.trim() === "After text",
+      ),
+    ).toBe(true);
   });
 
   it("resolves relative ../ PNG embeds inside table cells using sourceRelativePath", () => {
@@ -3033,11 +3001,7 @@ describe("PreviewPanel edit-safe interactions", () => {
 
   it("keeps ambiguous table-cell PNG embeds in missing-image state", () => {
     const { container, cleanup: localCleanup } = buildHarness(
-      [
-        "| Visual | Description |",
-        "| --- | --- |",
-        "| ![[example.png]] | Diagram |",
-      ].join("\n"),
+      ["| Visual | Description |", "| --- | --- |", "| ![[example.png]] | Diagram |"].join("\n"),
       {
         vaultPngAssets: [
           {
@@ -3077,19 +3041,17 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(
       Boolean(
         tableImage?.classList.contains("md-table-cell-image") ||
-          tableImage?.closest(".md-table-cell-media") ||
-          tableImage?.closest(".markdown-table-cell-preview"),
+        tableImage?.closest(".md-table-cell-media") ||
+        tableImage?.closest(".markdown-table-cell-preview"),
       ),
     ).toBe(true);
   });
 
   it("renders chained cloze and quoted tokens in markdown table view without delimiters", () => {
     const { container, cleanup: localCleanup } = buildHarness(
-      [
-        "| Feld | Regel |",
-        "| --- | --- |",
-        '| id | %NOT NULL%%UNIQUE% und "Index Pflicht" |',
-      ].join("\n"),
+      ["| Feld | Regel |", "| --- | --- |", '| id | %NOT NULL%%UNIQUE% und "Index Pflicht" |'].join(
+        "\n",
+      ),
     );
     cleanup = localCleanup;
 
@@ -3111,11 +3073,7 @@ describe("PreviewPanel edit-safe interactions", () => {
 
   it("keeps separate cloze tokens inside markdown table view as two visible blanks without delimiters", () => {
     const { container, cleanup: localCleanup } = buildHarness(
-      [
-        "| Feld | Regel |",
-        "| --- | --- |",
-        "| id | %A% und %B% |",
-      ].join("\n"),
+      ["| Feld | Regel |", "| --- | --- |", "| id | %A% und %B% |"].join("\n"),
     );
     cleanup = localCleanup;
 
@@ -3130,11 +3088,9 @@ describe("PreviewPanel edit-safe interactions", () => {
 
   it("keeps full cloze/quoted delimiters in hybrid table preview", () => {
     const { container, cleanup: localCleanup } = buildHarness(
-      [
-        "| Feld | Regel |",
-        "| --- | --- |",
-        '| id | %NOT NULL%%UNIQUE% und "Index Pflicht" |',
-      ].join("\n"),
+      ["| Feld | Regel |", "| --- | --- |", '| id | %NOT NULL%%UNIQUE% und "Index Pflicht" |'].join(
+        "\n",
+      ),
       {
         markdownHybridEnabled: true,
       },
@@ -3162,12 +3118,12 @@ describe("PreviewPanel edit-safe interactions", () => {
   });
 
   it("renders 1) markers as ordered list items", () => {
-    const { container, cleanup: localCleanup } = buildHarness(
-      ["1) Erste", "2) Zweite"].join("\n"),
-    );
+    const { container, cleanup: localCleanup } = buildHarness(["1) Erste", "2) Zweite"].join("\n"));
     cleanup = localCleanup;
 
-    const orderedList = container.querySelector('.preview.markdown ol[data-md-ordered-delimiter=")"]');
+    const orderedList = container.querySelector(
+      '.preview.markdown ol[data-md-ordered-delimiter=")"]',
+    );
     const orderedItems = container.querySelectorAll(".preview.markdown ol > li");
     expect(orderedList).toBeTruthy();
     expect(orderedItems.length).toBe(2);
@@ -3176,14 +3132,7 @@ describe("PreviewPanel edit-safe interactions", () => {
   });
 
   it("renders a single right-aligned card rail per #card group in markdown view", () => {
-    const markdown = [
-      "Before",
-      "#card",
-      "1) Erste",
-      "2) Zweite",
-      "#endcard",
-      "After",
-    ].join("\n");
+    const markdown = ["Before", "#card", "1) Erste", "2) Zweite", "#endcard", "After"].join("\n");
     const { container, cleanup: localCleanup } = buildHarness(markdown);
     cleanup = localCleanup;
 
@@ -3192,10 +3141,15 @@ describe("PreviewPanel edit-safe interactions", () => {
     );
     expect(groups).toHaveLength(1);
     const group = groups[0];
-    expect(group?.querySelector(".preview-markdown-card-group-rail.md-card-group-rail.has-start-cap.has-end-cap")).toBeTruthy();
+    expect(
+      group?.querySelector(
+        ".preview-markdown-card-group-rail.md-card-group-rail.has-start-cap.has-end-cap",
+      ),
+    ).toBeTruthy();
     expect(group?.querySelector('ol[data-md-ordered-delimiter=")"]')).toBeTruthy();
     const groupedKinds = Array.from(
-      group?.querySelectorAll<HTMLElement>(".preview-markdown-view-block[data-md-block-kind]") ?? [],
+      group?.querySelectorAll<HTMLElement>(".preview-markdown-view-block[data-md-block-kind]") ??
+        [],
     ).map((node) => node.getAttribute("data-md-block-kind"));
     expect(groupedKinds).toEqual(["card-start", "ordered-list", "card-end"]);
   });
@@ -3216,26 +3170,23 @@ describe("PreviewPanel edit-safe interactions", () => {
     );
     cleanup = localCleanup;
 
-    const group = container.querySelector<HTMLElement>(".preview-markdown-card-group[data-md-card-group-id]");
+    const group = container.querySelector<HTMLElement>(
+      ".preview-markdown-card-group[data-md-card-group-id]",
+    );
     expect(group).toBeTruthy();
-    expect(group?.querySelector(".preview-markdown-card-group-rail.md-card-group-rail")).toBeTruthy();
+    expect(
+      group?.querySelector(".preview-markdown-card-group-rail.md-card-group-rail"),
+    ).toBeTruthy();
     const groupedKinds = Array.from(
-      group?.querySelectorAll<HTMLElement>(".preview-markdown-view-block[data-md-block-kind]") ?? [],
+      group?.querySelectorAll<HTMLElement>(".preview-markdown-view-block[data-md-block-kind]") ??
+        [],
     ).map((node) => node.getAttribute("data-md-block-kind"));
     expect(groupedKinds).toEqual(["card-start", "paragraph", "blank", "ordered-list"]);
   });
 
   it("shows a properties panel and hides frontmatter text in markdown view", () => {
     const { container, cleanup: localCleanup } = buildHarness(
-      [
-        "---",
-        "title: Demo",
-        "tags:",
-        "  - alpha",
-        "---",
-        "# Body",
-        "Visible text",
-      ].join("\n"),
+      ["---", "title: Demo", "tags:", "  - alpha", "---", "# Body", "Visible text"].join("\n"),
     );
     cleanup = localCleanup;
 
@@ -3259,9 +3210,7 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
     const editor = container.querySelector(".preview.preview-editor.markdown");
@@ -3273,12 +3222,9 @@ describe("PreviewPanel edit-safe interactions", () => {
   });
 
   it("renders the cover panel in hybrid edit mode when frontmatter is only in the edit draft", () => {
-    const markdownWithCover = [
-      "---",
-      "Cover: '[[assets/cover.png]]'",
-      "---",
-      "Body line",
-    ].join("\n");
+    const markdownWithCover = ["---", "Cover: '[[assets/cover.png]]'", "---", "Body line"].join(
+      "\n",
+    );
 
     const Harness = () => {
       const [editDraft, setEditDraft] = useState(markdownWithCover);
@@ -3437,9 +3383,7 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
     expect(container.querySelector(".preview.preview-editor.markdown")).toBeTruthy();
@@ -3474,14 +3418,10 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const heading = editable?.querySelector("h2") as HTMLHeadingElement | null;
     const marker = heading?.querySelector(".md-heading-marker") as HTMLSpanElement | null;
     const headingTextNode = heading?.childNodes.item(1) ?? null;
@@ -3554,14 +3494,10 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const firstParagraph = editable?.querySelector("p") as HTMLParagraphElement | null;
     expect(editable).toBeTruthy();
     expect(firstParagraph).toBeTruthy();
@@ -3577,9 +3513,10 @@ describe("PreviewPanel edit-safe interactions", () => {
       await Promise.resolve();
     });
 
-    const bodyParagraph = Array.from(editable?.querySelectorAll("p") ?? []).find((line) =>
-      (line.textContent ?? "").includes("Body line")
-    ) ?? null;
+    const bodyParagraph =
+      Array.from(editable?.querySelectorAll("p") ?? []).find((line) =>
+        (line.textContent ?? "").includes("Body line"),
+      ) ?? null;
     const bodyTextNode = bodyParagraph?.firstChild ?? null;
 
     act(() => {
@@ -3619,14 +3556,10 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const firstParagraph = editable?.querySelector("p") as HTMLParagraphElement | null;
     expect(editable).toBeTruthy();
     expect(firstParagraph).toBeTruthy();
@@ -3642,9 +3575,10 @@ describe("PreviewPanel edit-safe interactions", () => {
       await Promise.resolve();
     });
 
-    const bodyParagraph = Array.from(editable?.querySelectorAll("p") ?? []).find((line) =>
-      (line.textContent ?? "").includes("Body line")
-    ) ?? null;
+    const bodyParagraph =
+      Array.from(editable?.querySelectorAll("p") ?? []).find((line) =>
+        (line.textContent ?? "").includes("Body line"),
+      ) ?? null;
     const bodyTextNode = bodyParagraph?.firstChild ?? null;
 
     act(() => {
@@ -3677,21 +3611,15 @@ describe("PreviewPanel edit-safe interactions", () => {
   });
 
   it("promotes heading syntax typed into a blank block after leaving the line", async () => {
-    const { container, cleanup: localCleanup } = buildHarness(
-      ["", "Body line"].join("\n"),
-    );
+    const { container, cleanup: localCleanup } = buildHarness(["", "Body line"].join("\n"));
     cleanup = localCleanup;
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const blankLine = editable?.querySelector(
       "div.preview-markdown-view-block-blank[data-md-inline-line='true']",
     ) as HTMLDivElement | null;
@@ -3710,16 +3638,19 @@ describe("PreviewPanel edit-safe interactions", () => {
     });
 
     act(() => {
-      editable?.dispatchEvent(new KeyboardEvent("keydown", {
-        bubbles: true,
-        cancelable: true,
-        key: "Enter",
-      }));
+      editable?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          key: "Enter",
+        }),
+      );
     });
 
-    const bodyParagraph = Array.from(editable?.querySelectorAll("p") ?? []).find((line) =>
-      (line.textContent ?? "").includes("Body line")
-    ) ?? null;
+    const bodyParagraph =
+      Array.from(editable?.querySelectorAll("p") ?? []).find((line) =>
+        (line.textContent ?? "").includes("Body line"),
+      ) ?? null;
     const bodyTextNode = bodyParagraph?.firstChild ?? null;
 
     act(() => {
@@ -3752,21 +3683,15 @@ describe("PreviewPanel edit-safe interactions", () => {
   });
 
   it("shows editable --- marker when a separator line is focused", () => {
-    const { container, cleanup: localCleanup } = buildHarness(
-      ["A", "", "---", "", "B"].join("\n"),
-    );
+    const { container, cleanup: localCleanup } = buildHarness(["A", "", "---", "", "B"].join("\n"));
     cleanup = localCleanup;
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const hrLine = editable?.querySelector(
       '[data-md-hr-line="true"]',
     ) as HTMLParagraphElement | null;
@@ -3804,14 +3729,10 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const codeBlock = editable?.querySelector(
       'pre[data-md-code-block="true"]',
     ) as HTMLElement | null;
@@ -3874,14 +3795,10 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const codeBlock = editable?.querySelector(
       'pre[data-md-code-block="true"]',
     ) as HTMLElement | null;
@@ -3903,9 +3820,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     );
     cleanup = localCleanup;
 
-    const listItems = Array.from(
-      container.querySelectorAll(".preview.markdown.md-preview li"),
-    );
+    const listItems = Array.from(container.querySelectorAll(".preview.markdown.md-preview li"));
     const previewText = container.querySelector(".preview.markdown.md-preview")?.textContent ?? "";
 
     expect(listItems.length).toBeGreaterThanOrEqual(2);
@@ -3914,9 +3829,7 @@ describe("PreviewPanel edit-safe interactions", () => {
   });
 
   it("moves Enter inside a list item to a root paragraph in markdown edit mode", () => {
-    const { container, cleanup: localCleanup } = buildHarness(
-      ["1) Alpha", "2) Beta"].join("\n"),
-    );
+    const { container, cleanup: localCleanup } = buildHarness(["1) Alpha", "2) Beta"].join("\n"));
     cleanup = localCleanup;
 
     const previewContent = container.querySelector(".preview-content");
@@ -3924,9 +3837,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const firstItem = editable?.querySelector("ol > li") as HTMLLIElement | null;
     const firstTextNode = firstItem?.childNodes.item(1) as Text | null;
 
@@ -3998,9 +3909,7 @@ describe("PreviewPanel edit-safe interactions", () => {
             return true;
           },
           onEditStart: (options) => {
-            setEditCaretIndex(
-              typeof options?.caretIndex === "number" ? options.caretIndex : null,
-            );
+            setEditCaretIndex(typeof options?.caretIndex === "number" ? options.caretIndex : null);
             setIsEditing(true);
           },
           onSelectEditorMode: () => {},
@@ -4058,20 +3967,20 @@ describe("PreviewPanel edit-safe interactions", () => {
       previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const textNode = findTextNodeContaining(editable, "Alpha");
     expect(editable).toBeTruthy();
     expect(textNode).toBeTruthy();
 
     setCollapsedSelection(textNode, 0);
     act(() => {
-      editable?.dispatchEvent(new KeyboardEvent("keydown", {
-        bubbles: true,
-        cancelable: true,
-        key: ">",
-      }));
+      editable?.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          key: ">",
+        }),
+      );
     });
 
     const firstLine = editable?.querySelector<HTMLElement>('[data-md-inline-line="true"]');
@@ -4087,9 +3996,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const textNode = findTextNodeContaining(editable, "Wichtiger Hinweis");
     expect(editable).toBeTruthy();
     expect(textNode).toBeTruthy();
@@ -4120,12 +4027,11 @@ describe("PreviewPanel edit-safe interactions", () => {
       previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     expect(editable).toBeTruthy();
 
-    const markerTextNode = editable?.querySelector(".md-blockquote-marker")?.firstChild as Text | null;
+    const markerTextNode = editable?.querySelector(".md-blockquote-marker")
+      ?.firstChild as Text | null;
     expect(markerTextNode).toBeTruthy();
 
     setCollapsedSelection(markerTextNode, 1);
@@ -4154,9 +4060,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const textNode = findTextNodeContaining(editable, "Oberlinie");
     expect(editable).toBeTruthy();
     expect(textNode).toBeTruthy();
@@ -4188,9 +4092,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const textNode = findTextNodeContaining(editable, "asdasdasd");
     expect(editable).toBeTruthy();
     expect(textNode).toBeTruthy();
@@ -4221,9 +4123,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     expect(editable).toBeTruthy();
     expect(editable?.querySelector("blockquote")).toBeNull();
 
@@ -4234,9 +4134,7 @@ describe("PreviewPanel edit-safe interactions", () => {
   });
 
   it("anchors quote markers inline to the focused quote line", () => {
-    const { container, cleanup: localCleanup } = buildHarness(
-      ["> Hinweis", "Nachher"].join("\n"),
-    );
+    const { container, cleanup: localCleanup } = buildHarness(["> Hinweis", "Nachher"].join("\n"));
     cleanup = localCleanup;
 
     const previewContent = container.querySelector(".preview-content");
@@ -4244,9 +4142,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const quoteTextNode = findTextNodeContaining(editable, "Hinweis");
     expect(editable).toBeTruthy();
     expect(quoteTextNode).toBeTruthy();
@@ -4257,7 +4153,9 @@ describe("PreviewPanel edit-safe interactions", () => {
     });
 
     const quoteLine = Array.from(
-      editable?.querySelectorAll<HTMLElement>('[data-md-inline-line="true"][data-md-inline-active="true"]') ?? [],
+      editable?.querySelectorAll<HTMLElement>(
+        '[data-md-inline-line="true"][data-md-inline-active="true"]',
+      ) ?? [],
     ).find((line) => (line.textContent ?? "").includes("Hinweis"));
     const inlineMarker = quoteLine?.querySelector<HTMLElement>(":scope > .md-blockquote-marker");
 
@@ -4277,9 +4175,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const textNode = findTextNodeContaining(editable, "after");
     expect(editable).toBeTruthy();
     expect(textNode).toBeTruthy();
@@ -4295,7 +4191,9 @@ describe("PreviewPanel edit-safe interactions", () => {
       ) ?? [],
     );
 
-    const markerDepths = activeMarkers.map((marker) => (marker.textContent?.match(/>/g) ?? []).length);
+    const markerDepths = activeMarkers.map(
+      (marker) => (marker.textContent?.match(/>/g) ?? []).length,
+    );
     expect(activeMarkers.length).toBeGreaterThanOrEqual(2);
     expect(activeMarkers.map((marker) => marker.textContent?.trim())).toContain(">");
     expect(activeMarkers.map((marker) => marker.textContent?.trim())).toContain(">>");
@@ -4313,9 +4211,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const items = Array.from(editable?.querySelectorAll("ol > li") ?? []);
     const secondText = items[1]?.childNodes.item(1) as Text | null;
     const thirdText = items[2]?.childNodes.item(1) as Text | null;
@@ -4345,8 +4241,8 @@ describe("PreviewPanel edit-safe interactions", () => {
     });
 
     const rootList = editable?.querySelector("ol");
-    const topItems = Array.from(rootList?.children ?? []).filter((node): node is HTMLLIElement =>
-      node instanceof HTMLLIElement
+    const topItems = Array.from(rootList?.children ?? []).filter(
+      (node): node is HTMLLIElement => node instanceof HTMLLIElement,
     );
     expect(topItems).toHaveLength(1);
     expect(topItems[0]?.querySelector("ol")?.children.length ?? 0).toBe(2);
@@ -4360,14 +4256,10 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const copyButton = editable?.querySelector(
       ".md-code-block > .md-code-copy-button",
     ) as HTMLButtonElement | null;
@@ -4380,28 +4272,16 @@ describe("PreviewPanel edit-safe interactions", () => {
 
   it("shows editable list markers when a list line is focused", () => {
     const { container, cleanup: localCleanup } = buildHarness(
-      [
-        "- Bullet",
-        "",
-        "1. Numbered",
-        "2) Numbered alt",
-        "",
-        "- [ ] Open",
-        "- [x] Done",
-      ].join("\n"),
+      ["- Bullet", "", "1. Numbered", "2) Numbered alt", "", "- [ ] Open", "- [x] Done"].join("\n"),
     );
     cleanup = localCleanup;
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const markers = Array.from(
       editable?.querySelectorAll<HTMLElement>("li > .md-list-marker") ?? [],
     );
@@ -4441,14 +4321,10 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     expect(editable).toBeTruthy();
 
     const levelOneList = editable?.querySelector("ul") as HTMLUListElement | null;
@@ -4487,14 +4363,10 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     expect(editable).toBeTruthy();
 
     const rootNode = findTextNodeContaining(editable, "root");
@@ -4539,14 +4411,10 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     expect(editable).toBeTruthy();
 
     const rootNode = findTextNodeContaining(editable, "root");
@@ -4578,20 +4446,16 @@ describe("PreviewPanel edit-safe interactions", () => {
 
   it("marks inline raw-syntax lines as active for caret and multiline selection", () => {
     const { container, cleanup: localCleanup } = buildHarness(
-      ["Alpha **Bold**", "", "Quote: \"Token\"", "%%Cloze%%"].join("\n"),
+      ["Alpha **Bold**", "", 'Quote: "Token"', "%%Cloze%%"].join("\n"),
     );
     cleanup = localCleanup;
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const boldNode = findTextNodeContaining(editable, "Bold");
     const quoteNode = findTextNodeContaining(editable, "Quote:");
     expect(editable).toBeTruthy();
@@ -4604,7 +4468,9 @@ describe("PreviewPanel edit-safe interactions", () => {
     });
 
     const singleActiveLines = Array.from(
-      editable?.querySelectorAll<HTMLElement>('[data-md-inline-line="true"][data-md-inline-active="true"]') ?? [],
+      editable?.querySelectorAll<HTMLElement>(
+        '[data-md-inline-line="true"][data-md-inline-active="true"]',
+      ) ?? [],
     );
     expect(singleActiveLines).toHaveLength(1);
     expect(singleActiveLines[0]?.textContent ?? "").toContain("Bold");
@@ -4615,7 +4481,9 @@ describe("PreviewPanel edit-safe interactions", () => {
     });
 
     const multiActiveLines = Array.from(
-      editable?.querySelectorAll<HTMLElement>('[data-md-inline-line="true"][data-md-inline-active="true"]') ?? [],
+      editable?.querySelectorAll<HTMLElement>(
+        '[data-md-inline-line="true"][data-md-inline-active="true"]',
+      ) ?? [],
     );
     expect(multiActiveLines.length).toBeGreaterThanOrEqual(2);
     expect(multiActiveLines.some((line) => (line.textContent ?? "").includes("Bold"))).toBe(true);
@@ -4630,14 +4498,10 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
-    const editable = container.querySelector(
-      ".preview-markdown-editable",
-    ) as HTMLDivElement | null;
+    const editable = container.querySelector(".preview-markdown-editable") as HTMLDivElement | null;
     const tokenNode = findTextNodeContaining(editable, "Text");
     expect(editable).toBeTruthy();
     expect(tokenNode).toBeTruthy();
@@ -4659,7 +4523,7 @@ describe("PreviewPanel edit-safe interactions", () => {
       .filter((value) => value.length > 0);
 
     expect(markerTexts).toEqual(
-      expect.arrayContaining(["==", "**", "*", "__", "~~", "`", "$", "%", "\""]),
+      expect.arrayContaining(["==", "**", "*", "__", "~~", "`", "$", "%", '"']),
     );
 
     const mathSource = activeLine?.querySelector<HTMLElement>(
@@ -4726,9 +4590,7 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     const previewContent = container.querySelector(".preview-content");
     act(() => {
-      previewContent?.dispatchEvent(
-        new MouseEvent("mouseup", { bubbles: true, button: 0 }),
-      );
+      previewContent?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, button: 0 }));
     });
 
     expect(container.querySelector(".preview.preview-editor.markdown")).toBeTruthy();
@@ -5033,13 +4895,7 @@ describe("PreviewPanel edit-safe interactions", () => {
   });
 
   it("shows links editor when an empty links attribute exists", () => {
-    const markdown = [
-      "---",
-      "title: Demo",
-      "links: null",
-      "---",
-      "Body line",
-    ].join("\n");
+    const markdown = ["---", "title: Demo", "links: null", "---", "Body line"].join("\n");
     const { container, cleanup: localCleanup } = buildHarness(markdown);
     cleanup = localCleanup;
 
@@ -5102,14 +4958,9 @@ describe("PreviewPanel edit-safe interactions", () => {
 
   it("reorders properties via drag and drop", async () => {
     const onFrontmatterSave = vi.fn().mockResolvedValue(true);
-    const markdown = [
-      "---",
-      "title: Demo",
-      "rank: SE1",
-      "section: IUFS",
-      "---",
-      "Body line",
-    ].join("\n");
+    const markdown = ["---", "title: Demo", "rank: SE1", "section: IUFS", "---", "Body line"].join(
+      "\n",
+    );
     const { container, cleanup: localCleanup } = buildHarness(markdown, {
       onFrontmatterSave,
     });
@@ -5121,9 +4972,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     const titleRow = container.querySelector(
       '[data-frontmatter-key="title"]',
     ) as HTMLDivElement | null;
-    const rankHandle = rankRow?.querySelector(
-      ".frontmatter-key",
-    ) as HTMLDivElement | null;
+    const rankHandle = rankRow?.querySelector(".frontmatter-key") as HTMLDivElement | null;
     expect(rankRow).toBeTruthy();
     expect(titleRow).toBeTruthy();
     expect(rankHandle).toBeTruthy();
@@ -5156,14 +5005,9 @@ describe("PreviewPanel edit-safe interactions", () => {
 
   it("removes an attribute row and persists frontmatter", async () => {
     const onFrontmatterSave = vi.fn().mockResolvedValue(true);
-    const markdown = [
-      "---",
-      "title: Demo",
-      "rank: SE1",
-      "section: IUFS",
-      "---",
-      "Body line",
-    ].join("\n");
+    const markdown = ["---", "title: Demo", "rank: SE1", "section: IUFS", "---", "Body line"].join(
+      "\n",
+    );
     const { container, cleanup: localCleanup } = buildHarness(markdown, {
       onFrontmatterSave,
     });
@@ -6003,8 +5847,12 @@ describe("PreviewPanel edit-safe interactions", () => {
         "[data-formula-builder-scope='multi-folder'] .formula-attribute-builder-option",
       ),
     );
-    const courseSourceOption = multiFolderOptions.find((button) => (button.textContent ?? "").includes("Course"));
-    const archiveSourceMultiOption = multiFolderOptions.find((button) => (button.textContent ?? "").includes("Archive"));
+    const courseSourceOption = multiFolderOptions.find((button) =>
+      (button.textContent ?? "").includes("Course"),
+    );
+    const archiveSourceMultiOption = multiFolderOptions.find((button) =>
+      (button.textContent ?? "").includes("Archive"),
+    );
     act(() => {
       courseSourceOption?.click();
       archiveSourceMultiOption?.click();
@@ -6124,9 +5972,7 @@ describe("PreviewPanel edit-safe interactions", () => {
     ].join("\n");
     const { container, cleanup: localCleanup } = buildHarness(markdown, {
       sourceRelativePath: "Course/current.md",
-      vaultFiles: [
-        { path: "/vault/Course/current.md", relative_path: "Course/current.md" },
-      ],
+      vaultFiles: [{ path: "/vault/Course/current.md", relative_path: "Course/current.md" }],
       frontmatterValuesByFile: {
         "Course/current.md": { percent: 10 },
         ".profile/exam-runs/run-a.md": { percent: 20 },
@@ -6471,8 +6317,9 @@ describe("PreviewPanel edit-safe interactions", () => {
       await flushAsyncInteraction();
 
       const transform = coverThumb.style.transform;
-      const transformMatch =
-        /translate\(([-\d.]+)px,\s*([-\d.]+)px\)\s*scale\(([-\d.]+)\)/.exec(transform);
+      const transformMatch = /translate\(([-\d.]+)px,\s*([-\d.]+)px\)\s*scale\(([-\d.]+)\)/.exec(
+        transform,
+      );
       expect(transformMatch).toBeTruthy();
       const translateY = Number(transformMatch?.[2] ?? Number.NaN);
       const scale = Number(transformMatch?.[3] ?? Number.NaN);
@@ -6584,11 +6431,9 @@ describe("PreviewPanel edit-safe interactions", () => {
     expect(onFrontmatterSave).toHaveBeenCalled();
     const lastCallIndex = onFrontmatterSave.mock.calls.length - 1;
     const savedMarkdown = String(
-      lastCallIndex >= 0 ? onFrontmatterSave.mock.calls[lastCallIndex]?.[0] ?? "" : "",
+      lastCallIndex >= 0 ? (onFrontmatterSave.mock.calls[lastCallIndex]?.[0] ?? "") : "",
     );
-    expect(savedMarkdown.startsWith("---\nCover: '[[cover/IDBS01-TestL1.png]]'\n---\n")).toBe(
-      true,
-    );
+    expect(savedMarkdown.startsWith("---\nCover: '[[cover/IDBS01-TestL1.png]]'\n---\n")).toBe(true);
     expect(savedMarkdown).toContain("# Mein Dokument\n\nInhalt ohne YAML-Block.");
     expect(savedMarkdown).not.toContain("Section:");
     expect(savedMarkdown).not.toContain("Rank:");
@@ -6633,9 +6478,8 @@ describe("PreviewPanel edit-safe interactions", () => {
 
     expect(onFrontmatterSave).toHaveBeenCalled();
     const lastCallIndex = onFrontmatterSave.mock.calls.length - 1;
-    const lastSaved = lastCallIndex >= 0
-      ? onFrontmatterSave.mock.calls[lastCallIndex]?.[0] ?? ""
-      : "";
+    const lastSaved =
+      lastCallIndex >= 0 ? (onFrontmatterSave.mock.calls[lastCallIndex]?.[0] ?? "") : "";
     expect(String(lastSaved)).not.toContain("Cover:");
   });
 

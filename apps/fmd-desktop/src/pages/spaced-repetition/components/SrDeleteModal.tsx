@@ -73,9 +73,7 @@ export const SrDeleteModal = ({
         aria-labelledby="delete-user-title"
       >
         <h3 id="delete-user-title">{tSettings(language, "settings.deleteUser.title")}</h3>
-        <p className="muted">
-          {tSettings(language, "settings.deleteUser.description")}
-        </p>
+        <p className="muted">{tSettings(language, "settings.deleteUser.description")}</p>
         <div className="modal-body">
           <span className="label">
             {formatSettingsText(language, "settings.deleteUser.typeToConfirm", {
@@ -89,9 +87,7 @@ export const SrDeleteModal = ({
             onChange={(event) => setDeleteConfirmInput(event.target.value)}
             aria-label="Type the username to confirm deletion"
           />
-          <span className="helper-text">
-            {tSettings(language, "settings.deleteUser.helper")}
-          </span>
+          <span className="helper-text">{tSettings(language, "settings.deleteUser.helper")}</span>
         </div>
         <div className="modal-actions">
           <button type="button" className="ghost" onClick={handleDeleteCancel}>

@@ -12,10 +12,7 @@ type DatabaseKanbanPanelProps = {
   groupField: string | null;
   valueOptions: DatabaseKanbanValueOption[];
   excludedValues: string[];
-  onChange: (next: {
-    groupField?: string | null;
-    excludedValues?: string[];
-  }) => void;
+  onChange: (next: { groupField?: string | null; excludedValues?: string[] }) => void;
   onClose: () => void;
 };
 
@@ -27,8 +24,9 @@ export const DatabaseKanbanPanel = ({
   onChange,
   onClose,
 }: DatabaseKanbanPanelProps) => {
-  const groupableAttributes = attributes
-    .filter((attribute) => attribute.viewCompatibility.supportsKanbanGrouping);
+  const groupableAttributes = attributes.filter(
+    (attribute) => attribute.viewCompatibility.supportsKanbanGrouping,
+  );
   const excludedValueSet = new Set(excludedValues);
 
   const handleValueToggle = (value: string, checked: boolean) => {
@@ -52,7 +50,12 @@ export const DatabaseKanbanPanel = ({
     >
       <header className="database-block-panel-header">
         <h5>Kanban Optionen</h5>
-        <button type="button" className="database-block-panel-close" onClick={onClose} aria-label="Schliessen">
+        <button
+          type="button"
+          className="database-block-panel-close"
+          onClick={onClose}
+          aria-label="Schliessen"
+        >
           ×
         </button>
       </header>
@@ -66,7 +69,9 @@ export const DatabaseKanbanPanel = ({
           >
             <option value="">Auto</option>
             {groupableAttributes.map((attribute) => (
-              <option key={attribute.key} value={attribute.key}>{attribute.label || attribute.key}</option>
+              <option key={attribute.key} value={attribute.key}>
+                {attribute.label || attribute.key}
+              </option>
             ))}
           </select>
         </label>

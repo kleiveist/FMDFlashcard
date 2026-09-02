@@ -3,11 +3,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import {
-  cloneTaskBlueprint,
-  reorderCardsByIndex,
-  reorderTasksByIndex,
-} from "./blueprint";
+import { cloneTaskBlueprint, reorderCardsByIndex, reorderTasksByIndex } from "./blueprint";
 import type { CardBlueprint, ExamTaskBlueprint } from "./types";
 
 const buildTask = (id: string, order: number): ExamTaskBlueprint => ({

@@ -64,7 +64,7 @@ describe("markdown Canvas block syntax", () => {
 
     expect(serialized).toContain("#canvas\n");
     expect(serialized).toContain("\n#canvasend");
-    expect(serialized).toContain("\"nodes\"");
+    expect(serialized).toContain('"nodes"');
   });
 
   it("replaces only the Canvas JSON body while preserving fenced wrappers", () => {
@@ -76,7 +76,7 @@ describe("markdown Canvas block syntax", () => {
 
     expect(nextRaw.startsWith("```canvas\n")).toBe(true);
     expect(nextRaw.endsWith("\n```")).toBe(true);
-    expect(nextRaw).toContain("\"edges\": []");
+    expect(nextRaw).toContain('"edges": []');
   });
 
   it("preserves directive wrappers when replacing the Canvas JSON body", () => {
@@ -88,7 +88,7 @@ describe("markdown Canvas block syntax", () => {
 
     expect(nextRaw.startsWith("#canvas\n")).toBe(true);
     expect(nextRaw.endsWith("\n#endcanvas")).toBe(true);
-    expect(nextRaw).toContain("\"nodes\": []");
+    expect(nextRaw).toContain('"nodes": []');
   });
 
   it("extracts and masks multiple Canvas blocks", () => {
@@ -99,7 +99,7 @@ describe("markdown Canvas block syntax", () => {
       "#canvasend",
       "Between",
       "```canvas",
-      "{ \"nodes\": [], \"edges\": [] }",
+      '{ "nodes": [], "edges": [] }',
       "```",
       "After",
     ];

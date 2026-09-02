@@ -50,33 +50,38 @@ const buttonWithText = (container: ParentNode, text: string) =>
 const buttonWithLabel = (container: ParentNode, label: string) =>
   container.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`);
 
-const buildCanvasBlock = (text = "# Example") => [
-  "#canvas",
-  JSON.stringify(
-    {
-      nodes: [
-        {
-          id: "node-1",
-          type: "text",
-          text,
-          x: 0,
-          y: 0,
-          width: 240,
-          height: 120,
-        },
-      ],
-      edges: [],
-    },
-    null,
-    2,
-  ),
-  "#canvasend",
-].join("\n");
+const buildCanvasBlock = (text = "# Example") =>
+  [
+    "#canvas",
+    JSON.stringify(
+      {
+        nodes: [
+          {
+            id: "node-1",
+            type: "text",
+            text,
+            x: 0,
+            y: 0,
+            width: 240,
+            height: 120,
+          },
+        ],
+        edges: [],
+      },
+      null,
+      2,
+    ),
+    "#canvasend",
+  ].join("\n");
 
 describe("CanvasEmbeddedBlock", () => {
   it("renders the full Canvas editor inline without embedded mode buttons", async () => {
     const { container, cleanup } = render(
-      createElement(CanvasEmbeddedBlock, { raw: buildCanvasBlock(), allowEditing: true, onCommitRaw: vi.fn() }),
+      createElement(CanvasEmbeddedBlock, {
+        raw: buildCanvasBlock(),
+        allowEditing: true,
+        onCommitRaw: vi.fn(),
+      }),
     );
     await flush();
 
@@ -99,11 +104,17 @@ describe("CanvasEmbeddedBlock", () => {
 
   it("shows Canvas read-only when Markdown editing is not allowed", async () => {
     const { container, cleanup } = render(
-      createElement(CanvasEmbeddedBlock, { raw: buildCanvasBlock(), allowEditing: false, onCommitRaw: vi.fn() }),
+      createElement(CanvasEmbeddedBlock, {
+        raw: buildCanvasBlock(),
+        allowEditing: false,
+        onCommitRaw: vi.fn(),
+      }),
     );
     await flush();
 
-    expect(container.querySelector(".business-canvas-editor")?.getAttribute("data-canvas-mode")).toBe("view");
+    expect(
+      container.querySelector(".business-canvas-editor")?.getAttribute("data-canvas-mode"),
+    ).toBe("view");
     expect(buttonWithLabel(container, "Add card")?.disabled).toBe(true);
     expect(buttonWithLabel(container, "Delete canvas block")?.disabled).toBe(true);
 
@@ -121,7 +132,9 @@ describe("CanvasEmbeddedBlock", () => {
     );
     await flush();
 
-    expect(container.querySelector(".business-canvas-editor")?.getAttribute("data-canvas-mode")).toBe("edit");
+    expect(
+      container.querySelector(".business-canvas-editor")?.getAttribute("data-canvas-mode"),
+    ).toBe("edit");
     const addCardButton = buttonWithLabel(container, "Add card");
     expect(addCardButton?.disabled).toBe(false);
     await clickButton(addCardButton);
@@ -129,12 +142,10 @@ describe("CanvasEmbeddedBlock", () => {
 
     expect(container.querySelectorAll(".business-canvas-card-node")).toHaveLength(2);
     expect(onCommitRaw).toHaveBeenCalled();
-    const committedRaw = onCommitRaw.mock.calls[
-      onCommitRaw.mock.calls.length - 1
-    ]?.[0] as string;
+    const committedRaw = onCommitRaw.mock.calls[onCommitRaw.mock.calls.length - 1]?.[0] as string;
     expect(committedRaw).toContain("#canvas");
     expect(committedRaw).toContain("#canvasend");
-    expect(committedRaw).toContain("\"text\": \"Neue Karte\"");
+    expect(committedRaw).toContain('"text": "Neue Karte"');
 
     cleanup();
   });

@@ -7,10 +7,7 @@
 
 import { parseExamTasks } from "../../lib/exam";
 import { normalizeCardWrapperPlacement } from "../../lib/exam/autoCards";
-import {
-  serializePngEmbed,
-  serializeSvgFence,
-} from "../../lib/cardMedia";
+import { serializePngEmbed, serializeSvgFence } from "../../lib/cardMedia";
 import { buildTaskFingerprint } from "./stability";
 import type {
   CardBlueprint,
@@ -106,9 +103,7 @@ const serializeTfCard = (card: Extract<CardBlueprint, { type: "tf" }>) => {
   return [...promptLines, `-${marker}`];
 };
 
-const serializeChoiceCard = (
-  card: Extract<CardBlueprint, { type: "m1" | "m2" }>,
-) => {
+const serializeChoiceCard = (card: Extract<CardBlueprint, { type: "m1" | "m2" }>) => {
   if (card.rawBody?.trim()) {
     return cleanLines(card.rawBody);
   }
@@ -128,9 +123,8 @@ const serializeChoiceCard = (
   return [...promptLines, ...optionLines, ...correctLines];
 };
 
-const serializeClozeCard = (
-  card: Extract<CardBlueprint, { type: "cl" | "cd" | "cld" }>,
-) => cleanLines(card.prompt);
+const serializeClozeCard = (card: Extract<CardBlueprint, { type: "cl" | "cd" | "cld" }>) =>
+  cleanLines(card.prompt);
 
 const serializeCardContent = (card: CardBlueprint) => {
   switch (card.type) {
@@ -209,14 +203,10 @@ export type SerializeExamBlueprintStableOptions = SerializeExamBlueprintOptions 
 const normalizePassiveSegmentText = (value: string) =>
   trimEmptyLines(normalizeLines(value)).join("\n");
 
-const resolvePassiveSegmentsBySlot = (
-  passiveSegments?: ExamPassiveSegment[],
-) => {
+const resolvePassiveSegmentsBySlot = (passiveSegments?: ExamPassiveSegment[]) => {
   const bySlot = new Map<number, string[]>();
   (passiveSegments ?? []).forEach((segment) => {
-    const rawSlotIndex = Number.isFinite(segment.slotIndex)
-      ? segment.slotIndex
-      : 0;
+    const rawSlotIndex = Number.isFinite(segment.slotIndex) ? segment.slotIndex : 0;
     const slotIndex = Math.max(0, Math.floor(rawSlotIndex));
     const normalizedText = normalizePassiveSegmentText(segment.text ?? "");
     if (!normalizedText.trim()) {
@@ -257,10 +247,7 @@ export const serializeExamBlueprint = (
   const passiveBySlot = resolvePassiveSegmentsBySlot(options?.passiveSegments);
   const orderedTasks = exam.tasks.slice().sort((a, b) => a.order - b.order);
   if (orderedTasks.length > 0) {
-    mergeOverflowPassiveSegmentsIntoTrailingSlot(
-      passiveBySlot,
-      orderedTasks.length - 1,
-    );
+    mergeOverflowPassiveSegmentsIntoTrailingSlot(passiveBySlot, orderedTasks.length - 1);
   }
   const metaLines = serializeExamMeta(exam);
   if (metaLines.length > 0) {
@@ -363,15 +350,12 @@ export const serializeExamBlueprintStable = (
   const firstTaskStartLine = parsedSource.tasks[0]?.sourceRange.startLine ?? null;
   const sourceMeta = extractSourceExamMeta(sourceMarkdown, firstTaskStartLine);
   const examMetaUnchanged =
-    sourceMeta.title === exam.title.trim() &&
-    sourceMeta.description === exam.description.trim();
+    sourceMeta.title === exam.title.trim() && sourceMeta.description === exam.description.trim();
 
   const changedTaskIndices = orderedTasks
     .map((task, index) => ({
       index,
-      changed:
-        !task.sourceMeta ||
-        buildTaskFingerprint(task) !== task.sourceMeta.sourceFingerprint,
+      changed: !task.sourceMeta || buildTaskFingerprint(task) !== task.sourceMeta.sourceFingerprint,
     }))
     .filter((entry) => entry.changed)
     .map((entry) => entry.index);

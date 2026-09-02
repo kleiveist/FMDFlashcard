@@ -123,8 +123,7 @@ const USER_VAULT_EXAM_POINTS_PROFILES_FILE = "exam-points-profiles.json";
 const USER_VAULT_PROFILE_SCHEMA_VERSION = USER_VAULT_SCHEMA_VERSION;
 const USER_VAULT_SPACED_REPETITION_SCHEMA_VERSION = 2;
 const USER_VAULT_EXAM_RUNS_SCHEMA_VERSION = USER_VAULT_SCHEMA_VERSION;
-const USER_VAULT_EXAM_POINTS_PROFILE_SCHEMA_VERSION =
-  EXAM_POINTS_PROFILE_SCHEMA_VERSION;
+const USER_VAULT_EXAM_POINTS_PROFILE_SCHEMA_VERSION = EXAM_POINTS_PROFILE_SCHEMA_VERSION;
 const PROFILE_SCOPED_SPACED_REPETITION_KEY = "__profile__";
 
 const isMissingPathError = (message: string) =>
@@ -153,7 +152,7 @@ const hasProfileIdentity = async (profilePath: string): Promise<boolean> => {
   }
 };
 
-const readJsonFile = async <T,>(path: string, fallback: T): Promise<T> => {
+const readJsonFile = async <T>(path: string, fallback: T): Promise<T> => {
   try {
     const raw = await invoke<string>("read_json_file", { path });
     const parsed = JSON.parse(raw) as T;
@@ -170,7 +169,7 @@ type JsonReadResult<T> = {
   error: JsonReadError | null;
 };
 
-const readJsonFileWithStatus = async <T,>(path: string): Promise<JsonReadResult<T>> => {
+const readJsonFileWithStatus = async <T>(path: string): Promise<JsonReadResult<T>> => {
   try {
     const raw = await invoke<string>("read_json_file", { path });
     try {
@@ -199,8 +198,7 @@ const buildCorruptBackupPath = (path: string) => {
   return buildJsonSiblingPath(path, `.corrupt.${stamp}`);
 };
 
-const buildTempJsonPath = (path: string) =>
-  buildJsonSiblingPath(path, `.tmp.${Date.now()}`);
+const buildTempJsonPath = (path: string) => buildJsonSiblingPath(path, `.tmp.${Date.now()}`);
 
 const renameJsonFile = async (from: string, to: string) => {
   await invoke("rename_json_file", { from, to });
@@ -219,10 +217,7 @@ const writeJsonFileAtomic = async (path: string, payload: unknown) => {
     await renameJsonFile(tempPath, path);
   } catch (error) {
     await invoke("write_json_file", { path, contents });
-    console.warn(
-      "Failed to replace JSON file atomically",
-      asErrorMessage(error, "Unknown error"),
-    );
+    console.warn("Failed to replace JSON file atomically", asErrorMessage(error, "Unknown error"));
   }
 };
 
@@ -283,18 +278,12 @@ const resolveSpacedRepetitionRegistryPath = (profilePath: string) =>
   );
 
 const resolveSpacedRepetitionUsersRootPath = (profilePath: string) =>
-  joinPath(
-    resolveSpacedRepetitionRootPath(profilePath),
-    USER_VAULT_SPACED_REPETITION_USERS_DIR,
-  );
+  joinPath(resolveSpacedRepetitionRootPath(profilePath), USER_VAULT_SPACED_REPETITION_USERS_DIR);
 
 const buildSafeSpacedRepetitionUserFolderName = (userId: string) =>
   sanitizeProfileName(encodeURIComponent(userId)) || "user";
 
-const resolveSpacedRepetitionUserProgressPath = (
-  profilePath: string,
-  userId: string,
-) =>
+const resolveSpacedRepetitionUserProgressPath = (profilePath: string, userId: string) =>
   joinPath(
     resolveSpacedRepetitionUsersRootPath(profilePath),
     buildSafeSpacedRepetitionUserFolderName(userId),
@@ -365,10 +354,7 @@ export const listUserVaultProfiles = async (
   const [usersFolder, profilesFolder, directFolder] = await Promise.all([
     listUserEntriesSafe(usersRoot),
     listUserEntriesSafe(profilesRoot),
-    listUserEntriesSafe(
-      userVaultPath,
-      new Set([USER_VAULT_USERS_DIR, USER_VAULT_PROFILES_DIR]),
-    ),
+    listUserEntriesSafe(userVaultPath, new Set([USER_VAULT_USERS_DIR, USER_VAULT_PROFILES_DIR])),
   ]);
   const merged = new Map<string, UserVaultProfileSummary>();
   [...usersFolder, ...profilesFolder, ...directFolder].forEach((entry) => {
@@ -396,17 +382,12 @@ const resolveProfileUsername = (value: string, fallback: string) => {
   return fallback || "user";
 };
 
-export const migrateDefaultProfileFolders = async (
-  profileRoot: string,
-): Promise<void> => {
+export const migrateDefaultProfileFolders = async (profileRoot: string): Promise<void> => {
   const { usersRoot, profilesRoot } = resolveUserEntriesRootPaths(profileRoot);
   const [usersFolder, profilesFolder, directFolder] = await Promise.all([
     listUserEntriesSafe(usersRoot),
     listUserEntriesSafe(profilesRoot),
-    listUserEntriesSafe(
-      profileRoot,
-      new Set([USER_VAULT_USERS_DIR, USER_VAULT_PROFILES_DIR]),
-    ),
+    listUserEntriesSafe(profileRoot, new Set([USER_VAULT_USERS_DIR, USER_VAULT_PROFILES_DIR])),
   ]);
   const entries = [...usersFolder, ...profilesFolder, ...directFolder];
   if (entries.length === 0) {
@@ -556,12 +537,7 @@ export const ensureProfileRoot = async (
 
   const metaPath = resolveUserVaultMetaPath(profileRoot);
   const meta = await readJsonFileWithStatus<UserVaultMetaStore>(metaPath);
-  if (
-    meta.error ||
-    !meta.value ||
-    typeof meta.value !== "object" ||
-    Array.isArray(meta.value)
-  ) {
+  if (meta.error || !meta.value || typeof meta.value !== "object" || Array.isArray(meta.value)) {
     try {
       await writeJsonFile(metaPath, createEmptyUserVaultMeta());
     } catch (error) {
@@ -574,9 +550,7 @@ export const ensureProfileRoot = async (
     const normalizedMeta: UserVaultMetaStore = {
       schemaVersion: USER_VAULT_SCHEMA_VERSION,
       activeProfileId:
-        typeof meta.value.activeProfileId === "string"
-          ? meta.value.activeProfileId
-          : null,
+        typeof meta.value.activeProfileId === "string" ? meta.value.activeProfileId : null,
     };
     const needsRewrite =
       normalizedMeta.schemaVersion !== meta.value.schemaVersion ||
@@ -668,9 +642,7 @@ const normalizeProfileMeta = (
 
 const PROFILE_META_KEYS = new Set(["schemaVersion", "id", "name", "createdAt"]);
 
-const normalizeProfileSettingsValue = (
-  value: unknown,
-): UserVaultProfileSettings | null => {
+const normalizeProfileSettingsValue = (value: unknown): UserVaultProfileSettings | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
   }
@@ -691,21 +663,16 @@ const migrateProfileStore = (
     return null;
   }
   const candidate = value as Record<string, unknown>;
-  const storedVersion =
-    typeof candidate.schemaVersion === "number" ? candidate.schemaVersion : 0;
+  const storedVersion = typeof candidate.schemaVersion === "number" ? candidate.schemaVersion : 0;
   const meta = normalizeProfileMeta(fallbackId, candidate as UserVaultProfileMeta);
   const legacySettings = normalizeProfileSettingsValue(candidate.settings);
-  const hasOnlyMetaKeys = Object.keys(candidate).every((key) =>
-    PROFILE_META_KEYS.has(key),
-  );
+  const hasOnlyMetaKeys = Object.keys(candidate).every((key) => PROFILE_META_KEYS.has(key));
   const hasSameMeta =
     candidate.id === meta.id &&
     candidate.name === meta.name &&
     candidate.createdAt === meta.createdAt;
   const didMigrate =
-    storedVersion !== USER_VAULT_PROFILE_SCHEMA_VERSION ||
-    !hasSameMeta ||
-    !hasOnlyMetaKeys;
+    storedVersion !== USER_VAULT_PROFILE_SCHEMA_VERSION || !hasSameMeta || !hasOnlyMetaKeys;
   return {
     store: {
       schemaVersion: USER_VAULT_PROFILE_SCHEMA_VERSION,
@@ -732,17 +699,12 @@ const migrateProfileMetadataStore = async (
   try {
     await writeJsonFile(metaPath, migrated.store);
   } catch (error) {
-    console.warn(
-      "Failed to migrate user profile metadata",
-      asErrorMessage(error, "Unknown error"),
-    );
+    console.warn("Failed to migrate user profile metadata", asErrorMessage(error, "Unknown error"));
   }
   return migrated;
 };
 
-const normalizeSpacedRepetitionStore = (
-  value: unknown,
-): SpacedRepetitionProfileStore => {
+const normalizeSpacedRepetitionStore = (value: unknown): SpacedRepetitionProfileStore => {
   if (!value || typeof value !== "object") {
     return createEmptySpacedRepetitionStore();
   }
@@ -773,13 +735,12 @@ const createEmptySpacedRepetitionStorage = (): SpacedRepetitionStorage => ({
   lastActiveUserId: null,
 });
 
-const createEmptySpacedRepetitionRegistry =
-  (): SpacedRepetitionRegistryStore => ({
-    schemaVersion: USER_VAULT_SPACED_REPETITION_SCHEMA_VERSION,
-    lastActiveUserId: null,
-    legacyVaultIds: [],
-    migratedAt: null,
-  });
+const createEmptySpacedRepetitionRegistry = (): SpacedRepetitionRegistryStore => ({
+  schemaVersion: USER_VAULT_SPACED_REPETITION_SCHEMA_VERSION,
+  lastActiveUserId: null,
+  legacyVaultIds: [],
+  migratedAt: null,
+});
 
 const normalizeCompletedPerDay = (value: unknown): Record<string, number> => {
   if (!value || typeof value !== "object") {
@@ -794,9 +755,7 @@ const normalizeCompletedPerDay = (value: unknown): Record<string, number> => {
   );
 };
 
-const normalizeSpacedRepetitionUser = (
-  value: unknown,
-): SpacedRepetitionUser | null => {
+const normalizeSpacedRepetitionUser = (value: unknown): SpacedRepetitionUser | null => {
   if (!value || typeof value !== "object") {
     return null;
   }
@@ -810,19 +769,13 @@ const normalizeSpacedRepetitionUser = (
     id,
     name,
     createdAt:
-      typeof candidate.createdAt === "string"
-        ? candidate.createdAt
-        : new Date().toISOString(),
+      typeof candidate.createdAt === "string" ? candidate.createdAt : new Date().toISOString(),
   };
 };
 
-const normalizeSpacedRepetitionUserState = (
-  value: unknown,
-): SpacedRepetitionUserState => {
+const normalizeSpacedRepetitionUserState = (value: unknown): SpacedRepetitionUserState => {
   const candidate =
-    value && typeof value === "object"
-      ? (value as Partial<SpacedRepetitionUserState>)
-      : {};
+    value && typeof value === "object" ? (value as Partial<SpacedRepetitionUserState>) : {};
   const cardStatesRaw =
     candidate.cardStates && typeof candidate.cardStates === "object"
       ? (candidate.cardStates as Record<string, unknown>)
@@ -831,20 +784,15 @@ const normalizeSpacedRepetitionUserState = (
     cardStates: Object.fromEntries(
       Object.entries(cardStatesRaw).map(([cardId, progress]) => [
         cardId,
-        normalizeSpacedRepetitionCardProgress(
-          progress as Partial<SpacedRepetitionCardProgress>,
-        ),
+        normalizeSpacedRepetitionCardProgress(progress as Partial<SpacedRepetitionCardProgress>),
       ]),
     ),
-    lastLoadedAt:
-      typeof candidate.lastLoadedAt === "string" ? candidate.lastLoadedAt : null,
+    lastLoadedAt: typeof candidate.lastLoadedAt === "string" ? candidate.lastLoadedAt : null,
     completedPerDay: normalizeCompletedPerDay(candidate.completedPerDay),
   };
 };
 
-const normalizeSpacedRepetitionStorage = (
-  value: unknown,
-): SpacedRepetitionStorage => {
+const normalizeSpacedRepetitionStorage = (value: unknown): SpacedRepetitionStorage => {
   if (!value || typeof value !== "object") {
     return createEmptySpacedRepetitionStorage();
   }
@@ -862,22 +810,16 @@ const normalizeSpacedRepetitionStorage = (
   const userStateById = Object.fromEntries(
     Object.entries(userStateByIdRaw)
       .filter(([userId]) => userIds.has(userId))
-      .map(([userId, state]) => [
-        userId,
-        normalizeSpacedRepetitionUserState(state),
-      ]),
+      .map(([userId, state]) => [userId, normalizeSpacedRepetitionUserState(state)]),
   );
   const lastActiveUserId =
-    typeof candidate.lastActiveUserId === "string" &&
-    userIds.has(candidate.lastActiveUserId)
+    typeof candidate.lastActiveUserId === "string" && userIds.has(candidate.lastActiveUserId)
       ? candidate.lastActiveUserId
       : null;
   return { users, userStateById, lastActiveUserId };
 };
 
-const normalizeSpacedRepetitionRegistry = (
-  value: unknown,
-): SpacedRepetitionRegistryStore => {
+const normalizeSpacedRepetitionRegistry = (value: unknown): SpacedRepetitionRegistryStore => {
   if (!value || typeof value !== "object") {
     return createEmptySpacedRepetitionRegistry();
   }
@@ -885,14 +827,11 @@ const normalizeSpacedRepetitionRegistry = (
   return {
     schemaVersion: USER_VAULT_SPACED_REPETITION_SCHEMA_VERSION,
     lastActiveUserId:
-      typeof candidate.lastActiveUserId === "string"
-        ? candidate.lastActiveUserId
-        : null,
+      typeof candidate.lastActiveUserId === "string" ? candidate.lastActiveUserId : null,
     legacyVaultIds: Array.isArray(candidate.legacyVaultIds)
       ? candidate.legacyVaultIds.filter((id) => typeof id === "string")
       : [],
-    migratedAt:
-      typeof candidate.migratedAt === "string" ? candidate.migratedAt : null,
+    migratedAt: typeof candidate.migratedAt === "string" ? candidate.migratedAt : null,
   };
 };
 
@@ -929,10 +868,7 @@ const mergeSpacedRepetitionCardProgress = (
   if (!base) {
     return incoming;
   }
-  const reviewedCompare = compareIsoTimestamp(
-    base.lastReviewedAt,
-    incoming.lastReviewedAt,
-  );
+  const reviewedCompare = compareIsoTimestamp(base.lastReviewedAt, incoming.lastReviewedAt);
   if (reviewedCompare !== 0) {
     return reviewedCompare < 0 ? incoming : base;
   }
@@ -945,10 +881,7 @@ const mergeSpacedRepetitionCardProgress = (
   return base;
 };
 
-const mergeCompletedPerDay = (
-  base: Record<string, number>,
-  incoming: Record<string, number>,
-) => {
+const mergeCompletedPerDay = (base: Record<string, number>, incoming: Record<string, number>) => {
   const next = { ...base };
   Object.entries(incoming).forEach(([dateKey, count]) => {
     next[dateKey] = Math.max(next[dateKey] ?? 0, count);
@@ -965,10 +898,7 @@ const mergeSpacedRepetitionUserStates = (
   }
   const cardStates = { ...base.cardStates };
   Object.entries(incoming.cardStates).forEach(([cardId, progress]) => {
-    cardStates[cardId] = mergeSpacedRepetitionCardProgress(
-      cardStates[cardId],
-      progress,
-    );
+    cardStates[cardId] = mergeSpacedRepetitionCardProgress(cardStates[cardId], progress);
   });
   const lastLoadedAt =
     compareIsoTimestamp(base.lastLoadedAt, incoming.lastLoadedAt) < 0
@@ -977,10 +907,7 @@ const mergeSpacedRepetitionUserStates = (
   return {
     cardStates,
     lastLoadedAt,
-    completedPerDay: mergeCompletedPerDay(
-      base.completedPerDay,
-      incoming.completedPerDay,
-    ),
+    completedPerDay: mergeCompletedPerDay(base.completedPerDay, incoming.completedPerDay),
   };
 };
 
@@ -1001,10 +928,7 @@ const mergeSpacedRepetitionStorages = (
     if (!userIds.has(userId)) {
       return;
     }
-    userStateById[userId] = mergeSpacedRepetitionUserStates(
-      userStateById[userId],
-      state,
-    );
+    userStateById[userId] = mergeSpacedRepetitionUserStates(userStateById[userId], state);
   });
   const lastActiveUserId =
     base.lastActiveUserId && userIds.has(base.lastActiveUserId)
@@ -1022,10 +946,7 @@ const getSpacedRepetitionStorageScore = (storage: SpacedRepetitionStorage) => {
     0,
   );
   return (
-    storage.users.length * 10 +
-    stateCount * 3 +
-    cardCount +
-    (storage.lastActiveUserId ? 1 : 0)
+    storage.users.length * 10 + stateCount * 3 + cardCount + (storage.lastActiveUserId ? 1 : 0)
   );
 };
 
@@ -1035,10 +956,7 @@ const selectLegacyLastActiveUserId = (
 ) => {
   const userIds = new Set(storage.users.map((user) => user.id));
   const ranked = Object.entries(byVaultId).sort((left, right) => {
-    return (
-      getSpacedRepetitionStorageScore(right[1]) -
-      getSpacedRepetitionStorageScore(left[1])
-    );
+    return getSpacedRepetitionStorageScore(right[1]) - getSpacedRepetitionStorageScore(left[1]);
   });
   for (const [, legacyStorage] of ranked) {
     const userId = legacyStorage.lastActiveUserId;
@@ -1063,8 +981,7 @@ const mergeSpacedRepetitionStorageEntries = (
     return leftKey.localeCompare(rightKey);
   });
   const storage = sortedEntries.reduce(
-    (merged, [, storageEntry]) =>
-      mergeSpacedRepetitionStorages(merged, storageEntry),
+    (merged, [, storageEntry]) => mergeSpacedRepetitionStorages(merged, storageEntry),
     createEmptySpacedRepetitionStorage(),
   );
   const legacyActiveUserId = selectLegacyLastActiveUserId(byVaultId, storage);
@@ -1087,9 +1004,7 @@ const normalizeFastFlashcardStore = (value: unknown): FastFlashcardProfileStore 
     ? (candidate.sessions as FastFlashcardSessionSummary[])
     : [];
   const migratedFromAppData =
-    typeof candidate.migratedFromAppData === "boolean"
-      ? candidate.migratedFromAppData
-      : false;
+    typeof candidate.migratedFromAppData === "boolean" ? candidate.migratedFromAppData : false;
   return {
     schemaVersion: USER_VAULT_SCHEMA_VERSION,
     sessions,
@@ -1133,7 +1048,9 @@ const parseDurationHms = (value: string) => {
   }
   if (parts.length === 3) {
     const [hours, minutes, seconds] = parts;
-    return Math.max(0, hours) * 3600000 + Math.max(0, minutes) * 60000 + Math.max(0, seconds) * 1000;
+    return (
+      Math.max(0, hours) * 3600000 + Math.max(0, minutes) * 60000 + Math.max(0, seconds) * 1000
+    );
   }
   if (parts.length === 2) {
     const [minutes, seconds] = parts;
@@ -1177,8 +1094,7 @@ const buildExamRunFrontmatter = (run: ExamRun) => {
   const userValue = run.userName || "Unknown";
   const examFileValue = run.examFilePath || "";
   const scoreValue = `${run.achievedPoints}/${run.maxPoints}`;
-  const percentValue =
-    Number.isFinite(run.percent) && !Number.isNaN(run.percent) ? run.percent : 0;
+  const percentValue = Number.isFinite(run.percent) && !Number.isNaN(run.percent) ? run.percent : 0;
   const statusValue = resolveExamRunStatusCode(run);
   const durationValue = formatDurationHms(run.durationMs);
   return [
@@ -1227,7 +1143,7 @@ const parseExamRunFrontmatter = (contents: string, filePath: string): ExamRun | 
   const scoreRaw = getString("score");
   const scoreParsed = scoreRaw ? parseScoreValue(scoreRaw) : null;
   const scoreNumber = getNumber("score");
-  const achievedPoints = scoreParsed?.achievedPoints ?? (scoreNumber ?? 0);
+  const achievedPoints = scoreParsed?.achievedPoints ?? scoreNumber ?? 0;
   const maxPoints = scoreParsed?.maxPoints ?? 0;
   const percent = getNumber("percent") ?? (maxPoints > 0 ? (achievedPoints / maxPoints) * 100 : 0);
   const statusValueRaw = map.get("status");
@@ -1280,10 +1196,7 @@ const buildExamRunFileName = (run: ExamRun) => {
   return `${userSlug}_${timestamp}_run-${runIdSlug}.md`;
 };
 
-const resolveUniqueExamRunPath = async (
-  profilePath: string,
-  run: ExamRun,
-): Promise<string> => {
+const resolveUniqueExamRunPath = async (profilePath: string, run: ExamRun): Promise<string> => {
   const dir = resolveExamRunsDir(profilePath);
   await ensureDirectory(dir);
   const baseName = buildExamRunFileName(run);
@@ -1300,9 +1213,7 @@ const resolveUniqueExamRunPath = async (
   }
 };
 
-const loadExamRunMarkdownEntries = async (
-  profilePath: string,
-): Promise<ExamRun[]> => {
+const loadExamRunMarkdownEntries = async (profilePath: string): Promise<ExamRun[]> => {
   const dir = resolveExamRunsDir(profilePath);
   let files: string[] = [];
   try {
@@ -1321,10 +1232,7 @@ const loadExamRunMarkdownEntries = async (
         const contents = await invoke<string>("read_text_file", { path: filePath });
         return parseExamRunFrontmatter(contents, filePath);
       } catch (error) {
-        console.warn(
-          "Failed to read exam run markdown",
-          asErrorMessage(error, "Unknown error"),
-        );
+        console.warn("Failed to read exam run markdown", asErrorMessage(error, "Unknown error"));
         return null;
       }
     }),
@@ -1332,10 +1240,7 @@ const loadExamRunMarkdownEntries = async (
   return entries.filter((entry): entry is ExamRun => entry !== null);
 };
 
-const writeExamRunMarkdownEntry = async (
-  profilePath: string,
-  run: ExamRun,
-): Promise<string> => {
+const writeExamRunMarkdownEntry = async (profilePath: string, run: ExamRun): Promise<string> => {
   const filePath = await resolveUniqueExamRunPath(profilePath, run);
   const contents = buildExamRunFrontmatter(run);
   await invoke("write_text_file", { path: filePath, contents });
@@ -1360,10 +1265,7 @@ const deleteExamRunMarkdownFiles = async (profilePath: string) => {
       try {
         await deleteFile(filePath);
       } catch (error) {
-        console.warn(
-          "Failed to delete exam run markdown",
-          asErrorMessage(error, "Unknown error"),
-        );
+        console.warn("Failed to delete exam run markdown", asErrorMessage(error, "Unknown error"));
       }
     }),
   );
@@ -1373,15 +1275,12 @@ export const resetExamRunMarkdownHistory = async (profilePath: string) => {
   await deleteExamRunMarkdownFiles(profilePath);
 };
 
-const migrateExamPointsProfileStore = (
-  value: unknown,
-): MigrationResult<ExamPointsProfileStore> => {
+const migrateExamPointsProfileStore = (value: unknown): MigrationResult<ExamPointsProfileStore> => {
   if (!value || typeof value !== "object") {
     return { store: createEmptyExamPointsProfilesStore(), didMigrate: true };
   }
   const candidate = value as Partial<ExamPointsProfileStore>;
-  const storedVersion =
-    typeof candidate.schemaVersion === "number" ? candidate.schemaVersion : 0;
+  const storedVersion = typeof candidate.schemaVersion === "number" ? candidate.schemaVersion : 0;
   const rawProfiles = Array.isArray(candidate.profiles) ? candidate.profiles : [];
   const store = normalizeExamPointsProfilesStore(candidate);
   const didMigrate =
@@ -1392,22 +1291,16 @@ const migrateExamPointsProfileStore = (
   return { store, didMigrate };
 };
 
-export const loadUserVaultMeta = async (
-  userVaultPath: string,
-): Promise<UserVaultMetaStore> => {
+export const loadUserVaultMeta = async (userVaultPath: string): Promise<UserVaultMetaStore> => {
   const metaPath = resolveUserVaultMetaPath(userVaultPath);
   const meta = await readJsonFile<UserVaultMetaStore>(metaPath, createEmptyUserVaultMeta());
   return {
     schemaVersion: USER_VAULT_SCHEMA_VERSION,
-    activeProfileId:
-      typeof meta.activeProfileId === "string" ? meta.activeProfileId : null,
+    activeProfileId: typeof meta.activeProfileId === "string" ? meta.activeProfileId : null,
   };
 };
 
-export const saveUserVaultMeta = async (
-  userVaultPath: string,
-  meta: UserVaultMetaStore,
-) => {
+export const saveUserVaultMeta = async (userVaultPath: string, meta: UserVaultMetaStore) => {
   const metaPath = resolveUserVaultMetaPath(userVaultPath);
   await writeJsonFile(metaPath, {
     schemaVersion: USER_VAULT_SCHEMA_VERSION,
@@ -1415,9 +1308,7 @@ export const saveUserVaultMeta = async (
   });
 };
 
-const resolveUserEntriesRootForWrite = async (
-  profileRoot: string,
-): Promise<string> => {
+const resolveUserEntriesRootForWrite = async (profileRoot: string): Promise<string> => {
   const { usersRoot, profilesRoot } = resolveUserEntriesRootPaths(profileRoot);
   try {
     const [usersInfo, profilesInfo] = await Promise.all([
@@ -1431,10 +1322,7 @@ const resolveUserEntriesRootForWrite = async (
       return profilesRoot;
     }
   } catch (error) {
-    console.warn(
-      "Failed to inspect user entries root",
-      asErrorMessage(error, "Unknown error"),
-    );
+    console.warn("Failed to inspect user entries root", asErrorMessage(error, "Unknown error"));
   }
   return usersRoot;
 };
@@ -1475,19 +1363,14 @@ export const createUserVaultProfile = async (
   return { ...meta, path: profilePath };
 };
 
-export const setActiveProfileId = async (
-  userVaultPath: string,
-  profileId: string | null,
-) => {
+export const setActiveProfileId = async (userVaultPath: string, profileId: string | null) => {
   await saveUserVaultMeta(userVaultPath, {
     schemaVersion: USER_VAULT_SCHEMA_VERSION,
     activeProfileId: profileId,
   });
 };
 
-export const loadProfileData = async (
-  profilePath: string,
-): Promise<UserVaultProfileData> => {
+export const loadProfileData = async (profilePath: string): Promise<UserVaultProfileData> => {
   const spacedRepetition = await loadSpacedRepetitionStore(profilePath);
   const fastFlashcard = await loadFastFlashcardStore(profilePath);
   const examRuns = await loadExamRunStore(profilePath);
@@ -1504,8 +1387,9 @@ export const loadProfileSettings = async (
   profilePath: string,
 ): Promise<UserVaultProfileSettings | null> => {
   const settingsPath = resolveProfileSettingsPath(profilePath);
-  const settingsResult =
-    await readJsonFileWithStatus<UserVaultProfileSettings | null>(settingsPath);
+  const settingsResult = await readJsonFileWithStatus<UserVaultProfileSettings | null>(
+    settingsPath,
+  );
   const storedSettings = normalizeProfileSettingsValue(settingsResult.value);
   if (hasNonEmptyProfileSettings(storedSettings)) {
     return storedSettings;
@@ -1520,10 +1404,7 @@ export const loadProfileSettings = async (
   try {
     await writeJsonFileAtomic(settingsPath, migrated.legacySettings);
   } catch (error) {
-    console.warn(
-      "Failed to migrate user profile settings",
-      asErrorMessage(error, "Unknown error"),
-    );
+    console.warn("Failed to migrate user profile settings", asErrorMessage(error, "Unknown error"));
   }
   return migrated.legacySettings;
 };
@@ -1554,10 +1435,7 @@ export const saveProfileSettings = async (
     }
     return true;
   } catch (error) {
-    console.error(
-      "Failed to save user profile settings",
-      asErrorMessage(error, "Unknown error"),
-    );
+    console.error("Failed to save user profile settings", asErrorMessage(error, "Unknown error"));
     return false;
   }
 };
@@ -1566,8 +1444,7 @@ export const loadSpacedRepetitionStore = async (
   profilePath: string,
 ): Promise<SpacedRepetitionProfileStore> => {
   const registryPath = resolveSpacedRepetitionRegistryPath(profilePath);
-  const registryResult =
-    await readJsonFileWithStatus<SpacedRepetitionRegistryStore>(registryPath);
+  const registryResult = await readJsonFileWithStatus<SpacedRepetitionRegistryStore>(registryPath);
   const registry = normalizeSpacedRepetitionRegistry(registryResult.value);
   const usersRoot = resolveSpacedRepetitionUsersRootPath(profilePath);
   let userFolders: string[] = [];
@@ -1582,15 +1459,9 @@ export const loadSpacedRepetitionStore = async (
 
   const progressEntries = await Promise.all(
     userFolders.map(async (folder) => {
-      const progressPath = joinPath(
-        usersRoot,
-        folder,
-        USER_VAULT_SPACED_REPETITION_PROGRESS_FILE,
-      );
+      const progressPath = joinPath(usersRoot, folder, USER_VAULT_SPACED_REPETITION_PROGRESS_FILE);
       const { value, error } =
-        await readJsonFileWithStatus<SpacedRepetitionUserProgressStore>(
-          progressPath,
-        );
+        await readJsonFileWithStatus<SpacedRepetitionUserProgressStore>(progressPath);
       if (error) {
         if (error !== "missing") {
           console.warn("Failed to read spaced repetition progress", progressPath);
@@ -1618,9 +1489,7 @@ export const loadSpacedRepetitionStore = async (
     await readJsonFile<SpacedRepetitionProfileStore | null>(legacyPath, null),
   );
   const pendingLegacyByVaultId = Object.fromEntries(
-    Object.entries(legacyStore.byVaultId).filter(
-      ([vaultId]) => !migratedVaultIds.has(vaultId),
-    ),
+    Object.entries(legacyStore.byVaultId).filter(([vaultId]) => !migratedVaultIds.has(vaultId)),
   );
   const pendingLegacyVaultIds = Object.keys(pendingLegacyByVaultId);
   const pendingLegacy =
@@ -1630,23 +1499,16 @@ export const loadSpacedRepetitionStore = async (
 
   pendingLegacyVaultIds.forEach((vaultId) => migratedVaultIds.add(vaultId));
 
-  let storage = mergeSpacedRepetitionStorages(
-    folderStorage,
-    pendingLegacy.storage,
-  );
+  let storage = mergeSpacedRepetitionStorages(folderStorage, pendingLegacy.storage);
   const userIds = new Set(storage.users.map((user) => user.id));
   const registryActiveUserId =
     registry.lastActiveUserId && userIds.has(registry.lastActiveUserId)
       ? registry.lastActiveUserId
       : null;
-  const legacyActiveUserId = selectLegacyLastActiveUserId(
-    pendingLegacyByVaultId,
-    storage,
-  );
+  const legacyActiveUserId = selectLegacyLastActiveUserId(pendingLegacyByVaultId, storage);
   storage = {
     ...storage,
-    lastActiveUserId:
-      registryActiveUserId ?? legacyActiveUserId ?? storage.users[0]?.id ?? null,
+    lastActiveUserId: registryActiveUserId ?? legacyActiveUserId ?? storage.users[0]?.id ?? null,
   };
 
   const store: SpacedRepetitionProfileStore = {
@@ -1655,8 +1517,7 @@ export const loadSpacedRepetitionStore = async (
     migratedVaultIds: Array.from(migratedVaultIds),
   };
 
-  const needsFolderWrite =
-    pendingLegacyVaultIds.length > 0 || registryResult.error !== null;
+  const needsFolderWrite = pendingLegacyVaultIds.length > 0 || registryResult.error !== null;
   if (needsFolderWrite) {
     await saveSpacedRepetitionStore(profilePath, store);
   }
@@ -1669,22 +1530,16 @@ export const saveSpacedRepetitionStore = async (
   store: SpacedRepetitionProfileStore,
 ) => {
   try {
-    const { storage, vaultIds } = mergeSpacedRepetitionStorageEntries(
-      store.byVaultId,
-    );
+    const { storage, vaultIds } = mergeSpacedRepetitionStorageEntries(store.byVaultId);
     const registryPath = resolveSpacedRepetitionRegistryPath(profilePath);
     const previousRegistry = normalizeSpacedRepetitionRegistry(
-      (
-        await readJsonFileWithStatus<SpacedRepetitionRegistryStore>(registryPath)
-      ).value,
+      (await readJsonFileWithStatus<SpacedRepetitionRegistryStore>(registryPath)).value,
     );
     const legacyVaultIds = Array.from(
       new Set([
         ...previousRegistry.legacyVaultIds,
         ...(Array.isArray(store.migratedVaultIds) ? store.migratedVaultIds : []),
-        ...vaultIds.filter(
-          (vaultId) => vaultId !== PROFILE_SCOPED_SPACED_REPETITION_KEY,
-        ),
+        ...vaultIds.filter((vaultId) => vaultId !== PROFILE_SCOPED_SPACED_REPETITION_KEY),
       ]),
     );
     const root = resolveSpacedRepetitionRootPath(profilePath);
@@ -1695,14 +1550,10 @@ export const saveSpacedRepetitionStore = async (
     const activeFolderNames = new Set<string>();
     await Promise.all(
       storage.users.map(async (user) => {
-        const state =
-          storage.userStateById[user.id] ?? normalizeSpacedRepetitionUserState(null);
+        const state = storage.userStateById[user.id] ?? normalizeSpacedRepetitionUserState(null);
         const folderName = buildSafeSpacedRepetitionUserFolderName(user.id);
         activeFolderNames.add(folderName);
-        const progressPath = resolveSpacedRepetitionUserProgressPath(
-          profilePath,
-          user.id,
-        );
+        const progressPath = resolveSpacedRepetitionUserProgressPath(profilePath, user.id);
         await ensureDirectory(joinPath(usersRoot, folderName));
         await writeJsonFileAtomic(progressPath, {
           schemaVersion: USER_VAULT_SPACED_REPETITION_SCHEMA_VERSION,
@@ -1726,10 +1577,7 @@ export const saveSpacedRepetitionStore = async (
           if (!info.exists || info.isDir) {
             return;
           }
-          const backupPath = buildJsonSiblingPath(
-            progressPath,
-            `.deleted.${Date.now()}`,
-          );
+          const backupPath = buildJsonSiblingPath(progressPath, `.deleted.${Date.now()}`);
           try {
             await renameJsonFile(progressPath, backupPath);
           } catch (error) {
@@ -1845,9 +1693,7 @@ export const saveExamPointsProfileStore = async (
   }
 };
 
-export const loadExamRunStore = async (
-  profileRootPath: string,
-): Promise<ExamRunProfileStore> => {
+export const loadExamRunStore = async (profileRootPath: string): Promise<ExamRunProfileStore> => {
   const runs = await loadExamRunMarkdownEntries(profileRootPath);
   return {
     schemaVersion: USER_VAULT_EXAM_RUNS_SCHEMA_VERSION,
@@ -1856,10 +1702,7 @@ export const loadExamRunStore = async (
   };
 };
 
-export const saveExamRunStore = async (
-  profileRootPath: string,
-  store: ExamRunProfileStore,
-) => {
+export const saveExamRunStore = async (profileRootPath: string, store: ExamRunProfileStore) => {
   try {
     await deleteExamRunMarkdownFiles(profileRootPath);
     await Promise.all(
@@ -1883,10 +1726,7 @@ export const appendExamRunStore = async (
     const filePath = await writeExamRunMarkdownEntry(profileRootPath, run);
     return filePath;
   } catch (error) {
-    console.warn(
-      "Failed to append exam run store",
-      asErrorMessage(error, "Unknown error"),
-    );
+    console.warn("Failed to append exam run store", asErrorMessage(error, "Unknown error"));
     return null;
   }
 };
@@ -1908,10 +1748,7 @@ export const deleteExamRunStoreEntry = async (
     await deleteFile(targetPath);
     return true;
   } catch (error) {
-    console.warn(
-      "Failed to delete exam run store entry",
-      asErrorMessage(error, "Unknown error"),
-    );
+    console.warn("Failed to delete exam run store entry", asErrorMessage(error, "Unknown error"));
     return false;
   }
 };

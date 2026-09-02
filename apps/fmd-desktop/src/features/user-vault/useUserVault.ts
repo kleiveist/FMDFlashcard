@@ -87,8 +87,7 @@ const resolveCustomPath = (value: string | null | undefined) => {
   return resolveCustomProfileRootPath(value ?? null);
 };
 
-const INCOMPATIBLE_CUSTOM_PATH_ERROR =
-  "Windows paths are not supported on this operating system.";
+const INCOMPATIBLE_CUSTOM_PATH_ERROR = "Windows paths are not supported on this operating system.";
 
 export const useUserVault = ({
   vaultPath,
@@ -125,16 +124,10 @@ export const useUserVault = ({
     [activeProfileId, profiles],
   );
 
-  const activeProfilePath = useMemo(
-    () => activeProfile?.path ?? null,
-    [activeProfile],
-  );
+  const activeProfilePath = useMemo(() => activeProfile?.path ?? null, [activeProfile]);
 
   const bootstrapProfileContext = useCallback(
-    async (
-      reason: string,
-      overrides: BootstrapOverrides = {},
-    ): Promise<BootstrapResult> => {
+    async (reason: string, overrides: BootstrapOverrides = {}): Promise<BootstrapResult> => {
       const effectiveMode = overrides.mode ?? mode;
       const effectiveVaultPath =
         overrides.vaultPath !== undefined ? overrides.vaultPath : vaultPath;
@@ -289,10 +282,7 @@ export const useUserVault = ({
             try {
               const osUsername = await getOsUsername();
               const profileName = osUsername.trim() || "user";
-              const created = await createUserVaultProfile(
-                resolvedRoot,
-                profileName.toLowerCase(),
-              );
+              const created = await createUserVaultProfile(resolvedRoot, profileName.toLowerCase());
               nextProfiles = [created];
               logUserVaultEvent("profile.auto_created", {
                 reason,
@@ -301,10 +291,7 @@ export const useUserVault = ({
                 id: created.id,
               });
             } catch (createError) {
-              const message = asErrorMessage(
-                createError,
-                "Profile could not be created.",
-              );
+              const message = asErrorMessage(createError, "Profile could not be created.");
               commit({
                 status: "error",
                 error: message,
@@ -452,9 +439,7 @@ export const useUserVault = ({
       setIsBusy(true);
       setError("");
       try {
-        const bootstrapped = await bootstrapProfileContext(
-          "beforeUserAction:createProfile",
-        );
+        const bootstrapped = await bootstrapProfileContext("beforeUserAction:createProfile");
         if (!bootstrapped.ok || !bootstrapped.resolvedRoot) {
           return;
         }
@@ -479,9 +464,7 @@ export const useUserVault = ({
       setIsBusy(true);
       setError("");
       try {
-        const bootstrapped = await bootstrapProfileContext(
-          "beforeUserAction:selectProfile",
-        );
+        const bootstrapped = await bootstrapProfileContext("beforeUserAction:selectProfile");
         if (!bootstrapped.ok || !bootstrapped.resolvedRoot) {
           return;
         }

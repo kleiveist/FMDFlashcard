@@ -36,10 +36,7 @@ export const AutoGrowTextarea = ({
       return;
     }
     textarea.style.height = "auto";
-    const nextHeight = Math.max(
-      textarea.scrollHeight,
-      manualHeightRef.current ?? 0,
-    );
+    const nextHeight = Math.max(textarea.scrollHeight, manualHeightRef.current ?? 0);
     textarea.style.height = `${nextHeight}px`;
   };
 

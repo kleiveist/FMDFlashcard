@@ -66,8 +66,7 @@ export const ExamStatisticsPanel = ({
   const hasRuns = sortedRuns.length > 0;
   const gradeScaleLabel = formatExamGradeScale(gradeScaleId);
   const resolveStatusLabel = (run: ExamRun) => {
-    const statusValue =
-      run.statusValue ?? resolveExamStatusDescriptor(run.percent).value;
+    const statusValue = run.statusValue ?? resolveExamStatusDescriptor(run.percent).value;
     const monitoringText = formatMonitoringCompactText(
       renderMonitoringValue({
         attributeKey: "status",
@@ -109,9 +108,7 @@ export const ExamStatisticsPanel = ({
 
   const renderLastSession = () => {
     const hasLastRun = Boolean(lastRun);
-    const scoreLabel = lastRun
-      ? `${lastRun.achievedPoints} / ${lastRun.maxPoints}`
-      : "—";
+    const scoreLabel = lastRun ? `${lastRun.achievedPoints} / ${lastRun.maxPoints}` : "—";
     const percentLabel = lastRun ? `${lastRun.percent}%` : "—";
     const statusDescriptor = lastRun ? resolveExamStatusDescriptor(lastRun.percent) : null;
     const statusLabel = lastRun ? resolveStatusLabel(lastRun) : "—";
@@ -119,9 +116,7 @@ export const ExamStatisticsPanel = ({
       lastRun && lastRun.maxPoints > 0
         ? Math.min(1, Math.max(0, lastRun.achievedPoints / lastRun.maxPoints))
         : 0;
-    const percentFill = lastRun
-      ? Math.min(1, Math.max(0, lastRun.percent / 100))
-      : 0;
+    const percentFill = lastRun ? Math.min(1, Math.max(0, lastRun.percent / 100)) : 0;
     const scoreStyle = hasLastRun
       ? ({ "--stat-fill": `${scoreFill * 100}%` } as CSSProperties)
       : undefined;
@@ -175,9 +170,7 @@ export const ExamStatisticsPanel = ({
             </div>
             <div className="exam-stats-meta-row">
               <span className="label">Ended</span>
-              <span className="value">
-                {lastRun ? formatExamTimestamp(lastRun.endedAt) : "—"}
-              </span>
+              <span className="value">{lastRun ? formatExamTimestamp(lastRun.endedAt) : "—"}</span>
             </div>
             <div className="exam-stats-meta-row">
               <span className="label">Duration</span>
@@ -222,9 +215,7 @@ export const ExamStatisticsPanel = ({
             <select
               className="text-input"
               value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as ExamRunStatusFilter)
-              }
+              onChange={(event) => setStatusFilter(event.target.value as ExamRunStatusFilter)}
               aria-label="Filter by status"
             >
               <option value="all">All</option>
@@ -265,9 +256,7 @@ export const ExamStatisticsPanel = ({
                   <span className="exam-history-cell timestamp">
                     {formatExamTimestamp(run.endedAt)}
                   </span>
-                  <span className="exam-history-cell user">
-                    {run.userName || "Unknown"}
-                  </span>
+                  <span className="exam-history-cell user">{run.userName || "Unknown"}</span>
                   <span className="exam-history-cell file" title={fileName}>
                     <span className="exam-file-value">{fileName}</span>
                   </span>
@@ -276,9 +265,7 @@ export const ExamStatisticsPanel = ({
                   </span>
                   <span className="exam-history-cell">{run.percent}%</span>
                   <span className="exam-history-cell">{resolveStatusLabel(run)}</span>
-                  <span className="exam-history-cell">
-                    {formatExamDuration(run.durationMs)}
-                  </span>
+                  <span className="exam-history-cell">{formatExamDuration(run.durationMs)}</span>
                   <span className="exam-history-cell action">
                     <button
                       type="button"
@@ -325,11 +312,7 @@ export const ExamStatisticsPanel = ({
   return (
     <div className="exam-stats">
       {showTabs ? (
-        <div
-          className="pill-grid exam-stats-tabs"
-          role="tablist"
-          aria-label="Statistics tabs"
-        >
+        <div className="pill-grid exam-stats-tabs" role="tablist" aria-label="Statistics tabs">
           <button
             type="button"
             className={`pill pill-button ${resolvedTab === "last" ? "active" : ""}`}

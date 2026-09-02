@@ -38,10 +38,7 @@ import { resolveExamTaskFrontmatterValue } from "../../../features/exam-points/f
 import type { MissingExamSetting } from "../../../features/settings/validateExamSettings";
 import { asErrorMessage } from "../../../lib/errors";
 import { DRAG_CHANNELS, endInternalDrag } from "../../../lib/dragDrop";
-import {
-  applyTaskAreaToggle,
-  resolveTaskMutationScope,
-} from "../../../lib/taskAreaToggle";
+import { applyTaskAreaToggle, resolveTaskMutationScope } from "../../../lib/taskAreaToggle";
 import {
   buildExamRunId,
   calculateExamPercent,
@@ -54,11 +51,7 @@ import {
   type ExamRun,
   type ExamRunStorage,
 } from "../../../lib/examRuns";
-import {
-  findExamTaskWrapper,
-  unwrapExamTask,
-  wrapExamTask,
-} from "../../../lib/exam/autoCards";
+import { findExamTaskWrapper, unwrapExamTask, wrapExamTask } from "../../../lib/exam/autoCards";
 import { parseExamTasks, type ExamTask } from "../../../lib/exam";
 import {
   EXAM_POINTS_DEFAULT_DURATION_MINUTES,
@@ -172,20 +165,15 @@ const normalizeNavigationStep = (step?: number) => {
   return Math.max(1, Math.floor(step));
 };
 
-const isAutoGradedTask = (task: ExamTask) =>
-  task.gradingMode === "auto";
+const isAutoGradedTask = (task: ExamTask) => task.gradingMode === "auto";
 
 const requiresAwardedQaScoring = (task: ExamSessionTask) =>
   (task.gradingMode === "manual" || task.gradingMode === "hybrid") &&
   (task.card.primaryType === "qa" || task.card.detectedTypes?.includes("qa") === true);
 
-const isTaskCorrect = (
-  task: ExamTask,
-  states: CompositePartState[] | undefined,
-) =>
+const isTaskCorrect = (task: ExamTask, states: CompositePartState[] | undefined) =>
   task.card.parts.every(
-    (part, index) =>
-      evaluateFlashcardPartResult(part, states?.[index] ?? {}) === "correct",
+    (part, index) => evaluateFlashcardPartResult(part, states?.[index] ?? {}) === "correct",
   );
 
 export const useExamSimulationViewModel = () => {
@@ -219,14 +207,10 @@ export const useExamSimulationViewModel = () => {
   const [selectedExamRuntimeIgnored, setSelectedExamRuntimeIgnored] = useState<
     SelectedExamIgnoredEntry[]
   >([]);
-  const [selectedExamParseState, setSelectedExamParseState] =
-    useState<LoadState>("idle");
+  const [selectedExamParseState, setSelectedExamParseState] = useState<LoadState>("idle");
   const [selectedExamParseError, setSelectedExamParseError] = useState("");
-  const [combinationMode, setCombinationMode] =
-    useState<ExamCombinationMode>("fully-mixed");
-  const [selectedRunProfileId, setSelectedRunProfileId] = useState<string | null>(
-    null,
-  );
+  const [combinationMode, setCombinationMode] = useState<ExamCombinationMode>("fully-mixed");
+  const [selectedRunProfileId, setSelectedRunProfileId] = useState<string | null>(null);
   const [mixSeed, setMixSeed] = useState<string>(() => createMixSeed());
   const [sessionInvalidationMessage, setSessionInvalidationMessage] = useState("");
   const [activeTaskIndex, setActiveTaskIndex] = useState(0);
@@ -234,21 +218,11 @@ export const useExamSimulationViewModel = () => {
   const [activeExamTasks, setActiveExamTasks] = useState<ExamSessionTask[]>([]);
   const [activeExamFiles, setActiveExamFiles] = useState<VaultFile[]>([]);
   const [activeMixSeed, setActiveMixSeed] = useState<string | null>(null);
-  const [activeSettings, setActiveSettings] = useState<ExamSettingsSnapshot | null>(
-    null,
-  );
-  const [partStates, setPartStates] = useState<Record<number, CompositePartState[]>>(
-    {},
-  );
-  const [awardedPoints, setAwardedPoints] = useState<Record<number, number | null>>(
-    {},
-  );
-  const [autoGradeDecisions, setAutoGradeDecisions] = useState<
-    Record<number, boolean>
-  >({});
-  const [correctionState, setCorrectionState] = useState<ExamCorrectionState | null>(
-    null,
-  );
+  const [activeSettings, setActiveSettings] = useState<ExamSettingsSnapshot | null>(null);
+  const [partStates, setPartStates] = useState<Record<number, CompositePartState[]>>({});
+  const [awardedPoints, setAwardedPoints] = useState<Record<number, number | null>>({});
+  const [autoGradeDecisions, setAutoGradeDecisions] = useState<Record<number, boolean>>({});
+  const [correctionState, setCorrectionState] = useState<ExamCorrectionState | null>(null);
   const [resultTaskCardWrapPendingById, setResultTaskCardWrapPendingById] = useState<
     Record<string, boolean>
   >({});
@@ -258,9 +232,7 @@ export const useExamSimulationViewModel = () => {
   const [resultTaskCardWrapNoticeById, setResultTaskCardWrapNoticeById] = useState<
     Record<string, string>
   >({});
-  const [examTimeRemainingMs, setExamTimeRemainingMs] = useState<number | null>(
-    null,
-  );
+  const [examTimeRemainingMs, setExamTimeRemainingMs] = useState<number | null>(null);
   const [examTimeUp, setExamTimeUp] = useState(false);
   const examTimerRef = useRef<number | null>(null);
   const examTimerEndRef = useRef<number | null>(null);
@@ -397,9 +369,7 @@ export const useExamSimulationViewModel = () => {
   ]);
 
   const selectedRunProfile = useMemo(
-    () =>
-      pointsProfiles.profiles.find((profile) => profile.id === selectedRunProfileId) ??
-      null,
+    () => pointsProfiles.profiles.find((profile) => profile.id === selectedRunProfileId) ?? null,
     [pointsProfiles.profiles, selectedRunProfileId],
   );
 
@@ -465,10 +435,7 @@ export const useExamSimulationViewModel = () => {
         runtimeIgnored.push({
           path: file.path,
           sourceTitle: file.relative_path || file.path,
-          reason: asErrorMessage(
-            result.reason,
-            "Datei konnte beim Start nicht gelesen werden.",
-          ),
+          reason: asErrorMessage(result.reason, "Datei konnte beim Start nicht gelesen werden."),
         });
         console.warn("Failed to parse selected exam file", file.path, result.reason);
       });
@@ -515,11 +482,7 @@ export const useExamSimulationViewModel = () => {
           } satisfies SelectedExamSource;
         })
         .filter((source): source is SelectedExamSource => Boolean(source)),
-    [
-      pointsProfiles.resolveAssignedProfile,
-      selectedExamParses,
-      selectedExamRunnableFiles,
-    ],
+    [pointsProfiles.resolveAssignedProfile, selectedExamParses, selectedExamRunnableFiles],
   );
   const selectedExamSourceByPath = useMemo(
     () => new Map(selectedExamSources.map((source) => [source.examPath, source])),
@@ -559,9 +522,7 @@ export const useExamSimulationViewModel = () => {
       const firstProfileId = selectedExamSources[0]?.taskResolvedProfileId ?? null;
       const hasSharedProfile =
         Boolean(firstProfileId) &&
-        selectedExamSources.every(
-          (source) => source.taskResolvedProfileId === firstProfileId,
-        );
+        selectedExamSources.every((source) => source.taskResolvedProfileId === firstProfileId);
       targetProfileId = hasSharedProfile ? firstProfileId : null;
     }
 
@@ -598,11 +559,7 @@ export const useExamSimulationViewModel = () => {
   }, [runProfileAutoState, selectedRunProfileId]);
 
   const selectedValidTaskCount = useMemo(
-    () =>
-      selectedExamSources.reduce(
-        (sum, source) => sum + source.tasks.length,
-        0,
-      ),
+    () => selectedExamSources.reduce((sum, source) => sum + source.tasks.length, 0),
     [selectedExamSources],
   );
 
@@ -651,15 +608,12 @@ export const useExamSimulationViewModel = () => {
     pointsProfiles.defaultProfile?.durationMinutes ?? EXAM_POINTS_DEFAULT_DURATION_MINUTES,
   );
 
-  const resolveTaskTypePointsSourceMap = useCallback(
-    (profile: ExamPointsProfile | null) => {
-      if (!profile || profile.distribution !== "task-type") {
-        return null;
-      }
-      return profile.typeRules;
-    },
-    [],
-  );
+  const resolveTaskTypePointsSourceMap = useCallback((profile: ExamPointsProfile | null) => {
+    if (!profile || profile.distribution !== "task-type") {
+      return null;
+    }
+    return profile.typeRules;
+  }, []);
 
   const resolveSessionTaskPointsPlan = useCallback(
     (
@@ -827,9 +781,7 @@ export const useExamSimulationViewModel = () => {
       }),
     [awardedPoints, manualTaskIndices, partStates, runTaskPoints, runTasks],
   );
-  const manualScoringComplete = manualTaskEntries.every(
-    (entry) => entry.awardedPoints !== null,
-  );
+  const manualScoringComplete = manualTaskEntries.every((entry) => entry.awardedPoints !== null);
   const activeManualTaskEntry = manualTaskEntries[manualScoringIndex] ?? null;
   const canGoManualScoringBack = manualScoringIndex > 0;
   const canGoManualScoringNext = manualScoringIndex < manualTaskEntries.length - 1;
@@ -869,9 +821,7 @@ export const useExamSimulationViewModel = () => {
     }
     return missing;
   }, [previewDurationMinutes, selectedRunProfile, settings.examTimeLimitEnabled]);
-  const hasSettingsBlockers = missingExamSettings.some(
-    (item) => item.severity !== "warning",
-  );
+  const hasSettingsBlockers = missingExamSettings.some((item) => item.severity !== "warning");
   const isSettingsValid = !hasSettingsBlockers;
 
   const canStartExam =
@@ -1254,12 +1204,7 @@ export const useExamSimulationViewModel = () => {
   );
 
   const handleTrueFalseSelect = useCallback(
-    (
-      taskIndex: number,
-      partIndex: number,
-      itemId: string,
-      value: TrueFalseSelection,
-    ) => {
+    (taskIndex: number, partIndex: number, itemId: string, value: TrueFalseSelection) => {
       updatePartState(taskIndex, partIndex, (current) => ({
         ...current,
         trueFalseSelections: {
@@ -1384,15 +1329,16 @@ export const useExamSimulationViewModel = () => {
     setActiveTaskIndex((prev) => Math.max(0, prev - resolvedStep));
   }, []);
 
-  const handleTaskNext = useCallback((step = 1) => {
-    if (runTasks.length === 0) {
-      return;
-    }
-    const resolvedStep = normalizeNavigationStep(step);
-    setActiveTaskIndex((prev) =>
-      Math.min(runTasks.length - 1, prev + resolvedStep),
-    );
-  }, [runTasks.length]);
+  const handleTaskNext = useCallback(
+    (step = 1) => {
+      if (runTasks.length === 0) {
+        return;
+      }
+      const resolvedStep = normalizeNavigationStep(step);
+      setActiveTaskIndex((prev) => Math.min(runTasks.length - 1, prev + resolvedStep));
+    },
+    [runTasks.length],
+  );
 
   const handleManualScoringBack = useCallback(() => {
     setManualScoringIndex((prev) => Math.max(0, prev - 1));
@@ -1402,9 +1348,7 @@ export const useExamSimulationViewModel = () => {
     if (manualTaskEntries.length === 0) {
       return;
     }
-    setManualScoringIndex((prev) =>
-      Math.min(manualTaskEntries.length - 1, prev + 1),
-    );
+    setManualScoringIndex((prev) => Math.min(manualTaskEntries.length - 1, prev + 1));
   }, [manualTaskEntries.length]);
 
   const buildResultsFromAttempt = useCallback(
@@ -1465,10 +1409,7 @@ export const useExamSimulationViewModel = () => {
         };
       });
 
-      const totalAwarded = breakdown.reduce(
-        (sum, item) => sum + item.awardedPoints,
-        0,
-      );
+      const totalAwarded = breakdown.reduce((sum, item) => sum + item.awardedPoints, 0);
       const totalMax = breakdown.reduce((sum, item) => sum + item.maxPoints, 0);
       const percentage = totalMax > 0 ? Math.round((totalAwarded / totalMax) * 100) : 0;
 
@@ -1479,12 +1420,7 @@ export const useExamSimulationViewModel = () => {
         percentage,
       };
     },
-    [
-      activeExamSettings,
-      runTaskPoints,
-      runTasks,
-      settings.examTaskTypeDefaultPoints,
-    ],
+    [activeExamSettings, runTaskPoints, runTasks, settings.examTaskTypeDefaultPoints],
   );
 
   const canShowResults =
@@ -1500,13 +1436,7 @@ export const useExamSimulationViewModel = () => {
       canShowResults
         ? buildResultsFromAttempt(partStates, awardedPoints, autoGradeDecisions)
         : null,
-    [
-      autoGradeDecisions,
-      awardedPoints,
-      buildResultsFromAttempt,
-      canShowResults,
-      partStates,
-    ],
+    [autoGradeDecisions, awardedPoints, buildResultsFromAttempt, canShowResults, partStates],
   );
   const incorrectTaskResults = useMemo(
     () => results?.breakdown.filter((item) => item.isCorrect === false) ?? [],
@@ -1567,12 +1497,7 @@ export const useExamSimulationViewModel = () => {
   );
 
   const handleCorrectionTrueFalseSelect = useCallback(
-    (
-      sessionTaskId: string,
-      partIndex: number,
-      itemId: string,
-      value: TrueFalseSelection,
-    ) => {
+    (sessionTaskId: string, partIndex: number, itemId: string, value: TrueFalseSelection) => {
       updateCorrectionPartState(sessionTaskId, partIndex, (current) => ({
         ...current,
         trueFalseSelections: {
@@ -1657,25 +1582,22 @@ export const useExamSimulationViewModel = () => {
     [updateCorrectionPartState],
   );
 
-  const handleCorrectionSubmit = useCallback(
-    (sessionTaskId: string, canSubmit: boolean) => {
-      if (!canSubmit) {
-        return;
-      }
-      setCorrectionState((prev) =>
-        prev
-          ? {
-              ...prev,
-              submissions: {
-                ...prev.submissions,
-                [sessionTaskId]: true,
-              },
-            }
-          : prev,
-      );
-    },
-    [],
-  );
+  const handleCorrectionSubmit = useCallback((sessionTaskId: string, canSubmit: boolean) => {
+    if (!canSubmit) {
+      return;
+    }
+    setCorrectionState((prev) =>
+      prev
+        ? {
+            ...prev,
+            submissions: {
+              ...prev.submissions,
+              [sessionTaskId]: true,
+            },
+          }
+        : prev,
+    );
+  }, []);
 
   const handleCorrectionTaskBack = useCallback(() => {
     setCorrectionState((prev) =>
@@ -1763,9 +1685,7 @@ export const useExamSimulationViewModel = () => {
         }
         setExamRuns((prev) =>
           sortExamRunsByDateDesc(
-            prev.map((entry) =>
-              entry.id === run.id ? { ...entry, filePath } : entry,
-            ),
+            prev.map((entry) => (entry.id === run.id ? { ...entry, filePath } : entry)),
           ),
         );
       })();
@@ -1974,10 +1894,9 @@ export const useExamSimulationViewModel = () => {
           if (!rescanOk) {
             setResultTaskCardWrapNoticeById((prev) => ({
               ...prev,
-              [sessionTaskId]:
-                toggleResult.wroteFile
-                  ? "File saved, but vault refresh failed. Some views may update after a manual refresh."
-                  : "Vault refresh failed. Some views may update after a manual refresh.",
+              [sessionTaskId]: toggleResult.wroteFile
+                ? "File saved, but vault refresh failed. Some views may update after a manual refresh."
+                : "Vault refresh failed. Some views may update after a manual refresh.",
             }));
           }
         } catch (error) {
@@ -2006,14 +1925,10 @@ export const useExamSimulationViewModel = () => {
   );
 
   const activeTaskPartStates = activeTask
-    ? partStates[activeTaskIndex] ?? EMPTY_PART_STATES
+    ? (partStates[activeTaskIndex] ?? EMPTY_PART_STATES)
     : EMPTY_PART_STATES;
-  const activeTaskAwardedPoints = activeTask
-    ? awardedPoints[activeTaskIndex] ?? null
-    : null;
-  const activeTaskAutoDecision = activeTask
-    ? autoGradeDecisions[activeTaskIndex]
-    : undefined;
+  const activeTaskAwardedPoints = activeTask ? (awardedPoints[activeTaskIndex] ?? null) : null;
+  const activeTaskAutoDecision = activeTask ? autoGradeDecisions[activeTaskIndex] : undefined;
   const getTaskPartStates = useCallback(
     (taskIndex: number) => partStates[taskIndex] ?? EMPTY_PART_STATES,
     [partStates],
@@ -2026,8 +1941,7 @@ export const useExamSimulationViewModel = () => {
     (taskIndex: number) => autoGradeDecisions[taskIndex],
     [autoGradeDecisions],
   );
-  const correctionActiveEntry =
-    correctionState?.queue[correctionState.activeIndex] ?? null;
+  const correctionActiveEntry = correctionState?.queue[correctionState.activeIndex] ?? null;
   const correctionActiveTask = correctionActiveEntry
     ? (runTasks[correctionActiveEntry.sourceTaskIndex] ?? null)
     : null;
@@ -2036,8 +1950,7 @@ export const useExamSimulationViewModel = () => {
     : 0;
   const correctionActivePartStates =
     correctionActiveEntry && correctionState
-      ? correctionState.partStates[correctionActiveEntry.sessionTaskId] ??
-        EMPTY_PART_STATES
+      ? (correctionState.partStates[correctionActiveEntry.sessionTaskId] ?? EMPTY_PART_STATES)
       : EMPTY_PART_STATES;
   const correctionActiveSubmitted =
     correctionActiveEntry && correctionState
@@ -2045,12 +1958,10 @@ export const useExamSimulationViewModel = () => {
       : false;
   const correctionCanGoBack = (correctionState?.activeIndex ?? 0) > 0;
   const correctionCanGoNext =
-    (correctionState?.activeIndex ?? 0) < ((correctionState?.queue.length ?? 0) - 1);
+    (correctionState?.activeIndex ?? 0) < (correctionState?.queue.length ?? 0) - 1;
   const correctionQueueLength = correctionState?.queue.length ?? 0;
   const selectionPreviewState: LoadState =
-    selectedExamCount === 0 || selectedRunnableExamCount === 0
-      ? "idle"
-      : selectedExamParseState;
+    selectedExamCount === 0 || selectedRunnableExamCount === 0 ? "idle" : selectedExamParseState;
   const selectionPreviewError = selectedExamParseError;
   const examEmptyState = useMemo(() => {
     if (selectedExamCount === 0 || selectionPreviewState !== "idle") {
@@ -2059,8 +1970,7 @@ export const useExamSimulationViewModel = () => {
     if (selectedRunnableExamCount === 0) {
       return {
         title: "Keine gueltigen Exam-Dateien ausgewaehlt",
-        message:
-          "Waehle mindestens eine gueltige Exam-Datei mit erkannten Aufgaben aus.",
+        message: "Waehle mindestens eine gueltige Exam-Datei mit erkannten Aufgaben aus.",
       };
     }
     if (selectionPreviewError && previewExamParse.tasks.length === 0) {
@@ -2072,8 +1982,7 @@ export const useExamSimulationViewModel = () => {
     if (previewExamParse.tasks.length === 0) {
       return {
         title: "Keine Aufgaben im kombinierten Lauf",
-        message:
-          "Fuer die aktuelle Auswahl und den Modus wurden keine Tasks eingebunden.",
+        message: "Fuer die aktuelle Auswahl und den Modus wurden keine Tasks eingebunden.",
       };
     }
     return null;

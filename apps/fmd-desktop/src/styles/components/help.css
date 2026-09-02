@@ -1,4 +1,3 @@
-
 /*
  * @file apps/fmd-desktop/src/styles/components/help.css
  *
@@ -459,7 +458,9 @@
 .help-syntax-card.active {
   border-color: var(--accent-border);
   background: var(--accent-active-bg);
-  box-shadow: var(--shadow-soft), inset 4px 0 0 var(--accent-strong);
+  box-shadow:
+    var(--shadow-soft),
+    inset 4px 0 0 var(--accent-strong);
 }
 
 .help-syntax-card.active .help-syntax-card-title {

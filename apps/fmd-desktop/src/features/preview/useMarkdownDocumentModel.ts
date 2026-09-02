@@ -81,20 +81,23 @@ export const useMarkdownDocumentModel = (
     const nextVersion = versionRef.current;
 
     if (!canUseWorker() || workerUnavailableRef.current) {
-      const next = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion, { profile });
+      const next = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion, {
+        profile,
+      });
       setState(next);
       return;
     }
 
     if (!workerRef.current) {
       try {
-        workerRef.current = new Worker(
-          new URL("./markdownBlocks.worker.ts", import.meta.url),
-          { type: "module" },
-        );
+        workerRef.current = new Worker(new URL("./markdownBlocks.worker.ts", import.meta.url), {
+          type: "module",
+        });
       } catch {
         workerUnavailableRef.current = true;
-        const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion, { profile });
+        const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion, {
+          profile,
+        });
         setState(fallback);
         return;
       }
@@ -102,7 +105,9 @@ export const useMarkdownDocumentModel = (
 
     const currentWorker = workerRef.current;
     if (!currentWorker) {
-      const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion, { profile });
+      const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion, {
+        profile,
+      });
       setState(fallback);
       return;
     }
@@ -121,7 +126,9 @@ export const useMarkdownDocumentModel = (
           workerRef.current.terminate();
           workerRef.current = null;
         }
-        const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion, { profile });
+        const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion, {
+          profile,
+        });
         setState(fallback);
         return;
       }
@@ -143,7 +150,9 @@ export const useMarkdownDocumentModel = (
         workerRef.current.terminate();
         workerRef.current = null;
       }
-      const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion, { profile });
+      const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion, {
+        profile,
+      });
       setState(fallback);
     };
 
@@ -162,7 +171,9 @@ export const useMarkdownDocumentModel = (
     try {
       currentWorker.postMessage(requestPayload);
     } catch {
-      const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion, { profile });
+      const fallback = parseMarkdownDocument(markdown, stateRef.current.snapshot, nextVersion, {
+        profile,
+      });
       setState(fallback);
       currentWorker.removeEventListener("message", handleMessage);
       currentWorker.removeEventListener("error", handleError);

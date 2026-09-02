@@ -25,11 +25,7 @@ export type ExamSessionTask = ExamTask & {
   sessionIndex: number;
 };
 
-export type ExamCombinationMode =
-  | "fully-mixed"
-  | "sequential"
-  | "sequential-shuffled"
-  | "nested";
+export type ExamCombinationMode = "fully-mixed" | "sequential" | "sequential-shuffled" | "nested";
 
 export type DuplicateTaskNumberWarning = {
   examPath: string;
@@ -124,8 +120,7 @@ const toCandidates = (source: ExamSessionSource): CandidateTask[] =>
     sourceTaskIndex,
   }));
 
-const seedKey = (seed: string | number, suffix: string) =>
-  resolveSeed(`${String(seed)}|${suffix}`);
+const seedKey = (seed: string | number, suffix: string) => resolveSeed(`${String(seed)}|${suffix}`);
 
 const buildSequentialCandidates = (
   sources: ExamSessionSource[],
@@ -143,10 +138,7 @@ const buildSequentialCandidates = (
   return candidates;
 };
 
-const buildNestedCandidates = (
-  sources: ExamSessionSource[],
-  seed: string | number,
-) => {
+const buildNestedCandidates = (sources: ExamSessionSource[], seed: string | number) => {
   const groupsByTaskNumber = new Map<number, CandidateTask[]>();
   sources.forEach((source) => {
     toCandidates(source).forEach((candidate) => {
@@ -168,13 +160,9 @@ const buildNestedCandidates = (
     .filter((candidate): candidate is CandidateTask => Boolean(candidate));
 };
 
-export const createMixSeed = () =>
-  `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+export const createMixSeed = () => `${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
 
-export const buildSingleSessionTasks = (
-  source: ExamSessionSource,
-  seed: string | number,
-) =>
+export const buildSingleSessionTasks = (source: ExamSessionSource, seed: string | number) =>
   toCandidates(source).map((candidate, index) => toSessionTask(candidate, index + 1, seed));
 
 export const buildCombinedSessionTasks = (
@@ -204,9 +192,7 @@ export const buildCombinedSessionTasks = (
   })();
 
   return {
-    tasks: orderedCandidates.map((candidate, index) =>
-      toSessionTask(candidate, index + 1, seed),
-    ),
+    tasks: orderedCandidates.map((candidate, index) => toSessionTask(candidate, index + 1, seed)),
     duplicateTaskNumberWarnings: [],
   };
 };
@@ -235,9 +221,7 @@ export const buildCombinedSessionTasksFromRows = (
   );
 
   return {
-    tasks: orderedCandidates.map((candidate, index) =>
-      toSessionTask(candidate, index + 1, seed),
-    ),
+    tasks: orderedCandidates.map((candidate, index) => toSessionTask(candidate, index + 1, seed)),
     duplicateTaskNumberWarnings: [],
   };
 };

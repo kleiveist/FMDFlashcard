@@ -5,10 +5,7 @@
  */
 
 import { type CSSProperties } from "react";
-import {
-  type DatabaseAttributeMeta,
-  type DatabasePieColorSpectrum,
-} from "../database-types";
+import { type DatabaseAttributeMeta, type DatabasePieColorSpectrum } from "../database-types";
 import { type DatabasePieValueOption } from "../pie-values";
 
 type PieAggregateType = "count" | "sum" | "avg";
@@ -46,7 +43,8 @@ const colorSpectrumOptions: Array<{ value: DatabasePieColorSpectrum; label: stri
 ];
 
 const colorSpectrumSwatches: Record<DatabasePieColorSpectrum, string> = {
-  standard: "linear-gradient(135deg, color-mix(in srgb, var(--accent-strong) 82%, var(--db-surface-base)), color-mix(in srgb, var(--accent) 76%, var(--db-surface-base)))",
+  standard:
+    "linear-gradient(135deg, color-mix(in srgb, var(--accent-strong) 82%, var(--db-surface-base)), color-mix(in srgb, var(--accent) 76%, var(--db-surface-base)))",
   ocean: "linear-gradient(135deg, #006994, #4DCCBD)",
   sunset: "linear-gradient(135deg, #7C2D12, #F59E0B)",
   forest: "linear-gradient(135deg, #14532D, #4ADE80)",
@@ -64,15 +62,17 @@ export const DatabasePiePanel = ({
   onChange,
   onClose,
 }: DatabasePiePanelProps) => {
-  const groupableAttributes = attributes
-    .filter((attribute) => attribute.viewCompatibility.supportsPieGrouping);
-  const aggregatableAttributes = attributes
-    .filter((attribute) => attribute.viewCompatibility.supportsAggregation);
+  const groupableAttributes = attributes.filter(
+    (attribute) => attribute.viewCompatibility.supportsPieGrouping,
+  );
+  const aggregatableAttributes = attributes.filter(
+    (attribute) => attribute.viewCompatibility.supportsAggregation,
+  );
   const excludedValueSet = new Set(excludedValues);
-  const fallbackAggregateField = aggregateField && aggregatableAttributes.some((attribute) =>
-    attribute.key === aggregateField)
-    ? aggregateField
-    : (aggregatableAttributes[0]?.key ?? null);
+  const fallbackAggregateField =
+    aggregateField && aggregatableAttributes.some((attribute) => attribute.key === aggregateField)
+      ? aggregateField
+      : (aggregatableAttributes[0]?.key ?? null);
 
   const handleValueToggle = (value: string, checked: boolean) => {
     if (checked) {
@@ -95,7 +95,12 @@ export const DatabasePiePanel = ({
     >
       <header className="database-block-panel-header">
         <h5>Pie Optionen</h5>
-        <button type="button" className="database-block-panel-close" onClick={onClose} aria-label="Schliessen">
+        <button
+          type="button"
+          className="database-block-panel-close"
+          onClick={onClose}
+          aria-label="Schliessen"
+        >
           ×
         </button>
       </header>
@@ -109,7 +114,9 @@ export const DatabasePiePanel = ({
           >
             <option value="">Auto</option>
             {groupableAttributes.map((attribute) => (
-              <option key={attribute.key} value={attribute.key}>{attribute.label || attribute.key}</option>
+              <option key={attribute.key} value={attribute.key}>
+                {attribute.label || attribute.key}
+              </option>
             ))}
           </select>
         </label>
@@ -127,11 +134,12 @@ export const DatabasePiePanel = ({
             }}
           >
             {aggregateOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
             ))}
           </select>
         </label>
-
       </div>
 
       <section className="database-pie-spectrum">
@@ -150,7 +158,11 @@ export const DatabasePiePanel = ({
               >
                 <span
                   className="database-pie-spectrum-dot"
-                  style={{ "--db-pie-spectrum-swatch": colorSpectrumSwatches[option.value] } as CSSProperties}
+                  style={
+                    {
+                      "--db-pie-spectrum-swatch": colorSpectrumSwatches[option.value],
+                    } as CSSProperties
+                  }
                   aria-hidden="true"
                 />
                 <span className="database-pie-spectrum-label">{option.label}</span>

@@ -4,10 +4,7 @@
 
 import type { ReactNode } from "react";
 import type { ExamBlueprint, ExamTaskBlueprint } from "../../../features/exam-editor/types";
-import type {
-  ExamValidation,
-  TaskValidation,
-} from "../../../features/exam-editor/validation";
+import type { ExamValidation, TaskValidation } from "../../../features/exam-editor/validation";
 import { isCompositeTask } from "../../../features/exam-editor/validation";
 import type { ExamEditorSelection } from "../types";
 import { ModalShell } from "../../../components/ModalShell";
@@ -47,18 +44,8 @@ type ContentModeProps = {
     },
   ) => void;
   onCardHelpChange: (taskId: string, cardId: string, value: string) => void;
-  onOptionTextChange: (
-    taskId: string,
-    cardId: string,
-    optionId: string,
-    value: string,
-  ) => void;
-  onOptionToggle: (
-    taskId: string,
-    cardId: string,
-    optionId: string,
-    value: boolean,
-  ) => void;
+  onOptionTextChange: (taskId: string, cardId: string, optionId: string, value: string) => void;
+  onOptionToggle: (taskId: string, cardId: string, optionId: string, value: boolean) => void;
   onOptionSelect: (taskId: string, cardId: string, optionId: string) => void;
   onOptionAdd: (taskId: string, cardId: string) => void;
   onOptionRemove: (taskId: string, cardId: string, optionId: string) => void;
@@ -73,10 +60,7 @@ type ContentModeProps = {
   onPopupClose?: () => void;
 };
 
-const resolveActiveTaskId = (
-  exam: ExamBlueprint,
-  selection: ExamEditorSelection,
-) => {
+const resolveActiveTaskId = (exam: ExamBlueprint, selection: ExamEditorSelection) => {
   if (selection.type === "task") {
     return selection.taskId;
   }
@@ -150,12 +134,8 @@ const ContentEditorPanel = ({
                 key={card.id}
                 card={card}
                 validation={cardValidation}
-                onPromptChange={(value) =>
-                  onCardUpdate(activeTask.id, card.id, { prompt: value })
-                }
-                onAnswerChange={(value) =>
-                  onCardUpdate(activeTask.id, card.id, { answer: value })
-                }
+                onPromptChange={(value) => onCardUpdate(activeTask.id, card.id, { prompt: value })}
+                onAnswerChange={(value) => onCardUpdate(activeTask.id, card.id, { answer: value })}
                 onCorrectChange={(value) =>
                   onCardUpdate(activeTask.id, card.id, { correct: value })
                 }
@@ -165,19 +145,13 @@ const ContentEditorPanel = ({
                 onOptionToggle={(optionId, value) =>
                   onOptionToggle(activeTask.id, card.id, optionId, value)
                 }
-                onOptionSelect={(optionId) =>
-                  onOptionSelect(activeTask.id, card.id, optionId)
-                }
+                onOptionSelect={(optionId) => onOptionSelect(activeTask.id, card.id, optionId)}
                 onOptionAdd={() => onOptionAdd(activeTask.id, card.id)}
-                onOptionRemove={(optionId) =>
-                  onOptionRemove(activeTask.id, card.id, optionId)
-                }
+                onOptionRemove={(optionId) => onOptionRemove(activeTask.id, card.id, optionId)}
                 onChoiceRawBodyChange={(value) =>
                   onChoiceRawBodyChange(activeTask.id, card.id, value)
                 }
-                onHelpChange={(value) =>
-                  onCardHelpChange(activeTask.id, card.id, value)
-                }
+                onHelpChange={(value) => onCardHelpChange(activeTask.id, card.id, value)}
                 vaultFiles={vaultFiles}
                 vaultPngAssets={vaultPngAssets}
                 vaultPath={vaultPath}
@@ -221,9 +195,7 @@ export const ContentMode = ({
   const activeTaskId = resolveActiveTaskId(exam, selection);
   const activeTask = exam.tasks.find((task) => task.id === activeTaskId) ?? null;
   const orderedTasks = exam.tasks.slice().sort((a, b) => a.order - b.order);
-  const taskValidation = activeTask
-    ? getTaskValidation(validation, activeTask.id)
-    : undefined;
+  const taskValidation = activeTask ? getTaskValidation(validation, activeTask.id) : undefined;
   const handleTaskSelect = (taskId: string) => {
     onSelectTask(taskId);
     if (popupMode) {
@@ -251,9 +223,7 @@ export const ContentMode = ({
   );
 
   return (
-    <div
-      className={`exam-editor-content${popupMode ? " content-popup-mode" : ""}`}
-    >
+    <div className={`exam-editor-content${popupMode ? " content-popup-mode" : ""}`}>
       <aside className="panel exam-editor-panel content-nav">
         <header className="panel-header">
           <div>

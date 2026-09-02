@@ -27,14 +27,8 @@ import type { UserVaultImportStrategy } from "../../lib/userVault";
 import type { UserVaultState } from "../../features/user-vault/useUserVault";
 import { isSyncProviderEnabled, isWordPressEnabled } from "../../lib/featureFlags";
 import type { UserRegistryControlsProps } from "../UserToolsPanel";
-import {
-  type SettingsLanguage,
-  tSettings,
-} from "../../features/settings/settingsI18n";
-import {
-  ProfileSetupView,
-  type ProfileSetupVaultSelection,
-} from "./ProfileSetupSections";
+import { type SettingsLanguage, tSettings } from "../../features/settings/settingsI18n";
+import { ProfileSetupView, type ProfileSetupVaultSelection } from "./ProfileSetupSections";
 
 type AppLanguage = SettingsLanguage;
 
@@ -53,10 +47,7 @@ type SyncProviderSectionProps = {
   label?: string;
 };
 
-export const SyncProviderSection = ({
-  language = "en",
-  label,
-}: SyncProviderSectionProps) => {
+export const SyncProviderSection = ({ language = "en", label }: SyncProviderSectionProps) => {
   const syncProviderEnabled = isSyncProviderEnabled();
   return (
     <div className="setting-row">
@@ -143,8 +134,7 @@ export const ExportImportSettingsView = ({
   language = "en",
   userVault,
 }: ExportImportSettingsViewProps) => {
-  const [importStrategy, setImportStrategy] =
-    useState<UserVaultImportStrategy>("merge");
+  const [importStrategy, setImportStrategy] = useState<UserVaultImportStrategy>("merge");
   const wordpressEnabled = isWordPressEnabled();
   const canManageVault = Boolean(userVault.resolvedPath);
   const hasProfiles = userVault.profiles.length > 0;
@@ -182,9 +172,7 @@ export const ExportImportSettingsView = ({
   return (
     <>
       <div className="setting-row">
-        <span className="label">
-          {tSettings(language, "settings.dataSync.exportImportJson")}
-        </span>
+        <span className="label">{tSettings(language, "settings.dataSync.exportImportJson")}</span>
         <div className="setting-actions">
           <button
             type="button"
@@ -210,9 +198,7 @@ export const ExportImportSettingsView = ({
           <select
             className="text-input"
             value={importStrategy}
-            onChange={(event) =>
-              setImportStrategy(event.target.value as UserVaultImportStrategy)
-            }
+            onChange={(event) => setImportStrategy(event.target.value as UserVaultImportStrategy)}
             disabled={!canImport || userVault.isBusy}
             aria-label="Import strategy"
           >
@@ -232,9 +218,7 @@ export const ExportImportSettingsView = ({
             {tSettings(language, "settings.dataSync.importButton")}
           </button>
         </div>
-        <span className="helper-text">
-          {tSettings(language, "settings.dataSync.importHelper")}
-        </span>
+        <span className="helper-text">{tSettings(language, "settings.dataSync.importHelper")}</span>
       </div>
       <div className="setting-row">
         <span className="label">{tSettings(language, "settings.dataSync.wordpress")}</span>
@@ -270,10 +254,7 @@ type LanguageTabContentProps = {
   onLanguageChange: (value: AppLanguage) => void;
 };
 
-export const LanguageTabContent = ({
-  language,
-  onLanguageChange,
-}: LanguageTabContentProps) => {
+export const LanguageTabContent = ({ language, onLanguageChange }: LanguageTabContentProps) => {
   return (
     <>
       <p className="muted">{tSettings(language, "settings.language.placeholder")}</p>
@@ -297,9 +278,7 @@ export const LanguageTabContent = ({
             {tSettings(language, "settings.language.buttonEnglish")}
           </button>
         </div>
-        <span className="helper-text">
-          {tSettings(language, "settings.language.placeholder")}
-        </span>
+        <span className="helper-text">{tSettings(language, "settings.language.placeholder")}</span>
       </div>
     </>
   );

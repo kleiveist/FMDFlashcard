@@ -3,10 +3,7 @@ import { act, createElement, type ReactElement, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { CanvasPanel } from "./CanvasPanel";
-import {
-  serializeCanvasDocument,
-  type CanvasDocument,
-} from "../features/canvas/document";
+import { serializeCanvasDocument, type CanvasDocument } from "../features/canvas/document";
 import { type VaultFile } from "../lib/tree";
 
 const testEnv = globalThis as typeof globalThis & {
@@ -111,9 +108,9 @@ describe("CanvasPanel", () => {
     expect(buttonWithText(container, "View")).toBeUndefined();
     expect(buttonWithText(container, "Edit")).toBeUndefined();
     expect(buttonWithText(container, "Code")).toBeUndefined();
-    expect(
-      container.querySelector<HTMLElement>(".business-canvas-content")?.style.transform,
-    ).toBe("translate(-900px, -1020px) scale(1)");
+    expect(container.querySelector<HTMLElement>(".business-canvas-content")?.style.transform).toBe(
+      "translate(-900px, -1020px) scale(1)",
+    );
 
     cleanup();
   });
@@ -223,9 +220,7 @@ describe("CanvasPanel", () => {
     });
     await flush();
 
-    const edgeLine = container.querySelector<SVGPathElement>(
-      ".canvas-edge-row .canvas-edge-line",
-    );
+    const edgeLine = container.querySelector<SVGPathElement>(".canvas-edge-row .canvas-edge-line");
     const path = edgeLine?.getAttribute("d") ?? "";
     expect(path).toMatch(/^M 1300 1258\./);
     expect(path).toContain("1500 1291.");
@@ -236,39 +231,42 @@ describe("CanvasPanel", () => {
 
   it("normalizes stored edge sides on persist", async () => {
     const onPersistSource = vi.fn().mockResolvedValue({ ok: true });
-    const { container, cleanup } = renderCanvasPanel({
-      nodes: [
-        {
-          id: "left",
-          type: "text",
-          text: "Left",
-          x: 0,
-          y: 0,
-          width: 120,
-          height: 100,
-        },
-        {
-          id: "right",
-          type: "text",
-          text: "Right",
-          x: 320,
-          y: 0,
-          width: 120,
-          height: 100,
-        },
-      ],
-      edges: [
-        {
-          id: "edge-1",
-          fromNode: "left",
-          toNode: "right",
-          fromSide: "top",
-          toSide: "bottom",
-          fromEnd: "none",
-          toEnd: "arrow",
-        },
-      ],
-    }, onPersistSource);
+    const { container, cleanup } = renderCanvasPanel(
+      {
+        nodes: [
+          {
+            id: "left",
+            type: "text",
+            text: "Left",
+            x: 0,
+            y: 0,
+            width: 120,
+            height: 100,
+          },
+          {
+            id: "right",
+            type: "text",
+            text: "Right",
+            x: 320,
+            y: 0,
+            width: 120,
+            height: 100,
+          },
+        ],
+        edges: [
+          {
+            id: "edge-1",
+            fromNode: "left",
+            toNode: "right",
+            fromSide: "top",
+            toSide: "bottom",
+            fromEnd: "none",
+            toEnd: "arrow",
+          },
+        ],
+      },
+      onPersistSource,
+    );
     await flush();
 
     await clickButton(buttonWithLabel(container, "Canvas edit mode"));

@@ -21,14 +21,7 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type DragEvent,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { AnchoredPopup } from "../components/AnchoredPopup";
 import { CollapsiblePanelHeader } from "../components/CollapsiblePanelHeader";
 import { ClozeCard } from "../components/flashcards/ClozeCard";
@@ -125,9 +118,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
   const toggleShortcutLabel = shortcutBindings.toggle
     ? formatBinding(shortcutBindings.toggle, platform)
     : null;
-  const focusTitle = toggleShortcutLabel
-    ? `${viewLabel} (${toggleShortcutLabel})`
-    : viewLabel;
+  const focusTitle = toggleShortcutLabel ? `${viewLabel} (${toggleShortcutLabel})` : viewLabel;
   const prevShortcutTitle = shortcutBindings.prev
     ? `Back (${formatBinding(shortcutBindings.prev, platform)})`
     : "Back";
@@ -322,10 +313,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
       }
       const isEditable = isEditableTarget(event.target);
 
-      const canTrigger = (
-        command: typeof flashcardToggleCommand,
-        binding: string | null,
-      ) => {
+      const canTrigger = (command: typeof flashcardToggleCommand, binding: string | null) => {
         if (!command || !binding) {
           return false;
         }
@@ -420,9 +408,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
         return;
       }
 
-      const resolvedEntry = visibleEntries.find(
-        (entry) => entry.cardIndex === resolvedIndex,
-      );
+      const resolvedEntry = visibleEntries.find((entry) => entry.cardIndex === resolvedIndex);
       const card = resolvedEntry?.card;
       if (!card || flashcards.flashcardSubmissions[resolvedIndex]) {
         return;
@@ -496,13 +482,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
       dragBlankIds: Set<string>,
     ) => {
       setActiveCardIndex(cardIndex);
-      flashcards.handleClozeTokenDrop(
-        event,
-        cardIndex,
-        blankId,
-        validTokenIds,
-        dragBlankIds,
-      );
+      flashcards.handleClozeTokenDrop(event, cardIndex, blankId, validTokenIds, dragBlankIds);
     },
     [flashcards],
   );
@@ -756,9 +736,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
               className="text-input"
               value={flashcards.flashcardMode}
               onChange={(event) =>
-                flashcards.setFlashcardMode(
-                  event.target.value as typeof flashcards.flashcardMode,
-                )
+                flashcards.setFlashcardMode(event.target.value as typeof flashcards.flashcardMode)
               }
               aria-label="Select mode filter"
             >
@@ -846,9 +824,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
               Flashcard
             </button>
           </h2>
-          {!hasScannedCards ? (
-            <p className="muted">{flashcardStatusLabel}</p>
-          ) : null}
+          {!hasScannedCards ? <p className="muted">{flashcardStatusLabel}</p> : null}
         </div>
         <div className="panel-actions">
           <button
@@ -932,9 +908,7 @@ export const FlashcardPage = ({ onSectionSelect }: FlashcardPageProps) => {
       ) : (
         <>
           {flashcardPanel}
-          {isFocusMode ? null : (
-            <div className="flashcard-sidebar">{sidebarPanels}</div>
-          )}
+          {isFocusMode ? null : <div className="flashcard-sidebar">{sidebarPanels}</div>}
         </>
       )}
       <AnchoredPopup

@@ -66,11 +66,7 @@ export const FreeTextCard = ({
   onSelfGrade,
 }: FreeTextCardProps) => {
   const hasInput = response.trim().length > 0;
-  const resultLabel = submitted
-    ? selfGrade === "correct"
-      ? "Correct"
-      : "Incorrect"
-    : "";
+  const resultLabel = submitted ? (selfGrade === "correct" ? "Correct" : "Incorrect") : "";
   const isCorrectSelected = selfGrade === "correct";
   const isIncorrectSelected = selfGrade === "incorrect";
   const hasHelp = helpEnabled && hasHelpContent(helpText);
@@ -115,9 +111,7 @@ export const FreeTextCard = ({
             <>
               <button
                 type="button"
-                className={`${
-                  isCorrectSelected ? "primary" : "ghost"
-                } small flashcard-submit`}
+                className={`${isCorrectSelected ? "primary" : "ghost"} small flashcard-submit`}
                 onClick={() => onSelfGrade(cardIndex, "correct")}
                 aria-pressed={isCorrectSelected}
                 disabled={submitted || submissionLocked}
@@ -126,9 +120,7 @@ export const FreeTextCard = ({
               </button>
               <button
                 type="button"
-                className={`${
-                  isIncorrectSelected ? "primary" : "ghost"
-                } small flashcard-submit`}
+                className={`${isIncorrectSelected ? "primary" : "ghost"} small flashcard-submit`}
                 onClick={() => onSelfGrade(cardIndex, "incorrect")}
                 aria-pressed={isIncorrectSelected}
                 disabled={submitted || submissionLocked}
@@ -139,9 +131,7 @@ export const FreeTextCard = ({
           )}
           {submitted ? (
             <span
-              className={`flashcard-result ${
-                selfGrade === "correct" ? "correct" : "incorrect"
-              }`}
+              className={`flashcard-result ${selfGrade === "correct" ? "correct" : "incorrect"}`}
             >
               {resultLabel}
             </span>

@@ -82,9 +82,7 @@ export const buildTree = (files: VaultFile[]): TreeNode[] => {
         return;
       }
 
-      let next = current.children?.find(
-        (child) => child.type === "dir" && child.name === part,
-      );
+      let next = current.children?.find((child) => child.type === "dir" && child.name === part);
       if (!next) {
         next = {
           name: part,
@@ -102,10 +100,7 @@ export const buildTree = (files: VaultFile[]): TreeNode[] => {
   return sortNodes(root.children ?? []);
 };
 
-export const filterHiddenFiles = (
-  files: VaultFile[],
-  showHiddenFolders: boolean,
-) => {
+export const filterHiddenFiles = (files: VaultFile[], showHiddenFolders: boolean) => {
   if (showHiddenFolders) {
     return files;
   }

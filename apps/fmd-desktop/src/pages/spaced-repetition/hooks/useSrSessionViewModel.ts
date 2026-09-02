@@ -68,8 +68,7 @@ export const useSrSessionViewModel = () => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteConfirmInput, setDeleteConfirmInput] = useState("");
   const [activeBoxFilter, setActiveBoxFilter] = useState<number | null>(null);
-  const [autoTimeRemainingSeconds, setAutoTimeRemainingSeconds] =
-    useState<number | null>(null);
+  const [autoTimeRemainingSeconds, setAutoTimeRemainingSeconds] = useState<number | null>(null);
   const autoTimeTimerRef = useRef<number | null>(null);
   const autoTimeLatestRef = useRef({
     flashcards: spacedRepetition.spacedRepetitionFlashcards,
@@ -84,23 +83,17 @@ export const useSrSessionViewModel = () => {
   const shortcutBindings = useMemo(() => {
     const bindings = settings.keyboardShortcuts.bindings;
     return {
-      toggle: srToggleCommand
-        ? getEffectiveBinding(srToggleCommand, bindings, platform)
-        : null,
+      toggle: srToggleCommand ? getEffectiveBinding(srToggleCommand, bindings, platform) : null,
       prev: srPrevCommand ? getEffectiveBinding(srPrevCommand, bindings, platform) : null,
       next: srNextCommand ? getEffectiveBinding(srNextCommand, bindings, platform) : null,
-      submit: srSubmitCommand
-        ? getEffectiveBinding(srSubmitCommand, bindings, platform)
-        : null,
+      submit: srSubmitCommand ? getEffectiveBinding(srSubmitCommand, bindings, platform) : null,
     };
   }, [platform, settings.keyboardShortcuts.bindings]);
   const viewLabel = "View";
   const toggleShortcutLabel = shortcutBindings.toggle
     ? formatBinding(shortcutBindings.toggle, platform)
     : null;
-  const focusTitle = toggleShortcutLabel
-    ? `${viewLabel} (${toggleShortcutLabel})`
-    : viewLabel;
+  const focusTitle = toggleShortcutLabel ? `${viewLabel} (${toggleShortcutLabel})` : viewLabel;
   const prevShortcutTitle = shortcutBindings.prev
     ? `Back (${formatBinding(shortcutBindings.prev, platform)})`
     : "Back";
@@ -111,10 +104,7 @@ export const useSrSessionViewModel = () => {
     () => (vault.vaultPath ? hashString(vault.vaultPath) : null),
     [vault.vaultPath],
   );
-  const cardIdContext = useMemo(
-    () => (vaultId ? { vaultId } : undefined),
-    [vaultId],
-  );
+  const cardIdContext = useMemo(() => (vaultId ? { vaultId } : undefined), [vaultId]);
   const vaultName = useMemo(
     () => (vault.vaultPath ? vaultBaseName(vault.vaultPath) : "—"),
     [vault.vaultPath],
@@ -124,19 +114,14 @@ export const useSrSessionViewModel = () => {
       spacedRepetition.spacedRepetitionUsers.find(
         (user) => user.id === spacedRepetition.spacedRepetitionSelectedUserId,
       ),
-    [
-      spacedRepetition.spacedRepetitionSelectedUserId,
-      spacedRepetition.spacedRepetitionUsers,
-    ],
+    [spacedRepetition.spacedRepetitionSelectedUserId, spacedRepetition.spacedRepetitionUsers],
   );
   const deleteTargetName = selectedUser?.name ?? "";
   const deleteInputValue = deleteConfirmInput.trim();
-  const canConfirmDelete =
-    Boolean(deleteTargetName) && deleteInputValue === deleteTargetName;
+  const canConfirmDelete = Boolean(deleteTargetName) && deleteInputValue === deleteTargetName;
 
   const statsTotal =
-    spacedRepetition.spacedRepetitionCorrectCount +
-    spacedRepetition.spacedRepetitionIncorrectCount;
+    spacedRepetition.spacedRepetitionCorrectCount + spacedRepetition.spacedRepetitionIncorrectCount;
   const statsChartClass = statsTotal === 0 ? "stats-chart empty" : "stats-chart";
   const statsChartStyle = useMemo(
     () =>
@@ -185,9 +170,7 @@ export const useSrSessionViewModel = () => {
     }
 
     if (flashcardFilterMode !== "all") {
-      entries = entries.filter(({ card }) =>
-        matchesFlashcardMode(card, flashcardFilterMode),
-      );
+      entries = entries.filter(({ card }) => matchesFlashcardMode(card, flashcardFilterMode));
     }
 
     return entries;
@@ -204,35 +187,22 @@ export const useSrSessionViewModel = () => {
     if (filteredFlashcardEntries.length === 0) {
       return 0;
     }
-    return Math.ceil(
-      filteredFlashcardEntries.length / spacedRepetition.spacedRepetitionPageSize,
-    );
-  }, [
-    filteredFlashcardEntries.length,
-    spacedRepetition.spacedRepetitionPageSize,
-  ]);
+    return Math.ceil(filteredFlashcardEntries.length / spacedRepetition.spacedRepetitionPageSize);
+  }, [filteredFlashcardEntries.length, spacedRepetition.spacedRepetitionPageSize]);
   const filteredPageIndex = useMemo(() => {
     if (filteredPageCount === 0) {
       return 0;
     }
-    return Math.min(
-      spacedRepetition.spacedRepetitionPage,
-      Math.max(0, filteredPageCount - 1),
-    );
+    return Math.min(spacedRepetition.spacedRepetitionPage, Math.max(0, filteredPageCount - 1));
   }, [filteredPageCount, spacedRepetition.spacedRepetitionPage]);
-  const filteredPageStart =
-    filteredPageIndex * spacedRepetition.spacedRepetitionPageSize;
+  const filteredPageStart = filteredPageIndex * spacedRepetition.spacedRepetitionPageSize;
   const pagedFlashcardEntries = useMemo(
     () =>
       filteredFlashcardEntries.slice(
         filteredPageStart,
         filteredPageStart + spacedRepetition.spacedRepetitionPageSize,
       ),
-    [
-      filteredFlashcardEntries,
-      filteredPageStart,
-      spacedRepetition.spacedRepetitionPageSize,
-    ],
+    [filteredFlashcardEntries, filteredPageStart, spacedRepetition.spacedRepetitionPageSize],
   );
   const nextPreviewFlashcardEntry = useMemo(() => {
     if (pagedFlashcardEntries.length !== 1) {
@@ -240,8 +210,7 @@ export const useSrSessionViewModel = () => {
     }
     return filteredFlashcardEntries[filteredPageStart + 1] ?? null;
   }, [filteredFlashcardEntries, filteredPageStart, pagedFlashcardEntries]);
-  const flashcardsPanelCanGoBack =
-    filteredPageCount > 0 && filteredPageIndex > 0;
+  const flashcardsPanelCanGoBack = filteredPageCount > 0 && filteredPageIndex > 0;
   const flashcardsPanelCanGoNext =
     filteredPageCount > 0 && filteredPageIndex < filteredPageCount - 1;
   const handleFlashcardsPanelPageBack = useCallback(() => {
@@ -377,12 +346,7 @@ export const useSrSessionViewModel = () => {
         autoTimeTimerRef.current = null;
       }
     };
-  }, [
-    activeTimedCardIndex,
-    activeTimedDurationSeconds,
-    autoTimeEnabled,
-    handleAutoTimeTimeout,
-  ]);
+  }, [activeTimedCardIndex, activeTimedDurationSeconds, autoTimeEnabled, handleAutoTimeTimeout]);
 
   const autoTimeCurrentSeconds =
     activeTimedEntry === null
@@ -392,20 +356,13 @@ export const useSrSessionViewModel = () => {
     ? 100
     : activeTimedDurationSeconds > 0 && autoTimeCurrentSeconds !== null
       ? Math.round(
-          Math.max(
-            0,
-            Math.min(1, autoTimeCurrentSeconds / activeTimedDurationSeconds),
-          ) * 100,
+          Math.max(0, Math.min(1, autoTimeCurrentSeconds / activeTimedDurationSeconds)) * 100,
         )
       : 0;
   const autoTimeIsRunning =
-    autoTimeEnabled &&
-    activeTimedEntry !== null &&
-    (autoTimeCurrentSeconds ?? 0) > 0;
+    autoTimeEnabled && activeTimedEntry !== null && (autoTimeCurrentSeconds ?? 0) > 0;
   const autoTimeIsTimeUp =
-    autoTimeEnabled &&
-    activeTimedEntry !== null &&
-    (autoTimeCurrentSeconds ?? 0) <= 0;
+    autoTimeEnabled && activeTimedEntry !== null && (autoTimeCurrentSeconds ?? 0) <= 0;
   const autoTimeStatusLabel = !autoTimeEnabled
     ? "Auto Time disabled"
     : activeTimedEntry === null
@@ -475,10 +432,7 @@ export const useSrSessionViewModel = () => {
       }
       const isEditable = isEditableTarget(event.target);
 
-      const canTrigger = (
-        command: typeof srToggleCommand,
-        binding: string | null,
-      ) => {
+      const canTrigger = (command: typeof srToggleCommand, binding: string | null) => {
         if (!command || !binding) {
           return false;
         }
@@ -527,8 +481,7 @@ export const useSrSessionViewModel = () => {
             continue;
           }
           if (card.kind === "composite") {
-            const partStates =
-              spacedRepetition.spacedRepetitionCompositeStates?.[cardIndex] ?? [];
+            const partStates = spacedRepetition.spacedRepetitionCompositeStates?.[cardIndex] ?? [];
             const canSubmit =
               card.parts.length > 0 &&
               card.parts.every((part, partIndex) =>
@@ -540,9 +493,7 @@ export const useSrSessionViewModel = () => {
             continue;
           }
           if (card.kind === "multiple-choice") {
-            if (
-              (spacedRepetition.spacedRepetitionSelections[cardIndex] ?? []).length > 0
-            ) {
+            if ((spacedRepetition.spacedRepetitionSelections[cardIndex] ?? []).length > 0) {
               return cardIndex;
             }
             continue;
@@ -558,8 +509,7 @@ export const useSrSessionViewModel = () => {
           if (card.kind === "free-text") {
             continue;
           }
-          const responses =
-            spacedRepetition.spacedRepetitionClozeResponses[cardIndex] ?? {};
+          const responses = spacedRepetition.spacedRepetitionClozeResponses[cardIndex] ?? {};
           if (areClozeBlanksComplete(card, responses)) {
             return cardIndex;
           }
@@ -577,16 +527,13 @@ export const useSrSessionViewModel = () => {
         return;
       }
 
-      const resolvedEntry = visibleEntries.find(
-        (entry) => entry.cardIndex === resolvedIndex,
-      );
+      const resolvedEntry = visibleEntries.find((entry) => entry.cardIndex === resolvedIndex);
       const card = resolvedEntry?.card;
       if (!card || spacedRepetition.spacedRepetitionSubmissions[resolvedIndex]) {
         return;
       }
       if (card.kind === "composite") {
-        const partStates =
-          spacedRepetition.spacedRepetitionCompositeStates?.[resolvedIndex] ?? [];
+        const partStates = spacedRepetition.spacedRepetitionCompositeStates?.[resolvedIndex] ?? [];
         const canSubmit =
           card.parts.length > 0 &&
           card.parts.every((part, partIndex) =>
@@ -596,10 +543,7 @@ export const useSrSessionViewModel = () => {
           return;
         }
       } else if (card.kind === "multiple-choice") {
-        if (
-          (spacedRepetition.spacedRepetitionSelections[resolvedIndex] ?? []).length ===
-          0
-        ) {
+        if ((spacedRepetition.spacedRepetitionSelections[resolvedIndex] ?? []).length === 0) {
           return;
         }
       } else if (card.kind === "true-false") {
@@ -611,8 +555,7 @@ export const useSrSessionViewModel = () => {
       } else if (card.kind === "free-text") {
         return;
       } else {
-        const responses =
-          spacedRepetition.spacedRepetitionClozeResponses[resolvedIndex] ?? {};
+        const responses = spacedRepetition.spacedRepetitionClozeResponses[resolvedIndex] ?? {};
         if (!areClozeBlanksComplete(card, responses)) {
           return;
         }
@@ -646,11 +589,7 @@ export const useSrSessionViewModel = () => {
   const handleTrueFalseSelect = useCallback(
     (cardIndex: number, itemId: string, value: "wahr" | "falsch") => {
       setActiveCardIndex(cardIndex);
-      spacedRepetition.handleSpacedRepetitionTrueFalseSelect(
-        cardIndex,
-        itemId,
-        value,
-      );
+      spacedRepetition.handleSpacedRepetitionTrueFalseSelect(cardIndex, itemId, value);
     },
     [spacedRepetition],
   );
@@ -658,11 +597,7 @@ export const useSrSessionViewModel = () => {
   const handleClozeInputChange = useCallback(
     (cardIndex: number, blankId: string, value: string) => {
       setActiveCardIndex(cardIndex);
-      spacedRepetition.handleSpacedRepetitionClozeInputChange(
-        cardIndex,
-        blankId,
-        value,
-      );
+      spacedRepetition.handleSpacedRepetitionClozeInputChange(cardIndex, blankId, value);
     },
     [spacedRepetition],
   );
@@ -722,11 +657,7 @@ export const useSrSessionViewModel = () => {
   const handleCompositeOptionSelect = useCallback(
     (cardIndex: number, partIndex: number, keys: string[]) => {
       setActiveCardIndex(cardIndex);
-      spacedRepetition.handleSpacedRepetitionCompositeOptionSelect(
-        cardIndex,
-        partIndex,
-        keys,
-      );
+      spacedRepetition.handleSpacedRepetitionCompositeOptionSelect(cardIndex, partIndex, keys);
     },
     [spacedRepetition],
   );
@@ -794,11 +725,7 @@ export const useSrSessionViewModel = () => {
   const handleCompositeTextInputChange = useCallback(
     (cardIndex: number, partIndex: number, value: string) => {
       setActiveCardIndex(cardIndex);
-      spacedRepetition.handleSpacedRepetitionCompositeTextInputChange(
-        cardIndex,
-        partIndex,
-        value,
-      );
+      spacedRepetition.handleSpacedRepetitionCompositeTextInputChange(cardIndex, partIndex, value);
     },
     [spacedRepetition],
   );
@@ -814,11 +741,7 @@ export const useSrSessionViewModel = () => {
   const handleCompositeSelfGrade = useCallback(
     (cardIndex: number, partIndex: number, grade: "correct" | "incorrect") => {
       setActiveCardIndex(cardIndex);
-      spacedRepetition.handleSpacedRepetitionCompositeSelfGrade(
-        cardIndex,
-        partIndex,
-        grade,
-      );
+      spacedRepetition.handleSpacedRepetitionCompositeSelfGrade(cardIndex, partIndex, grade);
     },
     [spacedRepetition],
   );

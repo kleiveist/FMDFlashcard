@@ -117,10 +117,11 @@ describe("MarkdownHybridEditor Canvas insert menu", () => {
 
       dispatchClick(canvasButton);
 
-      const markdownValue = container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
+      const markdownValue =
+        container.querySelector("[data-testid='markdown-value']")?.textContent ?? "";
       expect(markdownValue).toContain("#canvas");
-      expect(markdownValue).toContain("\"id\": \"node-1\"");
-      expect(markdownValue).toContain("\"text\": \"Neue Karte\"");
+      expect(markdownValue).toContain('"id": "node-1"');
+      expect(markdownValue).toContain('"text": "Neue Karte"');
       expect(markdownValue).toContain("#canvasend");
       expect(container.querySelector(".canvas-embedded-block")).not.toBeNull();
       expect(container.querySelector(".business-canvas-editor")).not.toBeNull();

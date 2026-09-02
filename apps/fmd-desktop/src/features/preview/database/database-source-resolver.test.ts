@@ -110,10 +110,7 @@ describe("database-source-resolver", () => {
     );
 
     expect(result.warning).toBe("History folder unavailable (no vault path).");
-    expect(result.files.map((file) => file.relativePath)).toEqual([
-      "A/one.md",
-      "A/two.md",
-    ]);
+    expect(result.files.map((file) => file.relativePath)).toEqual(["A/one.md", "A/two.md"]);
   });
 
   it("returns warning stubs for tag-query and manual-query in phase 1", () => {
@@ -138,9 +135,7 @@ describe("database-source-resolver", () => {
       {
         vaultFiles,
         sourceRelativePath: null,
-        historyFiles: [
-          { path: "/profile/exam-runs/a.md", relativePath: "a.md" },
-        ],
+        historyFiles: [{ path: "/profile/exam-runs/a.md", relativePath: "a.md" }],
         historyWarning: null,
       },
     );

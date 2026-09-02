@@ -126,11 +126,7 @@ export const createEmptyProfileData = (): UserVaultProfileData => ({
   settings: null,
 });
 
-const mergeById = <T,>(
-  base: T[],
-  incoming: T[],
-  getId: (value: T) => string,
-) => {
+const mergeById = <T>(base: T[], incoming: T[], getId: (value: T) => string) => {
   const merged = [...base];
   const seen = new Set(base.map(getId));
   incoming.forEach((entry) => {
@@ -171,29 +167,24 @@ export const mergeProfileData = (
   incoming: UserVaultProfileData,
   strategy: UserVaultImportStrategy,
 ): UserVaultProfileData => {
-  const incomingHasSettings = Object.prototype.hasOwnProperty.call(
-    incoming,
-    "settings",
-  );
+  const incomingHasSettings = Object.prototype.hasOwnProperty.call(incoming, "settings");
   if (strategy === "overwrite") {
     return {
       ...incoming,
-      settings: incomingHasSettings ? incoming.settings ?? null : base.settings ?? null,
+      settings: incomingHasSettings ? (incoming.settings ?? null) : (base.settings ?? null),
     };
   }
   const spacedRepetitionByVaultId = { ...base.spacedRepetitionByVaultId };
-  Object.entries(incoming.spacedRepetitionByVaultId).forEach(
-    ([vaultId, storage]) => {
-      if (!spacedRepetitionByVaultId[vaultId]) {
-        spacedRepetitionByVaultId[vaultId] = storage;
-      } else {
-        spacedRepetitionByVaultId[vaultId] = mergeSpacedRepetitionStorage(
-          spacedRepetitionByVaultId[vaultId],
-          storage,
-        );
-      }
-    },
-  );
+  Object.entries(incoming.spacedRepetitionByVaultId).forEach(([vaultId, storage]) => {
+    if (!spacedRepetitionByVaultId[vaultId]) {
+      spacedRepetitionByVaultId[vaultId] = storage;
+    } else {
+      spacedRepetitionByVaultId[vaultId] = mergeSpacedRepetitionStorage(
+        spacedRepetitionByVaultId[vaultId],
+        storage,
+      );
+    }
+  });
   return {
     spacedRepetitionByVaultId,
     fastFlashcardSessions: mergeById(
@@ -218,9 +209,7 @@ export const selectProfileFromExport = (
   }
   const profiles = Array.isArray(payload.profiles) ? payload.profiles : [];
   if (preferredProfileId) {
-    const match = profiles.find(
-      (entry) => entry.profile.id === preferredProfileId,
-    );
+    const match = profiles.find((entry) => entry.profile.id === preferredProfileId);
     if (match) {
       return match;
     }
@@ -228,7 +217,5 @@ export const selectProfileFromExport = (
   return profiles[0] ?? null;
 };
 
-export const buildUserVaultProfilePath = (
-  userVaultPath: string,
-  profileId: string,
-) => joinPath(userVaultPath, "profiles", profileId);
+export const buildUserVaultProfilePath = (userVaultPath: string, profileId: string) =>
+  joinPath(userVaultPath, "profiles", profileId);

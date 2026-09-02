@@ -26,6 +26,4 @@ export const resolveText = (value: LocalizedText, language: AppLanguage) => {
 };
 
 export const resolveList = (items: LocalizedText[] | undefined, language: AppLanguage) =>
-  (items ?? [])
-    .map((item) => resolveText(item, language))
-    .filter((item) => item.trim() !== "");
+  (items ?? []).map((item) => resolveText(item, language)).filter((item) => item.trim() !== "");

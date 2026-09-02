@@ -78,15 +78,15 @@ describe("FlashcardAreaMenuTrigger", () => {
 
     expect(onToggle).toHaveBeenCalledTimes(1);
     expect(onToggle).toHaveBeenCalledWith(false);
-    expect(container.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked).toBe(false);
+    expect(container.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked).toBe(
+      false,
+    );
     cleanup();
   });
 
   it("locks the switch and shows a compact notice for incorrect answers", () => {
     const onToggle = vi.fn();
-    const { container, cleanup } = render(
-      createElement(Harness, { onToggle, locked: true }),
-    );
+    const { container, cleanup } = render(createElement(Harness, { onToggle, locked: true }));
 
     const input = container.querySelector<HTMLInputElement>('input[type="checkbox"]');
     expect(input?.disabled).toBe(true);

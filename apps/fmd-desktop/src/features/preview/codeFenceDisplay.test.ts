@@ -40,22 +40,15 @@ describe("normalizeFenceDisplayForRender", () => {
     ].join("\n");
 
     const normalized = normalizeFenceDisplayForRender(markdown);
-    expect(normalized).toBe([
-      "```sql",
-      "\tSELECT * FROM users;",
-      "      WHERE active = 1;",
-      "```",
-    ].join("\n"));
+    expect(normalized).toBe(
+      ["```sql", "\tSELECT * FROM users;", "      WHERE active = 1;", "```"].join("\n"),
+    );
   });
 
   it("keeps likely list-scoped fences unchanged to avoid list flow regressions", () => {
-    const markdown = [
-      "- item",
-      "    ```js",
-      "    const value = 1;",
-      "    ```",
-      "- next",
-    ].join("\n");
+    const markdown = ["- item", "    ```js", "    const value = 1;", "    ```", "- next"].join(
+      "\n",
+    );
 
     expect(normalizeFenceDisplayForRender(markdown)).toBe(markdown);
   });
@@ -63,15 +56,7 @@ describe("normalizeFenceDisplayForRender", () => {
 
 describe("buildBacktickFenceDisplayHints", () => {
   it("returns source and display fence lines in block order", () => {
-    const markdown = [
-      "  ```http",
-      "GET /book/1",
-      "  ```",
-      "",
-      "```txt",
-      "A",
-      "```",
-    ].join("\n");
+    const markdown = ["  ```http", "GET /book/1", "  ```", "", "```txt", "A", "```"].join("\n");
 
     const hints = buildBacktickFenceDisplayHints(markdown);
     expect(hints).toEqual([

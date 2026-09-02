@@ -8,15 +8,11 @@ const resolveQaParts = (entry: ExamManualTaskEntry) =>
       part.kind === "free-text"
         ? {
             question: normalizeLineEndings(part.front),
-            answer: normalizeLineEndings(
-              entry.partStates[partIndex]?.textResponse ?? "",
-            ),
+            answer: normalizeLineEndings(entry.partStates[partIndex]?.textResponse ?? ""),
           }
         : null,
     )
-    .filter(
-      (part): part is { question: string; answer: string } => part !== null,
-    );
+    .filter((part): part is { question: string; answer: string } => part !== null);
 
 export const hasAiEvaluationQaTasks = (entries: ExamManualTaskEntry[]) =>
   entries.some((entry) => resolveQaParts(entry).length > 0);

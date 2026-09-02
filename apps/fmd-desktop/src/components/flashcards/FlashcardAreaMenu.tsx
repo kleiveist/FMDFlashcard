@@ -24,8 +24,7 @@ type FlashcardAreaToggleRowProps = {
 };
 
 const AREA_LABEL = "Flashcard";
-const DEFAULT_LOCKED_REASON =
-  "Diese Karte bleibt im Kartenpool, da sie falsch beantwortet wurde.";
+const DEFAULT_LOCKED_REASON = "Diese Karte bleibt im Kartenpool, da sie falsch beantwortet wurde.";
 
 export const FlashcardAreaToggleRow = ({
   label,

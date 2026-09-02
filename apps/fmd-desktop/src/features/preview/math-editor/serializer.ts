@@ -37,9 +37,9 @@ export const serializeNode = (node: FormulaNode): string => {
     case "subsup":
       return `${maybeWrapRow(node.base)}_{${serializeRow(node.subscript)}}^{${serializeRow(node.exponent)}}`;
     case "delimited":
-      return `\\left${serializeDelimited(node.leftDelimiter)}${serializeRow(node.body)}\\right${
-        serializeDelimited(node.rightDelimiter)
-      }`;
+      return `\\left${serializeDelimited(node.leftDelimiter)}${serializeRow(node.body)}\\right${serializeDelimited(
+        node.rightDelimiter,
+      )}`;
     case "absolute":
       return `\\left|${serializeRow(node.body)}\\right|`;
     case "functionCall":
@@ -110,33 +110,43 @@ export const isSerializableMathTree = (row: FormulaRowNode): boolean =>
       case "sub":
         return isSerializableMathTree(child.base) && isSerializableMathTree(child.subscript);
       case "subsup":
-        return isSerializableMathTree(child.base) &&
+        return (
+          isSerializableMathTree(child.base) &&
           isSerializableMathTree(child.subscript) &&
-          isSerializableMathTree(child.exponent);
+          isSerializableMathTree(child.exponent)
+        );
       case "delimited":
       case "absolute":
         return isSerializableMathTree(child.body);
       case "functionCall":
         return isSerializableMathTree(child.argument);
       case "integral":
-        return isSerializableMathTree(child.lower) &&
+        return (
+          isSerializableMathTree(child.lower) &&
           isSerializableMathTree(child.upper) &&
           isSerializableMathTree(child.integrand) &&
-          isSerializableMathTree(child.differential);
+          isSerializableMathTree(child.differential)
+        );
       case "limit":
         return isSerializableMathTree(child.approach) && isSerializableMathTree(child.body);
       case "sum":
       case "product":
-        return isSerializableMathTree(child.lower) &&
+        return (
+          isSerializableMathTree(child.lower) &&
           isSerializableMathTree(child.upper) &&
-          isSerializableMathTree(child.body);
+          isSerializableMathTree(child.body)
+        );
       case "matrix":
         return child.cells.every((row) => row.every((cell) => isSerializableMathTree(cell)));
       case "vector":
         return child.cells.every((cell) => isSerializableMathTree(cell));
       case "cases":
-        return child.rows.every((row) => isSerializableMathTree(row.value) && isSerializableMathTree(row.condition));
+        return child.rows.every(
+          (row) => isSerializableMathTree(row.value) && isSerializableMathTree(row.condition),
+        );
       case "aligned":
-        return child.rows.every((row) => isSerializableMathTree(row.left) && isSerializableMathTree(row.right));
+        return child.rows.every(
+          (row) => isSerializableMathTree(row.left) && isSerializableMathTree(row.right),
+        );
     }
   });

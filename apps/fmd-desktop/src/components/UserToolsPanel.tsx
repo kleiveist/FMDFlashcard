@@ -39,9 +39,7 @@ export type ExamPrimaryButton = {
   variant: "primary" | "ghost";
 };
 
-export const resolveExamPhaseButton = (
-  examStageControls: ExamStageControls,
-): ExamPhaseButton => {
+export const resolveExamPhaseButton = (examStageControls: ExamStageControls): ExamPhaseButton => {
   switch (examStageControls.stage) {
     case "idle":
       return {
@@ -148,9 +146,7 @@ export const UserRegistryControls = ({
       <div className="setting-row">
         <span className="label">{tSettings(language, "settings.user.activeUser")}</span>
         <div className="setting-inline">
-          <span className="value">
-            {spacedRepetition.spacedRepetitionActiveUser ?? "—"}
-          </span>
+          <span className="value">{spacedRepetition.spacedRepetitionActiveUser ?? "—"}</span>
         </div>
       </div>
     ) : null}
@@ -159,9 +155,7 @@ export const UserRegistryControls = ({
       <select
         className="text-input"
         value={spacedRepetition.spacedRepetitionSelectedUserId}
-        onChange={(event) =>
-          spacedRepetition.setSpacedRepetitionSelectedUserId(event.target.value)
-        }
+        onChange={(event) => spacedRepetition.setSpacedRepetitionSelectedUserId(event.target.value)}
         aria-label="Select user"
         disabled={disableSelect}
       >
@@ -199,9 +193,7 @@ export const UserRegistryControls = ({
         </button>
       </div>
       {spacedRepetition.spacedRepetitionUserError ? (
-        <span className="helper-text error-text">
-          {spacedRepetition.spacedRepetitionUserError}
-        </span>
+        <span className="helper-text error-text">{spacedRepetition.spacedRepetitionUserError}</span>
       ) : null}
     </div>
     <div className="setting-row">
@@ -211,9 +203,7 @@ export const UserRegistryControls = ({
           type="button"
           className="ghost small"
           onClick={spacedRepetition.handleSpacedRepetitionLoadUser}
-          disabled={
-            disableLoad || !spacedRepetition.spacedRepetitionSelectedUserId
-          }
+          disabled={disableLoad || !spacedRepetition.spacedRepetitionSelectedUserId}
         >
           {tSettings(language, "settings.user.load")}
         </button>
@@ -221,9 +211,7 @@ export const UserRegistryControls = ({
           type="button"
           className="ghost small"
           onClick={handleDeleteOpen}
-          disabled={
-            disableDelete || !spacedRepetition.spacedRepetitionSelectedUserId
-          }
+          disabled={disableDelete || !spacedRepetition.spacedRepetitionSelectedUserId}
         >
           {tSettings(language, "settings.user.delete")}
         </button>
@@ -259,12 +247,8 @@ export const UserToolsPanel = ({
   onToggleCollapse,
   controlsId,
 }: UserToolsPanelProps) => {
-  const phaseButton = examStageControls
-    ? resolveExamPhaseButton(examStageControls)
-    : null;
-  const primaryButton = examStageControls
-    ? resolveExamPrimaryButton(examStageControls)
-    : null;
+  const phaseButton = examStageControls ? resolveExamPhaseButton(examStageControls) : null;
+  const primaryButton = examStageControls ? resolveExamPrimaryButton(examStageControls) : null;
 
   return (
     <section className="panel sr-user-panel">

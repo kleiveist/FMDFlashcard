@@ -240,11 +240,7 @@ describe("normalizeSettings", () => {
       },
     ];
 
-    const merged = mergeRecentVaultsForSystem(
-      allEntries,
-      nextLinuxSlice,
-      "linux-a",
-    );
+    const merged = mergeRecentVaultsForSystem(allEntries, nextLinuxSlice, "linux-a");
 
     expect(merged.find((entry) => entry.path === "/new")?.systemId).toBe("linux-a");
     expect(merged.find((entry) => entry.path === "/old")).toBeUndefined();

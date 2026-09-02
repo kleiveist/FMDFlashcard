@@ -103,18 +103,17 @@ export const MultipleChoiceCard = ({
       ? isExactKeyMatch(selectedKeys, card.correctKeys)
       : false;
   const reveal = revealCorrectness ?? submitted;
-  const resultLabel = submitted && showResult
-    ? hasSolutions
-      ? selectionIsCorrect
-        ? "Correct"
-        : "Incorrect"
-      : "No solution defined"
-    : "";
+  const resultLabel =
+    submitted && showResult
+      ? hasSolutions
+        ? selectionIsCorrect
+          ? "Correct"
+          : "Incorrect"
+        : "No solution defined"
+      : "";
 
   const cardSignature = useMemo(() => {
-    const optionsSignature = card.options
-      .map((option) => `${option.key}:${option.text}`)
-      .join("|");
+    const optionsSignature = card.options.map((option) => `${option.key}:${option.text}`).join("|");
     return [card.question, card.correctKeys.join(","), optionsSignature].join("::");
   }, [card.question, card.correctKeys, card.options]);
 

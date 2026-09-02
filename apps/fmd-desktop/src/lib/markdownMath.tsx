@@ -4,29 +4,29 @@ import { type ReactNode } from "react";
 
 export type MathToken =
   | {
-    type: "text";
-    value: string;
-    start: number;
-    end: number;
-  }
+      type: "text";
+      value: string;
+      start: number;
+      end: number;
+    }
   | {
-    type: "inline-math" | "display-math";
-    value: string;
-    raw: string;
-    start: number;
-    end: number;
-  };
+      type: "inline-math" | "display-math";
+      value: string;
+      raw: string;
+      start: number;
+      end: number;
+    };
 
 export type MathRenderResult =
   | {
-    status: "success";
-    html: string;
-  }
+      status: "success";
+      html: string;
+    }
   | {
-    status: "error";
-    source: string;
-    message: string;
-  };
+      status: "error";
+      source: string;
+      message: string;
+    };
 
 type Segment = {
   kind: "text" | "code";
@@ -128,11 +128,7 @@ const splitFenceCodeSegments = (source: string) => {
   return segments;
 };
 
-const findMatchingBacktickRun = (
-  source: string,
-  fromIndex: number,
-  markerLength: number,
-) => {
+const findMatchingBacktickRun = (source: string, fromIndex: number, markerLength: number) => {
   const marker = "`".repeat(markerLength);
   let searchFrom = fromIndex;
   while (searchFrom < source.length) {
@@ -207,11 +203,7 @@ const isEscapedAt = (source: string, index: number) => {
   return slashCount % 2 === 1;
 };
 
-const findClosingMathDelimiter = (
-  source: string,
-  fromIndex: number,
-  delimiter: "$" | "$$",
-) => {
+const findClosingMathDelimiter = (source: string, fromIndex: number, delimiter: "$" | "$$") => {
   let searchFrom = fromIndex;
   while (searchFrom <= source.length - delimiter.length) {
     const closeIndex = source.indexOf(delimiter, searchFrom);
@@ -265,12 +257,7 @@ const tokenizeMathSegment = (source: string, offset: number) => {
       continue;
     }
 
-    appendTextToken(
-      tokens,
-      offset + textStart,
-      offset + cursor,
-      source.slice(textStart, cursor),
-    );
+    appendTextToken(tokens, offset + textStart, offset + cursor, source.slice(textStart, cursor));
 
     const tokenStart = cursor;
     const tokenEnd = closeIndex + openLength;
@@ -286,12 +273,7 @@ const tokenizeMathSegment = (source: string, offset: number) => {
     textStart = cursor;
   }
 
-  appendTextToken(
-    tokens,
-    offset + textStart,
-    offset + source.length,
-    source.slice(textStart),
-  );
+  appendTextToken(tokens, offset + textStart, offset + source.length, source.slice(textStart));
 
   return tokens;
 };
@@ -413,11 +395,13 @@ export const rangeIntersectsMarkdownCodeContext = (source: string, range: Range)
   const normalized = clampRange(source, range);
   const codeSegments = collectCodeContextSegments(source);
   if (normalized.start === normalized.end) {
-    return codeSegments.some((segment) =>
-      normalized.start >= segment.start && normalized.start < segment.end);
+    return codeSegments.some(
+      (segment) => normalized.start >= segment.start && normalized.start < segment.end,
+    );
   }
   return codeSegments.some((segment) =>
-    rangesOverlap(normalized.start, normalized.end, segment.start, segment.end));
+    rangesOverlap(normalized.start, normalized.end, segment.start, segment.end),
+  );
 };
 
 export const findMathTokenCoveringRange = (source: string, range: Range) => {
@@ -437,7 +421,7 @@ export const findMathTokenCoveringRange = (source: string, range: Range) => {
     return null;
   }
 
-  candidates.sort((left, right) => (left.end - left.start) - (right.end - right.start));
+  candidates.sort((left, right) => left.end - left.start - (right.end - right.start));
   return candidates[0] ?? null;
 };
 
@@ -453,7 +437,9 @@ export const renderMarkdownMathNode = (
   const tokens = tokenizeMarkdownMath(source);
 
   if (tokens.length === 0) {
-    return source.length === 0 ? [] : [renderText ? renderText(source, `${keyPrefix}-text-0`) : source];
+    return source.length === 0
+      ? []
+      : [renderText ? renderText(source, `${keyPrefix}-text-0`) : source];
   }
 
   return tokens.map((token, index) => {
@@ -472,15 +458,8 @@ export const renderMarkdownMathNode = (
 
     if (renderResult.status === "success") {
       return (
-        <span
-          key={key}
-          className={className}
-          data-md-math-kind={token.type}
-        >
-          <span
-            className="md-math-katex"
-            dangerouslySetInnerHTML={{ __html: renderResult.html }}
-          />
+        <span key={key} className={className} data-md-math-kind={token.type}>
+          <span className="md-math-katex" dangerouslySetInnerHTML={{ __html: renderResult.html }} />
         </span>
       );
     }

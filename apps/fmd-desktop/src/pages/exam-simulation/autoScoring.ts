@@ -1,4 +1,7 @@
-import { evaluateFlashcardPartResult, type CompositePartState } from "../../features/flashcards/logic";
+import {
+  evaluateFlashcardPartResult,
+  type CompositePartState,
+} from "../../features/flashcards/logic";
 import type { ExamTask } from "../../lib/exam";
 import { type AutoCardType, resolveFlashcardPartAutoCardType } from "../../lib/exam/autoCards";
 import type { ExamPointsProfile } from "../../lib/exam/pointsProfiles";

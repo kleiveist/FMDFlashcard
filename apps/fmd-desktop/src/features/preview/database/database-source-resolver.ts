@@ -6,10 +6,7 @@
 
 import { normalizeRelativePath } from "../../../lib/path";
 import { type VaultFile } from "../../../lib/tree";
-import {
-  type DatabaseSourceResolutionResult,
-  type DatabaseSourceSpec,
-} from "./database-types";
+import { type DatabaseSourceResolutionResult, type DatabaseSourceSpec } from "./database-types";
 
 export type DatabaseSourceResolverContext = {
   vaultFiles?: VaultFile[];
@@ -35,7 +32,9 @@ const fileBelongsToFolder = (relativePath: string, folder: string) => {
   if (!normalizedFolder) {
     return true;
   }
-  return normalizedFilePath === normalizedFolder || normalizedFilePath.startsWith(`${normalizedFolder}/`);
+  return (
+    normalizedFilePath === normalizedFolder || normalizedFilePath.startsWith(`${normalizedFolder}/`)
+  );
 };
 
 const getFolderFromRelativePath = (relativePath: string | null | undefined) => {
@@ -113,18 +112,23 @@ const resolveMultiFolderFiles = (files: VaultFile[], paths: string[] | undefined
     return files;
   }
   return files.filter((file) =>
-    normalizedPaths.some((path) => fileBelongsToFolder(file.relative_path, path)));
+    normalizedPaths.some((path) => fileBelongsToFolder(file.relative_path, path)),
+  );
 };
 
 export const resolveDatabaseSourceFiles = (
   source: DatabaseSourceSpec,
   context: DatabaseSourceResolverContext,
 ): DatabaseSourceResolutionResult => {
-  const vaultFiles = (context.vaultFiles ?? []).filter((file) => isMarkdownFile(file.relative_path));
+  const vaultFiles = (context.vaultFiles ?? []).filter((file) =>
+    isMarkdownFile(file.relative_path),
+  );
 
   if (source.type === "current-folder") {
     return {
-      files: mapToResolutionFiles(resolveCurrentFolderFiles(vaultFiles, context.sourceRelativePath)),
+      files: mapToResolutionFiles(
+        resolveCurrentFolderFiles(vaultFiles, context.sourceRelativePath),
+      ),
       warning: null,
     };
   }
@@ -138,7 +142,9 @@ export const resolveDatabaseSourceFiles = (
 
   if (source.type === "multi-folder") {
     const includeHistory = source.includeHistory === true;
-    const resolvedVaultFiles = mapToResolutionFiles(resolveMultiFolderFiles(vaultFiles, source.paths));
+    const resolvedVaultFiles = mapToResolutionFiles(
+      resolveMultiFolderFiles(vaultFiles, source.paths),
+    );
     if (!includeHistory) {
       return {
         files: resolvedVaultFiles,
@@ -149,10 +155,7 @@ export const resolveDatabaseSourceFiles = (
     const hasExplicitFolderSelection = (source.paths ?? []).length > 0;
     const scopedVaultFiles = hasExplicitFolderSelection ? resolvedVaultFiles : [];
     return {
-      files: dedupeResolutionFilesByPath([
-        ...scopedVaultFiles,
-        ...(context.historyFiles ?? []),
-      ]),
+      files: dedupeResolutionFilesByPath([...scopedVaultFiles, ...(context.historyFiles ?? [])]),
       warning: context.historyWarning ?? null,
     };
   }

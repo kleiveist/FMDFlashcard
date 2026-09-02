@@ -57,10 +57,7 @@ export type ClozeCardBlueprint = BaseCardBlueprint & {
 };
 
 export type CardBlueprint =
-  | QaCardBlueprint
-  | TfCardBlueprint
-  | MultipleChoiceCardBlueprint
-  | ClozeCardBlueprint;
+  QaCardBlueprint | TfCardBlueprint | MultipleChoiceCardBlueprint | ClozeCardBlueprint;
 
 export type ExamTaskBlueprint = {
   id: string;

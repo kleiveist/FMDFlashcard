@@ -29,10 +29,7 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  resolveExamPhaseButton,
-  type ExamStageControls,
-} from "../../components/UserToolsPanel";
+import { resolveExamPhaseButton, type ExamStageControls } from "../../components/UserToolsPanel";
 import { NoteModal } from "../../components/NoteModal";
 import { SettingsIcon } from "../../components/icons";
 import { ExamCorrectionHost } from "./components/ExamCorrectionHost";
@@ -44,10 +41,7 @@ import { ExamStatisticsPanel, type StatsTab } from "./components/ExamStatisticsP
 import { ExamTaskRunner } from "./components/ExamTaskRunner";
 import { ExamTimeBar } from "./components/ExamTimeBar";
 import { useExamSimulationViewModel } from "./hooks/useExamSimulationViewModel";
-import {
-  buildAiEvaluationMarkdown,
-  hasAiEvaluationQaTasks,
-} from "./aiEvaluationExport";
+import { buildAiEvaluationMarkdown, hasAiEvaluationQaTasks } from "./aiEvaluationExport";
 import { ExamTogglesPanel } from "../../components/settings/ExamSettingsSection";
 import { useLayoutMode } from "../../lib/layoutMode";
 import { requestSettingsFocus } from "../../features/settings/settingsDeepLink";
@@ -115,9 +109,11 @@ const copyTextToClipboard = async (value: string) => {
   textarea.focus();
   textarea.select();
   try {
-    const exec = (document as Document & {
-      execCommand?: (command: string) => boolean;
-    }).execCommand;
+    const exec = (
+      document as Document & {
+        execCommand?: (command: string) => boolean;
+      }
+    ).execCommand;
     if (typeof exec === "function") {
       exec.call(document, "copy");
     }
@@ -251,8 +247,7 @@ export const ExamSimulationPage = ({
   }, []);
   const handleOpenExamSettings = useCallback(() => {
     const focusTarget =
-      missingExamSettings.find((item) => item.severity !== "warning") ??
-      missingExamSettings[0];
+      missingExamSettings.find((item) => item.severity !== "warning") ?? missingExamSettings[0];
     requestSettingsFocus({
       pageId: "exam-settings",
       subPageId: "exam-toggles",
@@ -264,8 +259,7 @@ export const ExamSimulationPage = ({
   const selectedRunProfileName =
     selectedRunProfileId === null
       ? STANDARD_RUN_PROFILE_LABEL
-      : (runProfileOptions.find((profile) => profile.id === selectedRunProfileId)?.name ??
-        null);
+      : (runProfileOptions.find((profile) => profile.id === selectedRunProfileId)?.name ?? null);
   const runSummaryModeLabel =
     combinationMode === "fully-mixed"
       ? "Fully mixed"
@@ -304,15 +298,12 @@ export const ExamSimulationPage = ({
   const runSummaryTasksTotalValue = hasSelectedExamFiles ? runTasksTotalSummary : "--";
   const runSummaryMaxPointsValue = hasSelectedExamFiles ? String(plannedMaxPoints) : "--";
   const runSummaryModeValue = hasSelectedExamFiles ? runSummaryModeLabel : "--";
-  const runSummaryProfileValue =
-    hasSelectedExamFiles ? (selectedRunProfileName ?? STANDARD_RUN_PROFILE_LABEL) : "--";
-  const runSummaryDurationValue = hasSelectedExamFiles
-    ? `${previewDurationMinutes} minutes`
+  const runSummaryProfileValue = hasSelectedExamFiles
+    ? (selectedRunProfileName ?? STANDARD_RUN_PROFILE_LABEL)
     : "--";
+  const runSummaryDurationValue = hasSelectedExamFiles ? `${previewDurationMinutes} minutes` : "--";
   const runSummaryNoteTriggerEnabled =
-    stage === "idle" &&
-    runSummaryNoteActionEnabled &&
-    Boolean(onRunSummaryNoteAction);
+    stage === "idle" && runSummaryNoteActionEnabled && Boolean(onRunSummaryNoteAction);
   const runSummaryInfoClassName = [
     "exam-mix-info",
     runSummaryNoteTriggerEnabled ? "is-note-trigger" : "",
@@ -451,25 +442,15 @@ export const ExamSimulationPage = ({
     if (!viewToggleCommand) {
       return null;
     }
-    return getEffectiveBinding(
-      viewToggleCommand,
-      settings.keyboardShortcuts.bindings,
-      platform,
-    );
+    return getEffectiveBinding(viewToggleCommand, settings.keyboardShortcuts.bindings, platform);
   }, [platform, settings.keyboardShortcuts.bindings]);
-  const viewShortcutLabel = viewBinding
-    ? formatBinding(viewBinding, platform)
-    : null;
+  const viewShortcutLabel = viewBinding ? formatBinding(viewBinding, platform) : null;
   const viewLabel = viewShortcutLabel ? `View (${viewShortcutLabel})` : "View";
   const studyBindings = useMemo(() => {
     const bindings = settings.keyboardShortcuts.bindings;
     return {
-      prev: studyPrevCommand
-        ? getEffectiveBinding(studyPrevCommand, bindings, platform)
-        : null,
-      next: studyNextCommand
-        ? getEffectiveBinding(studyNextCommand, bindings, platform)
-        : null,
+      prev: studyPrevCommand ? getEffectiveBinding(studyPrevCommand, bindings, platform) : null,
+      next: studyNextCommand ? getEffectiveBinding(studyNextCommand, bindings, platform) : null,
       submit: studySubmitCommand
         ? getEffectiveBinding(studySubmitCommand, bindings, platform)
         : null,
@@ -482,8 +463,7 @@ export const ExamSimulationPage = ({
   const isUltrawideTaskPairMode = isRunnerStage && isUltrawideExamLayout;
   const runnerNavigationStep = isUltrawideTaskPairMode ? 2 : 1;
   const canGoRunnerBack = activeTaskIndex > 0;
-  const canGoRunnerNext =
-    activeTaskIndex + runnerNavigationStep <= runTasks.length - 1;
+  const canGoRunnerNext = activeTaskIndex + runnerNavigationStep <= runTasks.length - 1;
   const visibleRunnerTaskIndices = useMemo(() => {
     if (!isRunnerStage || !activeTask) {
       return [] as number[];
@@ -496,13 +476,7 @@ export const ExamSimulationPage = ({
       }
     }
     return indices;
-  }, [
-    activeTask,
-    activeTaskIndex,
-    isRunnerStage,
-    isUltrawideTaskPairMode,
-    runTasks.length,
-  ]);
+  }, [activeTask, activeTaskIndex, isRunnerStage, isUltrawideTaskPairMode, runTasks.length]);
   const isExamTimerRunning = stage === "running" && !examTimeUp && examTimerEnabled;
   const viewToggleDisabled = isTableView && !examRunning;
   const timelineVisible = examShowTimeline;
@@ -630,9 +604,7 @@ export const ExamSimulationPage = ({
     const update = () => {
       const width = element.getBoundingClientRect().width;
       const nextValue = width >= EXAM_ULTRAWIDE_MIN_WIDTH;
-      setIsUltrawideExamLayout((current) =>
-        current === nextValue ? current : nextValue,
-      );
+      setIsUltrawideExamLayout((current) => (current === nextValue ? current : nextValue));
     };
 
     update();
@@ -675,8 +647,7 @@ export const ExamSimulationPage = ({
         return;
       }
 
-      const isManualScoringStage =
-        stage === "scoring_manual" && Boolean(activeManualTaskEntry);
+      const isManualScoringStage = stage === "scoring_manual" && Boolean(activeManualTaskEntry);
       const isCorrectionStage = stage === "correction" && Boolean(correctionActiveTask);
       if (!(isRunnerStage && activeTask) && !isManualScoringStage && !isCorrectionStage) {
         return;
@@ -832,7 +803,9 @@ export const ExamSimulationPage = ({
                 onKeyDown={runSummaryNoteTriggerEnabled ? handleRunSummaryInfoKeyDown : undefined}
                 tabIndex={runSummaryNoteTriggerEnabled ? 0 : undefined}
                 aria-haspopup={runSummaryNoteTriggerEnabled ? "dialog" : undefined}
-                aria-expanded={runSummaryNoteTriggerEnabled ? isRunSummaryNoteActionActive : undefined}
+                aria-expanded={
+                  runSummaryNoteTriggerEnabled ? isRunSummaryNoteActionActive : undefined
+                }
                 title={runSummaryNoteTriggerEnabled ? "Note" : undefined}
               >
                 <div className="exam-mix-summary-block" role="listitem">
@@ -900,10 +873,7 @@ export const ExamSimulationPage = ({
                           ? "study-ultrawide-task-secondary"
                           : "study-ultrawide-task-primary";
                       return (
-                        <div
-                          key={runnerTask.sessionTaskId}
-                          className={taskSlotClassName}
-                        >
+                        <div key={runnerTask.sessionTaskId} className={taskSlotClassName}>
                           <ExamTaskRunner
                             task={runnerTask}
                             taskIndex={taskIndexInRun}
@@ -1145,11 +1115,7 @@ export const ExamSimulationPage = ({
           language={settings.language}
         />
       </NoteModal>
-      <NoteModal
-        isOpen={isExamTogglesOpen}
-        onClose={closeExamToggles}
-        title="Exam Toggles"
-      >
+      <NoteModal isOpen={isExamTogglesOpen} onClose={closeExamToggles} title="Exam Toggles">
         <ExamTogglesPanel
           language={settings.language}
           timeLimitEnabled={settings.examTimeLimitEnabled}
@@ -1163,11 +1129,7 @@ export const ExamSimulationPage = ({
           setShowTaskSources={settings.setExamShowTaskSources}
         />
       </NoteModal>
-      <NoteModal
-        isOpen={isResetConfirmOpen}
-        onClose={cancelResetExam}
-        title="Abort current exam?"
-      >
+      <NoteModal isOpen={isResetConfirmOpen} onClose={cancelResetExam} title="Abort current exam?">
         <div className="modal-body">
           <p className="muted">
             Do you really want to abort this exam? Your current progress will be lost.

@@ -1,4 +1,3 @@
-
 /*
  * @file apps/fmd-desktop/src/styles/components/flashcards.css
  *
@@ -299,7 +298,9 @@
   border: 1px solid transparent;
   background: color-mix(in srgb, var(--panel) 82%, transparent);
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .flashcard-area-toggle-row:hover {
@@ -1018,36 +1019,45 @@ figure.flashcard-media-item {
     margin-inline: 0;
   }
 
-  :is(.flashcard-layout, .fast-flashcard-layout, .spaced-repetition-layout) .flashcard-list > :nth-child(odd) {
+  :is(.flashcard-layout, .fast-flashcard-layout, .spaced-repetition-layout)
+    .flashcard-list
+    > :nth-child(odd) {
     grid-column: 1;
   }
 
-  :is(.flashcard-layout, .fast-flashcard-layout, .spaced-repetition-layout) .flashcard-list > :nth-child(even) {
+  :is(.flashcard-layout, .fast-flashcard-layout, .spaced-repetition-layout)
+    .flashcard-list
+    > :nth-child(even) {
     grid-column: 2;
   }
 
   :is(.flashcard-layout, .fast-flashcard-layout, .spaced-repetition-layout)
-  .flashcard-list > :is(.flashcard-item, .study-ultrawide-preview-pane) {
+    .flashcard-list
+    > :is(.flashcard-item, .study-ultrawide-preview-pane) {
     min-width: 0;
     align-self: stretch;
     height: 100%;
   }
 
   :is(.flashcard-layout, .fast-flashcard-layout, .spaced-repetition-layout)
-  .flashcard-list > .study-ultrawide-preview-pane {
+    .flashcard-list
+    > .study-ultrawide-preview-pane {
     display: flex;
   }
 
   :is(.flashcard-layout, .fast-flashcard-layout, .spaced-repetition-layout)
-  .flashcard-list > .study-ultrawide-preview-pane .flashcard-item {
+    .flashcard-list
+    > .study-ultrawide-preview-pane
+    .flashcard-item {
     opacity: 0.9;
     flex: 1 1 auto;
     height: 100%;
   }
 
   :is(.flashcard-layout, .fast-flashcard-layout, .spaced-repetition-layout)
-  .flashcard-list > :is(.flashcard-item, .study-ultrawide-preview-pane)
-  :is(.flashcard-question, .flashcard-text-block, .flashcard-answer-text, .cloze-text) {
+    .flashcard-list
+    > :is(.flashcard-item, .study-ultrawide-preview-pane)
+    :is(.flashcard-question, .flashcard-text-block, .flashcard-answer-text, .cloze-text) {
     max-width: 74ch;
   }
 }

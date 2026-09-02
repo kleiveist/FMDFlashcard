@@ -50,8 +50,7 @@ type StudySectionNavProps = {
 type PrimaryGroupKey = "editor" | "study" | "monitoring";
 
 type SecondaryNavTarget =
-  | { type: "dashboard-view"; view: DashboardView }
-  | { type: "section"; key: StudySectionKey };
+  { type: "dashboard-view"; view: DashboardView } | { type: "section"; key: StudySectionKey };
 
 type SecondaryNavItem = {
   id: string;
@@ -133,10 +132,7 @@ const SECONDARY_NAV_ITEMS: Record<PrimaryGroupKey, SecondaryNavItem[]> = {
   ],
 };
 
-const getPrimaryGroupForTab = (
-  tab: StudySectionKey,
-  mainMode: StudyMainMode,
-): PrimaryGroupKey => {
+const getPrimaryGroupForTab = (tab: StudySectionKey, mainMode: StudyMainMode): PrimaryGroupKey => {
   if (tab === "dashboard") {
     return "editor";
   }
@@ -373,10 +369,7 @@ export const StudySectionNav = ({
         ) : null}
         <span className="study-section-primary-group" aria-hidden="true">
           {PRIMARY_GROUPS.map((group) => (
-            <span
-              key={group.key}
-              className="nav-item study-section-tab study-section-main-tab"
-            >
+            <span key={group.key} className="nav-item study-section-tab study-section-main-tab">
               {group.label}
             </span>
           ))}
@@ -418,10 +411,7 @@ export const StudySectionNav = ({
         aria-hidden="true"
       >
         {secondaryItems.map((item) => (
-          <span
-            key={item.id}
-            className="nav-item study-section-tab study-section-secondary-tab"
-          >
+          <span key={item.id} className="nav-item study-section-tab study-section-secondary-tab">
             {item.label}
           </span>
         ))}

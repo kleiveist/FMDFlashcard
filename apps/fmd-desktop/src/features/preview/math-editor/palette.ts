@@ -607,8 +607,11 @@ export const getMathToolbarGroups = () =>
 
 export const resolveTemplateFromTrigger = (buffer: string) => {
   const normalized = buffer.trim().toLowerCase();
-  return MATH_TEMPLATE_DEFINITIONS.find((template) =>
-    template.keyboardTriggers.some((trigger) => trigger.toLowerCase() === normalized)) ?? null;
+  return (
+    MATH_TEMPLATE_DEFINITIONS.find((template) =>
+      template.keyboardTriggers.some((trigger) => trigger.toLowerCase() === normalized),
+    ) ?? null
+  );
 };
 
 export const buildSelectedRowFromNodes = (nodes: FormulaNode[]) => createRow(nodes);

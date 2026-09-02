@@ -36,9 +36,7 @@ export const InputDebugSection = ({
 
   const handleRedactionToggle = (next: boolean) => {
     if (!next) {
-      const confirmed = window.confirm(
-        tSettings(language, "settings.inputDebug.redactionConfirm"),
-      );
+      const confirmed = window.confirm(tSettings(language, "settings.inputDebug.redactionConfirm"));
       if (!confirmed) {
         return;
       }
@@ -89,9 +87,7 @@ export const InputDebugSection = ({
       </div>
       <div className="panel-body">
         <div className="setting-row">
-          <span className="label">
-            {tSettings(language, "settings.inputDebug.inputMode")}
-          </span>
+          <span className="label">{tSettings(language, "settings.inputDebug.inputMode")}</span>
           <div className="setting-inline">
             <label className="switch">
               <input
@@ -110,9 +106,7 @@ export const InputDebugSection = ({
         </div>
 
         <div className="setting-row">
-          <span className="label">
-            {tSettings(language, "settings.inputDebug.redactContent")}
-          </span>
+          <span className="label">{tSettings(language, "settings.inputDebug.redactContent")}</span>
           <div className="setting-inline">
             <label className="switch">
               <input
@@ -136,9 +130,7 @@ export const InputDebugSection = ({
         </div>
 
         <div className="setting-row">
-          <span className="label">
-            {tSettings(language, "settings.inputDebug.exportOptions")}
-          </span>
+          <span className="label">{tSettings(language, "settings.inputDebug.exportOptions")}</span>
           <label className="status-checkbox">
             <input
               type="checkbox"

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { applyDatabaseSorts } from "./database-sorts";
-import { type DatabaseAttributeMeta, type DatabaseRecord, type DatabaseSortRule } from "./database-types";
+import {
+  type DatabaseAttributeMeta,
+  type DatabaseRecord,
+  type DatabaseSortRule,
+} from "./database-types";
 
 const attributes: DatabaseAttributeMeta[] = [
   {

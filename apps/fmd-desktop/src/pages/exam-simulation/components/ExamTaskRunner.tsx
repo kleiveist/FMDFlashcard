@@ -24,7 +24,11 @@
 import { memo, type DragEvent, type ReactNode } from "react";
 import { CompositeCard } from "../../../components/flashcards/CompositeCard";
 import { FlashcardMediaGroup } from "../../../components/flashcards/FlashcardMediaGroup";
-import { evaluateFlashcardPartResult, type CompositePartState, type TrueFalseSelection } from "../../../features/flashcards/logic";
+import {
+  evaluateFlashcardPartResult,
+  type CompositePartState,
+  type TrueFalseSelection,
+} from "../../../features/flashcards/logic";
 import type { ExamTask } from "../../../lib/exam";
 import type { VaultPngAsset } from "../../../lib/tree";
 
@@ -137,9 +141,7 @@ const ExamTaskRunnerComponent = ({
     phase === "review" || phase === "scoring" || phase === "correction";
   const isAutoGraded = task.gradingMode === "auto";
   const taskIsCorrect = isAutoGraded ? isTaskCorrect(task, partStates) : false;
-  const effectiveAutoDecision = isAutoGraded
-    ? (autoGradeDecision ?? taskIsCorrect)
-    : false;
+  const effectiveAutoDecision = isAutoGraded ? (autoGradeDecision ?? taskIsCorrect) : false;
   const autoAwardedPoints = (() => {
     if (!isAutoGraded) {
       return 0;
@@ -167,14 +169,10 @@ const ExamTaskRunnerComponent = ({
           <h2>{formatTaskTitle(taskIndex + 1, taskCount)}</h2>
           <p className="muted">Max points: {maxPoints}</p>
           {showSourceBadge && task.sourceTitle ? (
-            <span className="exam-task-source-badge">
-              Quelle: {task.sourceTitle}
-            </span>
+            <span className="exam-task-source-badge">Quelle: {task.sourceTitle}</span>
           ) : null}
         </div>
-        {headerActions ? (
-          <div className="exam-task-header-actions">{headerActions}</div>
-        ) : null}
+        {headerActions ? <div className="exam-task-header-actions">{headerActions}</div> : null}
       </header>
 
       {task.warnings.length > 0 ? (
@@ -234,9 +232,7 @@ const ExamTaskRunnerComponent = ({
             <span className="label">RESULT</span>
             <div className="exam-points-input">
               <span
-                className={`flashcard-result ${
-                  effectiveAutoDecision ? "correct" : "incorrect"
-                }`}
+                className={`flashcard-result ${effectiveAutoDecision ? "correct" : "incorrect"}`}
               >
                 {effectiveAutoDecision ? "Correct" : "Incorrect"}
               </span>
@@ -279,20 +275,10 @@ const ExamTaskRunnerComponent = ({
       {showNavigation ? (
         <div className="exam-task-footer-actions">
           <div className="exam-task-nav">
-            <button
-              type="button"
-              className="ghost small"
-              onClick={onBack}
-              disabled={!canGoBack}
-            >
+            <button type="button" className="ghost small" onClick={onBack} disabled={!canGoBack}>
               Previous
             </button>
-            <button
-              type="button"
-              className="ghost small"
-              onClick={onNext}
-              disabled={!canGoNext}
-            >
+            <button type="button" className="ghost small" onClick={onNext} disabled={!canGoNext}>
               Next
             </button>
           </div>

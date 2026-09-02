@@ -22,10 +22,7 @@ describe("spaced repetition helpers", () => {
       ghost: baseProgress,
       live: { ...baseProgress, attempts: 2 },
     };
-    const filtered = filterSpacedRepetitionCardStates(
-      cardStates,
-      new Set(["live"]),
-    );
+    const filtered = filterSpacedRepetitionCardStates(cardStates, new Set(["live"]));
     expect(Object.keys(filtered)).toEqual(["live"]);
     expect(filtered.live).toBe(cardStates.live);
   });

@@ -29,9 +29,7 @@ const createDeferred = <T,>(): Deferred<T> => {
 
 type PreviewHookValue = ReturnType<typeof usePreview>;
 
-const renderHook = (
-  onValue: (value: PreviewHookValue) => void,
-) => {
+const renderHook = (onValue: (value: PreviewHookValue) => void) => {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);

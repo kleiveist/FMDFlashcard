@@ -77,12 +77,7 @@ const toText = (value: unknown) => {
   if (Array.isArray(value)) {
     return value
       .map((entry) => {
-        if (
-          entry &&
-          typeof entry === "object" &&
-          "value" in entry &&
-          "count" in entry
-        ) {
+        if (entry && typeof entry === "object" && "value" in entry && "count" in entry) {
           return `${String((entry as { count?: unknown }).count ?? "")} ${String((entry as { value?: unknown }).value ?? "")}`.trim();
         }
         return String(entry);
@@ -173,9 +168,10 @@ const getFieldValue = (record: DatabaseRecord, field: string) =>
       return record.normalizedFields[field] ?? null;
     }
     const normalizedField = field.trim().toLowerCase();
-    const matchedKey = Object.keys(record.normalizedFields)
-      .find((key) => key.trim().toLowerCase() === normalizedField);
-    return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
+    const matchedKey = Object.keys(record.normalizedFields).find(
+      (key) => key.trim().toLowerCase() === normalizedField,
+    );
+    return matchedKey ? (record.normalizedFields[matchedKey] ?? null) : null;
   })();
 
 const compareByRule = (
@@ -206,7 +202,9 @@ export const applyDatabaseSorts = (
   attributes: DatabaseAttributeMeta[],
 ) => {
   if (sortRules.length === 0) {
-    return [...records].sort((left, right) => compareNaturalPath(left.relativePath, right.relativePath));
+    return [...records].sort((left, right) =>
+      compareNaturalPath(left.relativePath, right.relativePath),
+    );
   }
 
   const attributeByKey = new Map(

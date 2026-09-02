@@ -131,8 +131,7 @@ const SETTINGS_EN = {
   "settings.autoCardType.cd": "Cloze Drag (CD)",
   "settings.autoCardType.cd.description": "Drag-token blanks only.",
   "settings.autoCardType.cld": "Cloze Mixed (CLD)",
-  "settings.autoCardType.cld.description":
-    "Combination of typed blanks and drag tokens.",
+  "settings.autoCardType.cld.description": "Combination of typed blanks and drag tokens.",
   "settings.flashcardTools.title": "Flashcard Tools",
   "settings.flashcardTools.description": "Default behavior for scans and review sessions.",
   "settings.flashcardTools.defaultOrder": "DEFAULT ORDER",
@@ -208,8 +207,7 @@ const SETTINGS_EN = {
   "settings.keyboard.command.toggleView.title": "Toggle View",
   "settings.keyboard.command.toggleView.description":
     "Toggle View on/off (distraction-free layout).",
-  "settings.keyboard.command.toggleView.notes":
-    "Toggles the eye icon view in supported pages.",
+  "settings.keyboard.command.toggleView.notes": "Toggles the eye icon view in supported pages.",
   "settings.keyboard.command.studyPrevious.title": "Previous card",
   "settings.keyboard.command.studyPrevious.description":
     "Go to the previous card or task in Study screens.",
@@ -217,8 +215,7 @@ const SETTINGS_EN = {
   "settings.keyboard.command.studyNext.description":
     "Go to the next card or task in Study screens.",
   "settings.keyboard.command.studySubmit.title": "Submit card",
-  "settings.keyboard.command.studySubmit.description":
-    "Submit the current card when it is ready.",
+  "settings.keyboard.command.studySubmit.description": "Submit the current card when it is ready.",
   "settings.keyboard.command.vaultRefresh.title": "Refresh active vault",
   "settings.keyboard.command.vaultRefresh.description":
     "Refresh the vault scanner and reload Markdown files.",
@@ -252,8 +249,7 @@ const SETTINGS_EN = {
   "settings.performance.parallelism.medium": "Medium",
   "settings.performance.parallelism.high": "High",
   "settings.inputDebug.title": "Debug",
-  "settings.inputDebug.description":
-    "Only for debugging. No typed content is stored by default.",
+  "settings.inputDebug.description": "Only for debugging. No typed content is stored by default.",
   "settings.inputDebug.inputMode": "INPUT DEBUG MODE",
   "settings.inputDebug.redactContent": "REDACT CONTENT",
   "settings.inputDebug.exportOptions": "EXPORT OPTIONS",
@@ -346,8 +342,7 @@ const SETTINGS_EN = {
   "settings.deleteUser.description":
     "This permanently deletes the user and all spaced repetition progress.",
   "settings.deleteUser.typeToConfirm": "Type {name} to confirm",
-  "settings.deleteUser.helper":
-    "Match is case-sensitive. Leading/trailing spaces are ignored.",
+  "settings.deleteUser.helper": "Match is case-sensitive. Leading/trailing spaces are ignored.",
   "settings.resetHistory.title": "Reset Session History",
   "settings.resetHistory.description":
     "This will delete all saved session results (top scores and recent runs).",
@@ -425,8 +420,7 @@ const SETTINGS_DE: Record<SettingsI18nKey, string> = {
   "settings.editorAccent.markdownAccentMode.dark": "Dunkel",
   "settings.editorAccent.markdownAccentMode.light": "Hell",
   "settings.editorAccent.markdownAccentHexHelper": "HEX-Wert der Akzentfarbe (#RRGGBB).",
-  "settings.editorAccent.useAppAccentHelper":
-    "Verwendet die App-Akzentfarbe aus Erscheinungsbild.",
+  "settings.editorAccent.useAppAccentHelper": "Verwendet die App-Akzentfarbe aus Erscheinungsbild.",
   "settings.editorAccent.blueprintGrid": "Blueprint-Raster (Markdown Editor)",
   "settings.editorAccent.intensity": "Intensität",
   "settings.editorAccent.intensity.light": "Hell",
@@ -473,21 +467,17 @@ const SETTINGS_DE: Record<SettingsI18nKey, string> = {
   "settings.autoCardType.tf": "True/False (TF)",
   "settings.autoCardType.tf.description": "Aussagenbasierte True/False-Interaktionen.",
   "settings.autoCardType.m1": "Multiple Choice (M1)",
-  "settings.autoCardType.m1.description":
-    "Multiple Choice mit genau einer richtigen Antwort.",
+  "settings.autoCardType.m1.description": "Multiple Choice mit genau einer richtigen Antwort.",
   "settings.autoCardType.m2": "Multiple Choice (M2)",
-  "settings.autoCardType.m2.description":
-    "Multiple Choice mit mehreren richtigen Antworten.",
+  "settings.autoCardType.m2.description": "Multiple Choice mit mehreren richtigen Antworten.",
   "settings.autoCardType.cl": "Cloze Typed (CL)",
   "settings.autoCardType.cl.description": "Nur getippte Lücken.",
   "settings.autoCardType.cd": "Cloze Drag (CD)",
   "settings.autoCardType.cd.description": "Nur Drag-Token-Lücken.",
   "settings.autoCardType.cld": "Cloze Mixed (CLD)",
-  "settings.autoCardType.cld.description":
-    "Kombination aus getippten Lücken und Drag-Tokens.",
+  "settings.autoCardType.cld.description": "Kombination aus getippten Lücken und Drag-Tokens.",
   "settings.flashcardTools.title": "Flashcard Werkzeuge",
-  "settings.flashcardTools.description":
-    "Standardverhalten für Scans und Lernsitzungen.",
+  "settings.flashcardTools.description": "Standardverhalten für Scans und Lernsitzungen.",
   "settings.flashcardTools.defaultOrder": "STANDARDREIHENFOLGE",
   "settings.flashcardTools.inOrder": "In Reihenfolge",
   "settings.flashcardTools.random": "Zufällig",
@@ -508,8 +498,7 @@ const SETTINGS_DE: Record<SettingsI18nKey, string> = {
   "settings.flashcardTools.perSession": "Pro Sitzung",
   "settings.flashcardTools.helpHints": "HILFE / HINWEISE",
   "settings.fastFlashcard.title": "Fast Flashcard Werkzeuge",
-  "settings.fastFlashcard.description":
-    "Steuert die Sortierungsregeln für Fast Flashcard.",
+  "settings.fastFlashcard.description": "Steuert die Sortierungsregeln für Fast Flashcard.",
   "settings.fastFlashcard.defaultOrder": "STANDARDREIHENFOLGE",
   "settings.fastFlashcard.mode": "MODUS",
   "settings.fastFlashcard.autoTime": "AUTO-ZEIT",
@@ -633,8 +622,7 @@ const SETTINGS_DE: Record<SettingsI18nKey, string> = {
   "settings.vaultIndex.lastOpened": "Zuletzt geöffnet",
   "settings.vaultIndex.statusIndicators": "Statusanzeigen",
   "settings.vaultIndex.fullyProcessed": "Vollständig verarbeitet",
-  "settings.vaultIndex.fullyProcessedHelper":
-    "Alle Notizen wurden gescannt und indexiert.",
+  "settings.vaultIndex.fullyProcessedHelper": "Alle Notizen wurden gescannt und indexiert.",
   "settings.vaultIndex.actions": "Aktionen",
   "settings.vaultIndex.rescanVault": "Vault erneut scannen",
   "settings.vaultIndex.resetIndex": "Index zurücksetzen",
@@ -774,9 +762,7 @@ export const formatSettingsText = (
   );
 };
 
-export const resolveSettingsNavModel = (
-  language: SettingsLanguage,
-): SettingsNavEntry[] => {
+export const resolveSettingsNavModel = (language: SettingsLanguage): SettingsNavEntry[] => {
   return SETTINGS_NAV_MODEL.map((entry) => {
     if (entry.type === "divider") {
       const key = NAV_DIVIDER_KEYS[entry.label];
@@ -792,10 +778,7 @@ export const resolveSettingsNavModel = (
     return {
       ...entry,
       label: labelKey ? tSettings(language, labelKey) : entry.label,
-      title:
-        titleKey && entry.title
-          ? tSettings(language, titleKey)
-          : entry.title,
+      title: titleKey && entry.title ? tSettings(language, titleKey) : entry.title,
       subPages: entry.subPages?.map((subPage) => {
         const subPageKey = NAV_SUBPAGE_LABEL_KEYS[subPage.id];
         return {

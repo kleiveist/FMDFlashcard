@@ -143,12 +143,7 @@ describe("validateCard", () => {
     const result = validateCard({
       id: "cld-2",
       type: "cld",
-      prompt: [
-        "```sql",
-        'SELECT "token" FROM table',
-        "WHERE column = %value%",
-        "```",
-      ].join("\n"),
+      prompt: ["```sql", 'SELECT "token" FROM table', "WHERE column = %value%", "```"].join("\n"),
     });
 
     expect(result.valid).toBe(true);

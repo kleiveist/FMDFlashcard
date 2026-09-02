@@ -69,4 +69,3 @@ export const buildTaskFingerprint = (task: ExamTaskBlueprint) => {
   };
   return `task-${hashString(JSON.stringify(normalized))}`;
 };
-

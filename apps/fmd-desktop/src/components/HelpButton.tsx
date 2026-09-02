@@ -58,21 +58,14 @@ const markdownSchema = {
   ],
   attributes: {
     ...defaultSchema.attributes,
-    div: [
-      ...(defaultSchema.attributes?.div ?? []),
-      "data-fmd-media-block",
-      "data-media-index",
-    ],
+    div: [...(defaultSchema.attributes?.div ?? []), "data-fmd-media-block", "data-media-index"],
     table: [...(defaultSchema.attributes?.table ?? []), "className"],
     th: [...(defaultSchema.attributes?.th ?? []), "align"],
     td: [...(defaultSchema.attributes?.td ?? []), "align"],
   },
 };
 
-const normalizeHelpBlocks = (
-  helpText?: string[] | string | null,
-  helpMarkdown?: string | null,
-) => {
+const normalizeHelpBlocks = (helpText?: string[] | string | null, helpMarkdown?: string | null) => {
   const blocks = Array.isArray(helpText)
     ? helpText
     : typeof helpText === "string" && helpText.trim()
@@ -80,15 +73,11 @@ const normalizeHelpBlocks = (
       : typeof helpMarkdown === "string" && helpMarkdown.trim()
         ? [helpMarkdown]
         : [];
-  return blocks
-    .map((block) => block.trim())
-    .filter((block) => block.length > 0);
+  return blocks.map((block) => block.trim()).filter((block) => block.length > 0);
 };
 
-export const hasHelpContent = (
-  helpText?: string[] | string | null,
-  helpMarkdown?: string | null,
-) => normalizeHelpBlocks(helpText, helpMarkdown).length > 0;
+export const hasHelpContent = (helpText?: string[] | string | null, helpMarkdown?: string | null) =>
+  normalizeHelpBlocks(helpText, helpMarkdown).length > 0;
 
 const helpInlineMaskTokenPattern = /\[([^\]\n]+?)\]/g;
 
@@ -210,7 +199,7 @@ const renderHelpInlineMaskedNode = (
     return node;
   }
   const nextChildren = Children.map(children, (child, childIndex) =>
-    renderHelpInlineMaskedNode(child, `${keyPrefix}-child-${childIndex}`, state)
+    renderHelpInlineMaskedNode(child, `${keyPrefix}-child-${childIndex}`, state),
   );
   return cloneElement(node, undefined, nextChildren);
 };
@@ -221,7 +210,7 @@ const renderHelpInlineMaskedChildren = (
   state: HelpInlineMaskRenderState,
 ) =>
   Children.map(children, (child, childIndex) =>
-    renderHelpInlineMaskedNode(child, `${keyPrefix}-${childIndex}`, state)
+    renderHelpInlineMaskedNode(child, `${keyPrefix}-${childIndex}`, state),
   );
 
 const readMarkdownElementProperty = (node: unknown, key: string) => {
@@ -238,9 +227,7 @@ const readMarkdownElementProperty = (node: unknown, key: string) => {
   if (key in properties) {
     return properties[key];
   }
-  const camelKey = key.replace(/-([a-z])/g, (_match, character: string) =>
-    character.toUpperCase()
-  );
+  const camelKey = key.replace(/-([a-z])/g, (_match, character: string) => character.toUpperCase());
   return properties[camelKey];
 };
 
@@ -293,12 +280,14 @@ const readMarkdownNodeSource = (node: unknown, source: string): string => {
       start?: { offset?: number; line?: number; column?: number };
       end?: { offset?: number; line?: number; column?: number };
     };
-    const startOffset = typeof position.start?.offset === "number"
-      ? position.start.offset
-      : resolveOffsetFromLineColumn(position.start?.line, position.start?.column);
-    const endOffset = typeof position.end?.offset === "number"
-      ? position.end.offset
-      : resolveOffsetFromLineColumn(position.end?.line, position.end?.column);
+    const startOffset =
+      typeof position.start?.offset === "number"
+        ? position.start.offset
+        : resolveOffsetFromLineColumn(position.start?.line, position.start?.column);
+    const endOffset =
+      typeof position.end?.offset === "number"
+        ? position.end.offset
+        : resolveOffsetFromLineColumn(position.end?.line, position.end?.column);
     if (
       typeof startOffset === "number" &&
       typeof endOffset === "number" &&
@@ -319,11 +308,7 @@ const renderTextWithLineBreaks = (text: string, keyPrefix: string): ReactNode[] 
   const lines = text.split("\n");
   const nodes: ReactNode[] = [];
   lines.forEach((line, lineIndex) => {
-    nodes.push(
-      <Fragment key={`${keyPrefix}-line-${lineIndex}`}>
-        {line}
-      </Fragment>,
-    );
+    nodes.push(<Fragment key={`${keyPrefix}-line-${lineIndex}`}>{line}</Fragment>);
     if (lineIndex < lines.length - 1) {
       nodes.push(<br key={`${keyPrefix}-br-${lineIndex}`} />);
     }
@@ -357,11 +342,7 @@ const renderHelpTableCellContent = ({
   });
   const hasMediaSegments = segments.some((segment) => segment.kind !== "text");
   if (!hasMediaSegments) {
-    return renderHelpInlineMaskedChildren(
-      children,
-      `${keyPrefix}-plain`,
-      inlineMaskState,
-    );
+    return renderHelpInlineMaskedChildren(children, `${keyPrefix}-plain`, inlineMaskState);
   }
 
   return segments.map((segment, index) => {
@@ -379,10 +360,7 @@ const renderHelpTableCellContent = ({
     }
     if (segment.kind === "media") {
       return (
-        <div
-          className={`help-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`}
-          key={segmentKey}
-        >
+        <div className={`help-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`} key={segmentKey}>
           <FlashcardMediaGroup
             media={segment.items}
             vaultPngAssets={vaultPngAssets}
@@ -392,10 +370,7 @@ const renderHelpTableCellContent = ({
       );
     }
     return (
-      <div
-        className={`help-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`}
-        key={segmentKey}
-      >
+      <div className={`help-table-cell-media ${SHARED_TABLE_CELL_MEDIA_CLASS}`} key={segmentKey}>
         <img
           src={segment.src}
           alt={segment.alt ?? ""}
@@ -463,180 +438,180 @@ export const HelpPanel = ({
       <h3 id={titleId}>{title}</h3>
       <div className="help-modal-body">
         {helpBlocks.map((block, index) => (
-          <section
-            key={`help-block-${index}`}
-            className="help-modal-section"
-          >
-            {helpBlocks.length > 1 ? (
-              <span className="label">Hint {index + 1}</span>
-            ) : null}
+          <section key={`help-block-${index}`} className="help-modal-section">
+            {helpBlocks.length > 1 ? <span className="label">Hint {index + 1}</span> : null}
             <div className="help-markdown exam-markdown">
               {(() => {
-                const preview = buildMarkdownMediaPreviewSource(
-                  block,
-                  `help-panel-${index}`,
-                );
+                const preview = buildMarkdownMediaPreviewSource(block, `help-panel-${index}`);
                 const inlinePrefix = `help-inline-${index}`;
                 return (
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
-                components={{
-                  div: ({ node, ...props }) => {
-                    const mediaBlockMarker = readMarkdownElementProperty(node, "data-fmd-media-block");
-                    const placeholderMatch = readMarkdownNodeText(node).match(mediaPlaceholderTextPattern);
-                    const placeholderIndex = placeholderMatch
-                      ? Number.parseInt(placeholderMatch[1] ?? "", 10)
-                      : Number.NaN;
-                    const hasPlaceholderIndex = Number.isFinite(placeholderIndex);
-                    if (typeof mediaBlockMarker === "undefined" && !hasPlaceholderIndex) {
-                      return <div {...props} />;
-                    }
-                    const mediaIndexRaw = readMarkdownElementProperty(node, "data-media-index");
-                    let mediaIndex = Number.parseInt(
-                      String(mediaIndexRaw ?? ""),
-                      10,
-                    );
-                    if (!Number.isFinite(mediaIndex) && hasPlaceholderIndex) {
-                      mediaIndex = placeholderIndex;
-                    }
-                    const mediaGroup = Number.isFinite(mediaIndex)
-                      ? (preview.groups[mediaIndex] ?? null)
-                      : (preview.groups.length === 1 ? preview.groups[0] ?? null : null);
-                    if (!mediaGroup) {
-                      return null;
-                    }
-                    return (
-                      <FlashcardMediaGroup
-                        media={mediaGroup.items}
-                        vaultPngAssets={vaultPngAssets}
-                        vaultPath={vaultPath}
-                      />
-                    );
-                  },
-                  pre: ({ node: _node, children, ...props }) => {
-                    const svgSource = extractSvgCodeBlockSource(children);
-                    if (svgSource !== null) {
-                      return <SvgPreviewBlock source={svgSource} className="md-svg-preview-block" />;
-                    }
-                    return <MarkdownHighlightedPre {...props}>{children}</MarkdownHighlightedPre>;
-                  },
-                  h1: ({ node, children, ...props }) => (
-                    <h1 {...props}>
-                      {renderHelpInlineMaskedChildren(
-                        children,
-                        `${inlinePrefix}-h1-${resolveMarkdownNodePositionKey(node, "h1")}`,
-                        inlineMaskState,
-                      )}
-                    </h1>
-                  ),
-                  h2: ({ node, children, ...props }) => (
-                    <h2 {...props}>
-                      {renderHelpInlineMaskedChildren(
-                        children,
-                        `${inlinePrefix}-h2-${resolveMarkdownNodePositionKey(node, "h2")}`,
-                        inlineMaskState,
-                      )}
-                    </h2>
-                  ),
-                  h3: ({ node, children, ...props }) => (
-                    <h3 {...props}>
-                      {renderHelpInlineMaskedChildren(
-                        children,
-                        `${inlinePrefix}-h3-${resolveMarkdownNodePositionKey(node, "h3")}`,
-                        inlineMaskState,
-                      )}
-                    </h3>
-                  ),
-                  h4: ({ node, children, ...props }) => (
-                    <h4 {...props}>
-                      {renderHelpInlineMaskedChildren(
-                        children,
-                        `${inlinePrefix}-h4-${resolveMarkdownNodePositionKey(node, "h4")}`,
-                        inlineMaskState,
-                      )}
-                    </h4>
-                  ),
-                  h5: ({ node, children, ...props }) => (
-                    <h5 {...props}>
-                      {renderHelpInlineMaskedChildren(
-                        children,
-                        `${inlinePrefix}-h5-${resolveMarkdownNodePositionKey(node, "h5")}`,
-                        inlineMaskState,
-                      )}
-                    </h5>
-                  ),
-                  h6: ({ node, children, ...props }) => (
-                    <h6 {...props}>
-                      {renderHelpInlineMaskedChildren(
-                        children,
-                        `${inlinePrefix}-h6-${resolveMarkdownNodePositionKey(node, "h6")}`,
-                        inlineMaskState,
-                      )}
-                    </h6>
-                  ),
-                  p: ({ node, children, ...props }) => (
-                    <p {...props}>
-                      {renderHelpInlineMaskedChildren(
-                        children,
-                        `${inlinePrefix}-p-${resolveMarkdownNodePositionKey(node, "p")}`,
-                        inlineMaskState,
-                      )}
-                    </p>
-                  ),
-                  li: ({ node, children, ...props }) => (
-                    <li {...props}>
-                      {renderHelpInlineMaskedChildren(
-                        children,
-                        `${inlinePrefix}-li-${resolveMarkdownNodePositionKey(node, "li")}`,
-                        inlineMaskState,
-                      )}
-                    </li>
-                  ),
-                  blockquote: ({ node, children, ...props }) => (
-                    <blockquote {...props}>
-                      {renderHelpInlineMaskedChildren(
-                        children,
-                        `${inlinePrefix}-blockquote-${resolveMarkdownNodePositionKey(node, "blockquote")}`,
-                        inlineMaskState,
-                      )}
-                    </blockquote>
-                  ),
-                  table: ({ node: _node, ...props }) => (
-                    <div className={`exam-table-wrap ${SHARED_TABLE_WRAP_CLASS}`}>
-                      <table {...props} />
-                    </div>
-                  ),
-                  th: ({ node, children, ...props }) => (
-                    <th {...props}>
-                      {renderHelpTableCellContent({
-                        node,
-                        children,
-                        keyPrefix: `${inlinePrefix}-th-${resolveMarkdownNodePositionKey(node, "th")}`,
-                        markdownSource: preview.markdown,
-                        inlineMaskState,
-                        vaultPngAssets,
-                        vaultPath,
-                      })}
-                    </th>
-                  ),
-                  td: ({ node, children, ...props }) => (
-                    <td {...props}>
-                      {renderHelpTableCellContent({
-                        node,
-                        children,
-                        keyPrefix: `${inlinePrefix}-td-${resolveMarkdownNodePositionKey(node, "td")}`,
-                        markdownSource: preview.markdown,
-                        inlineMaskState,
-                        vaultPngAssets,
-                        vaultPath,
-                      })}
-                    </td>
-                  ),
-                }}
-              >
-                {preview.markdown}
-              </ReactMarkdown>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw, [rehypeSanitize, markdownSchema]]}
+                    components={{
+                      div: ({ node, ...props }) => {
+                        const mediaBlockMarker = readMarkdownElementProperty(
+                          node,
+                          "data-fmd-media-block",
+                        );
+                        const placeholderMatch = readMarkdownNodeText(node).match(
+                          mediaPlaceholderTextPattern,
+                        );
+                        const placeholderIndex = placeholderMatch
+                          ? Number.parseInt(placeholderMatch[1] ?? "", 10)
+                          : Number.NaN;
+                        const hasPlaceholderIndex = Number.isFinite(placeholderIndex);
+                        if (typeof mediaBlockMarker === "undefined" && !hasPlaceholderIndex) {
+                          return <div {...props} />;
+                        }
+                        const mediaIndexRaw = readMarkdownElementProperty(node, "data-media-index");
+                        let mediaIndex = Number.parseInt(String(mediaIndexRaw ?? ""), 10);
+                        if (!Number.isFinite(mediaIndex) && hasPlaceholderIndex) {
+                          mediaIndex = placeholderIndex;
+                        }
+                        const mediaGroup = Number.isFinite(mediaIndex)
+                          ? (preview.groups[mediaIndex] ?? null)
+                          : preview.groups.length === 1
+                            ? (preview.groups[0] ?? null)
+                            : null;
+                        if (!mediaGroup) {
+                          return null;
+                        }
+                        return (
+                          <FlashcardMediaGroup
+                            media={mediaGroup.items}
+                            vaultPngAssets={vaultPngAssets}
+                            vaultPath={vaultPath}
+                          />
+                        );
+                      },
+                      pre: ({ node: _node, children, ...props }) => {
+                        const svgSource = extractSvgCodeBlockSource(children);
+                        if (svgSource !== null) {
+                          return (
+                            <SvgPreviewBlock source={svgSource} className="md-svg-preview-block" />
+                          );
+                        }
+                        return (
+                          <MarkdownHighlightedPre {...props}>{children}</MarkdownHighlightedPre>
+                        );
+                      },
+                      h1: ({ node, children, ...props }) => (
+                        <h1 {...props}>
+                          {renderHelpInlineMaskedChildren(
+                            children,
+                            `${inlinePrefix}-h1-${resolveMarkdownNodePositionKey(node, "h1")}`,
+                            inlineMaskState,
+                          )}
+                        </h1>
+                      ),
+                      h2: ({ node, children, ...props }) => (
+                        <h2 {...props}>
+                          {renderHelpInlineMaskedChildren(
+                            children,
+                            `${inlinePrefix}-h2-${resolveMarkdownNodePositionKey(node, "h2")}`,
+                            inlineMaskState,
+                          )}
+                        </h2>
+                      ),
+                      h3: ({ node, children, ...props }) => (
+                        <h3 {...props}>
+                          {renderHelpInlineMaskedChildren(
+                            children,
+                            `${inlinePrefix}-h3-${resolveMarkdownNodePositionKey(node, "h3")}`,
+                            inlineMaskState,
+                          )}
+                        </h3>
+                      ),
+                      h4: ({ node, children, ...props }) => (
+                        <h4 {...props}>
+                          {renderHelpInlineMaskedChildren(
+                            children,
+                            `${inlinePrefix}-h4-${resolveMarkdownNodePositionKey(node, "h4")}`,
+                            inlineMaskState,
+                          )}
+                        </h4>
+                      ),
+                      h5: ({ node, children, ...props }) => (
+                        <h5 {...props}>
+                          {renderHelpInlineMaskedChildren(
+                            children,
+                            `${inlinePrefix}-h5-${resolveMarkdownNodePositionKey(node, "h5")}`,
+                            inlineMaskState,
+                          )}
+                        </h5>
+                      ),
+                      h6: ({ node, children, ...props }) => (
+                        <h6 {...props}>
+                          {renderHelpInlineMaskedChildren(
+                            children,
+                            `${inlinePrefix}-h6-${resolveMarkdownNodePositionKey(node, "h6")}`,
+                            inlineMaskState,
+                          )}
+                        </h6>
+                      ),
+                      p: ({ node, children, ...props }) => (
+                        <p {...props}>
+                          {renderHelpInlineMaskedChildren(
+                            children,
+                            `${inlinePrefix}-p-${resolveMarkdownNodePositionKey(node, "p")}`,
+                            inlineMaskState,
+                          )}
+                        </p>
+                      ),
+                      li: ({ node, children, ...props }) => (
+                        <li {...props}>
+                          {renderHelpInlineMaskedChildren(
+                            children,
+                            `${inlinePrefix}-li-${resolveMarkdownNodePositionKey(node, "li")}`,
+                            inlineMaskState,
+                          )}
+                        </li>
+                      ),
+                      blockquote: ({ node, children, ...props }) => (
+                        <blockquote {...props}>
+                          {renderHelpInlineMaskedChildren(
+                            children,
+                            `${inlinePrefix}-blockquote-${resolveMarkdownNodePositionKey(node, "blockquote")}`,
+                            inlineMaskState,
+                          )}
+                        </blockquote>
+                      ),
+                      table: ({ node: _node, ...props }) => (
+                        <div className={`exam-table-wrap ${SHARED_TABLE_WRAP_CLASS}`}>
+                          <table {...props} />
+                        </div>
+                      ),
+                      th: ({ node, children, ...props }) => (
+                        <th {...props}>
+                          {renderHelpTableCellContent({
+                            node,
+                            children,
+                            keyPrefix: `${inlinePrefix}-th-${resolveMarkdownNodePositionKey(node, "th")}`,
+                            markdownSource: preview.markdown,
+                            inlineMaskState,
+                            vaultPngAssets,
+                            vaultPath,
+                          })}
+                        </th>
+                      ),
+                      td: ({ node, children, ...props }) => (
+                        <td {...props}>
+                          {renderHelpTableCellContent({
+                            node,
+                            children,
+                            keyPrefix: `${inlinePrefix}-td-${resolveMarkdownNodePositionKey(node, "td")}`,
+                            markdownSource: preview.markdown,
+                            inlineMaskState,
+                            vaultPngAssets,
+                            vaultPath,
+                          })}
+                        </td>
+                      ),
+                    }}
+                  >
+                    {preview.markdown}
+                  </ReactMarkdown>
                 );
               })()}
             </div>

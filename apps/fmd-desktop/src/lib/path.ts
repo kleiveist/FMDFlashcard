@@ -72,9 +72,7 @@ export const isWindowsRuntime = (platformHint?: string) => {
     return false;
   }
   return (
-    normalized.includes("win32") ||
-    normalized.includes("windows") ||
-    normalized.startsWith("win")
+    normalized.includes("win32") || normalized.includes("windows") || normalized.startsWith("win")
   );
 };
 

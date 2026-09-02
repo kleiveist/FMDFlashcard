@@ -40,26 +40,22 @@ describe("AppearanceSection", () => {
     expect(markup).toContain("Desktop Design");
     expect(markup).toMatch(/design-mode-option active[^>]*>Desktop Design</);
     expect(markup).not.toContain("Edge Design");
-    expect(markup).toContain("aria-label=\"Designmodus auswaehlen\"");
-    expect(markup).toContain("aria-label=\"Appearance pages\"");
+    expect(markup).toContain('aria-label="Designmodus auswaehlen"');
+    expect(markup).toContain('aria-label="Appearance pages"');
     expect(markup).toContain(">Accent Editor<");
     expect(markup).not.toContain(">Editor Accent<");
-    expect(markup).toContain("id=\"settings-appearance-tab-appearance\"");
-    expect(markup).toContain("aria-controls=\"settings-appearance-panel-appearance\"");
-    expect(markup).toContain("id=\"settings-appearance-panel-appearance\"");
-    expect(markup).toContain("aria-labelledby=\"settings-appearance-tab-appearance\"");
-    expect(markup).toContain("id=\"settings-appearance-tab-editor-accent\"");
-    expect(markup).toContain("aria-controls=\"settings-appearance-panel-editor-accent\"");
-    expect(markup).toContain("id=\"settings-appearance-panel-editor-accent\"");
-    expect(markup).toContain("aria-labelledby=\"settings-appearance-tab-editor-accent\"");
-    expect(markup).toMatch(
-      /id="settings-appearance-panel-editor-accent"[^>]*hidden=""/,
-    );
-    expect(markup).not.toMatch(
-      /id="settings-appearance-panel-appearance"[^>]*hidden=""/,
-    );
-    const tabsIndex = markup.indexOf("aria-label=\"Appearance pages\"");
-    const appearancePanelIndex = markup.indexOf("class=\"panel appearance-panel\"");
+    expect(markup).toContain('id="settings-appearance-tab-appearance"');
+    expect(markup).toContain('aria-controls="settings-appearance-panel-appearance"');
+    expect(markup).toContain('id="settings-appearance-panel-appearance"');
+    expect(markup).toContain('aria-labelledby="settings-appearance-tab-appearance"');
+    expect(markup).toContain('id="settings-appearance-tab-editor-accent"');
+    expect(markup).toContain('aria-controls="settings-appearance-panel-editor-accent"');
+    expect(markup).toContain('id="settings-appearance-panel-editor-accent"');
+    expect(markup).toContain('aria-labelledby="settings-appearance-tab-editor-accent"');
+    expect(markup).toMatch(/id="settings-appearance-panel-editor-accent"[^>]*hidden=""/);
+    expect(markup).not.toMatch(/id="settings-appearance-panel-appearance"[^>]*hidden=""/);
+    const tabsIndex = markup.indexOf('aria-label="Appearance pages"');
+    const appearancePanelIndex = markup.indexOf('class="panel appearance-panel"');
     expect(tabsIndex).toBeGreaterThanOrEqual(0);
     expect(appearancePanelIndex).toBeGreaterThanOrEqual(0);
     expect(tabsIndex).toBeLessThan(appearancePanelIndex);

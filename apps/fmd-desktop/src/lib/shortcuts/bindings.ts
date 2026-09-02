@@ -10,11 +10,7 @@
  * - Konflikterkennung fuer Shortcuts.
  */
 
-import {
-  SHORTCUT_COMMANDS,
-  type ShortcutCommand,
-  type ShortcutContextId,
-} from "./registry";
+import { SHORTCUT_COMMANDS, type ShortcutCommand, type ShortcutContextId } from "./registry";
 
 export type ShortcutPlatform = "mac" | "winLinux";
 
@@ -159,8 +155,7 @@ export const formatBinding = (
   const parts = normalized.split("+");
   const key = parts[parts.length - 1] ?? "";
   const modifiers = parts.slice(0, -1);
-  const displayOrder =
-    platform === "mac" ? ["Meta", "Shift", "Alt", "Ctrl"] : [...MODIFIER_ORDER];
+  const displayOrder = platform === "mac" ? ["Meta", "Shift", "Alt", "Ctrl"] : [...MODIFIER_ORDER];
   const orderedParts = [
     ...displayOrder.filter((modifier) => modifiers.includes(modifier)),
     key,
@@ -224,10 +219,7 @@ export const eventToBinding = (event: KeyboardEvent) => {
   return parts.join("+");
 };
 
-export const matchesBinding = (
-  event: KeyboardEvent,
-  binding: string | null | undefined,
-) => {
+export const matchesBinding = (event: KeyboardEvent, binding: string | null | undefined) => {
   const normalizedBinding = normalizeBinding(binding);
   if (!normalizedBinding) {
     return false;
@@ -309,9 +301,7 @@ export const detectShortcutConflicts = (
       return;
     }
     const [contextId, binding] = key.split(":");
-    const commandIds = Array.from(
-      new Set(group.map((entry) => entry.command.id)),
-    );
+    const commandIds = Array.from(new Set(group.map((entry) => entry.command.id)));
     conflicts.push({
       binding,
       commandIds,
@@ -362,8 +352,7 @@ export const normalizeKeyboardShortcuts = (
 
   const rawBindings = candidate.bindings;
   const hasBindingsField = Object.prototype.hasOwnProperty.call(candidate, "bindings");
-  const useLegacyBindings =
-    !hasBindingsField && typeof candidate.version === "undefined";
+  const useLegacyBindings = !hasBindingsField && typeof candidate.version === "undefined";
   const bindingsSource =
     rawBindings && typeof rawBindings === "object"
       ? rawBindings
@@ -373,8 +362,7 @@ export const normalizeKeyboardShortcuts = (
   const normalizedBindings: ShortcutUserBindings = {};
 
   if (bindingsSource && typeof bindingsSource === "object") {
-    Object.entries(bindingsSource as Record<string, unknown>).forEach(
-      ([key, binding]) => {
+    Object.entries(bindingsSource as Record<string, unknown>).forEach(([key, binding]) => {
       if (binding === null) {
         normalizedBindings[key] = null;
         return;
@@ -382,8 +370,7 @@ export const normalizeKeyboardShortcuts = (
       if (typeof binding === "string") {
         normalizedBindings[key] = normalizeBinding(binding) ?? binding;
       }
-    },
-  );
+    });
   }
 
   const version =
@@ -397,28 +384,14 @@ export const normalizeKeyboardShortcuts = (
   };
 
   let needsMigration =
-    version !== KEYBOARD_SHORTCUTS_VERSION ||
-    !bindingsSource ||
-    typeof bindingsSource !== "object";
+    version !== KEYBOARD_SHORTCUTS_VERSION || !bindingsSource || typeof bindingsSource !== "object";
 
-  const legacyToggleIds = [
-    "flashcards.focus.toggle",
-    "spaced-repetition.focus.toggle",
-  ];
+  const legacyToggleIds = ["flashcards.focus.toggle", "spaced-repetition.focus.toggle"];
   const legacyExitIds = ["flashcards.focus.exit", "spaced-repetition.focus.exit"];
   const legacyStudyBindings = {
-    studyPrevious: [
-      "flashcards.focus.prev",
-      "spaced-repetition.focus.prev",
-    ],
-    studyNext: [
-      "flashcards.focus.next",
-      "spaced-repetition.focus.next",
-    ],
-    studySubmit: [
-      "flashcards.focus.submit",
-      "spaced-repetition.focus.submit",
-    ],
+    studyPrevious: ["flashcards.focus.prev", "spaced-repetition.focus.prev"],
+    studyNext: ["flashcards.focus.next", "spaced-repetition.focus.next"],
+    studySubmit: ["flashcards.focus.submit", "spaced-repetition.focus.submit"],
   };
   const legacyCloseBindings = [
     "help.topic.close",
@@ -443,21 +416,21 @@ export const normalizeKeyboardShortcuts = (
     }
   });
 
-  (Object.keys(legacyStudyBindings) as Array<
-    keyof typeof legacyStudyBindings
-  >).forEach((studyId) => {
-    if (Object.prototype.hasOwnProperty.call(normalizedBindings, studyId)) {
-      return;
-    }
-    const legacyIds = legacyStudyBindings[studyId];
-    const legacyBinding = legacyIds.find((id) =>
-      Object.prototype.hasOwnProperty.call(normalizedBindings, id),
-    );
-    if (legacyBinding) {
-      normalizedBindings[studyId] = normalizedBindings[legacyBinding] ?? null;
-      needsMigration = true;
-    }
-  });
+  (Object.keys(legacyStudyBindings) as Array<keyof typeof legacyStudyBindings>).forEach(
+    (studyId) => {
+      if (Object.prototype.hasOwnProperty.call(normalizedBindings, studyId)) {
+        return;
+      }
+      const legacyIds = legacyStudyBindings[studyId];
+      const legacyBinding = legacyIds.find((id) =>
+        Object.prototype.hasOwnProperty.call(normalizedBindings, id),
+      );
+      if (legacyBinding) {
+        normalizedBindings[studyId] = normalizedBindings[legacyBinding] ?? null;
+        needsMigration = true;
+      }
+    },
+  );
 
   Object.values(legacyStudyBindings)
     .flat()

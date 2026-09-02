@@ -12,11 +12,7 @@ import {
   AppSectionItemId,
 } from "../types";
 
-export const APP_SECTION_CATEGORY_ORDER: AppSectionCategoryId[] = [
-  "editor",
-  "study",
-  "monitoring",
-];
+export const APP_SECTION_CATEGORY_ORDER: AppSectionCategoryId[] = ["editor", "study", "monitoring"];
 
 export const APP_SECTION_LABELS = {
   categoryLabel: { en: "Category", de: "Kategorie" },
@@ -31,10 +27,7 @@ export const APP_SECTION_LABELS = {
   hybridActions: { en: "Hybrid actions", de: "Hybrid-Aktionen" },
 };
 
-export const APP_SECTION_CATEGORIES: Record<
-  AppSectionCategoryId,
-  AppSectionCategoryData
-> = {
+export const APP_SECTION_CATEGORIES: Record<AppSectionCategoryId, AppSectionCategoryData> = {
   editor: {
     title: { en: "Editor", de: "Editor" },
     summary: {

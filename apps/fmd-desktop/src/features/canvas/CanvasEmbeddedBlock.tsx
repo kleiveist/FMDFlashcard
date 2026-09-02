@@ -1,9 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import {
-  CanvasEditor,
-  type CanvasEditorHandle,
-  type PersistCanvasResult,
-} from "./CanvasEditor";
+import { CanvasEditor, type CanvasEditorHandle, type PersistCanvasResult } from "./CanvasEditor";
 import {
   CanvasDeleteConfirmDialog,
   CanvasExitFullscreenIcon,
@@ -13,10 +9,7 @@ import {
   CanvasTrashIcon,
 } from "./CanvasToolbar";
 import type { CanvasCustomColorSlot } from "./canvasSettings";
-import {
-  parseMarkdownCanvasBlock,
-  replaceMarkdownCanvasBlockSource,
-} from "./markdownBlockSyntax";
+import { parseMarkdownCanvasBlock, replaceMarkdownCanvasBlockSource } from "./markdownBlockSyntax";
 
 type CanvasEmbeddedBlockProps = {
   raw: string;
@@ -39,12 +32,10 @@ export const CanvasEmbeddedBlock = ({
   const [fullscreen, setFullscreen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const parsed = useMemo(() => parseMarkdownCanvasBlock(raw), [raw]);
-  const source = parsed.ok ? parsed.block.source : parsed.block?.source ?? raw;
+  const source = parsed.ok ? parsed.block.source : (parsed.block?.source ?? raw);
   const canEditBlock = allowEditing && parsed.ok && Boolean(onCommitRaw);
   const sourceKey =
-    typeof blockIndex === "number"
-      ? `markdown-canvas-${blockIndex}`
-      : "markdown-canvas-standalone";
+    typeof blockIndex === "number" ? `markdown-canvas-${blockIndex}` : "markdown-canvas-standalone";
 
   const persistSource = useCallback(
     async (nextSource: string): Promise<PersistCanvasResult> => {
@@ -109,9 +100,7 @@ export const CanvasEmbeddedBlock = ({
         onPersistSource={persistSource}
       />
 
-      {parsed.ok ? null : (
-        <div className="error canvas-embedded-error">{parsed.error}</div>
-      )}
+      {parsed.ok ? null : <div className="error canvas-embedded-error">{parsed.error}</div>}
 
       <CanvasDeleteConfirmDialog
         isOpen={deleteConfirmOpen}

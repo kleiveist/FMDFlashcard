@@ -58,10 +58,13 @@ export const DatabaseGanttPanel = ({
   onChange,
   onClose,
 }: DatabaseGanttPanelProps) => {
-  const timelineAttributes = attributes
-    .filter((attribute) => attribute.viewCompatibility.supportsTimeline);
-  const zoomOptions = getTimelineAllowedZooms(mode)
-    .map((value) => ({ value, label: zoomLabelByValue[value] }));
+  const timelineAttributes = attributes.filter(
+    (attribute) => attribute.viewCompatibility.supportsTimeline,
+  );
+  const zoomOptions = getTimelineAllowedZooms(mode).map((value) => ({
+    value,
+    label: zoomLabelByValue[value],
+  }));
   const effectiveZoom = coerceTimelineZoom(mode, zoom);
 
   return (
@@ -73,7 +76,12 @@ export const DatabaseGanttPanel = ({
     >
       <header className="database-block-panel-header">
         <h5>Timeline Optionen</h5>
-        <button type="button" className="database-block-panel-close" onClick={onClose} aria-label="Schliessen">
+        <button
+          type="button"
+          className="database-block-panel-close"
+          onClick={onClose}
+          aria-label="Schliessen"
+        >
           ×
         </button>
       </header>
@@ -90,7 +98,9 @@ export const DatabaseGanttPanel = ({
             }}
           >
             {timelineModeOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
             ))}
           </select>
         </label>
@@ -102,7 +112,9 @@ export const DatabaseGanttPanel = ({
           >
             <option value="">Auto</option>
             {timelineAttributes.map((attribute) => (
-              <option key={attribute.key} value={attribute.key}>{attribute.label || attribute.key}</option>
+              <option key={attribute.key} value={attribute.key}>
+                {attribute.label || attribute.key}
+              </option>
             ))}
           </select>
         </label>
@@ -115,7 +127,9 @@ export const DatabaseGanttPanel = ({
           >
             <option value="">Nur Start (Milestone)</option>
             {timelineAttributes.map((attribute) => (
-              <option key={attribute.key} value={attribute.key}>{attribute.label || attribute.key}</option>
+              <option key={attribute.key} value={attribute.key}>
+                {attribute.label || attribute.key}
+              </option>
             ))}
           </select>
         </label>
@@ -127,7 +141,8 @@ export const DatabaseGanttPanel = ({
               type="date"
               value={baseDate ?? ""}
               onChange={(event) =>
-                onChange({ baseDate: normalizeTimelineBaseDate(event.target.value) })}
+                onChange({ baseDate: normalizeTimelineBaseDate(event.target.value) })
+              }
             />
           </label>
         ) : null}
@@ -139,14 +154,17 @@ export const DatabaseGanttPanel = ({
             onChange={(event) => onChange({ zoom: event.target.value as DatabaseGanttZoom })}
           >
             {zoomOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
             ))}
           </select>
         </label>
       </div>
       {timelineAttributes.length === 0 ? (
         <p className="database-block-state">
-          Keine Zeitfelder vorhanden. Beim Platzieren in der Timeline werden `start`/`end` automatisch angelegt.
+          Keine Zeitfelder vorhanden. Beim Platzieren in der Timeline werden `start`/`end`
+          automatisch angelegt.
         </p>
       ) : null}
       <p className="database-block-state">

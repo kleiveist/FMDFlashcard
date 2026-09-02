@@ -99,14 +99,7 @@ describe("buildCombinedSessionTasks", () => {
       "/vault/exam-b.md",
       "/vault/exam-b.md",
     ]);
-    expect(sequential.tasks.map((task) => task.originalTaskNumber)).toEqual([
-      1,
-      2,
-      3,
-      1,
-      2,
-      3,
-    ]);
+    expect(sequential.tasks.map((task) => task.originalTaskNumber)).toEqual([1, 2, 3, 1, 2, 3]);
   });
 
   it("keeps file order but shuffles within files in sequential-shuffled mode", () => {
@@ -115,19 +108,15 @@ describe("buildCombinedSessionTasks", () => {
       buildSource("/vault/exam-b.md", "Exam B", [1, 2, 3, 4, 5]),
     ];
 
-    const shuffled = buildCombinedSessionTasks(
-      sources,
-      "seed-fixed",
-      "sequential-shuffled",
-    );
+    const shuffled = buildCombinedSessionTasks(sources, "seed-fixed", "sequential-shuffled");
 
     expect(shuffled.tasks).toHaveLength(10);
-    expect(shuffled.tasks.slice(0, 5).every((task) => task.sourceExamPath === "/vault/exam-a.md")).toBe(
-      true,
-    );
-    expect(shuffled.tasks.slice(5).every((task) => task.sourceExamPath === "/vault/exam-b.md")).toBe(
-      true,
-    );
+    expect(
+      shuffled.tasks.slice(0, 5).every((task) => task.sourceExamPath === "/vault/exam-a.md"),
+    ).toBe(true);
+    expect(
+      shuffled.tasks.slice(5).every((task) => task.sourceExamPath === "/vault/exam-b.md"),
+    ).toBe(true);
 
     const firstFileNumbers = shuffled.tasks
       .slice(0, 5)
@@ -229,9 +218,9 @@ describe("buildCombinedSessionTasksFromRows", () => {
     );
 
     expect(nested.tasks).toHaveLength(6);
-    expect(nested.tasks.slice(0, 3).every((task) => task.sourceExamPath === "/vault/exam-a.md")).toBe(
-      true,
-    );
+    expect(
+      nested.tasks.slice(0, 3).every((task) => task.sourceExamPath === "/vault/exam-a.md"),
+    ).toBe(true);
     expect(nested.tasks.slice(3).every((task) => task.sourceExamPath !== "/vault/exam-a.md")).toBe(
       true,
     );

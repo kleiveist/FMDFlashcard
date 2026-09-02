@@ -111,20 +111,14 @@ describe("ClozeCard focus stability", () => {
     });
     expect(document.activeElement).toBe(input);
 
-    rerender(
-      createElement("div", { "data-tick": 1 }, createElement(ClozeCard, buildProps())),
-    );
+    rerender(createElement("div", { "data-tick": 1 }, createElement(ClozeCard, buildProps())));
 
-    const inputAfterFirstRerender =
-      container.querySelector<HTMLInputElement>(".cloze-input");
+    const inputAfterFirstRerender = container.querySelector<HTMLInputElement>(".cloze-input");
     expect(document.activeElement).toBe(inputAfterFirstRerender);
 
-    rerender(
-      createElement("div", { "data-tick": 2 }, createElement(ClozeCard, buildProps())),
-    );
+    rerender(createElement("div", { "data-tick": 2 }, createElement(ClozeCard, buildProps())));
 
-    const inputAfterSecondRerender =
-      container.querySelector<HTMLInputElement>(".cloze-input");
+    const inputAfterSecondRerender = container.querySelector<HTMLInputElement>(".cloze-input");
     expect(document.activeElement).toBe(inputAfterSecondRerender);
     cleanup();
   });
@@ -155,20 +149,14 @@ describe("ClozeCard focus stability", () => {
     });
     expect(document.activeElement).toBe(input);
 
-    rerender(
-      createElement("div", { "data-tick": 1 }, createElement(ClozeCard, buildProps())),
-    );
+    rerender(createElement("div", { "data-tick": 1 }, createElement(ClozeCard, buildProps())));
 
-    const inputAfterFirstRerender =
-      container.querySelector<HTMLInputElement>(".cloze-input");
+    const inputAfterFirstRerender = container.querySelector<HTMLInputElement>(".cloze-input");
     expect(document.activeElement).toBe(inputAfterFirstRerender);
 
-    rerender(
-      createElement("div", { "data-tick": 2 }, createElement(ClozeCard, buildProps())),
-    );
+    rerender(createElement("div", { "data-tick": 2 }, createElement(ClozeCard, buildProps())));
 
-    const inputAfterSecondRerender =
-      container.querySelector<HTMLInputElement>(".cloze-input");
+    const inputAfterSecondRerender = container.querySelector<HTMLInputElement>(".cloze-input");
     expect(document.activeElement).toBe(inputAfterSecondRerender);
     cleanup();
   });
@@ -211,8 +199,9 @@ describe("ClozeCard focus stability", () => {
     const { container, cleanup } = render(createElement(Harness));
 
     const input = container.querySelector<HTMLInputElement>(".cloze-input");
-    const rerenderButton =
-      container.querySelector<HTMLButtonElement>('[data-testid="force-rerender"]');
+    const rerenderButton = container.querySelector<HTMLButtonElement>(
+      '[data-testid="force-rerender"]',
+    );
     expect(input).toBeTruthy();
     expect(rerenderButton).toBeTruthy();
 
@@ -236,8 +225,7 @@ describe("ClozeCard focus stability", () => {
       rerenderButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    const inputAfterRerender =
-      container.querySelector<HTMLInputElement>(".cloze-input");
+    const inputAfterRerender = container.querySelector<HTMLInputElement>(".cloze-input");
     expect(document.activeElement).toBe(inputAfterRerender);
     expect(inputAfterRerender?.value).toBe("on");
 
@@ -288,8 +276,9 @@ describe("ClozeCard focus stability", () => {
 
     const { container, cleanup } = render(createElement(Harness));
     const input = container.querySelector<HTMLInputElement>(".cloze-input");
-    const rerenderButton =
-      container.querySelector<HTMLButtonElement>('[data-testid="force-rerender"]');
+    const rerenderButton = container.querySelector<HTMLButtonElement>(
+      '[data-testid="force-rerender"]',
+    );
     expect(input).toBeTruthy();
     expect(rerenderButton).toBeTruthy();
 
@@ -311,8 +300,7 @@ describe("ClozeCard focus stability", () => {
       rerenderButton.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
 
-    const inputAfterRerender =
-      container.querySelector<HTMLInputElement>(".cloze-input");
+    const inputAfterRerender = container.querySelector<HTMLInputElement>(".cloze-input");
     expect(document.activeElement).toBe(inputAfterRerender);
     expect(inputAfterRerender?.selectionStart).toBe(1);
     expect(inputAfterRerender?.selectionEnd).toBe(1);
@@ -368,8 +356,9 @@ describe("ClozeCard focus stability", () => {
     const outsideControl = container.querySelector<HTMLButtonElement>(
       '[data-testid="outside-control"]',
     );
-    const rerenderButton =
-      container.querySelector<HTMLButtonElement>('[data-testid="force-rerender"]');
+    const rerenderButton = container.querySelector<HTMLButtonElement>(
+      '[data-testid="force-rerender"]',
+    );
     expect(input).toBeTruthy();
     expect(outsideControl).toBeTruthy();
     expect(rerenderButton).toBeTruthy();

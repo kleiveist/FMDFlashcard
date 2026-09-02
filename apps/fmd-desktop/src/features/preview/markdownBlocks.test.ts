@@ -106,14 +106,7 @@ describe("markdownBlocks", () => {
   });
 
   it("resets hybrid list groups across non-list boundary blocks", () => {
-    const markdown = [
-      "1. One",
-      "2. Two",
-      "#help",
-      "hint",
-      "#helpend",
-      "3. Three",
-    ].join("\n");
+    const markdown = ["1. One", "2. Two", "#help", "hint", "#helpend", "3. Three"].join("\n");
     const blocks = parseMarkdownBlocks(markdown, { profile: "hybrid-list-items" });
 
     expect(blocks.map((block) => block.kind)).toEqual([
@@ -145,11 +138,7 @@ describe("markdownBlocks", () => {
     ].join("\n");
 
     const blocks = parseMarkdownBlocks(markdown);
-    expect(blocks.map((block) => block.kind)).toEqual([
-      "paragraph",
-      "help-block",
-      "paragraph",
-    ]);
+    expect(blocks.map((block) => block.kind)).toEqual(["paragraph", "help-block", "paragraph"]);
     expect(blocks[1]?.raw).toBe(
       [
         "#help",
@@ -164,32 +153,20 @@ describe("markdownBlocks", () => {
   });
 
   it("treats quote-prefixed #help/#helpend markers as one top-level help block", () => {
-    const markdown = [
-      "> #help",
-      "> Hinweis",
-      "> #helpend",
-    ].join("\n");
+    const markdown = ["> #help", "> Hinweis", "> #helpend"].join("\n");
 
     const blocks = parseMarkdownBlocks(markdown);
     expect(blocks.map((block) => block.kind)).toEqual(["help-block"]);
-    expect(
-      normalizeHelpBlockSource(blocks[0]?.raw ?? ""),
-    ).toBe(["#help", "Hinweis", "#helpend"].join("\n"));
+    expect(normalizeHelpBlockSource(blocks[0]?.raw ?? "")).toBe(
+      ["#help", "Hinweis", "#helpend"].join("\n"),
+    );
   });
 
   it("treats quote-prefixed #card/#endcard markers as top-level card blocks", () => {
-    const markdown = [
-      "> #card",
-      "> Frage",
-      "> #endcard",
-    ].join("\n");
+    const markdown = ["> #card", "> Frage", "> #endcard"].join("\n");
 
     const blocks = parseMarkdownBlocks(markdown);
-    expect(blocks.map((block) => block.kind)).toEqual([
-      "card-start",
-      "blockquote",
-      "card-end",
-    ]);
+    expect(blocks.map((block) => block.kind)).toEqual(["card-start", "blockquote", "card-end"]);
     expect(normalizeCardBlockSource(blocks[0]?.raw ?? "")).toBe("#card");
     expect(normalizeCardBlockSource(blocks[2]?.raw ?? "")).toBe("#endcard");
 
@@ -225,19 +202,9 @@ describe("markdownBlocks", () => {
     ].join("\n");
 
     const blocks = parseMarkdownBlocks(markdown);
-    expect(blocks.map((block) => block.kind)).toEqual([
-      "paragraph",
-      "database-block",
-      "paragraph",
-    ]);
+    expect(blocks.map((block) => block.kind)).toEqual(["paragraph", "database-block", "paragraph"]);
     expect(blocks[1]?.raw).toBe(
-      [
-        "::::",
-        "title: Demo",
-        "view:",
-        "  type: table",
-        "::::",
-      ].join("\n"),
+      ["::::", "title: Demo", "view:", "  type: table", "::::"].join("\n"),
     );
   });
 
@@ -257,11 +224,7 @@ describe("markdownBlocks", () => {
     ].join("\n");
 
     const blocks = parseMarkdownBlocks(markdown);
-    expect(blocks.map((block) => block.kind)).toEqual([
-      "paragraph",
-      "database-block",
-      "paragraph",
-    ]);
+    expect(blocks.map((block) => block.kind)).toEqual(["paragraph", "database-block", "paragraph"]);
     expect(blocks[1]?.raw).toContain("#card");
     expect(blocks[1]?.raw).toContain("#exam");
   });
@@ -325,13 +288,7 @@ describe("markdownBlocks", () => {
 
   it("keeps an unclosed #card group open through EOF", () => {
     const blocks = parseMarkdownBlocks(
-      [
-        "Before",
-        "#card",
-        "Inside paragraph",
-        "",
-        "1. item",
-      ].join("\n"),
+      ["Before", "#card", "Inside paragraph", "", "1. item"].join("\n"),
     );
 
     expect(blocks.map((block) => block.kind)).toEqual([
@@ -449,58 +406,34 @@ describe("markdownBlocks", () => {
     ].join("\n");
 
     const blocks = parseMarkdownBlocks(markdown);
-    expect(blocks.map((block) => block.kind)).toEqual([
-      "paragraph",
-      "blank",
-      "database-block",
-    ]);
+    expect(blocks.map((block) => block.kind)).toEqual(["paragraph", "blank", "database-block"]);
     expect(blocks[2]?.raw).toContain("title: Incomplete");
   });
 
   it("only normalizes same-line suffix content on #endcard", () => {
-    expect(
-      normalizeCardBlockSource(["#card", "Frage", "#endcardAntwort"].join("\n")),
-    ).toBe(["#card", "Frage", "Antwort", "#endcard"].join("\n"));
-    expect(
-      normalizeCardBlockSource(["#card", "Frage", "#endcard", "Danach"].join("\n")),
-    ).toBe(["#card", "Frage", "#endcard", "Danach"].join("\n"));
+    expect(normalizeCardBlockSource(["#card", "Frage", "#endcardAntwort"].join("\n"))).toBe(
+      ["#card", "Frage", "Antwort", "#endcard"].join("\n"),
+    );
+    expect(normalizeCardBlockSource(["#card", "Frage", "#endcard", "Danach"].join("\n"))).toBe(
+      ["#card", "Frage", "#endcard", "Danach"].join("\n"),
+    );
     expect(
       normalizeCardBlockSource(["#card", "Frage", "#endcardAntwort", "Danach"].join("\n")),
     ).toBe(["#card", "Frage", "Antwort", "#endcard", "Danach"].join("\n"));
   });
 
   it("treats $$ ... $$ as a single math block", () => {
-    const markdown = [
-      "Intro",
-      "$$",
-      "\\frac{a}{b}",
-      "\\int_{0}^{1} x^2 dx",
-      "$$",
-      "Outro",
-    ].join("\n");
+    const markdown = ["Intro", "$$", "\\frac{a}{b}", "\\int_{0}^{1} x^2 dx", "$$", "Outro"].join(
+      "\n",
+    );
 
     const blocks = parseMarkdownBlocks(markdown);
-    expect(blocks.map((block) => block.kind)).toEqual([
-      "paragraph",
-      "math-block",
-      "paragraph",
-    ]);
-    expect(blocks[1]?.raw).toBe([
-      "$$",
-      "\\frac{a}{b}",
-      "\\int_{0}^{1} x^2 dx",
-      "$$",
-    ].join("\n"));
+    expect(blocks.map((block) => block.kind)).toEqual(["paragraph", "math-block", "paragraph"]);
+    expect(blocks[1]?.raw).toBe(["$$", "\\frac{a}{b}", "\\int_{0}^{1} x^2 dx", "$$"].join("\n"));
   });
 
   it("keeps math blocks isolated from surrounding list parsing", () => {
-    const markdown = [
-      "1. First",
-      "$$",
-      "\\sum_{i=1}^{n}",
-      "$$",
-      "2. Second",
-    ].join("\n");
+    const markdown = ["1. First", "$$", "\\sum_{i=1}^{n}", "$$", "2. Second"].join("\n");
 
     const blocks = parseMarkdownBlocks(markdown);
     expect(blocks.map((block) => block.kind)).toEqual([
@@ -537,11 +470,7 @@ describe("markdownBlocks", () => {
     ]);
     expect(blocks[0]?.raw).toBe(["1. Erste Zeile", "   Fortsetzung"].join("\n"));
     expect(blocks[1]?.raw).toBe(
-      [
-        "   #help",
-        "   1. bleibt im help-block roh",
-        "   #helpend   ",
-      ].join("\n"),
+      ["   #help", "   1. bleibt im help-block roh", "   #helpend   "].join("\n"),
     );
     expect(blocks[2]?.raw).toBe("2. Zweite Zeile");
   });
@@ -571,79 +500,32 @@ describe("normalizeOrderedListBlockSource", () => {
   });
 
   it("renumbers nested ordered list items per indentation level", () => {
-    const input = [
-      "7. Root",
-      "   9. Child A",
-      "   4. Child B",
-      "8. Root 2",
-    ].join("\n");
+    const input = ["7. Root", "   9. Child A", "   4. Child B", "8. Root 2"].join("\n");
     const normalized = normalizeOrderedListBlockSource(input);
-    expect(normalized).toBe(
-      [
-        "1. Root",
-        "   1. Child A",
-        "   2. Child B",
-        "2. Root 2",
-      ].join("\n"),
-    );
+    expect(normalized).toBe(["1. Root", "   1. Child A", "   2. Child B", "2. Root 2"].join("\n"));
   });
 });
 
 describe("normalizeHelpBlockSource", () => {
   it("forces #helpend to be left-aligned without spaces or tabs", () => {
-    const input = [
-      "#help",
-      "Inhalt",
-      "   #helpend   ",
-      "\t#helpend\t",
-    ].join("\n");
+    const input = ["#help", "Inhalt", "   #helpend   ", "\t#helpend\t"].join("\n");
 
     const normalized = normalizeHelpBlockSource(input);
-    expect(normalized).toBe(
-      [
-        "#help",
-        "Inhalt",
-        "#helpend",
-        "#helpend",
-      ].join("\n"),
-    );
+    expect(normalized).toBe(["#help", "Inhalt", "#helpend", "#helpend"].join("\n"));
   });
 
   it("removes blank lines directly before #helpend", () => {
-    const input = [
-      "#help",
-      "Hint Zeile",
-      "",
-      "   ",
-      "\t",
-      "  #helpend  ",
-    ].join("\n");
+    const input = ["#help", "Hint Zeile", "", "   ", "\t", "  #helpend  "].join("\n");
 
     const normalized = normalizeHelpBlockSource(input);
-    expect(normalized).toBe(
-      [
-        "#help",
-        "Hint Zeile",
-        "#helpend",
-      ].join("\n"),
-    );
+    expect(normalized).toBe(["#help", "Hint Zeile", "#helpend"].join("\n"));
   });
 
   it("strips leading quote markers when #help/#helpend were quote-prefixed", () => {
-    const input = [
-      "> #help",
-      "> Hinweis",
-      "> #helpend",
-    ].join("\n");
+    const input = ["> #help", "> Hinweis", "> #helpend"].join("\n");
 
     const normalized = normalizeHelpBlockSource(input);
-    expect(normalized).toBe(
-      [
-        "#help",
-        "Hinweis",
-        "#helpend",
-      ].join("\n"),
-    );
+    expect(normalized).toBe(["#help", "Hinweis", "#helpend"].join("\n"));
   });
 });
 
@@ -670,28 +552,10 @@ describe("normalizeHorizontalRuleBlockSource", () => {
 
 describe("normalizeHorizontalRuleSpacingInMarkdown", () => {
   it("preserves leading frontmatter while normalizing body horizontal rules", () => {
-    const input = [
-      "---",
-      "Section: IUFS",
-      "Rank: SE1",
-      "---",
-      "A",
-      "---",
-      "B",
-    ].join("\n");
+    const input = ["---", "Section: IUFS", "Rank: SE1", "---", "A", "---", "B"].join("\n");
     const normalized = normalizeHorizontalRuleSpacingInMarkdown(input);
     expect(normalized).toBe(
-      [
-        "---",
-        "Section: IUFS",
-        "Rank: SE1",
-        "---",
-        "A",
-        "",
-        "---",
-        "",
-        "B",
-      ].join("\n"),
+      ["---", "Section: IUFS", "Rank: SE1", "---", "A", "", "---", "", "B"].join("\n"),
     );
     expect(normalized.startsWith("\n---")).toBe(false);
   });
@@ -717,41 +581,19 @@ describe("normalizeHorizontalRuleSpacingInMarkdown", () => {
 
 describe("normalizeQuotePrefixedHashLines", () => {
   it("removes leading blockquote markers from lines starting with #", () => {
-    const input = [
-      "> # Überschrift",
-      "> #helpHinweis",
-      ">> #text",
-      "> normal quote",
-    ].join("\n");
+    const input = ["> # Überschrift", "> #helpHinweis", ">> #text", "> normal quote"].join("\n");
 
     const normalized = normalizeQuotePrefixedHashLines(input);
     expect(normalized).toBe(
-      [
-        "# Überschrift",
-        "#helpHinweis",
-        "#text",
-        "> normal quote",
-      ].join("\n"),
+      ["# Überschrift", "#helpHinweis", "#text", "> normal quote"].join("\n"),
     );
   });
 
   it("keeps quote-prefixed # lines unchanged inside fenced code blocks", () => {
-    const input = [
-      "```md",
-      "> # heading in code",
-      "```",
-      "> # outside",
-    ].join("\n");
+    const input = ["```md", "> # heading in code", "```", "> # outside"].join("\n");
 
     const normalized = normalizeQuotePrefixedHashLines(input);
-    expect(normalized).toBe(
-      [
-        "```md",
-        "> # heading in code",
-        "```",
-        "# outside",
-      ].join("\n"),
-    );
+    expect(normalized).toBe(["```md", "> # heading in code", "```", "# outside"].join("\n"));
   });
 });
 
@@ -761,8 +603,8 @@ describe("markdownBlocks Canvas blocks", () => {
       "Before",
       "#canvas",
       "{",
-      "  \"nodes\": [],",
-      "  \"edges\": []",
+      '  "nodes": [],',
+      '  "edges": []',
       "}",
       "#canvasend",
       "After",
@@ -770,11 +612,7 @@ describe("markdownBlocks Canvas blocks", () => {
 
     const blocks = parseMarkdownBlocks(markdown);
 
-    expect(blocks.map((block) => block.kind)).toEqual([
-      "paragraph",
-      "canvas-block",
-      "paragraph",
-    ]);
+    expect(blocks.map((block) => block.kind)).toEqual(["paragraph", "canvas-block", "paragraph"]);
   });
 
   it("parses directive Canvas blocks with #endcanvas aliases", () => {
@@ -782,8 +620,8 @@ describe("markdownBlocks Canvas blocks", () => {
       "Before",
       "#canvas",
       "{",
-      "  \"nodes\": [],",
-      "  \"edges\": []",
+      '  "nodes": [],',
+      '  "edges": []',
       "}",
       "#endcanvas",
       "After",
@@ -791,19 +629,11 @@ describe("markdownBlocks Canvas blocks", () => {
 
     const blocks = parseMarkdownBlocks(markdown);
 
-    expect(blocks.map((block) => block.kind)).toEqual([
-      "paragraph",
-      "canvas-block",
-      "paragraph",
-    ]);
+    expect(blocks.map((block) => block.kind)).toEqual(["paragraph", "canvas-block", "paragraph"]);
   });
 
   it("parses fenced canvas code blocks as Canvas hybrid blocks", () => {
-    const markdown = [
-      "```canvas",
-      "{ \"nodes\": [], \"edges\": [] }",
-      "```",
-    ].join("\n");
+    const markdown = ["```canvas", '{ "nodes": [], "edges": [] }', "```"].join("\n");
 
     const blocks = parseMarkdownBlocks(markdown);
 

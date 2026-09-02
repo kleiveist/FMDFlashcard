@@ -88,9 +88,7 @@ export const SrToolsPanel = ({
         <select
           className="text-input"
           value={flashcardFilterMode}
-          onChange={(event) =>
-            setFlashcardFilterMode(event.target.value as FlashcardMode)
-          }
+          onChange={(event) => setFlashcardFilterMode(event.target.value as FlashcardMode)}
           aria-label="Select mode filter"
         >
           <option value="all">All</option>
@@ -138,9 +136,7 @@ export const SrToolsPanel = ({
             <button
               key={size}
               type="button"
-              className={`pill pill-button ${
-                spacedRepetitionPageSize === size ? "active" : ""
-              }`}
+              className={`pill pill-button ${spacedRepetitionPageSize === size ? "active" : ""}`}
               aria-pressed={spacedRepetitionPageSize === size}
               onClick={() => setSpacedRepetitionPageSize(size)}
             >

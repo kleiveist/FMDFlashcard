@@ -79,25 +79,16 @@ const clampDurationMinutes = (value: unknown, fallback: number) => {
   return Math.min(EXAM_POINTS_MAX_DURATION_MINUTES, normalized);
 };
 
-export const buildDefaultTaskPoints = (
-  taskCount: number,
-  maxTotalPoints: number,
-) => {
+export const buildDefaultTaskPoints = (taskCount: number, maxTotalPoints: number) => {
   if (taskCount <= 0) {
     return [];
   }
   const even = Math.floor(maxTotalPoints / taskCount);
   const remainder = maxTotalPoints % taskCount;
-  return Array.from({ length: taskCount }, (_, index) =>
-    even + (index < remainder ? 1 : 0),
-  );
+  return Array.from({ length: taskCount }, (_, index) => even + (index < remainder ? 1 : 0));
 };
 
-export const normalizeTaskPoints = (
-  value: unknown,
-  taskCount: number,
-  maxTotalPoints: number,
-) => {
+export const normalizeTaskPoints = (value: unknown, taskCount: number, maxTotalPoints: number) => {
   const defaults = buildDefaultTaskPoints(taskCount, maxTotalPoints);
   const raw = Array.isArray(value) ? value : [];
   const normalized: number[] = [];
@@ -113,22 +104,16 @@ export const normalizeTaskPoints = (
 };
 
 export const createDefaultTypeRules = (defaultPoints = 1): ExamPointsTypeRuleMap =>
-  AUTO_CARD_TYPES.reduce(
-    (acc, type) => {
-      acc[type] = {
-        points: clampNonNegative(defaultPoints, 1),
-        mode: "all-or-nothing",
-        penalty: 0,
-      };
-      return acc;
-    },
-    {} as ExamPointsTypeRuleMap,
-  );
+  AUTO_CARD_TYPES.reduce((acc, type) => {
+    acc[type] = {
+      points: clampNonNegative(defaultPoints, 1),
+      mode: "all-or-nothing",
+      penalty: 0,
+    };
+    return acc;
+  }, {} as ExamPointsTypeRuleMap);
 
-export const normalizeTypeRules = (
-  value: unknown,
-  fallbackPoints = 1,
-): ExamPointsTypeRuleMap => {
+export const normalizeTypeRules = (value: unknown, fallbackPoints = 1): ExamPointsTypeRuleMap => {
   const fallback = createDefaultTypeRules(fallbackPoints);
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return fallback;
@@ -154,13 +139,9 @@ const buildFallbackProfileId = (index: number) => `points-profile-${index + 1}`;
 const normalizeTimestamp = (value: unknown, fallback: string) =>
   typeof value === "string" && value.trim() ? value : fallback;
 
-export const normalizeProfileNameKey = (value: string) =>
-  value.trim().toLocaleLowerCase();
+export const normalizeProfileNameKey = (value: string) => value.trim().toLocaleLowerCase();
 
-export const normalizeExamPointsProfile = (
-  value: unknown,
-  index = 0,
-): ExamPointsProfile => {
+export const normalizeExamPointsProfile = (value: unknown, index = 0): ExamPointsProfile => {
   const now = new Date().toISOString();
   const candidate =
     value && typeof value === "object" && !Array.isArray(value)
@@ -185,7 +166,12 @@ export const normalizeExamPointsProfile = (
   const taskPoints = normalizeTaskPoints(candidate.taskPoints, taskCount, maxTotalPoints);
   const fallbackTypePoints =
     taskCount > 0
-      ? Math.max(1, Math.round(taskPoints.slice(0, taskCount).reduce((sum, points) => sum + points, 0) / taskCount))
+      ? Math.max(
+          1,
+          Math.round(
+            taskPoints.slice(0, taskCount).reduce((sum, points) => sum + points, 0) / taskCount,
+          ),
+        )
       : 1;
   const typeRules = normalizeTypeRules(candidate.typeRules, fallbackTypePoints);
   const createdAt = normalizeTimestamp(candidate.createdAt, now);
@@ -212,17 +198,13 @@ export const createEmptyExamPointsProfilesStore = (): ExamPointsProfilesStore =>
   profiles: [],
 });
 
-export const normalizeExamPointsProfilesStore = (
-  value: unknown,
-): ExamPointsProfilesStore => {
+export const normalizeExamPointsProfilesStore = (value: unknown): ExamPointsProfilesStore => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return createEmptyExamPointsProfilesStore();
   }
   const candidate = value as Partial<ExamPointsProfilesStore>;
   const rawProfiles = Array.isArray(candidate.profiles) ? candidate.profiles : [];
-  const profiles = rawProfiles.map((profile, index) =>
-    normalizeExamPointsProfile(profile, index),
-  );
+  const profiles = rawProfiles.map((profile, index) => normalizeExamPointsProfile(profile, index));
   const uniqueById = new Map<string, ExamPointsProfile>();
   profiles.forEach((profile) => {
     if (!uniqueById.has(profile.id)) {
@@ -235,10 +217,9 @@ export const normalizeExamPointsProfilesStore = (
       ? candidate.defaultProfileId
       : null;
   const defaultProfileId =
-    defaultProfileIdRaw &&
-    dedupedProfiles.some((profile) => profile.id === defaultProfileIdRaw)
+    defaultProfileIdRaw && dedupedProfiles.some((profile) => profile.id === defaultProfileIdRaw)
       ? defaultProfileIdRaw
-      : dedupedProfiles[0]?.id ?? null;
+      : (dedupedProfiles[0]?.id ?? null);
   return {
     schemaVersion: EXAM_POINTS_PROFILE_SCHEMA_VERSION,
     defaultProfileId,
@@ -339,8 +320,5 @@ export const getExamPointsProfileByName = (
     return null;
   }
   const normalized = normalizeProfileNameKey(name);
-  return (
-    profiles.find((profile) => normalizeProfileNameKey(profile.name) === normalized) ??
-    null
-  );
+  return profiles.find((profile) => normalizeProfileNameKey(profile.name) === normalized) ?? null;
 };

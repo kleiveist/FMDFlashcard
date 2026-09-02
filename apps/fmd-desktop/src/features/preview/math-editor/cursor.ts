@@ -23,13 +23,13 @@ export const moveCursorHorizontally = (
       const nextOffset = normalized.offset - 1;
       return extend
         ? {
-          rowPath: normalized.rowPath,
-          offset: nextOffset,
-          selection: {
-            start: normalized.selection?.start ?? normalized.offset,
-            end: nextOffset,
-          },
-        }
+            rowPath: normalized.rowPath,
+            offset: nextOffset,
+            selection: {
+              start: normalized.selection?.start ?? normalized.offset,
+              end: nextOffset,
+            },
+          }
         : { rowPath: normalized.rowPath, offset: nextOffset, selection: null };
     }
     const previousPath = getAdjacentSlotPath(root, normalized.rowPath, "previous");
@@ -51,13 +51,13 @@ export const moveCursorHorizontally = (
     const nextOffset = normalized.offset + 1;
     return extend
       ? {
-        rowPath: normalized.rowPath,
-        offset: nextOffset,
-        selection: {
-          start: normalized.selection?.start ?? normalized.offset,
-          end: nextOffset,
-        },
-      }
+          rowPath: normalized.rowPath,
+          offset: nextOffset,
+          selection: {
+            start: normalized.selection?.start ?? normalized.offset,
+            end: nextOffset,
+          },
+        }
       : { rowPath: normalized.rowPath, offset: nextOffset, selection: null };
   }
   const nextPath = getAdjacentSlotPath(root, normalized.rowPath, "next");
@@ -77,7 +77,11 @@ export const moveCursorVertically = (
   direction: "up" | "down",
 ): MathCursor => {
   const normalized = normalizeCursor(root, cursor);
-  const targetPath = getAdjacentSlotPath(root, normalized.rowPath, direction === "down" ? "next" : "previous");
+  const targetPath = getAdjacentSlotPath(
+    root,
+    normalized.rowPath,
+    direction === "down" ? "next" : "previous",
+  );
   const targetRow = locateRowByPath(root, targetPath)?.row;
   if (!targetRow) {
     return normalized;

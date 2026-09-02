@@ -8,12 +8,9 @@
 import type { MissingExamSetting } from "../settings/validateExamSettings";
 import type { ExamPointsProfile } from "../../lib/exam/pointsProfiles";
 
-const clampInteger = (value: number) =>
-  Number.isFinite(value) ? Math.floor(value) : 0;
+const clampInteger = (value: number) => (Number.isFinite(value) ? Math.floor(value) : 0);
 
-export const validatePointsProfile = (
-  profile: ExamPointsProfile | null,
-): MissingExamSetting[] => {
+export const validatePointsProfile = (profile: ExamPointsProfile | null): MissingExamSetting[] => {
   if (!profile) {
     return [
       {

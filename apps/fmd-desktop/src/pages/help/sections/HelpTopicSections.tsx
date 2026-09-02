@@ -20,12 +20,7 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import {
-  AppLanguage,
-  HelpTopic,
-  resolveList,
-  resolveText,
-} from "../helpContent";
+import { AppLanguage, HelpTopic, resolveList, resolveText } from "../helpContent";
 
 type HelpTopicSectionsProps = {
   activeTopic: HelpTopic;
@@ -48,18 +43,13 @@ export const HelpTopicSections = ({
     {activeTopic.sections.map((section) => {
       const bullets = resolveList(section.bullets, language);
       const examples = section.examples ?? [];
-      const sectionLabelClass =
-        section.tone === "help-block" ? "help-block-title" : "label";
+      const sectionLabelClass = section.tone === "help-block" ? "help-block-title" : "label";
       const sectionClassName =
-        section.tone === "help-block"
-          ? "help-detail-section help-block"
-          : "help-detail-section";
+        section.tone === "help-block" ? "help-detail-section help-block" : "help-detail-section";
       return (
         <div key={section.id} className={sectionClassName}>
           <div className="help-item-header">
-            <span className={sectionLabelClass}>
-              {resolveText(section.title, language)}
-            </span>
+            <span className={sectionLabelClass}>{resolveText(section.title, language)}</span>
           </div>
           {bullets.length > 0 ? (
             <ul className="help-list">
@@ -72,10 +62,7 @@ export const HelpTopicSections = ({
             <div className="help-examples">
               {examples.map((example) => {
                 const exampleTitle = resolveText(example.title, language);
-                const exampleDescription = resolveText(
-                  example.description,
-                  language,
-                );
+                const exampleDescription = resolveText(example.description, language);
                 const copyId = `example-${example.id}`;
                 const isCopied = copiedItemId === copyId;
                 return (
@@ -84,9 +71,7 @@ export const HelpTopicSections = ({
                       <div className="help-example-text">
                         <div className="help-example-title">{exampleTitle}</div>
                         {exampleDescription ? (
-                          <p className="help-example-description">
-                            {exampleDescription}
-                          </p>
+                          <p className="help-example-description">{exampleDescription}</p>
                         ) : null}
                       </div>
                       <button

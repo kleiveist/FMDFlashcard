@@ -13,16 +13,11 @@ import {
 } from "../preview/frontmatter";
 import { EXAM_POINTS_FRONTMATTER_KEY } from "../../lib/exam/pointsProfiles";
 
-const normalizeLineEnding = (value: "\n" | "\r\n" | string) =>
-  value === "\r\n" ? "\r\n" : "\n";
+const normalizeLineEnding = (value: "\n" | "\r\n" | string) => (value === "\r\n" ? "\r\n" : "\n");
 
 const serializeYamlString = (value: string) => `'${value.replace(/'/g, "''")}'`;
 
-const buildFrontmatterBlock = (
-  profileName: string,
-  lineEnding: "\n" | "\r\n",
-  body: string,
-) => {
+const buildFrontmatterBlock = (profileName: string, lineEnding: "\n" | "\r\n", body: string) => {
   const lines = [
     "---",
     `${EXAM_POINTS_FRONTMATTER_KEY}: ${serializeYamlString(profileName)}`,

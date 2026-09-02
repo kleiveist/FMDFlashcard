@@ -1,4 +1,3 @@
-
 /*
  * @file apps/fmd-desktop/src/styles/components/settings.css
  *
@@ -285,7 +284,6 @@
   grid-column: 1 / -1;
 }
 
-
 .exam-settings-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr);
@@ -535,7 +533,6 @@
   padding-top: 0;
 }
 
-
 .setting-subrow {
   display: flex;
   flex-direction: column;
@@ -759,7 +756,9 @@
   font-weight: 600;
   letter-spacing: 0.02em;
   cursor: default;
-  transition: border-color 0.2s ease, color 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease;
 }
 
 .shortcut-chip:focus-visible {
@@ -790,7 +789,9 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: border-color 0.2s ease, color 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease;
 }
 
 .shortcut-info-button:hover {
@@ -1026,7 +1027,9 @@
   border: 2px solid transparent;
   cursor: pointer;
   box-shadow: inset 0 0 0 1px var(--line-soft);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .accent-swatch:hover {

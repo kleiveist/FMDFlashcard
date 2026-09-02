@@ -114,8 +114,6 @@ export const SHORTCUT_COMMANDS: ShortcutCommand[] = [
   },
 ];
 
-export const SHORTCUTS_BY_ID = new Map(
-  SHORTCUT_COMMANDS.map((command) => [command.id, command]),
-);
+export const SHORTCUTS_BY_ID = new Map(SHORTCUT_COMMANDS.map((command) => [command.id, command]));
 
 export const getShortcutById = (id: string) => SHORTCUTS_BY_ID.get(id) ?? null;

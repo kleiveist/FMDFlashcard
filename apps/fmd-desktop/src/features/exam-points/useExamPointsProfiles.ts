@@ -17,10 +17,7 @@ import {
   type ExamPointsProfile,
   type ExamPointsProfilesStore,
 } from "../../lib/exam/pointsProfiles";
-import {
-  loadExamPointsProfileStore,
-  saveExamPointsProfileStore,
-} from "../user-vault/storage";
+import { loadExamPointsProfileStore, saveExamPointsProfileStore } from "../user-vault/storage";
 
 type LegacyPointsDefaults = {
   durationMinutes: number;
@@ -175,9 +172,7 @@ export const useExamPointsProfiles = ({
           return;
         }
         setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Points profiles could not be loaded.",
+          loadError instanceof Error ? loadError.message : "Points profiles could not be loaded.",
         );
       } finally {
         if (!cancelled) {
@@ -193,29 +188,27 @@ export const useExamPointsProfiles = ({
 
   useEffect(() => {
     const current = storeRef.current;
-    if (!selectedProfileId || !current.profiles.some((profile) => profile.id === selectedProfileId)) {
+    if (
+      !selectedProfileId ||
+      !current.profiles.some((profile) => profile.id === selectedProfileId)
+    ) {
       setSelectedProfileId(current.defaultProfileId);
     }
   }, [selectedProfileId, store]);
 
   const profiles = store.profiles;
   const defaultProfile = useMemo(
-    () =>
-      profiles.find((profile) => profile.id === store.defaultProfileId) ??
-      profiles[0] ??
-      null,
+    () => profiles.find((profile) => profile.id === store.defaultProfileId) ?? profiles[0] ?? null,
     [profiles, store.defaultProfileId],
   );
   const selectedProfile = useMemo(
-    () =>
-      profiles.find((profile) => profile.id === selectedProfileId) ??
-      defaultProfile ??
-      null,
+    () => profiles.find((profile) => profile.id === selectedProfileId) ?? defaultProfile ?? null,
     [defaultProfile, profiles, selectedProfileId],
   );
 
   const resolveProfileByName = useCallback(
-    (name: string | null | undefined) => getExamPointsProfileByName(storeRef.current.profiles, name),
+    (name: string | null | undefined) =>
+      getExamPointsProfileByName(storeRef.current.profiles, name),
     [],
   );
 
@@ -297,9 +290,7 @@ export const useExamPointsProfiles = ({
       const renamed = touchProfile(profile, { name: nextName });
       const nextStore: ExamPointsProfilesStore = {
         ...current,
-        profiles: current.profiles.map((entry) =>
-          entry.id === profileId ? renamed : entry,
-        ),
+        profiles: current.profiles.map((entry) => (entry.id === profileId ? renamed : entry)),
       };
       await persistStore(nextStore);
       return { ok: true, error: null, profile: renamed };
@@ -320,9 +311,7 @@ export const useExamPointsProfiles = ({
       const updated = touchProfile(profile, updater(profile));
       const nextStore: ExamPointsProfilesStore = {
         ...current,
-        profiles: current.profiles.map((entry) =>
-          entry.id === profileId ? updated : entry,
-        ),
+        profiles: current.profiles.map((entry) => (entry.id === profileId ? updated : entry)),
       };
       await persistStore(nextStore);
       return { ok: true, error: null, profile: updated };
@@ -343,7 +332,7 @@ export const useExamPointsProfiles = ({
       const nextProfiles = current.profiles.filter((entry) => entry.id !== profileId);
       const nextDefaultId =
         current.defaultProfileId === profileId
-          ? nextProfiles[0]?.id ?? null
+          ? (nextProfiles[0]?.id ?? null)
           : current.defaultProfileId;
       const nextStore: ExamPointsProfilesStore = {
         ...current,

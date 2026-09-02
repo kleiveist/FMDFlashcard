@@ -8,10 +8,7 @@
 import { useCallback, useMemo, useState, type ChangeEvent } from "react";
 import type { UserVaultState } from "../../features/user-vault/useUserVault";
 import { normalizeVaultPath, vaultBaseName } from "../../lib/path";
-import {
-  UserRegistryControls,
-  type UserRegistryControlsProps,
-} from "../UserToolsPanel";
+import { UserRegistryControls, type UserRegistryControlsProps } from "../UserToolsPanel";
 import { SrDeleteModal } from "../../pages/spaced-repetition/components/SrDeleteModal";
 import { type SettingsLanguage, tSettings } from "../../features/settings/settingsI18n";
 
@@ -29,11 +26,7 @@ type ActiveVaultSectionProps = {
   selection: ProfileSetupVaultSelection;
 };
 
-export const ActiveVaultSection = ({
-  language,
-  userVault,
-  selection,
-}: ActiveVaultSectionProps) => {
+export const ActiveVaultSection = ({ language, userVault, selection }: ActiveVaultSectionProps) => {
   const [isSwitching, setIsSwitching] = useState(false);
   const normalizedActiveVaultPath = normalizeVaultPath(selection.activeVaultPath ?? "");
 
@@ -93,9 +86,7 @@ export const ActiveVaultSection = ({
 
   return (
     <div className="setting-row">
-      <span className="label">
-        {tSettings(language, "settings.profile.activeVaultWallet")}
-      </span>
+      <span className="label">{tSettings(language, "settings.profile.activeVaultWallet")}</span>
       <div className="setting-inline">
         <select
           className="text-input"
@@ -167,9 +158,7 @@ export const ProfileSourceSection = ({
         {tSettings(language, "settings.profile.source.syncProvider")}
       </button>
     </div>
-    <span className="helper-text">
-      {tSettings(language, "settings.profile.source.helper")}
-    </span>
+    <span className="helper-text">{tSettings(language, "settings.profile.source.helper")}</span>
   </div>
 );
 
@@ -210,12 +199,7 @@ export const ProfileRootSection = ({
       <span className="label">{resolvedLabel}</span>
       <div className="setting-inline">
         <span className="value path-value">{rootPath ?? "-"}</span>
-        <button
-          type="button"
-          className="ghost small"
-          onClick={handlePickPath}
-          disabled={!canPick}
-        >
+        <button type="button" className="ghost small" onClick={handlePickPath} disabled={!canPick}>
           {tSettings(language, "settings.profile.root.change")}
         </button>
       </div>
@@ -245,8 +229,7 @@ export const UserListSection = ({
   );
   const deleteTargetName = selectedUser?.name ?? "";
   const deleteInputValue = deleteConfirmInput.trim();
-  const canConfirmDelete =
-    Boolean(deleteTargetName) && deleteInputValue === deleteTargetName;
+  const canConfirmDelete = Boolean(deleteTargetName) && deleteInputValue === deleteTargetName;
   const hasSelection = Boolean(spacedRepetition.spacedRepetitionSelectedUserId);
   const trimmedNewUserName = spacedRepetition.spacedRepetitionNewUserName.trim();
   const disableCreate = userVault.isBusy || !trimmedNewUserName;
@@ -324,7 +307,10 @@ const resolveProfileStatus = (
   const hasRoot = userVault.status === "idle" && Boolean(userVault.resolvedPath);
   if (spacedRepetition && hasRoot) {
     if (!spacedRepetition.spacedRepetitionSelectedUserId) {
-      return { message: tSettings(language, "settings.profile.status.noUserSelected"), tone: "info" };
+      return {
+        message: tSettings(language, "settings.profile.status.noUserSelected"),
+        tone: "info",
+      };
     }
     if (!spacedRepetition.spacedRepetitionActiveUser) {
       return { message: tSettings(language, "settings.profile.status.noActiveUser"), tone: "info" };
@@ -364,9 +350,7 @@ export const ProfileStatusSection = ({
       {status ? (
         <div className="setting-row">
           <span className="label">{resolvedLabel}</span>
-          <span
-            className={`helper-text ${status.tone === "error" ? "error-text" : ""}`}
-          >
+          <span className={`helper-text ${status.tone === "error" ? "error-text" : ""}`}>
             {status.message}
           </span>
         </div>
@@ -397,17 +381,9 @@ export const ProfileSetupView = ({
   return (
     <>
       {showActiveVault ? (
-        <ActiveVaultSection
-          language={language}
-          userVault={userVault}
-          selection={vaultSelection}
-        />
+        <ActiveVaultSection language={language} userVault={userVault} selection={vaultSelection} />
       ) : null}
-      <ProfileSourceSection
-        language={language}
-        userVault={userVault}
-        autoFocus={autoFocusSource}
-      />
+      <ProfileSourceSection language={language} userVault={userVault} autoFocus={autoFocusSource} />
       <ProfileRootSection
         language={language}
         userVault={userVault}

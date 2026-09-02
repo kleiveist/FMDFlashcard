@@ -54,11 +54,7 @@ const computeDeleteContentForward = (
   return value.slice(0, selectionStart) + value.slice(selectionStart + 1);
 };
 
-const deleteInputTypes = new Set([
-  "deleteContentBackward",
-  "deleteContentForward",
-  "deleteByCut",
-]);
+const deleteInputTypes = new Set(["deleteContentBackward", "deleteContentForward", "deleteByCut"]);
 
 export const useMobileSafeInput = <T extends InputTarget>({
   value,
@@ -141,26 +137,15 @@ export const useMobileSafeInput = <T extends InputTarget>({
         const target = event.currentTarget;
         const selectionStart = target.selectionStart;
         const selectionEnd = target.selectionEnd;
-        if (
-          typeof selectionStart === "number" &&
-          typeof selectionEnd === "number"
-        ) {
+        if (typeof selectionStart === "number" && typeof selectionEnd === "number") {
           let nextValue = target.value;
           if (nativeEvent.inputType === "deleteContentBackward") {
-            nextValue = computeDeleteContentBackward(
-              target.value,
-              selectionStart,
-              selectionEnd,
-            );
+            nextValue = computeDeleteContentBackward(target.value, selectionStart, selectionEnd);
           } else if (
             nativeEvent.inputType === "deleteContentForward" ||
             nativeEvent.inputType === "deleteByCut"
           ) {
-            nextValue = computeDeleteContentForward(
-              target.value,
-              selectionStart,
-              selectionEnd,
-            );
+            nextValue = computeDeleteContentForward(target.value, selectionStart, selectionEnd);
           }
           if (nextValue !== value) {
             markEditing();

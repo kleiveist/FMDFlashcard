@@ -53,8 +53,7 @@ const NAME_FORBIDDEN_PATTERN = /[\\/]/;
 
 const normalizeNewName = (value: string) => value.trim();
 
-const ensureMarkdownExtension = (value: string) =>
-  /\.md$/i.test(value) ? value : `${value}.md`;
+const ensureMarkdownExtension = (value: string) => (/\.md$/i.test(value) ? value : `${value}.md`);
 
 const ensureUniqueName = (value: string, existing: Set<string>) => {
   const trimmed = normalizeNewName(value);
@@ -113,10 +112,7 @@ type FileListProps = {
   listState: LoadState;
   onClearSelection?: () => void;
   onRescanVault?: (source?: string) => Promise<boolean>;
-  onFileCreated?: (
-    file: VaultFile,
-    meta: { origin: "new-button" | "context-menu" },
-  ) => void;
+  onFileCreated?: (file: VaultFile, meta: { origin: "new-button" | "context-menu" }) => void;
   onSelectFile: (
     file: VaultFile,
     options?: {
@@ -155,9 +151,7 @@ export const FileList = ({
   const [createName, setCreateName] = useState(DEFAULT_FILE_NAME);
   const [createError, setCreateError] = useState("");
   const [createDirPath, setCreateDirPath] = useState("");
-  const [createOrigin, setCreateOrigin] = useState<"new-button" | "context-menu">(
-    "context-menu",
-  );
+  const [createOrigin, setCreateOrigin] = useState<"new-button" | "context-menu">("context-menu");
   const [isCreating, setIsCreating] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<VaultFile | null>(null);
@@ -170,9 +164,7 @@ export const FileList = ({
   } | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [renameError, setRenameError] = useState("");
-  const [renameRange, setRenameRange] = useState<{ start: number; end: number } | null>(
-    null,
-  );
+  const [renameRange, setRenameRange] = useState<{ start: number; end: number } | null>(null);
   const [isRenaming, setIsRenaming] = useState(false);
 
   const closeContextMenu = useCallback(() => {
@@ -447,32 +439,31 @@ export const FileList = ({
     vaultPath,
   ]);
 
-  const { handleCancel: handleDeleteCancel, handleConfirm: handleDeleteConfirm } =
-    useMemo(
-      () =>
-        buildVaultDeleteHandlers({
-          vaultPath,
-          deleteTarget,
-          selectedFile,
-          isDeleting,
-          invokeDelete,
-          onRescanVault: handleRescan,
-          onClose: closeDeleteModal,
-          onClearSelection,
-          setError: setDeleteError,
-          setIsDeleting,
-        }),
-      [
-        closeDeleteModal,
-        deleteTarget,
-        handleRescan,
-        invokeDelete,
-        isDeleting,
-        onClearSelection,
-        selectedFile,
+  const { handleCancel: handleDeleteCancel, handleConfirm: handleDeleteConfirm } = useMemo(
+    () =>
+      buildVaultDeleteHandlers({
         vaultPath,
-      ],
-    );
+        deleteTarget,
+        selectedFile,
+        isDeleting,
+        invokeDelete,
+        onRescanVault: handleRescan,
+        onClose: closeDeleteModal,
+        onClearSelection,
+        setError: setDeleteError,
+        setIsDeleting,
+      }),
+    [
+      closeDeleteModal,
+      deleteTarget,
+      handleRescan,
+      invokeDelete,
+      isDeleting,
+      onClearSelection,
+      selectedFile,
+      vaultPath,
+    ],
+  );
 
   const handleNoteKeyDown = useCallback(
     (event: KeyboardEvent<HTMLElement>) => {
@@ -503,11 +494,7 @@ export const FileList = ({
   const fileTarget = menuTarget?.kind === "file" ? menuTarget.file : null;
   const portalTarget = typeof document === "undefined" ? null : document.body;
   const contextMenuLayer = contextMenu ? (
-    <div
-      className="context-menu-backdrop"
-      role="presentation"
-      onMouseDown={closeContextMenu}
-    >
+    <div className="context-menu-backdrop" role="presentation" onMouseDown={closeContextMenu}>
       <div
         ref={menuRef}
         className="context-menu"
@@ -577,9 +564,7 @@ export const FileList = ({
             <span className="note-title">Note</span>
             <span className="muted note-meta">{fileCountLabel}</span>
           </span>
-          {listState === "loading" ? (
-            <span className="chip note-meta">Scanne...</span>
-          ) : null}
+          {listState === "loading" ? <span className="chip note-meta">Scanne...</span> : null}
         </button>
       )}
       <div
@@ -651,10 +636,9 @@ export const FileList = ({
                     onClick={(event) =>
                       onSelectFile(file, {
                         openInNewTab: event.ctrlKey || event.metaKey,
-                      })}
-                    onContextMenu={(event) =>
-                      openContextMenu(event, { kind: "file", file })
+                      })
                     }
+                    onContextMenu={(event) => openContextMenu(event, { kind: "file", file })}
                   >
                     <span className="file-name">{file.relative_path}</span>
                   </button>

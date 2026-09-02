@@ -14,11 +14,7 @@ import {
   updateFrontmatterProperty,
 } from "../frontmatter";
 import { type DatabaseFieldType } from "./database-types";
-import {
-  normalizeDateTimeValue,
-  normalizeDateValue,
-  normalizeTimeValue,
-} from "./database-time";
+import { normalizeDateTimeValue, normalizeDateValue, normalizeTimeValue } from "./database-time";
 
 export type DatabaseFrontmatterUpsertAction = "added" | "updated" | "skipped" | "failed";
 
@@ -229,9 +225,9 @@ const toTemporalStringOrNull = (value: DatabaseRecordFieldDraftValue): string | 
   if (!trimmed) {
     return null;
   }
-  return normalizeDateTimeValue(trimmed) ??
-    normalizeDateValue(trimmed) ??
-    normalizeTimeValue(trimmed);
+  return (
+    normalizeDateTimeValue(trimmed) ?? normalizeDateValue(trimmed) ?? normalizeTimeValue(trimmed)
+  );
 };
 
 const toPercentStringOrNull = (value: DatabaseRecordFieldDraftValue): string | null => {
@@ -248,9 +244,7 @@ const toPercentStringOrNull = (value: DatabaseRecordFieldDraftValue): string | n
   if (!trimmed) {
     return null;
   }
-  const normalized = trimmed.endsWith("%")
-    ? trimmed.slice(0, -1).trim()
-    : trimmed;
+  const normalized = trimmed.endsWith("%") ? trimmed.slice(0, -1).trim() : trimmed;
   if (!normalized) {
     return null;
   }
@@ -441,13 +435,8 @@ export const coerceDatabaseRecordFieldValue = (
 
   if (type === "status") {
     const statusCode = toStatusCodeOrNull(value);
-    const hasUserInput = typeof value === "string"
-      ? value.trim().length > 0
-      : value !== null;
-    if (
-      hasUserInput &&
-      !statusCode
-    ) {
+    const hasUserInput = typeof value === "string" ? value.trim().length > 0 : value !== null;
+    if (hasUserInput && !statusCode) {
       return {
         kind: "text",
         typedValue: null,
@@ -474,11 +463,7 @@ export const coerceDatabaseRecordFieldValue = (
     };
   }
 
-  const text = value === null
-    ? null
-    : typeof value === "string"
-    ? value
-    : String(value);
+  const text = value === null ? null : typeof value === "string" ? value : String(value);
   return {
     kind: "text",
     typedValue: text,
@@ -542,9 +527,10 @@ export const upsertFrontmatterAttributeInMarkdown = ({
       markdown,
       key: existing.key,
       kind,
-      value: type === "unit"
-        ? toUnitNumber(initialValue)
-        : parseFrontmatterValueForKind(initialValue, kind),
+      value:
+        type === "unit"
+          ? toUnitNumber(initialValue)
+          : parseFrontmatterValueForKind(initialValue, kind),
     });
 
     return {
@@ -559,9 +545,10 @@ export const upsertFrontmatterAttributeInMarkdown = ({
     markdown,
     key: nextKey,
     kind,
-    value: type === "unit"
-      ? stringifyAddDraftValue(toUnitNumber(initialValue))
-      : normalizeDraftStringForAdd(initialValue, kind),
+    value:
+      type === "unit"
+        ? stringifyAddDraftValue(toUnitNumber(initialValue))
+        : normalizeDraftStringForAdd(initialValue, kind),
   });
 
   return {
@@ -649,9 +636,7 @@ const defaultReadFile = async (path: string) => invoke<string>("read_text_file",
 const defaultWriteFile = async (path: string, contents: string) =>
   invoke<void>("write_text_file", { path, contents });
 
-export const upsertDatabaseRecordField = async (
-  params: UpsertDatabaseRecordFieldParams,
-) => {
+export const upsertDatabaseRecordField = async (params: UpsertDatabaseRecordFieldParams) => {
   const readFile = params.io?.readFile ?? defaultReadFile;
   const writeFile = params.io?.writeFile ?? defaultWriteFile;
 

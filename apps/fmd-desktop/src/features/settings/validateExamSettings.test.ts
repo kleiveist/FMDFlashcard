@@ -6,10 +6,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import {
-  validateExamSettings,
-  type ExamSettingsValidationInput,
-} from "./validateExamSettings";
+import { validateExamSettings, type ExamSettingsValidationInput } from "./validateExamSettings";
 
 const buildSettings = (
   overrides: Partial<ExamSettingsValidationInput>,

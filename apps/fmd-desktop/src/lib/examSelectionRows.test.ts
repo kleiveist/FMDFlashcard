@@ -20,15 +20,9 @@ describe("examSelectionRows", () => {
   });
 
   it("normalizes rows by removing duplicates, invalid paths, and extra rows", () => {
-    const rows = normalizeExamSelectionRows(
-      [
-        ["a", "b", "a"],
-        ["x", "c"],
-        ["d"],
-        ["e", "f"],
-      ],
-      { validPaths: new Set(["a", "b", "c", "d", "e", "f"]) },
-    );
+    const rows = normalizeExamSelectionRows([["a", "b", "a"], ["x", "c"], ["d"], ["e", "f"]], {
+      validPaths: new Set(["a", "b", "c", "d", "e", "f"]),
+    });
     expect(rows).toEqual([["a", "b"], ["c"], ["d", "e", "f"]]);
   });
 
@@ -89,18 +83,12 @@ describe("examSelectionRows", () => {
   });
 
   it("keeps deterministic flatten order top-to-bottom and left-to-right", () => {
-    const rows = [
-      ["a", "b"],
-      ["c"],
-      ["d", "e", "f"],
-    ];
+    const rows = [["a", "b"], ["c"], ["d", "e", "f"]];
     expect(flattenExamSelectionRows(rows)).toEqual(["a", "b", "c", "d", "e", "f"]);
   });
 
   it("compares rows deeply", () => {
-    expect(areExamSelectionRowsEqual([["a"], ["b", "c"]], [["a"], ["b", "c"]])).toBe(
-      true,
-    );
+    expect(areExamSelectionRowsEqual([["a"], ["b", "c"]], [["a"], ["b", "c"]])).toBe(true);
     expect(areExamSelectionRowsEqual([["a"], ["b"]], [["a", "b"]])).toBe(false);
   });
 });

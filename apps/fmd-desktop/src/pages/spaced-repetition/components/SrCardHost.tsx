@@ -70,16 +70,8 @@ type SrCardHostProps = {
     validTokenIds: Set<string>,
     dragBlankIds: Set<string>,
   ) => void;
-  handleCompositeClozeTokenRemove: (
-    cardIndex: number,
-    partIndex: number,
-    blankId: string,
-  ) => void;
-  handleCompositeTextInputChange: (
-    cardIndex: number,
-    partIndex: number,
-    value: string,
-  ) => void;
+  handleCompositeClozeTokenRemove: (cardIndex: number, partIndex: number, blankId: string) => void;
+  handleCompositeTextInputChange: (cardIndex: number, partIndex: number, value: string) => void;
   handleCompositeTextCheck: (cardIndex: number, partIndex: number) => void;
   handleCompositeSelfGrade: (
     cardIndex: number,
@@ -87,11 +79,7 @@ type SrCardHostProps = {
     grade: "correct" | "incorrect",
   ) => void;
   handleOptionSelect: (cardIndex: number, keys: string[]) => void;
-  handleTrueFalseSelect: (
-    cardIndex: number,
-    itemId: string,
-    value: "wahr" | "falsch",
-  ) => void;
+  handleTrueFalseSelect: (cardIndex: number, itemId: string, value: "wahr" | "falsch") => void;
   handleClozeInputChange: (cardIndex: number, blankId: string, value: string) => void;
   handleClozeTokenDrop: (
     event: DragEvent<HTMLElement>,
@@ -109,10 +97,7 @@ type SrCardHostProps = {
     canSubmit: boolean,
     selfGrade?: FlashcardSelfGrade,
   ) => void;
-  handleClozeTokenDragStart: (
-    event: DragEvent<HTMLElement>,
-    payload: ClozeDragPayload,
-  ) => void;
+  handleClozeTokenDragStart: (event: DragEvent<HTMLElement>, payload: ClozeDragPayload) => void;
   handleClozeBlankDragOver: (event: DragEvent<HTMLElement>) => void;
   spacedRepetitionCanGoBack: boolean;
   spacedRepetitionCanGoNext: boolean;
@@ -163,10 +148,7 @@ export const SrCardHost = ({
   prevShortcutTitle,
   nextShortcutTitle,
 }: SrCardHostProps) => {
-  const renderEntry = (
-    entry: SrEntry,
-    options: { preview?: boolean; keyPrefix?: string } = {},
-  ) => {
+  const renderEntry = (entry: SrEntry, options: { preview?: boolean; keyPrefix?: string } = {}) => {
     const card = entry.card;
     const cardIndex = entry.cardIndex;
     const submitted = !!spacedRepetitionSubmissions[cardIndex];
@@ -174,10 +156,9 @@ export const SrCardHost = ({
     const keyPrefix = options.keyPrefix ?? "flashcard";
     const entryHelpEnabled = helpEnabled;
     const entryHelpText = card.helpText;
-    const resultHeaderAction =
-      !renderResultHeaderAction
-        ? null
-        : (renderResultHeaderAction(cardIndex, submitted) ?? null);
+    const resultHeaderAction = !renderResultHeaderAction
+      ? null
+      : (renderResultHeaderAction(cardIndex, submitted) ?? null);
 
     if (card.kind === "composite") {
       return (
@@ -221,9 +202,7 @@ export const SrCardHost = ({
           helpText={entryHelpText}
           helpEnabled={entryHelpEnabled}
           resultHeaderAction={resultHeaderAction}
-          responses={
-            spacedRepetitionClozeResponses[cardIndex] ?? EMPTY_CLOZE_RESPONSES
-          }
+          responses={spacedRepetitionClozeResponses[cardIndex] ?? EMPTY_CLOZE_RESPONSES}
           onInputChange={handleClozeInputChange}
           onTokenDrop={handleClozeTokenDrop}
           onTokenRemove={handleClozeTokenRemove}

@@ -18,10 +18,7 @@ import {
   type DatabasePieColorSpectrum,
   type DatabaseRecord,
 } from "../database-types";
-import {
-  getDatabasePieGroupLabels,
-  normalizeDatabasePieExcludedValues,
-} from "../pie-values";
+import { getDatabasePieGroupLabels, normalizeDatabasePieExcludedValues } from "../pie-values";
 import {
   formatMonitoringCompactText,
   renderMonitoringValue,
@@ -104,7 +101,9 @@ const normalizeDatabasePieColorSpectrum = (
   }
 };
 
-export const resolveDatabasePieLayoutProfile = (containerWidth: number): DatabasePieLayoutProfile => {
+export const resolveDatabasePieLayoutProfile = (
+  containerWidth: number,
+): DatabasePieLayoutProfile => {
   const safeWidth = containerWidth > 0 ? containerWidth : PIE_DEFAULT_WIDTH;
   const innerWidth = Math.max(140, safeWidth - PIE_VIEW_HORIZONTAL_PADDING);
   const isStacked = innerWidth < PIE_STACK_BREAKPOINT;
@@ -117,9 +116,7 @@ export const resolveDatabasePieLayoutProfile = (containerWidth: number): Databas
   const chartLowerBound = Math.min(PIE_CHART_MIN_SIZE, chartUpperBound);
   const chartSize = Math.round(clampNumber(chartTarget, chartLowerBound, chartUpperBound));
 
-  const legendTarget = isStacked
-    ? innerWidth
-    : innerWidth - chartSize - PIE_VIEW_GAP;
+  const legendTarget = isStacked ? innerWidth : innerWidth - chartSize - PIE_VIEW_GAP;
   const legendUpperBound = Math.min(PIE_LEGEND_MAX_INLINE_SIZE, innerWidth);
   const legendLowerBound = Math.min(PIE_LEGEND_MIN_INLINE_SIZE, legendUpperBound);
   const legendMinInlineSize = Math.round(
@@ -133,14 +130,18 @@ export const resolveDatabasePieLayoutProfile = (containerWidth: number): Databas
   };
 };
 
-const getRecordValueByField = (record: DatabaseRecord, field: string): DatabaseNormalizedFieldValue => {
+const getRecordValueByField = (
+  record: DatabaseRecord,
+  field: string,
+): DatabaseNormalizedFieldValue => {
   if (field in record.normalizedFields) {
     return record.normalizedFields[field] ?? null;
   }
   const normalizedField = toLower(field);
-  const matchedKey = Object.keys(record.normalizedFields)
-    .find((key) => toLower(key) === normalizedField);
-  return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
+  const matchedKey = Object.keys(record.normalizedFields).find(
+    (key) => toLower(key) === normalizedField,
+  );
+  return matchedKey ? (record.normalizedFields[matchedKey] ?? null) : null;
 };
 
 const toAggregatableNumber = (
@@ -272,10 +273,7 @@ const resolveStandardPieAccentColor = (index: number) => {
   return `color-mix(in srgb, ${accentToken} ${accentWeight}%, var(--db-surface-raised))`;
 };
 
-const resolvePieAccentColor = (
-  index: number,
-  spectrum: DatabasePieColorSpectrum,
-) => {
+const resolvePieAccentColor = (index: number, spectrum: DatabasePieColorSpectrum) => {
   if (spectrum === "standard") {
     return resolveStandardPieAccentColor(index);
   }
@@ -316,7 +314,7 @@ export const DatabasePieView = ({
       if (!Number.isFinite(width) || width <= 0) {
         return;
       }
-      setViewWidth((previous) => Math.abs(previous - width) >= 1 ? width : previous);
+      setViewWidth((previous) => (Math.abs(previous - width) >= 1 ? width : previous));
     };
 
     const measureFromDom = () => {
@@ -343,10 +341,7 @@ export const DatabasePieView = ({
     };
   }, []);
 
-  const layoutProfile = useMemo(
-    () => resolveDatabasePieLayoutProfile(viewWidth),
-    [viewWidth],
-  );
+  const layoutProfile = useMemo(() => resolveDatabasePieLayoutProfile(viewWidth), [viewWidth]);
   const scaledChartSize = useMemo(
     () =>
       Math.round(
@@ -548,15 +543,15 @@ export const DatabasePieView = ({
       return new Map<string, Array<{ key: string; label: string; text: string }>>();
     }
 
-    const excludedKeys = new Set<string>([
-      groupAttribute.key,
-      ...(aggregateAttribute ? [aggregateAttribute.key] : []),
-      "Exam",
-    ].map((key) => toLower(key)));
+    const excludedKeys = new Set<string>(
+      [groupAttribute.key, ...(aggregateAttribute ? [aggregateAttribute.key] : []), "Exam"].map(
+        (key) => toLower(key),
+      ),
+    );
 
-    const selectedProperties = visibleProperties
-      .filter((property) =>
-        !excludedKeys.has(toLower(property.key)) && !isExamFieldKey(property.key));
+    const selectedProperties = visibleProperties.filter(
+      (property) => !excludedKeys.has(toLower(property.key)) && !isExamFieldKey(property.key),
+    );
 
     const detailMap = new Map<string, Array<{ key: string; label: string; text: string }>>();
     buckets.forEach((bucket) => {
@@ -589,9 +584,8 @@ export const DatabasePieView = ({
           return {
             key: property.key,
             label: property.label || property.key,
-            text: remaining > 0
-              ? `${sample.join(", ")} (+${remaining} weitere)`
-              : sample.join(", "),
+            text:
+              remaining > 0 ? `${sample.join(", ")} (+${remaining} weitere)` : sample.join(", "),
           };
         })
         .filter((entry): entry is { key: string; label: string; text: string } => Boolean(entry));
@@ -601,10 +595,7 @@ export const DatabasePieView = ({
     return detailMap;
   }, [aggregateAttribute, buckets, groupAttribute, monitoringProfiles, visibleProperties]);
 
-  const total = useMemo(
-    () => buckets.reduce((sum, bucket) => sum + bucket.value, 0),
-    [buckets],
-  );
+  const total = useMemo(() => buckets.reduce((sum, bucket) => sum + bucket.value, 0), [buckets]);
 
   if (validationError) {
     return <div className="database-view-empty">{validationError}</div>;
@@ -628,10 +619,12 @@ export const DatabasePieView = ({
     <div
       ref={pieViewRef}
       className={`database-pie-view${layoutProfile.isStacked ? " is-stacked" : ""}`}
-      style={{
-        "--db-pie-chart-size": `${scaledChartSize}px`,
-        "--db-pie-legend-min-inline-size": `${scaledLegendMinInlineSize}px`,
-      } as CSSProperties}
+      style={
+        {
+          "--db-pie-chart-size": `${scaledChartSize}px`,
+          "--db-pie-legend-min-inline-size": `${scaledLegendMinInlineSize}px`,
+        } as CSSProperties
+      }
     >
       <div className={`database-pie-chart-wrap${isPieResizeDragging ? " is-resizing" : ""}`}>
         <svg
@@ -703,9 +696,7 @@ export const DatabasePieView = ({
               <span className="database-pie-legend-value">
                 {formatBucketValue(bucket.value, aggregate)}
               </span>
-              <span className="database-pie-legend-percent">
-                {percent.toFixed(1)}%
-              </span>
+              <span className="database-pie-legend-percent">{percent.toFixed(1)}%</span>
               {details.length > 0 ? (
                 <div className="database-pie-legend-details">
                   {details.map((detail) => (

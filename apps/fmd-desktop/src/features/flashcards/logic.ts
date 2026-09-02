@@ -61,10 +61,7 @@ type ClozeBlankSegment = Extract<ClozeSegment, { type: "blank" }>;
 
 export const CLOZE_TOKEN_DRAG_TYPE = "application/x-cloze-token";
 
-export const setClozeDragPayload = (
-  event: DragEvent<HTMLElement>,
-  payload: ClozeDragPayload,
-) => {
+export const setClozeDragPayload = (event: DragEvent<HTMLElement>, payload: ClozeDragPayload) => {
   startInternalDrag(event, {
     channel: DRAG_CHANNELS.CLOZE_TOKEN,
     payload,
@@ -126,7 +123,7 @@ export const handleClozeBlankDragOver = (event: DragEvent<HTMLElement>) => {
   setDropEffectSafe(event, "move");
 };
 
-export const shuffleFlashcards = <T,>(cards: T[]) => {
+export const shuffleFlashcards = <T>(cards: T[]) => {
   const shuffled = [...cards];
   for (let i = shuffled.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -206,10 +203,7 @@ export const isTrueFalseCardCorrect = (
   return card.items.every((item) => selections[item.id] === item.correct);
 };
 
-export const isFlashcardPartComplete = (
-  part: FlashcardPart,
-  state: CompositePartState = {},
-) => {
+export const isFlashcardPartComplete = (part: FlashcardPart, state: CompositePartState = {}) => {
   if (part.kind === "multiple-choice") {
     return (state.selections ?? []).length > 0;
   }
@@ -281,16 +275,13 @@ export const evaluateCompositeCardResult = (
   }
 
   const hasPendingQa = qaParts.some(
-    (entry) =>
-      entry.state.selfGrade !== "correct" && entry.state.selfGrade !== "incorrect",
+    (entry) => entry.state.selfGrade !== "correct" && entry.state.selfGrade !== "incorrect",
   );
   if (hasPendingQa) {
     return "pending";
   }
 
-  const allQaCorrect = qaParts.every(
-    (entry) => entry.state.selfGrade === "correct",
-  );
+  const allQaCorrect = qaParts.every((entry) => entry.state.selfGrade === "correct");
 
   return autoCorrect && allQaCorrect ? "correct" : "incorrect";
 };

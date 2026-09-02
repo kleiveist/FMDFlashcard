@@ -22,7 +22,7 @@ const stripWrappingQuotes = (value: string) => {
   }
   const first = trimmed[0];
   const last = trimmed[trimmed.length - 1];
-  if ((first === "'" && last === "'") || (first === "\"" && last === "\"")) {
+  if ((first === "'" && last === "'") || (first === '"' && last === '"')) {
     return trimmed.slice(1, -1).trim();
   }
   return trimmed;
@@ -187,7 +187,8 @@ export const resolveVaultImageSrc = ({
 }) => {
   const normalizedAbsolute = absolutePath?.trim() ?? "";
   const normalizedRelative = normalizeVaultAssetRelativePath(relativePath) ?? "";
-  const resolvedAbsolute = normalizedAbsolute ||
+  const resolvedAbsolute =
+    normalizedAbsolute ||
     (vaultPath && normalizedRelative
       ? joinVaultAndRelativePath(vaultPath, normalizedRelative)
       : "");

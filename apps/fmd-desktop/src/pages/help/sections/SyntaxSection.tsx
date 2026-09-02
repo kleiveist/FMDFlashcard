@@ -20,12 +20,7 @@
  * - Aenderungen beeinflussen den Ablauf der Seite und deren Unterbereiche.
  */
 
-import {
-  AppLanguage,
-  LocalizedText,
-  SyntaxEntry,
-  resolveText,
-} from "../helpContent";
+import { AppLanguage, LocalizedText, SyntaxEntry, resolveText } from "../helpContent";
 
 type SyntaxSectionProps = {
   language: AppLanguage;
@@ -75,9 +70,7 @@ export const SyntaxSection = ({
       {hasOverview ? (
         <div className="help-detail-section help-block">
           <div className="help-item-header">
-            <span className="help-block-title">
-              {resolveText(syntaxOverview.title, language)}
-            </span>
+            <span className="help-block-title">{resolveText(syntaxOverview.title, language)}</span>
           </div>
           {overviewBullets.length > 0 ? (
             <ul className="help-list">
@@ -93,9 +86,7 @@ export const SyntaxSection = ({
           {syntaxEntries.map((entry) => {
             const isActive = entry.id === activeSyntax?.id;
             const entryTitle = resolveText(entry.title, language);
-            const entrySnippet = entry.snippet
-              ? resolveText(entry.snippet, language)
-              : "";
+            const entrySnippet = entry.snippet ? resolveText(entry.snippet, language) : "";
             return (
               <button
                 key={entry.id}
@@ -116,12 +107,8 @@ export const SyntaxSection = ({
                     ))}
                   </div>
                 </div>
-                <div className="help-syntax-card-rule">
-                  {resolveText(entry.keyRule, language)}
-                </div>
-                {entrySnippet ? (
-                  <pre className="help-syntax-snippet">{entrySnippet}</pre>
-                ) : null}
+                <div className="help-syntax-card-rule">{resolveText(entry.keyRule, language)}</div>
+                {entrySnippet ? <pre className="help-syntax-snippet">{entrySnippet}</pre> : null}
               </button>
             );
           })}
@@ -137,18 +124,14 @@ export const SyntaxSection = ({
               <div className="help-syntax-section-header">
                 <span className="label">{syntaxWhatItIsLabel}</span>
               </div>
-              <p className="help-syntax-text">
-                {activeSyntax.detail[language].whatItIs}
-              </p>
+              <p className="help-syntax-text">{activeSyntax.detail[language].whatItIs}</p>
             </div>
             <div className="help-syntax-section">
               <div className="help-syntax-section-header">
                 <span className="label">{syntaxRulesLabel}</span>
               </div>
               {activeSyntax.detail[language].rulesNote ? (
-                <p className="help-syntax-text">
-                  {activeSyntax.detail[language].rulesNote}
-                </p>
+                <p className="help-syntax-text">{activeSyntax.detail[language].rulesNote}</p>
               ) : null}
               <ul className="help-syntax-list">
                 {activeSyntax.detail[language].rules.map((rule) => (
@@ -173,15 +156,12 @@ export const SyntaxSection = ({
                     language,
                   )}`}
                 >
-                  {copiedItemId ===
-                  `syntax-prompt-${activeSyntax.id}-${language}`
+                  {copiedItemId === `syntax-prompt-${activeSyntax.id}-${language}`
                     ? syntaxCopiedLabel
                     : syntaxCopyPromptLabel}
                 </button>
               </div>
-              <pre className="help-code">
-                {activeSyntax.detail[language].promptTemplate}
-              </pre>
+              <pre className="help-code">{activeSyntax.detail[language].promptTemplate}</pre>
             </div>
             <div className="help-syntax-section">
               <div className="help-syntax-section-header">
@@ -200,15 +180,12 @@ export const SyntaxSection = ({
                     language,
                   )}`}
                 >
-                  {copiedItemId ===
-                  `syntax-example-${activeSyntax.id}-${language}`
+                  {copiedItemId === `syntax-example-${activeSyntax.id}-${language}`
                     ? syntaxCopiedLabel
                     : syntaxCopyExampleLabel}
                 </button>
               </div>
-              <pre className="help-code">
-                {activeSyntax.detail[language].example}
-              </pre>
+              <pre className="help-code">{activeSyntax.detail[language].example}</pre>
             </div>
             {activeSyntax.detail[language].mistakes?.length ? (
               <div className="help-syntax-section">

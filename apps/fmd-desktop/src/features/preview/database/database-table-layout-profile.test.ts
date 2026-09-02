@@ -31,28 +31,28 @@ describe("database-table-layout-profile", () => {
   });
 
   it("orders known columns from a saved layout and appends new columns", () => {
-    const columns = [
-      { key: "Task" },
-      { key: "Status" },
-      { key: "Owner" },
-    ];
+    const columns = [{ key: "Task" }, { key: "Status" }, { key: "Owner" }];
 
-    expect(applyDatabaseTableLayoutOrder(columns, {
-      columnOrder: ["Owner", "Task"],
-      columnWidths: {},
-    }).map((entry) => entry.key)).toEqual(["Owner", "Task", "Status"]);
+    expect(
+      applyDatabaseTableLayoutOrder(columns, {
+        columnOrder: ["Owner", "Task"],
+        columnWidths: {},
+      }).map((entry) => entry.key),
+    ).toEqual(["Owner", "Task", "Status"]);
   });
 
   it("normalizes duplicate column order entries and unsafe widths", () => {
-    expect(normalizeDatabaseTableLayoutProfile({
-      columnOrder: ["", "Task", "task", "Status"],
-      columnWidths: {
-        Task: 40,
-        Status: 700,
-        Owner: "205",
-        Empty: Number.NaN,
-      },
-    })).toEqual({
+    expect(
+      normalizeDatabaseTableLayoutProfile({
+        columnOrder: ["", "Task", "task", "Status"],
+        columnWidths: {
+          Task: 40,
+          Status: 700,
+          Owner: "205",
+          Empty: Number.NaN,
+        },
+      }),
+    ).toEqual({
       columnOrder: ["Task", "Status"],
       columnWidths: {
         Task: 96,
@@ -78,13 +78,18 @@ describe("database-table-layout-profile", () => {
       },
     };
 
-    await writeDatabaseTableLayoutProfile("/vault", "layout-a", {
-      columnOrder: ["Task", "Status"],
-      columnWidths: {
-        Task: 220,
-        Status: 160,
+    await writeDatabaseTableLayoutProfile(
+      "/vault",
+      "layout-a",
+      {
+        columnOrder: ["Task", "Status"],
+        columnWidths: {
+          Task: 220,
+          Status: 160,
+        },
       },
-    }, io);
+      io,
+    );
 
     expect(writes[0]?.path).toBe(resolveDatabaseTableLayoutProfilePath("/vault"));
     await expect(readDatabaseTableLayoutProfile("/vault", "layout-a", io)).resolves.toEqual({

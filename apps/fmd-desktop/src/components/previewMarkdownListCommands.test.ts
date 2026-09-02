@@ -53,7 +53,7 @@ describe("previewMarkdownListCommands", () => {
     expect(editor.firstElementChild?.tagName).toBe("OL");
     expect(editor.lastElementChild?.tagName).toBe("DIV");
     expect((editor.lastElementChild?.textContent ?? "").startsWith("pha")).toBe(true);
-    expect((firstItem.textContent ?? "")).toContain("Al");
+    expect(firstItem.textContent ?? "").toContain("Al");
 
     editor.remove();
   });
@@ -98,8 +98,8 @@ describe("previewMarkdownListCommands", () => {
     expect(nestedList).toBeTruthy();
     expect(nestedList?.children).toHaveLength(2);
 
-    const nestedItems = Array.from(nestedList?.children ?? []).filter((node): node is HTMLLIElement =>
-      node instanceof HTMLLIElement
+    const nestedItems = Array.from(nestedList?.children ?? []).filter(
+      (node): node is HTMLLIElement => node instanceof HTMLLIElement,
     );
     const outdentRange = document.createRange();
     const outdentStartText = nestedItems[0]?.childNodes[1] as Text;
@@ -134,8 +134,8 @@ describe("previewMarkdownListCommands", () => {
 
     normalizeEditableListMarkers(editor);
 
-    const markers = Array.from(editor.querySelectorAll(".md-list-marker")).map((node) =>
-      node.textContent
+    const markers = Array.from(editor.querySelectorAll(".md-list-marker")).map(
+      (node) => node.textContent,
     );
     expect(markers).toEqual(["1) ", "2) "]);
   });

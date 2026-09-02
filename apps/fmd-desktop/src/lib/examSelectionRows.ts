@@ -27,11 +27,9 @@ const toUniquePaths = (paths: string[]) => {
   return next;
 };
 
-export const flattenExamSelectionRows = (rows: ExamSelectionRows) =>
-  rows.flatMap((row) => row);
+export const flattenExamSelectionRows = (rows: ExamSelectionRows) => rows.flatMap((row) => row);
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.min(max, Math.max(min, value));
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const mergeOverflowRowsIntoLast = (rows: ExamSelectionRows, maxRows: number) => {
   if (rows.length <= maxRows) {
@@ -125,10 +123,7 @@ export const toggleExamSelectionPath = (
   }
   const lastRow = normalized[normalized.length - 1];
   if (lastRow) {
-    return [
-      ...normalized.slice(0, -1),
-      [...lastRow, path],
-    ];
+    return [...normalized.slice(0, -1), [...lastRow, path]];
   }
   return [...normalized, [path]];
 };
@@ -165,9 +160,7 @@ export const placeExamSelectionPath = (
   }
   const maxRows = Math.max(1, options?.maxRows ?? EXAM_SELECTION_MAX_ROWS);
   const normalized = cloneRows(normalizeExamSelectionRows(rows, options));
-  const targetRowIndexRaw = Number.isFinite(target.rowIndex)
-    ? Math.floor(target.rowIndex)
-    : 0;
+  const targetRowIndexRaw = Number.isFinite(target.rowIndex) ? Math.floor(target.rowIndex) : 0;
   if (targetRowIndexRaw >= maxRows) {
     return normalized;
   }
@@ -236,10 +229,7 @@ export const moveExamSelectionPathBeforeTarget = (
   return placeExamSelectionPath(normalized, sourcePath, targetPosition, options);
 };
 
-export const areExamSelectionRowsEqual = (
-  left: ExamSelectionRows,
-  right: ExamSelectionRows,
-) => {
+export const areExamSelectionRowsEqual = (left: ExamSelectionRows, right: ExamSelectionRows) => {
   if (left.length !== right.length) {
     return false;
   }

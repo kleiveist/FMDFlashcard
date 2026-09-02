@@ -30,10 +30,7 @@ const buildClozeCard = (): ClozeCardType => ({
   ],
 });
 
-const buildDragOnlyCard = (
-  question: string,
-  tokenPrefix: string,
-): ClozeCardType => ({
+const buildDragOnlyCard = (question: string, tokenPrefix: string): ClozeCardType => ({
   kind: "cloze",
   subtype: "cd",
   question,
@@ -168,7 +165,7 @@ describe("ClozeCard", () => {
 
     expect(markup).toContain("flashcard-code-block");
     expect(markup).toContain("cloze-blank drag");
-    expect(markup).toContain("data-dropzone=\"cloze-blank\"");
+    expect(markup).toContain('data-dropzone="cloze-blank"');
     expect(markup).not.toContain("@@@CLOZE:");
   });
 

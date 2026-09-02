@@ -72,10 +72,7 @@ describe("pageLinkPickerShared", () => {
     ];
 
     const candidates = buildPageLinkCandidates(files);
-    expect(candidates.map((entry) => entry.target)).toEqual([
-      "folder/Alpha",
-      "Beta",
-    ]);
+    expect(candidates.map((entry) => entry.target)).toEqual(["folder/Alpha", "Beta"]);
     expect(candidates[0]?.wikilink).toBe("[[folder/Alpha]]");
   });
 
@@ -87,11 +84,7 @@ describe("pageLinkPickerShared", () => {
     ];
 
     const candidates = buildPageLinkCandidates(files);
-    expect(candidates.map((entry) => entry.target)).toEqual([
-      "1-Setup",
-      "2-Setup",
-      "10-Setup",
-    ]);
+    expect(candidates.map((entry) => entry.target)).toEqual(["1-Setup", "2-Setup", "10-Setup"]);
   });
 
   it("filters candidates by query text", () => {

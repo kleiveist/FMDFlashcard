@@ -141,7 +141,9 @@
   color: var(--muted);
   cursor: pointer;
   border-radius: var(--ui-radius-panel) 0 0 var(--ui-radius-panel);
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
   display: grid;
   place-items: center;
   z-index: 2;
@@ -186,7 +188,9 @@
   display: grid;
   place-items: center;
   z-index: 3;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .sidebar-collapsed-trigger:hover,
@@ -277,7 +281,9 @@
 .sidebar-active-user-caret {
   display: inline-flex;
   color: var(--muted);
-  transition: transform 0.2s ease, color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    color 0.2s ease;
 }
 
 .sidebar-active-user-caret.is-open {
@@ -581,7 +587,9 @@
 .vault-status-caret {
   display: inline-flex;
   color: var(--muted);
-  transition: transform 0.2s ease, color 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    color 0.2s ease;
 }
 
 .vault-status-caret.is-open {
@@ -825,9 +833,9 @@
   width: 100%;
   min-width: 0;
 
-  flex: 1 1 auto;     /* added */
-  min-height: 0;      /* added */
-  overflow: hidden;   /* added: prevents “escape”, scroll happens in the inner list */
+  flex: 1 1 auto; /* added */
+  min-height: 0; /* added */
+  overflow: hidden; /* added: prevents “escape”, scroll happens in the inner list */
 }
 
 .sidebar .vault-details {

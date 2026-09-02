@@ -6,8 +6,7 @@
 
 export const DATABASE_BLOCK_MARKER = "::::";
 
-export const isDatabaseBlockMarkerLine = (line: string) =>
-  line.trim() === DATABASE_BLOCK_MARKER;
+export const isDatabaseBlockMarkerLine = (line: string) => line.trim() === DATABASE_BLOCK_MARKER;
 
 export const extractDatabaseBlockLineRanges = (lines: string[]) => {
   const ranges: Array<{ startLine: number; endLine: number }> = [];

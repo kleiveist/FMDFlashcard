@@ -19,7 +19,10 @@ type UseExamFilesOptions = {
   vaultPath: string | null;
 };
 
-type ExamFileClassification = Pick<ExamFileEntry, "status" | "taskCount" | "hasExamBlock" | "error">;
+type ExamFileClassification = Pick<
+  ExamFileEntry,
+  "status" | "taskCount" | "hasExamBlock" | "error"
+>;
 
 export const classifyExamMarkdown = (contents: string): ExamFileClassification => {
   const trimmed = contents.trim();
@@ -45,10 +48,7 @@ export const classifyExamMarkdown = (contents: string): ExamFileClassification =
   };
 };
 
-export const buildExamFileErrorEntry = (
-  file: VaultFile,
-  error: unknown,
-): ExamFileEntry => ({
+export const buildExamFileErrorEntry = (file: VaultFile, error: unknown): ExamFileEntry => ({
   ...file,
   status: "error",
   taskCount: 0,

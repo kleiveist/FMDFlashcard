@@ -33,9 +33,10 @@ const getRecordValueByField = (
     return record.normalizedFields[field] ?? null;
   }
   const normalizedField = toLower(field);
-  const matchedKey = Object.keys(record.normalizedFields)
-    .find((key) => toLower(key) === normalizedField);
-  return matchedKey ? record.normalizedFields[matchedKey] ?? null : null;
+  const matchedKey = Object.keys(record.normalizedFields).find(
+    (key) => toLower(key) === normalizedField,
+  );
+  return matchedKey ? (record.normalizedFields[matchedKey] ?? null) : null;
 };
 
 export const normalizeDatabaseKanbanExcludedValues = (
@@ -54,15 +55,16 @@ export const normalizeDatabaseKanbanExcludedValues = (
   return next;
 };
 
-export const stringifyDatabaseKanbanGroupValue = (
-  value: DatabaseNormalizedFieldValue,
-) => {
+export const stringifyDatabaseKanbanGroupValue = (value: DatabaseNormalizedFieldValue) => {
   if (value === null || typeof value === "undefined") {
     return DATABASE_KANBAN_EMPTY_LABEL;
   }
   if (Array.isArray(value)) {
     return value.length > 0
-      ? value.map((entry) => String(entry).trim()).filter(Boolean).join(", ")
+      ? value
+          .map((entry) => String(entry).trim())
+          .filter(Boolean)
+          .join(", ")
       : DATABASE_KANBAN_EMPTY_LABEL;
   }
   if (typeof value === "object" && "raw" in value) {
@@ -117,13 +119,10 @@ export const buildDatabaseKanbanValueOptions = ({
   return Array.from(countsByValue.entries())
     .map(([value, count]) => ({
       value,
-      label: formatDatabaseKanbanGroupLabel(
-        groupAttribute.key,
-        value,
-        monitoringProfiles,
-      ),
+      label: formatDatabaseKanbanGroupLabel(groupAttribute.key, value, monitoringProfiles),
       count,
     }))
     .sort((left, right) =>
-      left.label.localeCompare(right.label, undefined, { sensitivity: "base" }));
+      left.label.localeCompare(right.label, undefined, { sensitivity: "base" }),
+    );
 };

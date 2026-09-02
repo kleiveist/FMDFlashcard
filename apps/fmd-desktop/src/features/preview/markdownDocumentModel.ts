@@ -72,18 +72,14 @@ const countNewlines = (value: string) => {
   return count;
 };
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.max(min, Math.min(max, value));
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
 const resolveProfile = (
   options: MarkdownDocumentParseOptions | undefined,
   fallbackProfile: MarkdownBlockParseProfile = "default",
 ) => options?.profile ?? fallbackProfile;
 
-const offsetListMetaLineNumbers = (
-  meta: MarkdownBlock["meta"] | undefined,
-  lineOffset: number,
-) => {
+const offsetListMetaLineNumbers = (meta: MarkdownBlock["meta"] | undefined, lineOffset: number) => {
   if (!meta || lineOffset === 0 || meta.listParentStartLine === undefined) {
     return meta;
   }
@@ -147,9 +143,7 @@ const resolveOverlappingRange = (
 
   for (let index = 0; index < blocks.length; index += 1) {
     const block = blocks[index]!;
-    const overlaps =
-      block.endOffset >= targetStart &&
-      block.startOffset <= targetEndExclusive;
+    const overlaps = block.endOffset >= targetStart && block.startOffset <= targetEndExclusive;
     if (!overlaps) {
       continue;
     }
@@ -421,18 +415,26 @@ export const parseMarkdownDocument = (
 
     if (reconstructedMarkdown === nextMarkdown) {
       const segmentEndExclusive = reparsedStartIndex + segment.length;
-      const boundariesAreStable = isBoundaryStable(
-        merged[reparsedStartIndex - 1] ?? null,
-        merged[reparsedStartIndex] ?? null,
-        profile,
-      ) && isBoundaryStable(
-        merged[segmentEndExclusive - 1] ?? null,
-        merged[segmentEndExclusive] ?? null,
-        profile,
-      );
+      const boundariesAreStable =
+        isBoundaryStable(
+          merged[reparsedStartIndex - 1] ?? null,
+          merged[reparsedStartIndex] ?? null,
+          profile,
+        ) &&
+        isBoundaryStable(
+          merged[segmentEndExclusive - 1] ?? null,
+          merged[segmentEndExclusive] ?? null,
+          profile,
+        );
       if (!boundariesAreStable) {
         if (reparsedStartIndex === 0 && reparsedEndIndex === lastPreviousIndex) {
-          return resolveFullParseResult(nextMarkdown, nextVersion, "full-fallback", diffRange, profile);
+          return resolveFullParseResult(
+            nextMarkdown,
+            nextVersion,
+            "full-fallback",
+            diffRange,
+            profile,
+          );
         }
         reparsedStartIndex = Math.max(0, reparsedStartIndex - 1);
         reparsedEndIndex = Math.min(lastPreviousIndex, reparsedEndIndex + 1);

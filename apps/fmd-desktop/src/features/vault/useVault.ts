@@ -146,8 +146,7 @@ export const useVault = ({ persistSettings, showHiddenFolders }: UseVaultOptions
       const snapshot = takeSnapshot();
       options?.onBeforeLoad?.();
 
-      const errorMessage =
-        options?.errorMessage ?? "Ausgewaehlter Vault ist nicht verfuegbar.";
+      const errorMessage = options?.errorMessage ?? "Ausgewaehlter Vault ist nicht verfuegbar.";
       const results = await loadVault(selected, {
         persist: true,
         clearOnFailure: false,

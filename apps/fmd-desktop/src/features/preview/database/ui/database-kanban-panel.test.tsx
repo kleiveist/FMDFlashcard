@@ -86,7 +86,9 @@ describe("DatabaseKanbanPanel", () => {
   it("renders group value checkboxes and excludes unchecked values", () => {
     const { container, cleanup, onChange } = renderPanel();
 
-    const checkboxes = Array.from(container.querySelectorAll<HTMLInputElement>("input[type='checkbox']"));
+    const checkboxes = Array.from(
+      container.querySelectorAll<HTMLInputElement>("input[type='checkbox']"),
+    );
     expect(checkboxes).toHaveLength(2);
     expect(checkboxes.every((checkbox) => checkbox.checked)).toBe(true);
 
@@ -103,7 +105,9 @@ describe("DatabaseKanbanPanel", () => {
       excludedValues: ["Done"],
     });
 
-    const checkboxes = Array.from(container.querySelectorAll<HTMLInputElement>("input[type='checkbox']"));
+    const checkboxes = Array.from(
+      container.querySelectorAll<HTMLInputElement>("input[type='checkbox']"),
+    );
     expect(checkboxes[0]?.checked).toBe(true);
     expect(checkboxes[1]?.checked).toBe(false);
 

@@ -33,9 +33,7 @@ describe("pointsScoring", () => {
   });
 
   it("uses task-type profile points by detected card type", () => {
-    const parsed = parseExamTasks(
-      ["#exam", "1) Statement", "-true", "---", "#endexam"].join("\n"),
-    );
+    const parsed = parseExamTasks(["#exam", "1) Statement", "-true", "---", "#endexam"].join("\n"));
     const task = parsed.tasks[0];
     expect(task).toBeTruthy();
     if (!task) {

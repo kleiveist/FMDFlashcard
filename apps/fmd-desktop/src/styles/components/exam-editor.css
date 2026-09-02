@@ -68,7 +68,10 @@
   place-items: center;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.2s ease, background 0.2s ease, color 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .note-column .note-panel:hover .note-collapse-strip,
@@ -526,7 +529,6 @@
   min-width: 0;
 }
 
-
 .properties-panel {
   min-width: 0;
   flex-shrink: 0;
@@ -581,7 +583,10 @@
   flex-direction: column;
   gap: 10px;
   position: relative;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
 }
 
 .exam-task-node.selected {
@@ -707,15 +712,14 @@
   border-radius: 12px;
   background: var(--field-bg);
   background:
-    linear-gradient(
-      rgba(var(--accent-rgb), 0.04),
-      rgba(var(--accent-rgb), 0.04)
-    ),
-    var(--field-bg);
+    linear-gradient(rgba(var(--accent-rgb), 0.04), rgba(var(--accent-rgb), 0.04)), var(--field-bg);
   border: 1px solid var(--field-border);
   position: relative;
   cursor: grab;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
 }
 
 .exam-card-item.selected {

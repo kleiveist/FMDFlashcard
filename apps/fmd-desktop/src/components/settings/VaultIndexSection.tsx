@@ -74,8 +74,7 @@ export const VaultIndexSection = ({
   const lastRefreshLabel = lastRefreshAt
     ? new Date(lastRefreshAt).toLocaleString()
     : tSettings(language, "settings.vaultIndex.notRefreshedYet");
-  const hasLastOpenedFile =
-    typeof lastOpenedFile === "string" && lastOpenedFile.trim().length > 0;
+  const hasLastOpenedFile = typeof lastOpenedFile === "string" && lastOpenedFile.trim().length > 0;
 
   return (
     <section className="panel vault-index-panel">

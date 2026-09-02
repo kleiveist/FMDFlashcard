@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  normalizeDatabaseFormulaDefinitionV1,
-} from "./database-formula-types";
+import { normalizeDatabaseFormulaDefinitionV1 } from "./database-formula-types";
 
 describe("database-formula-types", () => {
   it("accepts history as a formula source type", () => {

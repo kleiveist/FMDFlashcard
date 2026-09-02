@@ -1,11 +1,7 @@
 export type CanvasSide = "top" | "right" | "bottom" | "left";
 
 export type CanvasEdgeEnd = "none" | "arrow";
-export type CanvasNodeShape =
-  | "rounded-rectangle"
-  | "rectangle"
-  | "ellipse"
-  | "diamond";
+export type CanvasNodeShape = "rounded-rectangle" | "rectangle" | "ellipse" | "diamond";
 
 export type FmdCanvasNode = {
   id: string;
@@ -48,8 +44,7 @@ export type CanvasEdge = FmdCanvasEdge;
 export type CanvasDocument = FmdCanvasDocument;
 
 export type CanvasParseResult =
-  | { ok: true; document: CanvasDocument }
-  | { ok: false; error: string };
+  { ok: true; document: CanvasDocument } | { ok: false; error: string };
 
 const VALID_SIDES = new Set<CanvasSide>(["top", "right", "bottom", "left"]);
 const VALID_EDGE_ENDS = new Set<CanvasEdgeEnd>(["none", "arrow"]);
@@ -61,9 +56,7 @@ const VALID_NODE_SHAPES = new Set<CanvasNodeShape>([
   "diamond",
 ]);
 
-const asObject = (
-  value: unknown,
-): Record<string, unknown> | null => {
+const asObject = (value: unknown): Record<string, unknown> | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
   }
@@ -145,8 +138,7 @@ const normalizeNode = (
   if (shapeRaw && !VALID_NODE_SHAPES.has(shapeRaw as CanvasNodeShape)) {
     return {
       ok: false,
-      error:
-        `nodes[${index}].shape must be one of rounded-rectangle/rectangle/ellipse/diamond.`,
+      error: `nodes[${index}].shape must be one of rounded-rectangle/rectangle/ellipse/diamond.`,
     };
   }
 
@@ -254,9 +246,7 @@ const normalizeEdge = (
   };
 };
 
-const validateEdgeNodeReferences = (
-  document: CanvasDocument,
-): string | null => {
+const validateEdgeNodeReferences = (document: CanvasDocument): string | null => {
   const nodeIds = new Set(document.nodes.map((node) => node.id));
   for (let index = 0; index < document.edges.length; index += 1) {
     const edge = document.edges[index];

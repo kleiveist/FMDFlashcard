@@ -50,26 +50,19 @@ import {
 } from "../features/preview/frontmatter";
 import { loadFormulaHistoryFiles } from "../features/preview/formula/formula-history-source";
 import { deriveMarkdownEditorColors } from "../lib/markdownEditorColors";
-import {
-  isMarkdownFilePath,
-  resolveVaultFileDocumentKind,
-} from "../lib/fileTypes";
+import { isMarkdownFilePath, resolveVaultFileDocumentKind } from "../lib/fileTypes";
 import { normalizeRelativePath, normalizeVaultPath } from "../lib/path";
 import { compareNaturalPath } from "../lib/naturalSort";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import { DESKTOP_QUERY } from "../lib/breakpoints";
 import { ExamEditorView } from "./exam-editor/ExamEditorView";
 import type { ExamEditorControlsState } from "./exam-editor/types";
-import {
-  shouldApplyPreviewDefaultMode,
-  type DashboardView,
-} from "./dashboardPreviewMode";
+import { shouldApplyPreviewDefaultMode, type DashboardView } from "./dashboardPreviewMode";
 
 const emptyPreview = "Waehle eine Notiz fuer die Vorschau.";
 const notePanelStorageKey = "fmd.notePanelCollapsed";
 
-const stripMarkdownExtension = (value: string) =>
-  value.replace(/\.md$/i, "");
+const stripMarkdownExtension = (value: string) => value.replace(/\.md$/i, "");
 
 const dedupeCaseInsensitive = (keys: string[]) => {
   const seen = new Set<string>();
@@ -93,10 +86,7 @@ type MarkdownEditorTab = {
   path: string;
   relativePath: string;
 };
-type PendingExamLeaveAction =
-  | "file-select"
-  | "vault-view-change"
-  | "dashboard-leave";
+type PendingExamLeaveAction = "file-select" | "vault-view-change" | "dashboard-leave";
 
 type DashboardPageProps = {
   initialVaultView?: DashboardView;
@@ -160,9 +150,7 @@ const DashboardPageInner = (
   const [documentMode, setDocumentMode] = useState<MarkdownDocumentMode>("edit");
   const [pendingWriteFilePath, setPendingWriteFilePath] = useState<string | null>(null);
   const [vaultView, setVaultView] = useState<DashboardView>(initialVaultView);
-  const [examControls, setExamControls] = useState<ExamEditorControlsState | null>(
-    null,
-  );
+  const [examControls, setExamControls] = useState<ExamEditorControlsState | null>(null);
   const examControlsRef = useRef<ExamEditorControlsState | null>(null);
   const [pendingExamLeaveAction, setPendingExamLeaveAction] =
     useState<PendingExamLeaveAction | null>(null);
@@ -191,17 +179,19 @@ const DashboardPageInner = (
   const [frontmatterValueSuggestions, setFrontmatterValueSuggestions] = useState<
     Record<string, string[]>
   >({});
-  const [frontmatterKeySuggestions, setFrontmatterKeySuggestions] = useState<string[]>(
-    [],
-  );
-  const [frontmatterFormulaAttributeKeysByFile, setFrontmatterFormulaAttributeKeysByFile] = useState<
-    Record<string, string[]> | null
+  const [frontmatterKeySuggestions, setFrontmatterKeySuggestions] = useState<string[]>([]);
+  const [frontmatterFormulaAttributeKeysByFile, setFrontmatterFormulaAttributeKeysByFile] =
+    useState<Record<string, string[]> | null>(null);
+  const [frontmatterValuesByFile, setFrontmatterValuesByFile] = useState<Record<
+    string,
+    Record<string, unknown>
+  > | null>(null);
+  const [frontmatterFormulaHistoryFolderPath, setFrontmatterFormulaHistoryFolderPath] = useState<
+    string | null
   >(null);
-  const [frontmatterValuesByFile, setFrontmatterValuesByFile] = useState<
-    Record<string, Record<string, unknown>> | null
+  const [frontmatterFormulaHistoryWarning, setFrontmatterFormulaHistoryWarning] = useState<
+    string | null
   >(null);
-  const [frontmatterFormulaHistoryFolderPath, setFrontmatterFormulaHistoryFolderPath] = useState<string | null>(null);
-  const [frontmatterFormulaHistoryWarning, setFrontmatterFormulaHistoryWarning] = useState<string | null>(null);
   const frontmatterTaskProfileSummaries = useMemo(
     () =>
       Object.fromEntries(
@@ -282,16 +272,12 @@ const DashboardPageInner = (
     ? resolveVaultFileDocumentKind(preview.selectedFile)
     : "unknown";
   const isCanvasDocumentSelected = selectedDocumentKind === "canvas";
-  const canEdit =
-    Boolean(preview.selectedFile) && preview.previewState === "idle";
+  const canEdit = Boolean(preview.selectedFile) && preview.previewState === "idle";
   const selectedMarkdownPath = preview.selectedFile?.path ?? null;
   const isDraftSyncedToSelectedFile =
-    Boolean(selectedMarkdownPath) &&
-    editDraftSourcePath === selectedMarkdownPath;
+    Boolean(selectedMarkdownPath) && editDraftSourcePath === selectedMarkdownPath;
   const hasUnsavedMarkdownDraftChanges =
-    preview.previewState === "idle" &&
-    isDraftSyncedToSelectedFile &&
-    editDraft !== preview.preview;
+    preview.previewState === "idle" && isDraftSyncedToSelectedFile && editDraft !== preview.preview;
   const markdownEditorAccentHex = useMemo(() => {
     const accentValue =
       settings.theme === "dark"
@@ -307,30 +293,20 @@ const DashboardPageInner = (
   ]);
   const shouldApplyExtendedEditorBackgrounds =
     preview.editorMode === "hybrid" && settings.markdownEditorAccentEnabled;
-  const markdownEditorStyle = useMemo(
-    () => {
-      if (!shouldApplyExtendedEditorBackgrounds) {
-        return undefined;
-      }
-      return deriveMarkdownEditorColors({
-        accentHex: markdownEditorAccentHex,
-        themeMode: settings.theme,
-        includeSurfaceBackgrounds: true,
-      }) as CSSProperties;
-    },
-    [
-      markdownEditorAccentHex,
-      settings.theme,
-      shouldApplyExtendedEditorBackgrounds,
-    ],
-  );
-  const handleExamControlsReady = useCallback(
-    (controls: ExamEditorControlsState | null) => {
-      examControlsRef.current = controls;
-      setExamControls(controls);
-    },
-    [],
-  );
+  const markdownEditorStyle = useMemo(() => {
+    if (!shouldApplyExtendedEditorBackgrounds) {
+      return undefined;
+    }
+    return deriveMarkdownEditorColors({
+      accentHex: markdownEditorAccentHex,
+      themeMode: settings.theme,
+      includeSurfaceBackgrounds: true,
+    }) as CSSProperties;
+  }, [markdownEditorAccentHex, settings.theme, shouldApplyExtendedEditorBackgrounds]);
+  const handleExamControlsReady = useCallback((controls: ExamEditorControlsState | null) => {
+    examControlsRef.current = controls;
+    setExamControls(controls);
+  }, []);
 
   const resolveVaultRelativePath = useCallback(
     (absolutePath: string) => {
@@ -387,12 +363,7 @@ const DashboardPageInner = (
     setEditDraft(preview.preview);
     setEditDraftSourcePath(preview.selectedFile.path);
     setPendingWriteFilePath(null);
-  }, [
-    pendingWriteFilePath,
-    preview.preview,
-    preview.previewState,
-    preview.selectedFile?.path,
-  ]);
+  }, [pendingWriteFilePath, preview.preview, preview.previewState, preview.selectedFile?.path]);
 
   useEffect(() => {
     if (selectedDocumentKind === "canvas") {
@@ -409,10 +380,7 @@ const DashboardPageInner = (
       return;
     }
     const defaultMode = settings.markdownPreviewDefaultMode;
-    const nextEditorMode =
-      defaultMode === "raw"
-        ? "code"
-        : defaultMode;
+    const nextEditorMode = defaultMode === "raw" ? "code" : defaultMode;
     preview.setEditorModeWithDefaults(nextEditorMode);
     didApplyPreviewDefaultModeRef.current = true;
   }, [
@@ -450,9 +418,7 @@ const DashboardPageInner = (
         return;
       }
 
-      const markdownFiles = vault.files.filter((file) =>
-        isMarkdownFilePath(file.relative_path),
-      );
+      const markdownFiles = vault.files.filter((file) => isMarkdownFilePath(file.relative_path));
       const markdownDocuments = await Promise.all(
         markdownFiles.map(async (file) => {
           try {
@@ -471,20 +437,19 @@ const DashboardPageInner = (
       setFrontmatterValueSuggestions(
         buildFrontmatterValueSuggestionMapFromIndex(suggestionIndex.valueIndex),
       );
-      setFrontmatterKeySuggestions(
-        sortFrontmatterKeySuggestions(suggestionIndex.keyIndex),
-      );
+      setFrontmatterKeySuggestions(sortFrontmatterKeySuggestions(suggestionIndex.keyIndex));
       const nextFormulaAttributeKeysByFile: Record<string, string[]> = {};
       const nextFrontmatterValuesByFile: Record<string, Record<string, unknown>> = {};
       markdownFiles.forEach((file, index) => {
-        const normalizedRelativePath = normalizeRelativePath(file.relative_path).replace(/^\/+/, "");
+        const normalizedRelativePath = normalizeRelativePath(file.relative_path).replace(
+          /^\/+/,
+          "",
+        );
         const parsed = parseFrontmatterDocument(markdownDocuments[index] ?? "");
         if (!parsed.hasFrontmatter || parsed.error) {
           return;
         }
-        const keys = dedupeCaseInsensitive(
-          parsed.properties.map((property) => property.key),
-        );
+        const keys = dedupeCaseInsensitive(parsed.properties.map((property) => property.key));
         const valuesByKey: Record<string, unknown> = {};
         parsed.properties.forEach((property) => {
           if (property.kind === "formula") {
@@ -541,9 +506,7 @@ const DashboardPageInner = (
           }
           return;
         }
-        const keys = dedupeCaseInsensitive(
-          parsed.properties.map((property) => property.key),
-        );
+        const keys = dedupeCaseInsensitive(parsed.properties.map((property) => property.key));
         const valuesByKey: Record<string, unknown> = {};
         parsed.properties.forEach((property) => {
           if (property.kind === "formula") {
@@ -577,8 +540,7 @@ const DashboardPageInner = (
       return;
     }
     const rightPanel =
-      document.querySelector(".note-column") ??
-      document.querySelector(".note-panel");
+      document.querySelector(".note-column") ?? document.querySelector(".note-panel");
     if (rightPanel?.contains(active)) {
       workspaceRef.current?.focus();
     }
@@ -608,9 +570,7 @@ const DashboardPageInner = (
       setEditDraft(preview.preview);
       setEditDraftSourcePath(preview.selectedFile.path);
       setEditError("");
-      setEditCaretIndex(
-        typeof options?.caretIndex === "number" ? options.caretIndex : null,
-      );
+      setEditCaretIndex(typeof options?.caretIndex === "number" ? options.caretIndex : null);
       setIsEditing(true);
     },
     [preview],
@@ -733,39 +693,34 @@ const DashboardPageInner = (
     setEditCaretIndex(null);
   }, [preview.preview, preview.selectedFile?.path]);
 
-  const persistMarkdownBeforeNavigation = useCallback(async (
-    options?: {
-      skipHybridDirtyCheck?: boolean;
+  const persistMarkdownBeforeNavigation = useCallback(
+    async (options?: { skipHybridDirtyCheck?: boolean }) => {
+      if (documentMode === "write") {
+        setEditError("Bitte Write-Entwurf zuerst speichern oder abbrechen.");
+        return false;
+      }
+      if (isHybridBlockDirty && !options?.skipHybridDirtyCheck) {
+        setEditError("Bitte den aktiven Block zuerst abschliessen.");
+        return false;
+      }
+      if (isEditing) {
+        return handleEditAutosave();
+      }
+      if (documentMode === "edit" && vaultView === "markdown" && hasUnsavedMarkdownDraftChanges) {
+        return saveDraftToDisk();
+      }
+      return true;
     },
-  ) => {
-    if (documentMode === "write") {
-      setEditError("Bitte Write-Entwurf zuerst speichern oder abbrechen.");
-      return false;
-    }
-    if (isHybridBlockDirty && !options?.skipHybridDirtyCheck) {
-      setEditError("Bitte den aktiven Block zuerst abschliessen.");
-      return false;
-    }
-    if (isEditing) {
-      return handleEditAutosave();
-    }
-    if (
-      documentMode === "edit" &&
-      vaultView === "markdown" &&
-      hasUnsavedMarkdownDraftChanges
-    ) {
-      return saveDraftToDisk();
-    }
-    return true;
-  }, [
-    documentMode,
-    handleEditAutosave,
-    hasUnsavedMarkdownDraftChanges,
-    isHybridBlockDirty,
-    isEditing,
-    saveDraftToDisk,
-    vaultView,
-  ]);
+    [
+      documentMode,
+      handleEditAutosave,
+      hasUnsavedMarkdownDraftChanges,
+      isHybridBlockDirty,
+      isEditing,
+      saveDraftToDisk,
+      vaultView,
+    ],
+  );
 
   const resolveDirtyExamControls = useCallback((): ExamEditorControlsState | null => {
     const controls = examControlsRef.current;
@@ -802,10 +757,7 @@ const DashboardPageInner = (
   }, [completePendingExamLeave]);
 
   const requestExamLeaveGuard = useCallback(
-    async (
-      action: PendingExamLeaveAction,
-      proceed: () => void | Promise<void>,
-    ) => {
+    async (action: PendingExamLeaveAction, proceed: () => void | Promise<void>) => {
       if (pendingExamLeaveAction) {
         return false;
       }
@@ -825,10 +777,7 @@ const DashboardPageInner = (
   );
 
   const runDashboardNavigationGuard = useCallback(
-    async (
-      action: PendingExamLeaveAction,
-      proceed: () => void | Promise<void>,
-    ) => {
+    async (action: PendingExamLeaveAction, proceed: () => void | Promise<void>) => {
       const markdownReady = await persistMarkdownBeforeNavigation();
       if (!markdownReady) {
         return false;
@@ -848,10 +797,7 @@ const DashboardPageInner = (
   );
 
   const handleNoteFileCreated = useCallback(
-    (
-      file: { path: string },
-      meta: { origin: "new-button" | "context-menu" },
-    ) => {
+    (file: { path: string }, meta: { origin: "new-button" | "context-menu" }) => {
       if (meta.origin !== "new-button") {
         return;
       }
@@ -918,9 +864,7 @@ const DashboardPageInner = (
       const activePath = preview.selectedFile?.path ?? null;
       const nextActivePath =
         activePath === path
-          ? (remainingTabs[closingIndex]?.path ??
-            remainingTabs[closingIndex - 1]?.path ??
-            null)
+          ? (remainingTabs[closingIndex]?.path ?? remainingTabs[closingIndex - 1]?.path ?? null)
           : activePath;
 
       void (async () => {
@@ -971,9 +915,7 @@ const DashboardPageInner = (
       if (adjustedTargetIndex < 0) {
         return;
       }
-      const insertIndex = position === "before"
-        ? adjustedTargetIndex
-        : adjustedTargetIndex + 1;
+      const insertIndex = position === "before" ? adjustedTargetIndex : adjustedTargetIndex + 1;
       next.splice(insertIndex, 0, movedTab);
       const orderChanged = next.some((tab, index) => tab.path !== markdownTabs[index]?.path);
       if (orderChanged) {
@@ -1021,9 +963,7 @@ const DashboardPageInner = (
   );
 
   const handleCanvasSourcePersist = useCallback(
-    async (
-      nextSource: string,
-    ): Promise<{ ok: boolean; error?: string }> => {
+    async (nextSource: string): Promise<{ ok: boolean; error?: string }> => {
       const selectedPath = preview.selectedFile?.path ?? null;
       if (!selectedPath) {
         return { ok: false, error: "No file selected." };
@@ -1091,26 +1031,26 @@ const DashboardPageInner = (
       requestVaultViewChange: (nextView: DashboardView) => {
         void handleVaultViewChange(nextView);
       },
-      requestLeaveDashboard: () =>
-        runDashboardNavigationGuard("dashboard-leave", async () => {}),
+      requestLeaveDashboard: () => runDashboardNavigationGuard("dashboard-leave", async () => {}),
     }),
     [handleVaultViewChange, runDashboardNavigationGuard],
   );
 
-  const handleSelectEditorMode = useCallback(async (
-    nextEditorMode: Parameters<typeof preview.setEditorModeWithDefaults>[0],
-  ) => {
-    if (preview.editorMode === nextEditorMode) {
-      return;
-    }
-    const saved = await persistMarkdownBeforeNavigation({
-      skipHybridDirtyCheck: preview.editorMode === "hybrid",
-    });
-    if (!saved) {
-      return;
-    }
-    preview.setEditorModeWithDefaults(nextEditorMode);
-  }, [persistMarkdownBeforeNavigation, preview]);
+  const handleSelectEditorMode = useCallback(
+    async (nextEditorMode: Parameters<typeof preview.setEditorModeWithDefaults>[0]) => {
+      if (preview.editorMode === nextEditorMode) {
+        return;
+      }
+      const saved = await persistMarkdownBeforeNavigation({
+        skipHybridDirtyCheck: preview.editorMode === "hybrid",
+      });
+      if (!saved) {
+        return;
+      }
+      preview.setEditorModeWithDefaults(nextEditorMode);
+    },
+    [persistMarkdownBeforeNavigation, preview],
+  );
 
   const handleToggleEditEnabled = useCallback(async () => {
     if (preview.editorMode === "hybrid") {
@@ -1137,9 +1077,7 @@ const DashboardPageInner = (
       renamedFromPath?: string;
     }) => {
       const normalizedSavedPath = normalizeVaultPath(path);
-      const normalizedRenamedFromPath = renamedFromPath
-        ? normalizeVaultPath(renamedFromPath)
-        : "";
+      const normalizedRenamedFromPath = renamedFromPath ? normalizeVaultPath(renamedFromPath) : "";
       const savedRelativePath = resolveVaultRelativePath(path);
       const selectedPath = preview.selectedFile?.path ?? "";
       const selectedMatchesRenamedPath =
@@ -1161,10 +1099,7 @@ const DashboardPageInner = (
           if (!filePath) {
             return true;
           }
-          if (
-            normalizedRenamedFromPath &&
-            filePath === normalizedRenamedFromPath
-          ) {
+          if (normalizedRenamedFromPath && filePath === normalizedRenamedFromPath) {
             return false;
           }
           return true;
@@ -1175,10 +1110,9 @@ const DashboardPageInner = (
         const withoutSavedPath = filtered.filter(
           (file) => normalizeVaultPath(file.path) !== normalizedSavedPath,
         );
-        return [
-          ...withoutSavedPath,
-          { path, relative_path: savedRelativePath },
-        ].sort((a, b) => compareNaturalPath(a.relative_path, b.relative_path));
+        return [...withoutSavedPath, { path, relative_path: savedRelativePath }].sort((a, b) =>
+          compareNaturalPath(a.relative_path, b.relative_path),
+        );
       });
     },
     [
@@ -1256,8 +1190,8 @@ const DashboardPageInner = (
   const pendingExamLeaveControls = examControlsRef.current;
   const canSavePendingExamChanges = Boolean(
     pendingExamLeaveControls?.canSave &&
-      !pendingExamLeaveControls.isSaving &&
-      !isExamLeaveSavePending,
+    !pendingExamLeaveControls.isSaving &&
+    !isExamLeaveSavePending,
   );
 
   const handlePendingExamLeaveCancel = useCallback(() => {
@@ -1270,12 +1204,7 @@ const DashboardPageInner = (
 
   const handlePendingExamLeaveSave = useCallback(() => {
     const controls = pendingExamLeaveControls;
-    if (
-      !controls ||
-      !controls.canSave ||
-      controls.isSaving ||
-      isExamLeaveSavePending
-    ) {
+    if (!controls || !controls.canSave || controls.isSaving || isExamLeaveSavePending) {
       return;
     }
     void (async () => {
@@ -1313,11 +1242,7 @@ const DashboardPageInner = (
   ) : null;
   const examEditorActions = examControls ? (
     <div className="exam-editor-action-buttons">
-      <button
-        type="button"
-        className="ghost small"
-        onClick={examControls.onNewExam}
-      >
+      <button type="button" className="ghost small" onClick={examControls.onNewExam}>
         New exam
       </button>
       <button
@@ -1366,9 +1291,7 @@ const DashboardPageInner = (
           <div className="vault-header-row">
             <div className="vault-saved-path">
               <span className="muted">Saved path:</span>
-              <span className="save-path">
-                {examControls?.savePath ?? "Not saved yet"}
-              </span>
+              <span className="save-path">{examControls?.savePath ?? "Not saved yet"}</span>
               {examSaveState}
             </div>
           </div>
@@ -1384,12 +1307,7 @@ const DashboardPageInner = (
               {gateTitle ? <h3>{gateTitle}</h3> : null}
               {gateDescription ? <p className="muted">{gateDescription}</p> : null}
             </div>
-            <button
-              type="button"
-              className="primary"
-              onClick={onOpenGate}
-              disabled={!onOpenGate}
-            >
+            <button type="button" className="primary" onClick={onOpenGate} disabled={!onOpenGate}>
               {gateCtaLabel ?? "Continue"}
             </button>
           </div>
@@ -1468,9 +1386,7 @@ const DashboardPageInner = (
           <ExamEditorView
             sourcePath={preview.selectedFile?.path ?? null}
             sourceRelativePath={preview.selectedFile?.relative_path ?? null}
-            sourceMarkdown={
-              preview.previewState === "idle" ? preview.preview : undefined
-            }
+            sourceMarkdown={preview.previewState === "idle" ? preview.preview : undefined}
             activeFolderPath={normalizedActiveFolderPath || null}
             vaultFiles={vault.files}
             vaultPngAssets={vault.pngAssets}
@@ -1501,58 +1417,51 @@ const DashboardPageInner = (
               vaultPath={vault.vaultPath}
             />
           ) : null
-        ) : (
-          !isExamDesktop || showInlineNotePanel ? (
-            <div className="note-column">
-              {!isExamDesktop && panelsCollapsed ? (
-                <section className="panel toolbar-panel exam-editor-controls-panel is-collapsed">
-                  <button
-                    type="button"
-                    className="exam-editor-controls-handle"
-                    onClick={handleTogglePanelsCollapsed}
-                    aria-label="Expand editor panels"
-                  >
-                    <span className="note-handle-icon" aria-hidden="true">
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <path d="M15 6l-6 6 6 6" />
-                      </svg>
-                    </span>
-                  </button>
-                </section>
-              ) : !isExamDesktop && examControls ? (
-                <section className="panel toolbar-panel exam-editor-controls-panel">
-                  <div className="exam-editor-toolbar">
-                    {examEditorActions}
-                    {examModeTabs}
-                  </div>
-                </section>
-              ) : null}
-              {showInlineNotePanel ? (
-                <FileList
-                  activeFolderPath={normalizedActiveFolderPath || null}
-                  fileCountLabel={fileCountLabel}
-                  files={visibleFiles}
-                  isCollapsed={panelsCollapsed}
-                  listError={vault.listError}
-                  listState={vault.listState}
-                  onClearSelection={preview.resetPreview}
-                  onFileCreated={handleNoteFileCreated}
-                  onRescanVault={actions.handleRescanVault}
-                  onSelectFile={handleSelectMarkdownFile}
-                  onToggleCollapsed={handleTogglePanelsCollapsed}
-                  selectedFile={preview.selectedFile}
-                  showCollapseStrip
-                  vaultPath={vault.vaultPath}
-                />
-              ) : null}
-            </div>
-          ) : null
-        )}
+        ) : !isExamDesktop || showInlineNotePanel ? (
+          <div className="note-column">
+            {!isExamDesktop && panelsCollapsed ? (
+              <section className="panel toolbar-panel exam-editor-controls-panel is-collapsed">
+                <button
+                  type="button"
+                  className="exam-editor-controls-handle"
+                  onClick={handleTogglePanelsCollapsed}
+                  aria-label="Expand editor panels"
+                >
+                  <span className="note-handle-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M15 6l-6 6 6 6" />
+                    </svg>
+                  </span>
+                </button>
+              </section>
+            ) : !isExamDesktop && examControls ? (
+              <section className="panel toolbar-panel exam-editor-controls-panel">
+                <div className="exam-editor-toolbar">
+                  {examEditorActions}
+                  {examModeTabs}
+                </div>
+              </section>
+            ) : null}
+            {showInlineNotePanel ? (
+              <FileList
+                activeFolderPath={normalizedActiveFolderPath || null}
+                fileCountLabel={fileCountLabel}
+                files={visibleFiles}
+                isCollapsed={panelsCollapsed}
+                listError={vault.listError}
+                listState={vault.listState}
+                onClearSelection={preview.resetPreview}
+                onFileCreated={handleNoteFileCreated}
+                onRescanVault={actions.handleRescanVault}
+                onSelectFile={handleSelectMarkdownFile}
+                onToggleCollapsed={handleTogglePanelsCollapsed}
+                selectedFile={preview.selectedFile}
+                showCollapseStrip
+                vaultPath={vault.vaultPath}
+              />
+            ) : null}
+          </div>
+        ) : null}
       </div>
       {noteModalEnabled ? (
         <NoteModal isOpen={noteModalActive} onClose={handleNoteModalClose}>
@@ -1581,13 +1490,11 @@ const DashboardPageInner = (
       >
         <div className="hub-modal-scroll">
           <p className="muted">
-            You have unsaved changes in the Exam Editor. What should happen before
-            leaving?
+            You have unsaved changes in the Exam Editor. What should happen before leaving?
           </p>
           {!pendingExamLeaveControls?.canSave ? (
             <div className="error">
-              Save is unavailable right now (for example because of validation
-              errors).
+              Save is unavailable right now (for example because of validation errors).
             </div>
           ) : null}
           <div className="modal-actions">
@@ -1599,18 +1506,10 @@ const DashboardPageInner = (
             >
               {isExamLeaveSavePending ? "Saving..." : "Save"}
             </button>
-            <button
-              type="button"
-              className="ghost"
-              onClick={handlePendingExamLeaveDiscard}
-            >
+            <button type="button" className="ghost" onClick={handlePendingExamLeaveDiscard}>
               Discard
             </button>
-            <button
-              type="button"
-              className="ghost"
-              onClick={handlePendingExamLeaveCancel}
-            >
+            <button type="button" className="ghost" onClick={handlePendingExamLeaveCancel}>
               Cancel
             </button>
           </div>

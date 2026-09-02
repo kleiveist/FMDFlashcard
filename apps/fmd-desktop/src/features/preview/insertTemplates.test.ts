@@ -15,7 +15,9 @@ describe("insertTemplates", () => {
     });
 
     ["e", "ea"].forEach((mode) => {
-      expect(modes.has(mode as (typeof ADVANCED_INSERT_TEMPLATE_CATALOG)[number]["mode"])).toBe(false);
+      expect(modes.has(mode as (typeof ADVANCED_INSERT_TEMPLATE_CATALOG)[number]["mode"])).toBe(
+        false,
+      );
     });
 
     ADVANCED_INSERT_TEMPLATE_CATALOG.forEach((template) => {
@@ -47,9 +49,9 @@ describe("insertTemplates", () => {
     );
 
     ["qa", "tf", "m1", "m2", "cl", "cd", "cld"].forEach((mode) => {
-      expect(visibleModes.has(mode as (typeof ADVANCED_INSERT_TEMPLATE_CATALOG)[number]["mode"])).toBe(
-        false,
-      );
+      expect(
+        visibleModes.has(mode as (typeof ADVANCED_INSERT_TEMPLATE_CATALOG)[number]["mode"]),
+      ).toBe(false);
     });
     expect(visibleModes.has("help")).toBe(true);
     expect(sections).toHaveLength(1);

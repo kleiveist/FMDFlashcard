@@ -3,10 +3,7 @@ import { act, createElement, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { describe, expect, it, vi } from "vitest";
 import { DatabaseSortPanel } from "./database-sort-panel";
-import {
-  type DatabaseAttributeMeta,
-  type DatabaseViewType,
-} from "../database-types";
+import { type DatabaseAttributeMeta, type DatabaseViewType } from "../database-types";
 
 const render = (element: ReactElement) => {
   const container = document.createElement("div");

@@ -495,8 +495,9 @@ export const buildNormalizedRecord = (
 
   Object.entries(record.frontmatter).forEach(([key, value]) => {
     const normalizedKey = toLowerKey(key);
-    const hasCaseInsensitiveDuplicate = Object.keys(normalizedFields)
-      .some((existingKey) => toLowerKey(existingKey) === normalizedKey);
+    const hasCaseInsensitiveDuplicate = Object.keys(normalizedFields).some(
+      (existingKey) => toLowerKey(existingKey) === normalizedKey,
+    );
     if (hasCaseInsensitiveDuplicate) {
       return;
     }

@@ -6,10 +6,7 @@
  * does not import the worker module itself.
  */
 
-import type {
-  MarkdownDocumentSnapshot,
-  MarkdownParseStats,
-} from "./markdownDocumentModel";
+import type { MarkdownDocumentSnapshot, MarkdownParseStats } from "./markdownDocumentModel";
 import type { MarkdownBlockParseProfile } from "./markdownBlocks";
 
 type WorkerParseRequest = {
@@ -36,6 +33,4 @@ type WorkerParseErrorResponse = {
 
 export type MarkdownBlockWorkerRequest = WorkerParseRequest;
 
-export type MarkdownBlockWorkerResponse =
-  | WorkerParseSuccessResponse
-  | WorkerParseErrorResponse;
+export type MarkdownBlockWorkerResponse = WorkerParseSuccessResponse | WorkerParseErrorResponse;

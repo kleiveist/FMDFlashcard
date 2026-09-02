@@ -109,11 +109,7 @@ describe("desktop.css", () => {
     expect(focusMatch).toBeTruthy();
 
     const focusSelectors = focusMatch?.[1] ?? "";
-    for (const selector of [
-      ".text-input",
-      ".hex-input",
-      ".inline-rename-input",
-    ]) {
+    for (const selector of [".text-input", ".hex-input", ".inline-rename-input"]) {
       expect(focusSelectors).toContain(selector);
     }
 
@@ -157,9 +153,7 @@ describe("desktop.css", () => {
     expect(desktopCss).toMatch(
       /:root\[data-design-mode="desktop"\]\s*\.sidebar-main\s*\{[\s\S]*?grid-column:\s*2;[\s\S]*?grid-row:\s*2;[\s\S]*?\}/,
     );
-    expect(desktopCss).not.toMatch(
-      /:root\[data-design-mode="desktop"\][\s\S]*?layout-table/,
-    );
+    expect(desktopCss).not.toMatch(/:root\[data-design-mode="desktop"\][\s\S]*?layout-table/);
   });
 
   it("keeps the app sidebar hidden for exam focus mode in desktop design", () => {

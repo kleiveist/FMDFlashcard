@@ -70,15 +70,17 @@ describe("useFlashcardAreaToggle", () => {
         nextEnabled,
       );
     });
-    const getStagedTaskAreaToggle = vi.fn((scope: TaskMutationScope) =>
-      stagedByKey.get(
-        `${scope.sourcePath}:${scope.sourceRange.startLine}-${scope.sourceRange.endLine}`,
-      ) ?? null,
+    const getStagedTaskAreaToggle = vi.fn(
+      (scope: TaskMutationScope) =>
+        stagedByKey.get(
+          `${scope.sourcePath}:${scope.sourceRange.startLine}-${scope.sourceRange.endLine}`,
+        ) ?? null,
     );
-    const getTaskAreaToggleNotice = vi.fn((scope: TaskMutationScope) =>
-      noticeByKey.get(
-        `${scope.sourcePath}:${scope.sourceRange.startLine}-${scope.sourceRange.endLine}`,
-      ) ?? "",
+    const getTaskAreaToggleNotice = vi.fn(
+      (scope: TaskMutationScope) =>
+        noticeByKey.get(
+          `${scope.sourcePath}:${scope.sourceRange.startLine}-${scope.sourceRange.endLine}`,
+        ) ?? "",
     );
 
     const sourceMeta = {

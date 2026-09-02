@@ -24,11 +24,7 @@ type ExamManualScoringPanelProps = {
   onReset: () => void;
 };
 
-const noopOptionSelect = (
-  _taskIndex: number,
-  _partIndex: number,
-  _keys: string[],
-) => {};
+const noopOptionSelect = (_taskIndex: number, _partIndex: number, _keys: string[]) => {};
 const noopTrueFalseSelect = (
   _taskIndex: number,
   _partIndex: number,
@@ -49,21 +45,13 @@ const noopClozeTokenDrop = (
   _validTokenIds: Set<string>,
   _dragBlankIds: Set<string>,
 ) => {};
-const noopClozeTokenRemove = (
-  _taskIndex: number,
-  _partIndex: number,
-  _blankId: string,
-) => {};
+const noopClozeTokenRemove = (_taskIndex: number, _partIndex: number, _blankId: string) => {};
 const noopClozeTokenDragStart = (
   _event: DragEvent<HTMLElement>,
   _payload: { cardIndex: number; tokenId: string; partIndex?: number },
 ) => {};
 const noopBlankDragOver = (_event: DragEvent<HTMLElement>) => {};
-const noopTextInputChange = (
-  _taskIndex: number,
-  _partIndex: number,
-  _value: string,
-) => {};
+const noopTextInputChange = (_taskIndex: number, _partIndex: number, _value: string) => {};
 const noopTextCheck = (_taskIndex: number, _partIndex: number) => {};
 const noopSelfGrade = (
   _taskIndex: number,
@@ -107,9 +95,7 @@ export const ExamManualScoringPanel = ({
           </button>
         </div>
         <h2>Manual scoring</h2>
-        <p className="muted">
-          Only QA tasks or mixed tasks containing QA are listed here.
-        </p>
+        <p className="muted">Only QA tasks or mixed tasks containing QA are listed here.</p>
       </div>
       <div className="scoring-panel-header-actions">
         {showAiCopyButton ? (
@@ -124,11 +110,7 @@ export const ExamManualScoringPanel = ({
           </button>
         ) : null}
         {aiCopyStatus ? (
-          <span
-            className="muted scoring-ai-copy-status"
-            role="status"
-            aria-live="polite"
-          >
+          <span className="muted scoring-ai-copy-status" role="status" aria-live="polite">
             {aiCopyStatus}
           </span>
         ) : null}
@@ -146,9 +128,7 @@ export const ExamManualScoringPanel = ({
               <h3>Manual review</h3>
               <p className="muted">Max points: {task.maxPoints}</p>
               {showSourceBadge ? (
-                <span className="exam-task-source-badge">
-                  Quelle: {task.task.sourceTitle}
-                </span>
+                <span className="exam-task-source-badge">Quelle: {task.task.sourceTitle}</span>
               ) : null}
             </div>
           </header>
@@ -196,11 +176,7 @@ export const ExamManualScoringPanel = ({
                 className="text-input"
                 value={task.awardedPoints ?? ""}
                 onChange={(event) =>
-                  onAwardedPointsChange(
-                    task.taskIndex,
-                    event.target.value,
-                    task.maxPoints,
-                  )
+                  onAwardedPointsChange(task.taskIndex, event.target.value, task.maxPoints)
                 }
                 aria-label="Awarded points"
               />
@@ -209,20 +185,10 @@ export const ExamManualScoringPanel = ({
           </div>
         </article>
         <div className="exam-panel-nav">
-          <button
-            type="button"
-            className="ghost small"
-            onClick={onBack}
-            disabled={!canGoBack}
-          >
+          <button type="button" className="ghost small" onClick={onBack} disabled={!canGoBack}>
             Previous
           </button>
-          <button
-            type="button"
-            className="ghost small"
-            onClick={onNext}
-            disabled={!canGoNext}
-          >
+          <button type="button" className="ghost small" onClick={onNext} disabled={!canGoNext}>
             Next
           </button>
         </div>

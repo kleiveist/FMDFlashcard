@@ -17,11 +17,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import {
-  parseExamTasks,
-  splitAnswerBlock,
-  stripExamAndFlashcardWrapperLines,
-} from "./exam";
+import { parseExamTasks, splitAnswerBlock, stripExamAndFlashcardWrapperLines } from "./exam";
 
 describe("parseExamTasks", () => {
   it("strips wrapper lines while keeping markdown headings", () => {
@@ -91,9 +87,7 @@ Answer: visible
     const part = task?.card.parts[0];
     expect(part?.kind).toBe("free-text");
     if (part && part.kind === "free-text") {
-      expect(part.front).toBe(
-        "1) Define foreign key. Answer: A foreign key is an attribute.",
-      );
+      expect(part.front).toBe("1) Define foreign key. Answer: A foreign key is an attribute.");
       expect(part.back).toBe("");
     }
     expect(task?.officialAnswer).toBeUndefined();
@@ -694,18 +688,18 @@ describe("exam parser Canvas isolation", () => {
     const markdown = [
       "#canvas",
       "{",
-      "  \"nodes\": [",
+      '  "nodes": [',
       "    {",
-      "      \"id\": \"node-1\",",
-      "      \"type\": \"text\",",
-      "      \"text\": \"#exam\\n1) Decoy\\nAnswer: Wrong\\n#endexam\",",
-      "      \"x\": 0,",
-      "      \"y\": 0,",
-      "      \"width\": 240,",
-      "      \"height\": 120",
+      '      "id": "node-1",',
+      '      "type": "text",',
+      '      "text": "#exam\\n1) Decoy\\nAnswer: Wrong\\n#endexam",',
+      '      "x": 0,',
+      '      "y": 0,',
+      '      "width": 240,',
+      '      "height": 120',
       "    }",
       "  ],",
-      "  \"edges\": []",
+      '  "edges": []',
       "}",
       "#canvasend",
       "",
@@ -729,8 +723,8 @@ describe("exam parser Canvas isolation", () => {
       "1) Task with canvas",
       "#canvas",
       "{",
-      "  \"nodes\": [{ \"id\": \"node-1\", \"type\": \"text\", \"text\": \"---\", \"x\": 0, \"y\": 0, \"width\": 100, \"height\": 80 }],",
-      "  \"edges\": []",
+      '  "nodes": [{ "id": "node-1", "type": "text", "text": "---", "x": 0, "y": 0, "width": 100, "height": 80 }],',
+      '  "edges": []',
       "}",
       "#canvasend",
       "Answer: A",
