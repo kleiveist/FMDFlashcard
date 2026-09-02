@@ -387,8 +387,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          & gh release view $env:FMD_RELEASE_TAG --repo $env:GITHUB_REPOSITORY *> $null
-          if ($LASTEXITCODE -eq 0) {
+          $response = @(& gh api --method GET "repos/$env:GITHUB_REPOSITORY/releases?per_page=100")
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $releases = @(($response -join "`n") | ConvertFrom-Json)
+          $matching = @($releases | Where-Object { $_.tag_name -eq $env:FMD_RELEASE_TAG })
+          if ($matching.Count -gt 0) {
             throw "a GitHub Release already exists for $env:FMD_RELEASE_TAG; immutable releases are never overwritten"
           }
 

@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format follows Keep
 
 ## [Unreleased]
 
+### Fixed
+
+- Isolated version-tooling tests from ambient GitHub tag variables during release workflows.
+- Made the pre-publication existence check tolerate the expected absence of a new GitHub Release under PowerShell.
+
 ## [1.0.0] - 2026-09-02
 
 FMDFlashcard 1.0.0 is the first stable release of the local-first desktop application for Markdown flashcards, exams, and spaced-repetition study.
