@@ -21,6 +21,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from tools.paths import ProjectPaths, ensure_within, project_paths
+from tools.process import prepare_command
 from tools.project_config import (
     ArtifactSpec,
     TargetSpec,
@@ -83,12 +84,18 @@ def _git_value(paths: ProjectPaths, *args: str) -> str:
 
 
 def _tool_version(command: list[str]) -> str:
+    executable = shutil.which(command[0])
+    if executable is None:
+        return "unavailable"
     try:
         result = subprocess.run(
-            command,
+            prepare_command([executable, *command[1:]]),
             check=False,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
+            shell=False,
             timeout=10,
         )
     except (OSError, subprocess.TimeoutExpired):

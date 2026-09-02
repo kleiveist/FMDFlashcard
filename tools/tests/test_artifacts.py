@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import stat
+import subprocess
 import tarfile
 import zipfile
 from pathlib import Path
@@ -11,7 +12,7 @@ from typing import Any
 
 import pytest
 
-from tools import artifacts
+from tools import artifacts, process
 from tools.artifacts import (
     ArtifactError,
     _discover_source,
@@ -46,6 +47,40 @@ REQUIRED_EVIDENCE_FIELDS = {
     "source_repository",
     "toolchains",
 }
+
+
+def test_tool_version_resolves_windows_batch_shim(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed: dict[str, object] = {}
+
+    def fake_run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        observed["command"] = command
+        observed.update(kwargs)
+        return subprocess.CompletedProcess(command, 0, stdout="10.17.1\n", stderr="")
+
+    monkeypatch.setattr(
+        artifacts.shutil,
+        "which",
+        lambda _name: r"C:\hostedtoolcache\node\pnpm.CMD",
+    )
+    monkeypatch.setattr(artifacts.subprocess, "run", fake_run)
+    monkeypatch.setattr(process.sys, "platform", "win32")
+    monkeypatch.setenv("SystemRoot", r"C:\Windows")
+
+    assert artifacts._tool_version(["pnpm", "--version"]) == "10.17.1"
+    assert observed["command"] == [
+        r"C:\Windows\System32\cmd.exe",
+        "/d",
+        "/s",
+        "/c",
+        "call",
+        r"C:\hostedtoolcache\node\pnpm.CMD",
+        "--version",
+    ]
+    assert observed["shell"] is False
+    assert observed["encoding"] == "utf-8"
+    assert observed["errors"] == "replace"
 
 
 def test_artifact_discovery_requires_one_fresh_regular_source(tmp_path: Path) -> None:
