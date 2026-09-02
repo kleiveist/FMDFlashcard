@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    homecodeprojectsfmdflashcardappsfmd_desktop_lib::run()
+    fmd_desktop_lib::run()
 }

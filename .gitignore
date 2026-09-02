@@ -41,6 +41,11 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Repository-owned tooling output and runtime state
+/.dist/
+/.reports/
+/.tooling-state/
+
 # Rust / Tauri build output
 target/                # ignores any Rust target/ (incl. src-tauri/target)
 **/src-tauri/target/   # explicit, for clarity
@@ -59,6 +64,9 @@ target/                # ignores any Rust target/ (incl. src-tauri/target)
 .env.*
 !.env.example
 
+# User-created application state must never enter source or release bundles
+/apps/UserGlobal/
+
 # LaTeX build artifacts
 *.aux
 *.log
@@ -73,4 +81,3 @@ target/                # ignores any Rust target/ (incl. src-tauri/target)
 *.fdb_latexmk
 *.fls
 *.synctex.gz
-
