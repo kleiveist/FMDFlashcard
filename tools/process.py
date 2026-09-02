@@ -105,6 +105,8 @@ def run_command(
             stdin=subprocess.DEVNULL if capture_output else None,
             capture_output=capture_output,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=timeout,
             check=False,
             shell=False,

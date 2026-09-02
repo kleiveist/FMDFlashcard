@@ -30,6 +30,8 @@ def test_child_return_code_is_preserved(monkeypatch: pytest.MonkeyPatch, tmp_pat
     assert result.stdout == "out"
     assert result.stderr == "err"
     assert observed["shell"] is False
+    assert observed["encoding"] == "utf-8"
+    assert observed["errors"] == "replace"
 
 
 def test_missing_executable_returns_127(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
