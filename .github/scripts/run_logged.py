@@ -9,6 +9,7 @@ import subprocess
 import sys
 from collections.abc import Mapping
 from pathlib import Path
+from typing import TextIO
 
 SENSITIVE_ENVIRONMENT = (
     "APPLE_CERTIFICATE",
@@ -46,7 +47,25 @@ def _redact(text: str, replacements: tuple[tuple[str, str], ...]) -> str:
     return text
 
 
+def _configure_utf8_stream(stream: TextIO) -> None:
+    reconfigure = getattr(stream, "reconfigure", None)
+    if callable(reconfigure):
+        reconfigure(encoding="utf-8", errors="replace")
+
+
+def _write_console(text: str) -> None:
+    try:
+        sys.stdout.write(text)
+    except UnicodeEncodeError:
+        encoding = sys.stdout.encoding or "ascii"
+        safe_text = text.encode(encoding, errors="replace").decode(encoding)
+        sys.stdout.write(safe_text)
+    sys.stdout.flush()
+
+
 def main() -> int:
+    _configure_utf8_stream(sys.stdout)
+    _configure_utf8_stream(sys.stderr)
     arguments = _parser().parse_args()
     command = arguments.command
     if command[:1] == ["--"]:
@@ -55,6 +74,9 @@ def main() -> int:
         raise SystemExit("run_logged.py requires a command after --")
 
     replacements = _redactions(os.environ)
+    child_environment = os.environ.copy()
+    child_environment["PYTHONIOENCODING"] = "utf-8"
+    child_environment["PYTHONUTF8"] = "1"
     arguments.log.parent.mkdir(parents=True, exist_ok=True)
     with arguments.log.open("w", encoding="utf-8", newline="\n") as log:
         process = subprocess.Popen(
@@ -64,14 +86,14 @@ def main() -> int:
             text=True,
             encoding="utf-8",
             errors="replace",
+            env=child_environment,
         )
         assert process.stdout is not None
         for line in process.stdout:
             line = _redact(line, replacements)
-            sys.stdout.write(line)
-            sys.stdout.flush()
             log.write(line)
             log.flush()
+            _write_console(line)
         return process.wait()
 
 
