@@ -5,11 +5,18 @@ from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 from collections.abc import Mapping
 from pathlib import Path
 from typing import TextIO
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
+
+from tools.process import prepare_command  # noqa: E402
 
 SENSITIVE_ENVIRONMENT = (
     "APPLE_CERTIFICATE",
@@ -30,6 +37,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--log", type=Path, required=True)
     parser.add_argument("command", nargs=argparse.REMAINDER)
     return parser
+
+
+def _resolve_command(command: list[str], environment: Mapping[str, str]) -> list[str]:
+    executable = shutil.which(command[0], path=environment.get("PATH"))
+    return prepare_command([executable or command[0], *command[1:]])
 
 
 def _redactions(environment: Mapping[str, str]) -> tuple[tuple[str, str], ...]:
@@ -77,6 +89,7 @@ def main() -> int:
     child_environment = os.environ.copy()
     child_environment["PYTHONIOENCODING"] = "utf-8"
     child_environment["PYTHONUTF8"] = "1"
+    command = _resolve_command(command, child_environment)
     arguments.log.parent.mkdir(parents=True, exist_ok=True)
     with arguments.log.open("w", encoding="utf-8", newline="\n") as log:
         process = subprocess.Popen(
@@ -87,6 +100,7 @@ def main() -> int:
             encoding="utf-8",
             errors="replace",
             env=child_environment,
+            shell=False,
         )
         assert process.stdout is not None
         for line in process.stdout:
