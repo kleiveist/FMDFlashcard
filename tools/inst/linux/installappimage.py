@@ -228,13 +228,22 @@ def _cleanup_stale_icons(keep_path: Path, dry_run: bool) -> None:
             raise InstallError(f"Failed to remove stale icon '{candidate}': {exc}") from exc
 
 
+def _desktop_exec_argument(path: Path) -> str:
+    """Quote a path as one Desktop Entry Exec argument."""
+    value = str(path)
+    if "\n" in value or "\r" in value or "\0" in value:
+        raise InstallError("Desktop entry paths must not contain control characters")
+    escaped = "".join(f"\\{char}" if char in {"\\", '"', "`", "$"} else char for char in value)
+    return f'"{escaped}"'
+
+
 def _desktop_file_content(appimage_path: Path, icon_path: Path) -> str:
     lines = [
         "[Desktop Entry]",
         "Type=Application",
         f"Name={APP_NAME}",
         f"Comment={APP_NAME}",
-        f"Exec={appimage_path}",
+        f"Exec={_desktop_exec_argument(appimage_path)}",
         f"TryExec={appimage_path}",
         f"Icon={icon_path}",
         "Terminal=false",
