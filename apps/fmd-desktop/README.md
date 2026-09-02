@@ -1,9 +1,17 @@
 [← Back to Docs Home](../../docs/index.md)
 
-# Tauri + React + Typescript
+# FMDFlashcard desktop app
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+This directory contains the React/Vite frontend and Tauri native shell for
+FMDFlashcard. Use the repository-root `control` entry point for setup, quality,
+tests, web builds, and native package plans.
 
-## Recommended IDE Setup
+```bash
+../../control install
+../../control quality
+../../control test --suite frontend
+../../control build web
+```
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+See [Build and packaging](../../docs/tools/build-package.md) and
+[Testing](../../docs/tools/testing.md) for the maintained contracts.

@@ -38,8 +38,8 @@ export const vaultAndIndexSection: LoadVaultTabData = {
       title: { en: "What you see there", de: "Was du dort siehst" },
       bullets: [
         {
-          en: "Current vault path: the folder currently loaded (Example: /Users/alex/Vaults/FMD).",
-          de: "Current vault path: der aktuell geladene Ordner (Beispiel: /Users/alex/Vaults/FMD).",
+          en: "Current vault path: the folder currently loaded (Example: ~/Vaults/FMD).",
+          de: "Current vault path: der aktuell geladene Ordner (Beispiel: ~/Vaults/FMD).",
         },
         {
           en: "Last opened: the most recent note you opened (Example: Biology/Cell-Membrane.md).",

@@ -92,7 +92,7 @@ beforeEach(() => {
       return null;
     }
     if (command === "get_os_username") {
-      return "kleif";
+      return "alex";
     }
     throw new Error(`Unknown command: ${String(command)}`);
   });
@@ -138,7 +138,7 @@ describe("migrateDefaultProfileFolders", () => {
       "/profile-root/users/2026-02-11_default-1/profile.json",
       JSON.stringify({
         id: "2026-02-11_default-1",
-        name: "Kleif",
+        name: "Alex",
         createdAt: "2026-02-11T00:00:00.000Z",
       }),
     );
@@ -149,14 +149,14 @@ describe("migrateDefaultProfileFolders", () => {
 
     await migrateDefaultProfileFolders("/profile-root");
 
-    expect(directories.has("/profile-root/users/2026-02-11_kleif")).toBe(true);
+    expect(directories.has("/profile-root/users/2026-02-11_alex")).toBe(true);
     const updated = JSON.parse(
-      files.get("/profile-root/users/2026-02-11_kleif/profile.json") ?? "{}",
+      files.get("/profile-root/users/2026-02-11_alex/profile.json") ?? "{}",
     );
-    expect(updated.id).toBe("2026-02-11_kleif");
-    expect(updated.name).toBe("kleif");
+    expect(updated.id).toBe("2026-02-11_alex");
+    expect(updated.name).toBe("alex");
     const meta = JSON.parse(files.get("/profile-root/user-vault.json") ?? "{}");
-    expect(meta.activeProfileId).toBe("2026-02-11_kleif");
+    expect(meta.activeProfileId).toBe("2026-02-11_alex");
   });
 
   it("moves legacy embedded settings into settings.json during rename", async () => {
@@ -167,7 +167,7 @@ describe("migrateDefaultProfileFolders", () => {
       "/profile-root/users/2026-02-11_default-1/profile.json",
       JSON.stringify({
         id: "2026-02-11_default-1",
-        name: "Kleif",
+        name: "Alex",
         createdAt: "2026-02-11T00:00:00.000Z",
         settings: { theme: "dark" },
       }),
@@ -175,12 +175,12 @@ describe("migrateDefaultProfileFolders", () => {
 
     await migrateDefaultProfileFolders("/profile-root");
 
-    const migratedProfilePath = "/profile-root/users/2026-02-11_kleif/profile.json";
-    const migratedSettingsPath = "/profile-root/users/2026-02-11_kleif/settings.json";
+    const migratedProfilePath = "/profile-root/users/2026-02-11_alex/profile.json";
+    const migratedSettingsPath = "/profile-root/users/2026-02-11_alex/settings.json";
     expect(JSON.parse(files.get(migratedProfilePath) ?? "{}")).toEqual({
       schemaVersion: 1,
-      id: "2026-02-11_kleif",
-      name: "kleif",
+      id: "2026-02-11_alex",
+      name: "alex",
       createdAt: "2026-02-11T00:00:00.000Z",
     });
     expect(JSON.parse(files.get(migratedSettingsPath) ?? "{}")).toEqual({

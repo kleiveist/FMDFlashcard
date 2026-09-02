@@ -46,8 +46,8 @@ export const dataAndSyncSection: LoadVaultTabData = {
           de: "Profile mode: Auto (Vault/profile), Custom path und Sync provider (Platzhalter).",
         },
         {
-          en: "Active path: the current stats folder (Example: /Users/alex/Vaults/FMD/profile).",
-          de: "Active path: der aktuelle Stats-Ordner (Beispiel: /Users/alex/Vaults/FMD/profile).",
+          en: "Active path: the current stats folder (Example: ~/Vaults/FMD/profile).",
+          de: "Active path: der aktuelle Stats-Ordner (Beispiel: ~/Vaults/FMD/profile).",
         },
         {
           en: "Change: selects a different folder when using Custom path.",
