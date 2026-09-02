@@ -1,7 +1,7 @@
 {
   "name": "fmd-flashcard-desktop",
   "private": true,
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Local-first Markdown flashcards and study tools for the desktop.",
   "author": "FMDFlashcard contributors",
   "homepage": "https://github.com/kleiveist/FMDFlashcard",

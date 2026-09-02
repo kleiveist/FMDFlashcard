@@ -1,6 +1,6 @@
 [package]
 name = "fmd-flashcard-desktop"
-version = "0.2.0"
+version = "1.0.0"
 description = "Local-first Markdown flashcards and study tools for the desktop"
 authors = ["FMDFlashcard contributors"]
 edition = "2021"

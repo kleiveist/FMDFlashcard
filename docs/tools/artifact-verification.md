@@ -12,7 +12,7 @@ On macOS use `shasum -a 256` to compare individual files if `sha256sum` is unava
 GitHub provenance links final files to the workflow and source commit:
 
 ```bash
-gh attestation verify FMDFlashcard-v0.2.0-linux-x86_64.AppImage \
+gh attestation verify FMDFlashcard-v1.0.0-linux-x86_64.AppImage \
   --repo kleiveist/FMDFlashcard
 ```
 
