@@ -4,7 +4,9 @@ All notable changes to this project are documented here. The format follows Keep
 
 ## [Unreleased]
 
-## [1.0.0]
+## [1.0.0] - 2026-09-02
+
+FMDFlashcard 1.0.0 is the first stable release of the local-first desktop application for Markdown flashcards, exams, and spaced-repetition study.
 
 ### Added
 
@@ -27,7 +29,26 @@ All notable changes to this project are documented here. The format follows Keep
 - Remediated known RustSec vulnerabilities in the locked Rust dependency graph and made yanked packages release-blocking.
 - Added fail-closed archive, symlink, traversal, signature, notarization, checksum, action-pinning, and exact-inventory checks.
 
-The release date is intentionally not recorded until a real `v1.0.0` tag is created.
+### Downloads
+
+| Platform | Architecture | Assets |
+|---|---|---|
+| Windows | x86_64 | MSI installer, setup executable, portable ZIP |
+| Linux | x86_64 | DEB, RPM, AppImage |
+| macOS | Apple Silicon (`aarch64`) | DMG, compressed app bundle |
+| macOS | Intel (`x86_64`) | DMG, compressed app bundle |
+
+The release also includes a documentation PDF, `SHA256SUMS`, `release-manifest.json`, and `SBOM.spdx.json`—14 assets in total.
+
+### Verification and signing notice
+
+Download all assets into one directory and verify them before installation:
+
+```bash
+sha256sum --check SHA256SUMS
+```
+
+The native binaries in this release are unsigned, and the macOS applications are not notarized. Windows and macOS may therefore display security warnings. Review `release-manifest.json`, verify `SHA256SUMS`, and install only if you accept this signing state.
 
 ## [0.2.0]
 
