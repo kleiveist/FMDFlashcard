@@ -1,6 +1,7 @@
 name: Feature request
 description: Suggest a focused improvement to the FMDFlashcard experience.
 title: "[Feature]: "
+labels: ["enhancement"]
 body:
   - type: markdown
     attributes:

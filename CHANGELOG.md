@@ -4,10 +4,6 @@ All notable changes to this project are documented here. The format follows Keep
 
 ## [Unreleased]
 
-### Changed
-
-- Release publication remains blocked until verified license terms are added.
-
 ## [1.0.0]
 
 ### Added
@@ -22,6 +18,7 @@ All notable changes to this project are documented here. The format follows Keep
 - Promoted the synchronized application version contract to `1.0.0` across frontend, Cargo, Tauri, release metadata, and documentation.
 - Consolidated legacy launch and build helpers behind the cross-platform `control` command while retaining explicit compatibility mappings.
 - Standardized repository formatting, generated-file locations, native artifact names, and immutable release-source verification.
+- Distributed the project under the MIT License with matching package and native-bundle metadata.
 
 ### Security
 

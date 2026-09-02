@@ -2,7 +2,25 @@
 
 FMDFlashcard is a local-first desktop application for Markdown flashcards, exams, and spaced-repetition study. It preserves Markdown files as the learning source of truth while providing a dedicated Tauri desktop experience.
 
-## Quickstart
+<p align="center">
+  <img src="docs/dev/assets/png/FMDFlashcard.png" alt="FMDFlashcard logo" width="320">
+</p>
+
+[Downloads](https://github.com/kleiveist/FMDFlashcard/releases) · [Getting started](docs/usr/getting-started.md) · [Documentation](docs/usr/usr.md) · [Report a bug](https://github.com/kleiveist/FMDFlashcard/issues/new?template=bug-report.yml)
+
+## Features
+
+- Keep portable Markdown files as the source of truth for cards and exams.
+- Review with standard, fast-flashcard, and spaced-repetition workflows.
+- Organize study material in a local vault without committing personal learning data.
+- Render rich Markdown, tables, code highlighting, and mathematical notation.
+- Use native desktop packages for Windows, Linux, and Apple Silicon or Intel macOS.
+
+## Downloads
+
+Verified installers are published on the [GitHub Releases page](https://github.com/kleiveist/FMDFlashcard/releases). Choose the package for your platform from the table below and verify it with the accompanying `SHA256SUMS` and release manifest.
+
+## Development quickstart
 
 The root wrappers all forward to the same Python implementation:
 
@@ -27,7 +45,7 @@ Run the local gates before opening a pull request:
 
 See [Setup and bootstrap](docs/tools/setup-bootstrap.md), [Run and test](docs/tools/run-test.md), and [Build and packaging](docs/tools/build-package.md) for prerequisites and platform details.
 
-## Release packages
+### Release packages
 
 Tagged releases use `v<VERSION>` and are assembled only after every native and quality gate succeeds.
 
@@ -78,6 +96,6 @@ The MkDocs navigation is the hosted documentation source of truth. Release and C
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and required checks. Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md), and sensitive security reports follow the private process in [SECURITY.md](SECURITY.md).
 
-## License status
+## License
 
-This repository currently contains no verified license terms. The tooling therefore blocks tagged publication until the repository owner adds an appropriate license file and matching package metadata. No license has been guessed or added by the tooling work.
+FMDFlashcard is open-source software licensed under the [MIT License](LICENSE).

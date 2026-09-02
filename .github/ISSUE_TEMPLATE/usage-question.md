@@ -2,7 +2,7 @@
 name: Usage question
 about: Ask for help with a FMDFlashcard workflow or its documentation.
 title: "[Question]: "
-labels: ""
+labels: "question"
 assignees: ""
 ---
 

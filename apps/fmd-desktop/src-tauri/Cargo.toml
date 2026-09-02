@@ -3,6 +3,7 @@ name = "fmd-flashcard-desktop"
 version = "1.0.0"
 description = "Local-first Markdown flashcards and study tools for the desktop"
 authors = ["FMDFlashcard contributors"]
+license = "MIT"
 edition = "2021"
 repository = "https://github.com/kleiveist/FMDFlashcard"
 homepage = "https://github.com/kleiveist/FMDFlashcard"

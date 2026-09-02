@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Usage questions and community help
+    url: https://github.com/kleiveist/FMDFlashcard/discussions/categories/q-a
+    about: Ask how-to questions and share workflows in GitHub Discussions.
   - name: Security and private-data reports
     url: https://github.com/kleiveist/FMDFlashcard/security/policy
     about: Follow the private-reporting guidance; do not disclose sensitive details in a public issue.

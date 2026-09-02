@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "description": "Local-first Markdown flashcards and study tools for the desktop.",
+  "license": "MIT",
   "author": "FMDFlashcard contributors",
   "homepage": "https://github.com/kleiveist/FMDFlashcard",
   "repository": {

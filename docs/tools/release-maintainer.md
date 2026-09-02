@@ -4,7 +4,7 @@
 
 The release workflow never creates or pushes a tag. Manual dispatch defaults to validation only. Native jobs build and upload evidence but cannot publish; only the final job receives `contents: write`, `attestations: write`, and `id-token: write` after every prerequisite succeeds.
 
-The current repository has no verified license terms. `release check` warns during ordinary local validation and fails for a tagged build until the owner adds one canonical root license, the same explicit SPDX expression to `package.json` and `Cargo.toml`, and a Tauri `bundle.licenseFile` reference that includes that root license in native bundles. A license file alone does not clear the gate.
+The repository uses the MIT License. `release check` requires one canonical root license, the same explicit SPDX expression in `package.json` and `Cargo.toml`, and a Tauri `bundle.licenseFile` reference that includes the root license in native bundles. A license file alone does not clear the gate.
 
 ## Local release candidate validation
 
@@ -32,7 +32,7 @@ Validate every native plan even when the current host cannot build it:
 
 ## Hosted release
 
-1. Resolve every gate, add verified license terms, and commit a clean release candidate.
+1. Resolve every gate and commit a clean release candidate with verified license metadata.
 2. Confirm `VERSION` is exact SemVer and `CHANGELOG.md` has real notes under that version.
 3. Create the annotated `v<VERSION>` tag outside the workflow and push it deliberately.
 4. Observe all quality, test, docs, and four native jobs. Any failure prevents assembly and publication.
