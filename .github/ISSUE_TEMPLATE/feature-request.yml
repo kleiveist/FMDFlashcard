@@ -1,0 +1,49 @@
+name: Feature request
+description: Suggest a focused improvement to the FMDFlashcard experience.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: Thank you for proposing an improvement. Explain the learning workflow before proposing an implementation.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues for a similar request.
+          required: true
+        - label: The request preserves Markdown files as the learning source of truth.
+          required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: What study or authoring problem should be solved?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the desired result without requiring a specific internal implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Note existing workflows or workarounds you evaluated.
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Primary area
+      options:
+        - Flashcards and spaced repetition
+        - Exams and scoring
+        - Markdown editing and preview
+        - Vault and synchronization
+        - Accessibility and user interface
+        - Packaging and installation
+        - Documentation and tooling
+    validations:
+      required: true

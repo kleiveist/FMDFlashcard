@@ -12,7 +12,7 @@ The current `VERSION` line is supported while the project is under active develo
 If you believe you found a security issue:
 
 1. Do not open a public issue with sensitive details.
-2. Contact the maintainers via a private channel (if available) or open a minimal issue asking for a secure contact method.
+2. Submit a report through the repository's [private vulnerability reporting form](https://github.com/kleiveist/FMDFlashcard/security/advisories/new).
 
 Please include:
 
@@ -22,6 +22,8 @@ Please include:
 - any suggested mitigation.
 
 Thank you for reporting responsibly.
+
+The maintainers will acknowledge a report as soon as practical, investigate it privately, and coordinate remediation and disclosure with the reporter. If the private form is unexpectedly unavailable, use the contact address currently listed on the [maintainer's GitHub profile](https://github.com/kleiveist); never disclose exploit details in a public issue.
 
 ## Release integrity
 

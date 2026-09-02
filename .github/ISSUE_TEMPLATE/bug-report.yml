@@ -1,0 +1,67 @@
+name: Bug report
+description: Report a reproducible problem in FMDFlashcard.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve FMDFlashcard. Do not include private vault content, credentials, or security-sensitive details.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues for the same problem.
+          required: true
+        - label: This is not a security vulnerability or private-data report.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: FMDFlashcard version
+      description: Use the version shown by the installed package or release page.
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows x86_64
+        - Linux x86_64
+        - macOS Apple Silicon
+        - macOS Intel
+        - Development checkout
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe what happened and its impact.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Provide the smallest reliable sequence that triggers the problem.
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Relevant diagnostics
+      description: Paste non-sensitive logs or screenshots. Remove usernames, local paths, vault content, and secrets.
+      render: shell

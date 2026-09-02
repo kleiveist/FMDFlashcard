@@ -2,6 +2,8 @@
 
 Thank you for contributing to FMDFlashcard.
 
+Participation in this project is governed by the [Code of Conduct](CODE_OF_CONDUCT.md). Use the repository's structured bug and feature forms so reports contain the information needed for review.
+
 ## Development setup
 
 Use the repository-root command contract:

@@ -76,7 +76,7 @@ The MkDocs navigation is the hosted documentation source of truth. Release and C
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and required checks.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and required checks. Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md), and sensitive security reports follow the private process in [SECURITY.md](SECURITY.md).
 
 ## License status
 
