@@ -64,13 +64,25 @@ runs:
     - name: Activate pinned pnpm
       shell: pwsh
       run: |
-        npm install --global "corepack@${{ steps.versions.outputs.corepack }}" --ignore-scripts --no-audit --no-fund
+        $corepackRoot = Join-Path $env:RUNNER_TEMP "fmd-corepack"
+        npm install `
+          --prefix $corepackRoot `
+          --no-save `
+          --package-lock=false `
+          --ignore-scripts `
+          --no-audit `
+          --no-fund `
+          "corepack@${{ steps.versions.outputs.corepack }}"
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        $corepackBin = Join-Path $corepackRoot "node_modules/.bin"
+        if (-not (Test-Path -LiteralPath $corepackBin -PathType Container)) {
+          throw "local Corepack binary directory was not created"
+        }
+        $corepackBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        $env:PATH = "$corepackBin$([IO.Path]::PathSeparator)$env:PATH"
         if ((corepack --version).Trim() -ne "${{ steps.versions.outputs.corepack }}") {
           throw "corepack version does not match .github/toolchains.json"
         }
-        corepack enable
-        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         corepack prepare "pnpm@${{ steps.versions.outputs.pnpm }}" --activate
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         if ((pnpm --version).Trim() -ne "${{ steps.versions.outputs.pnpm }}") {

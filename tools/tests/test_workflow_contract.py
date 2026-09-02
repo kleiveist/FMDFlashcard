@@ -197,6 +197,16 @@ def test_external_actions_and_container_images_are_immutably_pinned() -> None:
     assert violations == []
 
 
+def test_composite_setup_installs_corepack_without_global_shim_collisions() -> None:
+    setup = (ACTION_ROOT / "setup-fmd-environment" / "action.yml").read_text(encoding="utf-8")
+
+    assert "npm install --global" not in setup
+    assert "--prefix $corepackRoot" in setup
+    assert 'Join-Path $env:RUNNER_TEMP "fmd-corepack"' in setup
+    assert "$env:GITHUB_PATH" in setup
+    assert 'corepack prepare "pnpm@${{ steps.versions.outputs.pnpm }}" --activate' in setup
+
+
 def test_checkouts_never_persist_job_credentials() -> None:
     violations: list[str] = []
     for workflow_name, workflow in _workflows().items():
